@@ -24,7 +24,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function(const HI
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator, bool debug, int x, int y)
 {
-
 	float3 incident_light_direction;
 	if (sample.is_envmap_path())
 		// For envmap path, the direction is stored in the 'sample_point' value

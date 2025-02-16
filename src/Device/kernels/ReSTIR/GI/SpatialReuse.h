@@ -52,7 +52,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	if (render_data.render_settings.freeze_random)
 		seed = wang_hash(center_pixel_index + 1);
 	else
-		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+		seed = wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
 
 	ReSTIRGIReservoir* input_reservoir_buffer = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs;
@@ -62,9 +62,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
+		// TODO DEBUG REMOVE THIS
 		//rotation_theta = M_TWO_PI * Xorshift32Generator((wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number) * 2) / 2)();
 		//rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number))();
-		rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((10292 + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number))();
+		rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number))();
 		//rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
@@ -72,7 +73,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	ReSTIRGIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if ((center_pixel_reservoir.M <= 1) && render_data.render_settings.restir_gi_settings.common_spatial_pass.do_disocclusion_reuse_boost)
-		// Increasing the number of spatial samples for disoclussions
+		// Increasing the number of spatial samples for disocclusions
 		render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count = render_data.render_settings.restir_gi_settings.common_spatial_pass.disocclusion_reuse_count;
 
 	// Surface data of the center pixel
@@ -95,6 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	int reused_neighbors_count = render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index = 0;
+	// TODO DEBUG UNCOMMENT THIS
 	//if (valid_neighbors_M_sum == 0)
 	//	// No valid neighbor to resample from, skip to the initial candidate right away
 	//	start_index = reused_neighbors_count;
@@ -103,10 +105,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
-	/*if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-		hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, hippt::square(render_data.render_settings.debug_size * 2 + 1) * render_data.render_settings.debug_count_multiplier);*/
-	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
+	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
+		// TODO DEBUG UNCOMMENT THIS
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
 		//// We can already check whether or not this neighbor is going to be
 		//// accepted at all by checking the heuristic cache
@@ -126,9 +127,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// Neighbor out of the viewport
 			continue;
 
-
-		if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+		// TODO DEBUG REMOVE THIS
+		/*if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
 			path_tracing_accumulate_color(render_data, ColorRGB32F(20.0f, 0.0f, 0.0f), neighbor_pixel_index);
+
+		if (x == render_data.render_settings.debug_x2 && y == render_data.render_settings.debug_y2)
+			path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 20.0f, 20.0f), neighbor_pixel_index);*/
 
 		if (!is_center_pixel && reused_neighbors_count > 32)
 			// If not the center pixel, we can check the heuristics
@@ -155,7 +159,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator, true, x, y);
-			
+
+			// TODO DEBUG UNCOMMENT THIS
 			//if (is_center_pixel)
 			//	// No need to evaluate the center sample at the center pixel, that's exactly
 			//	// the target function of the center reservoir
@@ -308,9 +313,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 
-	//if (debug)
+	//if (hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0) <= 20)
 	{
-		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && 
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size &&
 			hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
 		{
 			if (valid_neighbors_count == 0)
@@ -320,6 +325,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], center_pixel_reservoir.UCW);
 				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], center_pixel_reservoir.sample.target_function);
 				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[2], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
+			}
+		}
+
+		if (hippt::abs(x - render_data.render_settings.debug_x2) <= render_data.render_settings.debug_size &&
+			hippt::abs(y - render_data.render_settings.debug_y2) <= render_data.render_settings.debug_size)
+		{
+			//if (valid_neighbors_count == 0)
+			{
+				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], center_pixel_reservoir.UCW);
+				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], center_pixel_reservoir.sample.target_function);
+				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[5], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
 			}
 		}
 	}

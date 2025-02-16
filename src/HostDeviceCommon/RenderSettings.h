@@ -21,8 +21,6 @@
 
 class GPURenderer;
 
-#define MULTIPLIER 2
-
 struct HIPRTRenderSettings
 {
 	int2 render_resolution = make_int2(1280, 720);
@@ -31,11 +29,16 @@ struct HIPRTRenderSettings
 	// This is mainly useful for the first frame of the render
 	bool need_to_reset = true;
 
+	// TODO DEBUG REMOVE THIS
+	static constexpr float MULTIPLIER = 2.0f;
+
+	// TODO DEBUG REMOVE THIS
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	int* DEBUG_NEIGHBOR_DISTRIBUTION = nullptr;
 	bool debug_lambertian = false;
-	int debug_x = 150, debug_y = 4;
+	int debug_x = 150, debug_y = 15;
+	int debug_x2 = 50, debug_y2 = 150;
 	int debug_size = 0;
 	int debug_count_multiplier = 2;
 	int precision = 256;

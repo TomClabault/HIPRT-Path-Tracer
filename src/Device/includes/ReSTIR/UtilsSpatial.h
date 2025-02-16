@@ -121,10 +121,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 				offset = make_int2(spatial_pass_settings.reuse_radius, spatial_pass_settings.reuse_radius);
 
 			neighbor_pixel_coords = center_pixel_coords + offset;
-
-			neighbor_offset_rotated = make_float2(offset.x * cos_theta - offset.y * sin_theta, offset.x * sin_theta + offset.y * cos_theta);
-			neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
-			neighbor_pixel_coords = neighbor_offset_int + center_pixel_coords;
 		}
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;

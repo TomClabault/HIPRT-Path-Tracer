@@ -477,6 +477,8 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
         texture_paths.pop_back();
         // Using the roughness index for the roughness + metallic texture
         texture_indices.roughness_metallic_texture_index = roughness_index;
+
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Material %s uses its base color texture as a normal map; This is not supported and normal mapping will be disabled for this material.", mesh_material->GetName());
     }
     else
     {

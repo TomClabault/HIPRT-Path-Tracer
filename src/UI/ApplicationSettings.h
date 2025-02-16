@@ -12,7 +12,7 @@
 #include "UI/DisplayView/DisplaySettings.h"
 #include "UI/DisplayView/DisplayViewEnum.h"
 
-#define MULTIPLIER 2
+#include "HostDeviceCommon/RenderSettings.h"
 
 struct ApplicationSettings
 {
@@ -81,7 +81,7 @@ struct ApplicationSettings
 
 	// We stop rendering when this number of sample is reached.
 	// 0 is no limit
-	int max_sample_count = 65535 * MULTIPLIER;
+	int max_sample_count = 65535 * HIPRTRenderSettings::MULTIPLIER;
 	// We stop rendering when the render has been running for that long.
 	// In seconds. 0 is no limit
 	float max_render_time = 0.0f;
