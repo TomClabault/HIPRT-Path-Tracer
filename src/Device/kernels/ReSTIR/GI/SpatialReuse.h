@@ -105,7 +105,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
-	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count; neighbor_index++)
+	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		// TODO DEBUG UNCOMMENT THIS
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
