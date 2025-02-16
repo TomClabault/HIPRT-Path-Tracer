@@ -66,43 +66,6 @@ struct DevicePackedEffectiveMaterial
         PACKED_ENERGY_PRESERVATION_SAMPLES = 1,
     };
 
-    /*HIPRT_HOST_DEVICE DevicePackedEffectiveMaterial()
-    {
-        flags.set_bool<PackedFlagsIndices::PACKED_EMISSIVE_TEXTURE_USED>(false);
-        flags.set_bool<PackedFlagsIndices::PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION>(false);
-        flags.set_bool<PackedFlagsIndices::PACKED_THIN_FILM_DO_IOR_OVERRIDE>(false);
-        flags.set_bool<PackedFlagsIndices::PACKED_THIN_WALLED>(false);
-
-        base_color_roughness.set_color(ColorRGB32F(1.0f));
-        base_color_roughness.set_float(0.5f);
-
-        metallic_F90_and_metallic.set_float(0.0f);
-        metallic_F90_and_metallic.set_color(ColorRGB32F(1.0f));
-        metallic_F82_packed_and_diffuse_transmission.set_color(ColorRGB32F(1.0f));
-
-        anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS>(0.5f);
-        anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS_WEIGHT>(0.0f);
-
-        specular_color_and_tint_factor.set_color(ColorRGB32F(1.0f));
-        specular_color_and_tint_factor.set_float(0.0f);
-
-        specular_and_darkening_and_coat_roughness.set_float<PackedSpecularGroupIndices::PACKED_SPECULAR>(1.0f);
-        specular_and_darkening_and_coat_roughness.set_float<PackedSpecularGroupIndices::PACKED_SPECULAR_DARKENING>(1.0f);
-
-        coat_and_medium_absorption.set_color(ColorRGB32F(1.0f));
-
-        coat_roughening_darkening_anisotropy_and_rotation.set_float<PackedCoatGroupIndices::PACKED_COAT_ROUGHENING>(1.0f);
-        coat_roughening_darkening_anisotropy_and_rotation.set_float<PackedCoatGroupIndices::PACKED_COAT_DARKENING>(1.0f);
-
-        sheen_and_color.set_color(ColorRGB32F(1.0f));
-
-        absorption_color_packed.set_color(ColorRGB32F(1.0f));
-
-        alpha_thin_film_hue_dielectric_priority.set_float<PackedAlphaOpacityGroupIndices::PACKED_ALPHA_OPACITY>(1.0f);
-        alpha_thin_film_hue_dielectric_priority.set_float<PackedAlphaOpacityGroupIndices::PACKED_THIN_FILM_HUE_SHIFT>(0.35f);
-        alpha_thin_film_hue_dielectric_priority.set_uchar<PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>(12);
-    }*/
-
     HIPRT_HOST_DEVICE bool is_emissive() const
     {
         return !hippt::is_zero(emission.r)
@@ -574,40 +537,6 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
     {
         SPECULAR_TRANSMISSION_INDEX = 0,
     };
-
-    //HIPRT_HOST_DEVICE DevicePackedTexturedMaterial()
-    //{
-    //    // Some default values
-
-    //    set_normal_map_texture_index(MaterialUtils::NO_TEXTURE);
-    //    set_emission_texture_index(MaterialUtils::NO_TEXTURE);
-    //    set_base_color_texture_index(MaterialUtils::NO_TEXTURE);
-
-    //    set_roughness_metallic_texture_index(MaterialUtils::NO_TEXTURE);
-    //    set_roughness_texture_index(MaterialUtils::NO_TEXTURE);
-    //    set_metallic_texture_index(MaterialUtils::NO_TEXTURE);
-    //    set_anisotropic_texture_index(MaterialUtils::NO_TEXTURE);
-
-    //    set_specular_texture_index(MaterialUtils::NO_TEXTURE);
-    //    set_coat_texture_index(MaterialUtils::NO_TEXTURE);
-    //    set_sheen_texture_index(MaterialUtils::NO_TEXTURE);
-    //    set_specular_transmission_texture_index(MaterialUtils::NO_TEXTURE);
-
-    //    set_emission(ColorRGB32F(0.0f));
-    //    set_oren_nayar_sigma(0.34906585039886591538f); // 20 degrees standard deviation in radian
-    //    set_metallic_F90_falloff_exponent(5.0f);
-    //    set_coat_medium_thickness(5.0f);
-    //    set_coat_ior(1.5f);
-
-    //    set_ior(1.4f);
-    //    set_absorption_at_distance(5.0f);
-
-    //    set_dispersion_abbe_number(20.0f);
-    //    set_thin_film_ior(1.3f);
-    //    set_thin_film_thickness(500.0f);
-    //    set_thin_film_kappa_3(0.0f);
-    //    set_thin_film_base_ior_override(1.0f);
-    //}
 
     HIPRT_HOST_DEVICE DeviceUnpackedTexturedMaterial unpack()
     {
