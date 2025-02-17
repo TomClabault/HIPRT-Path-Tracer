@@ -101,6 +101,11 @@ struct ReSTIRGIReservoir
 
             return true;
         }
+        //else
+        //    // TODO DEBUG REMOVE THIS
+        //    if (other_reservoir.UCW > 0.0f)
+        //        sample.sample_point = other_reservoir.sample.sample_point;
+
 
         return false;
     }

@@ -159,14 +159,18 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	if (ImGui::InputInt("Debug seed", &render_settings.restir_gi_settings.debug_seed))
-		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Debug lambertian", &render_settings.debug_lambertian))
 		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("Do only neighbor", &render_settings.do_only_neighbor))
+		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
-	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x-1))
+	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug Y", &render_settings.debug_y, 0, m_renderer->m_render_resolution.y - 1))
+		m_render_window->set_render_dirty(true);
+	if (ImGui::SliderInt("Debug X 2", &render_settings.debug_x2, 0, m_renderer->m_render_resolution.x - 1))
+		m_render_window->set_render_dirty(true);
+	if (ImGui::SliderInt("Debug Y 2", &render_settings.debug_y2, 0, m_renderer->m_render_resolution.y - 1))
 		m_render_window->set_render_dirty(true);
 	ImGui::PopItemWidth();
 	if (!ImGui::CollapsingHeader("Render Settings"))
@@ -937,14 +941,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
 							m_render_window->set_render_dirty(true);
 
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
-						{
-							render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
-							if (render_settings.accumulate)
-								m_render_window->set_render_dirty(true);
-						}
-
 						draw_ReSTIR_neighbor_heuristics_panel(render_settings.restir_di_settings);
 					}
 
@@ -1240,12 +1236,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::TreePush("ReSTIR GI - General Settings Tree");
 					{
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
-						{
-							render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
-							if (render_settings.accumulate)
-								m_render_window->set_render_dirty(true);
-						}
+						
+						if (ImGui::SliderFloat("Jacobian threshold", &render_settings.restir_gi_settings.jacobian_rejection_threshold, 5.0f, 100.0f))
+							m_render_window->set_render_dirty(true);
 
 						draw_ReSTIR_neighbor_heuristics_panel(render_settings.restir_gi_settings);
 					}
@@ -1338,7 +1331,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSettings& common_settings)
 {
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	if (ImGui::SliderInt("M-cap", &common_settings.m_cap, 0, 48))
+	{
+		common_settings.m_cap = std::max(0, common_settings.m_cap);
+		if (render_settings.accumulate)
+			m_render_window->set_render_dirty(true);
+	}
+
 	static bool use_heuristics_at_all = true;
 	static bool use_normal_heuristic_backup = common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
 	static bool use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;

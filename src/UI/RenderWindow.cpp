@@ -122,6 +122,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ray splitting on specular/diffuse BSDFs? Trace a diffuse ray and also a specular ray to reduce the noise: only on the primary surface though otherwise this is an exponential increase in the number of rays
 // - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
+// - for volumes, we don't have to use the same phase function at each bounce, for artistic control of the "blur shape"
 // - --help on the commandline
 // - Search for textures next to the GLTF file location
 // - Normal mapping seems broken again, light rays going under the surface... p1 env light

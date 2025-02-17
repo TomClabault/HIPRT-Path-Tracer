@@ -48,8 +48,8 @@ extern std::unordered_map<std::pair<int, int>, int, pair_hash> DEBUG8NEIGHNBOTS_
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 844
-#define DEBUG_PIXEL_Y 468
+#define DEBUG_PIXEL_X 846
+#define DEBUG_PIXEL_Y 470
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0

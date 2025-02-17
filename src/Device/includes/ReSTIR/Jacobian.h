@@ -10,7 +10,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const float3& reconnection_point, const float3& reconnection_point_surface_normal, const float3& center_pixel_visible_point, const float3& neighbor_visible_point)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const float3& reconnection_point, const float3& reconnection_point_surface_normal, const float3& center_pixel_visible_point, const float3& neighbor_visible_point, float jacobian_threshold = 20.0f)
 {
 	float3 direction_to_reconnection_point_from_center = reconnection_point - center_pixel_visible_point;
 	float3 direction_to_reconnection_point_from_neighbor = reconnection_point - neighbor_visible_point;
@@ -27,8 +27,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 
 	float jacobian_determinant = cosine_ratio * distance_squared_ratio;
 
-	//constexpr float jacobian_threshold = 100000000000000.0f;
-	constexpr float jacobian_threshold = 10.0f;
 	if (jacobian_determinant > jacobian_threshold || jacobian_determinant < 1.0f / jacobian_threshold || hippt::is_NaN(jacobian_determinant))
 		// Samples are too dissimilar, returning -1 to indicate that we must reject the sample
 		return -1.0f;
@@ -41,7 +39,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 	float3 reconnection_point = neighbor_reservoir.sample.point_on_light_source;
 	float3 light_source_normal = hippt::normalize(get_triangle_normal_non_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_index));
 
-	return get_jacobian_determinant_reconnection_shift(reconnection_point, light_source_normal, center_pixel_shading_point, neighbor_shading_point);
+	return get_jacobian_determinant_reconnection_shift(reconnection_point, light_source_normal, center_pixel_shading_point, neighbor_shading_point, render_data.render_settings.restir_gi_settings.jacobian_rejection_threshold);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const float3& center_pixel_shading_point, int neighbor_pixel_index)
@@ -49,12 +47,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 	return get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index]);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRGIReservoir shift_sample_reconnection_shift(const ReSTIRGIReservoir& input_sample, float& out_shift_jacobian_determinant, float3 reconnected_point_from_target_domain)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRGIReservoir shift_sample_reconnection_shift(const ReSTIRGIReservoir& input_sample, float& out_shift_jacobian_determinant, float3 reconnected_point_from_target_domain, float jacobian_threshold)
 {
 	ReSTIRGIReservoir out_shifted_sample = input_sample;
 
 	// Eq. 11 of the ReSTIR GI paper
-	out_shift_jacobian_determinant = get_jacobian_determinant_reconnection_shift(input_sample.sample.sample_point, input_sample.sample.sample_point_geometric_normal, reconnected_point_from_target_domain, input_sample.sample.visible_point);
+	out_shift_jacobian_determinant = get_jacobian_determinant_reconnection_shift(input_sample.sample.sample_point, input_sample.sample.sample_point_geometric_normal, reconnected_point_from_target_domain, input_sample.sample.visible_point, jacobian_threshold);
 
 	return input_sample;
 }

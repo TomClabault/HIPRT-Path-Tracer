@@ -105,7 +105,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
-	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
+	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + (render_data.render_settings.do_only_neighbor ? 0 : 1); neighbor_index++)
 	{
 		// TODO DEBUG UNCOMMENT THIS
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
@@ -149,7 +149,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// 
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel), 
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
-			neighbor_reservoir = shift_sample_reconnection_shift(neighbor_reservoir, shift_mapping_jacobian, center_pixel_surface.shading_point);
+			neighbor_reservoir = shift_sample_reconnection_shift(neighbor_reservoir, shift_mapping_jacobian, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.jacobian_rejection_threshold);
 		if (shift_mapping_jacobian == -1.0f)
 			// Neighbor rejected because the jacobian are too dissimilar
 			continue;
@@ -313,32 +313,32 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 
-	//if (hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0) <= 20)
-	{
-		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size &&
-			hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
-		{
-			if (valid_neighbors_count == 0)
-			{
-				hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);
+	////if (hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0) <= 20)
+	//{
+	//	if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size &&
+	//		hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
+	//	{
+	//		if (valid_neighbors_count == 0)
+	//		{
+	//			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);
 
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], center_pixel_reservoir.UCW);
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], center_pixel_reservoir.sample.target_function);
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[2], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
-			}
-		}
+	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], center_pixel_reservoir.UCW);
+	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], center_pixel_reservoir.sample.target_function);
+	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[2], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
+	//		}
+	//	}
 
-		if (hippt::abs(x - render_data.render_settings.debug_x2) <= render_data.render_settings.debug_size &&
-			hippt::abs(y - render_data.render_settings.debug_y2) <= render_data.render_settings.debug_size)
-		{
-			//if (valid_neighbors_count == 0)
-			{
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], center_pixel_reservoir.UCW);
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], center_pixel_reservoir.sample.target_function);
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[5], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
-			}
-		}
-	}
+	//	if (hippt::abs(x - render_data.render_settings.debug_x2) <= render_data.render_settings.debug_size &&
+	//		hippt::abs(y - render_data.render_settings.debug_y2) <= render_data.render_settings.debug_size)
+	//	{
+	//		//if (valid_neighbors_count == 0)
+	//		{
+	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], center_pixel_reservoir.UCW);
+	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], center_pixel_reservoir.sample.target_function);
+	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[5], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
+	//		}
+	//	}
+	//}
 }
 
 #endif
