@@ -429,25 +429,6 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
-    /*renderer_material.roughness = 0.0f;
-    renderer_material.metallic = 1.0f;*/
-    renderer_material.specular = 0.0f;
-    renderer_material.base_color = ColorRGB32F(0.1f);
-
-    if (std::string(mesh_material->GetName().C_Str()).find("left") != std::string::npos)
-    {
-
-        renderer_material.base_color = ColorRGB32F(0.5f);
-    }
-    else if (std::string(mesh_material->GetName().C_Str()).find("Material") != std::string::npos)
-    {
-
-        renderer_material.base_color = ColorRGB32F(1.0f, 0.0f, 0.0f);
-    }
-
-    if (!renderer_material.emission.is_black())
-        renderer_material.emission *= 15.0f;
-
     renderer_material.make_safe();
 }
 
@@ -474,7 +455,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
         // Using the roughness index for the roughness + metallic texture
         texture_indices.roughness_metallic_texture_index = roughness_index;
 
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Material %s uses its base color texture as a normal map; This is not supported and normal mapping will be disabled for this material.", mesh_material->GetName());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Material \"%s\" uses its base color texture as a normal map; This is not supported and normal mapping will be disabled for this material.", mesh_material->GetName());
     }
     else
     {

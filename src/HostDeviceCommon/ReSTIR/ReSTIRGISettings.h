@@ -89,7 +89,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 25.0f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
 
-		neighbor_similarity_settings.use_plane_distance_heuristic = false;
+		neighbor_similarity_settings.use_plane_distance_heuristic = true;
 		neighbor_similarity_settings.plane_distance_threshold = 0.1f;
 
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
@@ -97,7 +97,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 		m_cap = 3;
 		use_confidence_weights = true;
-		jacobian_rejection_threshold = 20.0f;
+		jacobian_rejection_threshold = 50.0f;
 	}
 
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;

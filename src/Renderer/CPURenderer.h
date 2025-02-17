@@ -91,7 +91,6 @@ public:
 
     std::vector<AtomicType<float>> m_DEBUG_SUMS;
     AtomicType<int> m_DEBUG_SUM_COUNT;
-    std::vector<int> m_debug_neighbor_distribution;
 
 private:
     int2 m_resolution;
