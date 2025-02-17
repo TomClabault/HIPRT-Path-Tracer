@@ -210,7 +210,7 @@
  *		Importance samples the environment map using a binary search on the CDF
  *		distributions of the envmap
  */
-#define EnvmapSamplingStrategy ESS_NO_SAMPLING
+#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF

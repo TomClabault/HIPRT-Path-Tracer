@@ -49,8 +49,6 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 
 	m_DEBUG_SUMS.resize(1024);
 	m_DEBUG_SUM_COUNT.resize(1);
-	//m_DEBUG_NEIGHBOR_DISTRIBUTION.resize(hippt::square(m_render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius));
-	m_DEBUG_NEIGHBOR_DISTRIBUTION.resize(m_render_data.render_settings.precision);
 
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
@@ -1117,7 +1115,6 @@ void GPURenderer::reset()
 {
 	int zero_data_int = 0;
 	m_DEBUG_SUMS.memset_whole_buffer(0);
-	m_DEBUG_NEIGHBOR_DISTRIBUTION.memset_whole_buffer(0);
 	m_DEBUG_SUM_COUNT.upload_data(&zero_data_int);
 
 	m_render_graph.reset();
@@ -1149,7 +1146,6 @@ void GPURenderer::update_render_data()
 
 		m_render_data.render_settings.DEBUG_SUMS = reinterpret_cast<AtomicType<float>*>(m_DEBUG_SUMS.get_device_pointer());
 		m_render_data.render_settings.DEBUG_SUM_COUNT = reinterpret_cast<AtomicType<int>*>(m_DEBUG_SUM_COUNT.get_device_pointer());
-		m_render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION = m_DEBUG_NEIGHBOR_DISTRIBUTION.get_device_pointer();
 
 		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
@@ -1314,7 +1310,6 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 				// We were going for the envmap but it's not available so defaulting to
 				// uniform lighting instead
 				m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
-			m_render_data.world_settings.ambient_light_type = AmbientLightType::NONE;
 
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light instead.");
 

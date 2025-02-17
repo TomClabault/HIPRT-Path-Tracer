@@ -37,20 +37,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
 	return include_target_function_visibility;
 }
 
-#ifndef __KERNELCC__
-#include <mutex>
-std::mutex map_mutex;
-
-#include <unordered_map>
-struct pair_hash {
-	size_t operator() (const std::pair<int, int>& p) const {
-		return std::rotl(std::hash<int>{}(p.first), 1) ^ std::hash<int>{}(p.second);
-	}
-};
-
-std::unordered_map<std::pair<int, int>, int, pair_hash> DEBUG8NEIGHNBOTS_VHOSEN;
-#endif
-
 /**
  * Returns the linear index that can be used directly to index a buffer
  * of render_data of the 'neighbor_number'th neighbor that we're going
@@ -124,31 +110,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		}
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
-
-#ifndef __KERNELCC__
-		if (debug)
-		{
-			std::lock_guard<std::mutex> lock(map_mutex);
-			DEBUG8NEIGHNBOTS_VHOSEN[std::make_pair<>(neighbor_pixel_coords.x, neighbor_pixel_coords.y)]++;
-		}
-#endif
-
-		if (debug && center_pixel_coords.x == render_data.render_settings.debug_x && center_pixel_coords.y == render_data.render_settings.debug_y)
-		{
-			float length = sqrtf(neighbor_offset_int.x * neighbor_offset_int.x + neighbor_offset_int.y * neighbor_offset_int.y);
-			float cosine = acosf(neighbor_offset_int.x / length);
-			float sine = asinf(neighbor_offset_int.y / length);
-
-			float angle_radians = cosine;
-			if (sine < 0.0f)
-				angle_radians += M_PI;
-
-			float angle_radians_0_1 = angle_radians * M_INV_2_PI;
-			int discretized = angle_radians_0_1 * render_data.render_settings.precision;
-
-			render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION[discretized]++;
-			//render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION[neighbor_offset_int.x + spatial_pass_settings.reuse_radius - 1 + (neighbor_offset_int.y + spatial_pass_settings.reuse_radius - 1) * spatial_pass_settings.reuse_radius]++;
-		}
 
 		//if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.y < 0)
 		//{

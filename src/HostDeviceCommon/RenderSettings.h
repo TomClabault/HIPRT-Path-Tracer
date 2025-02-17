@@ -37,7 +37,6 @@ struct HIPRTRenderSettings
 	// TODO DEBUG REMOVE THIS
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
-	int* DEBUG_NEIGHBOR_DISTRIBUTION = nullptr;
 	bool debug_lambertian = false;
 	int debug_x = 150, debug_y = 15;
 	int debug_x2 = 850, debug_y2 = 471;
@@ -46,7 +45,6 @@ struct HIPRTRenderSettings
 	int debug_count_multiplier = 2;
 	int precision = 256;
 	int stop_value = 65535 * MULTIPLIER - 10;
-	int enable_direct = 0;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 

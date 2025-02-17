@@ -851,8 +851,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		}
 
 		//ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderInt("Disabvle direct", &render_settings.enable_direct, 0, 1))
-			m_render_window->set_render_dirty(true);
 		if (ImGui::CollapsingHeader("Emissive geometry sampling"))
 		{
 			ImGui::TreePush("Direct lighting sampling tree");

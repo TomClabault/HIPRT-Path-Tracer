@@ -28,9 +28,6 @@
 #include <chrono>
 #include <omp.h>
 
-#include <unordered_map>
-extern std::unordered_map<std::pair<int, int>, int, pair_hash> DEBUG8NEIGHNBOTS_VHOSEN;
-
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
@@ -95,9 +92,6 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
     m_restir_di_state.presampled_lights_buffer.resize(width * height);
     m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
-
-    //m_debug_neighbor_distribution.resize(hippt::square(m_render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius));
-    m_debug_neighbor_distribution.resize(m_render_data.render_settings.precision);
 
     m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_gi_state.temporal_reservoirs.resize(width * height);
@@ -264,7 +258,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_render_data.render_settings.DEBUG_SUMS = m_DEBUG_SUMS.data();
     m_render_data.render_settings.DEBUG_SUM_COUNT = &m_DEBUG_SUM_COUNT;
-    m_render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION = m_debug_neighbor_distribution.data();
 
     m_render_data.g_buffer.materials = m_g_buffer.materials.data();
     m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.data();
@@ -321,7 +314,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 
     if (envmap_image.width == 0 || envmap_image.height == 0)
     {
-        m_render_data.world_settings.ambient_light_type = AmbientLightType::NONE;
+        m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
         m_render_data.world_settings.uniform_light_color = ColorRGB32F(0.1f, 0.1f, 0.1f);
 
         std::cout << "Empty envmap set on the CPURenderer... Defaulting to uniform ambient light type" << std::endl;
