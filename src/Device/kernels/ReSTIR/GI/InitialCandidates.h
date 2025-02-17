@@ -199,12 +199,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     restir_gi_initial_reservoir.end();
     restir_gi_initial_reservoir.sanity_check(make_int2(x, y));
 
-    // TODO DEBUG REMOVE THIS
-    if (restir_gi_initial_reservoir.sample.outgoing_radiance_to_visible_point.max_component() > 65535.0f)
-    {
-        debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(0.0f, 1.0e10f, 0.0f));
-        restir_gi_initial_reservoir.sample.outgoing_radiance_to_visible_point = ColorRGB32F(0.0f, 1.0e10f, 0.0f);
-    }
+    //// TODO DEBUG REMOVE THIS
+    //if (restir_gi_initial_reservoir.sample.outgoing_radiance_to_visible_point.max_component() > 65535.0f)
+    //{
+    //    debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(0.0f, 1.0e10f, 0.0f));
+    //    restir_gi_initial_reservoir.sample.outgoing_radiance_to_visible_point = ColorRGB32F(0.0f, 1.0e10f, 0.0f);
+    //}
 
     render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_reservoir;
 }
