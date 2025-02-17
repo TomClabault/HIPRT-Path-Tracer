@@ -109,17 +109,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	{
 		// TODO DEBUG UNCOMMENT THIS
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
-		//// We can already check whether or not this neighbor is going to be
-		//// accepted at all by checking the heuristic cache
-		//if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
-		//	// If not the center pixel, we can check the heuristics, otherwise there's no need to,
-		//	// we know that the center pixel will be accepted
-		//	// 
-		//	// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
-		//	// going to have issues if we try to read more than that.
-		//	if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
-		//		// Neighbor not passing the heuristics tests, skipping it right away
-		//		continue;
+		// We can already check whether or not this neighbor is going to be
+		// accepted at all by checking the heuristic cache
+		if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
+			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
+			// we know that the center pixel will be accepted
+			// 
+			// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
+			// going to have issues if we try to read more than that.
+			if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
+				// Neighbor not passing the heuristics tests, skipping it right away
+				continue;
 
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<true>(render_data,
 			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y);

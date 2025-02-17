@@ -10,7 +10,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const float3& reconnection_point, const float3& reconnection_point_surface_normal, const float3& center_pixel_visible_point, const float3& neighbor_visible_point, float jacobian_threshold = 20.0f)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const float3& reconnection_point, const float3& reconnection_point_surface_normal, const float3& center_pixel_visible_point, const float3& neighbor_visible_point, float jacobian_threshold)
 {
 	float3 direction_to_reconnection_point_from_center = reconnection_point - center_pixel_visible_point;
 	float3 direction_to_reconnection_point_from_neighbor = reconnection_point - neighbor_visible_point;
