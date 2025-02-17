@@ -13,6 +13,7 @@
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/GI/TargetFunction.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -147,14 +148,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             printf("\n");
         }
 
-    /*printf("Average 1: %e\nAverage 2: %e\nAverage 3: %e\nAverage 4: %e\nAverage 5: %e\nUCW: %e\n\n",
-        hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
-        hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
-        hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[2], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
-        hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
-        hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
-        resampling_reservoir.UCW);*/
-
     ray_payload.ray_color = camera_outgoing_radiance;
     if (!sanity_check(render_data, ray_payload, x, y))
         return;
@@ -168,8 +161,45 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::M_COUNT)
         path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else
+    {
+        //uint32_t debug_x = render_data.render_settings.debug_x2;
+        //uint32_t debug_y = render_data.render_settings.debug_y2;
+
+        //uint32_t debugged_pixel_index = debug_x + (render_data.render_settings.render_resolution.y - 1 - debug_y) * render_data.render_settings.render_resolution.x;
+        //uint32_t neighbor_pixel_index = debug_x + (render_data.render_settings.render_resolution.y - 1 - (debug_y - render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius)) * render_data.render_settings.render_resolution.x;
+
+        //ReSTIRGIReservoir debugged_pixel_reservoir = render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[debugged_pixel_index];
+        //ReSTIRSurface current_surface = get_pixel_surface(render_data, pixel_index, random_number_generator);
+        //ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+        //float3 current_first_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+        //float3 debugged_pixel_first_hit = render_data.g_buffer.primary_hit_position[debugged_pixel_index];
+        //float3 neighbor_pixel_first_hit = render_data.g_buffer.primary_hit_position[neighbor_pixel_index];
+
+        //ColorRGB32F color;
+
+        //// Green are circles around the sample point that are visible from the neighbor surface
+        //// Red are circles around the sample point that are NOT visible from the neighbor surface
+        ////if (hippt::length(current_first_hit - debugged_pixel_reservoir.sample.sample_point) < 0.025f && !debugged_pixel_reservoir.sample.is_envmap_path())// && debugged_pixel_reservoir.UCW > 0.0f)
+        //if (hippt::length(current_first_hit - debugged_pixel_reservoir.sample.sample_point) < 0.025f)// && debugged_pixel_reservoir.UCW > 0.0f)
+        //{
+        //    if (ReSTIR_GI_evaluate_target_function<true>(render_data, debugged_pixel_reservoir.sample, neighbor_surface, random_number_generator) <= 0.0f)
+        //        color = ColorRGB32F(1.0e10f, 0.0f, 0.0f);
+        //    else
+        //        color = ColorRGB32F(0.0f, 1.0e10f, 0.0f);
+        //}
+
+        //if (hippt::length(current_first_hit - debugged_pixel_first_hit) < 0.025f)
+        //    color = ColorRGB32F(1.0e30f, 0.0f, 1.0e30f);
+
+
+        //if (hippt::length(current_first_hit - neighbor_pixel_first_hit) < 0.025f)
+        //    color = ColorRGB32F(0.0f, 0.0f, 1.0e30f);
+
+
+        //path_tracing_accumulate_color(render_data, color, pixel_index);
         // Regular output
         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
+    }
 }
 
 #endif

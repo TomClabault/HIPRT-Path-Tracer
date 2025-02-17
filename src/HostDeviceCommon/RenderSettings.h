@@ -8,6 +8,7 @@
 
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+
 #include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RIS/RISSettings.h"
@@ -30,7 +31,8 @@ struct HIPRTRenderSettings
 	bool need_to_reset = true;
 
 	// TODO DEBUG REMOVE THIS
-	static constexpr float MULTIPLIER = 2.0f;
+	static constexpr float MULTIPLIER = 100.0f;
+	static constexpr int SAMPLE_STOP = 65535;
 
 	// TODO DEBUG REMOVE THIS
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
@@ -38,11 +40,12 @@ struct HIPRTRenderSettings
 	int* DEBUG_NEIGHBOR_DISTRIBUTION = nullptr;
 	bool debug_lambertian = false;
 	int debug_x = 150, debug_y = 15;
-	int debug_x2 = 50, debug_y2 = 150;
+	int debug_x2 = 850, debug_y2 = 471;
+	bool do_only_neighbor = false;
 	int debug_size = 0;
 	int debug_count_multiplier = 2;
 	int precision = 256;
-	int stop_value = 65530 * MULTIPLIER;
+	int stop_value = 65535 * MULTIPLIER - 10;
 	int enable_direct = 0;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
