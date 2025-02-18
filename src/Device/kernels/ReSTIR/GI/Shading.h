@@ -122,7 +122,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     }
 
     MISBSDFRayReuse mis_reuse;
-    camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
+    if (render_data.render_settings.enable_direct)
+        camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
 
     if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
 #ifndef __KERNELCC__

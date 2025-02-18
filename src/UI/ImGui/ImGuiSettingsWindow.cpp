@@ -159,6 +159,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
+	if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
+		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Debug lambertian", &render_settings.debug_lambertian))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Do only neighbor", &render_settings.do_only_neighbor))
@@ -1233,10 +1235,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					ImGui::TreePush("ReSTIR GI - General Settings Tree");
 					{
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						
 						if (ImGui::SliderFloat("Jacobian threshold", &render_settings.restir_gi_settings.jacobian_rejection_threshold, 5.0f, 100.0f))
+						{
+							render_settings.restir_gi_settings.jacobian_rejection_threshold = hippt::max(1.001f, render_settings.restir_gi_settings.jacobian_rejection_threshold);
 							m_render_window->set_render_dirty(true);
+						}
 
 						draw_ReSTIR_neighbor_heuristics_panel(render_settings.restir_gi_settings);
 					}
@@ -1383,7 +1386,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSett
 
 		if (common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic)
 		{
-			if (ImGui::SliderFloat("Normal Similarity Threshold", &common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees, 0.1f, 90.0f, "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
+			if (ImGui::SliderFloat("Angle threshold", &common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees, 0.1f, 90.0f, "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
 			{
 				common_settings.neighbor_similarity_settings.normal_similarity_angle_precomp = std::cos(common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
 
@@ -1398,7 +1401,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSett
 			m_render_window->set_render_dirty(true);
 
 		if (common_settings.neighbor_similarity_settings.use_plane_distance_heuristic)
-			if (ImGui::SliderFloat("Plane Distance Threshold", &common_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
+			if (ImGui::SliderFloat("Distance threshold", &common_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
 				m_render_window->set_render_dirty(true);
 
 
