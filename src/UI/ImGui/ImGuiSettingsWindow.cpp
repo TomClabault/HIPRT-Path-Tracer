@@ -941,7 +941,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
 							m_render_window->set_render_dirty(true);
 
-						draw_ReSTIR_neighbor_heuristics_panel(render_settings.restir_di_settings);
+						draw_ReSTIR_neighbor_heuristics_panel<false>();
 					}
 
 					ImGui::TreePop();
@@ -1234,15 +1234,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				if (ImGui::CollapsingHeader("General Settings"))
 				{
 					ImGui::TreePush("ReSTIR GI - General Settings Tree");
-					{
-						if (ImGui::SliderFloat("Jacobian threshold", &render_settings.restir_gi_settings.jacobian_rejection_threshold, 5.0f, 100.0f))
-						{
-							render_settings.restir_gi_settings.jacobian_rejection_threshold = hippt::max(1.001f, render_settings.restir_gi_settings.jacobian_rejection_threshold);
-							m_render_window->set_render_dirty(true);
-						}
 
-						draw_ReSTIR_neighbor_heuristics_panel(render_settings.restir_gi_settings);
-					}
+					draw_ReSTIR_neighbor_heuristics_panel<true>();
+
 					ImGui::TreePop();
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				}
@@ -1330,9 +1324,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 	}
 }
 
-void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSettings& common_settings)
+template <bool IsReSTIRGI>
+void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	ReSTIRCommonSettings& common_settings = [&render_settings] {
+		if constexpr (IsReSTIRGI)
+			return std::ref(render_settings.restir_gi_settings);
+		else 
+			return std::ref(render_settings.restir_di_settings);
+	}();
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (ImGui::SliderInt("M-cap", &common_settings.m_cap, 0, 48))
@@ -1346,6 +1347,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSett
 	static bool use_normal_heuristic_backup = common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
 	static bool use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
 	static bool use_roughness_heuristic_backup = common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
+	static bool use_jacobian_heuristic_backup = render_settings.restir_gi_settings.use_jacobian_rejection_heuristic;
+
 	if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
 	{
 		if (!use_heuristics_at_all)
@@ -1358,6 +1361,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSett
 			common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = false;
 			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic = false;
 			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+
+			if constexpr (IsReSTIRGI)
+			{
+				// Only disabling the jacobian heuristic if this is the ReSTIR GI Imgui interface
+				use_jacobian_heuristic_backup = render_settings.restir_gi_settings.use_jacobian_rejection_heuristic;
+				render_settings.restir_gi_settings.use_jacobian_rejection_heuristic = false;
+			}
 		}
 		else
 		{
@@ -1365,6 +1375,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSett
 			common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = use_normal_heuristic_backup;
 			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic = use_plane_distance_heuristic_backup;
 			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
+
+			if constexpr (IsReSTIRGI)
+				render_settings.restir_gi_settings.use_jacobian_rejection_heuristic = use_jacobian_heuristic_backup;
 		}
 
 		m_render_window->set_render_dirty(true);
@@ -1376,46 +1389,62 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSett
 
 	if (use_heuristics_at_all)
 	{
-		ImGui::TreePush("ReSTIR DI Heursitics Tree");
+		ImGui::TreePush("ReSTIR Heursitics Tree");
 
 
 
-
-		if (ImGui::Checkbox("Use Normal Similarity Heuristic", &common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic))
-			m_render_window->set_render_dirty(true);
-
-		if (common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic)
 		{
-			if (ImGui::SliderFloat("Angle threshold", &common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees, 0.1f, 90.0f, "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
-			{
-				common_settings.neighbor_similarity_settings.normal_similarity_angle_precomp = std::cos(common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
-
+			if (ImGui::Checkbox("Use normal similarity heuristic", &common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic))
 				m_render_window->set_render_dirty(true);
+
+			if (common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic)
+			{
+				if (ImGui::SliderFloat("Angle threshold", &common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees, 0.1f, 90.0f, "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
+				{
+					common_settings.neighbor_similarity_settings.normal_similarity_angle_precomp = std::cos(common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
+
+					m_render_window->set_render_dirty(true);
+				}
 			}
 		}
 
 
 
-
-		if (ImGui::Checkbox("Use Plane Distance Heuristic", &common_settings.neighbor_similarity_settings.use_plane_distance_heuristic))
-			m_render_window->set_render_dirty(true);
-
-		if (common_settings.neighbor_similarity_settings.use_plane_distance_heuristic)
-			if (ImGui::SliderFloat("Distance threshold", &common_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
+		{
+			if (ImGui::Checkbox("Use plane distance heuristic", &common_settings.neighbor_similarity_settings.use_plane_distance_heuristic))
 				m_render_window->set_render_dirty(true);
 
+			if (common_settings.neighbor_similarity_settings.use_plane_distance_heuristic)
+				if (ImGui::SliderFloat("Distance threshold", &common_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
+					m_render_window->set_render_dirty(true);
+		}
 
 
 
-		if (ImGui::Checkbox("Use Roughness Heuristic", &common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic))
-			m_render_window->set_render_dirty(true);
-
-		if (common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic)
-			if (ImGui::SliderFloat("Roughness Threshold", &common_settings.neighbor_similarity_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+		{
+			if (ImGui::Checkbox("Use roughness heuristic", &common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic))
 				m_render_window->set_render_dirty(true);
 
+			if (common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic)
+				if (ImGui::SliderFloat("Roughness threshold", &common_settings.neighbor_similarity_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+					m_render_window->set_render_dirty(true);
+		}
 
 
+		if constexpr (IsReSTIRGI)
+		{
+			if (ImGui::Checkbox("Use jacobian heuristic", &render_settings.restir_gi_settings.use_jacobian_rejection_heuristic))
+				m_render_window->set_render_dirty(true);
+
+			if (render_settings.restir_gi_settings.use_jacobian_rejection_heuristic)
+			{
+				if (ImGui::SliderFloat("Jacobian threshold", render_settings.restir_gi_settings.get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
+				{
+					render_settings.restir_gi_settings.set_jacobian_heuristic_threshold(hippt::max(1.001f, render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
+					m_render_window->set_render_dirty(true);
+				}
+			}
+		}
 		// ReSTIR DI Heursitics Tree
 		ImGui::TreePop();
 	}

@@ -41,7 +41,8 @@ private:
 	void draw_environment_panel();
 
 	void draw_sampling_panel();
-	void draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSettings& common_settings);
+	template <bool IsReSTIRGI>
+	void draw_ReSTIR_neighbor_heuristics_panel();
 	template<typename CommonReSTIRSettings>
 	void draw_ReSTIR_temporal_reuse_panel(CommonReSTIRSettings& restir_settings, std::function<void(void)> draw_before_panel = {});
 	template<bool IsReSTIRGI>

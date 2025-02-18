@@ -149,7 +149,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// 
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel), 
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
-			neighbor_reservoir = shift_sample_reconnection_shift(neighbor_reservoir, shift_mapping_jacobian, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.jacobian_rejection_threshold);
+			neighbor_reservoir = shift_sample_reconnection_shift(neighbor_reservoir, shift_mapping_jacobian, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 		if (shift_mapping_jacobian == -1.0f)
 			// Neighbor rejected because the jacobian are too dissimilar
 			continue;

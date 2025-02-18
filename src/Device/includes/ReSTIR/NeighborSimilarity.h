@@ -60,7 +60,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool jacobian_similarity_heuristic(const HIPRTRen
 		return true;
 
 	float3 reconnection_point = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point;
-	float jacobian = get_jacobian_determinant_reconnection_shift(reconnection_point, reconnection_normal, current_shading_point, neighbor_shading_point, render_data.render_settings.restir_gi_settings.jacobian_rejection_threshold);
+	float jacobian = get_jacobian_determinant_reconnection_shift(reconnection_point, reconnection_normal, current_shading_point, neighbor_shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 	return jacobian != -1.0f;
 }
 
@@ -115,7 +115,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	bool plane_distance_passed = plane_distance_heuristic(neighbor_similarity_settings, neighbor_world_space_point, current_shading_point, current_normal, neighbor_similarity_settings.plane_distance_threshold);
 	bool normal_similarity_passed = normal_similarity_heuristic(neighbor_similarity_settings, current_normal, render_data.g_buffer.shading_normals[neighbor_pixel_index].unpack(), neighbor_similarity_settings.normal_similarity_angle_precomp);
 	bool roughness_similarity_passed = roughness_similarity_heuristic(neighbor_similarity_settings, neighbor_roughness, current_material_roughness, neighbor_similarity_settings.roughness_similarity_threshold);
-	bool jacobian_similarity_passed = true;//jacobian_similarity_heuristic(render_data, neighbor_pixel_index, center_pixel_index, current_shading_point, neighbor_world_space_point);
 	bool neighbor_is_emissive;
 	if constexpr (IsReSTIRGI)
 		// With ReSTIR GI, it's not a problem to resample from emissive neighbors so let's
@@ -124,7 +123,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	else
 		neighbor_is_emissive = previous_frame ? render_data.g_buffer_prev_frame.materials[neighbor_pixel_index].is_emissive() : render_data.g_buffer.materials[neighbor_pixel_index].is_emissive();
 
-	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed && jacobian_similarity_passed && !neighbor_is_emissive;
+	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed && !neighbor_is_emissive;
 }
 
 #endif
