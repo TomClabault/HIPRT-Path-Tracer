@@ -23,12 +23,18 @@
 // and maps it to the index to use in the shared memory array by using the threadIdx.
 // 
 // Note that the mapping is written to minimize shared memory bank conflicts
-//#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) ((blockDim.x * threadIdx.y + threadIdx.x) * NestedDielectricsStackSize + (index))
+#if NestedDielectricsStackUseSharedMemory == KERNEL_OPTION_TRUE
+// Only using the special mapping if we're using shared memory
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) (index * KernelWorkgroupThreadCount + (blockDim.x * threadIdx.y + threadIdx.x))
+#else
+// If we're not using shared memory, the nested dielectrics stack is simply going to be in an
+// array member of the NestedDielectricsInteriorStack structure so we can just index that array 
+#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
+#endif
 #else
 // This macro is used to offset the index used to index the priority stack.
 // On the CPU, there is nothing to do, just use the given index, there is really nothing
-// specila. The special case is for the GPU, explained above the GPU macro definition
+// special. The special case is for the GPU, explained above the GPU macro definition
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
 #endif
 
@@ -117,8 +123,11 @@ struct StackPriorityEntry
 };
 
 #ifdef __KERNELCC__
-// Only this shared memory stack_entries on the GPU
+#if NestedDielectricsStackUseSharedMemory == KERNEL_OPTION_TRUE
+// Only declare this shared memory stack_entries on the GPU if shared memory
+// is used for the nested dielectrics stack
 __shared__ StackPriorityEntry stack_entries[NestedDielectricsStackSize * KernelWorkgroupThreadCount];
+#endif
 #endif
 
 struct NestedDielectricsInteriorStack
@@ -246,8 +255,13 @@ struct NestedDielectricsInteriorStack
 	// We only need all of this if the stack size is actually > 0,
 	// otherwise, we're just not going to do the nested dielectrics handling at all
 
-#ifndef __KERNELCC__
-	// Only using that stack on the CPU because the GPU uses shared memory
+	// Declaring the nested dielectric stack as a member of the structure if we're on
+	// the CPU or if we're not using the shared memory stack on the GPU
+#ifdef __KERNELCC__
+#if NestedDielectricsStackUseSharedMemory == KERNEL_OPTION_FALSE
+	StackPriorityEntry stack_entries[NestedDielectricsStackSize];
+#endif
+#else
 	StackPriorityEntry stack_entries[NestedDielectricsStackSize];
 #endif
 

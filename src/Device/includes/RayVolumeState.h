@@ -22,13 +22,18 @@ struct RayVolumeState
 	 */
 	HIPRT_HOST_DEVICE RayVolumeState()
 	{
-#ifndef __KERNELCC__
-		// On the CPU, the priority stack is a member of the interior stack
-#define stack_variable interior_stack.stack_entries
-#else
+#ifdef __KERNELCC__
 		// On the CPU, the priority stack is a "global" variable because it is
 		// in shared memory
+#if NestedDielectricsStackUseSharedMemory == KERNEL_OPTION_TRUE
+		// 'stack_entries' is in shared memory here
 #define stack_variable stack_entries
+#else
+#define stack_variable interior_stack.stack_entries
+#endif
+#else
+		// On the CPU, the priority stack is a member of the interior stack
+#define stack_variable interior_stack.stack_entries
 #endif
 
 		for (int i = 0; i < NestedDielectricsStackSize; i++)

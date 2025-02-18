@@ -134,6 +134,17 @@
 #define NestedDielectricsStackSize NESTED_DIELECTRICS_STACK_SIZE
 
 /**
+ * Whether or not to use shared memory for the nested dielectrics stack
+ * 
+ * This option is actually very experimental and should be KERNEL_OPTION_FALSE for
+ * correct results. Incorrect results are expected (with ReSTIR GI notably) if this option
+ * is KERNEL_OPTION_TRUE
+ * 
+ * In practice, no performance difference was observed between KERNEL_OPTION_FALSE and KERNEL_OPTION_TRUE
+ */
+#define NestedDielectricsStackUseSharedMemory KERNEL_OPTION_FALSE
+
+/**
  * What direct lighting sampling strategy to use.
  * 
  * Possible values (the prefix LSS stands for "Light Sampling strategy"):
