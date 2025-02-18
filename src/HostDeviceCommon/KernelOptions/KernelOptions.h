@@ -228,8 +228,7 @@
  *		Uses ReSTIR GI for resampling a path.
  *		Implementation of [ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
  */
-//#define PathSamplingStrategy PSS_BSDF
-#define PathSamplingStrategy PSS_RESTIR_GI
+#define PathSamplingStrategy PSS_BSDF
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're

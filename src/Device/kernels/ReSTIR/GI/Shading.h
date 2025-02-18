@@ -95,7 +95,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         {
             // Only doing the shading if we do actually have a sample
 
-            float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
             float3 geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 
             float3 restir_resampled_indirect_direction;
@@ -104,25 +103,50 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             else
                 restir_resampled_indirect_direction = hippt::normalize(resampling_reservoir.sample.sample_point - closest_hit_info.inter_point);
 
-            float bsdf_pdf;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, shading_normal, geometric_normal, restir_resampled_indirect_direction, bsdf_pdf, random_number_generator, 0, resampling_reservoir.sample.incident_light_info);
-            if (bsdf_pdf > 0.0f)
+            //camera_outgoing_radiance = resampling_reservoir.sample.outgoing_radiance_to_sample_point;
+
+            //float bsdf_pdf_second_hit;
+            //ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, resampling_reservoir.sample.sample_point_material.unpack(), resampling_reservoir.sample.sample_point_volume_state, false, view_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, restir_resampled_indirect_direction, bsdf_pdf_second_hit, random_number_generator, 0, resampling_reservoir.sample.incident_light_info);
+            //if (bsdf_pdf_second_hit > 0.0f)
+            //{
+            //    // If we're here, it's supposedly because we do have a valid ReSTIR GI sample that is not null/black
+            //    // But because of float imprecisions, the BSDF may still end re-evaluating to 0.0f for that sample
+            //    // so we need that check here
+
+            //    ColorRGB32F second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(-restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal)) * resampling_reservoir.UCW;
+            //    camera_outgoing_radiance *= second_hit_throughput;
+            //}
+
+
+            //// Dummy mis_reuse variable
+            //MISBSDFRayReuse mis_reuse;
+            //// Adding the direct lighting contribution at the second hit (sample point) in the direction of the first hit (visible point)
+            //camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
+
+            camera_outgoing_radiance += resampling_reservoir.sample.outgoing_radiance_to_visible_point;
+
+            float bsdf_pdf_first_hit;
+            ColorRGB32F bsdf_color_first_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, geometric_normal, restir_resampled_indirect_direction, bsdf_pdf_first_hit, random_number_generator, 0, resampling_reservoir.sample.incident_light_info);
+            if (bsdf_pdf_first_hit > 0.0f)
             {
                 // If we're here, it's supposedly because we do have a valid ReSTIR GI sample that is not null/black
                 // But because of float imprecisions, the BSDF may still end re-evaluating to 0.0f for that sample
                 // so we need that check here
 
+                ColorRGB32F first_hit_throughput = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) * resampling_reservoir.UCW;
+                camera_outgoing_radiance *= first_hit_throughput;
+
                 DEBUG_COLOR = ColorRGB32F(restir_resampled_indirect_direction);
-                ColorRGB32F first_hit_throughput = bsdf_color * hippt::abs(hippt::dot(restir_resampled_indirect_direction, shading_normal)) * resampling_reservoir.UCW;
                 DEBUG_FIRST_HIT_THROUGHPUT = first_hit_throughput;
-                DEBUG_FIRST_BSDF_COLOR_DOT = bsdf_color * hippt::abs(hippt::dot(restir_resampled_indirect_direction, shading_normal));
-                camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_visible_point;
+                DEBUG_FIRST_BSDF_COLOR_DOT = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal));
             }
         }
     }
 
+    // Dummy mis_reuse variable
     MISBSDFRayReuse mis_reuse;
     if (render_data.render_settings.enable_direct)
+        // Adding the direct lighting contribution at the first hit in the direction of the camera
         camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
 
     if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
