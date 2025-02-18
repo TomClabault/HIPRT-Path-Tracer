@@ -6,6 +6,7 @@
 #ifndef DEVICE_RESTIR_GI_RESERVOIR_H
 #define DEVICE_RESTIR_GI_RESERVOIR_H
 
+#include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifndef __KERNELCC__
@@ -29,12 +30,12 @@ struct ReSTIRGISample
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
 
     float3 first_hit_normal = make_float3(-1.0f, -1.0f, -1.0f);
-    float3 sample_point_normal = make_float3(-1.0f, -1.0f, -1.0f);
+    float3 sample_point_shading_normal = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point_geometric_normal = make_float3(-1.0f, -1.0f, -1.0f);
 
-    float DEBUG_VALUE = 0.0f;
-
     ColorRGB32F outgoing_radiance_to_visible_point;
+    ColorRGB32F outgoing_radiance_to_sample_point;
+    //DevicePackedEffectiveMaterial sample_point_material;
 
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 
@@ -47,7 +48,7 @@ struct ReSTIRGISample
 
     HIPRT_HOST_DEVICE bool is_envmap_path() const
     {
-        return ReSTIRGISample::is_envmap_path(sample_point_normal);
+        return ReSTIRGISample::is_envmap_path(sample_point_shading_normal);
     }
 };
 
@@ -97,7 +98,6 @@ struct ReSTIRGIReservoir
         {
             sample = other_reservoir.sample;
             sample.target_function = target_function;
-            sample.DEBUG_VALUE = other_reservoir.UCW;
 
             return true;
         }
