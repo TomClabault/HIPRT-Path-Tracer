@@ -483,26 +483,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePacked
     if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
         relative_eta = 1.0f + 1.0e-5f;
 
-    float3 microfacet_normal;
-    float HoV;
     bool thin_walled = material.thin_walled;
     float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
+    float alpha_x, alpha_y;
+    MaterialUtils::get_alphas(scaled_roughness, material.anisotropy, alpha_x, alpha_y);
 
-    if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP)
-    {
-        // For smooth glass, the microfacet normal is just the surface normal
-        microfacet_normal = make_float3(0.0f, 0.0f, 1.0f);
-        // so HoV = dot(surface_normal, view) = view.z in local shading space
-        HoV = local_view_direction.z;
-    }
-    else
-    {
-        float alpha_x, alpha_y;
-        MaterialUtils::get_alphas(scaled_roughness, material.anisotropy, alpha_x, alpha_y);
-
-        microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
-        HoV = hippt::dot(local_view_direction, microfacet_normal);
-    }
+    float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
+    float HoV = hippt::dot(local_view_direction, microfacet_normal);
 
     float thin_film = material.thin_film;
     ColorRGB32F F_thin_film;

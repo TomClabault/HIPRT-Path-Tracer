@@ -80,7 +80,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f)
 		return 0.0f;
 
-	if (get_jacobian_determinant_reconnection_shift(sample.sample_point, sample.sample_point_geometric_normal, surface.shading_point, sample.visible_point, render_data.render_settings.restir_gi_settings.jacobian_rejection_threshold) == -1.0f)
+	if (get_jacobian_determinant_reconnection_shift(sample.sample_point, sample.sample_point_geometric_normal, surface.shading_point, sample.visible_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()) == -1.0f)
 		return 0.0f;
 
 	float bsdf_pdf;

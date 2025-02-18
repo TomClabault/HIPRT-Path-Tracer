@@ -65,7 +65,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 1;
 		common_spatial_pass.reuse_radius = 24;
-		common_spatial_pass.reuse_neighbor_count = 1;
+		common_spatial_pass.reuse_neighbor_count = 0;
 
 		common_spatial_pass.do_disocclusion_reuse_boost = false;
 		common_spatial_pass.disocclusion_reuse_count = 5;
@@ -101,7 +101,8 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		debug_view = ReSTIRGIDebugView::NO_DEBUG;
 		debug_view_scale_factor = 0.04f;
 
-		jacobian_rejection_threshold = 1.0f;
+		use_jacobian_rejection_heuristic = true;
+		jacobian_rejection_threshold = 15.0f;
 	}
 
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;
@@ -113,6 +114,26 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	ReSTIRGIDebugView debug_view;
 	float debug_view_scale_factor;
 
+	bool use_jacobian_rejection_heuristic;
+
+	HIPRT_HOST_DEVICE float get_jacobian_heuristic_threshold() const
+	{
+		if (use_jacobian_rejection_heuristic)
+			return jacobian_rejection_threshold;
+		else
+			// Returning a super high threshold so that neighbors are basically
+			// never rejected based on their jacobian
+			return 1.0e20f;
+	}
+
+	/**
+	 * This function is used by ImGui to get a pointer to the private member
+	 */
+	HIPRT_HOST float* get_jacobian_heuristic_threshold_pointer() { return &jacobian_rejection_threshold;}
+
+	HIPRT_HOST void set_jacobian_heuristic_threshold(float new_threshold) { jacobian_rejection_threshold = new_threshold;}
+
+private:
 	float jacobian_rejection_threshold;
 };
 
