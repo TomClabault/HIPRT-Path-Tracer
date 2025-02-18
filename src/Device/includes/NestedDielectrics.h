@@ -26,10 +26,11 @@
 //#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) ((blockDim.x * threadIdx.y + threadIdx.x) * NestedDielectricsStackSize + (index))
 //#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) (index * KernelWorkgroupThreadCount + (blockDim.x * threadIdx.y + threadIdx.x))
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
+
 #else
 // This macro is used to offset the index used to index the priority stack.
 // On the CPU, there is nothing to do, just use the given index, there is really nothing
-// specila. The special case is for the GPU, explained above the GPU macro definition
+// special. The special case is for the GPU, explained above the GPU macro definition
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
 #endif
 
