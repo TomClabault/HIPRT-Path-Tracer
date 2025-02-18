@@ -115,7 +115,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	bool plane_distance_passed = plane_distance_heuristic(neighbor_similarity_settings, neighbor_world_space_point, current_shading_point, current_normal, neighbor_similarity_settings.plane_distance_threshold);
 	bool normal_similarity_passed = normal_similarity_heuristic(neighbor_similarity_settings, current_normal, render_data.g_buffer.shading_normals[neighbor_pixel_index].unpack(), neighbor_similarity_settings.normal_similarity_angle_precomp);
 	bool roughness_similarity_passed = roughness_similarity_heuristic(neighbor_similarity_settings, neighbor_roughness, current_material_roughness, neighbor_similarity_settings.roughness_similarity_threshold);
-	bool jacobian_similarity_passed = jacobian_similarity_heuristic(render_data, neighbor_pixel_index, center_pixel_index, current_shading_point, neighbor_world_space_point);
+	bool jacobian_similarity_passed = true;//jacobian_similarity_heuristic(render_data, neighbor_pixel_index, center_pixel_index, current_shading_point, neighbor_world_space_point);
 	bool neighbor_is_emissive;
 	if constexpr (IsReSTIRGI)
 		// With ReSTIR GI, it's not a problem to resample from emissive neighbors so let's

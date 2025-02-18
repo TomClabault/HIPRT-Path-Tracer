@@ -45,8 +45,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 846
-#define DEBUG_PIXEL_Y 470
+#define DEBUG_PIXEL_X 775
+#define DEBUG_PIXEL_Y 537
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -314,7 +314,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 
     if (envmap_image.width == 0 || envmap_image.height == 0)
     {
-        m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+        m_render_data.world_settings.ambient_light_type = AmbientLightType::NONE;
         m_render_data.world_settings.uniform_light_color = ColorRGB32F(0.1f, 0.1f, 0.1f);
 
         std::cout << "Empty envmap set on the CPURenderer... Defaulting to uniform ambient light type" << std::endl;
