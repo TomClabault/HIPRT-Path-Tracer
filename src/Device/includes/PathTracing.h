@@ -31,21 +31,20 @@ HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData&
         out_bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true,
             view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, out_bounce_direction,
             out_bsdf_pdf, random_number_generator, ray_payload.bounce, out_sampled_light_info);
+
 #if DoFirstBounceWarpDirectionReuse
     warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);
 #endif
 }
 
 /**
- * Returns the new ray throughput
+ * Returns the new ray throughput after attenuation of the given 'current_throughput'
  */
-HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F current_throughput, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator, bool apply_russian_roulette = true)
 {
-    ColorRGB32F current_throughput = ray_payload.throughput;
-
     ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
     // Russian roulette
-    if (!do_russian_roulette(render_data.render_settings, ray_payload.bounce, current_throughput, throughput_attenuation, random_number_generator))
+    if (!do_russian_roulette(render_data.render_settings, ray_payload.bounce, current_throughput, throughput_attenuation, random_number_generator) && apply_russian_roulette)
         return ColorRGB32F(0.0f);
 
     // Dispersion ray throughput filter
@@ -72,47 +71,10 @@ HIPRT_HOST_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData
     if (bsdf_pdf <= 0.0f)
         return false;
 
-    ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator);
+    ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, ray_payload.throughput, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator);
     if (ray_payload.throughput.is_black())
         // Killed by russian roulette
         return false;
-
-    out_ray.origin = closest_hit_info.inter_point;
-    out_ray.direction = bounce_direction;
-
-    return true;
-}
-
-/**
- * Returns true if the bounce was sampled successfully,
- * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
- */
-HIPRT_HOST_DEVICE bool path_tracing_restir_gi_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr, float* out_bsdf_pdf = nullptr)
-{
-    ColorRGB32F bsdf_color;
-    float3 bounce_direction;
-    float bsdf_pdf;
-    path_tracing_sample_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, mis_reuse, random_number_generator, incident_light_info);
-
-    if (out_bsdf_pdf != nullptr)
-        *out_bsdf_pdf = bsdf_pdf;
-
-    // Terminate ray if bad sampling
-    if (bsdf_pdf <= 0.0f)
-        return false;
-
-    // TODO commented out so that our restir gi target function includes the bounce to the camera
-    if (ray_payload.bounce > 0)
-    {
-        // With ReSTIR GI, we want the outgoing radiance from the second hit to the camera hit
-        // This means that we're basically not taking the first hit into account and so we're not
-        // updating the throughput (or the ray_color either, see the main loop) on the bounce 0
-
-        ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator);
-        if (ray_payload.throughput.is_black())
-            // Killed by russian roulette
-            return false;
-    }
 
     out_ray.origin = closest_hit_info.inter_point;
     out_ray.direction = bounce_direction;

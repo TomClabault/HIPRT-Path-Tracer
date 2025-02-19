@@ -11,7 +11,7 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Lights.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/PathTracing.h"
+#include "Device/includes/ReSTIR/GI/InitialCandidatesUtils.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
 #include "Device/includes/SanityCheck.h"
@@ -47,9 +47,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);
     else
-        //seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
-        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number);
-        //seed = wang_hash((pixel_index + 1));
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
     Xorshift32Generator random_number_generator(seed);
 
     // Initializing the closest hit info the information from the camera ray pass
@@ -102,6 +100,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
     restir_gi_initial_sample.visible_point = closest_hit_info.inter_point;
 
+    ColorRGB32F outgoing_radiance_to_visible_point;
+    ColorRGB32F outgoing_radiance_to_sample_point;
+    ColorRGB32F throughput_to_visible_point = ColorRGB32F(1.0f);
+    ColorRGB32F throughput_to_sample_point = ColorRGB32F(1.0f);
+
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
     for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
@@ -121,6 +124,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.sample_point_shading_normal = closest_hit_info.shading_normal;
                     restir_gi_initial_sample.sample_point_geometric_normal = closest_hit_info.geometric_normal;
                     restir_gi_initial_sample.sample_point = closest_hit_info.inter_point;
+                    restir_gi_initial_sample.sample_point_primitive_index = closest_hit_info.primitive_index;
+                    restir_gi_initial_sample.sample_point_material = DevicePackedEffectiveMaterial::pack(ray_payload.material);
+                    restir_gi_initial_sample.sample_point_volume_state = ray_payload.volume_state;
                 }
 
                 // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
@@ -139,19 +145,43 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                 }*/
 
                 if (bounce > 0)
-                    ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+                {
+                    if (bounce == 1)
+                        // Saving the seed used for direct light sampling at the sample point so that we can reuse that seed
+                        // when we shade the reservoir
+                        restir_gi_initial_sample.direct_lighting_at_sample_point_random_seed = random_number_generator.m_state.seed;
 
-                BSDFIncidentLightInfo incident_light_info;
+                    // Estimating with a throughput of 1.0f here because we're going to apply the throughput ourselves
+                    ColorRGB32F direct_lighting_estimation = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+                    // Updating the cumulated outgoing radiance of our path to the visible point
+                    // TODO here should this be render_data.render_settings.direct_contribution_clamp instead of render_data.render_settings.indirect_contribution_clamp?
+                    outgoing_radiance_to_visible_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_visible_point, render_data.render_settings.indirect_contribution_clamp, bounce);
+
+                    if (bounce > 1)
+                        // Updating the cumulated outgoing radiance of our path to the sample point
+                        // TODO here should this be render_data.render_settings.direct_contribution_clamp instead of render_data.render_settings.indirect_contribution_clamp?
+                        outgoing_radiance_to_sample_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_sample_point, render_data.render_settings.indirect_contribution_clamp, bounce);
+                }
+                else if (render_data.render_settings.enable_direct)
+                    // Advancing the random number generation just to match non-ReSTIR GI path tracing in terms of randomness
+                    random_number_generator();
+
                 float bsdf_pdf;
-                bool valid_indirect_bounce = path_tracing_restir_gi_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info, &bsdf_pdf);
+                BSDFIncidentLightInfo incident_light_info;
+                bool valid_indirect_bounce = restir_gi_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, throughput_to_sample_point, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info, &bsdf_pdf);
                 if (!valid_indirect_bounce)
                     // Bad BSDF sample (under the surface), killed by russian roulette, ...
                     break;
 
                 if (bounce == 0)
                 {
-                    restir_gi_initial_sample.incident_light_info = incident_light_info;
+                    restir_gi_initial_sample.incident_light_info_at_visible_point = incident_light_info;
                     bsdf_sample_pdf = bsdf_pdf;
+                }
+                else if (bounce == 1)
+                {
+                    restir_gi_initial_sample.incident_light_info_at_sample_point = incident_light_info;
+                    restir_gi_initial_sample.incident_light_direction_at_sample_point = ray.direction;
                 }
             }
             else
@@ -165,6 +195,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.sample_point_geometric_normal.x = ReSTIRGISample::RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
                     // For envmap path, the direction is stored in the hit point
                     restir_gi_initial_sample.sample_point = ray.direction;
+                    restir_gi_initial_sample.sample_point_primitive_index = -1;
                 }
 
                 ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, pixel_index);
@@ -184,13 +215,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    restir_gi_initial_sample.outgoing_radiance_to_visible_point = ray_payload.ray_color;
+    restir_gi_initial_sample.outgoing_radiance_to_visible_point = outgoing_radiance_to_visible_point;
+    restir_gi_initial_sample.outgoing_radiance_to_sample_point = outgoing_radiance_to_sample_point;
     restir_gi_initial_sample.target_function = ReSTIR_GI_evaluate_target_function<true>(render_data, restir_gi_initial_sample, initial_surface, random_number_generator);
 
+    float resampling_weight = 0.0f;
     float mis_weight = 1.0f;
     float target_function = restir_gi_initial_sample.target_function;
     float source_pdf = bsdf_sample_pdf;
-    float resampling_weight = 0.0f;
     if (source_pdf > 0.0f)
         resampling_weight = mis_weight * restir_gi_initial_sample.target_function / source_pdf;
 
@@ -198,13 +230,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     restir_gi_initial_reservoir.add_one_candidate(restir_gi_initial_sample, resampling_weight, random_number_generator);
     restir_gi_initial_reservoir.end();
     restir_gi_initial_reservoir.sanity_check(make_int2(x, y));
-
-    //// TODO DEBUG REMOVE THIS
-    //if (restir_gi_initial_reservoir.sample.outgoing_radiance_to_visible_point.max_component() > 65535.0f)
-    //{
-    //    debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(0.0f, 1.0e10f, 0.0f));
-    //    restir_gi_initial_reservoir.sample.outgoing_radiance_to_visible_point = ColorRGB32F(0.0f, 1.0e10f, 0.0f);
-    //}
 
     render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_reservoir;
 }

@@ -218,10 +218,14 @@
  *		No importance sampling of the envmap
  * 
  *	- ESS_BINARY_SEARCH
- *		Importance samples the environment map using a binary search on the CDF
- *		distributions of the envmap
+ *		Importance samples a texel of the environment map proportionally to its
+ *		luminance using a binary search on the CDF distributions of the envmap luminance
+ * 
+ * - ESS_ALIAS_TABLE
+ *		Importance samples a texel of the environment map proportionally to its
+ *		luminance using an alias table for constant time sampling
  */
-#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
+#define EnvmapSamplingStrategy ESS_NO_SAMPLING
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
@@ -236,10 +240,16 @@
  *		The classical technique: importance samples the BSDF and bounces in that direction
  * 
  *	- PSS_RESTIR_GI
- *		Uses ReSTIR GI for resampling a path.
- *		Implementation of [ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
+ *		Uses ReSTIR GI for resampling a path for the pixel.
+ * 
+ *		The implementation is based on 
+ *		[ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
+ *		but is adapted for full unbiasedness.
+ * 
+ *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-#define PathSamplingStrategy PSS_BSDF
+//#define PathSamplingStrategy PSS_BSDF
+#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
