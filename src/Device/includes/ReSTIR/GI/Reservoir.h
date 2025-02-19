@@ -6,6 +6,8 @@
 #ifndef DEVICE_RESTIR_GI_RESERVOIR_H
 #define DEVICE_RESTIR_GI_RESERVOIR_H
 
+#include "Device/includes/RayVolumeState.h"
+
 #include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "HostDeviceCommon/Xorshift.h"
 
@@ -28,6 +30,7 @@ struct ReSTIRGISample
     // outgoing_radiance: can be packed
     float3 visible_point = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
+    int sample_point_primitive_index = -1;
 
     float3 first_hit_normal = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point_shading_normal = make_float3(-1.0f, -1.0f, -1.0f);
@@ -35,9 +38,14 @@ struct ReSTIRGISample
 
     ColorRGB32F outgoing_radiance_to_visible_point;
     ColorRGB32F outgoing_radiance_to_sample_point;
-    //DevicePackedEffectiveMaterial sample_point_material;
+    DevicePackedEffectiveMaterial sample_point_material;
+    RayVolumeState sample_point_volume_state;
 
-    BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+    float3 incident_light_direction_at_sample_point;
+    BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
+    BSDFIncidentLightInfo incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
+
+    unsigned int direct_lighting_at_sample_point_random_seed = 42;
 
     float target_function = 0.0f;
 

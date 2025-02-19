@@ -22,6 +22,13 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
+// - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
+
+
+
+
+
 //  Global emission factor broken? Going to 0.9 and then back to 1.0 doesn't give the same results as staying at 1 (barbershop scene)
 // ReSTIR DI performance broken, probably reading in nullptr buffers?
 
@@ -41,11 +48,9 @@ extern ImGuiLogger g_imgui_logger;
 // - add tooltips to Imgui combo box items
 // - add the jacobian rejection threshold in ImGui
 // - investigate why so much noise in the cornell box: probably because of the distance to the light? numerical issues?
-// - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for bothshading_point and view_direction
+// - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
 // - ReSTIR only load the rest of the reservoir if its UCW isn't 0
 
-// - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
-// - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
 // TODOs  performance improvements branch:
 // - also reuse BSDF mis ray of envmap MIS
@@ -82,7 +87,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO known bugs / incorrectness:
-// - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implement volumes?
+// - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implementing proper volumes?
 // - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
 //	  - same with perfect reflection
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
@@ -90,6 +95,7 @@ extern ImGuiLogger g_imgui_logger;
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
 // - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
 // - Issue with Lambertian BRDF override and emissive material. Seems like backfacing emissive don't work?
+// - Adaptive sampling with ReSTIR GI broken, way too much darkening
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed

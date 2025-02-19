@@ -35,7 +35,7 @@ struct HIPRTRenderSettings
 	static constexpr int SAMPLE_STOP = 65535;
 
 	// TODO DEBUG REMOVE THIS
-	bool enable_direct = true;
+	bool enable_direct = false;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	bool debug_lambertian = false;
@@ -93,7 +93,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 8;
+	int nb_bounces = 1;
 
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -169,7 +169,7 @@ struct HIPRTRenderSettings
 
 
 	// Clamp direct lighting contribution to reduce fireflies
-	float direct_contribution_clamp = 4.0f;
+	float direct_contribution_clamp = 0.0f;
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies

@@ -333,7 +333,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_emissive_geometry(HIPRTRenderD
     return direct_light_contribution + material_self_textured_emission;
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
+HIPRT_HOST_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lighting_contribution, float direct_contribution_clamp, int bounce)
+{
+    return clamp_light_contribution(direct_lighting_contribution, direct_contribution_clamp, bounce > 0);
+
+}
+
+HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
     float3 view_direction,
     int x, int y,
     MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
@@ -350,9 +356,10 @@ HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_d
 
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
     ColorRGB32F hit_emission = ray_payload.material.emission;
+    // TODO here should this be render_data.render_settings.direct_contribution_clamp instead of render_data.render_settings.indirect_contribution_clamp?
     hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
 
-    total_direct_lighting += hit_emission * ray_payload.throughput;
+    total_direct_lighting += hit_emission * custom_ray_throughput;
 #else
     if (ray_payload.bounce == 0)
         // If we do have emissive geometry sampling, we only want to take
@@ -362,13 +369,30 @@ HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_d
         total_direct_lighting += ray_payload.material.emission;
 
     // Clamped indirect lighting 
-    ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
-    ColorRGB32F clamped_direct_lighting_contribution = clamp_light_contribution(direct_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
+    ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * custom_ray_throughput;
 
-    total_direct_lighting += clamped_direct_lighting_contribution;
+    total_direct_lighting += direct_lighting_contribution;
 #endif
 
     return total_direct_lighting;
+}
+
+HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
+    float3 view_direction,
+    int x, int y,
+    MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
+{
+    return estimate_direct_lighting(render_data, ray_payload, custom_ray_throughput, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
+}
+
+HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
+    float3 view_direction,
+    int x, int y,
+    MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
+{
+    ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting(render_data, ray_payload, ray_payload.throughput, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
+    // TODO here should this be render_data.render_settings.direct_contribution_clamp instead of render_data.render_settings.indirect_contribution_clamp?
+    return clamp_direct_lighting_estimation(unclamped_direct_lighting, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce);
 }
 
 #endif
