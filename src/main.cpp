@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
     render_window.run();
 #else
 
-    std::cout << "[" << width << "x" << height << "]: " << cmd_arguments.render_samples << " samples ; " << cmd_arguments.bounces << " bounces" << std::endl << std::endl;
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "[%dx%d]: %d samples ; %d bounces\n\n", width, height, cmd_arguments.render_samples, cmd_arguments.bounces);
 
     CPURenderer cpu_renderer(width, height);
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;

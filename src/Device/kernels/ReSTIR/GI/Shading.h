@@ -160,7 +160,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
                 camera_outgoing_radiance += direct_lighting_second_hit * first_hit_throughput;
 
-                if (render_data.render_settings.nb_bounces > 1)
+                if (!resampling_reservoir.sample.outgoing_radiance_to_sample_point.is_black())
                 {
                     // Computing the BSDF throughput at the second hit
                     //  - view direction: towards the first hit
