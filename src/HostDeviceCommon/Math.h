@@ -80,6 +80,9 @@ namespace hippt
 #define M_TWO_PIPI	19.73920880217871723767f
 #define NEAR_ZERO	1.0e-10f
 
+	__device__ int thread_idx_x() { return threadIdx.x + blockIdx.x * blockDim.x; }
+	__device__ int thread_idx_y() { return threadIdx.y + blockIdx.y * blockDim.y; }
+
 	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
@@ -278,6 +281,9 @@ namespace hippt
 #define M_INV_2_PI	0.15915494309189533577f // 1.0f / (2.0f * M_PI)
 #define M_TWO_PIPI	19.73920880217871723767f
 #define NEAR_ZERO	1.0e-10f
+
+	inline int thread_idx_x() { return 0; }
+	inline int thread_idx_y() { return 0; }
 
 	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }

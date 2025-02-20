@@ -1286,6 +1286,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     final_color += internal_eval_metal_layer(render_data, material, material.second_roughness, material.anisotropy, 
                                              local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior, 
                                              metal_2_weight * !refracting, metal_2_proba, layers_throughput, pdf, incident_light_info, false, current_bounce);
+
     // Careful here to evaluate the glass layer before the glossy
     // base otherwise, layers_throughput is going to be modified
     // by the specular layer evaluation (in the glossy base) to 
@@ -1312,8 +1313,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // because the clearcoat sits on top of everything else. This means that the clearcoat
     // closure contains the full BSDF below. So the full BSDF below + the clearcoat (= the whole BSDF actually)
     // should be compensated, not just the clearcoat lobe. So that's why we're doing
-    // it here,  after the full BSDF evaluation so that everything gets compensated
+    // it here, after the full BSDF evaluation so that everything gets compensated
     final_color /= get_principled_energy_compensation_clearcoat_lobe(render_data, material, incident_medium_ior, local_view_direction.z, current_bounce);
+
+    //if (hippt::thread_idx_x() < render_data.render_settings.render_resolution.x / 2 && hippt::thread_idx_y() > render_data.render_settings.render_resolution.y / 2)
+    {
+        if (final_color.has_NaN() || pdf < 0.0f || hippt::is_nan(pdf))// && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
+        {
+            hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
+            printf("Final color after metal layer\n");
+        }
+    }
 
     return final_color;
 }
