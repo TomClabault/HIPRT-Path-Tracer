@@ -198,7 +198,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.sample_point_primitive_index = -1;
                 }
 
-                ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, pixel_index);
+                outgoing_radiance_to_visible_point += path_tracing_miss_gather_envmap(render_data, throughput_to_visible_point, ray.direction, ray_payload.bounce, pixel_index);
+                if (bounce > 1)
+                    outgoing_radiance_to_sample_point += path_tracing_miss_gather_envmap(render_data, throughput_to_sample_point, ray.direction, ray_payload.bounce, pixel_index);
+
                 ray_payload.next_ray_state = RayState::MISSED;
             }
         }

@@ -86,6 +86,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
     uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
+    /*if (pixel_index == 0)
+        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 0.0f);*/
+
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
