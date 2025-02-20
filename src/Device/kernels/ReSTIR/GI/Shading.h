@@ -86,42 +86,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
     ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index];
 
-    /*if (resampling_reservoir.M < 0 && render_data.render_settings.DEBUG_SUMS[0] == 0.0f)
-    {
-        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-        printf("Negative reservoir M value\n");
-    }
-    else if ((hippt::is_nan(resampling_reservoir.weight_sum) || hippt::isinf(resampling_reservoir.weight_sum)) && render_data.render_settings.DEBUG_SUMS[0] == 0.0f)
-    {
-        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-        printf("NaN or inf reservoir weight_sum\n");;
-    }
-    else if (resampling_reservoir.weight_sum < 0 && render_data.render_settings.DEBUG_SUMS[0] == 0.0f)
-    {
-        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-        printf("Negative reservoir weight_sum\n");
-    }
-    else if ((hippt::is_nan(resampling_reservoir.UCW) || hippt::isinf(resampling_reservoir.UCW)) && render_data.render_settings.DEBUG_SUMS[0] == 0.0f)
-    {
-        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-        printf("NaN or inf reservoir UCW\n");
-    }
-    else if (resampling_reservoir.UCW < 0 && render_data.render_settings.DEBUG_SUMS[0] == 0.0f)
-    {
-        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-        printf("Negative reservoir UCW\n");
-    }
-    else if ((hippt::is_nan(resampling_reservoir.sample.target_function) || hippt::isinf(resampling_reservoir.sample.target_function)) && render_data.render_settings.DEBUG_SUMS[0] == 0.0f)
-    {
-        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-        printf("NaN or inf reservoir sample.target_function\n");
-    }
-    else if (resampling_reservoir.sample.target_function < 0 && render_data.render_settings.DEBUG_SUMS[0] == 0.0f)
-    {
-        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-        printf("Negative reservoir sample.target_function\n");
-    }*/
-
     if (render_data.render_settings.nb_bounces > 0)
     {
         // Only doing the ReSTIR GI stuff if we have more than 1 bounce
@@ -153,8 +117,28 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 DEBUG_FIRST_BSDF_COLOR_DOT = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal));
             }
 
+            /*if (x < render_data.render_settings.render_resolution.x / 2 && y > render_data.render_settings.render_resolution.y / 2)
+            {
+                if (first_hit_throughput.has_NaN() && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
+                {
+                    hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
+                    printf("First hit throughput M value\n");
+                }
+            }*/
+
             if (resampling_reservoir.sample.is_envmap_path())
+            {
                 camera_outgoing_radiance += path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 0, pixel_index);
+
+                /*if (x < render_data.render_settings.render_resolution.x / 2 && y > render_data.render_settings.render_resolution.y / 2)
+                {
+                    if (camera_outgoing_radiance.has_NaN() && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
+                    {
+                        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
+                        printf("Envmap shade value\n");
+                    }
+                }*/
+            }
             else
             {
                 // Loading the second hit in the ray payload:
@@ -167,6 +151,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 closest_hit_info.shading_normal = resampling_reservoir.sample.sample_point_shading_normal;
                 closest_hit_info.inter_point = resampling_reservoir.sample.sample_point;
                 closest_hit_info.primitive_index = resampling_reservoir.sample.sample_point_primitive_index;
+
                 // Taking the direct lighting at the sample point hit into account
                 // Using a custom ray throughput of 1.0f because we're recomputing the throughput of the path manually
                 // here with ReSTIR GI so we don't want any kind of throughput to be taken into account in the
@@ -179,10 +164,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 //  - view direction: towards the first hit
                 //  - incident light direction: towards what's after the sample point (i.e. the second bounce direction)
                 float bsdf_pdf_second_hit;
-                ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, bsdf_pdf_second_hit, random_number_generator, 1, resampling_reservoir.sample.incident_light_info_at_sample_point);
+                ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, -restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, bsdf_pdf_second_hit, random_number_generator, 1, resampling_reservoir.sample.incident_light_info_at_sample_point);
                 ColorRGB32F second_hit_throughput;
                 if (bsdf_pdf_second_hit > 0.0f)
                     second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
+
+                //if (x < render_data.render_settings.render_resolution.x / 2 && y > render_data.render_settings.render_resolution.y / 2)
+                {
+                    if (bsdf_color_second_hit.has_NaN() && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
+                    {
+                        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
+                        printf("BSDF color second hit --- PDF: %f\n", bsdf_pdf_second_hit);
+                    }
+                }
 
                 camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_sample_point;
             }
