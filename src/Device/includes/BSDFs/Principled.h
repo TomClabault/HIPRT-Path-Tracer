@@ -1316,15 +1316,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // it here, after the full BSDF evaluation so that everything gets compensated
     final_color /= get_principled_energy_compensation_clearcoat_lobe(render_data, material, incident_medium_ior, local_view_direction.z, current_bounce);
 
-    //if (hippt::thread_idx_x() < render_data.render_settings.render_resolution.x / 2 && hippt::thread_idx_y() > render_data.render_settings.render_resolution.y / 2)
-    {
-        if (final_color.has_NaN() || pdf < 0.0f || hippt::is_nan(pdf))// && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
-        {
-            hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-            printf("Final color after metal layer\n");
-        }
-    }
-
     return final_color;
 }
 

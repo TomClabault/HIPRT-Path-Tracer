@@ -160,25 +160,31 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
                 camera_outgoing_radiance += direct_lighting_second_hit * first_hit_throughput;
 
-                // Computing the BSDF throughput at the second hit
-                //  - view direction: towards the first hit
-                //  - incident light direction: towards what's after the sample point (i.e. the second bounce direction)
-                float bsdf_pdf_second_hit;
-                ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, -restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, bsdf_pdf_second_hit, random_number_generator, 1, resampling_reservoir.sample.incident_light_info_at_sample_point);
-                ColorRGB32F second_hit_throughput;
-                if (bsdf_pdf_second_hit > 0.0f)
-                    second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
-
-                //if (x < render_data.render_settings.render_resolution.x / 2 && y > render_data.render_settings.render_resolution.y / 2)
+                if (render_data.render_settings.nb_bounces > 1)
                 {
-                    if (bsdf_color_second_hit.has_NaN() && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
-                    {
-                        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-                        printf("BSDF color second hit --- PDF: %f\n", bsdf_pdf_second_hit);
-                    }
-                }
+                    // Computing the BSDF throughput at the second hit
+                    //  - view direction: towards the first hit
+                    //  - incident light direction: towards what's after the sample point (i.e. the second bounce direction)
+                    float bsdf_pdf_second_hit;
+                    ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, -restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, bsdf_pdf_second_hit, random_number_generator, 1, resampling_reservoir.sample.incident_light_info_at_sample_point);
+                    ColorRGB32F second_hit_throughput;
+                    if (bsdf_pdf_second_hit > 0.0f)
+                        second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
 
-                camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_sample_point;
+                    if (x < render_data.render_settings.render_resolution.x / 2 && y > render_data.render_settings.render_resolution.y / 2)
+                    {
+                        if (bsdf_color_second_hit.has_NaN() && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
+                        {
+                            hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
+                            printf("BSDF color second hit\n");
+                            printf("PDF: %f\n", bsdf_pdf_second_hit);
+                            printf("Incident light direction at sample point: %f %f %f\n", resampling_reservoir.sample.incident_light_direction_at_sample_point.x, resampling_reservoir.sample.incident_light_direction_at_sample_point.y, resampling_reservoir.sample.incident_light_direction_at_sample_point.z);
+                            printf("outgoing radiance to sample point: %f %f %f\n", resampling_reservoir.sample.outgoing_radiance_to_sample_point.r, resampling_reservoir.sample.outgoing_radiance_to_sample_point.g, resampling_reservoir.sample.outgoing_radiance_to_sample_point.b);
+                        }
+                    }
+
+                    camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_sample_point;
+                }
             }
         }
     }
