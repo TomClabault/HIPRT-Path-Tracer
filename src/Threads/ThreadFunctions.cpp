@@ -171,4 +171,7 @@ void ThreadFunctions::read_envmap(Image32Bit& hdr_image_out, const std::string& 
         hdr_image_out = Image32Bit::read_image_hdr(filepath, wanted_channel_count, flip_Y);
     else if (filepath.ends_with(".exr"))
         hdr_image_out = Image32Bit::read_image_exr(filepath, flip_Y);
+
+    if (hdr_image_out.width == 0 || hdr_image_out.height == 0)
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Could not read envmap file: %s", filepath.c_str());
 }
