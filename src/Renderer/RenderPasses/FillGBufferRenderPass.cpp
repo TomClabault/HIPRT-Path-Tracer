@@ -128,7 +128,9 @@ size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
 	std::cout << sizeof(HIPRTRenderSettings) << " CPU";*/
 	//std::exit(0);
 	//return 0;
-	return out_size_buffer.download_data()[0];
+	size_t size = out_size_buffer.download_data()[0];
+
+	return size;
 }
 
 void FillGBufferRenderPass::resize_g_buffer_ray_volume_states()

@@ -149,7 +149,9 @@ namespace hippt
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>
-	__device__ bool is_NaN(const T& v) { return isnan(v); }
+	__device__ bool is_nan(const T& v) { return isnan(v); }
+	template <typename T>
+	__device__ bool is_inf(const T& v) { return isinf(v); }
 	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	/**
@@ -342,7 +344,9 @@ namespace hippt
 	inline float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>
-	inline bool is_NaN (const T& v) { return std::isnan(v); }
+	inline bool is_nan(const T& v) { return std::isnan(v); }
+	template <typename T>
+	inline bool is_inf(const T& v) { return std::isinf(v); }
 	inline bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	/**

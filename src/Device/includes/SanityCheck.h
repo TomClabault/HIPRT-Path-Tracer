@@ -51,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
     (void)y;
     (void)sample;
 
-    if (hippt::is_NaN(ray_color.r) || hippt::is_NaN(ray_color.g) || hippt::is_NaN(ray_color.b))
+    if (hippt::is_nan(ray_color.r) || hippt::is_nan(ray_color.g) || hippt::is_nan(ray_color.b))
     {
 #ifndef __KERNELCC__
         std::lock_guard<std::mutex> logging_lock(g_mutex);

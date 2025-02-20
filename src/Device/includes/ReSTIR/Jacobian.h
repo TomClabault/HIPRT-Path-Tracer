@@ -27,7 +27,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 
 	float jacobian_determinant = cosine_ratio * distance_squared_ratio;
 
-	if (jacobian_determinant > jacobian_threshold || jacobian_determinant < 1.0f / jacobian_threshold || hippt::is_NaN(jacobian_determinant))
+	if (jacobian_determinant > jacobian_threshold || jacobian_determinant < 1.0f / jacobian_threshold || hippt::is_nan(jacobian_determinant))
 		// Samples are too dissimilar, returning -1 to indicate that we must reject the sample
 		return -1.0f;
 	else

@@ -101,7 +101,7 @@ HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_
     }
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, int bounce, ColorRGB32F ray_throughput, float3 ray_direction, uint32_t pixel_index)
+HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, const ColorRGB32F& ray_throughput, float3 ray_direction, int bounce, uint32_t pixel_index)
 {
     ColorRGB32F skysphere_color;
 
@@ -150,7 +150,7 @@ HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& r
 
 HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, RayPayload& ray_payload, float3 ray_direction, uint32_t pixel_index)
 {
-    return path_tracing_miss_gather_envmap(render_data, ray_payload.bounce, ray_payload.throughput, ray_direction, pixel_index);
+    return path_tracing_miss_gather_envmap(render_data, ray_payload.throughput, ray_direction, ray_payload.bounce, pixel_index);
 }
 
 HIPRT_HOST_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
