@@ -79,6 +79,11 @@ public:
 	
 	virtual bool is_render_pass_used() const override;
 
+	/**
+	 * Returns the VRAM used by ReSTIR DI in MB
+	 */
+	float get_VRAM_usage() const;
+
 private:
 	LightPresamplingParameters configure_light_presampling_pass();
 	void configure_initial_pass();
@@ -96,21 +101,21 @@ private:
 	void launch_spatiotemporal_pass();
 
 	// ReSTIR reservoirs for the initial candidates
-	OrochiBuffer<ReSTIRDIReservoir> initial_candidates_reservoirs;
+	OrochiBuffer<ReSTIRDIReservoir> m_initial_candidates_reservoirs;
 	// ReSTIR reservoirs for the output of the spatial reuse pass
-	OrochiBuffer<ReSTIRDIReservoir> spatial_output_reservoirs_1;
+	OrochiBuffer<ReSTIRDIReservoir> m_spatial_output_reservoirs_1;
 	// ReSTIR DI final reservoirs of the frame.
 	// This the output of the spatial reuse passes.
 	// Those are the reservoirs that are carried over between frames for
 	// the temporal reuse pass to feed upon
-	OrochiBuffer<ReSTIRDIReservoir> spatial_output_reservoirs_2;
+	OrochiBuffer<ReSTIRDIReservoir> m_spatial_output_reservoirs_2;
 
 	// Buffer that holds the presampled lights if light presampling is enabled 
 	// (GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING)
 	//
 	// Implementation from the paper
 	// [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
-	OrochiBuffer<ReSTIRDIPresampledLight> presampled_lights_buffer;
+	OrochiBuffer<ReSTIRDIPresampledLight> m_presampled_lights_buffer;
 
 	// Whether or not we're currently rendering an odd frame.
 	// This is used to adjust which buffers are used as input/outputs

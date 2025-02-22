@@ -31,21 +31,21 @@ struct HIPRTRenderSettings
 	bool need_to_reset = true;
 
 	// TODO DEBUG REMOVE THIS
-	static constexpr float MULTIPLIER = 100.0f;
-	static constexpr int SAMPLE_STOP = 65535;
+	static constexpr float MULTIPLIER = 100000.0f;
+	static constexpr int SAMPLE_STOP = 4096;
 
 	// TODO DEBUG REMOVE THIS
-	bool enable_direct = false;
+	bool enable_direct = true;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	bool debug_lambertian = false;
-	int debug_x = 150, debug_y = 15;
-	int debug_x2 = 850, debug_y2 = 471;
-	bool do_only_neighbor = false;
+	int debug_x = 138, debug_y = 151;
+	int debug_x2 = 136, debug_y2 = 147;
+	bool DEBUG_DO_ONLY_NEIGHBOR = false;
 	int debug_size = 0;
 	int debug_count_multiplier = 2;
 	int precision = 256;
-	int stop_value = 65535 * MULTIPLIER - 10;
+	int stop_value = SAMPLE_STOP * MULTIPLIER - 10;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 
@@ -93,7 +93,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 1;
+	int nb_bounces = 500;
 
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -146,7 +146,7 @@ struct HIPRTRenderSettings
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 2048;
+	int adaptive_sampling_min_samples = 96;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.1f;
 
@@ -169,7 +169,7 @@ struct HIPRTRenderSettings
 
 
 	// Clamp direct lighting contribution to reduce fireflies
-	float direct_contribution_clamp = 0.0f;
+	float direct_contribution_clamp = 4.0f;
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies

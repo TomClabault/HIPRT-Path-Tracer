@@ -116,6 +116,13 @@ float* RendererEnvmap::get_cdf_device_pointer()
 unsigned int RendererEnvmap::get_width() { return m_width; }
 unsigned int RendererEnvmap::get_height() { return m_height; }
 
+float RendererEnvmap::get_sampling_structure_VRAM_usage() const
+{
+	// Just return the sum of everything (both the CDF and alias table) because only one can be
+	// used at a given time so one of the two will be 0 bytes anyways
+	return (m_cdf.get_byte_size() + m_alias_table_probas.get_byte_size() + m_alias_table_alias.get_byte_size()) / 1000000.0f;
+}
+
 void RendererEnvmap::do_animation(GPURenderer* renderer, float delta_time)
 {
 	// We can step the animation either if we're not accumulating or

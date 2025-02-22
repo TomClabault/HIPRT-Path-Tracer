@@ -261,3 +261,8 @@ bool ReSTIRGIRenderPass::is_render_pass_used() const
 {
 	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI;
 }
+
+float ReSTIRGIRenderPass::get_VRAM_usage() const
+{
+	return (m_initial_candidates_buffer.get_byte_size() + m_temporal_buffer.get_byte_size() + m_spatial_buffer.get_byte_size()) / 1000000.0f;
+}

@@ -105,7 +105,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
-	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + (render_data.render_settings.do_only_neighbor ? 0 : 1); neighbor_index++)
+	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + (render_data.render_settings.DEBUG_DO_ONLY_NEIGHBOR ? 0 : 1); neighbor_index++)
 	{
 		// TODO DEBUG UNCOMMENT THIS
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
@@ -313,32 +313,38 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 
-	////if (hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0) <= 20)
-	//{
-	//	if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size &&
-	//		hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
-	//	{
-	//		if (valid_neighbors_count == 0)
-	//		{
-	//			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);
+	//if ()
+	{
 
-	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], center_pixel_reservoir.UCW);
-	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], center_pixel_reservoir.sample.target_function);
-	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[2], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
-	//		}
-	//	}
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size &&
+			hippt::abs(render_data.render_settings.render_resolution.y - 1 - y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
+		{
+			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);
 
-	//	if (hippt::abs(x - render_data.render_settings.debug_x2) <= render_data.render_settings.debug_size &&
-	//		hippt::abs(y - render_data.render_settings.debug_y2) <= render_data.render_settings.debug_size)
-	//	{
-	//		//if (valid_neighbors_count == 0)
-	//		{
-	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], center_pixel_reservoir.UCW);
-	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], center_pixel_reservoir.sample.target_function);
-	//			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[5], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
-	//		}
-	//	}
-	//}
+			path_tracing_accumulate_color(render_data, ColorRGB32F(1.0e35f, 0.0f, 0.0f), center_pixel_index);
+
+			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], normalization_denominator);
+		}
+
+		if (hippt::abs(x - render_data.render_settings.debug_x2) <= render_data.render_settings.debug_size &&
+			hippt::abs(render_data.render_settings.render_resolution.y - 1 - y - render_data.render_settings.debug_y2) <= render_data.render_settings.debug_size)
+		{
+			path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 1.0e35f, 0.0f), center_pixel_index);
+
+			hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], normalization_denominator);
+		}
+
+		//if (hippt::abs(x - render_data.render_settings.debug_x2) <= render_data.render_settings.debug_size &&
+		//	hippt::abs(y - render_data.render_settings.debug_y2) <= render_data.render_settings.debug_size)
+		//{
+		//	//if (valid_neighbors_count == 0)
+		//	{
+		//		hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], center_pixel_reservoir.UCW);
+		//		hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], center_pixel_reservoir.sample.target_function);
+		//		hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[5], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
+		//	}
+		//}
+	}
 }
 
 #endif

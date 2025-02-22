@@ -31,15 +31,19 @@ extern ImGuiLogger g_imgui_logger;
 
 //  Global emission factor broken? Going to 0.9 and then back to 1.0 doesn't give the same results as staying at 1 (barbershop scene)
 // ReSTIR DI performance broken, probably reading in nullptr buffers?
-// NaNs on cornell dragons with restir GI
+// Fix white furnace not passing cornell_dragons
+// Is 1/Z biased in the scandinavian studio diffuse area?
 
 // TODO ReSTIR GI
-// - do adaptive radius spatial reuse --> also for ReSTIR DI?
-// - ReSTIR el cheapo
+// - do adaptive radius spatial reuse --> also for ReSTIR DI? --> maybe start super wide to avoid spatial reuse patterns and progressively lower the reuse radius
+// - ReSTIR el cheapo?
 // - BSDF MIS Reuse for ReSTIR DI
 // - Fix spatial reuse pattern because the concentric circles created by Hammersley don't cover the neighborhood of the center pixel well at all
 // - Force albedo to white for spatial reuse?
 // - some kind of reuse direction masks for spatial reuse offline rendering? the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
+// - OVS - Optimal visibility shaidng
+// - symmetric ratio MIS
+// - shade secondary surface by looking up screen space reservoir if possible (ReSTIR GI & DI?) --> We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces.
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - we need a ReSTIR DI convergence check

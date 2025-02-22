@@ -163,7 +163,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Debug lambertian", &render_settings.debug_lambertian))
 		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Do only neighbor", &render_settings.do_only_neighbor))
+	if (ImGui::Checkbox("Do only neighbor", &render_settings.DEBUG_DO_ONLY_NEIGHBOR))
 		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
@@ -479,14 +479,19 @@ void ImGuiSettingsWindow::display_view_selector()
 	switch (display_view_type_selected)
 	{
 		case DisplayViewType::WHITE_FURNACE_THRESHOLD:
-			ImGui::Checkbox("Use low threshold", &display_settings.white_furnace_display_use_low_threshold);
+			bool viewport_update_needed = false;
+
+			viewport_update_needed  |= ImGui::Checkbox("Use low threshold", &display_settings.white_furnace_display_use_low_threshold);
 			ImGuiRenderer::show_help_marker("If checked, the white furnace threshold shader will display "
 											"pixel that lose energy as green. Pixels will not be highlighted "
 											"if unchecked");
-			ImGui::Checkbox("Use high threshold", &display_settings.white_furnace_display_use_high_threshold);
+			viewport_update_needed |= ImGui::Checkbox("Use high threshold", &display_settings.white_furnace_display_use_high_threshold);
 			ImGuiRenderer::show_help_marker("If checked, the white furnace threshold shader will display "
 											"pixel that gain energy as red. Pixels will not be highlighted "
 											"if unchecked");
+
+			if (viewport_update_needed)
+				m_render_window->set_force_viewport_refresh(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			break;
@@ -687,7 +692,7 @@ void ImGuiSettingsWindow::draw_camera_panel_static(const std::string& panel_titl
 			render_window->set_render_dirty(true);
 		}
 
-		if (ImGui::SliderFloat("Camera Speed", &camera.user_movement_speed_multiplier, 0.0f, 10.0f))
+		if (ImGui::SliderFloat("Camera movement speed", &camera.user_movement_speed_multiplier, 0.0f, 10.0f))
 			camera.user_movement_speed_multiplier = std::max(0.0f, camera.user_movement_speed_multiplier);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -881,7 +886,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)
@@ -931,6 +935,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			case LSS_RESTIR_DI:
 			{
+				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_DI_render_pass()->get_VRAM_usage());
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				display_ReSTIR_DI_bias_status(global_kernel_options);
 
 				if (ImGui::CollapsingHeader("General Settings"))
@@ -1183,6 +1190,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Envmap sampling tree");
 
+			// Disabled if no envmap loaded
+			bool disabled = m_renderer->get_envmap().get_width() == 0;
+
+			ImGui::BeginDisabled(disabled);
 			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search", "- Importance Sampling - Alias Table " };
 			if (ImGui::Combo("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
@@ -1195,9 +1206,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				ThreadManager::join_threads("RecomputeEnvmapSamplingStructure");
 			}
+			if (disabled)
+				ImGuiRenderer::add_tooltip("Disabled because no envmap is loaded in the renderer.");
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING)
 			{
+				ImGui::Text("Sampling structure VRAM usage: %.3fMB", m_renderer->get_envmap().get_sampling_structure_VRAM_usage());
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 				// If we do have an importance sampling strategy
 				static bool do_envmap_bsdf_mis = EnvmapSamplingDoBSDFMIS;
 				if (ImGui::Checkbox("Do MIS with BSDF", &do_envmap_bsdf_mis))
@@ -1208,6 +1224,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 				ImGuiRenderer::show_help_marker("");
 			}
+			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -1224,13 +1241,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY))
 			{
 			case PSS_RESTIR_GI:
 			{
 				ImGui::TreePush("ReSTIR GI options tree");
 
+				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage());
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::CollapsingHeader("General Settings"))
 				{
 					ImGui::TreePush("ReSTIR GI - General Settings Tree");
@@ -1765,7 +1784,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			};
 
 			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);
-			if (ImGui::Combo("Bias Correction Weights", bias_correction_weights_option_pointer, bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
+			if (ImGui::Combo("MIS Weights", bias_correction_weights_option_pointer, bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
 			{
 				m_renderer->recompile_kernels();
 
@@ -2349,7 +2368,8 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
 	ImGui::Checkbox("Only denoise when rendering is done", &m_application_settings->denoise_when_rendering_done);
 	ImGui::SliderInt("Denoiser sample skip", &m_application_settings->denoiser_sample_skip, 1, 128);
-	ImGui::SliderFloat("Denoiser blend", &display_settings.denoiser_blend, 0.0f, 1.0f);
+	if (ImGui::SliderFloat("Denoiser blend", &display_settings.denoiser_blend, 0.0f, 1.0f))
+		m_render_window->set_force_viewport_refresh(true);
 	ImGui::EndDisabled();
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -2434,17 +2454,18 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 					// number_of_sets is even but we only want odd
 					number_of_sets--;
 			}
-			ImGuiRenderer::show_help_marker("How many sets (M variable in the GMoN paper, [Buisine et al., 2021]).\n\n"
+			ImGuiRenderer::show_help_marker("How many sets (M variable in the GMoN paper, [Buisine et al., 2021]) to use.\n\n"
+				""
+				"A simple way to choose that number is: keep that number as low as possible as long as it removes the fireflies.\n\n"
 				""
 				"As a general rule: more sets eliminate fireflies the best but more sets require more samples per "
 				"pixel to avoid too much darkening, especially on high-variance scene. If your scene is very "
-				"easy to render, you probably don't need many sets (less than 15). If your scene has high "
+				"easy to render, you probably don't need many sets (less than 15, maybe even less than 11). If your scene has high "
 				"variance caustics, you're probably going to need a lot of samples per pixel and so a large "
 				"number of sets will be fine anyways.\n\n"
-				"Said otherwise: if you're noticing too much darkening, try reducing the number of sets or "
-				"try accumulating more samples per pixel.\n\n"
 				""
-				"Yet another way top choose the number of sets: keep that number as low as possible as long as it removes the fireflies.");
+				"Said otherwise: if you're noticing too much darkening, try reducing the number of sets or "
+				"try accumulating more samples per pixel.\n\n");
 			// If the user modified the number of sets, displaying an "Apply" button
 			if (number_of_sets != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			{

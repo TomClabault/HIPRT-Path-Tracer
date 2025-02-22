@@ -46,7 +46,7 @@ struct ApplicationSettings
 	// For example, if == 2, and the viewport currently is 1280*720, 
 	// the path tracer will compute a 2560*1440 image and display it
 	// in the 1280*720 viewport
-	float render_resolution_scale = 1.0f;
+	float render_resolution_scale = 0.25f;
 	// This variable is meant to keep the GPU busy when using "automatic number of samples"
 	// per frame. The idea is to adjust the number of samples per frame such that the GPU
 	// always has a bunch of work to do.
@@ -81,7 +81,7 @@ struct ApplicationSettings
 
 	// We stop rendering when this number of sample is reached.
 	// 0 is no limit
-	int max_sample_count = 32;// HIPRTRenderSettings::SAMPLE_STOP* HIPRTRenderSettings::MULTIPLIER;
+	int max_sample_count = HIPRTRenderSettings::MULTIPLIER * HIPRTRenderSettings::SAMPLE_STOP;
 	// We stop rendering when the render has been running for that long.
 	// In seconds. 0 is no limit
 	float max_render_time = 0.0f;
