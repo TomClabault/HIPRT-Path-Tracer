@@ -35,7 +35,7 @@ struct HIPRTRenderSettings
 	static constexpr int SAMPLE_STOP = 4096;
 
 	// TODO DEBUG REMOVE THIS
-	bool enable_direct = true;
+	bool enable_direct = false;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	bool debug_lambertian = false;
