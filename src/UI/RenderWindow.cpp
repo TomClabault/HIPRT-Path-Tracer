@@ -33,8 +33,10 @@ extern ImGuiLogger g_imgui_logger;
 // ReSTIR DI performance broken, probably reading in nullptr buffers?
 // Fix white furnace not passing cornell_dragons
 // Is 1/Z biased in the scandinavian studio diffuse area?
+// - furnace test with ReSTIR GI isn't passing
 
 // TODO ReSTIR GI
+// - possibility to read the visible positions from the G buffer instead of storing in the reservoir
 // - do adaptive radius spatial reuse --> also for ReSTIR DI? --> maybe start super wide to avoid spatial reuse patterns and progressively lower the reuse radius
 // - ReSTIR el cheapo?
 // - BSDF MIS Reuse for ReSTIR DI
@@ -43,7 +45,7 @@ extern ImGuiLogger g_imgui_logger;
 // - some kind of reuse direction masks for spatial reuse offline rendering? the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
 // - OVS - Optimal visibility shaidng
 // - symmetric ratio MIS
-// - shade secondary surface by looking up screen space reservoir if possible (ReSTIR GI & DI?) --> We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces.
+// - shade secondary surface by looking up screen space reservoir if possible (ReSTIR GI & DI?) --> We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. --> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - we need a ReSTIR DI convergence check

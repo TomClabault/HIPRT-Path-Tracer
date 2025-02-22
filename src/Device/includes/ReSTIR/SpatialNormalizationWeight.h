@@ -99,8 +99,16 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsRe
 
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
+			{	
 				// ReSTIR GI target function
-				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+
+				float jacobian = get_jacobian_determinant_reconnection_shift(final_reservoir_sample.sample_point, final_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+				if (jacobian == -1.0f)
+					// Rejected neighbor because of its jacobian
+					target_function_at_neighbor = 0.0f;
+				else
+					target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+			}
 			else
 				// ReSTIR DI target function
 				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
