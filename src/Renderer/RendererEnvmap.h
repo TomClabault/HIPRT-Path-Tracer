@@ -56,6 +56,11 @@ public:
 	unsigned int get_width();
 	unsigned int get_height();
 
+	/**
+	 * Returns the VRAM used by the sampling structure of the envmap in MB
+	 */
+	float get_sampling_structure_VRAM_usage() const;
+
 private:
 	void recompute_CDF(const Image32Bit* image);
 	void recompute_alias_table(const Image32Bit* image);

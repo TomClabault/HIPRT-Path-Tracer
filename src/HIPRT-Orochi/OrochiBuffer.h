@@ -32,6 +32,7 @@ public:
 
 	void resize(int new_element_count, size_t type_size_override = 0);
 	size_t get_element_count() const;
+	size_t get_byte_size() const;
 
 	const T* get_device_pointer() const;
 	T* get_device_pointer();
@@ -143,6 +144,12 @@ template <typename T>
 size_t OrochiBuffer<T>::get_element_count() const
 {
 	return m_element_count;
+}
+
+template <typename T>
+size_t OrochiBuffer<T>::get_byte_size() const
+{
+	return m_element_count * sizeof(T);
 }
 
 template <typename T>

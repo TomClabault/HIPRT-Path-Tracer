@@ -42,6 +42,11 @@ public:
 
 	virtual bool is_render_pass_used() const override;
 
+	/**
+	 * Returns the VRAM used by ReSTIR GI in MB
+	 */
+	float get_VRAM_usage() const;
+
 private:
 	// Events for timing the time taken by spatial reuse
 	oroEvent_t m_spatial_reuse_time_start;

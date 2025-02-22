@@ -117,46 +117,29 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 DEBUG_FIRST_BSDF_COLOR_DOT = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal));
             }
 
-            /*if (x < render_data.render_settings.render_resolution.x / 2 && y > render_data.render_settings.render_resolution.y / 2)
-            {
-                if (first_hit_throughput.has_NaN() && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
-                {
-                    hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-                    printf("First hit throughput M value\n");
-                }
-            }*/
-
             if (resampling_reservoir.sample.is_envmap_path())
-            {
-                camera_outgoing_radiance += path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 0, pixel_index);
-
-                /*if (x < render_data.render_settings.render_resolution.x / 2 && y > render_data.render_settings.render_resolution.y / 2)
-                {
-                    if (camera_outgoing_radiance.has_NaN() && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
-                    {
-                        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-                        printf("Envmap shade value\n");
-                    }
-                }*/
-            }
+                camera_outgoing_radiance += path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index);
             else
             {
                 // Loading the second hit in the ray payload:
+                // TODO create a new ray payload variable for clarity and check that the register don't go up
                 ray_payload.material = resampling_reservoir.sample.sample_point_material.unpack();
                 ray_payload.volume_state = resampling_reservoir.sample.sample_point_volume_state;
                 ray_payload.bounce = 1;
 
                 // Loading the second hit in the closest hit
+                // TODO create a new closest hit variable for clarity and check that the register don't go up
                 closest_hit_info.geometric_normal = resampling_reservoir.sample.sample_point_geometric_normal;
                 closest_hit_info.shading_normal = resampling_reservoir.sample.sample_point_shading_normal;
                 closest_hit_info.inter_point = resampling_reservoir.sample.sample_point;
                 closest_hit_info.primitive_index = resampling_reservoir.sample.sample_point_primitive_index;
 
+                // Using the same seed for direct lighting as when generating the initial candidate
+                random_number_generator.m_state.seed = resampling_reservoir.sample.direct_lighting_at_sample_point_random_seed;
                 // Taking the direct lighting at the sample point hit into account
                 // Using a custom ray throughput of 1.0f because we're recomputing the throughput of the path manually
                 // here with ReSTIR GI so we don't want any kind of throughput to be taken into account in the
                 // direct lighting estimation
-                random_number_generator.m_state.seed = resampling_reservoir.sample.direct_lighting_at_sample_point_random_seed;
                 ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
                 camera_outgoing_radiance += direct_lighting_second_hit * first_hit_throughput;
 
@@ -169,19 +152,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                     ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, -restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, bsdf_pdf_second_hit, random_number_generator, 1, resampling_reservoir.sample.incident_light_info_at_sample_point);
                     ColorRGB32F second_hit_throughput;
                     if (bsdf_pdf_second_hit > 0.0f)
-                        second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
-
-                    if (x < render_data.render_settings.render_resolution.x / 2 && y > render_data.render_settings.render_resolution.y / 2)
-                    {
-                        if (bsdf_color_second_hit.has_NaN() && hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) == 0.0f)
-                        {
-                            hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 1.0f);
-                            printf("BSDF color second hit\n");
-                            printf("PDF: %f\n", bsdf_pdf_second_hit);
-                            printf("Incident light direction at sample point: %f %f %f\n", resampling_reservoir.sample.incident_light_direction_at_sample_point.x, resampling_reservoir.sample.incident_light_direction_at_sample_point.y, resampling_reservoir.sample.incident_light_direction_at_sample_point.z);
-                            printf("outgoing radiance to sample point: %f %f %f\n", resampling_reservoir.sample.outgoing_radiance_to_sample_point.r, resampling_reservoir.sample.outgoing_radiance_to_sample_point.g, resampling_reservoir.sample.outgoing_radiance_to_sample_point.b);
-                        }
-                    }
+                        second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(resampling_reservoir.sample.incident_light_direction_at_sample_point, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
 
                     camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_sample_point;
                 }
@@ -189,7 +160,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         }
     }
 
-   /* if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+    if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
 #ifndef __KERNELCC__
         if (render_data.render_settings.sample_number % 2 == 0)
 #else
@@ -205,8 +176,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             }
 
             printf("\n");
-        }*/
+        }
 
+    // Setting the 'camera_outgoing_radiance' into the ray color just for the call to 'sanity_check'
     ray_payload.ray_color = camera_outgoing_radiance;
     if (!sanity_check(render_data, ray_payload, x, y))
         return;
