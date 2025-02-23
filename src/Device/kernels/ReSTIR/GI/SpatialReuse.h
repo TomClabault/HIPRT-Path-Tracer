@@ -192,7 +192,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_function / shift_mapping_jacobian,
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
 			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
