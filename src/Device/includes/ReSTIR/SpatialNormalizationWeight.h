@@ -103,7 +103,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsRe
 				// ReSTIR GI target function
 
 				float jacobian = get_jacobian_determinant_reconnection_shift(final_reservoir_sample.sample_point, final_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-				if (jacobian == -1.0f)
+				if (jacobian == -1.0f && !final_reservoir_sample.is_envmap_path())
 					// Rejected neighbor because of its jacobian
 					target_function_at_neighbor = 0.0f;
 				else

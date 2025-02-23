@@ -74,7 +74,7 @@
 *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
 *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
 */
-#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
+#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_1_OVER_Z
 
 #endif // #ifndef __KERNELCC__
 
