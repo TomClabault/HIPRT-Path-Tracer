@@ -79,8 +79,13 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReS
 
 			float target_function_at_j;
 			if constexpr (IsReSTIRGI)
+			{
 				// ReSTIR GI target function
 				target_function_at_j = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
+				if (!reservoir_being_resampled_sample.is_envmap_path())
+					// Applying the jacobian to get "p_hat_from_i"
+					target_function_at_j *= hippt::max(0.0f, get_jacobian_determinant_reconnection_shift(reservoir_being_resampled_sample.sample_point, reservoir_being_resampled_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
+			}
 			else
 				// ReSTIR DI target function
 				target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
