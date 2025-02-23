@@ -161,8 +161,14 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsRe
 
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
+			{
 				// ReSTIR GI target function
 				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+
+				if (!final_reservoir_sample.is_envmap_path())
+					// Applying the jacobian to get "p_hat_from_i"
+					target_function_at_neighbor *= hippt::max(0.0f, get_jacobian_determinant_reconnection_shift(final_reservoir_sample.sample_point, final_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
+			}
 			else
 				// ReSTIR DI target function
 				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
@@ -176,7 +182,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsRe
 				if (neighbor == selected_neighbor)
 					// Not multiplying by M here, this was done already when resampling the sample if we
 					// we're using confidence weights
-					out_normalization_nume += target_function_at_neighbor;
+					out_normalization_nume = target_function_at_neighbor;
 				out_normalization_denom += target_function_at_neighbor * M;
 			};
 		}
