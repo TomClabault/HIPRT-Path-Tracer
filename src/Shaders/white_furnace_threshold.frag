@@ -58,9 +58,9 @@ void main()
 	// Scaling by sample count
 	final_color = final_color / float(u_sample_number);
 	
-	if ((final_color.r > 0.51f || final_color.g > 0.51f || final_color.b > 0.51f) && u_use_high_threshold)
+	if ((final_color.r > 0.505f || final_color.g > 0.505f || final_color.b > 0.505f) && u_use_high_threshold)
 		final_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-	else if ((final_color.r < 0.49f || final_color.g < 0.49f || final_color.b < 0.49f) && u_use_low_threshold)
+	else if ((final_color.r < 0.495f || final_color.g < 0.495f || final_color.b < 0.495f) && u_use_low_threshold)
 		final_color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
 		
 	if (u_do_tonemapping == 1)

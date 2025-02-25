@@ -159,11 +159,22 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 					// Because we're using the target function as a PDF here, we need to scale the PDF
 					// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
 					if (!center_pixel_reservoir_sample.is_envmap_path())
+					{
 						// If this is an envmap path the jacobian is just 1 so this is not needed
-						//
-						// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
-						// and has been rejected), the target function is set to 0
-						target_function_center_reservoir_at_neighbor *= hippt::max(0.0f, get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.visible_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
+
+						if (target_function_center_reservoir_at_neighbor > 0.0f)
+						{
+							// Only doing this if we at least have a target function to scale by the jacobian
+
+							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.visible_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							if (jacobian == -1.0f)
+								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
+								// and has been rejected), the target function is set to 0
+								target_function_center_reservoir_at_neighbor = 0.0f;
+							else
+								target_function_center_reservoir_at_neighbor /= jacobian;
+						}
+					}
 				}
 				else
 					// ReSTIR DI target function
@@ -172,8 +183,18 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 				float nume_mc = target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
 				float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
 
+				float confidence_weights_multiplier;
+				if (use_confidence_weights)
+				{
+					if (neighbors_confidence_sum == 0.0f)
+						confidence_weights_multiplier = 0.0f;
+					else
+						confidence_weights_multiplier = reservoir_resampled_M / neighbors_confidence_sum;
+				}
+				else
+					confidence_weights_multiplier = 1.0f;
+
 				// (Eq. 7.7 of "A Gentle Introduction to ReSTIR"), c_j / (Sum_{k!=c}^M c_k)
-				float confidence_weights_multiplier = use_confidence_weights ? reservoir_resampled_M / neighbors_confidence_sum : 1;
 				if (denom_mc != 0.0f)
 					mc += nume_mc / denom_mc / valid_neighbor_division_term * confidence_weights_multiplier;
 			}

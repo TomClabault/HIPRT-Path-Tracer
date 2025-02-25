@@ -107,7 +107,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + (render_data.render_settings.DEBUG_DO_ONLY_NEIGHBOR ? 0 : 1); neighbor_index++)
 	{
-		// TODO DEBUG UNCOMMENT THIS
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
 		// We can already check whether or not this neighbor is going to be
 		// accepted at all by checking the heuristic cache
@@ -192,10 +191,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_function / shift_mapping_jacobian,
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
-			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc,/* resampling canonical */ is_center_pixel, random_number_generator);
 #elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
