@@ -154,17 +154,17 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 				if constexpr (IsReSTIRGI)
 				{
 					// ReSTIR GI target function
-
 					target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					
 					// Because we're using the target function as a PDF here, we need to scale the PDF
 					// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
-					if (!center_pixel_reservoir_sample.is_envmap_path())
-					{
-						// If this is an envmap path the jacobian is just 1 so this is not needed
 
-						if (target_function_center_reservoir_at_neighbor > 0.0f)
+					// Only doing this if we at least have a target function to scale by the jacobian
+					if (target_function_center_reservoir_at_neighbor > 0.0f)
+					{
+						if (!center_pixel_reservoir_sample.is_envmap_path())
 						{
-							// Only doing this if we at least have a target function to scale by the jacobian
+							// If this is an envmap path the jacobian is just 1 so this is not needed
 
 							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.visible_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 							if (jacobian == -1.0f)
@@ -280,8 +280,30 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_D
 
 				float target_function_center_reservoir_at_neighbor;
 				if constexpr (IsReSTIRGI)
+				{
 					// ReSTIR GI target function
 					target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+
+					// Because we're using the target function as a PDF here, we need to scale the PDF
+					// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
+
+					// Only doing this if we at least have a target function to scale by the jacobian
+					if (target_function_center_reservoir_at_neighbor > 0.0f)
+					{
+						if (!center_pixel_reservoir_sample.is_envmap_path())
+						{
+							// If this is an envmap path the jacobian is just 1 so this is not needed
+
+							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.visible_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							if (jacobian == -1.0f)
+								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
+								// and has been rejected), the target function is set to 0
+								target_function_center_reservoir_at_neighbor = 0.0f;
+							else
+								target_function_center_reservoir_at_neighbor /= jacobian;
+						}
+					}
+				}
 				else
 					// ReSTIR DI target function
 					target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);

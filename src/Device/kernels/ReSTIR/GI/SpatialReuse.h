@@ -151,7 +151,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir = shift_sample_reconnection_shift(neighbor_reservoir, shift_mapping_jacobian, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 		if (shift_mapping_jacobian == -1.0f)
 			// Neighbor rejected because the jacobian are too dissimilar
-			continue;
+			shift_mapping_jacobian = 0.0f;
 
 		float target_function_at_center = 0.0f;
 		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
@@ -204,7 +204,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
-			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
