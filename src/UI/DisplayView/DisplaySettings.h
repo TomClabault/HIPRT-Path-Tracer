@@ -19,7 +19,7 @@ struct DisplaySettings
 	float blend_override = -1.0f;
 
 	// Whether or not to do tonemapping for display fragment shader that support it
-	bool do_tonemapping = false;
+	bool do_tonemapping = true;
 	// Tone mapping gamma
 	float tone_mapping_gamma = 2.2f;
 	// Tone mapping exposure

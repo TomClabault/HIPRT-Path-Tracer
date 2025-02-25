@@ -264,7 +264,7 @@ struct CPUMaterial
     float specular_darkening = 0.0f;
     // Whether or not to do energy compensation of the specular/diffuse layer
     // for that material
-    bool do_specular_energy_compensation = false;
+    bool do_specular_energy_compensation = true;
 
     float coat = 0.0f;
     ColorRGB32F coat_medium_absorption = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
