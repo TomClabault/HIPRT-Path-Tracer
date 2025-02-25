@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect(con
  * Equation 15
  */
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F,
                                                                                 const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
                                                                                 float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                                 int current_bounce)
@@ -120,14 +120,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
                 // Just an additional check that we indeed have the incident light
                 // direction aligned with the perfect reflection direction
                 //
-                // This additional check is mainly useful for ReSTIR DI where we need
+                // This additional check is mainly useful for ReSTIR where we need
                 // to evaluate the BRDF with a sample that may have been sampled from
-                // a delta distribution (so it checks all the boxes for the shortcut
+                // a delta distribution at a neighbor (so it checks all the boxes for the shortcut
                 // and we could just quickly return MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE
-                // but because that sample wasn't sampeld at the current pixel, there
+                // but because that sample wasn't sampled at the current pixel, there
                 // is a good chance that it doesn't actually align with the perfect
-                // reflection direction = it doesn't align with the specular peak = 0
-                // contribution
+                // reflection direction = it doesn't align with the specular peak = 0 contribution
 
                 out_pdf = 0.0f;
                 return ColorRGB32F(0.0f);

@@ -185,6 +185,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_fresnel(const Dev
  * Returns the relative IOR as "A /B"
  * with A the IOR of the specular layer
  * and B the IOR of the layer (or medium) above the specular layer
+ * 
+ * 'incident_medium_ior' should be the IOR of the medium in which the object is (i.e. the air most likely)
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior)
 {

@@ -40,6 +40,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float full_fresnel_dielectric(float cos_theta_i, float relative_eta)
 {
+    if (hippt::abs(1.0f - relative_eta) < 1.0e-4f)
+        // relative_eta of 1, no fresnel
+        return 0.0f;
+
     // Computing cos_theta_t
     float sin_theta_i2 = 1.0f - cos_theta_i * cos_theta_i;
     float sin_theta_t2 = sin_theta_i2 / (relative_eta * relative_eta);

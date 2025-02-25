@@ -154,12 +154,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     // Estimating with a throughput of 1.0f here because we're going to apply the throughput ourselves
                     ColorRGB32F direct_lighting_estimation = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
                     // Updating the cumulated outgoing radiance of our path to the visible point
-                    // TODO here should this be render_data.render_settings.direct_contribution_clamp instead of render_data.render_settings.indirect_contribution_clamp?
                     outgoing_radiance_to_visible_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_visible_point, render_data.render_settings.indirect_contribution_clamp, bounce);
 
                     if (bounce > 1)
                         // Updating the cumulated outgoing radiance of our path to the sample point
-                        // TODO here should this be render_data.render_settings.direct_contribution_clamp instead of render_data.render_settings.indirect_contribution_clamp?
                         outgoing_radiance_to_sample_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_sample_point, render_data.render_settings.indirect_contribution_clamp, bounce);
                 }
                 else if (render_data.render_settings.enable_direct)
