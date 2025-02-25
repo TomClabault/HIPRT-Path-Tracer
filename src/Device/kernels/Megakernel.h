@@ -126,7 +126,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
                 bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator);
                 if (!valid_indirect_bounce)
-                    // Bad BSDF sample (under the surafce), killed by russian roulette, ...
+                    // Bad BSDF sample (under the surface), killed by russian roulette, ...
                     break;
             }
             else

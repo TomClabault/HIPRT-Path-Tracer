@@ -2146,10 +2146,10 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			"For high roughness clearcoats/specular layers, the situation is the same as for metals: "
 			"0 should be good enough as long as there are not too many concentrated inter-reflections "
 			"(in which case, a higher value, 4+, is going to be preferred).");
-		setting_changed |= ImGui::SliderInt("Glass energy conservation max bounce", &render_data.bsdfs_data.glass_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
-		setting_changed |= ImGui::SliderInt("Clearcoat energy conservation max bounce", &render_data.bsdfs_data.clearcoat_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
-		setting_changed |= ImGui::SliderInt("Specular/diffuse energy conservation max bounce", &render_data.bsdfs_data.glossy_base_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
-		setting_changed |= ImGui::SliderInt("Metallic energy conservation max bounce", &render_data.bsdfs_data.metal_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
+		setting_changed |= ImGui::SliderInt("Glass", &render_data.bsdfs_data.glass_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
+		setting_changed |= ImGui::SliderInt("Clearcoat", &render_data.bsdfs_data.clearcoat_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
+		setting_changed |= ImGui::SliderInt("Specular/diffuse", &render_data.bsdfs_data.glossy_base_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
+		setting_changed |= ImGui::SliderInt("Metallic", &render_data.bsdfs_data.metal_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
 		if (setting_changed)
 			m_render_window->set_render_dirty(true);
 
