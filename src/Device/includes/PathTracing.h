@@ -40,11 +40,11 @@ HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData&
 /**
  * Returns the new ray throughput after attenuation of the given 'current_throughput'
  */
-HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F current_throughput, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator, bool apply_russian_roulette = true)
+HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F current_throughput, float& rr_throughput_scaling, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator, bool apply_russian_roulette = true)
 {
     ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
     // Russian roulette
-    if (!do_russian_roulette(render_data.render_settings, ray_payload.bounce, current_throughput, throughput_attenuation, random_number_generator) && apply_russian_roulette)
+    if (apply_russian_roulette && !do_russian_roulette(render_data.render_settings, ray_payload.bounce, current_throughput, rr_throughput_scaling, throughput_attenuation, random_number_generator))
         return ColorRGB32F(0.0f);
 
     // Dispersion ray throughput filter
@@ -54,6 +54,15 @@ HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData
     ray_payload.next_ray_state = RayState::BOUNCE;
 
     return current_throughput;
+}
+
+/**
+ * Returns the new ray throughput after attenuation of the given 'current_throughput'
+ */
+HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F current_throughput, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator, bool apply_russian_roulette = true)
+{
+    float unused_rr_throughput_scaling;
+    return path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, current_throughput, unused_rr_throughput_scaling, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator, apply_russian_roulette);
 }
 
 /**

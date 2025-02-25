@@ -10,8 +10,14 @@
 
 /**
  * Returns false if the ray should be killed.
+ * 
+ * This overload returns in 'throughput_scaling' the throughput scaling that
+ * has been applied to 'ray_throughput' to account for the russian roulette surviving
+ * probability
+ * 
+ * If russian roulette wasn't applied, 'throughput_scaling' is left untouched
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, float& throughput_scaling, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
 {
     if (bounce >= render_settings.russian_roulette_min_depth && render_settings.use_russian_roulette)
     {
@@ -34,18 +40,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSetting
             // Kill the ray
             return false;
 
-        float throughput_increase = 1.0f / survive_probability;
+        throughput_scaling = 1.0f / survive_probability;
         if (render_settings.russian_roulette_throughput_clamp > 0.0f)
             // Clamping the throughput increase to avoid fireflies by
             // rays that still pass the russian roulette with very low
             // probabilities
-            throughput_increase = hippt::min(throughput_increase, render_settings.russian_roulette_throughput_clamp);
-        
-        ray_throughput *= throughput_increase;
+            throughput_scaling = hippt::min(throughput_scaling, render_settings.russian_roulette_throughput_clamp);
+
+        ray_throughput *= throughput_scaling;
     }
 
     // The ray survived
     return true;
+}
+
+/**
+ * Returns false if the ray should be killed.
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
+{
+    float unused_throughput_scaling;
+    return do_russian_roulette(render_settings, bounce, ray_throughput, unused_throughput_scaling, current_weight, random_number_generator);
 }
 
 #endif
