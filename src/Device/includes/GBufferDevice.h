@@ -13,7 +13,7 @@
 // Structure of arrays for the data contained in the pixels of the GBuffer
 // 
 // If you want the roughness of the pixel (X, Y) = [50, 0] for example,
-// get it at materials[50].roughness
+// get it at materials[50].get_roughness()
 struct GBufferDevice
 {
 	HIPRT_HOST_DEVICE float3 get_view_direction(float3 camera_position, int pixel_index) const
