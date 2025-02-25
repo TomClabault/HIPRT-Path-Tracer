@@ -45,7 +45,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRende
 #elif BSDFOverride == BSDF_LAMBERTIAN
 	return lambertian_brdf_eval(material, hippt::dot(to_light_direction, shading_normal), pdf);
 #elif BSDFOverride == BSDF_OREN_NAYAR
-	return oren_nayar_brdf_eval<0>(material, view_direction, shading_normal, to_light_direction, pdf);
+	return oren_nayar_brdf_eval(material, view_direction, shading_normal, to_light_direction, pdf);
 #endif
 }
 

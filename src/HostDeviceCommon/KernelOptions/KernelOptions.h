@@ -126,7 +126,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_NONE
+#define BSDFOverride BSDF_OREN_NAYAR
 
 /**
  * The stack size for handling nested dielectrics
@@ -248,8 +248,8 @@
  * 
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-#define PathSamplingStrategy PSS_BSDF
-//#define PathSamplingStrategy PSS_RESTIR_GI
+//#define PathSamplingStrategy PSS_BSDF
+#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
