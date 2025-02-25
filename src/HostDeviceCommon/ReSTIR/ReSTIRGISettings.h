@@ -64,8 +64,8 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 1;
-		common_spatial_pass.reuse_radius = 4;
-		common_spatial_pass.reuse_neighbor_count = 2;
+		common_spatial_pass.reuse_radius = 16;
+		common_spatial_pass.reuse_neighbor_count = 16;
 
 		common_spatial_pass.do_disocclusion_reuse_boost = false;
 		common_spatial_pass.disocclusion_reuse_count = 5;
@@ -73,7 +73,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.debug_neighbor_location = false;
 		common_spatial_pass.debug_neighbor_location_direction = 1;
 
-		common_spatial_pass.do_neighbor_rotation = false;
+		common_spatial_pass.do_neighbor_rotation = true;
 
 		common_spatial_pass.allow_converged_neighbors_reuse = false;
 		common_spatial_pass.converged_neighbor_reuse_probability = 0.5f;
@@ -84,22 +84,22 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 
 
-		neighbor_similarity_settings.use_normal_similarity_heuristic = false;
+		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
 
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 25.0f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
 
-		neighbor_similarity_settings.use_plane_distance_heuristic = false;
+		neighbor_similarity_settings.use_plane_distance_heuristic = true;
 		neighbor_similarity_settings.plane_distance_threshold = 0.1f;
 
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 		neighbor_similarity_settings.roughness_similarity_threshold = 0.25f;
 
 		use_jacobian_rejection_heuristic = true;
-		jacobian_rejection_threshold = 200000000.000f;
+		jacobian_rejection_threshold = 15.0f;
 
 		m_cap = 3;
-		use_confidence_weights = false;
+		use_confidence_weights = true;
 
 		debug_view = ReSTIRGIDebugView::NO_DEBUG;
 		debug_view_scale_factor = 0.04f;

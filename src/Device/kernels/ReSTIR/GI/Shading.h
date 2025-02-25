@@ -160,7 +160,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         }
     }
 
-    if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+    /*if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
 #ifndef __KERNELCC__
         if (render_data.render_settings.sample_number % 2 == 0)
 #else
@@ -176,7 +176,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             }
 
             printf("\n");
-        }
+        }*/
 
     // Setting the 'camera_outgoing_radiance' into the ray color just for the call to 'sanity_check'
     ray_payload.ray_color = camera_outgoing_radiance;
