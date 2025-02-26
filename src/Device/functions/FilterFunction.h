@@ -51,6 +51,7 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 	float composited_alpha = alpha_opacity * base_color_alpha;
 
 	if ((*payload->random_number_generator)() < composited_alpha)
+		// Alpha test not passing, the ray is blocked
 		return false;
 
 	// No tests stopped the ray, that's not a hit.

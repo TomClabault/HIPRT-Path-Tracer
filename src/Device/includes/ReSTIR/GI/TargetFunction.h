@@ -72,7 +72,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	visibility_ray.origin = surface.shading_point;
 	visibility_ray.direction = incident_light_direction;
 
-	bool sample_point_occluded = evaluate_shadow_ray(render_data, visibility_ray, distance_to_sample_point, surface.last_hit_primitive_index, 0, random_number_generator);
+	Xorshift32Generator random_number_generator_alpha_test(sample.visible_to_sample_point_alpha_test_random_seed);
+	bool sample_point_occluded = evaluate_shadow_ray(render_data, visibility_ray, distance_to_sample_point, surface.last_hit_primitive_index, 0, random_number_generator_alpha_test);
 	if (sample_point_occluded)
 		return 0.0f;
 	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f)
