@@ -112,7 +112,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
         if (ray_payload.next_ray_state != RayState::MISSED)
         {
             if (bounce > 0)
+            {
+                if (bounce == 1)
+                    // This is going to be tracing the ray from the visible point to the sample:
+                    // we're saving the random seed used during the BVH traversal to be able to reproduce
+                    // alpha tests
+                    restir_gi_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+
                 intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, mis_reuse, random_number_generator);
+            }
 
             if (intersection_found)
             {
@@ -160,9 +168,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                         // Updating the cumulated outgoing radiance of our path to the sample point
                         outgoing_radiance_to_sample_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_sample_point, render_data.render_settings.indirect_contribution_clamp, bounce);
                 }
+#ifndef __KERNELCC__
                 else if (render_data.render_settings.enable_direct)
-                    // Advancing the random number generation just to match non-ReSTIR GI path tracing in terms of randomness
-                    random_number_generator();
+                {
+                    // This here is only for debugging
+
+                    // Just a dummy call to estimate direct lighting here such that the random number generator state
+                    // advances. This is to match non-ReSTIR GI path tracing in terms of randomness
+                    //
+                    // There is no point in doing this but to debug ReSTIR GI and make sure that it produces pixel-perfect identical result
+                    // to classical path tracing so we're only defining this on the CPU (#ifndef __KERNELCC__)
+                    estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+                }
+#endif
 
                 float bsdf_pdf;
                 BSDFIncidentLightInfo incident_light_info;

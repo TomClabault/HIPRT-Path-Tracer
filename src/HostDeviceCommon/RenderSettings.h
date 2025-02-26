@@ -35,7 +35,7 @@ struct HIPRTRenderSettings
 	static constexpr int SAMPLE_STOP = 4096;
 
 	// TODO DEBUG REMOVE THIS
-	bool enable_direct = false;
+	bool enable_direct = true;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	bool debug_lambertian = false;
@@ -95,7 +95,7 @@ struct HIPRTRenderSettings
 	// 1 is direct light only.
 	int nb_bounces = 3000;
 
-	bool use_russian_roulette = true;
+	bool use_russian_roulette = false;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to russian roulette termination

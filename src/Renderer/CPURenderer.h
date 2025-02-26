@@ -78,6 +78,7 @@ public:
     void configure_ReSTIR_GI_initial_candidates_pass();
     void configure_ReSTIR_GI_temporal_pass();
     void configure_ReSTIR_GI_spatial_pass(int spatial_reuse_pass_index);
+    void configure_ReSTIR_GI_shading_pass();
     void configure_ReSTIR_GI_output_buffer();
 
     void launch_ReSTIR_GI_initial_candidates_pass();
@@ -154,6 +155,8 @@ private:
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;
 
+    // Random seed used for the whole frame when launching the camera rays kernel
+    unsigned int m_camera_rays_random_seed;
     Camera m_camera;
     HIPRTRenderData m_render_data;
 };

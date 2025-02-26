@@ -45,8 +45,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 85
-#define DEBUG_PIXEL_Y 111
+#define DEBUG_PIXEL_X 122
+#define DEBUG_PIXEL_Y 58
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -530,6 +530,9 @@ void CPURenderer::nee_plus_plus_cache_visibility_pass()
 
 void CPURenderer::camera_rays_pass()
 {
+    m_camera_rays_random_seed = m_rng.xorshift32();
+    m_render_data.random_number = m_camera_rays_random_seed;
+
     debug_render_pass([this](int x, int y) {
         CameraRays(m_render_data, x, y);
     });
@@ -607,7 +610,9 @@ LightPresamplingParameters CPURenderer::configure_ReSTIR_DI_light_presampling_pa
 
     parameters.freeze_random = m_render_data.render_settings.freeze_random;
     parameters.sample_number = m_render_data.render_settings.sample_number;
-    parameters.random_number = m_rng.xorshift32();
+
+    m_render_data.random_number = m_rng.xorshift32();
+    parameters.random_number = m_render_data.random_number;
 
     // For each presampled light, the probability that this is going to be an envmap sample
     parameters.envmap_sampling_probability = m_render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
@@ -803,6 +808,8 @@ void CPURenderer::launch_ReSTIR_DI_spatiotemporal_reuse_pass()
 
 void CPURenderer::tracing_pass()
 {
+    m_render_data.random_number = m_camera_rays_random_seed;
+
     debug_render_pass([this](int x, int y) {
         MegaKernel(m_render_data, x, y);
     });
@@ -810,11 +817,14 @@ void CPURenderer::tracing_pass()
 
 void CPURenderer::configure_ReSTIR_GI_initial_candidates_pass()
 {
+    m_render_data.random_number = m_camera_rays_random_seed;
+
     m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
 }
 
 void CPURenderer::configure_ReSTIR_GI_temporal_pass()
 {
+    m_render_data.random_number = m_rng.xorshift32();
     // The temporal reuse pass reads into the output of the spatial pass of the last frame + the initial candidates
     // and outputs in the 'temporal buffer'
     m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_restir_gi_state.initial_candidates_reservoirs.data();
@@ -823,6 +833,7 @@ void CPURenderer::configure_ReSTIR_GI_temporal_pass()
 
 void CPURenderer::configure_ReSTIR_GI_spatial_pass(int spatial_reuse_pass_index)
 {
+    m_render_data.random_number = m_rng.xorshift32();
     // The spatial reuse pass spatially reuse on the output of the temporal pass in the 'temporal buffer' and
     // stores in the 'spatial buffer'
     if (m_render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
@@ -830,6 +841,11 @@ void CPURenderer::configure_ReSTIR_GI_spatial_pass(int spatial_reuse_pass_index)
     else
         m_render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs = m_restir_gi_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs = m_restir_gi_state.spatial_reservoirs.data();
+}
+
+void CPURenderer::configure_ReSTIR_GI_shading_pass()
+{
+    m_render_data.random_number = m_camera_rays_random_seed;
 }
 
 void CPURenderer::configure_ReSTIR_GI_output_buffer()
@@ -871,6 +887,8 @@ void CPURenderer::launch_ReSTIR_GI_spatial_reuse_pass(int spatial_reuse_pass_ind
 
 void CPURenderer::launch_ReSTIR_GI_shading_pass()
 {
+    configure_ReSTIR_GI_shading_pass();
+
     debug_render_pass([this](int x, int y) {
         ReSTIR_GI_Shading(m_render_data, x, y);
     });
