@@ -155,34 +155,60 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 	return render_data_invalidated;
 }
 
-bool ReSTIRGIRenderPass::launch()
+void ReSTIRGIRenderPass::configure_initial_candidates_pass()
 {
-	if (!is_render_pass_used())
-		return false;
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+}
 
-	int2 render_resolution = m_renderer->m_render_resolution;
+static unsigned int seed;
+
+void ReSTIRGIRenderPass::launch_initial_candidates_pass()
+{
 	void* launch_args[] = { m_render_data };
 
-	configure_input_output_buffers();
-
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	seed = m_render_data->random_number;
 	if (m_render_data->render_settings.nb_bounces > 0)
 		// We only need to trace paths for the initial candidates if we have
 		// more than 1 bounce
-		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+}
 
+void ReSTIRGIRenderPass::configure_temporal_reuse_pass()
+{
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+}
+
+void ReSTIRGIRenderPass::launch_temporal_reuse_pass()
+{
+	void* launch_args[] = { m_render_data };
+
 	if (m_renderer->get_render_settings().restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
-		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+}
 
+void ReSTIRGIRenderPass::configure_spatial_reuse_pass()
+{
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+}
+
+void ReSTIRGIRenderPass::launch_spatial_reuse_pass()
+{
+	void* launch_args[] = { m_render_data };
+
 	if (m_renderer->get_render_settings().restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
-		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+}
 
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
-	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+void ReSTIRGIRenderPass::configure_shading_pass()
+{
+	m_render_data->random_number = seed;
+}
 
-	return true;
+void ReSTIRGIRenderPass::launch_shading_pass()
+{
+	void* launch_args[] = { m_render_data };
+
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
 void ReSTIRGIRenderPass::configure_input_output_buffers()
@@ -210,6 +236,28 @@ void ReSTIRGIRenderPass::configure_input_output_buffers()
 		render_data.render_settings.restir_gi_settings.restir_output_reservoirs = render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
 	else
 		render_data.render_settings.restir_gi_settings.restir_output_reservoirs = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
+}
+
+bool ReSTIRGIRenderPass::launch()
+{
+	if (!is_render_pass_used())
+		return false;
+
+	configure_input_output_buffers();
+
+	configure_initial_candidates_pass();
+	launch_initial_candidates_pass();
+
+	configure_temporal_reuse_pass();
+	launch_temporal_reuse_pass();
+	
+	configure_spatial_reuse_pass();
+	launch_spatial_reuse_pass();
+
+	configure_shading_pass();
+	launch_shading_pass();
+
+	return true;
 }
 
 void ReSTIRGIRenderPass::post_render_update()
