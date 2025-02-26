@@ -219,13 +219,15 @@
  * 
  *	- ESS_BINARY_SEARCH
  *		Importance samples a texel of the environment map proportionally to its
- *		luminance using a binary search on the CDF distributions of the envmap luminance
+ *		luminance using a binary search on the CDF distributions of the envmap luminance.
+ *		Good convergence.
  * 
  * - ESS_ALIAS_TABLE
  *		Importance samples a texel of the environment map proportionally to its
  *		luminance using an alias table for constant time sampling
+ *		Good convergence and faster than ESS_BINARY_SEARCH
  */
-#define EnvmapSamplingStrategy ESS_NO_SAMPLING
+#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
