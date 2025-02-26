@@ -40,6 +40,31 @@ void ImGuiRenderer::add_tooltip(const std::string& tooltip_text, ImGuiHoveredFla
 		ImGuiRenderer::wrapping_tooltip(tooltip_text);
 }
 
+bool ImGuiRenderer::ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips)
+{
+	if (ImGui::BeginCombo(combo_text.c_str(), items[*combo_value]))
+	{
+		for (int i = 0; i < items_count; i++)
+		{
+			const bool is_selected = (*combo_value == i);
+
+			if (ImGui::Selectable(items[i], is_selected))
+			{
+				*combo_value = i;
+
+				return true;
+			}
+			ImGuiRenderer::add_tooltip(tooltips[i]);
+
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	return false;
+}
+
 void ImGuiRenderer::wrapping_tooltip(const std::string& text)
 {
 	ImGui::SetNextWindowSize(ImVec2(ImGui::GetFontSize() * 32.0f, 0.0f));
