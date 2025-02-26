@@ -26,14 +26,14 @@ extern ImGuiLogger g_imgui_logger;
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
 
-
+// TODO immediate
+// - Lambertian ReSTIR GI 0 neighbors vs. BSDF different?
+// - Is not shading the second BSDF a big deal in ReSTIR GI?
 
 
 //  Global emission factor broken? Going to 0.9 and then back to 1.0 doesn't give the same results as staying at 1 (barbershop scene)
 // ReSTIR DI performance broken, probably reading in nullptr buffers?
 // Fix white furnace not passing cornell_dragons
-// Is 1/Z biased in the scandinavian studio diffuse area?
-// - furnace test with ReSTIR GI isn't passing
 
 // TODO ReSTIR GI
 // - possibility to read the visible positions from the G buffer instead of storing in the reservoir
@@ -103,7 +103,6 @@ extern ImGuiLogger g_imgui_logger;
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
 // - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
 // - Issue with Lambertian BRDF override and emissive material. Seems like backfacing emissive don't work?
-// - Adaptive sampling with ReSTIR GI broken, way too much darkening
 // - Fix compilation issues with global BRDFs overriders / different MIS weights schemes in ReSTIR
 
 // TODO Code Organization:

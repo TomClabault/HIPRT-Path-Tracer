@@ -1191,11 +1191,17 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::TreePush("Envmap sampling tree");
 
 			// Disabled if no envmap loaded
-			bool disabled = m_renderer->get_envmap().get_width() == 0;
+			bool envmap_sampling_disabled = m_renderer->get_envmap().get_width() == 0;
 
-			ImGui::BeginDisabled(disabled);
+			ImGui::BeginDisabled(envmap_sampling_disabled);
 			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search", "- Importance Sampling - Alias Table " };
-			if (ImGui::Combo("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			const char* tooltips[] = {
+				"The envmap will not be importance sampled. Should behave okay for low frequency envmaps but this is going to be extremely inefficient for high frequency envmaps.",
+				"Importance samples a texel of the environment map proportionally to its luminance using a binary search on the CDF distributions of the envmap luminance. Good convergence.",
+				"Importance samples a texel of the environment map proportionally to its luminance using an alias table for constant time sampling. Good convergence and faster than \"Binary Search\"."
+			};
+
+			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips))
 			{
 				ThreadManager::start_thread("RecomputeEnvmapSamplingStructure", [this]() {
 					m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get());
@@ -1206,7 +1212,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				ThreadManager::join_threads("RecomputeEnvmapSamplingStructure");
 			}
-			if (disabled)
+
+			if (envmap_sampling_disabled)
 				ImGuiRenderer::add_tooltip("Disabled because no envmap is loaded in the renderer.");
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING)
