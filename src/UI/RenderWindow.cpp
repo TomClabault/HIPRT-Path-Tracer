@@ -40,6 +40,7 @@ extern ImGuiLogger g_imgui_logger;
 // - memory coalescing aware spatial reuse pattern
 // - do adaptive radius spatial reuse --> also for ReSTIR DI? --> maybe start super wide to avoid spatial reuse patterns and progressively lower the reuse radius
 // - ReSTIR el cheapo?
+// - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - BSDF MIS Reuse for ReSTIR DI
 // - Fix spatial reuse pattern because the concentric circles created by Hammersley don't cover the neighborhood of the center pixel well at all --> white noise instead
 // - Force albedo to white for spatial reuse?
