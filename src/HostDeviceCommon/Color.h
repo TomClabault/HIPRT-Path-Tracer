@@ -88,6 +88,7 @@ struct ColorRGB32F
     HIPRT_HOST_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, b)); }
     HIPRT_HOST_DEVICE ColorRGB32F normalized() const { float length = sqrtf(r * r + g * g + b * b); return ColorRGB32F(r / length, g / length, b / length); }
 
+    HIPRT_HOST_DEVICE void max(const ColorRGB32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); }
     HIPRT_HOST_DEVICE static ColorRGB32F max(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b)); }
     HIPRT_HOST_DEVICE static ColorRGB32F min(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b)); }
 

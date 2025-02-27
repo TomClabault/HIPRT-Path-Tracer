@@ -142,7 +142,7 @@
  * 
  * Some more details in BSDFIncidentLightInfo.h
  */
-#define PrincipledBSDFDeltaDistributionEvaluationOptimization KERNEL_OPTION_FALSE
+#define PrincipledBSDFDeltaDistributionEvaluationOptimization KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 
