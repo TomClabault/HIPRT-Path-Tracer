@@ -23,7 +23,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {   
@@ -80,8 +80,8 @@ int main(int argc, char* argv[])
     render_window.run();
 #else
 
-    /*width = 319;
-    height = 173;*/
+    width = 639;
+    height = 346;
     g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "[%dx%d]: %d samples ; %d bounces\n\n", width, height, cmd_arguments.render_samples, cmd_arguments.bounces);
 
     CPURenderer cpu_renderer(width, height);
