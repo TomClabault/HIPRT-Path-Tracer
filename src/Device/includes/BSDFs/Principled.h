@@ -342,10 +342,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
 
     float3 local_half_vector;
+#if PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE
+    // We have this #if here because if we're not using the delta distribution
+    // optimizations, any incident light direction given to the BSDF is going to be evaluated
+    // and so the half vector won't necessarily be (0, 0, 1).
+    //
+    // Any incident light direction may also be given with the optimizations ON but
+    // with the optimizations ON, any direction that doesn't align with the perfect
+    // reflection direction will be rejected (and contribute 0) so this is not an issue
     if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP)
         // Fast path for specular glass
         local_half_vector = make_float3(0.0f, 0.0f, 1.0f);
     else
+#endif
     {
         // Computing the generalized (that takes refraction into account) half vector
         if (reflecting)
