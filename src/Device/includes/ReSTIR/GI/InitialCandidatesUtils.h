@@ -42,12 +42,20 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
         // Dispersion ray throughput filter
         ray_throughput_to_visible_point *= dispersion_throughput;
         ray_throughput_to_visible_point *= throughput_attenuation;
+        // Clamp every component to a minimum of 1.0e-5f to avoid numerical instabilities that can
+        // happen: with some material, the throughput can get so low that it becomes denormalized and
+        // this can cause issues in some parts of the renderer (most notably the NaN detection)
+        ray_throughput_to_visible_point.max(ColorRGB32F(1.0e-5f, 1.0e-5f, 1.0e-5f));
 
         if (ray_payload.bounce > 1)
         {
             // Also updating the throughput to the sample point
             ray_throughput_to_sample_point *= dispersion_throughput;
             ray_throughput_to_sample_point *= throughput_attenuation;
+            // Clamp every component to a minimum of 1.0e-5f to avoid numerical instabilities that can
+            // happen: with some material, the throughput can get so low that it becomes denormalized and
+            // this can cause issues in some parts of the renderer (most notably the NaN detection)
+            ray_throughput_to_sample_point.max(ColorRGB32F(1.0e-5f, 1.0e-5f, 1.0e-5f));
         }
     }
     else
@@ -59,6 +67,10 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
 
     ray_payload.throughput *= dispersion_throughput;
     ray_payload.throughput *= throughput_attenuation;
+    // Clamp every component to a minimum of 1.0e-5f to avoid numerical instabilities that can
+    // happen: with some material, the throughput can get so low that it becomes denormalized and
+    // this can cause issues in some parts of the renderer (most notably the NaN detection)
+    ray_payload.throughput.max(ColorRGB32F(1.0e-5f, 1.0e-5f, 1.0e-5f));
 
     return true;
 }

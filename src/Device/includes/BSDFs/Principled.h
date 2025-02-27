@@ -342,19 +342,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
 
     float3 local_half_vector;
-#if PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE
-    // We have this #if here because if we're not using the delta distribution
-    // optimizations, any incident light direction given to the BSDF is going to be evaluated
-    // and so the half vector won't necessarily be (0, 0, 1).
-    //
-    // Any incident light direction may also be given with the optimizations ON but
-    // with the optimizations ON, any direction that doesn't align with the perfect
-    // reflection direction will be rejected (and contribute 0) so this is not an issue
-    if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP)
+    if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
         // Fast path for specular glass
+        // 
+        // Note that we check for 'PrincipledBSDFDeltaDistributionEvaluationOptimization' because if we're not using the delta distribution
+        // optimizations, any incident light direction given to the BSDF is going to be evaluated
+        // and so the half vector won't necessarily be (0, 0, 1).
+        //
+        // Any incident light direction may also be given with the optimizations ON but
+        // with the optimizations ON, any direction that doesn't align with the perfect
+        // reflection direction will be rejected (and contribute 0) so this is not an issue
         local_half_vector = make_float3(0.0f, 0.0f, 1.0f);
     else
-#endif
     {
         // Computing the generalized (that takes refraction into account) half vector
         if (reflecting)
@@ -1189,17 +1188,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights_fringe_fix
         out_outside_object = true;
     }
 
-    principled_bsdf_get_lobes_weights(material, out_outside_object, 
+    principled_bsdf_get_lobes_weights(material,
+                                      out_outside_object, 
                                       out_coat_weight, out_sheen_weight, 
                                       out_metal_1_weight, out_metal_2_weight, 
                                       out_specular_weight, out_diffuse_weight, 
                                       out_glass_weight, out_diffuse_transmission_weight);
-
-    // TODO necessary?
-    //if (!out_outside_object)
-    //    // If inside the object, the glass lobe is the only existing lobe so it has weight
-    //    // 1.0f
-    //    out_glass_weight = 1.0f;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
@@ -1262,11 +1256,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 
     float coat_weight, sheen_weight, metal_1_weight, metal_2_weight;
     float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
-    principled_bsdf_get_lobes_weights(material, outside_object,
+
+    principled_bsdf_get_lobes_weights(material,
+                                      outside_object,
                                       coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
                                       specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight);
 
-    float incident_medium_ior = ray_volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(ray_volume_state.incident_mat_index);
     // For the given to_light_direction, normal, view_direction etc..., what's the probability
     // that the 'principled_bsdf_sample()' function would have sampled the lobe?
     float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;
@@ -1276,6 +1271,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 
                                              coat_proba, sheen_proba, metal_1_proba, metal_2_proba,
                                              specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba);
+
+    float incident_medium_ior = ray_volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(ray_volume_state.incident_mat_index);
 
     // Keeps track of the remaining light's energy as we traverse layers
     ColorRGB32F layers_throughput = ColorRGB32F(1.0f);
@@ -1351,7 +1348,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     float glass_sampling_weight;
     float diffuse_transmission_weight;
     principled_bsdf_get_lobes_weights_fringe_fix(material, view_direction,
-        shading_normal, geometric_normal, normal,
+        shading_normal, geometric_normal, normal, 
         outside_object,
         coat_sampling_weight, sheen_sampling_weight,
         metal_1_sampling_weight, metal_2_sampling_weight,
