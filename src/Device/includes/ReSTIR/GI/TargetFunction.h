@@ -34,7 +34,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 		// point and the reconnection point
 		incident_light_direction = hippt::normalize(sample.sample_point - surface.shading_point);
 
-	if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f)
+	if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f && sample.incident_light_info_at_visible_point != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
 		return 0.0f;
 
 	float bsdf_pdf;
@@ -77,7 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	bool sample_point_occluded = evaluate_shadow_ray(render_data, visibility_ray, distance_to_sample_point, surface.last_hit_primitive_index, 0, random_number_generator_alpha_test);
 	if (sample_point_occluded)
 		return 0.0f;
-	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f)
+	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f && sample.incident_light_info_at_visible_point != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
 		return 0.0f;
 
 	float bsdf_pdf;
