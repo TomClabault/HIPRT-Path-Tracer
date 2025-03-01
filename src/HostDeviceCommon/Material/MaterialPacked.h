@@ -7,8 +7,8 @@
 #define HOST_DEVICE_COMMON_MATERIAL_PACKED_H
 
 #include "HostDeviceCommon/Packing.h"
+#include "HostDeviceCommon/Material/MaterialConstants.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
-#include "HostDeviceCommon/Material/MaterialUtils.h"
 
  /**
   * Packed material for use in the shaders
@@ -565,7 +565,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         if (!out.emissive_texture_used)
             out.emission = this->get_emission();
 
-        if (out.base_color_texture_index == MaterialUtils::NO_TEXTURE)
+        if (out.base_color_texture_index == MaterialConstants::NO_TEXTURE)
             out.base_color = this->get_base_color();
 
         out.roughness = this->get_roughness();
@@ -573,7 +573,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
         // Parameters for Adobe 2023 F82-tint model
         out.metallic = this->get_metallic();
-        if (out.metallic > 0.0f || out.metallic_texture_index != MaterialUtils::NO_TEXTURE || out.roughness_metallic_texture_index != MaterialUtils::NO_TEXTURE)
+        if (out.metallic > 0.0f || out.metallic_texture_index != MaterialConstants::NO_TEXTURE || out.roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
         {
             // We only need to unpack all of this if we actually have a metallic lobe
 
@@ -595,7 +595,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
         // Specular intensity
         out.specular = this->get_specular();
-        if (out.specular > 0.0f || out.specular_texture_index != MaterialUtils::NO_TEXTURE)
+        if (out.specular > 0.0f || out.specular_texture_index != MaterialConstants::NO_TEXTURE)
         {
             // Specular tint intensity. 
             // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
@@ -613,7 +613,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         }
 
         out.coat = this->get_coat();
-        if (out.coat > 0.0f || out.coat_texture_index != MaterialUtils::NO_TEXTURE)
+        if (out.coat > 0.0f || out.coat_texture_index != MaterialConstants::NO_TEXTURE)
         {
             out.coat_medium_absorption = this->get_coat_medium_absorption();
             // The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
@@ -640,7 +640,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         }
 
         out.sheen = this->get_sheen(); // Sheen strength
-        if (out.sheen > 0.0f || out.sheen_texture_index != MaterialUtils::NO_TEXTURE)
+        if (out.sheen > 0.0f || out.sheen_texture_index != MaterialConstants::NO_TEXTURE)
         {
             out.sheen_roughness = this->get_sheen_roughness();
             out.sheen_color = this->get_sheen_color();
@@ -650,7 +650,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         out.diffuse_transmission = this->get_diffuse_transmission();
         out.specular_transmission = this->get_specular_transmission();
 
-        if (out.specular_transmission > 0.0f || out.specular_transmission_texture_index != MaterialUtils::NO_TEXTURE)
+        if (out.specular_transmission > 0.0f || out.specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
         {
             // Specular transmission specific 
             out.dispersion_scale = this->get_dispersion_scale();
@@ -661,7 +661,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
             out.do_glass_energy_compensation = this->get_do_glass_energy_compensation();
 #endif
         }
-        if (out.specular_transmission > 0.0f || out.diffuse_transmission > 0.0f || out.specular_transmission_texture_index != MaterialUtils::NO_TEXTURE)
+        if (out.specular_transmission > 0.0f || out.diffuse_transmission > 0.0f || out.specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
         {
             // Also enabled by diffuse transmission as well as specular transmission
             
@@ -739,7 +739,7 @@ private:
     friend class DevicePackedTexturedMaterialSoACPUData;
 
     Uint2xPacked normal_map_emission_index;
-    // If the roughness_metallic texture index is not MaterialUtils::NO_TEXTURE, 
+    // If the roughness_metallic texture index is not MaterialConstants::NO_TEXTURE, 
     // then there is only one texture for the metallic and the roughness parameters in which.
     // case the green channel is the roughness and the blue channel is the metalness.
     Uint2xPacked base_color_roughness_metallic_index;

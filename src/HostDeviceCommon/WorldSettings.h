@@ -25,7 +25,7 @@ struct WorldSettings
 	unsigned int envmap_width = 0, envmap_height = 0;
 	// Simple scale multiplier on the envmap color read from the envmap texture
 	// in the shader
-	float envmap_intensity = 0.25f;
+	float envmap_intensity = 8.0f;
 	// If true, the background of the scene (where rays directly miss any geometry
 	// and we directly see the skysphere) will scale with the envmap_intensity coefficient.
 	// This can be visually unpleasing because the background will most likely

@@ -73,7 +73,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith(float alpha_x, float alpha_y, cons
  * sampling the microfacet distribution that is being evaluated by this function call
  * 
  * false otherwise (if 'local_to_light_direction' comes from light sampling NEE, or sampling another lobe of the BSDF, ...).
- * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialUtils::ROUGHNESS_CLAMP
+ * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialConstants::ROUGHNESS_CLAMP
  */
 template <bool useMultipleScatteringEnergyCompensation>
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
@@ -94,7 +94,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect(con
  * sampling the microfacet distribution that is being evaluated by this function call
  * 
  * false otherwise (if 'local_to_light_direction' comes from light sampling NEE, or sampling another lobe of the BSDF, ...).
- * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialUtils::ROUGHNESS_CLAMP
+ * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialConstants::ROUGHNESS_CLAMP
  * 
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 15
@@ -115,7 +115,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
             return ColorRGB32F(0.0f);
         else
         {
-            if (hippt::dot(reflect_ray(local_view_direction, make_float3(0.0f, 0.0f, 1.0f)), local_to_light_direction) < MaterialUtils::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD)
+            if (hippt::dot(reflect_ray(local_view_direction, make_float3(0.0f, 0.0f, 1.0f)), local_to_light_direction) < MaterialConstants::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD)
             {
                 // Just an additional check that we indeed have the incident light
                 // direction aligned with the perfect reflection direction
@@ -123,7 +123,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
                 // This additional check is mainly useful for ReSTIR where we need
                 // to evaluate the BRDF with a sample that may have been sampled from
                 // a delta distribution at a neighbor (so it checks all the boxes for the shortcut
-                // and we could just quickly return MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE
+                // and we could just quickly return MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE
                 // but because that sample wasn't sampled at the current pixel, there
                 // is a good chance that it doesn't actually align with the perfect
                 // reflection direction = it doesn't align with the specular peak = 0 contribution
@@ -132,8 +132,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
                 return ColorRGB32F(0.0f);
             }
 
-            out_pdf = MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE;
-            return ColorRGB32F(MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE) * F / hippt::abs(local_to_light_direction.z);
+            out_pdf = MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE;
+            return ColorRGB32F(MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE) * F / hippt::abs(local_to_light_direction.z);
         }
     }
 
@@ -188,7 +188,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
  * sampling the microfacet distribution that is being evaluated by this function call
  *
  * false otherwise(if 'local_to_light_direction' comes from light sampling NEE, or sampling another lobe of the BSDF, ...).
- * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialUtils::ROUGHNESS_CLAMP
+ * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialConstants::ROUGHNESS_CLAMP
  */
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
@@ -218,7 +218,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(con
     if (MaterialUtils::is_perfectly_smooth(roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
     {
         // Fast path for specular glass
-        bool incident_direction_is_perfect_refraction = hippt::dot(refract_ray(local_view_direction, make_float3(0.0f, 0.0f, 1.0f), relative_eta), local_to_light_direction) > MaterialUtils::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD;
+        bool incident_direction_is_perfect_refraction = hippt::dot(refract_ray(local_view_direction, make_float3(0.0f, 0.0f, 1.0f), relative_eta), local_to_light_direction) > MaterialConstants::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD;
         if (incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE && incident_direction_is_perfect_refraction)
         {
             // When the glass is perfectly smooth i.e. delta distribution, our only hope is to sample
@@ -227,9 +227,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(con
 
             // Just some high value because this is a delta distribution
             // And also, take fresnel into account
-            color = ColorRGB32F(MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE) * (ColorRGB32F(1.0f) - fresnel_reflectance) * material.base_color;
+            color = ColorRGB32F(MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE) * (ColorRGB32F(1.0f) - fresnel_reflectance) * material.base_color;
             color /= hippt::abs(NoL);
-            out_pdf = MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE;
+            out_pdf = MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE;
         }
         else
         {
@@ -334,7 +334,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_anisotropic_sample_microfacet(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
-    if (alpha_x <= MaterialUtils::ROUGHNESS_CLAMP && alpha_y <= MaterialUtils::ROUGHNESS_CLAMP)
+    if (alpha_x <= MaterialConstants::ROUGHNESS_CLAMP && alpha_y <= MaterialConstants::ROUGHNESS_CLAMP)
         // For delta GGX distribution, the sampled normal is always the same as the surface normal
         // (so (0, 0, 1) in local space
         //

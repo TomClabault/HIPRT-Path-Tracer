@@ -157,20 +157,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
-			target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator, true, x, y);
-
-			// TODO DEBUG UNCOMMENT THIS
-			//if (is_center_pixel)
-			//	// No need to evaluate the center sample at the center pixel, that's exactly
-			//	// the target function of the center reservoir
-			//	target_function_at_center = neighbor_reservoir.sample.target_function;
-			//else
-			//{
-			//	if (do_neighbor_target_function_visibility)
-			//		target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-			//	else
-			//		target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-			//}
+			if (is_center_pixel)
+				// No need to evaluate the center sample at the center pixel, that's exactly
+				// the target function of the center reservoir
+				target_function_at_center = neighbor_reservoir.sample.target_function;
+			else
+			{
+				if (do_neighbor_target_function_visibility)
+					target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+				else
+					target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+			}
 		}
 
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M

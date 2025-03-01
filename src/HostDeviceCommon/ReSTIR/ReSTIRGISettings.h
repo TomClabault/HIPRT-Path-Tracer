@@ -65,7 +65,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 1;
 		common_spatial_pass.reuse_radius = 16;
-		common_spatial_pass.reuse_neighbor_count = 16;
+		common_spatial_pass.reuse_neighbor_count = 20;
 
 		common_spatial_pass.do_disocclusion_reuse_boost = false;
 		common_spatial_pass.disocclusion_reuse_count = 5;
@@ -110,6 +110,13 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	ReSTIRGISpatialPassSettings spatial_pass;
 	
 	ReSTIRGIReservoir* restir_output_reservoirs = nullptr;
+
+	// If a neighbor has its sample point on a glossy surface, we don't want to reuse
+	// that sample with the reconnection shift if it is below a given roughness threshold because
+	// the BSDF at the neighbor's glossy sample point is going to evaluate to 0 anyways if we change
+	// its view direction
+	bool use_neighbor_sample_point_roughness_heuristic = true;
+	float neighbor_sample_point_roughness_threshold = 0.1f;
 
 	ReSTIRGIDebugView debug_view;
 	float debug_view_scale_factor;

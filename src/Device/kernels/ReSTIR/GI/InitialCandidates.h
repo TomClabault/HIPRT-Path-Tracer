@@ -236,7 +236,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
     restir_gi_initial_sample.outgoing_radiance_to_visible_point = outgoing_radiance_to_visible_point;
     restir_gi_initial_sample.outgoing_radiance_to_sample_point = outgoing_radiance_to_sample_point;
-    restir_gi_initial_sample.target_function = ReSTIR_GI_evaluate_target_function<true>(render_data, restir_gi_initial_sample, initial_surface, random_number_generator);
+    restir_gi_initial_sample.target_function = ReSTIR_GI_evaluate_target_function<true, false>(render_data, restir_gi_initial_sample, initial_surface, random_number_generator);
 
     float resampling_weight = 0.0f;
     float mis_weight = 1.0f;

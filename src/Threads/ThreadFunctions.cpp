@@ -73,7 +73,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
             break;
 
         case aiTextureType_DIFFUSE_ROUGHNESS:
-            if (parsed_scene.materials[material_indices[thread_index]].roughness_metallic_texture_index != MaterialUtils::NO_TEXTURE)
+            if (parsed_scene.materials[material_indices[thread_index]].roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
             {
                 // This means we have a packed metallic/roughness texture
                 nb_channels = 4;
@@ -107,7 +107,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
             {
                 // The emissive texture is constant color, we can then just not use that texture and use 
                 // the emission filed of the material to store the emission of the texture
-                parsed_scene.materials[material_index].emission_texture_index = MaterialUtils::CONSTANT_EMISSIVE_TEXTURE;
+                parsed_scene.materials[material_index].emission_texture_index = MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
 
                 ColorRGBA32F emission_rgba = texture.sample_rgba32f(make_float2(0, 0));
                 parsed_scene.materials[material_index].emission = ColorRGB32F(emission_rgba.r, emission_rgba.g, emission_rgba.b);
@@ -175,7 +175,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 //        CPUMaterial& material = parsed_scene.materials[i];
 //
 //        parsed_scene.material_has_opaque_base_color_texture[i] = true;
-//        if (material.base_color_texture_index != MaterialUtils::NO_TEXTURE)
+//        if (material.base_color_texture_index != MaterialConstants::NO_TEXTURE)
 //            // The material has a texture so checking if it is fully opaque or not
 //            parsed_scene.material_has_opaque_base_color_texture[i] = parsed_scene.textures[material.base_color_texture_index].is_fully_opaque();
 //    }

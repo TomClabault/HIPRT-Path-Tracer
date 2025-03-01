@@ -790,6 +790,17 @@ void ImGuiSettingsWindow::draw_environment_panel()
 			render_made_piggy |= ImGui::SliderFloat("Envmap intensity", (float*)&m_renderer->get_world_settings().envmap_intensity, 0.0f, 10.0f);
 			ImGui::TreePush("Envmap intensity tree");
 			render_made_piggy |= ImGui::Checkbox("Scale background intensity", (bool*)&m_renderer->get_world_settings().envmap_scale_background_intensity);
+			if (m_renderer->get_world_settings().envmap_intensity != 1.0f && !m_renderer->get_world_settings().envmap_scale_background_intensity)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Using a custom envmap intensity without scaling the background "
+					"intensity can result in discrepancies when looking at the envmap through a mirror or "
+					"transparent glass for example (glass with IOR 1.0f). In these rare cases, the envmap "
+					"will appear brighter through the objects than when viewed directly.\n"
+					"This is because scaling the envmap intensity without scaling how it appears to camera rays isn't "
+					"physically accurate.");
+			}
+
 			ImGui::TreePop();
 		}
 
@@ -1255,6 +1266,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGui::TreePush("ReSTIR GI options tree");
 
 				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage());
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION) == KERNEL_OPTION_FALSE)
+				{
+					ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
+					ImGuiRenderer::show_help_marker("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
+						"are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
+						"\nThis will manifest as some darkening (somewhat similar to rendering with less bounces) on perfectly specular surfaces (delta distributions).\n\n"
+						""
+						"Enable \"BSDF delta distribution optimization\" in \"Performance Settings\" --> \"General Settings\" to get rid of this issue.");
+				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::CollapsingHeader("General Settings"))
@@ -1373,6 +1393,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 	static bool use_normal_heuristic_backup = common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
 	static bool use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
 	static bool use_roughness_heuristic_backup = common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
+
+	// For ReSTIR GI only
+	static bool use_neighbor_sample_point_roughness_heuristic_backup = render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic;
 	static bool use_jacobian_heuristic_backup = render_settings.restir_gi_settings.use_jacobian_rejection_heuristic;
 
 	if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
@@ -1392,7 +1415,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			{
 				// Only disabling the jacobian heuristic if this is the ReSTIR GI Imgui interface
 				use_jacobian_heuristic_backup = render_settings.restir_gi_settings.use_jacobian_rejection_heuristic;
+				use_neighbor_sample_point_roughness_heuristic_backup = render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic;
+
 				render_settings.restir_gi_settings.use_jacobian_rejection_heuristic = false;
+				render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic = false;
 			}
 		}
 		else
@@ -1403,7 +1429,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
 
 			if constexpr (IsReSTIRGI)
+			{
 				render_settings.restir_gi_settings.use_jacobian_rejection_heuristic = use_jacobian_heuristic_backup;
+				render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic = use_neighbor_sample_point_roughness_heuristic_backup;
+			}
 		}
 
 		m_render_window->set_render_dirty(true);
@@ -1470,6 +1499,19 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 					m_render_window->set_render_dirty(true);
 				}
 			}
+
+			if (ImGui::Checkbox("Use sample point roughness heuristic", &render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("If the roughness of the neighbor's sample point is lower than this threshold, the neighbor "
+				"won't be reused\n"
+				"If the neighbor's sample point's roughness is higher than the threshold, it can be reused.\n"
+				"This is pretty much necessary to avoid \"bias\" (although this isn't stricly bias, more like extremely "
+				"high variance) when the primary hit (visible point) is on a rough surface and the secondary hit (sample point) is on a "
+				"specular surface: a rough primary hit bouncing into a window / mirror for example.");
+
+			if (render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic)
+				if (ImGui::SliderFloat("Min. neighbor roughness", &render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold, 0.0f, 1.0f))
+					m_render_window->set_render_dirty(true);
 		}
 		// ReSTIR DI Heursitics Tree
 		ImGui::TreePop();
@@ -2679,6 +2721,27 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			"Same with all the other lobes that can be delta distributions.\n\n"
 			""
 			"There is basically no point in disabling that, this is just for performance comparisons.");
+		if (!delta_distrib_opti && kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
+		{
+			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
+			ImGuiRenderer::show_help_marker("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
+				"are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
+				"\nThis will manifest as darkening on perfectly specular surfaces (delta distributions).\n\n"
+				""
+				"Enable \"BSDF delta distribution optimization\" to get rid of this issue.");
+		}
+
+		static bool direct_light_delta_distrib_opti = DirectLightSamplingDeltaDistributionOptimization;
+		if (ImGui::Checkbox("NEE delta distribution optimization", &direct_light_delta_distrib_opti))
+		{
+			kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION, direct_light_delta_distrib_opti ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			m_renderer->recompile_kernels();
+
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("If this is true, then NEE light samples will not even be attempted of delta distribution materials."
+			"This is because for delta distribution materials, an arbitrary incident light direction will always produce a 0-contribution outgoing radiance "
+			"so doing NEE with light samples on these materials is useless and we can save some computations here.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

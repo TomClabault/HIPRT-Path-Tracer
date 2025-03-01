@@ -342,7 +342,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
 
     float3 local_half_vector;
-    if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
+    if (scaled_roughness <= MaterialConstants::ROUGHNESS_CLAMP && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
         // Fast path for specular glass
         // 
         // Note that we check for 'PrincipledBSDFDeltaDistributionEvaluationOptimization' because if we're not using the delta distribution
