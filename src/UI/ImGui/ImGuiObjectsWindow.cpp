@@ -1161,7 +1161,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		{
 			ImGui::TreePush("Emission material tree");
 
-			bool emission_controlled_by_texture = material.emission_texture_index != MaterialUtils::NO_TEXTURE;
+			bool emission_controlled_by_texture = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
 			ImGui::BeginDisabled(emission_controlled_by_texture);
 			
 			bool emission_changed = false;

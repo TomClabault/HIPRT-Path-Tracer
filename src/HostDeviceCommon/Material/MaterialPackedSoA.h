@@ -405,13 +405,13 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
             // Only loading the emission if no emissive texture is used
             out.set_emission(this->get_emission(material_index));
 
-        if (out.get_base_color_texture_index() == MaterialUtils::NO_TEXTURE)
+        if (out.get_base_color_texture_index() == MaterialConstants::NO_TEXTURE)
             // Only reading the base color if no base color texture is used
             // (because if we have a base color texture, it's going to override
             // the base color parameter anyway)
             out.set_base_color(this->get_base_color(material_index));
 
-        if (out.get_roughness_texture_index() == MaterialUtils::NO_TEXTURE && out.get_roughness_metallic_texture_index() == MaterialUtils::NO_TEXTURE)
+        if (out.get_roughness_texture_index() == MaterialConstants::NO_TEXTURE && out.get_roughness_metallic_texture_index() == MaterialConstants::NO_TEXTURE)
             // Same for the roughness
             out.set_roughness(this->get_roughness(material_index));
 
@@ -422,7 +422,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
         // (because if we have a metallic texture, it's going to override
         // the metallic parameter anyway)
         out.set_metallic(this->get_metallic(material_index));
-        if (out.get_metallic() > 0.0f || out.get_metallic_texture_index() != MaterialUtils::NO_TEXTURE || out.get_roughness_metallic_texture_index() != MaterialUtils::NO_TEXTURE)
+        if (out.get_metallic() > 0.0f || out.get_metallic_texture_index() != MaterialConstants::NO_TEXTURE || out.get_roughness_metallic_texture_index() != MaterialConstants::NO_TEXTURE)
         {
             // If the metallic parameter isn't 0.0f, i.e. the material does have a metallic lobe,
             // then and only then do we need to load the metallic parameters
@@ -440,13 +440,13 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 #endif
         }
 
-        if(out.get_anisotropic_texture_index() == MaterialUtils::NO_TEXTURE)
+        if(out.get_anisotropic_texture_index() == MaterialConstants::NO_TEXTURE)
             out.set_anisotropy(this->get_anisotropy(material_index));
         out.set_anisotropy_rotation(this->get_anisotropy_rotation(material_index));
 
         // Specular intensity
         out.set_specular(this->get_specular(material_index));
-        if (out.get_specular() > 0.0f || out.get_specular_texture_index() != MaterialUtils::NO_TEXTURE)
+        if (out.get_specular() > 0.0f || out.get_specular_texture_index() != MaterialConstants::NO_TEXTURE)
         {
             // We only need to read the various specular parameters if the material actually has a specular lobe
 
@@ -466,7 +466,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
         }
 
         out.set_coat(this->get_coat(material_index));
-        if (out.get_coat() > 0.0f || out.get_coat_texture_index() != MaterialUtils::NO_TEXTURE)
+        if (out.get_coat() > 0.0f || out.get_coat_texture_index() != MaterialConstants::NO_TEXTURE)
         {
             // We only need to read the coat parameters if the material has a coat lobe
             // (which is when out.get_coat() > 0.0f)
@@ -496,7 +496,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
         }
 
         out.set_sheen(this->get_sheen(material_index)); // Sheen strength
-        if (out.get_sheen() > 0.0f || out.get_sheen_texture_index() != MaterialUtils::NO_TEXTURE)
+        if (out.get_sheen() > 0.0f || out.get_sheen_texture_index() != MaterialConstants::NO_TEXTURE)
         {
             out.set_sheen_roughness(this->get_sheen_roughness(material_index));
             out.set_sheen_color(this->get_sheen_color(material_index));
@@ -506,7 +506,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 
         out.set_diffuse_transmission(this->get_diffuse_transmission(material_index));
         out.set_specular_transmission(this->get_specular_transmission(material_index));
-        if (out.get_specular_transmission() > 0.0f || out.get_specular_transmission_texture_index() != MaterialUtils::NO_TEXTURE)
+        if (out.get_specular_transmission() > 0.0f || out.get_specular_transmission_texture_index() != MaterialConstants::NO_TEXTURE)
         {
             // This is all specific to specular transmission
             out.set_dispersion_scale(this->get_dispersion_scale(material_index));
@@ -518,7 +518,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 #endif
         }
 
-        if (out.get_specular_transmission() > 0.0f || out.get_diffuse_transmission() > 0.0f || out.get_specular_transmission_texture_index() != MaterialUtils::NO_TEXTURE)
+        if (out.get_specular_transmission() > 0.0f || out.get_diffuse_transmission() > 0.0f || out.get_specular_transmission_texture_index() != MaterialConstants::NO_TEXTURE)
         {
             // This is also applicable to diffuse transmission
             
@@ -570,7 +570,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
     }
 
     Uint2xPacked* normal_map_emission_index = nullptr;
-    // If the roughness_metallic texture index is not MaterialUtils::NO_TEXTURE, 
+    // If the roughness_metallic texture index is not MaterialConstants::NO_TEXTURE, 
     // then there is only one texture for the metallic and the roughness parameters in which.
     // case the green channel is the roughness and the blue channel is the metalness.
     Uint2xPacked* base_color_roughness_metallic_index = nullptr;

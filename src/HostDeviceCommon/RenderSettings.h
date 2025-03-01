@@ -146,7 +146,7 @@ struct HIPRTRenderSettings
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 512;
+	int adaptive_sampling_min_samples = 256;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.15f;
 
@@ -159,9 +159,10 @@ struct HIPRTRenderSettings
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.
+	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 75.0f;
+	float stop_pixel_percentage_converged = 50.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;

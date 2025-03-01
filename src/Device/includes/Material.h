@@ -23,7 +23,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_base_color(const HIPRTRenderData&
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, unsigned short int base_color_texture_index, hiprtHit hit)
 {
-    if (base_color_texture_index == MaterialUtils::NO_TEXTURE)
+    if (base_color_texture_index == MaterialConstants::NO_TEXTURE)
         // Quick exit if no texture
         return 1.0f;
 
@@ -58,23 +58,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
         material.base_color = ColorRGB32F(1.0f);
     else
     {
-        if (material.base_color_texture_index != MaterialUtils::NO_TEXTURE)
+        if (material.base_color_texture_index != MaterialConstants::NO_TEXTURE)
             material.base_color = get_base_color(render_data, trash_alpha, texcoords, material.base_color_texture_index);
     }
 
     // Reading some parameters from the textures
     float2 roughness_metallic = get_metallic_roughness(render_data, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
-    if (material.roughness_metallic_texture_index != MaterialUtils::NO_TEXTURE)
+    if (material.roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
     {
         material.roughness = roughness_metallic.x;
         material.metallic = roughness_metallic.y;
     }
     else
     {
-        if (material.roughness_texture_index != MaterialUtils::NO_TEXTURE)
+        if (material.roughness_texture_index != MaterialConstants::NO_TEXTURE)
             material.roughness = roughness_metallic.x;
 
-        if (material.metallic_texture_index != MaterialUtils::NO_TEXTURE)
+        if (material.metallic_texture_index != MaterialConstants::NO_TEXTURE)
             material.metallic = roughness_metallic.y;
 
         // If not reading from a texture, setting the roughness into the roughness_metallic
@@ -83,33 +83,33 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
     }
 
     float anisotropy = get_material_property<float>(render_data, false, texcoords, material.anisotropic_texture_index);
-    if (material.anisotropic_texture_index != MaterialUtils::NO_TEXTURE)
+    if (material.anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
         material.anisotropy = anisotropy;
     
     float specular = get_material_property<float>(render_data, false, texcoords, material.specular_texture_index);
-    if (material.specular_texture_index != MaterialUtils::NO_TEXTURE)
+    if (material.specular_texture_index != MaterialConstants::NO_TEXTURE)
         material.specular = specular;
 
     float coat = get_material_property<float>(render_data, false, texcoords, material.coat_texture_index);
-    if (material.coat_texture_index != MaterialUtils::NO_TEXTURE)
+    if (material.coat_texture_index != MaterialConstants::NO_TEXTURE)
         material.coat = coat;
     else
         coat = material.coat;
 
     float sheen = get_material_property<float>(render_data, false, texcoords, material.sheen_texture_index);
-    if (material.sheen_texture_index != MaterialUtils::NO_TEXTURE)
+    if (material.sheen_texture_index != MaterialConstants::NO_TEXTURE)
         material.sheen = sheen;
 
     float specular_transmission = get_material_property<float>(render_data, false, texcoords, material.specular_transmission_texture_index);
-    if (material.specular_transmission_texture_index != MaterialUtils::NO_TEXTURE)
+    if (material.specular_transmission_texture_index != MaterialConstants::NO_TEXTURE)
         material.specular_transmission = specular_transmission;
 
     ColorRGB32F emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, material.emission_texture_index);
-    if (material.emission_texture_index == MaterialUtils::NO_TEXTURE || material.emission_texture_index == MaterialUtils::CONSTANT_EMISSIVE_TEXTURE)
+    if (material.emission_texture_index == MaterialConstants::NO_TEXTURE || material.emission_texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
         emission = material.emission;
 
     DeviceUnpackedEffectiveMaterial packed_material(material);
-    packed_material.emissive_texture_used = material.emission_texture_index != MaterialUtils::NO_TEXTURE;
+    packed_material.emissive_texture_used = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
     packed_material.emission = emission;
     // Roughening of the base roughness and second metallic roughness based
     // on the coat roughness. This should be precomputed instead of being done here
@@ -147,7 +147,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 get_metallic_roughness(const HIPRTRenderDa
 {
     float2 out;
 
-    if (metallic_roughness_texture_index != MaterialUtils::NO_TEXTURE)
+    if (metallic_roughness_texture_index != MaterialConstants::NO_TEXTURE)
     {
         ColorRGB32F rgb = sample_texture_rgb_8bits(render_data.buffers.material_textures, metallic_roughness_texture_index, false, texcoords);
 
@@ -168,7 +168,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_base_color(const HIPRTRenderData&
 {
     out_alpha = 1.0f;
     ColorRGBA32F rgba = get_material_property<ColorRGBA32F>(render_data, true, texcoords, base_color_texture_index);
-    if (base_color_texture_index != MaterialUtils::NO_TEXTURE)
+    if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
     {
         ColorRGB32F base_color = ColorRGB32F(rgba.r, rgba.g, rgba.b);
         out_alpha = rgba.a;
@@ -203,7 +203,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float read_data<float>(const ColorRGBA32F& rgba)
 template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE T get_material_property(const HIPRTRenderData& render_data, bool is_srgb, const float2& texcoords, int texture_index)
 {
-    if (texture_index == MaterialUtils::NO_TEXTURE || texture_index == MaterialUtils::CONSTANT_EMISSIVE_TEXTURE)
+    if (texture_index == MaterialConstants::NO_TEXTURE || texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
         return T();
 
     ColorRGBA32F rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, is_srgb, texcoords);

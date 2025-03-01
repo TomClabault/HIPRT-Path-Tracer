@@ -192,14 +192,14 @@ struct CPUMaterial
 
         coat = hippt::clamp(0.0f, 1.0f, coat);
         coat_medium_absorption.clamp(0.0f, 1.0f);
-        coat_roughness = hippt::clamp(MaterialUtils::ROUGHNESS_CLAMP, 1.0f, coat_roughness);
+        coat_roughness = hippt::clamp(MaterialConstants::ROUGHNESS_CLAMP, 1.0f, coat_roughness);
         coat_roughening = hippt::clamp(0.0f, 1.0f, coat_roughening);
         coat_darkening = hippt::clamp(0.0f, 1.0f, coat_darkening);
         coat_anisotropy = hippt::clamp(0.0f, 1.0f, coat_anisotropy);
         coat_anisotropy_rotation = hippt::clamp(0.0f, 1.0f, coat_anisotropy_rotation);
         
         sheen = hippt::clamp(0.0f, 1.0f, sheen);
-        sheen_roughness = hippt::clamp(MaterialUtils::ROUGHNESS_CLAMP, 1.0f, sheen_roughness);
+        sheen_roughness = hippt::clamp(MaterialConstants::ROUGHNESS_CLAMP, 1.0f, sheen_roughness);
         sheen_color.clamp(0.0f, 1.0f);
 
         specular_transmission = hippt::clamp(0.0f, 1.0f, specular_transmission);
@@ -342,22 +342,22 @@ struct CPUMaterial
 
 
 
-    int normal_map_texture_index = MaterialUtils::NO_TEXTURE;
+    int normal_map_texture_index = MaterialConstants::NO_TEXTURE;
 
-    int emission_texture_index = MaterialUtils::NO_TEXTURE;
-    int base_color_texture_index = MaterialUtils::NO_TEXTURE;
+    int emission_texture_index = MaterialConstants::NO_TEXTURE;
+    int base_color_texture_index = MaterialConstants::NO_TEXTURE;
 
-    // If not MaterialUtils::NO_TEXTURE, there is only one texture for the metallic and the roughness parameters in which.
+    // If not MaterialConstants::NO_TEXTURE, there is only one texture for the metallic and the roughness parameters in which.
     // case the green channel is the roughness and the blue channel is the metalness
-    int roughness_metallic_texture_index = MaterialUtils::NO_TEXTURE;
-    int roughness_texture_index = MaterialUtils::NO_TEXTURE;
-    int metallic_texture_index = MaterialUtils::NO_TEXTURE;
-    int anisotropic_texture_index = MaterialUtils::NO_TEXTURE;
+    int roughness_metallic_texture_index = MaterialConstants::NO_TEXTURE;
+    int roughness_texture_index = MaterialConstants::NO_TEXTURE;
+    int metallic_texture_index = MaterialConstants::NO_TEXTURE;
+    int anisotropic_texture_index = MaterialConstants::NO_TEXTURE;
 
-    int specular_texture_index = MaterialUtils::NO_TEXTURE;
-    int coat_texture_index = MaterialUtils::NO_TEXTURE;
-    int sheen_texture_index = MaterialUtils::NO_TEXTURE;
-    int specular_transmission_texture_index = MaterialUtils::NO_TEXTURE;
+    int specular_texture_index = MaterialConstants::NO_TEXTURE;
+    int coat_texture_index = MaterialConstants::NO_TEXTURE;
+    int sheen_texture_index = MaterialConstants::NO_TEXTURE;
+    int specular_transmission_texture_index = MaterialConstants::NO_TEXTURE;
 };
 
 #endif // #ifndef  __KERNELCC__

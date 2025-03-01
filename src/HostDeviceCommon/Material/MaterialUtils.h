@@ -8,26 +8,13 @@
 
 #include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
 
+#include "HostDeviceCommon/Material/MaterialConstants.h"
+#include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
 
 struct MaterialUtils
 {
-    static constexpr int NO_TEXTURE = 65535;
-    // When an emissive texture is read and is determine to be
-    // constant, no emissive texture will be used. Instead,
-    // we'll just set the emission of the material to that constant emission value
-    // and the emissive texture index of the material will be replaced by
-    // CONSTANT_EMISSIVE_TEXTURE
-    static constexpr int CONSTANT_EMISSIVE_TEXTURE = 65534;
-    // Maximum number of different textures per scene
-    static constexpr int MAX_TEXTURE_COUNT = 65533;
-
-    static constexpr float ROUGHNESS_CLAMP = 1.0e-4f;
-    static constexpr float PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD = 1.0e-2f;
-    static constexpr float DELTA_DISTRIBUTION_HIGH_VALUE = 1.0e9f;
-    static constexpr float DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD = 0.999999f;
-
     HIPRT_HOST_DEVICE static void get_oren_nayar_AB(float sigma, float& out_oren_A, float& out_oren_B)
     {
         float sigma2 = sigma * sigma;
@@ -38,8 +25,8 @@ struct MaterialUtils
     HIPRT_HOST_DEVICE static void get_alphas(float roughness, float anisotropy, float& out_alpha_x, float& out_alpha_y)
     {
         float aspect = sqrtf(1.0f - 0.9f * anisotropy);
-        out_alpha_x = hippt::max(ROUGHNESS_CLAMP, roughness * roughness / aspect);
-        out_alpha_y = hippt::max(ROUGHNESS_CLAMP, roughness * roughness * aspect);
+        out_alpha_x = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, roughness * roughness / aspect);
+        out_alpha_y = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, roughness * roughness * aspect);
     }
 
     HIPRT_HOST_DEVICE static float get_thin_walled_roughness(bool thin_walled, float base_roughness, float relative_eta)
@@ -69,32 +56,42 @@ struct MaterialUtils
         return hippt::clamp(0.0f, 1.0f, remapped / 1.39f);
     }
 
-    HIPRT_HOST_DEVICE static bool is_perfectly_smooth(float roughness)
+    HIPRT_HOST_DEVICE static bool is_perfectly_smooth(float roughness, float roughness_threshold = MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD)
     {
-        return roughness <= MaterialUtils::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD;
+        return roughness <= roughness_threshold;
     }
 
     /**
      * Whether or not it makes sense to even try light sampling with NEE on that material
-     * 
+     *
      * Perfectly smooth materials for example cannot do light sampling because no given light
-     * direction is going to align with the delta distribution peak of the BRDF so we can save 
+     * direction is going to align with the delta distribution peak of the BRDF so we can save
      * some performance by not even attempting light sampling in the first place
      */
-    HIPRT_HOST_DEVICE static bool can_do_light_sampling(const DeviceUnpackedEffectiveMaterial& material)
+    HIPRT_HOST_DEVICE static bool can_do_light_sampling(float material_roughness, float material_metallic, float material_specular_transmission, float material_coat, float material_coat_roughness, float material_second_roughness, float material_second_roughness_weight, float roughness_threshold)
     {
 #if DirectLightSamplingDeltaDistributionOptimization == KERNEL_OPTION_FALSE
         return true;
 #endif
 
-        bool smooth_base_layer = MaterialUtils::is_perfectly_smooth(material.roughness) && (material.metallic == 1.0f || material.specular_transmission == 1.0f);
-        bool smooth_coat = material.coat == 0.0f || (material.coat > 0.0f && MaterialUtils::is_perfectly_smooth(material.coat_roughness));
-        bool second_roughness_smooth = MaterialUtils::is_perfectly_smooth(material.second_roughness) || material.second_roughness_weight == 0.0f;
+        bool smooth_base_layer = MaterialUtils::is_perfectly_smooth(material_roughness, roughness_threshold) && (material_metallic == 1.0f || material_specular_transmission == 1.0f);
+        bool smooth_coat = material_coat == 0.0f || (material_coat > 0.0f && MaterialUtils::is_perfectly_smooth(material_coat_roughness, roughness_threshold));
+        bool second_roughness_smooth = MaterialUtils::is_perfectly_smooth(material_second_roughness, roughness_threshold) || material_second_roughness_weight == 0.0f;
         if (smooth_base_layer && smooth_coat && second_roughness_smooth)
             // Everything is smooth
             return false;
 
         return true;
+    }
+
+    HIPRT_HOST_DEVICE static bool can_do_light_sampling(const DeviceUnpackedEffectiveMaterial& material, float roughness_threshold = MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD)
+    {
+        return can_do_light_sampling(material.roughness, material.metallic, material.specular_transmission, material.coat, material.coat_roughness, material.second_roughness, material.second_roughness_weight, roughness_threshold);
+    }
+
+    HIPRT_HOST_DEVICE static bool can_do_light_sampling(const DevicePackedEffectiveMaterial& material, float roughness_threshold = MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD)
+    {
+        return can_do_light_sampling(material.get_roughness(), material.get_metallic(), material.get_specular_transmission(), material.get_coat(), material.get_coat_roughness(), material.get_second_roughness(), material.get_second_roughness_weight(), roughness_threshold);
     }
 
     enum SpecularDeltaReflectionSampled : int

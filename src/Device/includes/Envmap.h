@@ -278,11 +278,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(HIPRTRenderDat
         // Not using the envmap
         return ColorRGB32F(0.0f);
 
-    if (ray_payload.material.is_emissive())
-        // We're not sampling direct lighting if we're already on an
-        // emissive surface
-        return ColorRGB32F(0.0f);
-
     if (world_settings.envmap_intensity <= 0.0f)
         // No need to sample the envmap if the user has set the intensity to 0
         return ColorRGB32F(0.0f);

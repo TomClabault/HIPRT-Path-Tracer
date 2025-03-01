@@ -28,19 +28,19 @@
  */
 struct ParsedMaterialTextureIndices
 {
-    int base_color_texture_index = MaterialUtils::NO_TEXTURE;
-    int emission_texture_index = MaterialUtils::NO_TEXTURE;
+    int base_color_texture_index = MaterialConstants::NO_TEXTURE;
+    int emission_texture_index = MaterialConstants::NO_TEXTURE;
 
-    int roughness_texture_index = MaterialUtils::NO_TEXTURE;
-    int metallic_texture_index = MaterialUtils::NO_TEXTURE;
-    int roughness_metallic_texture_index = MaterialUtils::NO_TEXTURE;
+    int roughness_texture_index = MaterialConstants::NO_TEXTURE;
+    int metallic_texture_index = MaterialConstants::NO_TEXTURE;
+    int roughness_metallic_texture_index = MaterialConstants::NO_TEXTURE;
 
-    int specular_texture_index = MaterialUtils::NO_TEXTURE;
-    int coat_texture_index = MaterialUtils::NO_TEXTURE;
-    int sheen_texture_index = MaterialUtils::NO_TEXTURE;
-    int specular_transmission_texture_index = MaterialUtils::NO_TEXTURE;
+    int specular_texture_index = MaterialConstants::NO_TEXTURE;
+    int coat_texture_index = MaterialConstants::NO_TEXTURE;
+    int sheen_texture_index = MaterialConstants::NO_TEXTURE;
+    int specular_transmission_texture_index = MaterialConstants::NO_TEXTURE;
 
-    int normal_map_texture_index = MaterialUtils::NO_TEXTURE;
+    int normal_map_texture_index = MaterialConstants::NO_TEXTURE;
 };
 
 struct SceneParserOptions
@@ -180,7 +180,7 @@ private:
      * @ material_texture_indices is a list that is as long as there are unique materials
      *      in the scene. Each field of the stucture contains the index of the texture used
      *      by that material. -1 if the material doesn't have that type of texture
-     *      (if structure.base_color_texture_index == MaterialUtils::NO_TEXTURE for example, that means
+     *      (if structure.base_color_texture_index == MaterialConstants::NO_TEXTURE for example, that means
      *      that the material doesn't have a base color texture)
      * @ material_indices is a vector which is 'number of textures' long and contains the
      *      index of the material that the texture belongs to.

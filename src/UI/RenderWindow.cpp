@@ -27,19 +27,22 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO immediate
-// - Lambertian ReSTIR GI 0 neighbors vs. BSDF different?
-// - Is not shading the second BSDF a big deal in ReSTIR GI?
+// - Currently looking at what to do when the neighbor's sample point is on a glossy surface --> should evaluate the target function to 0 for that
+// - I think we don't need the bool use_neighbor_sample_point_roughness_heuristic = true; parameter, we should just do everything with MaterialUtils::can_do_light_sampling()
+// - What to do for glass reuse with delta BSDF optimizations OFF? Because reconstructing the sampled delta direction from the visible point and sample point introducing floating point errors and then the delta BSDF evaluates to 0
+// - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
+// - Normal mapping weirdness again on the glasses in the kitchen with ReSTIR GI
+// - Glass IOR 1.0f not rendering properly even without restir GI
+// - We can probably debug the glass darkening with glass at IOR 1.0f? --> And if we cannot (because the darkening doesn't show up at IOR 1), there is still some unwanted shadow at IOR > 1.0f
 
 
 //  Global emission factor broken? Going to 0.9 and then back to 1.0 doesn't give the same results as staying at 1 (barbershop scene)
-// ReSTIR DI performance broken, probably reading in nullptr buffers?
 // Fix white furnace not passing cornell_dragons
 
 // TODO ReSTIR GI
 // - possibility to read the visible positions from the G buffer instead of storing in the reservoir
-// - memory coalescing aware spatial reuse pattern
+// - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
 // - do adaptive radius spatial reuse --> also for ReSTIR DI? --> maybe start super wide to avoid spatial reuse patterns and progressively lower the reuse radius
-// - ReSTIR el cheapo?
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - BSDF MIS Reuse for ReSTIR DI
 // - Fix spatial reuse pattern because the concentric circles created by Hammersley don't cover the neighborhood of the center pixel well at all --> white noise instead
@@ -47,7 +50,7 @@ extern ImGuiLogger g_imgui_logger;
 // - some kind of reuse direction masks for spatial reuse offline rendering? the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
 // - OVS - Optimal visibility shaidng
 // - symmetric ratio MIS
-// - shade secondary surface by looking up screen space reservoir if possible (ReSTIR GI & DI?) --> We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. --> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
+// - shade secondary surface by looking up screen space reservoir if possible ReSTIR DI --> We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. --> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - we need a ReSTIR DI convergence check
@@ -104,6 +107,8 @@ extern ImGuiLogger g_imgui_logger;
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
 // - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
 // - Issue with Lambertian BRDF override and emissive material. Seems like backfacing emissive don't work?
+// - Emissive chminey texture broken in scandinavian-studio
+// - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
@@ -119,8 +124,9 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// - Some automatic metric to determine automatically what GMoN blend factor to use
 // - software opacity micromaps
-// - sample BSDF based on view fresnel
+// - sample BSDF based on view fresnel for glossy layer
 // - limit secondary bounces ray distance: objects far away won't contribute much to what the camera sees so shortening the rays should be okay?
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
