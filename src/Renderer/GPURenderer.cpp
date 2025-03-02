@@ -1260,7 +1260,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 				// We need to keep the texture alive so they are not destroyed when returning from 
 				// this function so we're adding them to a member buffer
-				m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i]));
+				m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i], hipFilterModeLinear));
 
 				oro_textures[i] = m_hiprt_scene.orochi_materials_textures.back().get_device_texture();
 			}

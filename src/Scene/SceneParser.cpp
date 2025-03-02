@@ -432,6 +432,13 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
+    /*renderer_material.roughness = 0.0f;
+
+    if (std::string(mesh_material->GetName().C_Str()).find("003") == std::string::npos)
+    {
+        renderer_material.alpha_opacity = 0.0f;
+    }*/
+
     /*renderer_material.roughness = 1.0f;
     renderer_material.specular = 0.0f;
     renderer_material.coat = 0.0f;
@@ -444,7 +451,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
         renderer_material.roughness = 0.0f;
         renderer_material.specular = 1.0f;
     }*/
-
+     
     /*if (std::string(mesh_material->GetName().C_Str()).find("Glass") != std::string::npos)
     {
         renderer_material.roughness = 0.0f;

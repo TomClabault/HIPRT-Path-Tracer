@@ -80,8 +80,8 @@ int main(int argc, char* argv[])
     render_window.run();
 #else
 
-    width = 639;
-    height = 346;
+    /*width = 639;
+    height = 346;*/
     g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "[%dx%d]: %d samples ; %d bounces\n\n", width, height, cmd_arguments.render_samples, cmd_arguments.bounces);
 
     CPURenderer cpu_renderer(width, height);

@@ -702,7 +702,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
     // so that's why we get into to if() block that does the computation but
     // we're only going to compute the absorption of the coat layer
     float coat_ior = material.coat_ior;
-    if (coat_weight > 0.0f || refracting)
+    if ((coat_weight > 0.0f || refracting) && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
     {
         float coat_pdf = 0.0f;
         ColorRGB32F contribution;
@@ -803,7 +803,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_sheen_layer(const HIPRT
                                                                      float incident_ior, float sheen_weight, float sheen_proba, 
                                                                      ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
-    if (sheen_weight > 0.0f)
+    if (sheen_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
     {
         float sheen_reflectance;
         float sheen_pdf;
@@ -834,7 +834,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_metal_layer(const HIPRT
                                                                      BSDFIncidentLightInfo incident_light_info, bool evaluating_first_metal_lobe,
                                                                      int current_bounce)
 {
-    if (metal_weight > 0.0f)
+    if (metal_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
     {
         float metal_pdf = 0.0f;
         ColorRGB32F contribution;
@@ -894,7 +894,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_diffuse_transmission_la
                                                                                     float diffuse_transmission_weight, float diffuse_transmission_proba,
                                                                                     const ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
-    if (diffuse_transmission_weight > 0.0f)
+    if (diffuse_transmission_weight > 0.0f && local_to_light_direction.z < 0.0f)
     {
         float diffuse_transmission_pdf = 0.0f;
         ColorRGB32F contribution = principled_diffuse_transmission_eval(render_data, material, ray_volume_state, update_ray_volume_state, local_view_direction, local_to_light_direction, diffuse_transmission_pdf);
@@ -969,7 +969,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
                                                                         BSDFIncidentLightInfo incident_light_info,
                                                                         int current_bounce)
 {
-    if (specular_weight > 0.0f || refracting)
+    if ((specular_weight > 0.0f || refracting) && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
     {
         float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
 
@@ -1057,7 +1057,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_diffuse_layer(const HIPRTRenderData& render_data, float incident_ior, const DeviceUnpackedEffectiveMaterial& material, 
     const float3& local_view_direction, const float3 local_to_light_direction, float diffuse_weight, float diffuse_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
-    if (diffuse_weight > 0.0f)
+    if (diffuse_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
     {
         float diffuse_pdf;
         ColorRGB32F contribution = principled_diffuse_eval(material, local_view_direction, local_to_light_direction, diffuse_pdf);
@@ -1150,51 +1150,49 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights(const Devi
  * is below the shading normal (probably due to normal mapping / smooth
  * vertex normals)
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights_fringe_fix(const DeviceUnpackedEffectiveMaterial& material, 
-                                                                      const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
-                                                                      float3& in_out_normal,
-                                                                      bool& out_outside_object, 
-                                                                      float& out_coat_weight, float& out_sheen_weight,
-                                                                      float& out_metal_1_weight, float& out_metal_2_weight,
-                                                                      float& out_specular_weight,
-                                                                      float& out_diffuse_weight, 
-                                                                      float& out_glass_weight, float& out_diffuse_transmission_weight)
-{
-    out_outside_object = hippt::dot(view_direction, in_out_normal) > 0 || (material.thin_walled && material.specular_transmission > 0.0f);
-    out_glass_weight = (1.0f - material.metallic) * (1.0f - material.diffuse_transmission) * material.specular_transmission;
-    out_diffuse_transmission_weight = (1.0f - material.metallic) * material.diffuse_transmission;
-    if (hippt::is_zero(out_glass_weight) && hippt::is_zero(out_diffuse_transmission_weight) && !out_outside_object)
-    {
-        // We're not sampling the glass lobe so we're checking
-        // whether the view direction is below the upper hemisphere around the shading
-        // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
-        // 
-        // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
-        // for some illustrations of the problem and a solution (not implemented here because
-        // it requires quite a bit of code and overhead). 
-        // 
-        // We're flipping the normal instead which is a quick dirty fix solution mentioned
-        // in the above mentioned paper.
-        // 
-        // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
-        // Wang et al. 2022 proposes an alternative position-free solution that even solves
-        // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
-        // having here
-        in_out_normal = reflect_ray(shading_normal, geometric_normal);
-
-        // We we're "inside" of the object because of normal mapping / smooth vertex normals
-        // getting the view direction below the surface but now that we've flipped the normal,
-        // we're outside the object
-        out_outside_object = true;
-    }
-
-    principled_bsdf_get_lobes_weights(material,
-                                      out_outside_object, 
-                                      out_coat_weight, out_sheen_weight, 
-                                      out_metal_1_weight, out_metal_2_weight, 
-                                      out_specular_weight, out_diffuse_weight, 
-                                      out_glass_weight, out_diffuse_transmission_weight);
-}
+//HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights_fringe_fix(const DeviceUnpackedEffectiveMaterial& material, 
+//                                                                      const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
+//                                                                      float3& in_out_normal,
+//                                                                      float& out_coat_weight, float& out_sheen_weight,
+//                                                                      float& out_metal_1_weight, float& out_metal_2_weight,
+//                                                                      float& out_specular_weight,
+//                                                                      float& out_diffuse_weight, 
+//                                                                      float& out_glass_weight, float& out_diffuse_transmission_weight)
+//{
+//    out_glass_weight = (1.0f - material.metallic) * (1.0f - material.diffuse_transmission) * material.specular_transmission;
+//    out_diffuse_transmission_weight = (1.0f - material.metallic) * material.diffuse_transmission;
+//    //if (hippt::is_zero(out_glass_weight) && hippt::is_zero(out_diffuse_transmission_weight) && !out_outside_object)
+//    //{
+//    //    // We're not sampling the glass lobe so we're checking
+//    //    // whether the view direction is below the upper hemisphere around the shading
+//    //    // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
+//    //    // 
+//    //    // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
+//    //    // for some illustrations of the problem and a solution (not implemented here because
+//    //    // it requires quite a bit of code and overhead). 
+//    //    // 
+//    //    // We're flipping the normal instead which is a quick dirty fix solution mentioned
+//    //    // in the above mentioned paper.
+//    //    // 
+//    //    // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
+//    //    // Wang et al. 2022 proposes an alternative position-free solution that even solves
+//    //    // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
+//    //    // having here
+//    //    in_out_normal = reflect_ray(shading_normal, geometric_normal);
+//
+//    //    // We we're "inside" of the object because of normal mapping / smooth vertex normals
+//    //    // getting the view direction below the surface but now that we've flipped the normal,
+//    //    // we're outside the object
+//    //    out_outside_object = true;
+//    //}
+//
+//    principled_bsdf_get_lobes_weights(material,
+//                                      is_outside_object, 
+//                                      out_coat_weight, out_sheen_weight, 
+//                                      out_metal_1_weight, out_metal_2_weight, 
+//                                      out_specular_weight, out_diffuse_weight, 
+//                                      out_glass_weight, out_diffuse_transmission_weight);
+//}
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
     float coat_weight, float sheen_weight, float metal_1_weight, float metal_2_weight,
@@ -1220,6 +1218,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
     out_diffuse_transmission_sampling_proba = diffuse_transmission_weight * normalize_factor;
 }
 
+__device__ static int counter = 0;
+__device__ static int delay = 1000;
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
                                                                 RayVolumeState& ray_volume_state, bool update_ray_volume_state,
                                                                 const float3& view_direction, float3 shading_normal, const float3& to_light_direction, 
@@ -1228,18 +1229,33 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 {
     pdf = 0.0f;
 
+    /*if (hippt::dot(shading_normal, view_direction) < 0.0f)
+    {
+        hippt::atomic_min(&render_data.render_settings.DEBUG_SUMS[0], hippt::dot(shading_normal, view_direction));
+
+        if (counter++ % delay == 0)
+            printf("Eval broken: %f | [%d, %d]\n", hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f), hippt::thread_idx_x(), hippt::thread_idx_y());
+
+#ifndef __KERNELCC__
+        Utils::debugbreak();
+#endif
+
+        pdf = 0.001f;
+        return ColorRGB32F(0, 1.0e10f, 0);
+    }*/
+
     // Only the glass lobe is considered when evaluating
     // the BSDF from inside the object so we're going to use that
     // 'outside_object' flag to nullify the other lobes if we're
     // inside the object
     //
     // Note that we're always outside of thin materials, they have no volume interior
-    bool outside_object = hippt::dot(view_direction, shading_normal) > 0 || material.thin_walled;
+    bool outside_object = ray_volume_state.after_trace_ray_is_outside_object();
     bool refracting = hippt::dot(shading_normal, to_light_direction) < 0.0f && outside_object;
-    if (hippt::dot(view_direction, shading_normal) < 0.0f)
-        // For the rest of the computations to be correct, we want the normal
-        // in the same hemisphere as the view direction
-        shading_normal = -shading_normal;
+    //if (hippt::dot(view_direction, shading_normal) < 0.0f)
+    //    // For the rest of the computations to be correct, we want the normal
+    //    // in the same hemisphere as the view direction
+    //    shading_normal = -shading_normal;
 
     float3 T, B;
     build_ONB(shading_normal, T, B);
@@ -1335,10 +1351,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
 {
     pdf = 0.0f;
 
+    /*if (hippt::dot(shading_normal, view_direction) < 0.0f)
+    {
+        hippt::atomic_min(&render_data.render_settings.DEBUG_SUMS[0], hippt::dot(shading_normal, view_direction));
+
+        if (counter++ % delay == 0)
+            printf("Sample broken: %f | [%d, %d]\n", hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f), hippt::thread_idx_x(), hippt::thread_idx_y());
+
+#ifndef __KERNELCC__
+        Utils::debugbreak();
+#endif
+
+        pdf = 0.0f;
+        output_direction = shading_normal;
+        return ColorRGB32F(0, 1.0e10f, 0);
+    }*/
+
     float3 normal = shading_normal;
 
     // Computing the weights for sampling the lobes
-    bool outside_object;
+    bool is_outside_object = ray_volume_state.after_trace_ray_is_outside_object();
+
     float coat_sampling_weight;
     float sheen_sampling_weight;
     float metal_1_sampling_weight;
@@ -1347,12 +1380,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     float diffuse_sampling_weight;
     float glass_sampling_weight;
     float diffuse_transmission_weight;
-    principled_bsdf_get_lobes_weights_fringe_fix(material, view_direction,
+    principled_bsdf_get_lobes_weights(material, is_outside_object, 
+        coat_sampling_weight, sheen_sampling_weight, 
+        metal_1_sampling_weight, metal_2_sampling_weight, 
+        specular_sampling_weight, diffuse_sampling_weight, 
+        glass_sampling_weight, diffuse_transmission_weight);
+    /*principled_bsdf_get_lobes_weights_fringe_fix(material, view_direction,
         shading_normal, geometric_normal, normal, 
         outside_object,
         coat_sampling_weight, sheen_sampling_weight,
         metal_1_sampling_weight, metal_2_sampling_weight,
-        specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight);
+        specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight);*/
 
     float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
     float metal_2_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
@@ -1378,41 +1416,43 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     float rand_1 = random_number_generator();
     bool sampling_diffuse_transmission_lobe = rand_1 > cdf5 && rand_1 < cdf6;
     bool sampling_glass_lobe = rand_1 > cdf6;
-    if (sampling_glass_lobe || sampling_diffuse_transmission_lobe)
-    {
-        // We're going to sample the glass lobe
+    //if (sampling_glass_lobe || sampling_diffuse_transmission_lobe)
+    //{
+    //    // We're going to sample the glass lobe
 
-        float dot_shading = hippt::dot(view_direction, shading_normal);
-        float dot_geometric = hippt::dot(view_direction, geometric_normal);
-        if (dot_shading * dot_geometric < 0)
-        {
-            // The view direction is below the surface normal (probably because of normal mapping / smooth normals).
-            // 
-            // We're going to flip the normal for the same reason as explained above to avoid black fringes
-            // the reason we're also checking for the dot product with the geometric normal here
-            // is because in the case of the glass lobe of the BRDF, we could be legitimately having
-            // the dot product between the shading normal and the view direction be negative when we're
-            // currently travelling inside the surface. To make sure that we're in the case of the black fringes
-            // caused by normal mapping and microfacet BRDFs, we're also checking with the geometric normal.
-            // 
-            // If the view direction isn't below the geometric normal but is below the shading normal, this
-            // indicates that we're in the case of the black fringes and we can flip the normal
-            // 
-            // If both dot products are negative, this means that we're travelling inside the surface
-            // and we shouldn't flip the normal
-            normal = reflect_ray(shading_normal, geometric_normal);
-        }
-    }
+    //    float dot_shading = hippt::dot(view_direction, shading_normal);
+    //    float dot_geometric = hippt::dot(view_direction, geometric_normal);
+    //    if (dot_shading * dot_geometric < 0)
+    //    {
+    //        // The view direction is below the surface normal (probably because of normal mapping / smooth normals).
+    //        // 
+    //        // We're going to flip the normal for the same reason as explained above to avoid black fringes
+    //        // the reason we're also checking for the dot product with the geometric normal here
+    //        // is because in the case of the glass lobe of the BRDF, we could be legitimately having
+    //        // the dot product between the shading normal and the view direction be negative when we're
+    //        // currently travelling inside the surface. To make sure that we're in the case of the black fringes
+    //        // caused by normal mapping and microfacet BRDFs, we're also checking with the geometric normal.
+    //        // 
+    //        // If the view direction isn't below the geometric normal but is below the shading normal, this
+    //        // indicates that we're in the case of the black fringes and we can flip the normal
+    //        // 
+    //        // If both dot products are negative, this means that we're travelling inside the surface
+    //        // and we shouldn't flip the normal
+    //        normal = reflect_ray(shading_normal, geometric_normal);
+    //    }
+    //}
 
     if (update_ray_volume_state)
         if (!sampling_glass_lobe && !sampling_diffuse_transmission_lobe)
             // We're going to sample a reflective lobe so we're poping the stack
+            //
+            // Note that we may also reflect from glass but the popping for that is done in glass_sample()
             ray_volume_state.interior_stack.pop(false);
 
-    if (hippt::dot(view_direction, normal) < 0)
-        // We want the normal in the same hemisphere as the view direction
-        // for the rest of the calculations
-        normal = -normal;
+    //if (hippt::dot(view_direction, normal) < 0)
+    //    // We want the normal in the same hemisphere as the view direction
+    //    // for the rest of the calculations
+    //    normal = -normal;
 
     // Rotated ONB for the anisotropic GGX evaluation
     float3 TR, BR;
@@ -1474,10 +1514,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
             ray_volume_state, update_ray_volume_state, local_view_direction_rotated, random_number_generator, incident_light_info));
     }
 
-    if (hippt::dot(output_direction, shading_normal) < 0 && !sampling_glass_lobe && !sampling_diffuse_transmission_lobe)
-        // It can happen that the light direction sampled is below the surface. 
+    if (hippt::dot(output_direction, geometric_normal) < 0.0f && !sampling_glass_lobe && !sampling_diffuse_transmission_lobe)
+        // It can happen that the light direction sampled is below the surface.
+        // 
         // We return 0.0 in this case if we didn't sample the glass lobe
-        // because no lobe other than the glass lobe allows refractions
+        // because no lobe other than the glass lobe (or diffuse transmission) allows refractions
         return ColorRGB32F(0.0f);
 
     // Giving some information about what the BSDF sampled to the caller
