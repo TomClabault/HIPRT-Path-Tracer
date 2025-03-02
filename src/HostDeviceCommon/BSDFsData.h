@@ -58,7 +58,7 @@ struct BRDFsData
 
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 
-	float energy_compensation_roughness_threshold = 0.01f;
+	float energy_compensation_roughness_threshold = 0.0f;
 
 	// After hom many bounces to stop doing energy compensation to save performance?
 	// 
