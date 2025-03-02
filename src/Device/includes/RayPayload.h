@@ -36,14 +36,6 @@ struct RayPayload
 	DeviceUnpackedEffectiveMaterial material;
 
 	RayVolumeState volume_state;
-
-	HIPRT_HOST_DEVICE bool is_inside_volume() const
-	{
-		// TODO this is not general and calling this function in
-		// the principled BSDF sample function before poping the stack
-		// (when sampling a reflection) would return true even if we're out of any volumes
-		return volume_state.interior_stack.stack_position > 0;
-	}
 };
 
 #endif

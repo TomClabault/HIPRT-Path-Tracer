@@ -364,6 +364,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GGX_sample_reflection(float rou
     float alpha_x, alpha_y;
     MaterialUtils::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
 
+    if (below_normal == -1)
+        below_normal *= 1.0f;
+
     float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction * below_normal, alpha_x, alpha_y, random_number_generator);
     float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
 

@@ -11,6 +11,7 @@
 #include "Device/includes/Material.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/RayPayload.h"
+#include "Device/includes/Sampling.h"
 #include "Device/includes/Texture.h"
 #include "Device/includes/TriangleStructures.h"
 #include "Device/functions/FilterFunction.h"
@@ -139,34 +140,67 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray_payload, HitInfo& hit_info, const float3& view_direction)
 {
-    bool object_is_opaque = ray_payload.material.specular_transmission == 0.0f && ray_payload.material.diffuse_transmission == 0.0f;
-    if ((!ray_payload.is_inside_volume() || object_is_opaque) && !ray_payload.material.thin_walled)
+    if (ray_payload.volume_state.in_trace_ray_is_outside_object() && hippt::dot(view_direction, hit_info.geometric_normal) < 0.0f)
     {
-        // If we're not in a volume, there's no reason for the surface normal
-        // not to be facing us so we're flipping it if it as was wrongly oriented
-        // 
-        // Same thing with objects that do not let the rays pass through (non transmissive):
-        // because we can never be inside of these objects, we're always outside.
-        // If we're always outside, there's no reason to have the normals of these objects inverted
-        // and pointing towards the inside of the object.
-        //
-        // Thin objects though can let the rays go inside them. But because they are thin, we won't know that
-        // we're inside "a volume". So the above condition will trigger while we're hitting a thin material
-        // from the inside which will flip the normal the wrong direction. So we're adding an exception for
-        // thin materials here so that we don't flip the normals for thin walled materials
+        // The geometry isn't front-facing
 
-        hit_info.geometric_normal *= hippt::dot(hit_info.geometric_normal, view_direction) < 0.0f ? -1.0f : 1.0f;
-
-        // If that's not enough and the shading normal is below the geometric surface, this will lead to light leaking
-        // because BSDF samples may now be able to sample below the surface so we're flipping the normal to be in the same
-        // hemisphere as the geometric normal
-        hit_info.shading_normal *= hippt::dot(hit_info.shading_normal, hit_info.geometric_normal) < 0.0f ? -1.0f : 1.0f;
-
-        // Reflecting the shading normal about the view direction so that the shading 
-        // normal is in the same hemisphere as the view direction
-        float NdotV = hippt::dot(hit_info.shading_normal, view_direction);
-        hit_info.shading_normal += (2.0f * hippt::clamp(0.0f, 1.0f, -NdotV)) * view_direction;
+        hit_info.geometric_normal *= -1.0f;
+        hit_info.shading_normal *= -1.0f;
     }
+
+    if (ray_payload.volume_state.in_trace_ray_is_outside_object())
+    {
+        if (hippt::dot(view_direction, hit_info.shading_normal) < 0.0f)
+            // Flipping the normal such that the view direction isn't below the shading hemisphere anymore
+            hit_info.shading_normal *= -1.0f;
+
+        // Now ensuring that a perfectly reflected direction (about the shading normal) doesn't go below the *geometric* surface
+        float3 perfect_reflected_direction = reflect_ray(view_direction, hit_info.shading_normal);
+        if (hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) <= 0.0f)
+        {
+            // The perfectly reflected direction *is* below the geometric normal,
+            // we're going to pull the shading normal towards the geometric normal such that
+            // the perfectly reflected direction now is just an epsilon above the surface
+            //
+            // This is done by first computing a new reflected direction that is just above the surface
+            // and then recomputing the new shading normal as the half vector between the new reflect direction
+            // and the view direction
+
+            constexpr float epsilon = 0.01;
+
+            perfect_reflected_direction -= hippt::normalize((hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) - epsilon) * hit_info.geometric_normal);
+
+            // The new shading normal is the half vector between the pulled up reflected direction
+            // and the view direction
+            hit_info.shading_normal = hippt::normalize(view_direction + perfect_reflected_direction);
+        }
+    }
+
+    //float3 T, B;
+    //build_ONB(hit_info.geometric_normal, T, B);
+
+    //float3 local_view_direction = world_to_local_frame(T, B, hit_info.geometric_normal, view_direction);
+    //float3 local_shading_normal = world_to_local_frame(T, B, hit_info.geometric_normal, hit_info.shading_normal);
+
+    //if (ray_payload.volume_state.in_trace_ray_is_outside_object())
+    //{
+    //    if (hippt::dot(local_view_direction, local_shading_normal) < 0.0f)
+    //        // Flipping the normal such that the view direction isn't below the shading hemisphere anymore
+    //        local_shading_normal *= -1.0f;
+
+    //    float3 local_reflected_direction = reflect_ray(local_view_direction, local_shading_normal);
+    //    if (local_reflected_direction.z <= 0.0f) 
+    //    {
+    //        local_reflected_direction -= hippt::normalize(make_float3(0.0f, 0.0f, local_reflected_direction.z - 0.01f));
+
+    //        // The new shading normal is the half vector between the pulled up reflected direction
+    //        // and the view direction
+    //        local_shading_normal = hippt::normalize(local_view_direction + local_reflected_direction);
+
+    //    }
+
+    //    hit_info.shading_normal = local_to_world_frame(T, B, hit_info.geometric_normal, local_shading_normal);
+    //}
 }
 
 #ifndef __KERNELCC__
@@ -226,7 +260,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 
         out_hit_info.t = hit.t;
 
-        if (in_out_ray_payload.is_inside_volume())
+        if (!in_out_ray_payload.volume_state.in_trace_ray_is_outside_object())
+            // If we're traveling inside a volume, accumulating the distance for Beer's law
             in_out_ray_payload.volume_state.distance_in_volume += hit.t;
 
         int material_index = render_data.buffers.material_indices[hit.primID];

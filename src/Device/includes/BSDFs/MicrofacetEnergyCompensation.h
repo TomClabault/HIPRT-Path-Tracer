@@ -27,7 +27,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 {
 	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.metal_energy_compensation_max_bounce;
 	bool smooth_enough = material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
-	if (!material_do_energy_compensation || smooth_enough || max_bounce_reached)
+	bool invalid_view_direction = local_view_direction.z < 0.0f;
+	if (!material_do_energy_compensation || smooth_enough || max_bounce_reached || invalid_view_direction)
 		return ColorRGB32F(1.0f);
 
     const void* GGX_Ess_texture_pointer = nullptr;

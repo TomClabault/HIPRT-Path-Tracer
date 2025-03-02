@@ -27,13 +27,11 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO immediate
-// - Currently looking at what to do when the neighbor's sample point is on a glossy surface --> should evaluate the target function to 0 for that
-// - I think we don't need the bool use_neighbor_sample_point_roughness_heuristic = true; parameter, we should just do everything with MaterialUtils::can_do_light_sampling()
-// - What to do for glass reuse with delta BSDF optimizations OFF? Because reconstructing the sampled delta direction from the visible point and sample point introducing floating point errors and then the delta BSDF evaluates to 0
+// ----------------> Make sure BSDF sampling path tracer still matches the "Performance optimùization" branch and then work on proper normal flipping with Iray paper and "Microfacet based normal mapping" with the flip technique
+// 
 // - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
 // - Normal mapping weirdness again on the glasses in the kitchen with ReSTIR GI
 // - Glass IOR 1.0f not rendering properly even without restir GI
-// - We can probably debug the glass darkening with glass at IOR 1.0f? --> And if we cannot (because the darkening doesn't show up at IOR 1), there is still some unwanted shadow at IOR > 1.0f
 
 
 //  Global emission factor broken? Going to 0.9 and then back to 1.0 doesn't give the same results as staying at 1 (barbershop scene)
@@ -126,6 +124,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODO Features:
 // - Some automatic metric to determine automatically what GMoN blend factor to use
 // - software opacity micromaps
+// - Add parameters to increase the strength of specular / coat darkening
 // - sample BSDF based on view fresnel for glossy layer
 // - limit secondary bounces ray distance: objects far away won't contribute much to what the camera sees so shortening the rays should be okay?
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore

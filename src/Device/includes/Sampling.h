@@ -140,7 +140,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float pdf_b,
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
 {
-    return -ray_direction + 2.0f * hippt::dot(ray_direction, surface_normal) * surface_normal;
+    return 2.0f * hippt::dot(ray_direction, surface_normal) * surface_normal - ray_direction;
 }
 
 /**

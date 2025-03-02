@@ -37,7 +37,7 @@ void main()
 	float scalar = texture(u_texture, vs_tex_coords / u_resolution_scaling).r;
 #endif
 	
-	vec4 final_color = vec4(0.0f);
+	float final_color = 0.0f;
 	if (scalar < u_threshold_val && scalar != -1.0f)
 		// If the value of the scalar is -1, this is a special value which is used
 		// by the adaptive sampling to indicate that a pixel has not converged yet.
@@ -47,12 +47,12 @@ void main()
 		// We only set the pixel white if it has a value lower than the threshold
 		// number. The threshold is the current sample count so if the pixel has a
 		// sample count lower than that, that means that it has converged
-		final_color = vec4(1.0f);
+		final_color = 1.0f;
 
 #ifdef COMPUTE_SCREENSHOTER
-	uvec4 ufinal_color = uvec4(final_color * 255.0f);
+	uvec4 ufinal_color = uvec4(uvec3(final_color) * 255.0f, 255);
 	imageStore(u_output_image, thread_id, ufinal_color);
 #else
-	out_color = final_color;
+	out_color = vec4(vec3(final_color), 1.0f);
 #endif // COMPUTE_SCREENSHOTER
 };

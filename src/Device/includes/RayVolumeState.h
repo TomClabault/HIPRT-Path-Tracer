@@ -66,6 +66,40 @@ struct RayVolumeState
 			sampled_wavelength = -sample_wavelength_uniformly(random_number_generator);
 	}
 
+	/**
+	 * This function returns true if we're currently hitting an object from the outside.
+	 * Returns false if we're hitting an object from the inside
+	 *
+	 * This function only returns valid results if called after the call to trace_ray()
+	 * in the main ray tracing loop.
+	 *
+	 * Said otherwise, this function must only be called after tracing a camera ray
+	 * with trace_ray() or tracing a bounce ray with trace_ray() but in particular,
+	 * this function should *not* be called after sampling the indirect ray bounce
+	 * with bsdf_sample()
+	 */
+	HIPRT_HOST_DEVICE bool after_trace_ray_is_outside_object() const
+	{
+		// Because this function must only be called after a call to trace_ray, we know
+		// that the last intersected material is on top of the stack.
+		// If the material on top of the stack is topmost, then this means that we're
+		// entering this material so we're outside of it
+		return interior_stack.stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(interior_stack.stack_position)].get_topmost();
+	}
+
+	/**
+	 * Same as 'after_trace_ray_is_outside_object' but should be used from inside the trace_ray() function
+	 * before the intersected material index is pushed onto the nested dielectrics stack
+	 */
+	HIPRT_HOST_DEVICE bool in_trace_ray_is_outside_object() const
+	{
+		// Because this function must only be called after a call to trace_ray, we know
+		// that the last intersected material is on top of the stack.
+		// If the material on top of the stack is topmost, then this means that we're
+		// entering this material so we're outside of it
+		return interior_stack.stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(interior_stack.stack_position)].get_topmost();
+	}
+
 	// How far has the ray traveled in the current volume.
 	float distance_in_volume = 0.0f;
 	// The stack of materials being traversed. Used for nested dielectrics handling
