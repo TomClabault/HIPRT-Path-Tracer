@@ -32,6 +32,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
 // - Normal mapping weirdness again on the glasses in the kitchen with ReSTIR GI
 // - Glass IOR 1.0f not rendering properly even without restir GI
+// - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
+// - Test ReSTIR GI with diffuse transmission
+
 
 
 //  Global emission factor broken? Going to 0.9 and then back to 1.0 doesn't give the same results as staying at 1 (barbershop scene)
@@ -64,6 +67,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - also reuse BSDF mis ray of envmap MIS
+// - In the material packing, pack major material properties together: coat, metallic, specular_transmission, diffuse_transmission, ... so that we can, in a single memory access, determine whether or not we need to read the rest of the coat, specular transmission ,...
 // - ReSTIR el cheapo
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - When doing MIS, if we sampled a BSDF sample on a delta distribution, we shouldn't bother sampling lights because we know that the BSDF sample is going to overweight everything else and the light sample is going to have a MIS weight of 0 anyways
@@ -134,7 +138,7 @@ extern ImGuiLogger g_imgui_logger;
 // - next event estimation++? --> 2023 paper improvement
 // - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance
 // - envmap visibility cache? 
-// - russian roulette on light sampling based on light contribution?
+// - ReSTIR DI & GI in a single reservoir (probably better performance at almost no additional cost, instead of having two ReSTIR passes), idea coming from: https://www.reddit.com/r/GraphicsProgramming/comments/1j03npo/comment/mfo1kgr/?context=3
 // - If GMoN is enabled, it would be cool to be able to denoise the GMoN blend between GMoN and the default framebuffer but currently the denoiser only denoises the full GMoN and nothing else
 // - Exploiting Visibility Correlation in Direct Illumination
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
