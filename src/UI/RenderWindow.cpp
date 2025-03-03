@@ -34,6 +34,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Glass IOR 1.0f not rendering properly even without restir GI
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
 // - Test ReSTIR GI with diffuse transmission
+// - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 
 
 

@@ -46,6 +46,7 @@ struct ReSTIRGISample
     BSDFIncidentLightInfo incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
 
     unsigned int direct_lighting_at_sample_point_random_seed = 42;
+    // TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?
     unsigned int visible_to_sample_point_alpha_test_random_seed = 42;
 
     float target_function = 0.0f;

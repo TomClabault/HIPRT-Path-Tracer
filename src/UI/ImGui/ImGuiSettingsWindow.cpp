@@ -2537,7 +2537,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				m_render_window->set_force_viewport_refresh(true);
 			}
 			ImGui::SameLine();
-			ImGui::Checkbox("Auto", &gmon_data.gmon_auto_blend_factor);
+			if (ImGui::Checkbox("Auto", &gmon_data.gmon_auto_blend_factor))
+				m_render_window->set_force_viewport_refresh(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (m_render_window->get_display_view_system()->get_current_display_view_type() != DisplayViewType::GMON_BLEND)
