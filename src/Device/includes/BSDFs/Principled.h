@@ -1229,21 +1229,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 {
     pdf = 0.0f;
 
-    /*if (hippt::dot(shading_normal, view_direction) < 0.0f)
-    {
-        hippt::atomic_min(&render_data.render_settings.DEBUG_SUMS[0], hippt::dot(shading_normal, view_direction));
-
-        if (counter++ % delay == 0)
-            printf("Eval broken: %f | [%d, %d]\n", hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f), hippt::thread_idx_x(), hippt::thread_idx_y());
-
-#ifndef __KERNELCC__
-        Utils::debugbreak();
-#endif
-
-        pdf = 0.001f;
-        return ColorRGB32F(0, 1.0e10f, 0);
-    }*/
-
     // Only the glass lobe is considered when evaluating
     // the BSDF from inside the object so we're going to use that
     // 'outside_object' flag to nullify the other lobes if we're
@@ -1350,22 +1335,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
                                                                   int current_bounce, BSDFIncidentLightInfo* light_sample_info_out)
 {
     pdf = 0.0f;
-
-    /*if (hippt::dot(shading_normal, view_direction) < 0.0f)
-    {
-        hippt::atomic_min(&render_data.render_settings.DEBUG_SUMS[0], hippt::dot(shading_normal, view_direction));
-
-        if (counter++ % delay == 0)
-            printf("Sample broken: %f | [%d, %d]\n", hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f), hippt::thread_idx_x(), hippt::thread_idx_y());
-
-#ifndef __KERNELCC__
-        Utils::debugbreak();
-#endif
-
-        pdf = 0.0f;
-        output_direction = shading_normal;
-        return ColorRGB32F(0, 1.0e10f, 0);
-    }*/
 
     float3 normal = shading_normal;
 

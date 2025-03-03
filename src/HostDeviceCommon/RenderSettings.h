@@ -148,7 +148,7 @@ struct HIPRTRenderSettings
 	// chance find a path to a potentially 
 	int adaptive_sampling_min_samples = 256;
 	// Adaptive sampling noise threshold
-	float adaptive_sampling_noise_threshold = 0.15f;
+	float adaptive_sampling_noise_threshold = 0.1f;
 
 	// If true, the rendering will stop after a certain proportion (defined by 'stop_pixel_percentage_converged')
 	// of pixels of the image have converged. "converged" here is defined according to the adaptive sampling if
@@ -162,7 +162,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 20.0f;
+	float stop_pixel_percentage_converged = 25.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;
