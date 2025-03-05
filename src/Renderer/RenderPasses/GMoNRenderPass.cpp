@@ -58,7 +58,10 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 			//
 			// 0 blend factor at sample number 0
 			// 1 blend factor at sample number (2 * number_of_sets^2)
-			m_gmon.gmon_blend_factor = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (2.0f * hippt::square(number_of_sets)));
+			if (HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
+				m_gmon.gmon_blend_factor = 1.0f;// -m_darkening_factor;
+			else
+				m_gmon.gmon_blend_factor = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (2.0f * hippt::square(number_of_sets)));
 
 		// Resetting the flag because we're now rendering a new frame
 		m_gmon.m_gmon_recomputed = false;
@@ -112,10 +115,181 @@ bool GMoNRenderPass::launch()
 		m_gmon.m_gmon_recomputation_requested = false;
 		m_gmon.last_recomputed_sample_count = m_renderer->get_render_settings().sample_number + 1;
 
+		m_darkening_factor = compute_gmon_darkening();
+
 		return true;
 	}
 
 	return false;
+}
+
+float GMoNRenderPass::compute_gmon_darkening()
+{
+	if (!m_render_data->render_settings.DEBUG_gmon_auto_blending_weights || !HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
+		return 0.0f;
+
+	std::vector<ColorRGB32F> result = OrochiBuffer<ColorRGB32F>::download_data(m_gmon.result_framebuffer->map(), m_gmon.result_framebuffer->get_element_count());
+	std::vector<ColorRGB32F> reference = OrochiBuffer<ColorRGB32F>::download_data(m_renderer->get_default_interop_framebuffer()->map(), m_gmon.result_framebuffer->get_element_count());
+	std::vector<float> blend_weights_framebuffer(reference.size());
+
+	int debug_x_1 = 589; //51
+	int debug_y_1 = 24;
+	int debug_x_2 = 596;
+	int debug_y_2 = 34;
+
+	for (int y = 0; y < m_renderer->m_render_resolution.y; y++)
+	{
+		for (int x = 0; x < m_renderer->m_render_resolution.x; x++)
+		{
+			int index = x + y * m_renderer->m_render_resolution.x;
+
+			ColorRGB32F ref_color = reference[index] / m_render_data->render_settings.sample_number;
+			ColorRGB32F result_color = result[index] / m_render_data->render_settings.sample_number;
+
+			ref_color = ColorRGB32F(1.0f) - exp(-ref_color * 1.8f);
+			ref_color = pow(ref_color, 1.0f / 2.2f);
+
+			result_color = ColorRGB32F(1.0f) - exp(-result_color * 1.8f);
+			result_color = pow(result_color, 1.0f / 2.2f);
+
+			float ref_luminance = ref_color.luminance();
+			float result_luminance = result_color.luminance();
+
+			if (x == debug_x_1 && m_renderer->m_render_resolution.y - 1 - y == debug_y_1)
+				std::cout << std::endl;
+
+			if (ref_luminance - result_luminance > ref_luminance / 2.0f)
+			{
+				// If the pixel has lost a lot of luminance i.e. darkening, determining if this is a firefly or not
+
+				int window_size = m_render_data->render_settings.DEBUG_GMON_WINDOW_SIZE;
+				int valid_neighbors = 0;
+				float neighbor_luminance_sum = 0.0f;
+				float neighbor_luminance_average = 0.0f;
+
+				// Computing the average of neighbors
+				for (int j = -window_size / 2; j <= window_size / 2; j++)
+				{
+					for (int i = -window_size / 2; i <= window_size / 2; i++)
+					{
+						int neighbor_index_x = x + i;
+						int neighbor_index_y = y + j;
+						if (neighbor_index_x < 0 || neighbor_index_x >= m_renderer->m_render_resolution.x || neighbor_index_y < 0 || neighbor_index_y >= m_renderer->m_render_resolution.y)
+							continue;
+						else if (i == 0 && j == 0)
+							// Not counting the center pixel
+							continue;
+
+						int neighbor_index = neighbor_index_x + neighbor_index_y * m_renderer->m_render_resolution.x;
+
+						ColorRGB32F current_color = reference[neighbor_index] / m_render_data->render_settings.sample_number;
+						current_color = ColorRGB32F(1.0f) - exp(-current_color * 1.8f);
+						current_color = pow(current_color, 1.0f / 2.2f);
+
+						valid_neighbors++;
+						neighbor_luminance_sum += current_color.luminance();
+					}
+				}
+
+				if (x == debug_x_1 && m_renderer->m_render_resolution.y - 1 - y == debug_y_1)
+					std::cout << std::endl;
+
+				neighbor_luminance_average = neighbor_luminance_sum / valid_neighbors;
+
+				float brighter = ref_luminance / neighbor_luminance_average;
+
+				blend_weights_framebuffer[index] = hippt::inverse_lerp(brighter, 1.0f, 3.0f);
+			}
+			else
+				blend_weights_framebuffer[index] = 1.0f;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			//int window_size = 5;
+			//int valid_neighbors = 0;
+			//float neighbor_luminance_sum = 0.0f;
+			//float neighbor_luminance_average = 0.0f;
+			//std::vector<float> neighbors_luminance;
+			//neighbors_luminance.reserve(window_size * window_size);
+
+			//// Computing the average of neighbors
+			//for (int i = -window_size / 2; i <= window_size / 2; i++)
+			//{
+			//	for (int j = -window_size / 2; j <= window_size / 2; j++)
+			//	{
+			//		int neighbor_index_x = x + j;
+			//		int neighbor_index_y = y + i;
+			//		if (neighbor_index_x < 0 || neighbor_index_x >= m_renderer->m_render_resolution.x || neighbor_index_y < 0 || neighbor_index_y >= m_renderer->m_render_resolution.y)
+			//			continue;
+
+			//		int neighbor_index = neighbor_index_x + neighbor_index_y * m_renderer->m_render_resolution.x;
+
+			//		float current_luminance = reference[neighbor_index].luminance() / m_render_data->render_settings.sample_number;
+			//		valid_neighbors++;
+			//		neighbor_luminance_sum += current_luminance;
+			//		neighbors_luminance.push_back(current_luminance);
+			//	}
+			//}
+			//neighbor_luminance_average = neighbor_luminance_sum / valid_neighbors;
+
+			//// Computing the variance
+			//float neighbor_luminance_variance = 0.0f;
+			//for (int i = -window_size / 2; i <= window_size / 2; i++)
+			//{
+			//	for (int j = -window_size / 2; j <= window_size / 2; j++)
+			//	{
+			//		int neighbor_index_x = x + j;
+			//		int neighbor_index_y = y + i;
+			//		if (neighbor_index_x < 0 || neighbor_index_x >= m_renderer->m_render_resolution.x || neighbor_index_y < 0 || neighbor_index_y >= m_renderer->m_render_resolution.y)
+			//			continue;
+
+			//		int neighbor_index = neighbor_index_x + neighbor_index_y * m_renderer->m_render_resolution.x;
+
+			//		float current_luminance = reference[neighbor_index].luminance() / m_render_data->render_settings.sample_number;
+			//		neighbor_luminance_variance += hippt::square(current_luminance - neighbor_luminance_average) / valid_neighbors;
+			//	}
+			//}
+
+			//if (x == debug_x_1 && m_renderer->m_render_resolution.y - 1 - y == debug_y_1)
+			//	m_DEBUG_LUMINANCE_VARIANCE1 = neighbor_luminance_variance;
+			//if (x == debug_x_2 && m_renderer->m_render_resolution.y - 1 - y == debug_y_2)
+			//	m_DEBUG_LUMINANCE_VARIANCE2 = neighbor_luminance_variance;
+
+			//std::sort(neighbors_luminance.begin(), neighbors_luminance.end());
+
+			/*if (hippt::abs(x - debug_x_1) <= 5 && hippt::abs(m_renderer->m_render_resolution.y - y - debug_y_1 - 1) <= 5)
+				result[index] = ColorRGB32F(1.0e10f, 0.0f, 0.0f);*/
+
+				//blend_weights_framebuffer[index] = 1.0f;
+		}
+	}
+
+	for (int i = 0; i < result.size(); i++)
+		result[i] = hippt::lerp(reference[i], result[i], blend_weights_framebuffer[i]);
+	OrochiBuffer<ColorRGB32F>::upload_data(m_gmon.result_framebuffer->map(), result, m_gmon.result_framebuffer->get_element_count());
+
+	return 0.0f;// 1.0f - result_luminance_sum / ref_luminance_sum;
+}
+
+float GMoNRenderPass::get_gmon_darkening()
+{
+	return m_darkening_factor;
+}
+
+float GMoNRenderPass::get_lumi()
+{
+	return m_DEBUG_LUMINANCE_VARIANCE1;
 }
 
 void GMoNRenderPass::post_render_update()

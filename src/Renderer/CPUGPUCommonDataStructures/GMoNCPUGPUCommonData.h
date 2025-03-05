@@ -11,7 +11,7 @@
 struct GMoNCPUGPUCommonData
 {
 	// Whether or not GMoN is actively being used
-	bool using_gmon = false;
+	bool using_gmon = HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS;
 
 	// How much to blend between the non-GMoN output and the GMoN output
 	float gmon_blend_factor = 0.0f;

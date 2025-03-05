@@ -137,21 +137,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.sample_point_volume_state = ray_payload.volume_state;
                 }
 
-                // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
-                // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
-                // and a ray hits the back of the triangle. The normal will not be facing the view direction in this
-                // case and this will cause issues later in the BRDF.
-                // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
-                // and emitting light in both directions of the surface), we're negating the normal to make
-                // it face the view direction (but only for emissive geometry)
-
-                // TODO uncomment that if this causes issues
-                /*if (ray_payload.material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
-                {
-                    closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
-                    closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
-                }*/
-
                 if (bounce > 0)
                 {
                     if (bounce == 1)

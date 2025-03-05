@@ -392,9 +392,6 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 			ImGui::EndTable();
 		}
 
-		material_override_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material_override.sheen_color);
-		material_override_changed |= ImGui::SliderFloat("Sheen roughness", &material_override.sheen_roughness, 0.0f, 1.0f);
-
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
@@ -460,7 +457,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 9:
-					material_override_changed |= draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 0.0f, 1.0f);
+					material_override_changed |= draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 0.0f, 3.0f);
 					break;
 				}
 			}

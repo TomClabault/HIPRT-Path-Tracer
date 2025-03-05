@@ -96,10 +96,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	int reused_neighbors_count = render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index = 0;
-	// TODO DEBUG UNCOMMENT THIS
-	//if (valid_neighbors_M_sum == 0)
-	//	// No valid neighbor to resample from, skip to the initial candidate right away
-	//	start_index = reused_neighbors_count;
+	if (valid_neighbors_M_sum == 0)
+		// No valid neighbor to resample from, skip to the initial candidate right away
+		start_index = reused_neighbors_count;
 
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
@@ -215,7 +214,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			selected_neighbor = neighbor_index;
 #endif
 
-			DEBUG_SELECTGED_JACBOAIN = shift_mapping_jacobian;
+			DEBUG_SELECTGED_JACBOAIN = neighbor_index;
 		}
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);

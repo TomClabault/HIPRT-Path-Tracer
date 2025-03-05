@@ -30,12 +30,20 @@ struct HIPRTRenderSettings
 	// This is mainly useful for the first frame of the render
 	bool need_to_reset = true;
 
+
 	// TODO DEBUG REMOVE THIS
+	////////////////////////////////////////////////////
+
+	static constexpr bool DEBUG_DEV_GMON_BLEND_WEIGHTS = false;
+	bool DEBUG_gmon_auto_blending_weights = true;
+	float DEBUG_GMON_DIVIDER = 3.0f;
+	int DEBUG_GMON_WINDOW_SIZE = 3;
+
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 
-	// TODO DEBUG REMOVE THIS
 	bool enable_direct = true;
+	bool DEBUG_DONT_REUSE_SPECULAR = false;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	bool debug_lambertian = false;
@@ -46,6 +54,8 @@ struct HIPRTRenderSettings
 	int debug_count_multiplier = 2;
 	int precision = 256;
 	int stop_value = SAMPLE_STOP * MULTIPLIER - 10;
+
+	////////////////////////////////////////////////////
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 
@@ -146,7 +156,7 @@ struct HIPRTRenderSettings
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 256;
+	int adaptive_sampling_min_samples = 1024;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.1f;
 
@@ -162,7 +172,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 25.0f;
+	float stop_pixel_percentage_converged = 15.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;
@@ -170,7 +180,7 @@ struct HIPRTRenderSettings
 
 
 	// Clamp direct lighting contribution to reduce fireflies
-	float direct_contribution_clamp = 4.0f;
+	float direct_contribution_clamp = 0.0f;
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies

@@ -38,8 +38,10 @@ public:
 	T* get_device_pointer();
 	T** get_device_pointer_address();
 
-	// Static function for downloading from a device buffer when we
-	// only have the address of the buffer (and not the OrochiBuffer object)
+	/** 
+	 * Static function for downloading from a device buffer when we
+	 * only have the address of the buffer (and not the OrochiBuffer object)
+	 */
 	static std::vector<T> download_data(T* device_data_pointer, size_t element_count);
 	std::vector<T> download_data() const;
 	/**
@@ -47,6 +49,10 @@ public:
 	 */
 	std::vector<T> download_data_partial(int start_element_index, int stop_element_index_excluded) const;
 	void download_data_async(void* out, oroStream_t stream) const;
+
+
+	static void upload_data(T* device_data_pointer, const std::vector<T>& data_to_upload, size_t element_count);
+	static void upload_data(T* device_data_pointer, const T* data_to_upload, size_t element_count);
 	/**
 	 * Uploads as many elements as returned by get_element_count from the data std::vector into the buffer.
 	 * The given std::vector must therefore contain at least get_element_count() elements.
@@ -226,6 +232,19 @@ void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const
 	}
 
 	oroMemcpyAsync(out, m_data_pointer, m_element_count * sizeof(T), oroMemcpyDeviceToHost, stream);
+}
+
+template <typename T>
+void OrochiBuffer<T>::upload_data(T* device_data_pointer, const std::vector<T>& data_to_upload, size_t element_count)
+{
+	OrochiBuffer<T>::upload_data(device_data_pointer, data_to_upload.data(), element_count);
+}
+
+template <typename T>
+void OrochiBuffer<T>::upload_data(T* device_data_pointer, const T* data_to_upload, size_t element_count)
+{
+	if (device_data_pointer && data_to_upload)
+		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(device_data_pointer), data_to_upload, sizeof(T) * element_count, oroMemcpyHostToDevice));
 }
 
 template <typename T>

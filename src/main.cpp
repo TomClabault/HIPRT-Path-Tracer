@@ -25,6 +25,8 @@ extern ImGuiLogger g_imgui_logger;
 
 #define GPU_RENDER 1
 
+#include "Experimentations/TestCopyKernelSimple.h"
+
 int main(int argc, char* argv[])
 {   
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
@@ -77,6 +79,10 @@ int main(int argc, char* argv[])
     parsed_scene = Scene();
     envmap_image.free();
         
+     /*TestCopyKernelSimple();
+
+     return 0;*/
+
     render_window.run();
 #else
 

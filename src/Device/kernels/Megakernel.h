@@ -105,21 +105,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
                 if (bounce == 0)
                     store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
 
-                // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
-                // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
-                // and a ray hits the back of the triangle. The normal will not be facing the view direction in this
-                // case and this will cause issues later in the BRDF.
-                // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
-                // and emitting light in both directions of the surface), we're negating the normal to make
-                // it face the view direction (but only for emissive geometry)
-                // 
-                // TODO uncomment that if this causes issues
-                /*if (ray_payload.material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
-                {
-                    closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
-                    closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
-                }*/
-
                 // TODO REMOVE THE DEBUG IF
                 if (bounce > 0 || render_data.render_settings.enable_direct)
                     ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);

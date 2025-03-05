@@ -208,6 +208,16 @@ namespace hippt
 	__device__ T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
 
 	/**
+	 * For a 'value' between 'a' and 'b', returns 't' such that
+	 * (1.0f - t) * a + t * b = value
+	 * 
+	 * For 'value' == 'a', returns 0.0f
+	 * For 'value' == 'b', returns 1.0f
+	 */
+	template <typename T>
+	__device__ float inverse_lerp(T value, T a, T b) { return (value - a) / (b - a); }
+
+	/**
 	 * Reference: https://registry.khronos.org/OpenGL-Refpages/gl4/html/smoothstep.xhtml
 	 *
 	 * For t == min, returns 0.0f
@@ -416,6 +426,16 @@ namespace hippt
 	 */
 	template <typename T>
 	inline T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
+
+	/**
+	 * For a 'value' between 'a' and 'b', returns 't' such that
+	 * (1.0f - t) * a + t * b = value
+	 *
+	 * For 'value' == 'a', returns 0.0f
+	 * For 'value' == 'b', returns 1.0f
+	 */
+	template <typename T>
+	inline float inverse_lerp(T value, T a, T b) { return (value - a) / (b - a); }
 	
 	/**
 	 * Reference: https://registry.khronos.org/OpenGL-Refpages/gl4/html/smoothstep.xhtml

@@ -122,13 +122,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             else
             {
                 // Loading the second hit in the ray payload:
-                // TODO create a new ray payload variable for clarity and check that the register don't go up
+                // TODO create a new ray payload variable for clarity and check that the registers don't go up
                 ray_payload.material = resampling_reservoir.sample.sample_point_material.unpack();
                 ray_payload.volume_state = resampling_reservoir.sample.sample_point_volume_state;
                 ray_payload.bounce = 1;
 
                 // Loading the second hit in the closest hit
-                // TODO create a new closest hit variable for clarity and check that the register don't go up
+                // TODO create a new closest hit variable for clarity and check that the registers don't go up
                 closest_hit_info.geometric_normal = resampling_reservoir.sample.sample_point_geometric_normal;
                 closest_hit_info.shading_normal = resampling_reservoir.sample.sample_point_shading_normal;
                 closest_hit_info.inter_point = resampling_reservoir.sample.sample_point;
@@ -137,11 +137,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 // Using the same seed for direct lighting as when generating the initial candidate
                 random_number_generator.m_state.seed = resampling_reservoir.sample.direct_lighting_at_sample_point_random_seed;
                 // Taking the direct lighting at the sample point hit into account
-                // Using a custom ray throughput of 1.0f because we're recomputing the throughput of the path manually
-                // here with ReSTIR GI so we don't want any kind of throughput to be taken into account in the
-                // direct lighting estimation
-                ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
-                camera_outgoing_radiance += direct_lighting_second_hit * first_hit_throughput;
+                ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, first_hit_throughput, closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
+                camera_outgoing_radiance += direct_lighting_second_hit;
 
                 if (!resampling_reservoir.sample.outgoing_radiance_to_sample_point.is_black())
                 {
@@ -190,7 +187,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::WEIGHT_SUM)
         path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.weight_sum) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::M_COUNT)
-        path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
+        path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.DEBUG_VALUE) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else
         // Regular output
         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);

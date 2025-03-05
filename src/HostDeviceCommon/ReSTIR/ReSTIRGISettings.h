@@ -65,13 +65,13 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 1;
 		common_spatial_pass.reuse_radius = 16;
-		common_spatial_pass.reuse_neighbor_count = 0;
+		common_spatial_pass.reuse_neighbor_count = 16;
 
 		common_spatial_pass.do_disocclusion_reuse_boost = false;
 		common_spatial_pass.disocclusion_reuse_count = 5;
 
 		common_spatial_pass.debug_neighbor_location = false;
-		common_spatial_pass.debug_neighbor_location_direction = 1;
+		common_spatial_pass.debug_neighbor_location_direction = 0;
 
 		common_spatial_pass.do_neighbor_rotation = true;
 
@@ -101,7 +101,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		m_cap = 3;
 		use_confidence_weights = true;
 
-		debug_view = ReSTIRGIDebugView::NO_DEBUG;
+		debug_view = ReSTIRGIDebugView::M_COUNT;
 		debug_view_scale_factor = 0.04f;
 	}
 

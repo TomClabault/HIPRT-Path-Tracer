@@ -39,6 +39,10 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 		return 0.0f;
 	else if constexpr (resamplingNeighbor)
 	{
+		if (render_data.render_settings.DEBUG_DONT_REUSE_SPECULAR)
+			if (sample.incident_light_info_at_sample_point == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE)
+				return 0.0f;
+
 		// If resampling a neighbor, the target function is going to evaluate to 0.0f if the sample point of the neighbor
 		// is specular: that is because when resampling a neighbor, i.e. reconnecting to the sample point of the neighbor,
 		// we're changing the view direction of the BSDF at the sample point.
@@ -70,7 +74,23 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	if (bsdf_pdf > 0.0f)
 		bsdf_color *= hippt::abs(hippt::dot(surface.shading_normal, incident_light_direction));
 
+#if ReSTIRGIDoubleBSDFInTargetFunction == KERNEL_OPTION_TRUE
+	if (!sample.is_envmap_path())
+	{
+		float sample_point_bsdf_pdf;
+		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, sample.sample_point_material.unpack(), const_cast<RayVolumeState&>(sample.sample_point_volume_state), false, -incident_light_direction, sample.sample_point_shading_normal, sample.sample_point_geometric_normal, sample.incident_light_direction_at_sample_point, sample_point_bsdf_pdf, random_number_generator, 1, sample.incident_light_info_at_sample_point);
+		ColorRGB32F outgoing_radiance_to_visible_point_reconstructed;
+
+		if (sample_point_bsdf_pdf > 0.0f)
+			outgoing_radiance_to_visible_point_reconstructed = sample_point_bsdf_color / sample_point_bsdf_pdf * hippt::abs(hippt::dot(sample.sample_point_shading_normal, sample.incident_light_direction_at_sample_point)) * sample.outgoing_radiance_to_sample_point;
+
+		return (bsdf_color * outgoing_radiance_to_visible_point_reconstructed).luminance();
+	}
+	else
+		return (bsdf_color * sample.outgoing_radiance_to_visible_point).luminance();
+#else
 	return (bsdf_color * sample.outgoing_radiance_to_visible_point).luminance();
+#endif
 }
 
 #endif

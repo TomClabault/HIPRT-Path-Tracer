@@ -53,6 +53,10 @@ extern ImGuiLogger g_imgui_logger;
 // - OVS - Optimal visibility shaidng
 // - symmetric ratio MIS
 // - shade secondary surface by looking up screen space reservoir if possible ReSTIR DI --> We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. --> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
+// - Decoupled shading reuse for ReSTIR DI running average for the shading weights?
+//		(decoupledShadingBuffer = decoupledShadingBuffer + ((sampleColor * sampleReservoir.W) - decoupledShadingBuffer) / (float) (decoupledShadingSampleCount + 1);
+//		decoupledShadingSampleCount++;
+//		https://www.reddit.com/r/GraphicsProgramming/comments/1j03npo/comment/mg07h5a/?context=3
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - we need a ReSTIR DI convergence check
@@ -74,6 +78,7 @@ extern ImGuiLogger g_imgui_logger;
 // - When doing MIS, if we sampled a BSDF sample on a delta distribution, we shouldn't bother sampling lights because we know that the BSDF sample is going to overweight everything else and the light sample is going to have a MIS weight of 0 anyways
 // - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?
 // - texture compression
+// - Try to use __restrict__ somehow because there seems to be a lot of performance left on the table
 // - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect fetch?
 // - limit  number of bounces based on material type
 // - use material SoA in GBuffer and only load what's necessary (i.e. not the thin film and all of that if the material isn't using thin-film, ...)
