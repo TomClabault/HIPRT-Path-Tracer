@@ -161,6 +161,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 	if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
 		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("Don't reuse specular", &render_settings.DEBUG_DONT_REUSE_SPECULAR))
+		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Debug lambertian", &render_settings.debug_lambertian))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Do only neighbor", &render_settings.DEBUG_DO_ONLY_NEIGHBOR))
@@ -951,16 +953,21 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				display_ReSTIR_DI_bias_status(global_kernel_options);
 
-				if (ImGui::CollapsingHeader("General Settings"))
+				if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
+					m_render_window->set_render_dirty(true);
+
+				if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
 				{
-					ImGui::TreePush("ReSTIR DI - General Settings Tree");
+					render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+					if (render_settings.accumulate)
+						m_render_window->set_render_dirty(true);
+				}
 
-					{
-						if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
-							m_render_window->set_render_dirty(true);
+				if (ImGui::CollapsingHeader("Rejection Heuristics"))
+				{
+					ImGui::TreePush("ReSTIR DI - Rejection Heuristics Tree");
 
-						draw_ReSTIR_neighbor_heuristics_panel<false>();
-					}
+					draw_ReSTIR_neighbor_heuristics_panel<false>();
 
 					ImGui::TreePop();
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1277,9 +1284,31 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::CollapsingHeader("General Settings"))
+				if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
 				{
-					ImGui::TreePush("ReSTIR GI - General Settings Tree");
+					render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+					if (render_settings.accumulate)
+						m_render_window->set_render_dirty(true);
+				}
+
+				static bool double_bsdf_target_function = ReSTIRGIDoubleBSDFInTargetFunction;
+				if (ImGui::Checkbox("Evaluate sample-point BSDF in target function", &double_bsdf_target_function))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DOUBLE_BSDF_TARGET_FUNCTION, double_bsdf_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Whether or not to include the change in BSDF at the sample point when resampling a neighbor.\n"
+					"This brings the target function closer to the integrand but at a non-negligeable performance cost.\n\n"
+					""
+					"Not worth it in practice, solely here for experimentation purposes.");
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+				if (ImGui::CollapsingHeader("Rejection Heuristics"))
+				{
+					ImGui::TreePush("ReSTIR GI - Rejection Heuristics Tree");
 
 					draw_ReSTIR_neighbor_heuristics_panel<true>();
 
@@ -1380,14 +1409,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 		else 
 			return std::ref(render_settings.restir_di_settings);
 	}();
-
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	if (ImGui::SliderInt("M-cap", &common_settings.m_cap, 0, 48))
-	{
-		common_settings.m_cap = std::max(0, common_settings.m_cap);
-		if (render_settings.accumulate)
-			m_render_window->set_render_dirty(true);
-	}
 
 	static bool use_heuristics_at_all = true;
 	static bool use_normal_heuristic_backup = common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
@@ -2470,6 +2491,22 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		if (ImGui::Checkbox("Use GMoN", &gmon_data.using_gmon))
 			toggle_gmon();
+
+		if (HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
+		{
+			if (ImGui::Checkbox("Auto blending weight", &render_data.render_settings.DEBUG_gmon_auto_blending_weights))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::SliderFloat("GMoN Divider", &render_data.render_settings.DEBUG_GMON_DIVIDER, 1.0f, 10.0f))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::SliderInt("GMoN Window size", &render_data.render_settings.DEBUG_GMON_WINDOW_SIZE, 3, 21))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::Text("GMoN Darkening: %f", m_renderer->get_gmon_render_pass()->get_gmon_darkening());
+			ImGui::Text("Variance 1: %f", m_renderer->get_gmon_render_pass()->m_DEBUG_LUMINANCE_VARIANCE1);
+			ImGui::Text("Variance 2: %f", m_renderer->get_gmon_render_pass()->m_DEBUG_LUMINANCE_VARIANCE2);
+		}
 
 		ImGuiRenderer::show_help_marker("Use GMoN for fireflies elimination.\n"
 			"The algorithm computes the median of means of the pixels as an estimator "

@@ -173,6 +173,7 @@ struct ReSTIRDIReservoir
 
     int M = 0;
     // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
+
     float weight_sum = 0.0f;
     // If the UCW is set to -1, this is because the reservoir was killed by visibility reuse
     float UCW = 0.0f;

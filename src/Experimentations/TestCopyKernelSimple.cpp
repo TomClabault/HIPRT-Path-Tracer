@@ -4,31 +4,37 @@
  */
 
 #include "Compiler/GPUKernel.h"
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/kernels/Experimentations/TestCopyKernelSimple.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 
 #include <memory>
 
-void TestCopyKernelAlignment()
+void TestCopyKernelSimple()
 {
     std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>(0);
 
     GPUKernel test_copy_kernel;
-    test_copy_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Experimentations/TestCopyKernelAlignment.h");
-    test_copy_kernel.set_kernel_function_name("TestCopyKernelAlignment");
+    test_copy_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Experimentations/TestCopyKernelSimple.h");
+    test_copy_kernel.set_kernel_function_name("TestCopyKernelSimple");
     test_copy_kernel.compile(hiprt_orochi_ctx);
 
-#define BUFFER_SIZE 500000000
-#define ITERATIONS 1000
+#define BUFFER_SIZE 2560*1440
+#define ITERATIONS 4000
 
-    OrochiBuffer<ColorRGB32F> buffer_a(BUFFER_SIZE);
-    OrochiBuffer<ColorRGB32F> buffer_b(BUFFER_SIZE);
+    OrochiBuffer<TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE> buffer_a(BUFFER_SIZE);
+    OrochiBuffer<TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE> buffer_b(BUFFER_SIZE);
 
     buffer_a.memset_whole_buffer(1);
     buffer_b.memset_whole_buffer(1);
 
+    TestCopyKernelSimpleInputData input_data;
+    input_data.buffer_a = buffer_a.get_device_pointer();
+    input_data.buffer_b = buffer_b.get_device_pointer();
+
     size_t buffer_size = BUFFER_SIZE;
-    void* launch_args[] = { buffer_a.get_device_pointer_address(), buffer_b.get_device_pointer_address(), &buffer_size };
+    void* launch_args[] = { &input_data, &buffer_size};
 
     float average_sum = 0.0f;
     float min_exec_time = 1000000.0f;
@@ -44,5 +50,5 @@ void TestCopyKernelAlignment()
         average_sum += execution_time;
     }
 
-    std::cout << "Min/max/average exec time:" << min_exec_time << " / " << max_exec_time << "/" << average_sum / ITERATIONS << " ms" << std::endl;
+    std::cout << "Min/max/average exec time:" << min_exec_time << " / " << max_exec_time << " / " << average_sum / ITERATIONS << " ms" << std::endl;
 }

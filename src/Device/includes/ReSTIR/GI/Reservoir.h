@@ -6,6 +6,7 @@
 #ifndef DEVICE_RESTIR_GI_RESERVOIR_H
 #define DEVICE_RESTIR_GI_RESERVOIR_H
 
+#include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
 #include "Device/includes/RayVolumeState.h"
 
 #include "HostDeviceCommon/Material/MaterialPacked.h"
@@ -111,11 +112,6 @@ struct ReSTIRGIReservoir
 
             return true;
         }
-        //else
-        //    // TODO DEBUG REMOVE THIS
-        //    if (other_reservoir.UCW > 0.0f)
-        //        sample.sample_point = other_reservoir.sample.sample_point;
-
 
         return false;
     }
@@ -128,6 +124,8 @@ struct ReSTIRGIReservoir
             UCW = 1.0f / sample.target_function * weight_sum;
     }
 
+    float DEBUG_VALUE = 0.0f;
+
     HIPRT_HOST_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
     {
         // Checking some limit values
@@ -138,6 +136,8 @@ struct ReSTIRGIReservoir
 
         // Hard limiting M to avoid explosions if the user decides not to use any M-cap (M-cap == 0)
         M = hippt::min(M, 1000000);
+
+        DEBUG_VALUE = sample.target_function / normalization_denominator;
     }
 
     HIPRT_HOST_DEVICE HIPRT_INLINE void sanity_check(int2 pixel_coords)

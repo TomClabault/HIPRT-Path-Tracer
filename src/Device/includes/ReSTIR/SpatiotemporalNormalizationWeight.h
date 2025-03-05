@@ -50,7 +50,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			int neighbor_pixel_index;
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, 
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, 
 					neighbor, temporal_neighbor_coords,
 					cos_sin_theta_rotation);
 
@@ -80,7 +80,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				out_normalization_denom += initial_candidates_reservoir_M;
 			else
-				out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(neighbor_pixel_index);
+				out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
 		}
 
 		// The fused spatiotemporal pass also resamples a temporal neighbor so we add the M of that neighbor too
@@ -120,7 +120,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			int neighbor_pixel_index;
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings,
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data,
 					neighbor, temporal_neighbor_position, cos_sin_theta_rotation);
 
 				if (neighbor_pixel_index == -1)
@@ -212,7 +212,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIK
 			int neighbor_pixel_index;
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, temporal_neighbor_coords, cos_sin_theta_rotation);
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, temporal_neighbor_coords, cos_sin_theta_rotation);
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor
