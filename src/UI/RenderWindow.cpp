@@ -32,9 +32,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
 // - Normal mapping weirdness again on the glasses in the kitchen with ReSTIR GI
 // - Glass IOR 1.0f not rendering properly even without restir GI
-// - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
+// - Fix Fresnel based sampling by modifying only the lobes proba, not the lobe weights since the weights are used when weighting the contributions: the weights modify the contributions of the lobes
 
 
 
@@ -57,9 +57,11 @@ extern ImGuiLogger g_imgui_logger;
 //		(decoupledShadingBuffer = decoupledShadingBuffer + ((sampleColor * sampleReservoir.W) - decoupledShadingBuffer) / (float) (decoupledShadingSampleCount + 1);
 //		decoupledShadingSampleCount++;
 //		https://www.reddit.com/r/GraphicsProgramming/comments/1j03npo/comment/mg07h5a/?context=3
+// - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
+//  If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
+// - we need a ReSTIR DI convergence check --> probably jacobian issues
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
-// - we need a ReSTIR DI convergence check
 // - hardcode the reused neighbor to be us and see what that does?
 // - mismatch in the target function used during the resamplming and in shading.h ?
 // - replace performance presets by thigns like "brute force path tracer", "simple MIS path tracer", ...
@@ -114,7 +116,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation" --> too bright (with transmission at 1.0f), even with film thickness == 0.0f
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
 // - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
-// - Issue with Lambertian BRDF override and emissive material. Seems like backfacing emissive don't work?
 // - Emissive chminey texture broken in scandinavian-studio
 // - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
 
@@ -124,22 +125,19 @@ extern ImGuiLogger g_imgui_logger;
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
-// - free denoiser buffers if not using denoising
 // - use a proper GLTF loader because ASSIMP isn't good, poor support of the GLTF spec
-// - refactor ImGuiRenderer in several sub classes that each draw a panel
-// - refactor closestHitTypes with something like 'hiprtGeomTraversalClosestHitType<UseSharedStackBVHTraversal>' to avoid the big #if #elif blocks
 
 
 
 // TODO Features:
+// - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
+// - One Sample MIS for BSDF sampling: https://discord.com/channels/318590007881236480/377557956775903232/1346777006280278067
 // - Some automatic metric to determine automatically what GMoN blend factor to use
 // - software opacity micromaps
 // - Add parameters to increase the strength of specular / coat darkening
 // - sample BSDF based on view fresnel for glossy layer
-// - limit secondary bounces ray distance: objects far away won't contribute much to what the camera sees so shortening the rays should be okay?
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
-// - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - how to help with shaders combination compilation times? upload bitcodes that ** I ** compile locally to Github? Change some #if to if() where this does not increase register pressure also.
 // - next event estimation++? --> 2023 paper improvement
 // - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance

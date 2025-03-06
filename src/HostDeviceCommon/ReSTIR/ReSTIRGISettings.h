@@ -101,7 +101,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		m_cap = 3;
 		use_confidence_weights = true;
 
-		debug_view = ReSTIRGIDebugView::M_COUNT;
+		debug_view = ReSTIRGIDebugView::NO_DEBUG;
 		debug_view_scale_factor = 0.04f;
 	}
 

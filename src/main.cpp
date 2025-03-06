@@ -23,9 +23,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 1
-
-#include "Experimentations/TestCopyKernelSimple.h"
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {   
@@ -78,10 +76,6 @@ int main(int argc, char* argv[])
     // Freeing the renderer's scene data (i.e. the data converted from ASSIMP)
     parsed_scene = Scene();
     envmap_image.free();
-        
-     /*TestCopyKernelSimple();
-
-     return 0;*/
 
     render_window.run();
 #else
