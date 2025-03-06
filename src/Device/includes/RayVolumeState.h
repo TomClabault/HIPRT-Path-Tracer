@@ -91,7 +91,7 @@ struct RayVolumeState
 	 * Same as 'after_trace_ray_is_outside_object' but should be used from inside the trace_ray() function
 	 * before the intersected material index is pushed onto the nested dielectrics stack
 	 */
-	HIPRT_HOST_DEVICE bool in_trace_ray_is_outside_object() const
+	HIPRT_HOST_DEVICE bool before_trace_ray_is_outside_object() const
 	{
 		// Because this function must only be called after a call to trace_ray, we know
 		// that the last intersected material is on top of the stack.

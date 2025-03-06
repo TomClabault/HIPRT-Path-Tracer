@@ -113,8 +113,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool reuse_mis_ray(const HIPRTRenderData& render_
 		ray_payload.material = mis_reuse.read_material(render_data);
 		fix_backfacing_normals(ray_payload, closest_hit_info, view_direction);
 
-		if (ray_payload.is_inside_volume())
+		if (!ray_payload.volume_state.before_trace_ray_is_outside_object())
+			// Inside the object
 			ray_payload.volume_state.distance_in_volume += mis_reuse.hit_distance;
+
 		ray_payload.volume_state.interior_stack.push(
 			ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.inside_material,
 			mis_reuse.material_index, ray_payload.material.get_dielectric_priority());
