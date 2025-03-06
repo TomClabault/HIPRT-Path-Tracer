@@ -140,7 +140,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray_payload, HitInfo& hit_info, const float3& view_direction)
 {
-    if (ray_payload.volume_state.in_trace_ray_is_outside_object() && hippt::dot(view_direction, hit_info.geometric_normal) < 0.0f)
+    if (ray_payload.volume_state.before_trace_ray_is_outside_object() && hippt::dot(view_direction, hit_info.geometric_normal) < 0.0f)
     {
         // The geometry isn't front-facing
 
@@ -148,7 +148,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray
         hit_info.shading_normal *= -1.0f;
     }
 
-    if (ray_payload.volume_state.in_trace_ray_is_outside_object())
+    if (ray_payload.volume_state.before_trace_ray_is_outside_object())
     {
         if (hippt::dot(view_direction, hit_info.shading_normal) < 0.0f)
             // Flipping the normal such that the view direction isn't below the shading hemisphere anymore
@@ -182,7 +182,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray
     //float3 local_view_direction = world_to_local_frame(T, B, hit_info.geometric_normal, view_direction);
     //float3 local_shading_normal = world_to_local_frame(T, B, hit_info.geometric_normal, hit_info.shading_normal);
 
-    //if (ray_payload.volume_state.in_trace_ray_is_outside_object())
+    //if (ray_payload.volume_state.before_trace_ray_is_outside_object())
     //{
     //    if (hippt::dot(local_view_direction, local_shading_normal) < 0.0f)
     //        // Flipping the normal such that the view direction isn't below the shading hemisphere anymore
@@ -260,7 +260,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 
         out_hit_info.t = hit.t;
 
-        if (!in_out_ray_payload.volume_state.in_trace_ray_is_outside_object())
+        if (!in_out_ray_payload.volume_state.before_trace_ray_is_outside_object())
             // If we're traveling inside a volume, accumulating the distance for Beer's law
             in_out_ray_payload.volume_state.distance_in_volume += hit.t;
 
