@@ -170,7 +170,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_NO_DIRECT_LIGHT_SAMPLING
 
 /**
  * Whether or not to use NEE++ features at all
