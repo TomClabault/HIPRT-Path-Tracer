@@ -315,7 +315,6 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
     if (envmap_image.width == 0 || envmap_image.height == 0)
     {
         m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
-        m_render_data.world_settings.uniform_light_color = ColorRGB32F(0.1f, 0.1f, 0.1f);
 
         std::cout << "Empty envmap set on the CPURenderer... Defaulting to uniform ambient light type" << std::endl;
 
