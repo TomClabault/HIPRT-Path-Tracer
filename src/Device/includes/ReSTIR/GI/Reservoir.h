@@ -38,8 +38,8 @@ struct ReSTIRGISample
     float3 sample_point_geometric_normal = make_float3(-1.0f, -1.0f, -1.0f);
 
     // Is this one use? Can we not just store a float for the luminance and that's it?
-    ColorRGB32F outgoing_radiance_to_visible_point;
-    ColorRGB32F outgoing_radiance_to_sample_point;
+    ColorRGB32F incoming_radiance_to_visible_point;
+    ColorRGB32F incoming_radiance_to_sample_point;
     DevicePackedEffectiveMaterial sample_point_material;
     RayVolumeState sample_point_volume_state;
 

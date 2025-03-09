@@ -1011,26 +1011,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kerne
 	return kernels;
 }
 
-//std::vector<std::string> GPURenderer::get_all_kernel_ids()
-//{
-//	std::vector<std::string> all_ids;
-//	// Size - 1 because we're going to excluded the ray volume state kernel
-//	all_ids.reserve(GPURenderer::KERNEL_FUNCTION_NAMES.size() - 1);
-//
-//	for (const auto& kernel_function_name : GPURenderer::KERNEL_FUNCTION_NAMES)
-//	{
-//		const std::string& kernel_id = kernel_function_name.first;
-//		if (kernel_id == GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID)
-//			// Ignoring this guy because he is special and we don't want it
-//			// in the render pass times
-//			continue;
-//
-//		all_ids.push_back(kernel_id);
-//	}
-//
-//	return all_ids;
-//}
-
 void GPURenderer::set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options)
 {
 	if (kernel_name == "")
@@ -1059,9 +1039,6 @@ oroStream_t GPURenderer::get_main_stream()
 void GPURenderer::compute_render_pass_times()
 {
 	// Registering the render times of all the kernels by iterating over all the kernels
-	/*for (const std::string& kernel_id : get_all_kernel_ids())
-		m_render_pass_times[kernel_id] = m_kernels[kernel_id]->get_last_execution_time();*/
-
 	m_render_graph.compute_render_times();
 
 	if (m_debug_trace_kernel.has_been_compiled())

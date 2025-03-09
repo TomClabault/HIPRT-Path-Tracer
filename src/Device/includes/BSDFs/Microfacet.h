@@ -22,11 +22,11 @@
 /**
  * Evaluates the GGX anisotropic normal distribution function
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic(float alpha_x, float alpha_y, const float3& local_half_vector)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic(float alpha_x, float alpha_y, const float3& local_microfacet_normal)
 {
-    float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x) +
-        (local_half_vector.y * local_half_vector.y) / (alpha_y * alpha_y) +
-        (local_half_vector.z * local_half_vector.z);
+    float denom = (local_microfacet_normal.x * local_microfacet_normal.x) / (alpha_x * alpha_x) +
+        (local_microfacet_normal.y * local_microfacet_normal.y) / (alpha_y * alpha_y) +
+        (local_microfacet_normal.z * local_microfacet_normal.z);
 
     return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
 }
@@ -38,9 +38,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic(float alpha_x, float alpha_
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 3
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic_vndf(float D, float G1V, const float3& local_view_direction, const float3& local_halfway_vector)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic_vndf(float D, float G1V, const float3& local_view_direction, const float3& local_microfacet_normal)
 {
-    float HoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::dot(local_view_direction, local_halfway_vector));
+    float HoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::dot(local_view_direction, local_microfacet_normal));
     return G1V * D * HoL / local_view_direction.z;
 }
 
@@ -149,7 +149,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
     float G1V = 1.0f / (1.0f + lambda_V);
     float Dvisible = GGX_anisotropic_vndf(D, G1V, local_view_direction, local_halfway_vector);
 
-    // Maxing 1.0e-8f here to avoid zeros and numerical imprecisions
+    // Maxing to GGX_DOT_PRODUCTS_CLAMP here to avoid zeros and numerical imprecisions
+    // TODO note that we shouldn't need abs() here because we cannot have the view direction or to light direction below the surface
     float NoV = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_view_direction.z));
     float NoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_to_light_direction.z));
 
@@ -174,13 +175,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
             float G1L = 1.0f / (1.0f + lambda_L);
             float G2 = G1V * G1L;
 
-            float threshold_NoV = 0.0455175;
-            float threshold_NoL = 0.57437;
+            float threshold_NoV = 0.999998;
+            float threshold_NoL = 0.850222;
             if (hippt::abs(NoV - threshold_NoV) < 0.001f && hippt::abs(NoL - threshold_NoL) < 0.001f && counter++ % 100 == 0)
             {
                 float final_value = F.r * D * G2 / (4.0f * NoL * NoV);
 
-                printf("[F, D, G2] = [%f, %f, %f] @ [NoV, NoL] = [%f, %f] ----> %f\n", F.r, D, G2, NoV, NoL, final_value);
+                printf("[F, D, G2] = [%f, %e, %e] @ [NoV, NoL] = [%f, %f] ----> %f\n", F.r, D, G2, NoV, NoL, final_value);
             }
 
             return F * D * G2 / (4.0f * NoL * NoV);

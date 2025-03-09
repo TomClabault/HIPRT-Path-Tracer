@@ -100,8 +100,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
     restir_gi_initial_sample.visible_point = closest_hit_info.inter_point;
 
-    ColorRGB32F outgoing_radiance_to_visible_point;
-    ColorRGB32F outgoing_radiance_to_sample_point;
+    ColorRGB32F incoming_radiance_to_visible_point;
+    ColorRGB32F incoming_radiance_to_sample_point;
     ColorRGB32F throughput_to_visible_point = ColorRGB32F(1.0f);
     ColorRGB32F throughput_to_sample_point = ColorRGB32F(1.0f);
 
@@ -147,11 +147,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     // Estimating with a throughput of 1.0f here because we're going to apply the throughput ourselves
                     ColorRGB32F direct_lighting_estimation = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
                     // Updating the cumulated outgoing radiance of our path to the visible point
-                    outgoing_radiance_to_visible_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_visible_point, render_data.render_settings.indirect_contribution_clamp, bounce);
+                    incoming_radiance_to_visible_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_visible_point, render_data.render_settings.indirect_contribution_clamp, bounce);
 
                     if (bounce > 1)
                         // Updating the cumulated outgoing radiance of our path to the sample point
-                        outgoing_radiance_to_sample_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_sample_point, render_data.render_settings.indirect_contribution_clamp, bounce);
+                        incoming_radiance_to_sample_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_sample_point, render_data.render_settings.indirect_contribution_clamp, bounce);
                 }
 #ifndef __KERNELCC__
                 else if (render_data.render_settings.enable_direct)
@@ -199,9 +199,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.sample_point_primitive_index = -1;
                 }
 
-                outgoing_radiance_to_visible_point += path_tracing_miss_gather_envmap(render_data, throughput_to_visible_point, ray.direction, ray_payload.bounce, pixel_index);
+                incoming_radiance_to_visible_point += path_tracing_miss_gather_envmap(render_data, throughput_to_visible_point, ray.direction, ray_payload.bounce, pixel_index);
                 if (bounce > 1)
-                    outgoing_radiance_to_sample_point += path_tracing_miss_gather_envmap(render_data, throughput_to_sample_point, ray.direction, ray_payload.bounce, pixel_index);
+                    incoming_radiance_to_sample_point += path_tracing_miss_gather_envmap(render_data, throughput_to_sample_point, ray.direction, ray_payload.bounce, pixel_index);
 
                 ray_payload.next_ray_state = RayState::MISSED;
             }
@@ -219,8 +219,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    restir_gi_initial_sample.outgoing_radiance_to_visible_point = outgoing_radiance_to_visible_point;
-    restir_gi_initial_sample.outgoing_radiance_to_sample_point = outgoing_radiance_to_sample_point;
+    restir_gi_initial_sample.incoming_radiance_to_visible_point = incoming_radiance_to_visible_point;
+    restir_gi_initial_sample.incoming_radiance_to_sample_point = incoming_radiance_to_sample_point;
     restir_gi_initial_sample.target_function = ReSTIR_GI_evaluate_target_function<true, false>(render_data, restir_gi_initial_sample, initial_surface, random_number_generator);
 
     float resampling_weight = 0.0f;

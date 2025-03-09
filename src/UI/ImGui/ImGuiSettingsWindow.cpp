@@ -1866,7 +1866,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 										   || *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_Z : RESTIR_DI_BIAS_CORRECTION_1_OVER_Z);
 
 			ImGui::BeginDisabled(disable_confidence_weights);
-			if (ImGui::Checkbox("Use Confidence Weights", &restir_settings->use_confidence_weights))
+			if (ImGui::Checkbox("Use confidence weights", &restir_settings->use_confidence_weights))
 				m_render_window->set_render_dirty(true);
 			std::string confidence_weight_help_string = "Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
 			if (disable_confidence_weights)

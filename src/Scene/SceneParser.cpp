@@ -442,6 +442,8 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     if (renderer_material.specular_transmission == 1.0f && renderer_material.alpha_opacity == 1.0f)
         renderer_material.specular_transmission = 0.0f;
 
+    renderer_material.emission_strength = 0.0f;
+
     /*if (std::string(mesh_material->GetName().C_Str()).find("Glass") != std::string::npos)
     {
         renderer_material.roughness = 0.0f;

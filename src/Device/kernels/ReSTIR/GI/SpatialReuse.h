@@ -336,7 +336,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	//	//	{
 	//	//		hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], center_pixel_reservoir.UCW);
 	//	//		hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], center_pixel_reservoir.sample.target_function);
-	//	//		hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[5], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
+	//	//		hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[5], center_pixel_reservoir.sample.incoming_radiance_to_visible_point.g);
 	//	//	}
 	//	//}
 	//}
