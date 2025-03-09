@@ -108,10 +108,11 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsRe
 					target_function_at_neighbor = 0.0f;
 				else
 				{
-					// TODO DEBUG REMOVE THIS AND LEAVE JUST THE COMMENTED LINE
+					// TODO DEBUG REMOVE THIS AND LEAVE JUST THE ELSE BRANCH
 					if (jacobian == 1.0f)
 						target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility, false>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
-					// target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+					else
+						target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility, true>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 				}
 			}
 			else

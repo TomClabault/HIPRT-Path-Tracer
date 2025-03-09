@@ -79,17 +79,17 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	{
 		float sample_point_bsdf_pdf;
 		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, sample.sample_point_material.unpack(), const_cast<RayVolumeState&>(sample.sample_point_volume_state), false, -incident_light_direction, sample.sample_point_shading_normal, sample.sample_point_geometric_normal, sample.incident_light_direction_at_sample_point, sample_point_bsdf_pdf, random_number_generator, 1, sample.incident_light_info_at_sample_point);
-		ColorRGB32F outgoing_radiance_to_visible_point_reconstructed;
+		ColorRGB32F incoming_radiance_to_visible_point_reconstructed;
 
 		if (sample_point_bsdf_pdf > 0.0f)
-			outgoing_radiance_to_visible_point_reconstructed = sample_point_bsdf_color / sample_point_bsdf_pdf * hippt::abs(hippt::dot(sample.sample_point_shading_normal, sample.incident_light_direction_at_sample_point)) * sample.outgoing_radiance_to_sample_point;
+			incoming_radiance_to_visible_point_reconstructed = sample_point_bsdf_color / sample_point_bsdf_pdf * hippt::abs(hippt::dot(sample.sample_point_shading_normal, sample.incident_light_direction_at_sample_point)) * sample.incoming_radiance_to_sample_point;
 
-		return (bsdf_color * outgoing_radiance_to_visible_point_reconstructed).luminance();
+		return (bsdf_color * incoming_radiance_to_visible_point_reconstructed).luminance();
 	}
 	else
-		return (bsdf_color * sample.outgoing_radiance_to_visible_point).luminance();
+		return (bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
 #else
-	return (bsdf_color * sample.outgoing_radiance_to_visible_point).luminance();
+	return (bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
 #endif
 }
 

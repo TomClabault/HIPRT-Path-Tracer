@@ -42,6 +42,7 @@ extern ImGuiLogger g_imgui_logger;
 // Fix white furnace not passing cornell_dragons
 
 // TODO ReSTIR GI
+// - The quick skip to the center pixel resamplujng when there are no valid neighbors --> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
 // - possibility to read the visible positions from the G buffer instead of storing in the reservoir
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
 // - do adaptive radius spatial reuse --> also for ReSTIR DI? --> maybe start super wide to avoid spatial reuse patterns and progressively lower the reuse radius
@@ -131,7 +132,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO Features:
 // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
-// - One Sample MIS for BSDF sampling: https://discord.com/channels/318590007881236480/377557956775903232/1346777006280278067
+// - One Sample MIS for BSDF sampling: https://discord.com/channels/318590007881236480/377557956775903232/1346777006280278067, https://discord.com/channels/318590007881236480/377557956775903232/1347484850315071550
 // - Some automatic metric to determine automatically what GMoN blend factor to use
 // - software opacity micromaps
 // - Add parameters to increase the strength of specular / coat darkening

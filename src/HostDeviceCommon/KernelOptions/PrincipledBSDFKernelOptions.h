@@ -92,7 +92,7 @@
  * 
  * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
  */
-#define PrincipledBSDFDoEnergyCompensation KERNEL_OPTION_FALSE
+#define PrincipledBSDFDoEnergyCompensation KERNEL_OPTION_TRUE
 
 /**
  * If KERNEL_OPTION_TRUE, on-the-fly monte carlo integration of the clearcoat lobe

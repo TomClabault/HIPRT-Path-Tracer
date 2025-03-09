@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     {
         // Only doing the ReSTIR GI stuff if we have more than 1 bounce
 
-        if (!resampling_reservoir.sample.outgoing_radiance_to_visible_point.is_black())
+        if (resampling_reservoir.UCW > 0.0f)
         {
             // Only doing the shading if we do actually have a sample
 
@@ -140,7 +140,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, first_hit_throughput, closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
                 camera_outgoing_radiance += direct_lighting_second_hit;
 
-                if (!resampling_reservoir.sample.outgoing_radiance_to_sample_point.is_black())
+                if (!resampling_reservoir.sample.incoming_radiance_to_sample_point.is_black())
                 {
                     // Computing the BSDF throughput at the second hit
                     //  - view direction: towards the first hit
@@ -151,7 +151,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                     if (bsdf_pdf_second_hit > 0.0f)
                         second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(resampling_reservoir.sample.incident_light_direction_at_sample_point, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
 
-                    camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_sample_point;
+                    camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
                 }
             }
         }

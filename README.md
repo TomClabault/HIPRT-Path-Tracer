@@ -180,7 +180,7 @@ The following arguments are available:
 ![Dragon indirect lighting](README_data/img/DragonBTDF.jpg)![Dragon indirect lighting](README_data/img/pbrt-dragon-indirect-v2.jpg)
 ![MIS vs. RIS vs. ReSTIR DI Comparison](README_data/img/RIS.ReSTIR.Comparison.jpg)
 ![ImGui Interface](README_data/img/ImGuiDemo.jpg)
-Sources of the scenes can be found [here](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
+Sources of the scenes can be found [here](./SceneCredits.txt).
 # Live YouTube Demos
 
 ### Material Editor Demo
