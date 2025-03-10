@@ -138,6 +138,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F gulbrandsen_metallic_complex_fresnel(
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, const ColorRGB32F& F82, const ColorRGB32F& F90, float F90_falloff_exponent, float cos_theta)
 {
     ColorRGB32F base_term = F0 + (F90 - F0) * pow(1.0f - cos_theta, F90_falloff_exponent);
+    if (base_term.max_component() < 1.0e-8f)
+        // Quick exit if the base term is super low to avoid numerical issues with super low
+        // float numbers
+        return ColorRGB32F(0.0f);
+
     float lazanyi_correction = cos_theta * hippt::pow_6(1.0f - cos_theta);
 
     // cos_theta_max for beta exponent = 6 in the lazanyi correction term

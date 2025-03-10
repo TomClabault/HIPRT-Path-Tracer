@@ -65,12 +65,12 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 1;
 		common_spatial_pass.reuse_radius = 16;
-		common_spatial_pass.reuse_neighbor_count = 1;
+		common_spatial_pass.reuse_neighbor_count = 16;
 
 		common_spatial_pass.do_disocclusion_reuse_boost = false;
 		common_spatial_pass.disocclusion_reuse_count = 5;
 
-		common_spatial_pass.debug_neighbor_location = true;
+		common_spatial_pass.debug_neighbor_location = false;
 		common_spatial_pass.debug_neighbor_location_direction = 0;
 
 		common_spatial_pass.do_neighbor_rotation = true;
@@ -84,18 +84,18 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 
 
-		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
+		neighbor_similarity_settings.use_normal_similarity_heuristic = false;
 			
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 25.0f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
 
-		neighbor_similarity_settings.use_plane_distance_heuristic = true;
+		neighbor_similarity_settings.use_plane_distance_heuristic = false;
 		neighbor_similarity_settings.plane_distance_threshold = 0.1f;
 
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 		neighbor_similarity_settings.roughness_similarity_threshold = 0.25f;
 
-		use_jacobian_rejection_heuristic = true;
+		use_jacobian_rejection_heuristic = false;
 		jacobian_rejection_threshold = 15.0f;
 
 		m_cap = 3;
@@ -115,7 +115,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	// that sample with the reconnection shift if it is below a given roughness threshold because
 	// the BSDF at the neighbor's glossy sample point is going to evaluate to 0 anyways if we change
 	// its view direction
-	bool use_neighbor_sample_point_roughness_heuristic = true;
+	bool use_neighbor_sample_point_roughness_heuristic = false;
 	float neighbor_sample_point_roughness_threshold = 0.1f;
 
 	ReSTIRGIDebugView debug_view;

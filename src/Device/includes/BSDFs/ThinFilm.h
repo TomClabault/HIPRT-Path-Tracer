@@ -115,6 +115,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F RGB_hue_shift(const ColorRGB32F& colo
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveMaterial& material,
     float ambient_IOR, float HoL)
 {
+    if (material.thin_film == 0.0f)
+        return ColorRGB32F(0.0f);
+
     float eta1 = ambient_IOR;
     float eta2 = material.thin_film_ior;
     float eta3 = material.thin_film_do_ior_override ? material.thin_film_base_ior_override : material.ior;

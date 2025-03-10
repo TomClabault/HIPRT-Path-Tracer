@@ -145,8 +145,6 @@ void ImGuiSettingsWindow::draw_header()
 		ImGuiRenderer::show_help_marker("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
 	}
 
-	ImGui::Separator();
-
 	if (ImGui::Button("Save viewport to PNG"))
 		m_render_window->get_screenshoter()->write_to_png();
 

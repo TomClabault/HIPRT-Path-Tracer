@@ -109,26 +109,24 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             ColorRGB32F first_hit_throughput;
             ColorRGB32F bsdf_color_first_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, geometric_normal, restir_resampled_indirect_direction, bsdf_pdf_first_hit, random_number_generator, 0, resampling_reservoir.sample.incident_light_info_at_visible_point);
             if (bsdf_pdf_first_hit > 0.0f)
-            {
                 first_hit_throughput = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) * resampling_reservoir.UCW;
 
-                DEBUG_COLOR = ColorRGB32F(restir_resampled_indirect_direction);
-                DEBUG_FIRST_HIT_THROUGHPUT = first_hit_throughput;
-                DEBUG_FIRST_BSDF_COLOR_DOT = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal));
-            }
-
             if (resampling_reservoir.sample.is_envmap_path())
+            {
                 camera_outgoing_radiance += path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index);
+
+                DEBUG_COLOR= path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index);
+            }
             else
             {
-                // Loading the second hit in the ray payload:
                 // TODO create a new ray payload variable for clarity and check that the registers don't go up
+                // Loading the second hit in the ray payload:
                 ray_payload.material = resampling_reservoir.sample.sample_point_material.unpack();
                 ray_payload.volume_state = resampling_reservoir.sample.sample_point_volume_state;
                 ray_payload.bounce = 1;
 
-                // Loading the second hit in the closest hit
                 // TODO create a new closest hit variable for clarity and check that the registers don't go up
+                // Loading the second hit in the closest hit
                 closest_hit_info.geometric_normal = resampling_reservoir.sample.sample_point_geometric_normal;
                 closest_hit_info.shading_normal = resampling_reservoir.sample.sample_point_shading_normal;
                 closest_hit_info.inter_point = resampling_reservoir.sample.sample_point;
@@ -187,7 +185,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::WEIGHT_SUM)
         path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.weight_sum) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::M_COUNT)
-        path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.DEBUG_VALUE) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
+        path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else
         // Regular output
         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);

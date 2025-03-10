@@ -175,32 +175,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray
             hit_info.shading_normal = hippt::normalize(view_direction + perfect_reflected_direction);
         }
     }
-
-    //float3 T, B;
-    //build_ONB(hit_info.geometric_normal, T, B);
-
-    //float3 local_view_direction = world_to_local_frame(T, B, hit_info.geometric_normal, view_direction);
-    //float3 local_shading_normal = world_to_local_frame(T, B, hit_info.geometric_normal, hit_info.shading_normal);
-
-    //if (ray_payload.volume_state.before_trace_ray_is_outside_object())
-    //{
-    //    if (hippt::dot(local_view_direction, local_shading_normal) < 0.0f)
-    //        // Flipping the normal such that the view direction isn't below the shading hemisphere anymore
-    //        local_shading_normal *= -1.0f;
-
-    //    float3 local_reflected_direction = reflect_ray(local_view_direction, local_shading_normal);
-    //    if (local_reflected_direction.z <= 0.0f) 
-    //    {
-    //        local_reflected_direction -= hippt::normalize(make_float3(0.0f, 0.0f, local_reflected_direction.z - 0.01f));
-
-    //        // The new shading normal is the half vector between the pulled up reflected direction
-    //        // and the view direction
-    //        local_shading_normal = hippt::normalize(local_view_direction + local_reflected_direction);
-
-    //    }
-
-    //    hit_info.shading_normal = local_to_world_frame(T, B, hit_info.geometric_normal, local_shading_normal);
-    //}
 }
 
 #ifndef __KERNELCC__
