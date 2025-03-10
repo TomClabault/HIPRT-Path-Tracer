@@ -457,7 +457,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 9:
-					material_override_changed |= draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 0.0f, 3.0f);
+					material_override_changed |= draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 1.0f, 3.0f);
 					break;
 				}
 			}

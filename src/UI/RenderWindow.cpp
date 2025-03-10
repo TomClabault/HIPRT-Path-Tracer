@@ -39,7 +39,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 //  Global emission factor broken? Going to 0.9 and then back to 1.0 doesn't give the same results as staying at 1 (barbershop scene)
-// Fix white furnace not passing cornell_dragons
+// Specular IOR 1.0f creates a lot of fireflies in the scandinavian studio? Does sampling on fresnel fix that?
 
 // TODO ReSTIR GI
 // - The quick skip to the center pixel resamplujng when there are no valid neighbors --> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
@@ -131,6 +131,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
 // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
 // - One Sample MIS for BSDF sampling: https://discord.com/channels/318590007881236480/377557956775903232/1346777006280278067, https://discord.com/channels/318590007881236480/377557956775903232/1347484850315071550
 // - Some automatic metric to determine automatically what GMoN blend factor to use

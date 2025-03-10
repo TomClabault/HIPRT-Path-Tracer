@@ -64,23 +64,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
 
     // Reading some parameters from the textures
     float2 roughness_metallic = get_metallic_roughness(render_data, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
-    if (material.roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
-    {
-        material.roughness = roughness_metallic.x;
-        material.metallic = roughness_metallic.y;
-    }
-    else
-    {
-        if (material.roughness_texture_index != MaterialConstants::NO_TEXTURE)
-            material.roughness = roughness_metallic.x;
+    // TODO DEBUGGING RESTIR GI UNCOMMENT THIS
+    //if (material.roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
+    //{
+    //    material.roughness = roughness_metallic.x;
+    //    material.metallic = roughness_metallic.y;
+    //}
+    //else
+    //{
+    //    if (material.roughness_texture_index != MaterialConstants::NO_TEXTURE)
+    //        material.roughness = roughness_metallic.x;
 
-        if (material.metallic_texture_index != MaterialConstants::NO_TEXTURE)
-            material.metallic = roughness_metallic.y;
+    //    if (material.metallic_texture_index != MaterialConstants::NO_TEXTURE)
+    //        material.metallic = roughness_metallic.y;
 
-        // If not reading from a texture, setting the roughness into the roughness_metallic
-        // variable because the roughness is going to be used later
-        roughness_metallic.x = material.roughness;
-    }
+    //    // If not reading from a texture, setting the roughness into the roughness_metallic
+    //    // variable because the roughness is going to be used later
+    //    roughness_metallic.x = material.roughness;
+    //}
+
+    roughness_metallic.x = material.roughness;
+    roughness_metallic.y = material.metallic;
 
     float anisotropy = get_material_property<float>(render_data, false, texcoords, material.anisotropic_texture_index);
     if (material.anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
@@ -108,36 +112,40 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
     if (material.emission_texture_index == MaterialConstants::NO_TEXTURE || material.emission_texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
         emission = material.emission;
 
-    DeviceUnpackedEffectiveMaterial packed_material(material);
-    packed_material.emissive_texture_used = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
-    packed_material.emission = emission;
+    DeviceUnpackedEffectiveMaterial unpacked_material(material);
+    // TODO DEBUGGING RESTIR GI REMOVE THESE TWO LINES METALLIC/ROUGHNESS
+    unpacked_material.roughness = material.roughness;
+    unpacked_material.metallic = material.metallic;
+
+    unpacked_material.emissive_texture_used = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
+    unpacked_material.emission = emission;
     // Roughening of the base roughness and second metallic roughness based
     // on the coat roughness. This should be precomputed instead of being done here
     //
     // Reference: [OpenPBR Surface 2024 Specification] https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/roughening
-    float coat_roughening = packed_material.coat_roughening;
+    float coat_roughening = unpacked_material.coat_roughening;
     if (coat > 0.0f && coat_roughening > 0.0f)
     {
         float base_roughness = roughness_metallic.x;
-        float coat_roughness = packed_material.coat_roughness;
+        float coat_roughness = unpacked_material.coat_roughness;
 
         // Roughening of the base roughness of the material based on the coat roughness
         float target_base_roughness = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(base_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
         float roughened_base_roughness = hippt::lerp(base_roughness, target_base_roughness, coat);
-        packed_material.roughness = hippt::lerp(base_roughness, roughened_base_roughness, coat_roughening);
+        unpacked_material.roughness = hippt::lerp(base_roughness, roughened_base_roughness, coat_roughening);
 
-        if (packed_material.second_roughness_weight > 0.0f)
+        if (unpacked_material.second_roughness_weight > 0.0f)
         {
             // Roughening of the second metallic roughness based on the coat roughness
 
-            float second_roughness = packed_material.second_roughness;
+            float second_roughness = unpacked_material.second_roughness;
             float target_second_metal_roughness = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(second_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
             float roughened_second_metal_roughness = hippt::lerp(second_roughness, target_second_metal_roughness, coat);
-            packed_material.second_roughness = hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening);
+            unpacked_material.second_roughness = hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening);
         }
     }
 
-    return packed_material;
+    return unpacked_material;
 }
 
 /**
