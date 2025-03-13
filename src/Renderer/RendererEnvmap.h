@@ -94,8 +94,8 @@ private:
 
 	// This object contains the memory data of the envmap
 	RGBE9995Envmap<true> m_envmap_data;
-	unsigned int m_width;
-	unsigned int m_height;
+	unsigned int m_width = 0;
+	unsigned int m_height = 0;
 
 	// CDF / Alias table for sampling the envmap
 	OrochiBuffer<float> m_cdf;

@@ -112,11 +112,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 first_hit_throughput = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) * resampling_reservoir.UCW;
 
             if (resampling_reservoir.sample.is_envmap_path())
-            {
                 camera_outgoing_radiance += path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index);
-
-                DEBUG_COLOR= path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index);
-            }
             else
             {
                 // TODO create a new ray payload variable for clarity and check that the registers don't go up
@@ -189,6 +185,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     else
         // Regular output
         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
+
+#ifndef __KERNELCC__
+    if (camera_outgoing_radiance.max_component() > 100.0f)
+        Utils::debugbreak();
+#endif
 }
 
 #endif

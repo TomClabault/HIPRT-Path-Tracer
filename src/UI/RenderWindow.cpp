@@ -51,6 +51,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Fix spatial reuse pattern because the concentric circles created by Hammersley don't cover the neighborhood of the center pixel well at all --> white noise instead
 // - Force albedo to white for spatial reuse?
 // - some kind of reuse direction masks for spatial reuse offline rendering? the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
+// - For offline rendering spatial reuse, we can "learn" in a frame buffer what spatial radius is the best per pixel to avoid reusing too large on fine details geometry
 // - OVS - Optimal visibility shaidng
 // - symmetric ratio MIS
 // - shade secondary surface by looking up screen space reservoir if possible ReSTIR DI --> We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. --> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
@@ -119,6 +120,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
 // - Emissive chminey texture broken in scandinavian-studio
 // - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
+// - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
