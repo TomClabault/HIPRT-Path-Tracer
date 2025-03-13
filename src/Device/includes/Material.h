@@ -65,26 +65,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
     // Reading some parameters from the textures
     float2 roughness_metallic = get_metallic_roughness(render_data, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
     // TODO DEBUGGING RESTIR GI UNCOMMENT THIS
-    //if (material.roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
-    //{
-    //    material.roughness = roughness_metallic.x;
-    //    material.metallic = roughness_metallic.y;
-    //}
-    //else
-    //{
-    //    if (material.roughness_texture_index != MaterialConstants::NO_TEXTURE)
-    //        material.roughness = roughness_metallic.x;
+    if (material.roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
+    {
+        material.roughness = roughness_metallic.x;
+        material.metallic = roughness_metallic.y;
+    }
+    else
+    {
+        if (material.roughness_texture_index != MaterialConstants::NO_TEXTURE)
+            material.roughness = roughness_metallic.x;
 
-    //    if (material.metallic_texture_index != MaterialConstants::NO_TEXTURE)
-    //        material.metallic = roughness_metallic.y;
+        if (material.metallic_texture_index != MaterialConstants::NO_TEXTURE)
+            material.metallic = roughness_metallic.y;
 
-    //    // If not reading from a texture, setting the roughness into the roughness_metallic
-    //    // variable because the roughness is going to be used later
-    //    roughness_metallic.x = material.roughness;
-    //}
+        // If not reading from a texture, setting the roughness into the roughness_metallic
+        // variable because the roughness is going to be used later
+        roughness_metallic.x = material.roughness;
+    }
 
-    roughness_metallic.x = material.roughness;
-    roughness_metallic.y = material.metallic;
+    // TODO RESTIR GI REMOVE THESE TWO LINES
+    /*roughness_metallic.x = material.roughness;
+    roughness_metallic.y = material.metallic;*/
 
     float anisotropy = get_material_property<float>(render_data, false, texcoords, material.anisotropic_texture_index);
     if (material.anisotropic_texture_index != MaterialConstants::NO_TEXTURE)
@@ -114,8 +115,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
 
     DeviceUnpackedEffectiveMaterial unpacked_material(material);
     // TODO DEBUGGING RESTIR GI REMOVE THESE TWO LINES METALLIC/ROUGHNESS
-    unpacked_material.roughness = material.roughness;
-    unpacked_material.metallic = material.metallic;
+    /*unpacked_material.roughness = material.roughness;
+    unpacked_material.metallic = material.metallic;*/
 
     unpacked_material.emissive_texture_used = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
     unpacked_material.emission = emission;

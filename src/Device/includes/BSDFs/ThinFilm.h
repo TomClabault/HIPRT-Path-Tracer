@@ -116,6 +116,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F thin_film_fresnel(const DeviceUnpacke
     float ambient_IOR, float HoL)
 {
     if (material.thin_film == 0.0f)
+        // Quick exit
         return ColorRGB32F(0.0f);
 
     float eta1 = ambient_IOR;

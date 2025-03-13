@@ -85,7 +85,7 @@ void Screenshoter::write_to_png()
 	std::stringstream filename;
 
 	Utils::get_current_date_string(filename);
-	filename << " - " << m_renderer->get_render_settings().sample_number << "sp @ " << m_renderer->m_render_resolution.x << "x" << m_renderer->m_render_resolution.y << " - " << m_render_window->get_current_render_time() / 1000.0f << "s" << ".png";
+	filename << " - " << m_renderer->get_render_settings().sample_number << "sp - " << m_render_window->get_current_render_time() / 1000.0f << "s" << ".png";
 
 	write_to_png(filename.str().c_str());
 }

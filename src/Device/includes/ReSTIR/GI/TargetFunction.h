@@ -35,27 +35,27 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 		incident_light_direction /= distance_to_sample_point;
 	}
 
-	if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f && sample.incident_light_info_at_visible_point != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
+	if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.0f && sample.incident_light_info_at_visible_point != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
 		return 0.0f;
-	//else if constexpr (resamplingNeighbor)
-	//{
-	//	if (render_data.render_settings.DEBUG_DONT_REUSE_SPECULAR)
-	//		if (sample.incident_light_info_at_sample_point == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE)
-	//			return 0.0f;
+	else if constexpr (resamplingNeighbor)
+	{
+		if (render_data.render_settings.DEBUG_DONT_REUSE_SPECULAR)
+			if (sample.incident_light_info_at_sample_point == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE)
+				return 0.0f;
 
-	//	// If resampling a neighbor, the target function is going to evaluate to 0.0f if the sample point of the neighbor
-	//	// is specular: that is because when resampling a neighbor, i.e. reconnecting to the sample point of the neighbor,
-	//	// we're changing the view direction of the BSDF at the sample point.
-	//	//
-	//	// And changing the view direction of a specular BSDF without changing the incident light direction (which we are not
-	//	// modifying) isn't going to adhere to the law of perfect reflection and so the contribution of the BSDF at the neighbor's
-	//	// sample point will be 0.0f.
-	//	//
-	//	// So that's why we're returning 0.0f here
-	//	if (render_data.render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic &&
-	//		!MaterialUtils::can_do_light_sampling(sample.sample_point_material, render_data.render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold))
-	//		return 0.0f;
-	//}
+		// If resampling a neighbor, the target function is going to evaluate to 0.0f if the sample point of the neighbor
+		// is specular: that is because when resampling a neighbor, i.e. reconnecting to the sample point of the neighbor,
+		// we're changing the view direction of the BSDF at the sample point.
+		//
+		// And changing the view direction of a specular BSDF without changing the incident light direction (which we are not
+		// modifying) isn't going to adhere to the law of perfect reflection and so the contribution of the BSDF at the neighbor's
+		// sample point will be 0.0f.
+		//
+		// So that's why we're returning 0.0f here
+		if (render_data.render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic &&
+			!MaterialUtils::can_do_light_sampling(sample.sample_point_material, render_data.render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold))
+			return 0.0f;
+	}
 
 	if constexpr (withVisiblity)
 	{

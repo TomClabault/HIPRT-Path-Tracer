@@ -84,19 +84,21 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 
 
-		neighbor_similarity_settings.use_normal_similarity_heuristic = false;
-			
+		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 25.0f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
 
-		neighbor_similarity_settings.use_plane_distance_heuristic = false;
+		neighbor_similarity_settings.use_plane_distance_heuristic = true;
 		neighbor_similarity_settings.plane_distance_threshold = 0.1f;
 
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 		neighbor_similarity_settings.roughness_similarity_threshold = 0.25f;
 
-		use_jacobian_rejection_heuristic = false;
+		use_jacobian_rejection_heuristic = true;
 		jacobian_rejection_threshold = 15.0f;
+
+		use_neighbor_sample_point_roughness_heuristic = false;
+		neighbor_sample_point_roughness_threshold = 0.1f;
 
 		m_cap = 3;
 		use_confidence_weights = true;
@@ -111,15 +113,15 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	
 	ReSTIRGIReservoir* restir_output_reservoirs = nullptr;
 
+	ReSTIRGIDebugView debug_view;
+	float debug_view_scale_factor;
+
 	// If a neighbor has its sample point on a glossy surface, we don't want to reuse
 	// that sample with the reconnection shift if it is below a given roughness threshold because
 	// the BSDF at the neighbor's glossy sample point is going to evaluate to 0 anyways if we change
 	// its view direction
-	bool use_neighbor_sample_point_roughness_heuristic = false;
-	float neighbor_sample_point_roughness_threshold = 0.1f;
-
-	ReSTIRGIDebugView debug_view;
-	float debug_view_scale_factor;
+	bool use_neighbor_sample_point_roughness_heuristic;
+	float neighbor_sample_point_roughness_threshold;
 
 	bool use_jacobian_rejection_heuristic;
 
