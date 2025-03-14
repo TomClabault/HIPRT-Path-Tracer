@@ -34,8 +34,11 @@ struct ColorRGBA32F
 
 
     HIPRT_HOST_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, hippt::max(b, a))); }
+    HIPRT_HOST_DEVICE float min_component() const { return hippt::min(r, hippt::min(g, hippt::min(b, a))); }
     HIPRT_HOST_DEVICE ColorRGBA32F normalized() const { float length = sqrtf(r * r + g * g + b * b); return ColorRGBA32F(r / length, g / length, b / length, /* not normalizing alpha */ a); }
 
+    HIPRT_HOST_DEVICE ColorRGBA32F abs() { return ColorRGBA32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b), hippt::abs(this->a)); }
+    HIPRT_HOST_DEVICE void max(const ColorRGBA32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); this->a = hippt::max(this->a, maxer.a); }
     HIPRT_HOST_DEVICE static ColorRGBA32F max(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b), hippt::max(a.a, b.a)); }
     HIPRT_HOST_DEVICE static ColorRGBA32F min(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b), hippt::min(a.a, b.a)); }
 
@@ -88,8 +91,10 @@ struct ColorRGB32F
     HIPRT_HOST_DEVICE bool is_white() const { return r == 1.0f && g == 1.0f && b == 1.0f; }
 
     HIPRT_HOST_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, b)); }
+    HIPRT_HOST_DEVICE float min_component() const { return hippt::min(r, hippt::min(g, b)); }
     HIPRT_HOST_DEVICE ColorRGB32F normalized() const { float length = sqrtf(r * r + g * g + b * b); return ColorRGB32F(r / length, g / length, b / length); }
 
+    HIPRT_HOST_DEVICE ColorRGB32F abs() { return ColorRGB32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b)); }
     HIPRT_HOST_DEVICE void max(const ColorRGB32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); }
     HIPRT_HOST_DEVICE static ColorRGB32F max(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b)); }
     HIPRT_HOST_DEVICE static ColorRGB32F min(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b)); }

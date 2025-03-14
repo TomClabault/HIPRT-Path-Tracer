@@ -6,6 +6,7 @@
 #ifndef DEVICE_RESTIR_GI_TARGET_FUNCTION_H
 #define DEVICE_RESTIR_GI_TARGET_FUNCTION_H
 
+#include "Device/includes/Lights.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
@@ -70,9 +71,9 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	}
 
 	float bsdf_pdf;
-	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, bsdf_pdf, random_number_generator, 0, sample.incident_light_info_at_visible_point);
+	ColorRGB32F visible_point_bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, bsdf_pdf, random_number_generator, 0, sample.incident_light_info_at_visible_point);
 	if (bsdf_pdf > 0.0f)
-		bsdf_color *= hippt::abs(hippt::dot(surface.shading_normal, incident_light_direction));
+		visible_point_bsdf_color *= hippt::abs(hippt::dot(surface.shading_normal, incident_light_direction));
 
 #if ReSTIRGIDoubleBSDFInTargetFunction == KERNEL_OPTION_TRUE
 	if (!sample.is_envmap_path())
@@ -81,15 +82,30 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, sample.sample_point_material.unpack(), const_cast<RayVolumeState&>(sample.sample_point_volume_state), false, -incident_light_direction, sample.sample_point_shading_normal, sample.sample_point_geometric_normal, sample.incident_light_direction_at_sample_point, sample_point_bsdf_pdf, random_number_generator, 1, sample.incident_light_info_at_sample_point);
 		ColorRGB32F incoming_radiance_to_visible_point_reconstructed;
 
-		if (sample_point_bsdf_pdf > 0.0f)
-			incoming_radiance_to_visible_point_reconstructed = sample_point_bsdf_color / sample_point_bsdf_pdf * hippt::abs(hippt::dot(sample.sample_point_shading_normal, sample.incident_light_direction_at_sample_point)) * sample.incoming_radiance_to_sample_point;
+		RayPayload sample_point_ray_payload;
+		sample_point_ray_payload.bounce = 1;
+		sample_point_ray_payload.material = sample.sample_point_material.unpack();
+		sample_point_ray_payload.volume_state = sample.sample_point_volume_state;
 
-		return (bsdf_color * incoming_radiance_to_visible_point_reconstructed).luminance();
+		HitInfo closest_hit_info_sample_point;
+		closest_hit_info_sample_point.geometric_normal = sample.sample_point_geometric_normal;
+		closest_hit_info_sample_point.shading_normal = sample.sample_point_shading_normal;
+		closest_hit_info_sample_point.inter_point = sample.sample_point;
+		closest_hit_info_sample_point.primitive_index = sample.sample_point_primitive_index;
+
+		MISBSDFRayReuse dummy_mis_reuse;
+		random_number_generator.m_state.seed = sample.direct_lighting_at_sample_point_random_seed;
+		ColorRGB32F direct_lighting_sample_point = estimate_direct_lighting(const_cast<HIPRTRenderData&>(render_data), sample_point_ray_payload, ColorRGB32F(1.0f), closest_hit_info_sample_point, -incident_light_direction, 42, 42, dummy_mis_reuse, random_number_generator);
+
+		if (sample_point_bsdf_pdf > 0.0f)
+			incoming_radiance_to_visible_point_reconstructed = sample_point_bsdf_color / sample_point_bsdf_pdf * hippt::abs(hippt::dot(sample.sample_point_shading_normal, sample.incident_light_direction_at_sample_point)) * (sample.incoming_radiance_to_sample_point + direct_lighting_sample_point);
+
+		return (visible_point_bsdf_color * incoming_radiance_to_visible_point_reconstructed).luminance();
 	}
 	else
-		return (bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
+		return (visible_point_bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
 #else
-	return (bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
+	return (visible_point_bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
 #endif
 }
 

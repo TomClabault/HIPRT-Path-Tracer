@@ -115,38 +115,54 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 camera_outgoing_radiance += path_tracing_miss_gather_envmap(render_data, first_hit_throughput, restir_resampled_indirect_direction, 1, pixel_index);
             else
             {
-                // TODO create a new ray payload variable for clarity and check that the registers don't go up
-                // Loading the second hit in the ray payload:
-                ray_payload.material = resampling_reservoir.sample.sample_point_material.unpack();
-                ray_payload.volume_state = resampling_reservoir.sample.sample_point_volume_state;
-                ray_payload.bounce = 1;
-
-                // TODO create a new closest hit variable for clarity and check that the registers don't go up
-                // Loading the second hit in the closest hit
-                closest_hit_info.geometric_normal = resampling_reservoir.sample.sample_point_geometric_normal;
-                closest_hit_info.shading_normal = resampling_reservoir.sample.sample_point_shading_normal;
-                closest_hit_info.inter_point = resampling_reservoir.sample.sample_point;
-                closest_hit_info.primitive_index = resampling_reservoir.sample.sample_point_primitive_index;
-
-                // Using the same seed for direct lighting as when generating the initial candidate
-                random_number_generator.m_state.seed = resampling_reservoir.sample.direct_lighting_at_sample_point_random_seed;
-                // Taking the direct lighting at the sample point hit into account
-                ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, first_hit_throughput, closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
-                camera_outgoing_radiance += direct_lighting_second_hit;
-
-                if (!resampling_reservoir.sample.incoming_radiance_to_sample_point.is_black())
+                if (render_data.render_settings.DEBUG_DOUBLE_BSDF_SHADING)
                 {
-                    // Computing the BSDF throughput at the second hit
-                    //  - view direction: towards the first hit
-                    //  - incident light direction: towards what's after the sample point (i.e. the second bounce direction)
-                    float bsdf_pdf_second_hit;
-                    ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, -restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, bsdf_pdf_second_hit, random_number_generator, 1, resampling_reservoir.sample.incident_light_info_at_sample_point);
-                    ColorRGB32F second_hit_throughput;
-                    if (bsdf_pdf_second_hit > 0.0f)
-                        second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(resampling_reservoir.sample.incident_light_direction_at_sample_point, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
+                    // TODO create a new ray payload variable for clarity and check that the registers don't go up
+                    // Loading the second hit in the ray payload:
+                    ray_payload.material = resampling_reservoir.sample.sample_point_material.unpack();
+                    ray_payload.volume_state = resampling_reservoir.sample.sample_point_volume_state;
+                    ray_payload.bounce = 1;
 
-                    camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
+                    // TODO create a new closest hit variable for clarity and check that the registers don't go up
+                    // Loading the second hit in the closest hit
+                    closest_hit_info.geometric_normal = resampling_reservoir.sample.sample_point_geometric_normal;
+                    closest_hit_info.shading_normal = resampling_reservoir.sample.sample_point_shading_normal;
+                    closest_hit_info.inter_point = resampling_reservoir.sample.sample_point;
+                    closest_hit_info.primitive_index = resampling_reservoir.sample.sample_point_primitive_index;
+
+                    // Using the same seed for direct lighting as when generating the initial candidate
+                    random_number_generator.m_state.seed = resampling_reservoir.sample.direct_lighting_at_sample_point_random_seed;
+                    // Taking the direct lighting at the sample point hit into account
+                    ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, first_hit_throughput, closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
+                    camera_outgoing_radiance += direct_lighting_second_hit;
+
+                    if (!resampling_reservoir.sample.incoming_radiance_to_sample_point.is_black())
+                    {
+                        // Computing the BSDF throughput at the second hit
+                        //  - view direction: towards the first hit
+                        //  - incident light direction: towards what's after the sample point (i.e. the second bounce direction)
+                        float bsdf_pdf_second_hit;
+                        ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, -restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, bsdf_pdf_second_hit, random_number_generator, 1, resampling_reservoir.sample.incident_light_info_at_sample_point);
+                        ColorRGB32F second_hit_throughput;
+                        if (bsdf_pdf_second_hit > 0.0f)
+                            second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(resampling_reservoir.sample.incident_light_direction_at_sample_point, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
+
+                        ColorRGB32F reconstructed = first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
+
+#ifndef __KERNELCC__
+                        static std::atomic<float> max_diff = -1000000.0f;
+                        float max_comp = (reconstructed - (first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point)).max_component();
+                        hippt::atomic_max(&max_diff, max_comp);
+
+                        if (max_diff == max_comp)
+                            std::cout << "Max: " << max_diff << "[" << x << ", " << y << "]" << std::endl;
+#endif
+
+                        camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
+                    }
                 }
+                else
+                    camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point;
             }
         }
     }
@@ -185,11 +201,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     else
         // Regular output
         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
-
-#ifndef __KERNELCC__
-    if (camera_outgoing_radiance.max_component() > 100.0f)
-        Utils::debugbreak();
-#endif
 }
 
 #endif

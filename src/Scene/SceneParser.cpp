@@ -437,17 +437,19 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
     renderer_material.specular = 1.0f;
-    renderer_material.roughness = 0.0f;
+    renderer_material.roughness = 0.2f;
     renderer_material.ior = 1.5f;
     renderer_material.coat_ior = 1.0f;
     renderer_material.coat = 0.0f;
     renderer_material.coat_darkening = 0.0f;
     renderer_material.coat_roughening = 0.0f;
     renderer_material.metallic = 0.0f;
+
+    //renderer_material.alpha_opacity = 1.0f;
     if (renderer_material.specular_transmission == 1.0f && renderer_material.alpha_opacity == 1.0f)
         renderer_material.specular_transmission = 0.0f;
 
-    renderer_material.emission_strength = 0.0f;
+    // renderer_material.emission_strength = 0.0f;
 
     /*if (std::string(mesh_material->GetName().C_Str()).find("Glass") != std::string::npos)
     {
@@ -499,7 +501,8 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
         // Trying HEIGHT for the normal map for some file formats
         texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_HEIGHT, texture_paths);
 
-    if (texture_indices.normal_map_texture_index != MaterialConstants::NO_TEXTURE && texture_indices.base_color_texture_index != MaterialConstants::NO_TEXTURE &&
+    if (texture_indices.normal_map_texture_index != MaterialConstants::NO_TEXTURE &&
+        texture_indices.base_color_texture_index != MaterialConstants::NO_TEXTURE &&
         texture_paths[texture_indices.base_color_texture_index].second == texture_paths[texture_indices.normal_map_texture_index].second)
     {
         // Some scenes exported from Blender (or any other 3D software really)
@@ -512,7 +515,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
         // Popping the texture so that we don't load it
         texture_paths.pop_back();
 
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Material \"%s\" uses its base color texture as a normal map; This is not supported and normal mapping will be disabled for this material.", mesh_material->GetName());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Material \"%s\" uses its base color texture as a normal map (texture is: %s); This is not supported and normal mapping will be disabled for this material.", mesh_material->GetName(), texture_paths[texture_indices.base_color_texture_index].second.c_str());
     }
 
     return texture_paths;
