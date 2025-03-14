@@ -161,7 +161,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Don't reuse specular", &render_settings.DEBUG_DONT_REUSE_SPECULAR))
 		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Debug lambertian", &render_settings.debug_lambertian))
+	if (ImGui::Checkbox("Double BSDF shading", &render_settings.DEBUG_DOUBLE_BSDF_SHADING))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Do only neighbor", &render_settings.DEBUG_DO_ONLY_NEIGHBOR))
 		m_render_window->set_render_dirty(true);
@@ -228,7 +228,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 									"resizing the application's window.");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	ImGui::SeparatorText("General Settings");
+	ImGui::SeparatorText("General settings");
 
 	if (ImGui::Checkbox("Accumulate", &render_settings.accumulate))
 	{
@@ -1843,12 +1843,12 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 
 		{
 			const char* bias_correction_mode_items[] = {
-				"- 1/M Weights (Biased)",
-				"- 1/Z Weights (Unbiased)",
-				"- MIS-like Weights (Unbiased)",
-				"- MIS Weights GBH (Unbiased)",
-				"- Pairwise MIS Weights (Unbiased)",
-				"- Pairwise MIS Weights Defensive (Unbiased)",
+				"- 1/M (Biased)",
+				"- 1/Z (Unbiased)",
+				"- MIS-like (Unbiased)",
+				"- Generalied Balance Heuristic (Unbiased)",
+				"- Pairwise MIS (Unbiased)",
+				"- Pairwise MIS Defensive (Unbiased)",
 			};
 
 			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);
@@ -2647,7 +2647,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Alpha Testing"))
+	if (ImGui::CollapsingHeader("Alpha testing"))
 	{
 		ImGui::TreePush("Alpha testing tree");
 
@@ -2680,6 +2680,8 @@ void ImGuiSettingsWindow::draw_quality_panel()
 
 		ImGui::TreePop();
 	}
+
+	draw_lighting_settings_panel();
 
 	ImGui::TreePop();
 }
@@ -2783,45 +2785,6 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Lighting Settings"))
-	{
-		ImGui::TreePush("Lighting Settings Performance Tree");
-
-		ImGui::SeparatorText("Clamping");
-		if (ImGui::SliderFloat("Direct lighting", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-		if (ImGui::SliderFloat("Envmap ligthing", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-		if (ImGui::SliderFloat("Indirect ligthing", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
-		{
-			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
-			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
-			"This can improve performance at the cost of some bias depending on the scene.\n"
-			"0.0f to disable");
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		draw_next_event_estimation_plus_plus_panel();
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::TreePop();
-	}
-
 	if (ImGui::CollapsingHeader("Ray-tracing settings"))
 	{
 		ImGui::TreePush("Ray-tracing settings tree");
@@ -2901,7 +2864,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Kernel Settings"))
+	if (ImGui::CollapsingHeader("Kernel settings"))
 	{
 		ImGui::TreePush("Shared/global stack Traversal Options Tree");
 
@@ -3028,9 +2991,58 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGui::TreePop();
 	}
 
+	if (ImGui::CollapsingHeader("Lighting settings"))
+	{
+		ImGui::TreePush("Lighting settings tree");
+
+		draw_next_event_estimation_plus_plus_panel();
+
+		ImGui::TreePop();
+	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
+}
+
+void ImGuiSettingsWindow::draw_lighting_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	if (ImGui::CollapsingHeader("Lighting clamping"))
+	{
+		ImGui::TreePush("Lighting Settings Performance Tree");
+
+		ImGui::SeparatorText("Clamping");
+		if (ImGui::SliderFloat("Direct lighting", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Envmap ligthing", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Indirect ligthing", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
+		{
+			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
+			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
+			"This can improve performance at the cost of some bias depending on the scene.\n"
+			"0.0f to disable");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
 }
 
 void ImGuiSettingsWindow::draw_performance_metrics_panel()

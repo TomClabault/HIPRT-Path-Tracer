@@ -43,10 +43,10 @@ struct HIPRTRenderSettings
 	static constexpr int SAMPLE_STOP = 4096;
 
 	bool enable_direct = true;
-	bool DEBUG_DONT_REUSE_SPECULAR = true;
+	bool DEBUG_DOUBLE_BSDF_SHADING = true;
+	bool DEBUG_DONT_REUSE_SPECULAR = false;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
-	bool debug_lambertian = false;
 	int debug_x = 138, debug_y = 151;
 	int debug_x2 = 136, debug_y2 = 147;
 	bool DEBUG_DO_ONLY_NEIGHBOR = false;
@@ -103,7 +103,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 1;
+	int nb_bounces = 50;
 
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -156,9 +156,9 @@ struct HIPRTRenderSettings
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 2048;
+	int adaptive_sampling_min_samples = 4096;
 	// Adaptive sampling noise threshold
-	float adaptive_sampling_noise_threshold = 0.075f;
+	float adaptive_sampling_noise_threshold = 0.100f;
 
 	// If true, the rendering will stop after a certain proportion (defined by 'stop_pixel_percentage_converged')
 	// of pixels of the image have converged. "converged" here is defined according to the adaptive sampling if
@@ -172,7 +172,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 25.0f;
+	float stop_pixel_percentage_converged = 40.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;

@@ -25,10 +25,22 @@ extern ImGuiLogger g_imgui_logger;
 // - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
+// -------------------------- WHAT WE KNOW --------------------------
+// - Still biased with no alpha tests
+// - Do we absolutely have correct convergence on Lambertian & Oren Nayar? --> hard to verify, looks like it?
+// - Is it the glass that is biased? -------> No, no glass in BZD
+// -------------------------- WHAT WE KNOW --------------------------
+// 
+// - What gives the least amount of ReSTIR GI bias? With double BSDF target function? Without double BSDF shading?
+// - What about not reusing from specular lobes as a dirty fix?
+// - Jacobian inverse assumption incorrect? --> Try 1/Z without jacobian rejection
+// ---------------------------------------------------------------------------------------
+// - Best candidate so far is GI 1xTF 1xSha & don't reuse specular obviously but not reusing specular does hit convergence
+// 
+// TEST 1/Z CONVERGENCE ON SOMEWHAT ROUGH SURFACE SO THAT 1/Z ISN4T AN ISSUE FOR CONVERGENCE and see if 1/Z converges correctly or not
+// - Is it the adaptive sampling that is messed up?
 
 // TODO immediate
-// ----------------> Make sure BSDF sampling path tracer still matches the "Performance optimùization" branch and then work on proper normal flipping with Iray paper and "Microfacet based normal mapping" with the flip technique
-// 
 // - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
 // - Normal mapping weirdness again on the glasses in the kitchen with ReSTIR GI
 // - Glass IOR 1.0f not rendering properly even without restir GI
@@ -121,6 +133,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Emissive chminey texture broken in scandinavian-studio
 // - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
+// - Bistro-full, normal mapping is still going through the floor inside
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed

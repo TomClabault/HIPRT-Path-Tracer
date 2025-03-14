@@ -21,12 +21,12 @@ static std::mutex restir_di_log_mutex;
 
 struct ReSTIRDISample
 {
-    // Global primitive index corresponding to the emissive triangle sampled
-    int emissive_triangle_index = -1;
-
     // For envmap samples, this 'point_on_light_source' is the envmap direction in *envmap space*
     // A sample is an envmap sample if 'flags' contains 'RESTIR_DI_FLAGS_ENVMAP_SAMPLE'
     float3 point_on_light_source = { 0, 0, 0 };
+
+    // Global primitive index corresponding to the emissive triangle sampled
+    int emissive_triangle_index = -1;
 
     float target_function = 0.0f;
 

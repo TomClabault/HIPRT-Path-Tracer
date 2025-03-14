@@ -339,6 +339,10 @@ HIPRT_HOST_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direc
 
 }
 
+/**
+ * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
+ * They can be ignored if not using ReSTIR DI
+ */
 HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
     float3 view_direction,
     int x, int y,
@@ -376,6 +380,10 @@ HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_d
     return total_direct_lighting;
 }
 
+/**
+ * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
+ * They can be ignored if not using ReSTIR DI
+ */
 HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
     float3 view_direction,
     int x, int y,
@@ -384,6 +392,10 @@ HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderDa
     return estimate_direct_lighting(render_data, ray_payload, custom_ray_throughput, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
 }
 
+/**
+ * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
+ * They can be ignored if not using ReSTIR DI
+ */
 HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
     float3 view_direction,
     int x, int y,

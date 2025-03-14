@@ -23,7 +23,7 @@ enum GGXMaskingShadowingFlavor
 
 struct BRDFsData
 {
-	bool white_furnace_mode = true;
+	bool white_furnace_mode = false;
 	bool white_furnace_mode_turn_off_emissives = true;
 
 	// 32x32 texture containing the precomputed parameters of the LTC

@@ -59,6 +59,7 @@ private:
 
 	void toggle_gmon();
 
+	void draw_lighting_settings_panel();
 	void draw_performance_settings_panel();
 	void draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label);
 	template <class... Args>
