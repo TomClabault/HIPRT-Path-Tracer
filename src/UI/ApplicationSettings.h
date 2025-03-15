@@ -92,6 +92,14 @@ struct ApplicationSettings
 	// pixels that yet have to converge decreases. And with high FPS count, we get the risk
 	// of being CPU bound since we'll have to display many frames per second.
 	bool auto_sample_per_frame = true;
+
+	// How many samples to render before evaluating the number of pixels that have reached
+	// the noise threshold.
+	// 
+	// This setting only applies to the "pixel stop noise threshold" feature.
+	// It does not apply to adaptive sampling.
+	// Adaptive sampling has its own minimum sample count
+	int pixel_stop_noise_threshold_min_sample_count = 64;
 };
 
 #endif
