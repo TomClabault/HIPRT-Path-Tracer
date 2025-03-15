@@ -29,6 +29,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Still biased with no alpha tests
 // - Do we absolutely have correct convergence on Lambertian & Oren Nayar? --> hard to verify, looks like it?
 // - Is it the glass that is biased? -------> No, no glass in BZD
+// - 1/Z is also biased, even without the jacobian rejection heuristic
+// - It's not the adaptive sampling that is messed up
+// - Definitely has some bias (very little but there) with everything using a metallic BRDF, roughness 0.1, 50 bounces. Contemporary bedroom
+// - There is some bias in the contemporary bedroom at 1 bounce, everything specular, 0 roughness, with RIS light sampling + envmap sampling
 // -------------------------- WHAT WE KNOW --------------------------
 // 
 // - What gives the least amount of ReSTIR GI bias? With double BSDF target function? Without double BSDF shading?
@@ -36,9 +40,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Jacobian inverse assumption incorrect? --> Try 1/Z without jacobian rejection
 // ---------------------------------------------------------------------------------------
 // - Best candidate so far is GI 1xTF 1xSha & don't reuse specular obviously but not reusing specular does hit convergence
-// 
-// TEST 1/Z CONVERGENCE ON SOMEWHAT ROUGH SURFACE SO THAT 1/Z ISN4T AN ISSUE FOR CONVERGENCE and see if 1/Z converges correctly or not
-// - Is it the adaptive sampling that is messed up?
+// - Try lambertian/oren nayar contemporary bedroom + NEE + Envmap
+// - We've seen that when reusing only the neighbor, it is still brighter than expected. Maybe we can inspect how the shading of the resued neighbor path is computed and compare that to what would happen if the center pixel produced that path itself
 
 // TODO immediate
 // - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
@@ -147,12 +150,16 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO Features:
 // - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
+// - ReGIR for light sampling
+//		- Introduce visibility to the center of the cell for ReGIR to eliminate obvious occluded lights? Or is that biased?
+//		- For MIS with BSDF, use some arbitrary roughness-MIS-weights?
 // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
 // - One Sample MIS for BSDF sampling: https://discord.com/channels/318590007881236480/377557956775903232/1346777006280278067, https://discord.com/channels/318590007881236480/377557956775903232/1347484850315071550
 // - Some automatic metric to determine automatically what GMoN blend factor to use
 // - software opacity micromaps
 // - Add parameters to increase the strength of specular / coat darkening
 // - sample BSDF based on view fresnel for glossy layer
+//		- sample diffuse proba based on its luminance?
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
 // - how to help with shaders combination compilation times? upload bitcodes that ** I ** compile locally to Github? Change some #if to if() where this does not increase register pressure also.
@@ -670,9 +677,10 @@ bool RenderWindow::is_rendering_done()
 	// using the pixel stop noise threshold feature (enabled + threshold > 0.0f) or if we're using the
 	// stop noise threshold but only for the proportion stopping condition (we're not using the threshold of the pixel
 	// stop noise threshold feature) --> (enabled & adaptive sampling enabled)
-	bool use_proportion_stopping_condition = (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.enable_pixel_stop_noise_threshold) 
+	bool use_proportion_stopping_condition = (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.enable_pixel_stop_noise_threshold)
 		|| (render_settings.enable_pixel_stop_noise_threshold && render_settings.enable_adaptive_sampling);
-	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && use_proportion_stopping_condition;
+	bool minimum_sample_count_reached = render_settings.sample_number >= m_application_settings->pixel_stop_noise_threshold_min_sample_count || render_settings.enable_adaptive_sampling;
+	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && use_proportion_stopping_condition && minimum_sample_count_reached;
 
 	// Max sample count
 	rendering_done |= (m_application_settings->max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings->max_sample_count);

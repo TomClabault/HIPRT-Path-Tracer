@@ -358,6 +358,14 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 					pixel_noise_threshold_help_string += "\n\nDisabled because adaptive sampling is enabled. Both cannot be used at the same time.";
 				ImGuiRenderer::show_help_marker(pixel_noise_threshold_help_string);
 
+				ImGui::InputInt("Minimum sample count", &m_application_settings->pixel_stop_noise_threshold_min_sample_count);
+				ImGuiRenderer::show_help_marker("How many samples to render before evaluating the number of pixels that have reached "
+					"the noise threshold.\n\n"
+					""
+					"This setting only applies to the \"pixel stop noise threshold\" feature.\n"
+					"It does not apply to adaptive sampling.\n"
+					"Adaptive sampling has its own minimum sample count.");
+
 				if (ImGui::Button("Copy adaptive sampling's threshold"))
 				{
 					render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
@@ -850,7 +858,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 			if (ImGui::InputInt("Minimum samples", &render_settings.adaptive_sampling_min_samples))
-				m_render_window->set_render_dirty(true);
+					m_render_window->set_render_dirty(true);
 			if (ImGui::InputFloat("Noise threshold", &render_settings.adaptive_sampling_noise_threshold))
 			{
 				render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
