@@ -156,7 +156,7 @@ struct HIPRTRenderSettings
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 2048;
+	int adaptive_sampling_min_samples = 1024;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.0750f;
 
