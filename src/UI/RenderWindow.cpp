@@ -33,15 +33,19 @@ extern ImGuiLogger g_imgui_logger;
 // - It's not the adaptive sampling that is messed up
 // - Definitely has some bias (very little but there) with everything using a metallic BRDF, roughness 0.1, 50 bounces. Contemporary bedroom
 // - There is some bias in the contemporary bedroom at 1 bounce, everything specular, 0 roughness, with RIS light sampling + envmap sampling
+// - Can't see any bias with lambertian/oren nayar contemporary bedroom + NEE + Envmap
+// - With everything specular at IOR 1.0f but roughness 1.0f, there's basically no bias. Even though the specular layer has no effect because of IOR 1.0f. So if the roughness of an inexistant layer changes the bias, it can only be a PDF issue?
 // -------------------------- WHAT WE KNOW --------------------------
 // 
-// - What gives the least amount of ReSTIR GI bias? With double BSDF target function? Without double BSDF shading?
-// - What about not reusing from specular lobes as a dirty fix?
-// - Jacobian inverse assumption incorrect? --> Try 1/Z without jacobian rejection
+// -------------------------- DIRTY FIX RIGHT NOW --------------------------
+// - No double BSDF shading
+// - No double BSDF in target function
+// - Reuse on specular is ok
+// -------------------------- DIRTY FIX RIGHT NOW --------------------------
+// 
 // ---------------------------------------------------------------------------------------
-// - Best candidate so far is GI 1xTF 1xSha & don't reuse specular obviously but not reusing specular does hit convergence
-// - Try lambertian/oren nayar contemporary bedroom + NEE + Envmap
 // - We've seen that when reusing only the neighbor, it is still brighter than expected. Maybe we can inspect how the shading of the resued neighbor path is computed and compare that to what would happen if the center pixel produced that path itself
+// - TODO: debug glass difference in bistro interior
 
 // TODO immediate
 // - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
