@@ -8,26 +8,27 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
+template <bool IsReSTIRGI>
+struct ReSTIRSettingsTypeTemplate {};
+
+template <>
+struct ReSTIRSettingsTypeTemplate<false>
+{
+	using Type = ReSTIRDISettings;
+};
+
+template <>
+struct ReSTIRSettingsTypeTemplate<true>
+{
+	using Type = ReSTIRGISettings;
+};
+
+template <bool IsReSTIRGI>
+using ReSTIRSettingsType = typename ReSTIRSettingsTypeTemplate<IsReSTIRGI>::Type;
+
+
 struct ReSTIRSettingsHelper
 {
-	template <bool IsReSTIRGI>
-	struct ReSTIRSettingsTypeTemplate {};
-
-	template <>
-	struct ReSTIRSettingsTypeTemplate<false>
-	{
-		using Type = ReSTIRDISettings;
-	};
-
-	template <>
-	struct ReSTIRSettingsTypeTemplate<true>
-	{
-		using Type = ReSTIRGISettings;
-	};
-
-	template <bool IsReSTIRGI>
-	using ReSTIRSettingsType = typename ReSTIRSettingsTypeTemplate<IsReSTIRGI>::Type;
-
 	template <bool IsReSTIRGI>
 	HIPRT_HOST_DEVICE static ReSTIRSettingsType<IsReSTIRGI> get_restir_settings(const HIPRTRenderData& render_data)
 	{
