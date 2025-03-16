@@ -40,6 +40,8 @@ struct MISBSDFRayReuse
 	{
 #if ReuseBSDFMISRay
 		return get_intersection_material(render_data, this->material_index, this->interpolated_texcoords);
+#else
+		return DeviceUnpackedEffectiveMaterial();
 #endif
 	}
 

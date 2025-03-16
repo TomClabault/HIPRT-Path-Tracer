@@ -163,7 +163,7 @@ void RenderGraph::add_render_pass(std::shared_ptr<RenderPass> render_pass)
 {
 	if (m_render_passes.find(render_pass->get_name()) != m_render_passes.end())
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "A render pass with name %s already exists in the render graph. This call to add_render_pass() didn't change anything.", render_pass->get_name());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "A render pass with name %s already exists in the render graph. This call to add_render_pass() didn't change anything.", render_pass->get_name().c_str());
 
 		return;
 	}
