@@ -173,15 +173,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	int2 center_pixel_coords = make_int2(x, y);
 
-	// Surface data of the center pixel
-	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-	if (center_pixel_surface.material.is_emissive())
-		// Not doing ReSTIR on directly visible emissive materials
-		return;
-
 	if (render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested)
 		// We requested a temporal buffer clear for ReSTIR DI
 		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRDIReservoir();
+
+	// Surface data of the center pixel
+	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 
 	ReSTIRDIReservoir temporal_neighbor_reservoir;
 	ReSTIRSurface temporal_neighbor_surface;

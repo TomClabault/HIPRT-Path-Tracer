@@ -80,9 +80,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-	if (center_pixel_surface.material.is_emissive())
-		// Not doing ReSTIR on directly visible emissive materials
-		return;
 
 	int temporal_neighbor_pixel_index = find_temporal_neighbor_index<false>(render_data,
 		render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, center_pixel_index, random_number_generator).x;
