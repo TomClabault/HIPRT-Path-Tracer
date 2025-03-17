@@ -1162,9 +1162,29 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
     // fresnel of the specular lobe
     float specular_relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
     float specular_fresnel = full_fresnel_dielectric(NoV, specular_relative_ior);
+    float specular_fresnel_sampling_weight = specular_fresnel * material.specular;
 
-    specular_weight *= specular_fresnel;
-    diffuse_weight *= 1.0f - specular_fresnel;
+    // The specular weight gets affected
+    specular_weight *= specular_fresnel_sampling_weight;
+    // And everything that is below the specular also gets affected
+    diffuse_weight *= 1.0f - specular_fresnel_sampling_weight;
+    diffuse_transmission_weight *= 1.0f - specular_fresnel_sampling_weight;
+#endif
+
+#if PrincipledBSDFSampleCoatBasedOnFresnel == KERNEL_OPTION_TRUE
+    float coat_fresnel = full_fresnel_dielectric(NoV, material.coat_ior / incident_medium_ior);
+    float coat_fresnel_sampling_weight = coat_fresnel * material.coat;
+
+    // The coat weight gets affected
+    coat_weight *= coat_fresnel_sampling_weight;
+    // And everything that is below the coat also gets affected
+    sheen_weight *= 1.0f - coat_fresnel_sampling_weight;
+    metal_1_weight *= 1.0f - coat_fresnel_sampling_weight;
+    metal_2_weight *= 1.0f - coat_fresnel_sampling_weight;
+    specular_weight *= 1.0f - coat_fresnel_sampling_weight;
+    diffuse_weight *= 1.0f - coat_fresnel_sampling_weight;
+    glass_weight *= 1.0f - coat_fresnel_sampling_weight;
+    diffuse_transmission_weight *= 1.0f - coat_fresnel_sampling_weight;
 #endif
 
     float normalize_factor = 1.0f / (coat_weight + sheen_weight

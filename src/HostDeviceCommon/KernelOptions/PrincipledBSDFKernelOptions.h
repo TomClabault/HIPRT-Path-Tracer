@@ -156,6 +156,11 @@
  */
 #define PrincipledBSDFSampleGlossyBasedOnFresnel KERNEL_OPTION_TRUE
 
+/**
+ * Same PrincipledBSDFSampleGlossyBasedOnFresnel but for the coat layer
+ */
+#define PrincipledBSDFSampleCoatBasedOnFresnel KERNEL_OPTION_TRUE
+
 #endif // #ifndef __KERNELCC__
 
 #endif
