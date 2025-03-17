@@ -1417,6 +1417,18 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"that will be sampled more often.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Principled BSDF Coat lobe");
+			static bool sample_coat_based_on_fresnel = PrincipledBSDFSampleCoatBasedOnFresnel;
+			if (ImGui::Checkbox("Fresnel-based sampling", &sample_coat_based_on_fresnel))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL, sample_coat_based_on_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Same as the glossy layer fresnel-based sampling but for the coat layer.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("GGX");
 
 			std::vector<const char*> ggx_sampling_items = { "- VNDF", "- VNDF Spherical Caps" };

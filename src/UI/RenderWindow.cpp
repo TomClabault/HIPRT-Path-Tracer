@@ -26,14 +26,9 @@ extern ImGuiLogger g_imgui_logger;
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
 // TODO immediate
-// - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
-// - Normal mapping weirdness again on the glasses in the kitchen with ReSTIR GI
-// - Glass IOR 1.0f not rendering properly even without restir GI
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
-// - Fix Fresnel based sampling by modifying only the lobes proba, not the lobe weights since the weights are used when weighting the contributions: the weights modify the contributions of the lobes
-// - TODO: debug glass difference in bistro interior ReSTIR GI, even with 0 spatial neighbors
-// // TODO RENDER 512 SPP RIGHT NOW WITH THE CPU RENDERER AND SEE IF THERE IS A DIFFERENCE IN FRESNEL REFLECTIONS
+// - Fix ReSTIR DI drvier crash when disabling the temporal reuse
 
 
 
