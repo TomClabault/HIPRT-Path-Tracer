@@ -18,6 +18,33 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
+// ReSTIR GI shading/resampling is still a bit broken, there's still some brightening bias coming from
+// I don't know where, supposedly when the BRDF starts to include smooth/glossy BRDFs
+// 
+// This manifests the most on specular 1 + roughness 0 everywhere in the scene
+// Maybe the bias is also there with a Lambertian BRDF but I could never see it. Maybe it's there but it's just so subtle that it's invisible
+// 
+// -------------------------- WHAT WE KNOW --------------------------
+// - Still biased with no alpha tests
+// - Do we absolutely have correct convergence on Lambertian & Oren Nayar? --> hard to verify, looks like it?
+// - Is it the glass that is biased? -------> No, no glass in BZD
+// - 1/Z is also biased, even without the jacobian rejection heuristic
+// - It's not the adaptive sampling that is messed up
+// - Definitely has some bias (very little but there) with everything using a metallic BRDF, roughness 0.1, 50 bounces. Contemporary bedroom
+// - There is some bias in the contemporary bedroom at 1 bounce, everything specular, 0 roughness, with RIS light sampling + envmap sampling
+// - Can't see any bias with lambertian/oren nayar contemporary bedroom + NEE + Envmap
+// - With everything specular at IOR 1.0f but roughness 1.0f, there's basically no bias. Even though the specular layer has no effect because of IOR 1.0f. So if the roughness of an inexistant layer changes the bias, it can only be a PDF issue?
+// -------------------------- WHAT WE KNOW --------------------------
+// 
+// -------------------------- DIRTY FIX RIGHT NOW --------------------------
+// - No double BSDF shading
+// - No double BSDF in target function
+// - Reuse on specular is ok
+// -------------------------- DIRTY FIX RIGHT NOW --------------------------
+// 
+// -------------------------- TODO TO TRY TO DEBUG IT --------------------------
+// - We've seen that when reusing only the neighbor, it is still brighter than expected. Maybe we can inspect how the shading of the resued neighbor path is computed and compare that to what would happen if the center pixel produced that path itself
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_Shading(HIPRTRenderData render_data)
 #else
@@ -83,6 +110,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     if (render_data.render_settings.enable_direct)
         // Adding the direct lighting contribution at the first hit in the direction of the camera
         camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
+
+    ColorRGB32F DEBUG_direct_light_;
 
     ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index];
 
@@ -162,7 +191,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                     }
                 }
                 else
+                {
+                    DEBUG_direct_light_ = first_hit_throughput;
+
                     camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point;
+                }
             }
         }
     }
@@ -200,7 +233,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else
         // Regular output
-        path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
+         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
+        //path_tracing_accumulate_color(render_data, DEBUG_direct_light_ * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
 }
 
 #endif

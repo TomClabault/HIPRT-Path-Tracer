@@ -166,6 +166,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	if (ImGui::Checkbox("Do only neighbor", &render_settings.DEBUG_DO_ONLY_NEIGHBOR))
 		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
+	if (ImGui::SliderInt("Debug bounce", &render_settings.DEBUG_BOUNCE, 0, 10))
+		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug Y", &render_settings.debug_y, 0, m_renderer->m_render_resolution.y - 1))
@@ -261,10 +263,23 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		ImGui::TreePop();
 	}
 
+	int nb_bounce_before_change = render_settings.nb_bounces;
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
 		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0);
+
+		if (render_settings.alpha_testing_indirect_bounce >= nb_bounce_before_change + 1)
+			// Auto adjusting the alpha testing indirect bounce limit such that, if the alpha test limit
+			// was above the maximum number of bounces before (i.e. alpha test are always enabled) we changed
+			// the number of bounces, then we want the limit to stay above the maximum (such that alpha tests are
+			// still always enabled)
+			//
+			// This is only for the convenience of the user so that they don't have the go change
+			// the alpha test bounce limit after they change the number of bounces: the alpha test limit changes automatically
+			// (if the alpha test limit was at the maximum)
+			render_settings.alpha_testing_indirect_bounce = render_settings.nb_bounces + 1;
+
 		m_render_window->set_render_dirty(true);
 	}
 
@@ -900,7 +915,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
-			if (ImGui::Combo("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			const char* tooltips[] = {
+				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
+				"Samples one random light in the scene without MIS. Efficient as long as there are not too many lights in the scene and no glossy/specular surfaces.",
+				"Samples lights only using one BSDF sample.",
+				"Samples one random light in the scene with MIS(Multiple Importance Sampling) : light sample + BRDF sample.",
+				"Samples lights in the scene with RIS (Resampled Importance Sampling) with both BSDF and light candidates. The number of light or BSDF candidates can be controlled.",
+				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be changed in the ReSTIR DI settings."
+			};
+
+			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1266,7 +1290,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::TreePush("Path sampling tree");
 
 			const char* items[] = { "- BSDF sampling", "- ReSTIR GI" };
-			if (ImGui::Combo("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			const char* tooltips[] = {
+				"Classical BSDF path tracing: sample the BSDF at each bounce for the next direction.",
+				"Uses ReSTIR GI to resample a path to shade for the pixel.",
+			};
+			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -2663,7 +2691,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			m_render_window->set_render_dirty(true);
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		if (ImGui::SliderInt("Max bounce", &render_settings.alpha_testing_indirect_bounce, 0, render_settings.nb_bounces))
+		if (ImGui::SliderInt("Max bounce", &render_settings.alpha_testing_indirect_bounce, 0, render_settings.nb_bounces + 1, "%d"))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("At what bounce to stop doing alpha testing.\n\n"
 			""
@@ -2673,10 +2701,16 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			"A value of 1 means that camera rays do alpha testing but the next bounce rays do not do alpha "
 			"testing.\n\n"
 			""
-			"Shadow rays for NEE are also affected by this setting.");
+			"Shadow rays for NEE are also affected by this setting.\n\n"
+			""
+			"This feature helps with performance on scenes with medium/a lot of alpha tested geometry.");
+		if (render_settings.alpha_testing_indirect_bounce > render_settings.nb_bounces)
+			ImGui::Text("Alpha tests always enabled.");
+		if (render_settings.alpha_testing_indirect_bounce == 0)
+			ImGui::Text("Alpha tests always disabled.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f)); 
-			ImGui::TreePop();
+		ImGui::TreePop();
 	}
 
 	if (ImGui::CollapsingHeader("Normal mapping"))
@@ -2686,6 +2720,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		if (ImGui::Checkbox("Do normal mapping", &render_settings.do_normal_mapping))
 			m_render_window->set_render_dirty(true);
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
 

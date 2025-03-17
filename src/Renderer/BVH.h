@@ -163,6 +163,10 @@ public:
                     {
                         localHit.primID = triangle_id;
 
+                        if (localHit.t < ray.minT)
+                            // minT test not passed
+                            continue;
+
                         if (filter_function(ray, nullptr, filter_function_payload, localHit))
                             // Hit is filtered
                             continue;

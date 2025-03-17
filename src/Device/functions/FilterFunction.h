@@ -33,10 +33,13 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		return true;
 
 	if (!payload->render_data->render_settings.do_alpha_testing)
+		// No alpha testing
 		return false;
 
 	if (payload->bounce >= payload->render_data->render_settings.alpha_testing_indirect_bounce)
-		// Alpha testing is disable at the current bounce
+		// Alpha testing is disabled at the current bounce
+		// 
+		// Returning false to indicate an intersection
 		return false;
 
 	int material_index = payload->render_data->buffers.material_indices[hit.primID];
