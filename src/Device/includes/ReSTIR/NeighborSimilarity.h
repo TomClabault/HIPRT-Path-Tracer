@@ -115,24 +115,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	bool plane_distance_passed = plane_distance_heuristic(neighbor_similarity_settings, neighbor_world_space_point, current_shading_point, current_normal, neighbor_similarity_settings.plane_distance_threshold);
 	bool normal_similarity_passed = normal_similarity_heuristic(neighbor_similarity_settings, current_normal, render_data.g_buffer.shading_normals[neighbor_pixel_index].unpack(), neighbor_similarity_settings.normal_similarity_angle_precomp);
 	bool roughness_similarity_passed = roughness_similarity_heuristic(neighbor_similarity_settings, neighbor_roughness, current_material_roughness, neighbor_similarity_settings.roughness_similarity_threshold);
-	bool neighbor_is_emissive;
-	if constexpr (IsReSTIRGI)
-	{
-		// With ReSTIR GI, it's not a problem to resample from emissive neighbors so let's
-		// not reject neighbors because of this
-		neighbor_is_emissive = false;
 
-		// For ReSTIR GI, we also want to avoid reusing neighbors that have their sample point on a specular
-		// surface because changing the view direction of the BSDF on that specular surface
-		// is going to yield a 0 contribution anyways
-		/*if (render_data.render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic &&
-			render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point_material.get_roughness() < render_data.render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold)
-			roughness_similarity_passed = false;*/
-	}
-	else
-		neighbor_is_emissive = previous_frame ? render_data.g_buffer_prev_frame.materials[neighbor_pixel_index].is_emissive() : render_data.g_buffer.materials[neighbor_pixel_index].is_emissive();
-
-	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed && !neighbor_is_emissive;
+	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed;
 }
 
 #endif

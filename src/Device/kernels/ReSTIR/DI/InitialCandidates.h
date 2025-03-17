@@ -470,13 +470,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     uint32_t pixel_index = (x + y * render_data.render_settings.render_resolution.x);
     DevicePackedEffectiveMaterial material = render_data.g_buffer.materials[pixel_index];
 
-    if (material.is_emissive())
-        // If this pixel is on an emissive material, indicating that the reservoir is emissive
-        // with the flag so that the temporal and spatial reuse can avoir resampling on those.
-        // We're not resampling on emissive materials because there is no point, we're not trying
-        // to shade emissive materials so we don't need light samples on emissive materials
-        return;
-
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);
