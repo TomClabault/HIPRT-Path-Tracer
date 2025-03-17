@@ -36,7 +36,7 @@ public:
 	void launch_initial_candidates_pass();
 	void configure_temporal_reuse_pass();
 	void launch_temporal_reuse_pass();
-	void configure_spatial_reuse_pass();
+	void configure_spatial_reuse_pass(int spatial_pass_index);
 	void launch_spatial_reuse_pass();
 	void configure_shading_pass();
 	void launch_shading_pass();
