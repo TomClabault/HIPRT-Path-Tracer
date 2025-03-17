@@ -210,7 +210,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         ColorRGB32F bsdf_color;
         BSDFIncidentLightInfo incident_light_info;
 
-        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, 
+        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, 
                                             view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
                                             bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_light_info);
 
@@ -262,8 +262,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // (because the BSDF sample, that should have weight 1 [or to be precise: 1 / nb_bsdf_samples]
                 // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
                 // and this is going to cause darkening as the number of light samples grows)
-                bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
-                light_pdf *= !refraction_sampled;
+                light_pdf *= incident_light_info != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE;
 
                 bool contributes_enough = bsdf_sample_pdf <= 0.0f || check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf);
                 if (!contributes_enough)

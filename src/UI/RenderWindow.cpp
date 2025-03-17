@@ -25,28 +25,6 @@ extern ImGuiLogger g_imgui_logger;
 // - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
-// -------------------------- WHAT WE KNOW --------------------------
-// - Still biased with no alpha tests
-// - Do we absolutely have correct convergence on Lambertian & Oren Nayar? --> hard to verify, looks like it?
-// - Is it the glass that is biased? -------> No, no glass in BZD
-// - 1/Z is also biased, even without the jacobian rejection heuristic
-// - It's not the adaptive sampling that is messed up
-// - Definitely has some bias (very little but there) with everything using a metallic BRDF, roughness 0.1, 50 bounces. Contemporary bedroom
-// - There is some bias in the contemporary bedroom at 1 bounce, everything specular, 0 roughness, with RIS light sampling + envmap sampling
-// - Can't see any bias with lambertian/oren nayar contemporary bedroom + NEE + Envmap
-// - With everything specular at IOR 1.0f but roughness 1.0f, there's basically no bias. Even though the specular layer has no effect because of IOR 1.0f. So if the roughness of an inexistant layer changes the bias, it can only be a PDF issue?
-// -------------------------- WHAT WE KNOW --------------------------
-// 
-// -------------------------- DIRTY FIX RIGHT NOW --------------------------
-// - No double BSDF shading
-// - No double BSDF in target function
-// - Reuse on specular is ok
-// -------------------------- DIRTY FIX RIGHT NOW --------------------------
-// 
-// ---------------------------------------------------------------------------------------
-// - We've seen that when reusing only the neighbor, it is still brighter than expected. Maybe we can inspect how the shading of the resued neighbor path is computed and compare that to what would happen if the center pixel produced that path itself
-// - TODO: debug glass difference in bistro interior
-
 // TODO immediate
 // - Is not shading the second BSDF a big deal in ReSTIR GI? --> Should be fine on perfect diffuse lambertian material at least
 // - Normal mapping weirdness again on the glasses in the kitchen with ReSTIR GI
@@ -54,6 +32,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 // - Fix Fresnel based sampling by modifying only the lobes proba, not the lobe weights since the weights are used when weighting the contributions: the weights modify the contributions of the lobes
+// - TODO: debug glass difference in bistro interior ReSTIR GI, even with 0 spatial neighbors
+// // TODO RENDER 512 SPP RIGHT NOW WITH THE CPU RENDERER AND SEE IF THERE IS A DIFFERENCE IN FRESNEL REFLECTIONS
 
 
 

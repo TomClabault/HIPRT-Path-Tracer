@@ -79,7 +79,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
     BSDFIncidentLightInfo incident_ligth_info;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true,
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false,
                                                     view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction,
                                                     bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_ligth_info);
 
@@ -97,7 +97,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
         // it needs to be emissive
         if (intersection_found)
         {
-            float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
+            float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf;
         }
     }
@@ -169,7 +169,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     float3 sampled_bsdf_direction;
     float3 bsdf_shadow_ray_origin = closest_hit_info.inter_point;
     BSDFIncidentLightInfo incident_ligth_info;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, ReuseBSDFMISRay == KERNEL_OPTION_TRUE, 
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false,
                                                     view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
                                                     bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_ligth_info);
 
@@ -352,6 +352,7 @@ HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_d
 
     ColorRGB32F emissive_geometry_direct_contribution = sample_emissive_geometry(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y), mis_reuse);
     ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_reuse);
+
 
     // Clamping direct lighting
     // TODO RESTIR add back ray_payload.bounce == 0 condition

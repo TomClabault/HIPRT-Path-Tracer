@@ -300,6 +300,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
     // and keep intersecting the scene)
     float cumulative_t = 0.0f;
 
+    // TODO DEBUG REMOVE THIS minT
+    ray.minT = 1.0e-5f;
+
     hiprtHit hit;
     do
     {
@@ -476,6 +479,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     // (we may find multiple hits if we hit transparent texture
     // and keep intersecting the scene)
     float cumulative_t = 0.0f;
+
+    // TODO DEBUG REMOVE THIS minT
+    ray.minT = 1.0e-5f;
 
     hiprtHit shadow_ray_hit;
     do

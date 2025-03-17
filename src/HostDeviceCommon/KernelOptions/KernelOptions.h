@@ -37,15 +37,12 @@
  * Those are simple defines to give names to the option values.
  * This allows the use of LSS_ONE_RANDOM_LIGHT_MIS (for example) instead of a hardcoded '2'
  */
-#define MATERIAL_PACK_STRATEGY_USE_PACKED 0
-#define MATERIAL_PACK_STRATEGY_USE_UNPACKED 1
-
 #define BSDF_NONE 0
 #define BSDF_LAMBERTIAN 1
 #define BSDF_OREN_NAYAR 2
 #define BSDF_PRINCIPLED 3
 
-#define NESTED_DIELECTRICS_STACK_SIZE 3
+#define NESTED_DIELECTRICS_STACK_SIZE 4
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_UNIFORM_ONE_LIGHT 1
@@ -150,7 +147,7 @@
  * Possible values (the prefix LSS stands for "Light Sampling strategy"):
  * 
  *	- LSS_NO_DIRECT_LIGHT_SAMPLING
- *		No direct light sampling
+ *		No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.
  * 
  *	- LSS_UNIFORM_ONE_LIGHT
  *		Samples one random light in the scene without MIS. 
@@ -170,7 +167,8 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_NO_DIRECT_LIGHT_SAMPLING
+//#define DirectLightSamplingStrategy LSS_BSDF
 
 /**
  * Whether or not to use NEE++ features at all
@@ -227,7 +225,7 @@
  *		luminance using an alias table for constant time sampling
  *		Good convergence and faster than ESS_BINARY_SEARCH
  */
-#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
+#define EnvmapSamplingStrategy ESS_NO_SAMPLING
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
@@ -250,8 +248,8 @@
  * 
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-//#define PathSamplingStrategy PSS_BSDF
-#define PathSamplingStrategy PSS_RESTIR_GI
+#define PathSamplingStrategy PSS_BSDF
+//#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're

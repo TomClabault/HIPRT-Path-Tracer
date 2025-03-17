@@ -93,6 +93,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
     bool intersection_found = closest_hit_info.primitive_index != -1;
+
     for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
     {
         if (ray_payload.next_ray_state != RayState::MISSED)
@@ -107,7 +108,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
                 // TODO REMOVE THE DEBUG IF
                 if (bounce > 0 || render_data.render_settings.enable_direct)
-                    ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+                    ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);;
+
 
                 bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator);
                 if (!valid_indirect_bounce)

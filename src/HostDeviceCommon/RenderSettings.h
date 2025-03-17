@@ -42,6 +42,9 @@ struct HIPRTRenderSettings
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 
+	ColorRGB32F DEBUG_COLOR;
+	int DEBUG_BOUNCE = 1;
+
 	bool enable_direct = true;
 	bool DEBUG_DOUBLE_BSDF_SHADING = false;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
@@ -103,9 +106,9 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 30;
+	int nb_bounces = 3;
 
-	bool use_russian_roulette = true;
+	bool use_russian_roulette = false;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to russian roulette termination
@@ -151,7 +154,7 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = true;
+	bool enable_adaptive_sampling = false;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
@@ -217,7 +220,7 @@ struct HIPRTRenderSettings
 	// testing
 	//
 	// Shadow rays for NEE are also affected by this setting
-	int alpha_testing_indirect_bounce = 2;
+	int alpha_testing_indirect_bounce = nb_bounces + 1;
 
 	// Whether or not to do normal mapping at all
 	// If false, geometric normals will always be used
