@@ -123,8 +123,9 @@ private:
 	bool odd_frame = false;
 
 	// Events for timing the cumulated render time of all the spatial reuses passes
-	oroEvent_t spatial_reuse_time_start = nullptr;
-	oroEvent_t spatial_reuse_time_stop = nullptr;
+	bool m_spatial_reuse_events_recorded = false;
+	oroEvent_t m_spatial_reuse_time_start = nullptr;
+	oroEvent_t m_spatial_reuse_time_stop = nullptr;
 };
 
 #endif
