@@ -153,7 +153,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			shift_mapping_jacobian = 0.0f;
 
 		float target_function_at_center = 0.0f;
-		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
+		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<true>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (is_center_pixel)
@@ -252,54 +252,53 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 
 	// Only these 3 weighting schemes are affected
-//#if (ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_Z \
-//	|| ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS \
-//	|| ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE) \
-//	&& ReSTIR_GI_BiasCorrectionUseVisibility == KERNEL_OPTION_TRUE \
-//	&& (ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE || (ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE && ReSTIR_DI_SpatialTargetFunctionVisibility == KERNEL_OPTION_TRUE))
-//	// Why is this needed?
-//	//
-//	// Picture the case where we have visibility reuse (at the end of the initial candidates sampling pass),
-//	// visibility term in the bias correction target function (when counting the neighbors that could
-//	// have produced the picked sample) and 2 spatial reuse passes.
-//	//
-//	// The first spatial reuse pass reuses from samples that were produced with visibility in mind
-//	// (because of the visibility reuse pass that discards occluded samples). This means that we need
-//	// the visibility in the target function used when counting the neighbors that could have produced
-//	// the picked sample otherwise we may think that our neighbor could have produced the picked
-//	// sample where actually it couldn't because the sample is occluded at the neighbor. We would
-//	// then have a Z denominator (with 1/Z weights) that is too large and we'll end up with darkening.
-//	//
-//	// Now at the end of the first spatial reuse pass, the center pixel ends up with a sample that may
-//	// or may not be occluded from the center's pixel point of view. We didn't include the visibility
-//	// in the target function when resampling the neighbors (only when counting the "correct" neighbors
-//	// but that's all) so we are not giving a 0 weight to occluded resampled neighbors --> it is possible
-//	// that we picked an occluded sample.
-//	//
-//	// In the second spatial reuse pass, we are now going to resample from our neighbors and get some
-//	// samples that were not generated with occlusion in mind (because the resampling target function of
-//	// the first spatial reuse doesn't include visibility). Yet, we are going to weight them with occlusion
-//	// in mind. This means that we are probably going to discard samples because of occlusion that could
-//	// have been generated because they are generated without occlusion test. We end up discarding too many
-//	// samples --> brightening bias.
-//	//
-//	// With the visibility reuse at the end of each spatial pass, we force samples at the end of each
-//	// spatial reuse to take visibility into account so that when we weight them with visibility testing,
-//	// everything goes well
-//	//
-//	// As an optimization, we also do this for the pairwise MIS because pairwise MIS evaluates the target function
-//	// of reservoirs at their own location. Doing the visibility reuse here ensures that a reservoir sample at its own location
-//	// includes visibility and so we do not need to recompute the target function of the neighbors in this case. We can just
-//	// reuse the target function stored in the reservoir
-//	//
-//	// We also give the user the choice to remove bias using this option or not as it introduces very little bias
-//	// in practice (but noticeable when switching back and forth between reference image/biased image)
-//	//
-//	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
-//	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
-//	if (render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_gi_settings.common_spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_pass_index)
-//		ReSTIR_DI_visibility_reuse(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
-//#endif
+#if (ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_Z \
+	|| ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS \
+	|| ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE) \
+	&& ReSTIR_GI_BiasCorrectionUseVisibility == KERNEL_OPTION_TRUE
+	// Why is this needed?
+	//
+	// Picture the case where we have visibility reuse (at the end of the initial candidates sampling pass),
+	// visibility term in the bias correction target function (when counting the neighbors that could
+	// have produced the picked sample) and 2 spatial reuse passes.
+	//
+	// The first spatial reuse pass reuses from samples that were produced with visibility in mind
+	// (because of the visibility reuse pass that discards occluded samples). This means that we need
+	// the visibility in the target function used when counting the neighbors that could have produced
+	// the picked sample otherwise we may think that our neighbor could have produced the picked
+	// sample where actually it couldn't because the sample is occluded at the neighbor. We would
+	// then have a Z denominator (with 1/Z weights) that is too large and we'll end up with darkening.
+	//
+	// Now at the end of the first spatial reuse pass, the center pixel ends up with a sample that may
+	// or may not be occluded from the center's pixel point of view. We didn't include the visibility
+	// in the target function when resampling the neighbors (only when counting the "correct" neighbors
+	// but that's all) so we are not giving a 0 weight to occluded resampled neighbors --> it is possible
+	// that we picked an occluded sample.
+	//
+	// In the second spatial reuse pass, we are now going to resample from our neighbors and get some
+	// samples that were not generated with occlusion in mind (because the resampling target function of
+	// the first spatial reuse doesn't include visibility). Yet, we are going to weight them with occlusion
+	// in mind. This means that we are probably going to discard samples because of occlusion that could
+	// have been generated because they are generated without occlusion test. We end up discarding too many
+	// samples --> brightening bias.
+	//
+	// With the visibility reuse at the end of each spatial pass, we force samples at the end of each
+	// spatial reuse to take visibility into account so that when we weight them with visibility testing,
+	// everything goes well
+	//
+	// As an optimization, we also do this for the pairwise MIS because pairwise MIS evaluates the target function
+	// of reservoirs at their own location. Doing the visibility reuse here ensures that a reservoir sample at its own location
+	// includes visibility and so we do not need to recompute the target function of the neighbors in this case. We can just
+	// reuse the target function stored in the reservoir
+	//
+	// We also give the user the choice to remove bias using this option or not as it introduces very little bias
+	// in practice (but noticeable when switching back and forth between reference image/biased image)
+	//
+	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
+	// for the temporal reuse pass) or if we do not have the visibility in the target function when resampling the neighbors
+	if (render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass || ReSTIR_GI_SpatialTargetFunctionVisibility == KERNEL_OPTION_FALSE)
+		ReSTIR_GI_visibility_validation(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
+#endif
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_gi_settings.m_cap > 0)
