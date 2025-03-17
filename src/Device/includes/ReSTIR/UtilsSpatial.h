@@ -26,7 +26,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
 	include_target_function_visibility &= current_neighbor_index < spatial_settings.neighbor_visibility_count;
 
 	// Only doing visibility if we want it at all
-	include_target_function_visibility &= IsReSTIRGI ? ReSTIR_GI_SpatialTargetFunctionVisibility : ReSTIR_DI_SpatialTargetFunctionVisibility;
+	include_target_function_visibility &= (IsReSTIRGI ? ReSTIR_GI_SpatialTargetFunctionVisibility : ReSTIR_DI_SpatialTargetFunctionVisibility);
 
 	// We don't want visibility for the center pixel because we're going to reuse the
 	// target function stored in the reservoir anyways

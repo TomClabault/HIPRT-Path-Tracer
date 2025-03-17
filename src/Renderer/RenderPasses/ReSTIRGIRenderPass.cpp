@@ -189,6 +189,7 @@ void ReSTIRGIRenderPass::launch_temporal_reuse_pass()
 void ReSTIRGIRenderPass::configure_spatial_reuse_pass(int spatial_pass_index)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
 
 	// The spatial reuse pass spatially reuse on the output of the temporal pass in the 'temporal buffer' and
 	// stores in the 'spatial buffer'

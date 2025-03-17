@@ -28,7 +28,7 @@
  *
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_GI_SpatialTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_GI_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /** 
  * Whether or not to include the change in BSDF at the sample point when resampling a neighbor.

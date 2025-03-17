@@ -54,4 +54,49 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 		reservoir.sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3 shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+{
+	if (reservoir.UCW <= 0.0f)
+		return;
+
+	float distance_to_sample_point;
+	float3 sample_direction;
+	if (reservoir.sample.is_envmap_path())
+	{
+		// For envmap path, the direction is stored in the 'sample_point' value
+		sample_direction = reservoir.sample.sample_point;
+		distance_to_sample_point = 1.0e35f;
+	}
+	else
+	{
+		// Not an envmap path, the direction is the difference between the current shading
+		// point and the reconnection point
+		sample_direction = reservoir.sample.sample_point - shading_point;
+		distance_to_sample_point = hippt::length(sample_direction);
+		if (distance_to_sample_point <= 1.0e-6f)
+		{
+			// To avoid numerical instabilities, killing the reservoir
+			reservoir.UCW = -1.0f;
+
+			return;
+		}
+
+		sample_direction /= distance_to_sample_point;
+	}
+
+	hiprtRay shadow_ray;
+	shadow_ray.origin = shading_point;
+	shadow_ray.direction = sample_direction;
+
+	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index, 
+		/* bounce. Always 1 for ReSTIR GI from visible point to sample point */ 1, random_number_generator);
+
+	if (!visible)
+		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
+		reservoir.UCW = -1.0f;
+	//else
+	//	// Visible so the sample is unoccluded
+	//	reservoir.sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
+}
+
 #endif
