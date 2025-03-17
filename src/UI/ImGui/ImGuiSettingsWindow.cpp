@@ -1389,13 +1389,32 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			draw_principled_bsdf_energy_conservation();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Principled BSDF Diffuse Lobe");
+			ImGui::SeparatorText("Principled BSDF Diffuse lobe");
 			const char* items[] = { "- Lambertian", "- Oren-Nayar" };
 			if (ImGui::Combo("Diffuse Lobe", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Principled BSDF Glossy lobe");
+			static bool sample_glossy_based_on_fresnel = PrincipledBSDFSampleGlossyBasedOnFresnel;
+			if (ImGui::Checkbox("Fresnel-based sampling", &sample_glossy_based_on_fresnel))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL, sample_glossy_based_on_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to sample the glossy/diffuse base layer of the BSDF based on the fresnel or not.\n\n"
+				""
+				"This means that the diffuse layer will be sampled more often at normal incidence since this is where "
+				"the specular layer reflects close to no light.\n\n"
+				""
+				"At grazing angle however, where the specular layer reflects the most light(and so the diffuse layer "
+				"below isn't reached by that light that is reflected by the specular layer), it is the specular layer "
+				"that will be sampled more often.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("GGX");
@@ -2235,7 +2254,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 		bool setting_changed = false;
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::SeparatorText("Max bounces");
+		ImGui::SeparatorText("Energy conservation max bounces");
 		ImGui::Text("");
 		ImGuiRenderer::show_help_marker("After what bounce to stop doing energy conservation (depending on the type of material)\n\n"
 			""

@@ -144,6 +144,18 @@
  */
 #define PrincipledBSDFDeltaDistributionEvaluationOptimization KERNEL_OPTION_TRUE
 
+/**
+ * Whether or not to sample the glossy/diffuse base layer of the BSDF based on the fresnel or not.
+ * 
+ * This means that the diffuse layer will be sampled more often at normal incidence since this is where
+ * the specular layer reflects close to no light.
+ * 
+ * At grazing angle however, where the specular layer reflects the most light (and so the diffuse layer 
+ * below isn't reached by that light that is reflected by the specular layer), it is the specular layer
+ * that will be sampled more often.
+ */
+#define PrincipledBSDFSampleGlossyBasedOnFresnel KERNEL_OPTION_TRUE
+
 #endif // #ifndef __KERNELCC__
 
 #endif
