@@ -52,6 +52,7 @@ bool ImGuiRenderer::ComboWithTooltips(const std::string& combo_text, int* combo_
 			{
 				*combo_value = i;
 
+				ImGui::EndCombo();
 				return true;
 			}
 			ImGuiRenderer::add_tooltip(tooltips[i]);
