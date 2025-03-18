@@ -83,12 +83,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
     // Importance sampling a texel of the envmap with a binary search on the CDF
     envmap_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
-#else
+#elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
     int random_index = random_number_generator.random_index(world_settings.envmap_height * world_settings.envmap_width);
     float probability = world_settings.alias_table_probas[random_index];
     if (random_number_generator() > probability)
         // Picking the alias
         random_index = world_settings.alias_table_alias[random_index];
+
+    y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
+    x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
+#else
+    // Default to uniform sampling
+    int random_index = random_number_generator.random_index(world_settings.envmap_height * world_settings.envmap_width);
 
     y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
     x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
@@ -116,8 +122,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
 
     ColorRGB32F env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, v));
     // Computing envmap PDF
+    envmap_pdf = 1.0f;
+#if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE 
+    // The texel was sampled according to its luminance
     envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
+
+    // TODO why do we have that here?
     envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
+#else
+    // Uniform probability of sampling the texel
+    envmap_pdf = 1.0f / (world_settings.envmap_width * world_settings.envmap_height);
+#endif
     // Converting the PDF from area measure on the envmap to solid angle measure
     envmap_pdf /= (M_TWO_PIPI * sin_theta);
 

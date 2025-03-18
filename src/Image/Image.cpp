@@ -696,6 +696,17 @@ void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector
     }
 }
 
+float Image32Bit::compute_luminance_sum() const
+{
+    float sum = 0.0f;
+
+    for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+            sum += luminance_of_pixel(x, y);
+
+    return sum;
+}
+
 size_t Image32Bit::byte_size() const
 {
     return width * height * sizeof(unsigned char);
