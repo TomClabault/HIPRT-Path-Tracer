@@ -33,6 +33,11 @@ struct ReSTIRDISample
     // Some flags about the sample
     unsigned char flags = RESTIR_DI_FLAGS_NONE;
 
+    HIPRT_HOST_DEVICE bool is_envmap_sample() const
+    {
+        return flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
+    }
+
     HIPRT_HOST_DEVICE static int flags_from_BSDF_incident_light_info(BSDFIncidentLightInfo sampled_lobe_info)
     {
         return static_cast<int>(sampled_lobe_info);

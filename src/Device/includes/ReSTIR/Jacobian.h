@@ -40,7 +40,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const float3& center_pixel_shading_point, const float3& neighbor_shading_point)
 {
 	float3 reconnection_point = neighbor_reservoir.sample.point_on_light_source;
-	float3 light_source_normal = hippt::normalize(get_triangle_normal_non_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_index));
+	float3 light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_index));
 
 	return get_jacobian_determinant_reconnection_shift(reconnection_point, light_source_normal, center_pixel_shading_point, neighbor_shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 }

@@ -52,7 +52,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 uniform_sample_one_emissive_triangle(const
     return random_point_on_triangle;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_non_normalized(const HIPRTRenderData& render_data, int triangle_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)
 {
     float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
     float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
@@ -66,7 +66,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_non_normalized(const H
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
 {
-    float3 normal = get_triangle_normal_non_normalized(render_data, triangle_index);
+    float3 normal = get_triangle_normal_not_normalized(render_data, triangle_index);
     return hippt::length(normal) * 0.5f;
 }
 
@@ -110,7 +110,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit(const HIPRTRen
     //  - We could be hitting the back of an emissive triangle (think of quad light hanging in the air)
     //  --> triangle normal not facing the same way 
     //  --> cos_angle negative
-    float cosine_light_source = hippt::abs(hippt::dot(light_hit_info.hit_shading_normal, -ray_direction));
+    float cosine_light_source = hippt::abs(hippt::dot(light_hit_info.hit_shading_normal, ray_direction));
 
     // Conversion to solid angle from surface area measure
     pdf *= light_hit_info.hit_distance * light_hit_info.hit_distance;

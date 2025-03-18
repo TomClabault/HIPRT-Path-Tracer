@@ -16,7 +16,7 @@ struct ReSTIRDIInitialCandidatesSettings
 	// How many light candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_light_candidates = 4;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_bsdf_candidates = 1;
+	int number_of_initial_bsdf_candidates = 0;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
 	// will sample the envmap instead of a light in the scene
 	float envmap_candidate_probability = 0.25f;
@@ -60,7 +60,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 {
 	HIPRT_HOST_DEVICE ReSTIRDISettings() 
 	{
-		common_temporal_pass.do_temporal_reuse_pass = true;
+		common_temporal_pass.do_temporal_reuse_pass = false;
 
 		common_temporal_pass.use_permutation_sampling = false;
 		common_temporal_pass.permutation_sampling_random_bits = 42;
@@ -99,11 +99,11 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 
 
-		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
+		neighbor_similarity_settings.use_normal_similarity_heuristic = false;
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 25.0f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
 
-		neighbor_similarity_settings.use_plane_distance_heuristic = true;
+		neighbor_similarity_settings.use_plane_distance_heuristic = false;
 		neighbor_similarity_settings.plane_distance_threshold = 0.1f;
 
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
@@ -113,7 +113,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 
 
-		m_cap = 3;
+		m_cap = 1;
 		use_confidence_weights = true;
 	}
 
@@ -132,7 +132,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 	// Because the spatial must then resample without the output of the temporal pass, the spatial
 	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
 	// (which is the output of the temporal pass).
-	bool do_fused_spatiotemporal = true;
+	bool do_fused_spatiotemporal = false;
 
 	// Whether or not to trace a visibility ray when evaluating the final light sample produced by ReSTIR.
 	// This is strongly biased but allows good performance.

@@ -28,7 +28,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     float distance_to_light;
 
     float3 shadow_ray_direction;
-    if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+    if (sample.is_envmap_sample())
     {
         shadow_ray_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
         distance_to_light = 1.0e35f;
@@ -73,7 +73,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         {
             ColorRGB32F sample_emission;
 
-            if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+            if (sample.is_envmap_sample())
             {
                 float envmap_pdf;
                 sample_emission = envmap_eval(render_data, shadow_ray_direction, envmap_pdf);
@@ -84,7 +84,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
                 sample_emission = render_data.buffers.materials_buffer.get_emission(material_index);
             }
 
-            final_color = bsdf_color * reservoir.UCW * sample_emission * cosine_at_evaluated_point;
+            float area_measure_to_solid_angle_conversion;
+            if (sample.is_envmap_sample())
+                area_measure_to_solid_angle_conversion = 1.0f;
+            else
+            {
+                float3 emissive_triangle_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, sample.emissive_triangle_index));
+                area_measure_to_solid_angle_conversion = hippt::abs(hippt::dot(emissive_triangle_normal, shadow_ray_direction));
+                area_measure_to_solid_angle_conversion /= hippt::square(distance_to_light);
+            }
+
+            final_color = bsdf_color * reservoir.UCW * sample_emission * cosine_at_evaluated_point * area_measure_to_solid_angle_conversion;
         }
     }
 
@@ -93,7 +103,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void validate_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir)
 {
-    if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+    if (reservoir.sample.is_envmap_sample() && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
         // Killing the reservoir if it was an envmap sample but the envmap is not used anymore
         reservoir.UCW = 0.0f;
 }

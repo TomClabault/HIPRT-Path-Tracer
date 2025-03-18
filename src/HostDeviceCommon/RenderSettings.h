@@ -106,7 +106,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 30;
+	int nb_bounces = 0;
 
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -175,7 +175,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 99.0f;
+	float stop_pixel_percentage_converged = 95.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;
