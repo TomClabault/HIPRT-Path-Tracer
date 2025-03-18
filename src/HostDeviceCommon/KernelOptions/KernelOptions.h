@@ -224,7 +224,7 @@
  *		luminance using an alias table for constant time sampling
  *		Good convergence and faster than ESS_BINARY_SEARCH
  */
-#define EnvmapSamplingStrategy ESS_NO_SAMPLING
+#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF

@@ -89,9 +89,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
     for (int i = 0; i < caching_sample_count; i++)
     {
         float trash_pdf;
-        LightSourceInformation trash_light_info;
+        LightSourceInformation light_info;
 
-        float3 target_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, trash_pdf, trash_light_info);
+        float3 target_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, trash_pdf, light_info);
         float3 direction = target_point - intersection_position;
         float distance_to_point = hippt::length(direction);
         direction /= distance_to_point;
@@ -110,7 +110,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
         context.point_on_light = target_point;
 
         // Is the point on the light visible?
-        bool visible = shadow_ray_hit.hasHit() && shadow_ray_hit.primID == trash_light_info.emissive_triangle_index;
+        bool visible = shadow_ray_hit.hasHit() && shadow_ray_hit.primID == light_info.emissive_triangle_index;
         render_data.nee_plus_plus.accumulate_visibility(context, visible);
     }
 }

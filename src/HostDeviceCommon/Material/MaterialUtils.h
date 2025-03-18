@@ -74,6 +74,11 @@ struct MaterialUtils
         return true;
 #endif
 
+#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+        // We can always do light sampling on these BSDFs
+        return true;
+#endif
+
         bool smooth_base_layer = MaterialUtils::is_perfectly_smooth(material_roughness, roughness_threshold) && (material_metallic == 1.0f || material_specular_transmission == 1.0f);
         bool smooth_coat = material_coat == 0.0f || (material_coat > 0.0f && MaterialUtils::is_perfectly_smooth(material_coat_roughness, roughness_threshold));
         bool second_roughness_smooth = MaterialUtils::is_perfectly_smooth(material_second_roughness, roughness_threshold) || material_second_roughness_weight == 0.0f;

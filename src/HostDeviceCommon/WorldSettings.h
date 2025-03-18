@@ -19,13 +19,13 @@ enum AmbientLightType
 struct WorldSettings
 {
 	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
-	ColorRGB32F uniform_light_color = ColorRGB32F(1.0f);
+	ColorRGB32F uniform_light_color = ColorRGB32F(0.0f);
 
 	// Width and height in pixels. Both in the range [1, XXX]
 	unsigned int envmap_width = 0, envmap_height = 0;
 	// Simple scale multiplier on the envmap color read from the envmap texture
 	// in the shader
-	float envmap_intensity = 5.0f;
+	float envmap_intensity = 2.0f;
 	// If true, the background of the scene (where rays directly miss any geometry
 	// and we directly see the skysphere) will scale with the envmap_intensity coefficient.
 	// This can be visually unpleasing because the background will most likely

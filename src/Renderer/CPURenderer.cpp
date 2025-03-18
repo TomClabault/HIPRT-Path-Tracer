@@ -31,7 +31,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
- #define DEBUG_PIXEL 1
+ #define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -39,14 +39,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 0
+#define DEBUG_FLIP_Y 1
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 317
-#define DEBUG_PIXEL_Y 93
+#define DEBUG_PIXEL_X 278
+#define DEBUG_PIXEL_Y 150
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -807,7 +807,7 @@ void CPURenderer::launch_ReSTIR_DI_spatiotemporal_reuse_pass()
 
 void CPURenderer::tracing_pass()
 {
-    m_render_data.random_number = m_camera_rays_random_seed;
+    m_render_data.random_number = m_rng.xorshift32();
 
     debug_render_pass([this](int x, int y) {
         MegaKernel(m_render_data, x, y);

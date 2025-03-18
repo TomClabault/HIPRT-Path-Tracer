@@ -455,19 +455,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
     if (emission_texture_index != MaterialConstants::NO_TEXTURE)
-    {
         out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
         // Getting the shading normal
-        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
-    }
     else
-    {
         out_light_hit_info.hit_emission = render_data.buffers.materials_buffer.get_emission(material_index);
-        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
-    }
     
     out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
-    out_light_hit_info.hit_geometric_normal = shadow_ray_hit.normal;
+    out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
+    out_light_hit_info.hit_geometric_normal = hippt::normalize(shadow_ray_hit.normal);
     out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
     out_light_hit_info.hit_material_index = material_index;
     out_light_hit_info.hit_distance = shadow_ray_hit.t;
@@ -517,19 +512,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
         if (emission_texture_index != MaterialConstants::NO_TEXTURE)
-        {
             out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
-            // Getting the shading normal
-            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
-        }
         else
-        {
             out_light_hit_info.hit_emission = render_data.buffers.materials_buffer.get_emission(material_index);
-            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
-        }
 
         out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
-        out_light_hit_info.hit_geometric_normal = shadow_ray_hit.normal;
+        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
+        out_light_hit_info.hit_geometric_normal = hippt::normalize(shadow_ray_hit.normal);
         out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
         out_light_hit_info.hit_material_index = material_index;
         out_light_hit_info.hit_distance = cumulative_t;
