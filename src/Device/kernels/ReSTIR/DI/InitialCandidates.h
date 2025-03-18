@@ -230,6 +230,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         if (sample_cosine_term > 0.0f && sample_pdf > 0.0f)
         {
             float bsdf_pdf;
+            unsigned int seed_before = random_number_generator.m_state.seed;
+
             ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
                                                                  view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, 
                                                                  bsdf_pdf, random_number_generator, ray_payload.bounce);
@@ -499,7 +501,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     ray_payload.volume_state.reconstruct_first_hit(
         ray_payload.material,
         render_data.buffers.material_indices,
-        render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index],
+        render_data.g_buffer.first_hit_prim_index[pixel_index],
         random_number_generator);
 
     float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
