@@ -56,7 +56,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
     out_sample_radiance = presampled_light_sample.radiance;
     out_sample_pdf = presampled_light_sample.pdf;
 
-    if (light_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+    if (light_sample.is_envmap_sample())
     {
         out_to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_sample.point_on_light_source);
         out_distance_to_light = 1.0e35f;
@@ -69,12 +69,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
 
     out_sample_cosine_term = hippt::dot(shading_normal, out_to_light_direction);
 
-    if (!(light_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
+    if (!light_sample.is_envmap_sample())
     {
         // To solid angle conversion if not envmap sample (already in solid angle)
         float cosine_at_light_source = hippt::abs(hippt::dot(presampled_light_sample.light_source_normal, -out_to_light_direction));
-        out_sample_pdf *= out_distance_to_light * out_distance_to_light;
-        out_sample_pdf /= cosine_at_light_source;
+        /*out_sample_pdf *= out_distance_to_light * out_distance_to_light;
+        out_sample_pdf /= cosine_at_light_source;*/
 
         bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, out_sample_radiance * out_sample_cosine_term / out_sample_pdf);
         if (!contributes_enough)
@@ -96,8 +96,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
 {
     ReSTIRDISample light_sample;
 
-    bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
-    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
     float3 evaluated_point = closest_hit_info.inter_point;
 
     if (random_number_generator() > envmap_candidate_probability)
@@ -121,14 +119,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
 
             // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
             // for the dot product to be "properly" oriented.
-            out_sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
+            out_sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, to_light_direction));
 
             float cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
             // Converting the PDF from area measure to solid angle measure requires dividing by
             // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
             // which is what we're doing here
-            out_sample_pdf *= distance_to_light * distance_to_light;
-            out_sample_pdf /= cosine_at_light_source;
+            /*out_sample_pdf *= distance_to_light * distance_to_light;
+            out_sample_pdf /= cosine_at_light_source;*/
 
             bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_source_info.emission * out_sample_cosine_term / out_sample_pdf);
             if (!contributes_enough)
@@ -206,7 +204,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
 #else
         ReSTIRDISample light_sample = sample_fresh_light_candidate(render_data, envmap_candidate_probability, closest_hit_info, sample_radiance, sample_cosine_term, sample_pdf, random_number_generator);
 
-        if (light_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+        if (light_sample.is_envmap_sample())
         {
             to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_sample.point_on_light_source);
             distance_to_light = 1.0e35f;
@@ -355,7 +353,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 light_pdf *= (1.0f - envmap_candidate_probability);
 
                 float mis_weight = power_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
-                float candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
+                float bsdf_sample_pdf_area_measure = bsdf_sample_pdf / (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance) * hippt::abs(hippt::dot(shadow_light_ray_hit_info.hit_shading_normal, sampled_direction));
+                float candidate_weight = mis_weight * target_function / (bsdf_sample_pdf_area_measure);
 
                 ReSTIRDISample bsdf_RIS_sample;
                 bsdf_RIS_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;

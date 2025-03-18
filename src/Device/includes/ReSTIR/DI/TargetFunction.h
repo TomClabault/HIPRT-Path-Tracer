@@ -23,14 +23,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
 {
-	if (sample.emissive_triangle_index == -1 && !(sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
+	if (sample.emissive_triangle_index == -1 && !sample.is_envmap_sample())
 		// Not an envmap sample and no emissive triangle sampled
 		return 0.0f;
 
 	float bsdf_pdf;
 	float3 sample_direction;
 
-	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	if (sample.is_envmap_sample())
 		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
 	else
 		sample_direction = hippt::normalize(sample.point_on_light_source - surface.shading_point);
@@ -46,7 +46,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 		bsdf_pdf, random_number_generator, /* current bounce, always for ReSTIR */ 0, sample.flags_to_BSDF_incident_light_info());
 
 	ColorRGB32F sample_emission;
-	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	if (sample.is_envmap_sample())
 	{
 		float envmap_pdf;
 		sample_emission = envmap_eval(render_data, sample_direction, envmap_pdf);
@@ -63,20 +63,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 		// to change anything to the fact that we have 0.0f target function here
 		return 0.0f;
 
-	return target_function;
+	float geometry_term = 1.0f;
+	if (!sample.is_envmap_sample())
+	{
+		float distance_to_light2 = hippt::length2(sample.point_on_light_source - surface.shading_point);
+		float3 emissive_triangle_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, sample.emissive_triangle_index));
+		geometry_term = hippt::abs(hippt::dot(emissive_triangle_normal, sample_direction));
+		geometry_term /= distance_to_light2;
+	}
+	return target_function;// *geometry_term;
 }
 
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
 {
-	if (sample.emissive_triangle_index == -1 && !(sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
+	if (sample.emissive_triangle_index == -1 && !sample.is_envmap_sample())
 		// No sample
 		return 0.0f;
 
 	float bsdf_pdf;
 	float distance_to_light;
 	float3 sample_direction;
-	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	if (sample.is_envmap_sample())
 	{
 		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
 		distance_to_light = 1.0e35f;
@@ -98,7 +106,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 		bsdf_pdf, random_number_generator, /* current bounce, always for ReSTIR */ 0, sample.flags_to_BSDF_incident_light_info());
 
 	ColorRGB32F sample_emission;
-	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	if (sample.is_envmap_sample())
 	{
 		float envmap_pdf;
 		sample_emission = envmap_eval(render_data, sample_direction, envmap_pdf);
@@ -123,7 +131,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 
 	target_function *= visible;
 
-	return target_function;
+	float geometry_term = 1.0f;
+	if (!sample.is_envmap_sample())
+	{
+		float3 emissive_triangle_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, sample.emissive_triangle_index));
+		geometry_term = hippt::abs(hippt::dot(emissive_triangle_normal, shadow_ray.direction));
+		geometry_term /= hippt::square(distance_to_light);
+	}
+	return target_function;// *geometry_term;
 }
 
 #endif

@@ -30,7 +30,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 
 	float distance_to_light;
 	float3 sample_direction;
-	if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	if (reservoir.sample.is_envmap_sample())
 	{
 		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, reservoir.sample.point_on_light_source);
 		distance_to_light = 1.0e35f;

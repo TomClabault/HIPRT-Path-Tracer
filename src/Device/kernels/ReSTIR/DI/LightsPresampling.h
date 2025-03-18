@@ -67,6 +67,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
         presampled_light.point_on_light_source = random_point_on_triangle;
         presampled_light.light_source_normal = normal / length_normal;
         presampled_light.emissive_triangle_index = triangle_index;
+
+        // PDF in area measure
         presampled_light.pdf = 1.0f / triangle_area;
         presampled_light.pdf /= parameters.emissive_triangles_count;
         presampled_light.pdf *= light_sampling_probability;
