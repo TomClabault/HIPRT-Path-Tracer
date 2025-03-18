@@ -211,10 +211,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
     mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED, incident_ligth_info);
 
-    // Because we're sampling only 1 light out of all the lights of the
-    // scene, the probability of having chosen that light is: 1 / numberOfLights
-    // This must be factored in the PDF of sampling that light which means that we must
-    // divide by 1 / numberOfLights => multiply by numberOfLights
     return light_source_radiance_mis + bsdf_radiance_mis;
 }
 

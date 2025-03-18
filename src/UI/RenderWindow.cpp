@@ -29,6 +29,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 // - Fix ReSTIR DI drvier crash when disabling the temporal reuse
+// - Does ReSTIR GI still converges the same with the fresnel based sampling?
+// - Remove jacobians in ReSTIR DI
 
 
 
@@ -71,8 +73,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODOs  performance improvements branch:
 // - also reuse BSDF mis ray of envmap MIS
 // - In the material packing, pack major material properties together: coat, metallic, specular_transmission, diffuse_transmission, ... so that we can, in a single memory access, determine whether or not we need to read the rest of the coat, specular transmission ,...
-// - ReSTIR el cheapo
-// - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
+// - If hitting the same material as before, don't load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - When doing MIS, if we sampled a BSDF sample on a delta distribution, we shouldn't bother sampling lights because we know that the BSDF sample is going to overweight everything else and the light sample is going to have a MIS weight of 0 anyways
 // - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?
 // - texture compression
@@ -129,6 +130,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO Features:
 // - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
+// - Some MIS weights ideas in: https://momentsingraphics.de/ToyRenderer4RayTracing.html in "Combining diffuse and specular"
 // - ReGIR for light sampling
 //		- Introduce visibility to the center of the cell for ReGIR to eliminate obvious occluded lights? Or is that biased?
 //		- For MIS with BSDF, use some arbitrary roughness-MIS-weights?
