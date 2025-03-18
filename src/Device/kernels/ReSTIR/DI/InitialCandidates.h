@@ -13,6 +13,7 @@
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/DI/PresampledLight.h"
+#include "Device/includes/ReSTIR/DI/TargetFunction.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Math.h"
@@ -117,17 +118,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
             float3 to_light_direction = light_sample.point_on_light_source - evaluated_point;
             to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
 
-            // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
-            // for the dot product to be "properly" oriented.
             out_sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, to_light_direction));
 
             float cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
-            // Converting the PDF from area measure to solid angle measure requires dividing by
-            // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
-            // which is what we're doing here
-            /*out_sample_pdf *= distance_to_light * distance_to_light;
-            out_sample_pdf /= cosine_at_light_source;*/
-
             bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_source_info.emission * out_sample_cosine_term / out_sample_pdf);
             if (!contributes_enough)
             {
@@ -184,10 +177,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
 // Try passing only volume state in here, not ray payload
 HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, Xorshift32Generator& random_number_generator, const int2& pixel_coords)
 {
-    bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
-    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-    float3 evaluated_point = closest_hit_info.inter_point;
-
     for (int i = 0; i < nb_light_candidates; i++)
     {
         ColorRGB32F sample_radiance;
@@ -198,7 +187,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         float3 to_light_direction{ 0.0f, 0.0f, 0.0f };
 #if ReSTIR_DI_DoLightsPresampling == KERNEL_OPTION_TRUE
         ReSTIRDISample light_sample = use_presampled_light_candidate(render_data, pixel_coords, 
-            evaluated_point, closest_hit_info.shading_normal * inside_surface_multiplier, 
+            closest_hit_info.inter_point, closest_hit_info.shading_normal, 
             sample_radiance, sample_cosine_term, sample_pdf, distance_to_light, to_light_direction, 
             random_number_generator);
 #else
@@ -211,18 +200,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         }
         else
         {
-            to_light_direction = light_sample.point_on_light_source - evaluated_point;
+            to_light_direction = light_sample.point_on_light_source - closest_hit_info.inter_point;
             to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
         }
 #endif
 
         if (light_sample.target_function == LIGHT_DOESNT_CONTRIBUTE_ENOUGH)
-        {
-            // Special value to indicate that this sample should be skipped
-
-            reservoir.M++;
             continue;
-        }
 
         float candidate_weight = 0.0f;
         if (sample_cosine_term > 0.0f && sample_pdf > 0.0f)
@@ -234,14 +218,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
                                                                  view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, 
                                                                  bsdf_pdf, random_number_generator, ray_payload.bounce);
 
-            ColorRGB32F light_contribution = bsdf_contribution * sample_radiance * sample_cosine_term;
-            float target_function = light_contribution.luminance();
+            // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
+            ReSTIRSurface surface;
+            surface.geometric_normal = closest_hit_info.geometric_normal;
+            surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+            surface.material = ray_payload.material;
+            surface.ray_volume_state = ray_payload.volume_state;
+            surface.shading_normal = closest_hit_info.shading_normal;
+            surface.shading_point = closest_hit_info.inter_point;
+            surface.view_direction = view_direction;
 
-            if (bsdf_pdf <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / sample_pdf / bsdf_pdf))
+            float target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, light_sample, surface, random_number_generator);
+
+            if (bsdf_pdf <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / sample_pdf / bsdf_pdf))
                 target_function = 0.0f;
             else
             {
-                float mis_weight = power_heuristic(sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+                float light_pdf_solid_angle;
+                if (light_sample.is_envmap_sample()) 
+                    // For envmap sample, the PDF is already in solid angle
+                    light_pdf_solid_angle = sample_pdf;
+                else
+                    // Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
+                    // (same measure for the BSDF PDF and the light PDF)
+                    light_pdf_solid_angle = area_to_solid_angle_pdf(sample_pdf, distance_to_light, hippt::abs(hippt::dot(to_light_direction, hippt::normalize(get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_index)))));
+
+                float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / sample_pdf;
 
                 light_sample.target_function = target_function;
@@ -286,16 +288,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
     // Sampling the BSDF candidates
     for (int i = 0; i < nb_bsdf_candidates; i++)
     {
-        float bsdf_sample_pdf = 0.0f;
+        float bsdf_sample_pdf_solid_angle = 0.0f;
         float3 sampled_direction;
+
+        unsigned int state_before = random_number_generator.m_state.seed;
 
         BSDFIncidentLightInfo sampled_lobe_info;
         ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, 
                                                         view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, 
-                                                        bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &sampled_lobe_info);
+                                                        bsdf_sample_pdf_solid_angle, random_number_generator, ray_payload.bounce, &sampled_lobe_info);
 
-        bool refraction_sampled = hippt::dot(sampled_direction, closest_hit_info.shading_normal) < 0.0f;
-        if (bsdf_sample_pdf > 0.0f)
+        if (bsdf_sample_pdf_solid_angle > 0.0f)
         {
             hiprtRay bsdf_ray;
             bsdf_ray.origin = closest_hit_info.inter_point;
@@ -308,21 +311,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 // If we intersected an emissive material, compute the weight. 
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it
 
-                // Using abs here because we want the dot product to be positive.
-                // You may be thinking that if we're doing this, then we're not going to discard BSDF
-                // sampled direction that are below the surface (whereas we should discard them).
-                // That would be correct but bsdf_dispatcher_sample return a PDF == 0.0f if a bad
-                // direction was sampled and if the PDF is 0.0f, we never get to this line of code
-                // you're reading. If we are here, this is because we sampled a direction that is
-                // correct for the BSDF. Even if the direction is correct, the dot product with the normal may be
-                // negative in the case of refractions / total internal reflections and so in this case,
-                // we'll need to negative the dot product for it to be positive
-                float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
+                // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
+                ReSTIRSurface surface;
+                surface.geometric_normal = closest_hit_info.geometric_normal;
+                surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+                surface.material = ray_payload.material;
+                surface.ray_volume_state = ray_payload.volume_state;
+                surface.shading_normal = closest_hit_info.shading_normal;
+                surface.shading_point = closest_hit_info.inter_point;
+                surface.view_direction = view_direction;
 
-                ColorRGB32F light_contribution = bsdf_color * shadow_light_ray_hit_info.hit_emission * cosine_at_evaluated_point;
-                float target_function = light_contribution.luminance();
+                ReSTIRDISample bsdf_RIS_sample;
+                bsdf_RIS_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
+                bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
+                bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+                bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
+                bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample, surface, random_number_generator);
 
-                float light_pdf = 0.0f;
+                float light_pdf_solid_angle = 0.0f;
+                bool refraction_sampled = hippt::dot(sampled_direction, closest_hit_info.shading_normal) < 0.0f;
                 if (!refraction_sampled)
                     // Only computing the light PDF if we're not refracting
                     // 
@@ -338,30 +345,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     // (because the BSDF sample, that should have weight 1 [or to be precise: 1 / nb_bsdf_samples]
                     // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
                     // and this is going to cause darkening as the number of light samples grows)
-                    light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_direction);
+                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_direction);
 
-                if (bsdf_sample_pdf <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf))
-                {
-                    // Skipping if the light doesn't contribute enough
-                    reservoir.M++;
-
+                float target_function = bsdf_RIS_sample.target_function;
+                if (bsdf_sample_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / light_pdf_solid_angle / bsdf_sample_pdf_solid_angle))
                     continue;
-                }
 
                 // Our light sampler is only chosen with probability '1.0f - envmap_candidate_probability'
                 // so we multiply that here to take that into account
-                light_pdf *= (1.0f - envmap_candidate_probability);
+                light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
 
-                float mis_weight = power_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
-                float bsdf_sample_pdf_area_measure = bsdf_sample_pdf / (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance) * hippt::abs(hippt::dot(shadow_light_ray_hit_info.hit_shading_normal, sampled_direction));
-                float candidate_weight = mis_weight * target_function / (bsdf_sample_pdf_area_measure);
+                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, nb_light_candidates);
 
-                ReSTIRDISample bsdf_RIS_sample;
-                bsdf_RIS_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
-                bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
-                bsdf_RIS_sample.target_function = target_function;
-                bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-                bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
+                float bsdf_sample_pdf_area_measure = bsdf_sample_pdf_solid_angle;
+                bsdf_sample_pdf_area_measure /= (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance);
+                bsdf_sample_pdf_area_measure *= hippt::abs(hippt::dot(shadow_light_ray_hit_info.hit_geometric_normal, sampled_direction));
+
+                float candidate_weight = mis_weight * target_function / bsdf_sample_pdf_area_measure;
 
                 reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                 reservoir.sanity_check(make_int2(-1, -1));
@@ -370,43 +370,46 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
             {
                 // Envmap hit, this becomes an envmap sample
 
-                // max(0.0f) here because we're not allowing envmap samples below the surface anyways (refraction envmap samples)
-                float cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_direction));
-
-                if (cosine_at_evaluated_point > 0.0f)
+                // Not allowing refraction envmap samples here
+                // TODO fixthis, we should allow them
+                if (hippt::dot(closest_hit_info.shading_normal, sampled_direction) > 0.0f)
                 {
                     float envmap_pdf;
                     ColorRGB32F envmap_radiance = envmap_eval(render_data, sampled_direction, envmap_pdf);
 
-                    ColorRGB32F envmap_contribution = bsdf_color * envmap_radiance * cosine_at_evaluated_point;
-                    // Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
-                    // (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF
-                    // of the current envmap sample is always 0 for a light sampler.
-                    if (bsdf_sample_pdf <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, envmap_contribution / envmap_pdf / bsdf_sample_pdf))
-                    {
-                        // Skipping if the light doesn't contribute enough
-                        reservoir.M++;
-
-                        continue;
-                    }
-
-                    float target_function = envmap_contribution.luminance();
-
-                    // We're evaluating the probability of choosing that BSDF-sample direction with the envmap sampler.
-                    // Because our envmap sampler is chosen only with probability 'envmap_candidate_probability', we multiply
-                    // that here to account for that
-                    envmap_pdf *= envmap_candidate_probability;
-                    float mis_weight = power_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, envmap_pdf, nb_light_candidates);
-                    float candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
+                    // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
+                    ReSTIRSurface surface;
+                    surface.geometric_normal = closest_hit_info.geometric_normal;
+                    surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+                    surface.material = ray_payload.material;
+                    surface.ray_volume_state = ray_payload.volume_state;
+                    surface.shading_normal = closest_hit_info.shading_normal;
+                    surface.shading_point = closest_hit_info.inter_point;
+                    surface.view_direction = view_direction;
 
                     ReSTIRDISample bsdf_RIS_sample;
                     bsdf_RIS_sample.emissive_triangle_index = -1;
                     // Storing in envmap space
                     bsdf_RIS_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, sampled_direction);
-                    bsdf_RIS_sample.target_function = target_function;
-                    bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+                    bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
                     bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
+                    bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample, surface, random_number_generator);
+
+                    float target_function = bsdf_RIS_sample.target_function;
+
+                    // Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
+                    // (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF
+                    // of the current envmap sample is always 0 for a light sampler.
+                    if (bsdf_sample_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / bsdf_sample_pdf_solid_angle))
+                        continue;
+
+                    // We're evaluating the probability of choosing that BSDF-sample direction with the envmap sampler.
+                    // Because our envmap sampler is chosen only with probability 'envmap_candidate_probability', we multiply
+                    // that here to account for that
+                    envmap_pdf *= envmap_candidate_probability;
+                    float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, envmap_pdf, nb_light_candidates);
+                    float candidate_weight = mis_weight * target_function / bsdf_sample_pdf_solid_angle;
 
                     reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                     reservoir.sanity_check(make_int2(-1, -1));

@@ -187,7 +187,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
         // it needs to be emissive
         if (intersection_found)
         {
-            float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
+            float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
             float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf);
 
             // Using abs here because we want the dot product to be positive.

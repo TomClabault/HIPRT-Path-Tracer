@@ -154,9 +154,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     float theta_bsdf_dir = acos(-direction.y);
     float sin_theta = sin(theta_bsdf_dir);
 
-    // Probability of sampling that texel on the envmap
+#if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE 
+    // The texel was sampled according to its luminance
     pdf = envmap_radiance.luminance() / (envmap_total_sum * render_data.world_settings.envmap_intensity);
+
+    // TODO why do we have that here?
     pdf *= world_settings.envmap_width * world_settings.envmap_height;
+#else
+    // Uniform probability of sampling the texel
+    pdf = 1.0f / (world_settings.envmap_width * world_settings.envmap_height);
+#endif
 
     // Converting from "texel on envmap measure" to solid angle
     pdf /= (M_TWO_PIPI * sin_theta);

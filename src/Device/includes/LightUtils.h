@@ -10,6 +10,9 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
+/**
+ * The PDF is computed in area measure
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 uniform_sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
     int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
@@ -70,6 +73,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render
     return hippt::length(normal) * 0.5f;
 }
 
+HIPRT_INLINE HIPRT_HOST_DEVICE float area_to_solid_angle_pdf(float area_pdf, float distance, float cos_theta)
+{
+    return area_pdf * hippt::square(distance) / cos_theta;
+}
+
 /**
  * 'clamp_condition' is an additional condition that needs to be met
  * for clamping to occur. If the additional condition is not met (the boolean
@@ -91,6 +99,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F 
 }
 
 /**
+ * Returns the PDF (area measure) of the light sampler for the given triangle_hit_info
+ *
+ * 'primitive_index' is the index of the emissive triangle hit
+ * 'shading_normal' is the shading normal at the intersection point of the emissive triangle hit
+ * 'hit_distance' is the distance to the intersection point on the hit triangle
+ * 'ray_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info)
+{
+    // Surface area PDF of hitting that point on that triangle in the scene
+    float light_area = triangle_area(render_data, light_hit_info.hit_prim_index);
+    float area_measure_pdf = 1.0f / light_area;
+    area_measure_pdf /= render_data.buffers.emissive_triangles_count;
+
+    return area_measure_pdf;
+}
+
+/**
  * Returns the PDF (solid angle measure) of the light sampler for the given triangle_hit_info
  * 
  * 'primitive_index' is the index of the emissive triangle hit
@@ -98,13 +124,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F 
  * 'hit_distance' is the distance to the intersection point on the hit triangle
  * 'ray_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info, float3 ray_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info, float3 ray_direction)
 {
-    // Surface area PDF of hitting that point on that triangle in the scene
-    float light_area = triangle_area(render_data, light_hit_info.hit_prim_index);
-    float pdf = 1.0f / light_area;
-    pdf /= render_data.buffers.emissive_triangles_count;
-    
     // abs() here to allow backfacing lights
     // Without abs() here:
     //  - We could be hitting the back of an emissive triangle (think of quad light hanging in the air)
@@ -112,11 +133,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit(const HIPRTRen
     //  --> cos_angle negative
     float cosine_light_source = hippt::abs(hippt::dot(light_hit_info.hit_shading_normal, ray_direction));
 
-    // Conversion to solid angle from surface area measure
-    pdf *= light_hit_info.hit_distance * light_hit_info.hit_distance;
-    pdf /= cosine_light_source;
-
-    return pdf;
+    float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure(render_data, light_hit_info);
+    return area_to_solid_angle_pdf(pdf_area_measure, light_hit_info.hit_distance, cosine_light_source);
 }
 
 /**
@@ -130,6 +148,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_minimum_light_contribution(float minim
         if (contribution.r < minimum_contribution
             && contribution.g < minimum_contribution
             && contribution.b < minimum_contribution)
+            // The light doesn't contribute enough
+            return false;
+        else
+            // The light contributes enough
+            return true;
+    }
+    else
+        // Minimum light contribution threshold disabled
+        return true;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_minimum_light_contribution(float minimum_contribution, float contribution)
+{
+    if (minimum_contribution > 0.0f)
+    {
+        if (contribution < minimum_contribution)
             // The light doesn't contribute enough
             return false;
         else
