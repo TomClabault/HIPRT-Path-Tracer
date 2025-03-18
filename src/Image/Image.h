@@ -116,6 +116,8 @@ public:
     std::vector<float> compute_cdf() const;
     void compute_alias_table(std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum = nullptr) const;
 
+    float compute_luminance_sum() const;
+
     size_t byte_size() const;
 
     /** 
