@@ -229,7 +229,7 @@ void Utils::debugbreak()
 #if defined( _WIN32 )
     __debugbreak();
 #elif defined( __GNUC__ )
-    // raise(SIGTRAP);
+    raise(SIGTRAP);
 #else
     ;
 #endif

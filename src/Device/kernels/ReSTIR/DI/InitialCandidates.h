@@ -230,6 +230,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         if (sample_cosine_term > 0.0f && sample_pdf > 0.0f)
         {
             float bsdf_pdf;
+            unsigned int seed_before = random_number_generator.m_state.seed;
+
             ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
                                                                  view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, 
                                                                  bsdf_pdf, random_number_generator, ray_payload.bounce);
