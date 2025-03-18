@@ -181,17 +181,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
     {
         ColorRGB32F sample_radiance;
         float sample_cosine_term = 0.0f;
-        float sample_pdf = 0.0f;
+        float light_pdf_area_measure = 0.0f;
 
         float distance_to_light = 0.0f;
         float3 to_light_direction{ 0.0f, 0.0f, 0.0f };
 #if ReSTIR_DI_DoLightsPresampling == KERNEL_OPTION_TRUE
         ReSTIRDISample light_sample = use_presampled_light_candidate(render_data, pixel_coords, 
             closest_hit_info.inter_point, closest_hit_info.shading_normal, 
-            sample_radiance, sample_cosine_term, sample_pdf, distance_to_light, to_light_direction, 
+            sample_radiance, sample_cosine_term, light_pdf_area_measure, distance_to_light, to_light_direction, 
             random_number_generator);
 #else
-        ReSTIRDISample light_sample = sample_fresh_light_candidate(render_data, envmap_candidate_probability, closest_hit_info, sample_radiance, sample_cosine_term, sample_pdf, random_number_generator);
+        ReSTIRDISample light_sample = sample_fresh_light_candidate(render_data, envmap_candidate_probability, closest_hit_info, sample_radiance, sample_cosine_term, light_pdf_area_measure, random_number_generator);
 
         if (light_sample.is_envmap_sample())
         {
@@ -209,14 +209,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             continue;
 
         float candidate_weight = 0.0f;
-        if (sample_cosine_term > 0.0f && sample_pdf > 0.0f)
+        if (sample_cosine_term > 0.0f && light_pdf_area_measure > 0.0f)
         {
-            float bsdf_pdf;
+            float bsdf_pdf_solid_angle;
             unsigned int seed_before = random_number_generator.m_state.seed;
 
             ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
                                                                  view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, 
-                                                                 bsdf_pdf, random_number_generator, ray_payload.bounce);
+                                                                 bsdf_pdf_solid_angle, random_number_generator, ray_payload.bounce);
 
             // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
             ReSTIRSurface surface;
@@ -230,21 +230,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
 
             float target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, light_sample, surface, random_number_generator);
 
-            if (bsdf_pdf <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / sample_pdf / bsdf_pdf))
+            if (bsdf_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / light_pdf_area_measure / bsdf_pdf_solid_angle))
                 target_function = 0.0f;
             else
             {
                 float light_pdf_solid_angle;
                 if (light_sample.is_envmap_sample()) 
                     // For envmap sample, the PDF is already in solid angle
-                    light_pdf_solid_angle = sample_pdf;
+                    light_pdf_solid_angle = light_pdf_area_measure;
                 else
                     // Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
                     // (same measure for the BSDF PDF and the light PDF)
-                    light_pdf_solid_angle = area_to_solid_angle_pdf(sample_pdf, distance_to_light, hippt::abs(hippt::dot(to_light_direction, hippt::normalize(get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_index)))));
+                    light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure, distance_to_light, hippt::abs(hippt::dot(to_light_direction, hippt::normalize(get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_index)))));
 
-                float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
-                candidate_weight = mis_weight * target_function / sample_pdf;
+                float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
+                candidate_weight = mis_weight * target_function / light_pdf_area_measure;
 
                 light_sample.target_function = target_function;
             }

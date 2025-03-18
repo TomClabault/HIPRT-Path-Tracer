@@ -129,7 +129,7 @@
 * lights by avoiding cache trashing because of the memory random walk that
 * light sampling becomes with that many lights
 */
-#define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_FALSE
+#define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 
