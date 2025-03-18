@@ -14,7 +14,7 @@ struct ReSTIRDIPresampledLight;
 struct ReSTIRDIInitialCandidatesSettings
 {
 	// How many light candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_light_candidates = 0;
+	int number_of_initial_light_candidates = 4;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_bsdf_candidates = 1;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
@@ -60,7 +60,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 {
 	HIPRT_HOST_DEVICE ReSTIRDISettings() 
 	{
-		common_temporal_pass.do_temporal_reuse_pass = false;
+		common_temporal_pass.do_temporal_reuse_pass = true;
 
 		common_temporal_pass.use_permutation_sampling = false;
 		common_temporal_pass.permutation_sampling_random_bits = 42;
@@ -74,12 +74,12 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 
 
-		common_spatial_pass.do_spatial_reuse_pass = false;
+		common_spatial_pass.do_spatial_reuse_pass = true;
 
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 1;
 		common_spatial_pass.reuse_radius = 16;
-		common_spatial_pass.reuse_neighbor_count = 0;
+		common_spatial_pass.reuse_neighbor_count = 5;
 
 		common_spatial_pass.do_disocclusion_reuse_boost = false;
 		common_spatial_pass.disocclusion_reuse_count = 5;
@@ -99,11 +99,11 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 
 
-		neighbor_similarity_settings.use_normal_similarity_heuristic = false;
+		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 25.0f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
 
-		neighbor_similarity_settings.use_plane_distance_heuristic = false;
+		neighbor_similarity_settings.use_plane_distance_heuristic = true;
 		neighbor_similarity_settings.plane_distance_threshold = 0.1f;
 
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
@@ -113,7 +113,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 
 
-		m_cap = 1;
+		m_cap = 3;
 		use_confidence_weights = true;
 	}
 
