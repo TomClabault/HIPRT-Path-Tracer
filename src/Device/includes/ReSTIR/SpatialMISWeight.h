@@ -51,7 +51,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReS
 		const ReSTIRSampleType<IsReSTIRGI>& reservoir_being_resampled_sample,
 
 		const ReSTIRSurface& center_pixel_surface,
-		int current_neighbor,
+		int current_neighbor_index,
 		int2 center_pixel_coords, float2 cos_sin_theta_rotation,
 		Xorshift32Generator& random_number_generator)
 	{
@@ -81,7 +81,11 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReS
 			if constexpr (IsReSTIRGI)
 			{
 				// ReSTIR GI target function
-				target_function_at_j = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
+				if (j == current_neighbor_index)
+					target_function_at_j = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility, /* resampling neighbor */ false>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
+				else
+					target_function_at_j = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility, /* resampling neighbor */ true>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
+
 				if (!reservoir_being_resampled_sample.is_envmap_path())
 					// Applying the jacobian to get "p_hat_from_i"
 					target_function_at_j *= hippt::max(0.0f, get_jacobian_determinant_reconnection_shift(reservoir_being_resampled_sample.sample_point, reservoir_being_resampled_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold()));
@@ -94,7 +98,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReS
 			if (ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 				M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_index_j);
 			denom += target_function_at_j * M;
-			if (j == current_neighbor)
+			if (j == current_neighbor_index)
 				nume = target_function_at_j * M;
 		}
 
@@ -162,10 +166,9 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 					// Only doing this if we at least have a target function to scale by the jacobian
 					if (target_function_center_reservoir_at_neighbor > 0.0f)
 					{
+						// If this is an envmap path the jacobian is just 1 so this is not needed
 						if (!center_pixel_reservoir_sample.is_envmap_path())
 						{
-							// If this is an envmap path the jacobian is just 1 so this is not needed
-
 							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.visible_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 							if (jacobian == -1.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
