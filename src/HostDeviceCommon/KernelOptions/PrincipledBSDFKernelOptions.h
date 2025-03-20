@@ -161,6 +161,12 @@
  */
 #define PrincipledBSDFSampleCoatBasedOnFresnel KERNEL_OPTION_TRUE
 
+/**
+ * Implementation of [Microfacet Model Regularization for Robust Light Transport, Jendersie et al. 2019]
+ * for regularizing (roughening) microfacet materials and help with caustics rendering
+ */
+#define PrincipledBSDFDoMicrofacetRegularization KERNEL_OPTION_TRUE
+
 #endif // #ifndef __KERNELCC__
 
 #endif

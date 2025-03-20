@@ -28,35 +28,49 @@ extern ImGuiLogger g_imgui_logger;
 // TODO immediate
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
-// - Does ReSTIR GI still converges the same with the fresnel based sampling?
-// - Remove jacobians in ReSTIR DI
+// - Why is coat sampling fresnel based inefficient?
 
 
-
-//  Global emission factor broken? Going to 0.9 and then back to 1.0 doesn't give the same results as staying at 1 (barbershop scene)
-// Specular IOR 1.0f creates a lot of fireflies in the scandinavian studio? Does sampling on fresnel fix that?
 
 // TODO ReSTIR GI
-// - The quick skip to the center pixel resamplujng when there are no valid neighbors --> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
+// - The quick skip to the center pixel resampling when there are no valid neighbors 
+//		--> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
+//		--> it does cause divergence. maybe solve that 
+// 
 // - possibility to read the visible positions from the G buffer instead of storing in the reservoir
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
 // - do adaptive radius spatial reuse --> also for ReSTIR DI? --> maybe start super wide to avoid spatial reuse patterns and progressively lower the reuse radius
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - BSDF MIS Reuse for ReSTIR DI
 // - Fix spatial reuse pattern because the concentric circles created by Hammersley don't cover the neighborhood of the center pixel well at all --> white noise instead
-// - Force albedo to white for spatial reuse?
-// - some kind of reuse direction masks for spatial reuse offline rendering? the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
-// - For offline rendering spatial reuse, we can "learn" in a frame buffer what spatial radius is the best per pixel to avoid reusing too large on fine details geometry
+// - Force albedo to white for spatial reuse? Because what's interesting to reuse is the shape of the BRDF and the incident radiance. Resampling from a black diffuse is still interesting. The albedo doesn't matter
+// - some kind of reuse direction masks for spatial reuse offline rendering? 
+//		the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
+//		We could do that in a prepass:
+//			- For each pixel, sample a bunch of neighbors in each "quadrant" of the spatial reuse circle
+//			- Count how many of these neighbors per quadrant are valid --> this gives us an idea of whether or not we should reuse from that quadrant
+//			- In the same pass, we can also check at what distance the neighbors fail to be interesting to determine the best spatial radius to use per-pixel
+//			- Maybe use hammersley to position all the sampled neighbors in the spatial circle of a given pixel so that the circle is well covered instead of white noise
+//			- If we have a minimum spatial radius allowed, some pixels may not be able to reuse neighbors at all (if they have no valid neighbors before the spatial radius gets too low)
+//				We'll thus have pixels not reusing neighbors while some other pixels of the image fully reuse their neighbors
+//				--> potential for wavefront style dispatch where we dispatch multiple kernels, depending on how many neighbors are being reused to avoid the divergence
+//				or just skip the spatial reuse dispatch for the pixels not reusing neighbors
+// 
 // - OVS - Optimal visibility shaidng
 // - symmetric ratio MIS
-// - shade secondary surface by looking up screen space reservoir if possible ReSTIR DI --> We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. --> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
+// - shade secondary surface by looking up screen space reservoir if possible ReSTIR DI --> 
+//		-We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir 
+//			was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. 
+//			--> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it 
+//			won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
+// 
+//			Or we can use some fake MIS weights to combine a BSDF sample to the light reservoir
 // - Decoupled shading reuse for ReSTIR DI running average for the shading weights?
 //		(decoupledShadingBuffer = decoupledShadingBuffer + ((sampleColor * sampleReservoir.W) - decoupledShadingBuffer) / (float) (decoupledShadingSampleCount + 1);
 //		decoupledShadingSampleCount++;
 //		https://www.reddit.com/r/GraphicsProgramming/comments/1j03npo/comment/mg07h5a/?context=3
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
 //  If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
-// - we need a ReSTIR DI convergence check --> probably jacobian issues
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?
@@ -128,13 +142,22 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// - What's NEE-AT of RTXPT?
+// - Not very happy with the quality of NEE++ right now but what if go for the prepass instead of progressive refinement? 
+//		We would trace rays recursuvely for the indirect very very simply and could be fast
+//		Or, for the indirect, we could distribute random points in the bounding boxes of the objects of the scene, same as in Disney cache points
+// - Add a "prepass" method to the render pass class
+// - Multi sample model for specular/diffuse BSDF sampling?
+//		- Even RIS for sampling the BSDF?
+// - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
 // - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
 // - Some MIS weights ideas in: https://momentsingraphics.de/ToyRenderer4RayTracing.html in "Combining diffuse and specular"
 // - ReGIR for light sampling
 //		- Introduce visibility to the center of the cell for ReGIR to eliminate obvious occluded lights? Or is that biased?
 //		- For MIS with BSDF, use some arbitrary roughness-MIS-weights?
+//			RTXPT 1.5 has some ideas in "PathTracerNEE.hlsli" for that MIS weights issue
+//			Does RTXDI also hase some ideas?
 // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
-// - One Sample MIS for BSDF sampling: https://discord.com/channels/318590007881236480/377557956775903232/1346777006280278067, https://discord.com/channels/318590007881236480/377557956775903232/1347484850315071550
 // - Some automatic metric to determine automatically what GMoN blend factor to use
 // - software opacity micromaps
 // - Add parameters to increase the strength of specular / coat darkening
@@ -165,7 +188,6 @@ extern ImGuiLogger g_imgui_logger;
 //		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
 //		even though they are very dark regions and we don't even noise in them. If our eyes can't see 
 //		the noise, why bother? Same with very bright regions
-// - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse miss BSDF ray on the last bounce to sample envmap with MIS
 // - We're using an approximation of the clearcoated BSDF directional albedo for energy compensation right now. The approximation breaks down when what's below the coat is 0.0f roughness. We could potentially bake the directional albedo for a mirror-coated BSDF and interpolate between that mirror-coated LUT and the typical rough-coated BSDF LUT based on the roughness of what's below the coat. This mirror-coated LUT doesn't work very well if there's a smooth-dielectric-coated lambert below the coat so maybe we would need a third LUT for that case
 // - For/switch paradigm for instruction cache misses? https://youtu.be/lxRgmZTEBHM?si=FcaEYqAMVO_QyfwX&t=3061 
@@ -197,7 +219,6 @@ extern ImGuiLogger g_imgui_logger;
 // - better post processing: contrast, low, medium, high exposure curve
 // - bloom post processing
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
-// - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
 // - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
 // - portal envmap sampling --> choose portals with ImGui
 // - find a way to not fill the texcoords buffer for meshes that don't have textures

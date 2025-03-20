@@ -34,6 +34,7 @@ const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_C
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION = "PrincipledBSDFDeltaDistributionEvaluationOptimization";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL = "PrincipledBSDFSampleGlossyBasedOnFresnel";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL = "PrincipledBSDFSampleCoatBasedOnFresnel";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION = "PrincipledBSDFDoMicrofacetRegularization";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
 const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION = "NestedDielectricsStackSize";
 
@@ -81,6 +82,9 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
 
@@ -90,8 +94,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION,
-	GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL,
-	GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL,
 	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS,
@@ -136,6 +138,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION] = std::make_shared<int>(PrincipledBSDFDeltaDistributionEvaluationOptimization);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL] = std::make_shared<int>(PrincipledBSDFSampleGlossyBasedOnFresnel);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL] = std::make_shared<int>(PrincipledBSDFSampleCoatBasedOnFresnel);
+	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION] = std::make_shared<int>(PrincipledBSDFDoMicrofacetRegularization);
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = std::make_shared<int>(PrincipledBSDFAnisotropicGGXSampleFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION] = std::make_shared<int>(NestedDielectricsStackSize);
 

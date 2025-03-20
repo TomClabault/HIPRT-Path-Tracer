@@ -77,7 +77,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 		common_spatial_pass.do_spatial_reuse_pass = true;
 
 		common_spatial_pass.spatial_pass_index = 0;
-		common_spatial_pass.number_of_passes = 1;
+		common_spatial_pass.number_of_passes = 2;
 		common_spatial_pass.reuse_radius = 16;
 		common_spatial_pass.reuse_neighbor_count = 5;
 

@@ -6,6 +6,7 @@
 #ifndef DEVICE_LIGHTS_H
 #define DEVICE_LIGHTS_H
 
+#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
@@ -54,16 +55,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
         if (!in_shadow)
         {
             float bsdf_pdf;
+
+            const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = true;
             ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
                                                           view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, 
                                                           bsdf_pdf, random_number_generator, ray_payload.bounce);
+            const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = false;
+
             if (bsdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure
                 light_sample_pdf *= distance_to_light * distance_to_light;
                 light_sample_pdf /= dot_light_source;
 
-                float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
+                float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
                 light_source_radiance = light_source_info.emission * cosine_term * bsdf_color / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
             }
         }
@@ -74,7 +79,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
-    ColorRGB32F bsdf_radiance = ColorRGB32F(0.0f);
+    const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = true;
 
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
@@ -85,6 +90,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
 
     bool intersection_found = false;
     ShadowLightRayHitInfo shadow_light_ray_hit_info;
+    ColorRGB32F bsdf_radiance = ColorRGB32F(0.0f);
     if (bsdf_sample_pdf > 0.0f)
     {
         hiprtRay new_ray;
@@ -108,6 +114,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
     // So it doesn't matter if it's garbage
     float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
     mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED, incident_ligth_info);
+
+    const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = false;
 
     return bsdf_radiance;
 }
