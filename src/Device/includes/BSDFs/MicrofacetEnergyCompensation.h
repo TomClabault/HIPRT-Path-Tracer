@@ -625,43 +625,43 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correctio
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float custom_roughness, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
 {
-	bool smooth_enough = material.roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
+	bool smooth_enough = custom_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glass_energy_compensation_max_bounce;
 	if (!material.do_glass_energy_compensation || smooth_enough || max_bounce_reached)
 		return 1.0f;
 
-    float compensation_term = 1.0f;
+	float compensation_term = 1.0f;
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
-    // Not doing energy compensation if the thin-film is fully present
-    // See the // TODO FIX THIS HORROR below
-    //
-    // Also not doing compensation if we already have full compensation on the material
-    // because the energy compensation of the glass lobe here is then redundant
-    bool bsdf_already_compensated = material.enforce_strong_energy_conservation && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE;
-    if (material.thin_film < 1.0f && !bsdf_already_compensated)
-    {
-        float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
+	// Not doing energy compensation if the thin-film is fully present
+	// See the // TODO FIX THIS HORROR below
+	//
+	// Also not doing compensation if we already have full compensation on the material
+	// because the energy compensation of the glass lobe here is then redundant
+	bool bsdf_already_compensated = material.enforce_strong_energy_conservation && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE;
+	if (material.thin_film < 1.0f && !bsdf_already_compensated)
+	{
+		float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
 		float exponent_correction = 2.5f;
 		if (!material.thin_walled)
-			exponent_correction = GGX_glass_energy_compensation_get_correction_exponent(material.roughness, relative_eta_for_correction);
+			exponent_correction = GGX_glass_energy_compensation_get_correction_exponent(custom_roughness, relative_eta_for_correction);
 
-        // We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
-        // sqrt 2.5
-        //
-        // We're using a "correction exponent" to forcefully get rid of energy gains at grazing angles due
-        // to float precision issues: storing in the LUT with cos_theta^2.5 but fetching with pow(1.0f / 2.6f)
-        // for example (instead of fetching with pow(1.0f / 2.5f)) darkens the overall appearance and helps remove
+		// We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
+		// sqrt 2.5
+		//
+		// We're using a "correction exponent" to forcefully get rid of energy gains at grazing angles due
+		// to float precision issues: storing in the LUT with cos_theta^2.5 but fetching with pow(1.0f / 2.6f)
+		// for example (instead of fetching with pow(1.0f / 2.5f)) darkens the overall appearance and helps remove
 		// energy gains
-        float view_direction_tex_fetch = powf(hippt::max(1.0e-3f, NoV), 1.0f / exponent_correction);
+		float view_direction_tex_fetch = powf(hippt::max(1.0e-3f, NoV), 1.0f / exponent_correction);
 
-        float F0 = F0_from_eta(eta_t, eta_i);
-        // sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
-        float F0_remapped = sqrt(sqrt(F0));
+		float F0 = F0_from_eta(eta_t, eta_i);
+		// sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
+		float F0_remapped = sqrt(sqrt(F0));
 
-        float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
+		float3 uvw = make_float3(view_direction_tex_fetch, custom_roughness, F0_remapped);
 		if (material.thin_walled)
 		{
 			void* texture = render_data.bsdfs_data.GGX_Ess_thin_glass;
@@ -677,25 +677,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
 			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 		}
 
-        // TODO FIX THIS HORROR
-        // This is here because directional albedo for the glass BSDF is tabulated with the standard non-colored Fresnel
-        // This means that the precomputed table is incompatible with the thin-film interference fresnel
-        // 
-        // And as a matter of fact, using the energy compensation term (precomputed for the traditional fresnel)
-        // with thin-film interference Fresnel results in noticeable energy gains at grazing angles at high roughnesses
-        //
-        // Blender Cycles doesn't have that issue but I don't understand yet how they avoid it.
-        //
-        // The quick and disgusting solution here is just to disable energy compensation as the thin-film
-        // weight gets stronger. Energy compensation is fully disabled when the thin-film weight is 1.0f
-        //
-        // Because the error is stronger at high roughnesses than at low roughnesses, we can include the roughness
-        // in the lerp such that we use less and less the energy compensation term as the roughness increases
-        compensation_term = hippt::lerp(compensation_term, 1.0f, material.thin_film * material.roughness);
-    }
+		// TODO FIX THIS HORROR
+		// This is here because directional albedo for the glass BSDF is tabulated with the standard non-colored Fresnel
+		// This means that the precomputed table is incompatible with the thin-film interference fresnel
+		// 
+		// And as a matter of fact, using the energy compensation term (precomputed for the traditional fresnel)
+		// with thin-film interference Fresnel results in noticeable energy gains at grazing angles at high roughnesses
+		//
+		// Blender Cycles doesn't have that issue but I don't understand yet how they avoid it.
+		//
+		// The quick and disgusting solution here is just to disable energy compensation as the thin-film
+		// weight gets stronger. Energy compensation is fully disabled when the thin-film weight is 1.0f
+		//
+		// Because the error is stronger at high roughnesses than at low roughnesses, we can include the roughness
+		// in the lerp such that we use less and less the energy compensation term as the roughness increases
+		compensation_term = hippt::lerp(compensation_term, 1.0f, material.thin_film * custom_roughness);
+	}
 #endif
 
-    return compensation_term;
+	return compensation_term;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
+{
+	return get_GGX_energy_compensation_dielectrics(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV, current_bounce);
 }
 
 #endif

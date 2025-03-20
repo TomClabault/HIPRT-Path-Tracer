@@ -29,17 +29,22 @@ struct ReSTIRGISample
     // target_function: can be stored in outoging_radiance_to_first_hit?
     // sample_po_ntonormal: can be packed
     // outgoing_radiance: can be packed
+    
+    // TODO can be accessed through the G-buffer
     float3 visible_point = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
     int sample_point_primitive_index = -1;
 
+    // TODO can be accessed through the G-buffer
     float3 first_hit_normal = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point_shading_normal = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point_geometric_normal = make_float3(-1.0f, -1.0f, -1.0f);
 
-    // Is this one use? Can we not just store a float for the luminance and that's it?
+    // TOOD Is this one used? Can we not just store a float for the luminance and that's it?
     ColorRGB32F incoming_radiance_to_visible_point;
+    // TODO pack this in RGBE
     ColorRGB32F incoming_radiance_to_sample_point;
+    // TODO use a material index and texcoords instead of this and re-evaluate the material
     DevicePackedEffectiveMaterial sample_point_material;
     RayVolumeState sample_point_volume_state;
 

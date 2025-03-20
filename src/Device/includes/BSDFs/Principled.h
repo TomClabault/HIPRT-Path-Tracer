@@ -11,6 +11,7 @@
 #include "Device/includes/ONB.h"
 #include "Device/includes/BSDFs/Lambertian.h"
 #include "Device/includes/BSDFs/Microfacet.h"
+#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/BSDFs/OrenNayar.h"
 #include "Device/includes/BSDFs/PrincipledEnergyCompensation.h"
 #include "Device/includes/BSDFs/ThinFilm.h"
@@ -99,7 +100,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
                                                                     float& pdf, BSDFIncidentLightInfo incident_light_info,
                                                                     int current_bounce)
 {
-    MaterialUtils::SpecularDeltaReflectionSampled metal_delta_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(material, roughness, anisotropy, incident_light_info);
+    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, roughness);
+
+    MaterialUtils::SpecularDeltaReflectionSampled metal_delta_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(material, regularized_roughness, anisotropy, incident_light_info);
     if (metal_delta_direction_sampled == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
     {
         // The distribution isn't worth evaluating because it's specular but we the incident
@@ -116,7 +119,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
     ColorRGB32F F = hippt::lerp(F_metal, F_thin_film, material.thin_film);
 
     return torrance_sparrow_GGX_eval_reflect<PrincipledBSDFDoEnergyCompensation && PrincipledBSDFDoMetallicEnergyCompensation>(render_data, 
-        roughness, anisotropy, material.do_metallic_energy_compensation, F, 
+        regularized_roughness, anisotropy, material.do_metallic_energy_compensation, F,
         local_view_direction, local_to_light_direction, local_half_vector, 
         pdf, metal_delta_direction_sampled,
         current_bounce);
@@ -342,9 +345,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
 
     float3 local_half_vector;
-    if (scaled_roughness <= MaterialConstants::ROUGHNESS_CLAMP && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
+    if (scaled_roughness <= MaterialConstants::ROUGHNESS_CLAMP && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE)
+    {
         // Fast path for specular glass
-        // 
+        //
         // Note that we check for 'PrincipledBSDFDeltaDistributionEvaluationOptimization' because if we're not using the delta distribution
         // optimizations, any incident light direction given to the BSDF is going to be evaluated
         // and so the half vector won't necessarily be (0, 0, 1).
@@ -352,7 +356,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // Any incident light direction may also be given with the optimizations ON but
         // with the optimizations ON, any direction that doesn't align with the perfect
         // reflection direction will be rejected (and contribute 0) so this is not an issue
+        //
+        // If microfacet regularization is enabled, the smooth glass is going to be roughened so we cannot
+        // assume roughness 0.0f and we fall back to the classical half-vector computation below
         local_half_vector = make_float3(0.0f, 0.0f, 1.0f);
+    }
     else
     {
         // Computing the generalized (that takes refraction into account) half vector
@@ -384,13 +392,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     float HoV = hippt::dot(local_view_direction, local_half_vector);
 
     if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
+    {
         // Backfacing microfacets when the microfacet normal isn't in the same
         // hemisphere as the view dir or light dir
+        /*pdf = 1.0f;
+        return ColorRGB32F(1.0e10f, 0.0f, 0.0f);*/
+        
         return ColorRGB32F(0.0f);
-
-    // Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
-    // The function will return very quickly and will return 1.0f
-    float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, material, ray_volume_state.inside_material, eta_t, eta_i, relative_eta, local_view_direction.z, current_bounce);
+    }
 
     float thin_film = material.thin_film;
     ColorRGB32F F_thin_film;
@@ -420,11 +429,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     ColorRGB32F color;
     if (reflecting)
     {
-        MaterialUtils::SpecularDeltaReflectionSampled delta_glass_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(material, material.roughness, material.anisotropy, incident_light_info);
+        MaterialUtils::SpecularDeltaReflectionSampled delta_glass_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(material, scaled_roughness, material.anisotropy, incident_light_info);
 
         color = torrance_sparrow_GGX_eval_reflect<0>(render_data, scaled_roughness, material.anisotropy, false, F, 
                                                         local_view_direction, local_to_light_direction, local_half_vector,
                                                         pdf, delta_glass_direction_sampled, current_bounce);
+
+        // Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
+        // The function will return very quickly and will return 1.0f
+        float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, material, ray_volume_state.inside_material, eta_t, eta_i, relative_eta, local_view_direction.z, current_bounce);
         // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
         color /= compensation_term;
 
@@ -433,12 +446,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     }
     else
     {
-        color = torrance_sparrow_GGX_eval_refract(material, scaled_roughness, relative_eta, F, 
+        float regularized_roughness = MicrofacetRegularization::regularize_refraction(render_data.bsdfs_data.microfacet_regularization, material.roughness, eta_i, eta_t);
+
+        color = torrance_sparrow_GGX_eval_refract(material, regularized_roughness, relative_eta, F,
             local_view_direction, local_to_light_direction, local_half_vector, 
             pdf, incident_light_info);
         // Taking refraction russian roulette probability into account
         pdf *= 1.0f - f_reflect_proba;
 
+        // Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
+        // The function will return very quickly and will return 1.0f
+        float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, material, regularized_roughness, ray_volume_state.inside_material, eta_t, eta_i, relative_eta, local_view_direction.z, current_bounce);
         // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
         color /= compensation_term;
 
@@ -1160,31 +1178,37 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
 #if PrincipledBSDFSampleGlossyBasedOnFresnel == KERNEL_OPTION_TRUE
     // Adjusting the probability of sampling the diffuse or specular lobe based on the
     // fresnel of the specular lobe
-    float specular_relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
-    float specular_fresnel = full_fresnel_dielectric(NoV, specular_relative_ior);
-    float specular_fresnel_sampling_weight = specular_fresnel * material.specular;
+    if (material.specular > 0.0f)
+    {
+        float specular_relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
+        float specular_fresnel = full_fresnel_dielectric(NoV, specular_relative_ior);
+        float specular_fresnel_sampling_weight = specular_fresnel * material.specular;
 
-    // The specular weight gets affected
-    specular_weight *= specular_fresnel_sampling_weight;
-    // And everything that is below the specular also gets affected
-    diffuse_weight *= 1.0f - specular_fresnel_sampling_weight;
-    diffuse_transmission_weight *= 1.0f - specular_fresnel_sampling_weight;
+        // The specular weight gets affected
+        specular_weight *= specular_fresnel_sampling_weight;
+        // And everything that is below the specular also gets affected
+        diffuse_weight *= 1.0f - specular_fresnel_sampling_weight;
+        diffuse_transmission_weight *= 1.0f - specular_fresnel_sampling_weight;
+    }
 #endif
 
 #if PrincipledBSDFSampleCoatBasedOnFresnel == KERNEL_OPTION_TRUE
-    float coat_fresnel = full_fresnel_dielectric(NoV, material.coat_ior / incident_medium_ior);
-    float coat_fresnel_sampling_weight = coat_fresnel * material.coat;
+    if (material.coat > 0.0f)
+    {
+        float coat_fresnel = full_fresnel_dielectric(NoV, material.coat_ior / incident_medium_ior);
+        float coat_fresnel_sampling_weight = coat_fresnel * material.coat;
 
-    // The coat weight gets affected
-    coat_weight *= coat_fresnel_sampling_weight;
-    // And everything that is below the coat also gets affected
-    sheen_weight *= 1.0f - coat_fresnel_sampling_weight;
-    metal_1_weight *= 1.0f - coat_fresnel_sampling_weight;
-    metal_2_weight *= 1.0f - coat_fresnel_sampling_weight;
-    specular_weight *= 1.0f - coat_fresnel_sampling_weight;
-    diffuse_weight *= 1.0f - coat_fresnel_sampling_weight;
-    glass_weight *= 1.0f - coat_fresnel_sampling_weight;
-    diffuse_transmission_weight *= 1.0f - coat_fresnel_sampling_weight;
+        // The coat weight gets affected
+        coat_weight *= coat_fresnel_sampling_weight;
+        // And everything that is below the coat also gets affected
+        sheen_weight *= 1.0f - coat_fresnel_sampling_weight;
+        metal_1_weight *= 1.0f - coat_fresnel_sampling_weight;
+        metal_2_weight *= 1.0f - coat_fresnel_sampling_weight;
+        specular_weight *= 1.0f - coat_fresnel_sampling_weight;
+        diffuse_weight *= 1.0f - coat_fresnel_sampling_weight;
+        glass_weight *= 1.0f - coat_fresnel_sampling_weight;
+        diffuse_transmission_weight *= 1.0f - coat_fresnel_sampling_weight;
+    }
 #endif
 
     float normalize_factor = 1.0f / (coat_weight + sheen_weight
@@ -1447,6 +1471,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     // If we were using 'normal', we would always be outside the surface because 'normal' is flipped
     // (a few lines above in the code) so that it is in the same hemisphere as the view direction and
     // eval() will then think that we're always outside the surface even though that's not the case
+
     return principled_bsdf_eval(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, normal, output_direction, pdf, current_bounce, incident_light_info);
 }
 

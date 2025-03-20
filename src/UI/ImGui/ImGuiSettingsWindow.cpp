@@ -181,11 +181,31 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		return;
 	ImGui::TreePush("Render settings tree");
 
-	ImGui::SeparatorText("Global Performance Presets");
 	static int preset_selected = 0;
-	std::vector<const char*> preset_items = { "None", "Fastest", "Fast", "Medium", "High Quality" };
-	if (ImGui::Combo("Performance Preset", &preset_selected, preset_items.data(), preset_items.size()))
-		apply_performance_preset(static_cast<ImGuiRendererPerformancePreset>(preset_selected));
+	std::vector<const char*> preset_items = { 
+		"Default",
+		"Reference path-tracer",
+		"MIS NEE Path Tracer",
+		"RIS NEE Path Tracer",
+		"ReSTIR DI Fast",
+		"ReSTIR DI Efficiency",
+		"ReSTIR GI",
+		"ReSTIR DI + GI"
+	};
+	std::vector<const char*> tooltips = { 
+		"No preset",
+		"Reference, no NEE, brute-force path-tracer",
+		"NEE with MIS (BSDF + Light sampling) at each vertex of the path",
+		"NEE with RIS (N*BSDF + M*Light sampling) at each vertex of the path",
+		"Direct lighting only (0 bounce) and ReSTIR DI. Fast settings for better framerates but converges slower than \"ReSTIR DI Efficiency\"",
+		"Direct lighting only (0 bounce) and ReSTIR DI. Heavy settings for the fastest convergence rate",
+		"5 bounces with ReSTIR GI and RIS at each vertex of the path",
+		"\"ReSTIR DI Fast\" for the direct lighting + 5 bounces with ReSTIR GI and RIS at each vertex of the path",
+	};
+
+	ImGui::SeparatorText("Global settings presets");
+	if (ImGuiRenderer::ComboWithTooltips("Performance Preset", &preset_selected, preset_items.data(), preset_items.size(), tooltips.data()))
+		apply_performance_preset(static_cast<ImGuiRendererSettingsPreset>(preset_selected));
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("Viewport Settings");
@@ -596,88 +616,207 @@ void ImGuiSettingsWindow::display_view_disabled_action(DisplayViewType display_v
 	}
 }
 
-void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererPerformancePreset performance_preset)
+void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset performance_preset)
 {
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 	switch (performance_preset)
 	{
-	case PERF_PRESET_NONE:
+	case SETTINGS_PRESET_DEFAULT:
 		break;
 
-	case PERF_PRESET_FASTEST:
-	{
-		m_application_settings->render_resolution_scale = 0.5f;
-		m_application_settings->target_GPU_framerate = 25.0f;
+	case SETTINGS_PRESET_REFERENCE_PATH_TRACER:
+		render_settings.do_alpha_testing = true;
+		render_settings.alpha_testing_indirect_bounce = 6;
 
-		HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-		render_settings.nb_bounces = 1;
-		render_settings.ris_settings.number_of_bsdf_candidates = 0;
-		render_settings.ris_settings.number_of_light_candidates = 1;
-
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_NO_DIRECT_LIGHT_SAMPLING);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_NO_SAMPLING);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_FALSE);
 		m_renderer->recompile_kernels();
 
-		m_render_window->change_resolution_scaling(0.5f);
 		m_render_window->set_render_dirty(true);
 
 		break;
-	}
 
-	case PERF_PRESET_FAST:
-	{
-		m_application_settings->render_resolution_scale = 0.75f;
-		m_application_settings->target_GPU_framerate = 15.0f;
+	case SETTINGS_PRESET_MIS_NEE_PATH_TRACER:
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_MIS_LIGHT_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
+		m_renderer->recompile_kernels();
 
-		HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-		render_settings.nb_bounces = 2;
+		m_render_window->set_render_dirty(true);
+
+		break;
+
+	case SETTINGS_PRESET_RIS_NEE_PATH_TRACER:
 		render_settings.ris_settings.number_of_bsdf_candidates = 1;
 		render_settings.ris_settings.number_of_light_candidates = 4;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
 		m_renderer->recompile_kernels();
 
-		m_render_window->change_resolution_scaling(0.75f);
 		m_render_window->set_render_dirty(true);
 
 		break;
-	}
 
-	case PERF_PRESET_MEDIUM:
-	{
-		m_application_settings->render_resolution_scale = 1.0f;
-		m_application_settings->target_GPU_framerate = 5.0f;
+	case SETTINGS_PRESET_RESTIR_DI_FAST:
+		render_settings.nb_bounces = 0;
 
-		HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-		render_settings.nb_bounces = 2;
-		render_settings.ris_settings.number_of_bsdf_candidates = 1;
-		render_settings.ris_settings.number_of_light_candidates = 8;
+		render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass = true;
+		render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location = false;
+		render_settings.restir_di_settings.common_spatial_pass.number_of_passes = 1;
+		render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count = 3;
+		// Reuse radius 1% of the resolution
+		render_settings.restir_di_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
 
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
-		m_renderer->recompile_kernels();
+		render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass = true;
 
-		m_render_window->change_resolution_scaling(1.0f);
-		m_render_window->set_render_dirty(true);
-
-		break;
-	}
-
-	case PERF_PRESET_HIGH_QUALITY:
-	{
-		m_application_settings->render_resolution_scale = 1.0f;
-		m_application_settings->target_GPU_framerate = 5.0f;
-
-		HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-		render_settings.nb_bounces = 4;
-		render_settings.ris_settings.number_of_bsdf_candidates = 1;
-		render_settings.ris_settings.number_of_light_candidates = 8;
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = true;
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic = true;
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+		render_settings.restir_di_settings.m_cap = 5;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
 		m_renderer->recompile_kernels();
 
-		m_render_window->change_resolution_scaling(1.0f);
 		m_render_window->set_render_dirty(true);
 
 		break;
-	}
+
+	case SETTINGS_PRESET_RESTIR_DI_EFFICIENCY:
+		render_settings.nb_bounces = 0;
+
+		render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass = true;
+		render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location = false;
+		render_settings.restir_di_settings.common_spatial_pass.number_of_passes = 2;
+		render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count = 8;
+		// Reuse radius 1% of the resolution
+		render_settings.restir_di_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+
+		render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass = true;
+
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = true;
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic = true;
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+		render_settings.restir_di_settings.m_cap = 3;
+
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
+		m_renderer->recompile_kernels();
+
+		m_render_window->set_render_dirty(true);
+
+		break;
+
+	case SETTINGS_PRESET_RESTIR_GI:
+		render_settings.nb_bounces = 5;
+		render_settings.ris_settings.number_of_bsdf_candidates = 1;
+		render_settings.ris_settings.number_of_light_candidates = 4;
+
+		render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass = true;
+		render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location = false;
+		render_settings.restir_di_settings.common_spatial_pass.number_of_passes = 2;
+		render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count = 8;
+		// Reuse radius 1% of the resolution
+		render_settings.restir_di_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+
+		render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass = true;
+
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = true;
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic = true;
+		render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+		render_settings.restir_di_settings.m_cap = 3;
+
+		render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass = true;
+		render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location = false;
+		render_settings.restir_gi_settings.common_spatial_pass.number_of_passes = 2;
+		render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count = 8;
+		// Reuse radius 1% of the resolution
+		render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+
+		render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass = true;
+
+		render_settings.restir_gi_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = true;
+		render_settings.restir_gi_settings.neighbor_similarity_settings.use_plane_distance_heuristic = true;
+		render_settings.restir_gi_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+		render_settings.restir_gi_settings.use_jacobian_rejection_heuristic = true;
+		render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic = true;
+		render_settings.restir_gi_settings.m_cap = 3;
+
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
+
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_RESTIR_GI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
+		m_renderer->recompile_kernels();
+
+		m_render_window->set_render_dirty(true);
+
+		break;
+
+	case SETTINGS_PRESET_RESTIR_DI_GI:
+		render_settings.nb_bounces = 5;
+		render_settings.ris_settings.number_of_bsdf_candidates = 1;
+		render_settings.ris_settings.number_of_light_candidates = 4;
+
+		render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass = true;
+		render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location = false;
+		render_settings.restir_gi_settings.common_spatial_pass.number_of_passes = 2;
+		render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count = 8;
+		// Reuse radius 1% of the resolution
+		render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.01f;
+
+		render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass = true;
+
+		render_settings.restir_gi_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = true;
+		render_settings.restir_gi_settings.neighbor_similarity_settings.use_plane_distance_heuristic = true;
+		render_settings.restir_gi_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+		render_settings.restir_gi_settings.use_jacobian_rejection_heuristic = true;
+		render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic = true;
+		render_settings.restir_gi_settings.m_cap = 3;
+
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_RESTIR_GI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
+		m_renderer->recompile_kernels();
+
+		m_render_window->set_render_dirty(true);
+
+		break;
 
 	default:
 		break;
@@ -874,6 +1013,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 			if (ImGui::InputInt("Minimum samples", &render_settings.adaptive_sampling_min_samples))
 					m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("How many samples to wait before adaptive sampling activates.\n\n"
+				""
+				"The general rule is to keep this value as low as possible without getting conspicuous black/unconverged pixels.");
 			if (ImGui::InputFloat("Noise threshold", &render_settings.adaptive_sampling_noise_threshold))
 			{
 				render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
@@ -1389,46 +1531,64 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			draw_principled_bsdf_energy_conservation();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Principled BSDF Diffuse lobe");
-			const char* items[] = { "- Lambertian", "- Oren-Nayar" };
-			if (ImGui::Combo("Diffuse Lobe", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE), items, IM_ARRAYSIZE(items)))
+			if (ImGui::CollapsingHeader("Principled BSDF diffuse lobe"))
 			{
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
+				ImGui::TreePush("Principled bsdf diffuse lobe tree");
+
+				const char* items[] = { "- Lambertian", "- Oren-Nayar" };
+				if (ImGui::Combo("Diffuse Lobe", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE), items, IM_ARRAYSIZE(items)))
+				{
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::TreePop();
 			}
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Principled BSDF Glossy lobe");
-			static bool sample_glossy_based_on_fresnel = PrincipledBSDFSampleGlossyBasedOnFresnel;
-			if (ImGui::Checkbox("Fresnel-based sampling", &sample_glossy_based_on_fresnel))
+			if (ImGui::CollapsingHeader("Principled BSDF glossy lobe"))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL, sample_glossy_based_on_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				ImGui::TreePush("Principled bsdf glossy lobe tree");
 
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
+				static bool sample_glossy_based_on_fresnel = PrincipledBSDFSampleGlossyBasedOnFresnel;
+				if (ImGui::Checkbox("Fresnel-based sampling##glossy", &sample_glossy_based_on_fresnel))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL, sample_glossy_based_on_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Whether or not to sample the glossy/diffuse base layer of the BSDF based on the fresnel or not.\n\n"
+					""
+					"This means that the diffuse layer will be sampled more often at normal incidence since this is where "
+					"the specular layer reflects close to no light.\n\n"
+					""
+					"At grazing angle however, where the specular layer reflects the most light(and so the diffuse layer "
+					"below isn't reached by that light that is reflected by the specular layer), it is the specular layer "
+					"that will be sampled more often.");
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::TreePop();
 			}
-			ImGuiRenderer::show_help_marker("Whether or not to sample the glossy/diffuse base layer of the BSDF based on the fresnel or not.\n\n"
-				""
-				"This means that the diffuse layer will be sampled more often at normal incidence since this is where "
-				"the specular layer reflects close to no light.\n\n"
-				""
-				"At grazing angle however, where the specular layer reflects the most light(and so the diffuse layer "
-				"below isn't reached by that light that is reflected by the specular layer), it is the specular layer "
-				"that will be sampled more often.");
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Principled BSDF Coat lobe");
-			static bool sample_coat_based_on_fresnel = PrincipledBSDFSampleCoatBasedOnFresnel;
-			if (ImGui::Checkbox("Fresnel-based sampling", &sample_coat_based_on_fresnel))
+			if (ImGui::CollapsingHeader("Principled BSDF coat lobe"))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL, sample_coat_based_on_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				ImGui::TreePush("Principled bsdf coat lobe tree");
 
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
+				static bool sample_coat_based_on_fresnel = PrincipledBSDFSampleCoatBasedOnFresnel;
+				if (ImGui::Checkbox("Fresnel-based sampling##coat", &sample_coat_based_on_fresnel))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL, sample_coat_based_on_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Same as the glossy layer fresnel-based sampling but for the coat layer.");
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::TreePop();
 			}
-			ImGuiRenderer::show_help_marker("Same as the glossy layer fresnel-based sampling but for the coat layer.");
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("GGX");
 
 			std::vector<const char*> ggx_sampling_items = { "- VNDF", "- VNDF Spherical Caps" };
@@ -2679,14 +2839,13 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		return;
 
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	ImGui::TreePush("Quality settings tree");
 
 	if (ImGui::CollapsingHeader("Nested dielectrics"))
 	{
 		ImGui::TreePush("Nested dielectrics tree");
-
-		std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 		static int nested_dielectrics_stack_size = NestedDielectricsStackSize;
 		if (ImGui::SliderInt("Stack Size", &nested_dielectrics_stack_size, 3, 8))
@@ -2755,7 +2914,73 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	draw_lighting_settings_panel();
+	if (ImGui::CollapsingHeader("Light clamping"))
+	{
+		ImGui::TreePush("Lighting Settings Performance Tree");
+
+		ImGui::SeparatorText("Clamping");
+		if (ImGui::SliderFloat("Direct lighting", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Envmap ligthing", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Indirect ligthing", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
+		{
+			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
+			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
+			"This can improve performance at the cost of some bias depending on the scene.\n"
+			"0.0f to disable");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Microfacet regularization"))
+	{
+		ImGui::TreePush("Microfacet regularization");
+
+		HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+		static bool do_regularization = PrincipledBSDFDoMicrofacetRegularization;
+		if (ImGui::Checkbox("Do microfacet model regularization", &do_regularization))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, do_regularization ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+		if (do_regularization && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
+		{
+			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
+			ImGuiRenderer::show_help_marker("Microfacet model regularization cannot be used with height-correlated masking shadowing");
+
+			ImGui::TreePush("Use height uncorrelated button tree");
+			if (ImGui::Button("Switch to height-uncorrelated masking shadowing"))
+				render_data.bsdfs_data.GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightUncorrelated;
+			ImGui::TreePop();
+		}
+
+		if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau, 10.0f, 1000.0f))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
 
 	ImGui::TreePop();
 }
@@ -3076,47 +3301,6 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
-}
-
-void ImGuiSettingsWindow::draw_lighting_settings_panel()
-{
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
-	if (ImGui::CollapsingHeader("Lighting clamping"))
-	{
-		ImGui::TreePush("Lighting Settings Performance Tree");
-
-		ImGui::SeparatorText("Clamping");
-		if (ImGui::SliderFloat("Direct lighting", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-		if (ImGui::SliderFloat("Envmap ligthing", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-		if (ImGui::SliderFloat("Indirect ligthing", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
-		{
-			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
-			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
-			"This can improve performance at the cost of some bias depending on the scene.\n"
-			"0.0f to disable");
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::TreePop();
-	}
 }
 
 void ImGuiSettingsWindow::draw_performance_metrics_panel()

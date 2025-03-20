@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_BSDFS_DATA_H
 #define HOST_DEVICE_COMMON_BSDFS_DATA_H
 
+#include "HostDeviceCommon/MicrofacetRegularizationSettings.h"
+
  /**
   * What masking-shadowing term to use with the GGX NDF.
   *
@@ -56,7 +58,7 @@ struct BRDFsData
 	// when fetching the LUTs. It's faster but less precise.
 	bool use_hardware_tex_interpolation = false;
 
-	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
+	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightUncorrelated;
 
 	float energy_compensation_roughness_threshold = 0.0f;
 
@@ -68,6 +70,8 @@ struct BRDFsData
 	int metal_energy_compensation_max_bounce = 0;
 	int clearcoat_energy_compensation_max_bounce = 0;
 	int glossy_base_energy_compensation_max_bounce = 0;
+
+	MicrofacetRegularizationSettings microfacet_regularization;
 };
 
 #endif
