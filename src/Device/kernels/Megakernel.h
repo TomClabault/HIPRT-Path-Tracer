@@ -127,7 +127,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     }
 
     // Checking for NaNs / negative value samples. Output 
-    if (!sanity_check(render_data, ray_payload, x, y))
+    if (!sanity_check(render_data, ray_payload.ray_color, x, y))
         return;
 
 

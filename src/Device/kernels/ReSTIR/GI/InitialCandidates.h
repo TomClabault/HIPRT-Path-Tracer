@@ -211,7 +211,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     }
 
     // Checking for NaNs / negative value samples. Output 
-    if (!sanity_check(render_data, ray_payload, x, y))
+    if (!sanity_check(render_data, ray_payload.ray_color, x, y))
         return;
 
     // If we got here, this means that we still have at least one ray active

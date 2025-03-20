@@ -61,6 +61,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Unbiased ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
 	- Experimental warp-wide direction reuse for improved indirect rays coherency [\[Liu et al., 2023\]](https://arxiv.org/abs/2310.07182)
 ### Other rendering features
+- Microfacet Model Regularization for Robust Light Transport [\[Jendersie et al., 2019\]](https://jojendersie.de/wp-content/uploads/2013/06/2019_Jendersie_brdfregularization.pdf)
 - G-MoN - Adaptive median of means for unbiased firefly removal [\[Buisine et al., 2021\]](https://hal.science/hal-03201630v2)
 - Texture support for all the parameters of the BSDF
 - Texture alpha transparency support

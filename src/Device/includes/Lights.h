@@ -16,6 +16,7 @@
 #include "Device/includes/ReSTIR/DI/FinalShading.h"
 #include "Device/includes/RIS/RIS.h"
 #include "Device/includes/Sampling.h"
+#include "Device/includes/SanityCheck.h"
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -70,6 +71,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
 
                 float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
                 light_source_radiance = light_source_info.emission * cosine_term * bsdf_color / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
+
+                // Just a CPU-only sanity check
+                sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, -1, -1);
             }
         }
     }
@@ -79,14 +83,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
-    const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = true;
 
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
     BSDFIncidentLightInfo incident_ligth_info;
+
+    const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = true;
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false,
                                                     view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction,
                                                     bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_ligth_info);
+    const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = false;
 
     bool intersection_found = false;
     ShadowLightRayHitInfo shadow_light_ray_hit_info;
@@ -105,6 +111,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
         {
             float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf;
+
+            // Just a CPU-only sanity check
+            sanity_check</* CPUOnly */ true>(render_data, bsdf_radiance, -1, -1);
         }
     }
 
@@ -114,8 +123,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
     // So it doesn't matter if it's garbage
     float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
     mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED, incident_ligth_info);
-
-    const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = false;
 
     return bsdf_radiance;
 }
@@ -129,22 +136,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     {
         LightSourceInformation light_source_info;
         float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
-        if (light_sample_pdf <= 0.0f)
-            // Can happen for very small triangles
-            return ColorRGB32F(0.0f);
 
-        float3 shadow_ray_direction = random_light_point - closest_hit_info.inter_point;
-        float distance_to_light = hippt::length(shadow_ray_direction);
-        float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
-        hiprtRay shadow_ray;
-        shadow_ray.origin = closest_hit_info.inter_point;
-        shadow_ray.direction = shadow_ray_direction_normalized;
-
-        // abs() here to allow backfacing light sources
-        float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
-        if (dot_light_source > 0.0f)
+        // Can happen for very small triangles that the PDF of the sampled triangle couldn't be computed
+        if (light_sample_pdf > 0.0f)
         {
+            float3 shadow_ray_direction = random_light_point - closest_hit_info.inter_point;
+            float distance_to_light = hippt::length(shadow_ray_direction);
+            float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+            hiprtRay shadow_ray;
+            shadow_ray.origin = closest_hit_info.inter_point;
+            shadow_ray.direction = shadow_ray_direction_normalized;
+
             NEEPlusPlusContext nee_plus_plus_context;
             nee_plus_plus_context.point_on_light = random_light_point;
             nee_plus_plus_context.shaded_point = shadow_ray.origin;
@@ -158,14 +161,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
                     bsdf_pdf, random_number_generator, ray_payload.bounce);
                 if (bsdf_pdf != 0.0f)
                 {
-                    // Conversion to solid angle from surface area measure
-                    light_sample_pdf *= distance_to_light * distance_to_light;
-                    light_sample_pdf /= dot_light_source;
+                    float cos_theta_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, shadow_ray.direction));
 
-                    float mis_weight = balance_heuristic(light_sample_pdf, bsdf_pdf);
+                    // Preventing division by 0 in the conversion to solid angle here
+                    if (cos_theta_at_light_source > 1.0e-5f)
+                    {
+                        // Conversion to solid angle from surface area measure
+                        light_sample_pdf *= distance_to_light * distance_to_light;
+                        // abs() here to allow backfacing light sources
+                        light_sample_pdf /= cos_theta_at_light_source;
 
-                    float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
-                    light_source_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
+                        float mis_weight = balance_heuristic(light_sample_pdf, bsdf_pdf);
+
+                        float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
+                        light_source_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
+
+                        // Just a CPU-only sanity check
+                        sanity_check</* CPUOnly */ true>(render_data, light_source_radiance_mis, -1, -1);
+                    }
                 }
             }
         }
@@ -209,6 +222,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
             // we'll need to negative the dot product for it to be positive
             float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             bsdf_radiance_mis = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission * mis_weight / bsdf_sample_pdf;
+
+            // Just a CPU-only sanity check
+            sanity_check</* CPUOnly */ true>(render_data, bsdf_radiance_mis, -1, -1);
         }
     }
 
