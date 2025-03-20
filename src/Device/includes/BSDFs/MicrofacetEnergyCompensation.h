@@ -9,6 +9,7 @@
 #include "Device/includes/Fresnel.h"
 #include "Device/includes/Texture.h"
 
+#include "Device/includes/SanityCheck.h"
 #include "HostDeviceCommon/RenderData.h"
  // To be able to access GPUBakerConstants::GGX_ESS_TEXTURE_SIZE && GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE
 #include "Renderer/Baker/GPUBakerConstants.h"
@@ -621,6 +622,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correctio
 		else if (roughness <= 1.0f)
 			higher_correction = hippt::lerp(13.75f, 2.5f, (roughness - 0.9f) / 0.1f);
 	}
+
+	if (higher_relative_eta_bound == lower_relative_eta_bound)
+		// Arbitrarily returning the lower correction 
+		return lower_correction;
 
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
