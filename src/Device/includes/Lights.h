@@ -73,7 +73,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
                 light_source_radiance = light_source_info.emission * cosine_term * bsdf_color / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
 
                 // Just a CPU-only sanity check
-                sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, -1, -1);
+                sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
             }
         }
     }
@@ -113,7 +113,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
             bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf;
 
             // Just a CPU-only sanity check
-            sanity_check</* CPUOnly */ true>(render_data, bsdf_radiance, -1, -1);
+            sanity_check</* CPUOnly */ true>(render_data, bsdf_radiance, 0, 0);
         }
     }
 
@@ -177,7 +177,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
                         light_source_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
 
                         // Just a CPU-only sanity check
-                        sanity_check</* CPUOnly */ true>(render_data, light_source_radiance_mis, -1, -1);
+                        sanity_check</* CPUOnly */ true>(render_data, light_source_radiance_mis, 0, 0);
                     }
                 }
             }
@@ -224,7 +224,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
             bsdf_radiance_mis = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission * mis_weight / bsdf_sample_pdf;
 
             // Just a CPU-only sanity check
-            sanity_check</* CPUOnly */ true>(render_data, bsdf_radiance_mis, -1, -1);
+            sanity_check</* CPUOnly */ true>(render_data, bsdf_radiance_mis, 0, 0);
         }
     }
 
