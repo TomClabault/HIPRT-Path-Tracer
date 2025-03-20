@@ -27,13 +27,16 @@
 // -------------------------- WHAT WE KNOW --------------------------
 // - Still biased with no alpha tests
 // - Do we absolutely have correct convergence on Lambertian & Oren Nayar? --> hard to verify, looks like it?
-// - Is it the glass that is biased? -------> No, no glass in BZD
+// - Is it the glass that is biased? -------> No
 // - 1/Z is also biased, even without the jacobian rejection heuristic
 // - It's not the adaptive sampling that is messed up
 // - Definitely has some bias (very little but there) with everything using a metallic BRDF, roughness 0.1, 50 bounces. Contemporary bedroom
 // - There is some bias in the contemporary bedroom at 1 bounce, everything specular, 0 roughness, with RIS light sampling + envmap sampling
 // - Can't see any bias with lambertian/oren nayar contemporary bedroom + NEE + Envmap
+// - There is still some bias with a roughness 1.0f metallic
+// - Not a normal mapping issue?
 // - With everything specular at IOR 1.0f but roughness 1.0f, there's basically no bias. Even though the specular layer has no effect because of IOR 1.0f. So if the roughness of an inexistant layer changes the bias, it can only be a PDF issue?
+// - Because there is no bias on full Lambertian, this isn't a jacobian issue?
 // -------------------------- WHAT WE KNOW --------------------------
 // 
 // -------------------------- DIRTY FIX RIGHT NOW --------------------------

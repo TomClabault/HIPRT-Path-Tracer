@@ -52,6 +52,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	if (render_data.render_settings.freeze_random)
 		seed = wang_hash(center_pixel_index + 1);
 	else
+		// TODO try having multiply instead of XOR again
 		seed = wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
 
@@ -62,11 +63,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
-		// TODO DEBUG REMOVE THIS
-		//rotation_theta = M_TWO_PI * Xorshift32Generator((wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number) * 2) / 2)();
-		//rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number))();
 		rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number))();
-		//rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
 	float2 cos_sin_theta_rotation = make_float2(cosf(rotation_theta), sinf(rotation_theta));
@@ -79,10 +76,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// Surface data of the center pixel
 	int2 center_pixel_coords = make_int2(x, y);
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-#if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
+
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
-#endif
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
@@ -124,13 +120,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
-
-		// TODO DEBUG REMOVE THIS
-		/*if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-			path_tracing_accumulate_color(render_data, ColorRGB32F(20.0f, 0.0f, 0.0f), neighbor_pixel_index);
-
-		if (x == render_data.render_settings.debug_x2 && y == render_data.render_settings.debug_y2)
-			path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 20.0f, 20.0f), neighbor_pixel_index);*/
 
 		if (!is_center_pixel && reused_neighbors_count > 32)
 			// If not the center pixel, we can check the heuristics
@@ -209,10 +198,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		// Combining as in Alg. 1 of the ReSTIR GI paper
 		if (spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator))
 		{
-#if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
 			// Only used with MIS-like weight
 			selected_neighbor = neighbor_index;
-#endif
 
 			DEBUG_SELECTGED_JACBOAIN = neighbor_index;
 		}
@@ -251,54 +238,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	spatial_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 
-	// Only these 3 weighting schemes are affected
-#if (ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_Z \
-	|| ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS \
-	|| ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE) \
-	&& ReSTIR_GI_BiasCorrectionUseVisibility == KERNEL_OPTION_TRUE
-	// Why is this needed?
-	//
-	// Picture the case where we have visibility reuse (at the end of the initial candidates sampling pass),
-	// visibility term in the bias correction target function (when counting the neighbors that could
-	// have produced the picked sample) and 2 spatial reuse passes.
-	//
-	// The first spatial reuse pass reuses from samples that were produced with visibility in mind
-	// (because of the visibility reuse pass that discards occluded samples). This means that we need
-	// the visibility in the target function used when counting the neighbors that could have produced
-	// the picked sample otherwise we may think that our neighbor could have produced the picked
-	// sample where actually it couldn't because the sample is occluded at the neighbor. We would
-	// then have a Z denominator (with 1/Z weights) that is too large and we'll end up with darkening.
-	//
-	// Now at the end of the first spatial reuse pass, the center pixel ends up with a sample that may
-	// or may not be occluded from the center's pixel point of view. We didn't include the visibility
-	// in the target function when resampling the neighbors (only when counting the "correct" neighbors
-	// but that's all) so we are not giving a 0 weight to occluded resampled neighbors --> it is possible
-	// that we picked an occluded sample.
-	//
-	// In the second spatial reuse pass, we are now going to resample from our neighbors and get some
-	// samples that were not generated with occlusion in mind (because the resampling target function of
-	// the first spatial reuse doesn't include visibility). Yet, we are going to weight them with occlusion
-	// in mind. This means that we are probably going to discard samples because of occlusion that could
-	// have been generated because they are generated without occlusion test. We end up discarding too many
-	// samples --> brightening bias.
-	//
-	// With the visibility reuse at the end of each spatial pass, we force samples at the end of each
-	// spatial reuse to take visibility into account so that when we weight them with visibility testing,
-	// everything goes well
-	//
-	// As an optimization, we also do this for the pairwise MIS because pairwise MIS evaluates the target function
-	// of reservoirs at their own location. Doing the visibility reuse here ensures that a reservoir sample at its own location
-	// includes visibility and so we do not need to recompute the target function of the neighbors in this case. We can just
-	// reuse the target function stored in the reservoir
-	//
-	// We also give the user the choice to remove bias using this option or not as it introduces very little bias
-	// in practice (but noticeable when switching back and forth between reference image/biased image)
-	//
-	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
-	// for the temporal reuse pass) or if we do not have the visibility in the target function when resampling the neighbors
-	if (render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass || ReSTIR_GI_SpatialTargetFunctionVisibility == KERNEL_OPTION_FALSE)
-		ReSTIR_GI_visibility_validation(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
-#endif
+	// Validating that the sample point resampled is visible from our visible point
+	// TODO use a flag in the sample reservoir to indicate whether we are unoccluded or not
+	//		(we are always unoccluded if we resampled the canonical sample for example, in which case we don't have to do the validation)
+	//		It would also probably be beneficial to have another kernel do the validation such that samples that don't need the validation
+	//		(resampled the canonical neighbor) don't do the validation at all
+	ReSTIR_GI_visibility_validation(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_gi_settings.m_cap > 0)

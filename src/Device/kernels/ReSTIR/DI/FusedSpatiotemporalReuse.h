@@ -197,13 +197,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 	// Only used with MIS-like weight
 	// 
 	// Will keep the index of the neighbor that has been selected by resampling. 
 	int selected_neighbor = 0;
-#endif
-
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
@@ -241,34 +238,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				// technical sense since our temporal neighbor is supposed to be unoccluded 
 				// (unless geometry moves around in the scene but that's another problem)
 				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-
-			float jacobian_determinant = 1.0f;
-			//// If the neighbor reservoir is invalid, do not compute the jacobian
-			//if (target_function_at_center > 0.0f && temporal_neighbor_reservoir.UCW > 0.0f && !temporal_neighbor_reservoir.sample.is_envmap_sample())
-			//{
-			//	// The reconnection shift is what is implicitely used in ReSTIR DI. We need this because
-			//	// the initial light sample candidates that we generate on the area of the lights have an
-			//	// area measure PDF. This area measure PDF is converted to solid angle in the initial candidates
-			//	// sampling routine by multiplying by the distance squared and dividing by the cosine
-			//	// angle at the light source. However, a PDF in solid angle measure is only viable at a
-			//	// given point. We say "solid angle with respect to the shading point". This means that
-			//	// reusing a light sample with PDF (the UCW of the neighbor reservoir) in solid angle
-			//	// from a neighbor is invalid since that PDF is only valid at the neighbor point, not
-			//	// at the point we're resampling from (the center pixel). We thus need to convert from the
-			//	// "solid angle PDF at the neighbor" to the solid angle at the center pixel and we do
-			//	// that by multiplying by the jacobian determinant of the reconnection shift in solid
-			//	// angle, Eq. 52 of 2022, "Generalized Resampled Importance Sampling".
-			//	jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data,
-			//		temporal_neighbor_reservoir,
-			//		center_pixel_surface.shading_point,
-			//		/* recomputing the point without the normal offset */ temporal_neighbor_surface.shading_point);
-
-			//	if (jacobian_determinant == -1.0f)
-			//		// Sample too dissimilar, not going to resample it so setting
-			//		// the jacobian to 0.0f so that the reservoir combination fails
-			//		// for this sample
-			//		jacobian_determinant = 0.0f;
-			//}
 
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir.M);
@@ -313,12 +282,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #endif
 
 			// Combining as in Alg. 6 of the paper
+			float jacobian_determinant = 1.0f;
 			if (spatiotemporal_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 			{
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 				// Only used with MIS-like weight
 				selected_neighbor = TEMPORAL_NEIGHBOR_ID;
-#endif
 
 				// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
 #if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
@@ -428,37 +396,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 		ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
-		float jacobian_determinant = 1.0f;
-		// If the neighbor reservoir is invalid, do not compute the jacobian
-		// Also, if this is the last neighbor resample (meaning that it is the sample pixel),
-		// the jacobian is going to be 1.0f so no need to compute
-		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW > 0.0f && spatial_neighbor_index != reused_neighbors_count && !neighbor_reservoir.sample.is_envmap_sample())
-		{
-			// The reconnection shift is what is implicitely used in ReSTIR DI. We need this because
-			// the initial light sample candidates that we generate on the area of the lights have an
-			// area measure PDF. This area measure PDF is converted to solid angle in the initial candidates
-			// sampling routine by multiplying by the distance squared and dividing by the cosine
-			// angle at the light source. However, a PDF in solid angle measure is only viable at a
-			// given point. We say "solid angle with respect to the shading point". This means that
-			// reusing a light sample with PDF (the UCW of the neighbor reservoir) in solid angle
-			// from a neighbor is invalid since that PDF is only valid at the neighbor point, not
-			// at the point we're resampling from (the center pixel). We thus need to convert from the
-			// "solid angle PDF at the neighbor" to the solid angle at the center pixel and we do
-			// that by multiplying by the jacobian determinant of the reconnection shift in solid
-			// angle, Eq. 52 of 2022, "Generalized Resampled Importance Sampling".
-
-			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_surface.shading_point, neighbor_surface.shading_point);
-
-			if (jacobian_determinant == -1.0f)
-			{
-				spatiotemporal_output_reservoir.M += neighbor_reservoir.M;
-
-				// The sample was too dissimilar and so we're rejecting it (not
-				// exactly rejecting but acting as if its contribution is 0)
-				continue;
-			}
-		}
-
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
@@ -512,14 +449,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #endif
 
 		// Combining as in Alg. 6 of the paper
+		float jacobian_determinant = 1.0f;
 		if (spatiotemporal_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 		{
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 			// Only used with MIS-like weight
 			// 
 			// + 1 here because we've already resampled the temporal neighbor so we need to account for that
 			selected_neighbor = spatial_neighbor_index + 1;
-#endif
 
 			if (do_neighbor_target_function_visibility)
 				// If we resampled the neighbor with visibility, then we are sure that we can set the flag
