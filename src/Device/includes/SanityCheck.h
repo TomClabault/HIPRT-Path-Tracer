@@ -26,6 +26,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData&
         render_data.buffers.accumulated_ray_colors[y * res_x + x] = final_color * render_data.render_settings.sample_number;
 }
 
+/**
+ * Returns true if the color has a negative component.
+ * False otherwise
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB32F ray_color, int x, int y, int sample)
 {
     (void)x;
@@ -44,6 +48,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB32F ray_col
     return false;
 }
 
+/**
+ * Returns true if the color has a NaN or INF component.
+ * False otherwise
+ */ 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, int y, int sample)
 {
     // To avoid unused variables on the GPU
@@ -51,11 +59,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
     (void)y;
     (void)sample;
 
-    if (hippt::is_nan(ray_color.r) || hippt::is_nan(ray_color.g) || hippt::is_nan(ray_color.b))
+    if (hippt::is_nan(ray_color.r) || hippt::is_nan(ray_color.g) || hippt::is_nan(ray_color.b) ||
+        hippt::is_inf(ray_color.r) || hippt::is_inf(ray_color.g) || hippt::is_inf(ray_color.b))
     {
 #ifndef __KERNELCC__
         std::lock_guard<std::mutex> logging_lock(g_mutex);
-        std::cout << "NaN at [" << x << ", " << y << "], sample" << sample << std::endl;
+        std::cout << "NaN/INF at [" << x << ", " << y << "], sample" << sample << std::endl;
 #endif
         return true;
     }
@@ -63,17 +72,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
     return false;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y)
+template <bool CheckOnlyOnCPU = false>
+HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, ColorRGB32F& in_out_color, int x, int y)
 {
-    bool invalid = false;
-    if (ray_payload.volume_state.sampled_wavelength == 0.0f)
-        // Only checking for negative colors if we didn't sample a spectral
-        // object because spectral can yield negative values but those are legit
-        // and we want to accumulate them
-        invalid |= check_for_negative_color(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
-    invalid |= check_for_nan(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
+    if constexpr (CheckOnlyOnCPU)
+    {
+#ifdef __KERNELCC__
+        return true;
+#endif
+    }
 
-    if (invalid)
+    bool valid = true;
+
+    valid &= !check_for_negative_color(in_out_color, x, y, render_data.render_settings.sample_number);
+    valid &= !check_for_nan(in_out_color, x, y, render_data.render_settings.sample_number);
+
+    if (!valid)
     {
 #ifndef __KERNELCC__
         Utils::debugbreak();
@@ -82,10 +96,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
         if (render_data.render_settings.display_NaNs)
             debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(1.0e30f, 0.0f, 1.0e30f));
         else
-            ray_payload.ray_color = ColorRGB32F(0.0f);
+            in_out_color = ColorRGB32F(0.0f);
     }
 
-    return !invalid;
+    return valid;
 }
 
 #endif

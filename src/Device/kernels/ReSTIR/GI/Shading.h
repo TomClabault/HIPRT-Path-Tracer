@@ -223,7 +223,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
     // Setting the 'camera_outgoing_radiance' into the ray color just for the call to 'sanity_check'
     ray_payload.ray_color = camera_outgoing_radiance;
-    if (!sanity_check(render_data, ray_payload, x, y))
+    if (!sanity_check(render_data, ray_payload.ray_color, x, y))
         return;
 
     if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::FINAL_RESERVOIR_UCW)
