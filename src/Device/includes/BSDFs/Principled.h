@@ -982,7 +982,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
                                                                         BSDFIncidentLightInfo incident_light_info,
                                                                         int current_bounce)
 {
-    if ((specular_weight > 0.0f || refracting) && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
+    if ((specular_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || refracting)
     {
         float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
 
