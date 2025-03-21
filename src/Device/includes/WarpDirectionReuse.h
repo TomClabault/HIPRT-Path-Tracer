@@ -37,9 +37,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void warp_direction_reuse(const HIPRTRenderData& 
         local_direction.z = hippt::warp_shfl(local_direction.z, first_active_thread_index);
 
         in_out_bounce_direction = local_to_world_frame(closest_hit_info.shading_normal, local_direction);
-        out_bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
-                                              view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, in_out_bounce_direction, 
-                                              out_bsdf_pdf, random_number_generator, ray_payload.bounce);
+
+        BSDFContext bsdf_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, in_out_bounce_direction, nullptr, &ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+        out_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, out_bsdf_pdf, random_number_generator);
     }
 }
 

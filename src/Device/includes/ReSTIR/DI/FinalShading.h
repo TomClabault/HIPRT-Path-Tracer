@@ -55,11 +55,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     {
         float bsdf_pdf;
         float cosine_at_evaluated_point;
-        ColorRGB32F bsdf_color;
 
-        bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
-                                          view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, 
-                                          bsdf_pdf, random_number_generator, /* bounce. Always 0 for ReSTIR */0, sample.flags_to_BSDF_incident_light_info());
+        BSDFIncidentLightInfo incident_light_info = sample.flags_to_BSDF_incident_light_info();
+        BSDFContext bsdf_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, &incident_light_info, &ray_payload.volume_state, false, ray_payload.material, /* bounce. Always 0 for ReSTIR DI */ 0, 0.0f);
+        ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
         cosine_at_evaluated_point = hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction);
         if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_SAMPLED_FROM_GLASS_REFRACT_LOBE)

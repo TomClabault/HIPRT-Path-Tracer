@@ -33,6 +33,8 @@ enum BSDFIncidentLightInfo
 	LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE = 1 << 4,
 	LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE = 1 << 5,
 	LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE = 1 << 6,
+	LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE = 1 << 7,
+	LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE = 1 << 8,
 
 	// This can be used if the incident light direction comes from sampling a light in the scene
 	// from example

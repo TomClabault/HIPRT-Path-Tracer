@@ -18,35 +18,35 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-// ReSTIR GI shading/resampling is still a bit broken, there's still some brightening bias coming from
-// I don't know where, supposedly when the BRDF starts to include smooth/glossy BRDFs
-// 
-// This manifests the most on specular 1 + roughness 0 everywhere in the scene
-// Maybe the bias is also there with a Lambertian BRDF but I could never see it. Maybe it's there but it's just so subtle that it's invisible
-// 
-// -------------------------- WHAT WE KNOW --------------------------
-// - Still biased with no alpha tests
-// - Do we absolutely have correct convergence on Lambertian & Oren Nayar? --> hard to verify, looks like it?
-// - Is it the glass that is biased? -------> No
-// - 1/Z is also biased, even without the jacobian rejection heuristic
-// - It's not the adaptive sampling that is messed up
-// - Definitely has some bias (very little but there) with everything using a metallic BRDF, roughness 0.1, 50 bounces. Contemporary bedroom
-// - There is some bias in the contemporary bedroom at 1 bounce, everything specular, 0 roughness, with RIS light sampling + envmap sampling
-// - Can't see any bias with lambertian/oren nayar contemporary bedroom + NEE + Envmap
-// - There is still some bias with a roughness 1.0f metallic
-// - Not a normal mapping issue?
-// - With everything specular at IOR 1.0f but roughness 1.0f, there's basically no bias. Even though the specular layer has no effect because of IOR 1.0f. So if the roughness of an inexistant layer changes the bias, it can only be a PDF issue?
-// - Because there is no bias on full Lambertian, this isn't a jacobian issue?
-// -------------------------- WHAT WE KNOW --------------------------
-// 
-// -------------------------- DIRTY FIX RIGHT NOW --------------------------
-// - No double BSDF shading
-// - No double BSDF in target function
-// - Reuse on specular is ok
-// -------------------------- DIRTY FIX RIGHT NOW --------------------------
-// 
-// -------------------------- TODO TO TRY TO DEBUG IT --------------------------
-// - We've seen that when reusing only the neighbor, it is still brighter than expected. Maybe we can inspect how the shading of the resued neighbor path is computed and compare that to what would happen if the center pixel produced that path itself
+ // ReSTIR GI shading/resampling is still a bit broken, there's still some brightening bias coming from
+ // I don't know where, supposedly when the BRDF starts to include smooth/glossy BRDFs
+ // 
+ // This manifests the most on specular 1 + roughness 0 everywhere in the scene
+ // Maybe the bias is also there with a Lambertian BRDF but I could never see it. Maybe it's there but it's just so subtle that it's invisible
+ // 
+ // -------------------------- WHAT WE KNOW --------------------------
+ // - Still biased with no alpha tests
+ // - Do we absolutely have correct convergence on Lambertian & Oren Nayar? --> hard to verify, looks like it?
+ // - Is it the glass that is biased? -------> No
+ // - 1/Z is also biased, even without the jacobian rejection heuristic
+ // - It's not the adaptive sampling that is messed up
+ // - Definitely has some bias (very little but there) with everything using a metallic BRDF, roughness 0.1, 50 bounces. Contemporary bedroom
+ // - There is some bias in the contemporary bedroom at 1 bounce, everything specular, 0 roughness, with RIS light sampling + envmap sampling
+ // - Can't see any bias with lambertian/oren nayar contemporary bedroom + NEE + Envmap
+ // - There is still some bias with a roughness 1.0f metallic
+ // - Not a normal mapping issue?
+ // - With everything specular at IOR 1.0f but roughness 1.0f, there's basically no bias. Even though the specular layer has no effect because of IOR 1.0f. So if the roughness of an inexistant layer changes the bias, it can only be a PDF issue?
+ // - Because there is no bias on full Lambertian, this isn't a jacobian issue?
+ // -------------------------- WHAT WE KNOW --------------------------
+ // 
+ // -------------------------- DIRTY FIX RIGHT NOW --------------------------
+ // - No double BSDF shading
+ // - No double BSDF in target function
+ // - Reuse on specular is ok
+ // -------------------------- DIRTY FIX RIGHT NOW --------------------------
+ // 
+ // -------------------------- TODO TO TRY TO DEBUG IT --------------------------
+ // - We've seen that when reusing only the neighbor, it is still brighter than expected. Maybe we can inspect how the shading of the resued neighbor path is computed and compare that to what would happen if the center pixel produced that path itself
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_Shading(HIPRTRenderData render_data)
@@ -134,12 +134,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             else
                 restir_resampled_indirect_direction = hippt::normalize(resampling_reservoir.sample.sample_point - closest_hit_info.inter_point);
 
+
             // Computing the BSDF throughput at the first hit
             //  - view direction: towards the camera
             //  - incident light direction: towards the sample point
             float bsdf_pdf_first_hit;
+            BSDFContext bsdf_first_hit_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, geometric_normal, restir_resampled_indirect_direction, &resampling_reservoir.sample.incident_light_info_at_visible_point, &ray_payload.volume_state, false, ray_payload.material, 0, 0.0f);
+            ColorRGB32F bsdf_color_first_hit = bsdf_dispatcher_eval(render_data, bsdf_first_hit_context, bsdf_pdf_first_hit, random_number_generator);
+
             ColorRGB32F first_hit_throughput;
-            ColorRGB32F bsdf_color_first_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, geometric_normal, restir_resampled_indirect_direction, bsdf_pdf_first_hit, random_number_generator, 0, resampling_reservoir.sample.incident_light_info_at_visible_point);
             if (bsdf_pdf_first_hit > 0.0f)
                 first_hit_throughput = bsdf_color_first_hit * hippt::abs(hippt::dot(restir_resampled_indirect_direction, closest_hit_info.shading_normal)) * resampling_reservoir.UCW;
 
@@ -174,21 +177,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                         //  - view direction: towards the first hit
                         //  - incident light direction: towards what's after the sample point (i.e. the second bounce direction)
                         float bsdf_pdf_second_hit;
-                        ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, -restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, bsdf_pdf_second_hit, random_number_generator, 1, resampling_reservoir.sample.incident_light_info_at_sample_point);
+                        BSDFContext bsdf_second_hit_context = BSDFContext::create_context(-restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, &resampling_reservoir.sample.incident_light_info_at_sample_point, &ray_payload.volume_state, false, ray_payload.material, 1, 0.0f);
+                        ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, bsdf_second_hit_context, bsdf_pdf_second_hit, random_number_generator);
                         ColorRGB32F second_hit_throughput;
                         if (bsdf_pdf_second_hit > 0.0f)
                             second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(resampling_reservoir.sample.incident_light_direction_at_sample_point, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
 
-                        ColorRGB32F reconstructed = first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
+                        // ColorRGB32F reconstructed = first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
 
-#ifndef __KERNELCC__
-                        static std::atomic<float> max_diff = -1000000.0f;
-                        float max_comp = (reconstructed - (first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point)).max_component();
-                        hippt::atomic_max(&max_diff, max_comp);
-
-                        if (max_diff == max_comp)
-                            std::cout << "Max: " << max_diff << "[" << x << ", " << y << "]" << std::endl;
-#endif
+                        //#ifndef __KERNELCC__
+                        //                        static std::atomic<float> max_diff = -1000000.0f;
+                        //                        float max_comp = (reconstructed - (first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point)).max_component();
+                        //                        hippt::atomic_max(&max_diff, max_comp);
+                        //
+                        //                        if (max_diff == max_comp)
+                        //                            std::cout << "Max: " << max_diff << "[" << x << ", " << y << "]" << std::endl;
+                        //#endif
 
                         camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
                     }
@@ -221,7 +225,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             printf("\n");
         }*/
 
-    // Setting the 'camera_outgoing_radiance' into the ray color just for the call to 'sanity_check'
+        // Setting the 'camera_outgoing_radiance' into the ray color just for the call to 'sanity_check'
     ray_payload.ray_color = camera_outgoing_radiance;
     if (!sanity_check(render_data, ray_payload.ray_color, x, y))
         return;
@@ -236,8 +240,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else
         // Regular output
-         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
-        //path_tracing_accumulate_color(render_data, DEBUG_direct_light_ * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
+        path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
+    //path_tracing_accumulate_color(render_data, DEBUG_direct_light_ * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
 }
 
 #endif
