@@ -135,6 +135,10 @@ struct NestedDielectricsInteriorStack
 	 */
 	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int material_priority)
 	{
+		if (stack_position == NestedDielectricsStackSize - 1)
+			// The stack is already at the maximum
+			return false;
+			
 		// Index of the material we last entered before intersecting the
 		// material we're currently inserting in the stack
 		int last_entered_mat_index = 0;
