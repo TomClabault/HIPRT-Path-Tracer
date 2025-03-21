@@ -46,6 +46,7 @@ struct ReSTIRGISample
     ColorRGB32F incoming_radiance_to_sample_point;
     // TODO use a material index and texcoords instead of this and re-evaluate the material
     DevicePackedEffectiveMaterial sample_point_material;
+    // The ray volume is only used for what's at the sample point right? Maybe we can just store what's needed to reconstruct the ray volyume state
     RayVolumeState sample_point_volume_state;
 
     float3 incident_light_direction_at_sample_point;

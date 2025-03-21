@@ -28,9 +28,10 @@ HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData&
     if (mis_reuse.has_ray())
         out_bsdf_color = reuse_mis_bsdf_sample(out_bounce_direction, out_bsdf_pdf, ray_payload, mis_reuse, out_sampled_light_info);
     else
-        out_bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true,
-            view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, out_bounce_direction,
-            out_bsdf_pdf, random_number_generator, ray_payload.bounce, out_sampled_light_info);
+    {
+        BSDFContext bsdf_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), out_sampled_light_info, &ray_payload.volume_state, true, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+        out_bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
+    }
 
 #if DoFirstBounceWarpDirectionReuse
     warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);
