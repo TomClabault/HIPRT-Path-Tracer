@@ -715,7 +715,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
     // so that's why we get into to if() block that does the computation but
     // we're only going to compute the absorption of the coat layer
     float coat_ior = material.coat_ior;
-    if ((coat_weight > 0.0f || refracting) && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
+    if ((coat_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || refracting)
     {
         float coat_pdf = 0.0f;
         ColorRGB32F contribution;
