@@ -1237,10 +1237,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // Note that we're always outside of thin materials, they have no volume interior
     bool outside_object = !ray_volume_state.inside_material;
     bool refracting = hippt::dot(shading_normal, to_light_direction) < 0.0f && outside_object;
-    //if (hippt::dot(view_direction, shading_normal) < 0.0f)
-    //    // For the rest of the computations to be correct, we want the normal
-    //    // in the same hemisphere as the view direction
-    //    shading_normal = -shading_normal;
 
     float3 T, B;
     build_ONB(shading_normal, T, B);
@@ -1326,6 +1322,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // it here, after the full BSDF evaluation so that everything gets compensated
     final_color /= get_principled_energy_compensation_clearcoat_lobe(render_data, material, incident_medium_ior, local_view_direction.z, current_bounce);
 
+    // TODO compare CPU rendering with and without
+    sanity_check</* CPUOnly */ true>(render_data, final_color, 0, 0);
     return final_color;
 }
 
