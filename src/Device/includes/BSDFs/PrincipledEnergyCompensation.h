@@ -31,7 +31,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
     // If all we have for the glossy base is the diffuse layer (i.e. no specular
     // layer because the specular weight is low, then we don't need energy compensation)
     bool no_specular_layer = material.specular < 1.0e-3f;
-    bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glossy_base_energy_compensation_max_bounce;
+    bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glossy_base_energy_compensation_max_bounce && render_data.bsdfs_data.glossy_base_energy_compensation_max_bounce > -1;
     bool invalid_view_direction = NoV < 0.0f;
     if (energy_compensation_disabled || roughness_low_enough || no_specular_layer || max_bounce_reached || invalid_view_direction)
         return 1.0f;
@@ -94,7 +94,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoa
     bool energy_compensation_disabled = !material.do_specular_energy_compensation;
     // If we don't have a clearcoat, let's not compensate energy
     bool no_coat_layer = material.coat < 1.0e-3f;
-    bool max_bounce_reached = current_bounce > render_data.bsdfs_data.clearcoat_energy_compensation_max_bounce;
+    bool max_bounce_reached = current_bounce > render_data.bsdfs_data.clearcoat_energy_compensation_max_bounce && render_data.bsdfs_data.clearcoat_energy_compensation_max_bounce > -1;
     bool invalid_view_direction = NoV < 0.0f;
     if (energy_compensation_disabled || no_coat_layer || max_bounce_reached || invalid_view_direction)
         return 1.0f;

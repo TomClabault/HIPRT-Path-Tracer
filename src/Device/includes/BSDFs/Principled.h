@@ -1235,7 +1235,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // inside the object
     //
     // Note that we're always outside of thin materials, they have no volume interior
-    bool outside_object = ray_volume_state.after_trace_ray_is_outside_object();
+    bool outside_object = !ray_volume_state.inside_material;
     bool refracting = hippt::dot(shading_normal, to_light_direction) < 0.0f && outside_object;
     //if (hippt::dot(view_direction, shading_normal) < 0.0f)
     //    // For the rest of the computations to be correct, we want the normal
@@ -1340,7 +1340,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     const float3 normal = shading_normal;
 
     // Computing the weights for sampling the lobes
-    bool is_outside_object = ray_volume_state.after_trace_ray_is_outside_object();
+    bool is_outside_object = !ray_volume_state.inside_material;
 
     float coat_sampling_weight;
     float sheen_sampling_weight;

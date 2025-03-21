@@ -19,7 +19,7 @@
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, float& throughput_scaling, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
 {
-    if (bounce >= render_settings.russian_roulette_min_depth && render_settings.use_russian_roulette)
+    if (bounce >= render_settings.russian_roulette_min_depth && render_settings.do_russian_roulette)
     {
         float survive_probability = 0.0f;
         if (render_settings.path_russian_roulette_method == PathRussianRoulette::MAX_THROUGHPUT)

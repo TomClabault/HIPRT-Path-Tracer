@@ -26,7 +26,7 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction, int current_bounce)
 {
-	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.metal_energy_compensation_max_bounce;
+	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.metal_energy_compensation_max_bounce && render_data.bsdfs_data.metal_energy_compensation_max_bounce > -1;
 	bool smooth_enough = material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	bool invalid_view_direction = local_view_direction.z < 0.0f;
 	if (!material_do_energy_compensation || smooth_enough || max_bounce_reached || invalid_view_direction)
@@ -633,7 +633,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correctio
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float custom_roughness, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
 {
 	bool smooth_enough = custom_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
-	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glass_energy_compensation_max_bounce;
+	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glass_energy_compensation_max_bounce && render_data.bsdfs_data.glass_energy_compensation_max_bounce > -1;
 	if (!material.do_glass_energy_compensation || smooth_enough || max_bounce_reached)
 		return 1.0f;
 

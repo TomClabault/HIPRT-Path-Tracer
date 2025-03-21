@@ -66,10 +66,12 @@ struct BRDFsData
 	// 
 	// For example, 0 means that energy compensation will only be done on the first hit and
 	// not later
-	int glass_energy_compensation_max_bounce = 4;
-	int metal_energy_compensation_max_bounce = 0;
-	int clearcoat_energy_compensation_max_bounce = 0;
-	int glossy_base_energy_compensation_max_bounce = 0;
+	//
+	// -1 to disable
+	int glass_energy_compensation_max_bounce = -1;
+	int metal_energy_compensation_max_bounce = -1;
+	int clearcoat_energy_compensation_max_bounce = -1;
+	int glossy_base_energy_compensation_max_bounce = -1;
 
 	MicrofacetRegularizationSettings microfacet_regularization;
 };
