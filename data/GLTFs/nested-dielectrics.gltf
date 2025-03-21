@@ -1,13 +1,14 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.1.62",
+		"generator":"Khronos glTF Blender I/O v4.4.55",
 		"version":"2.0"
 	},
 	"extensionsUsed":[
+		"KHR_materials_clearcoat",
 		"KHR_materials_transmission",
-		"KHR_materials_ior",
+		"KHR_materials_emissive_strength",
 		"KHR_materials_specular",
-		"KHR_materials_emissive_strength"
+		"KHR_materials_ior"
 	],
 	"scene":0,
 	"scenes":[
@@ -19,7 +20,8 @@
 				2,
 				3,
 				4,
-				5
+				5,
+				6
 			]
 		}
 	],
@@ -55,19 +57,25 @@
 		{
 			"camera":0,
 			"name":"Camera",
+			"rotation":[
+				-0.3826834261417389,
+				0,
+				0,
+				0.9238795638084412
+			],
 			"translation":[
 				0,
-				0,
-				5.761315822601318
+				5.029460906982422,
+				5.029465198516846
 			]
 		},
 		{
 			"mesh":3,
 			"name":"Plane.001",
 			"scale":[
-				510.8236389160156,
-				1,
-				510.8236389160156
+				6.2513837814331055,
+				0.01223785150796175,
+				6.2513837814331055
 			],
 			"translation":[
 				0,
@@ -88,6 +96,16 @@
 				0.033187270164489746,
 				0
 			]
+		},
+		{
+			"mesh":5,
+			"name":"Torus.001",
+			"rotation":[
+				-0.9547613859176636,
+				0,
+				0,
+				0.29737329483032227
+			]
 		}
 	],
 	"cameras":[
@@ -106,6 +124,9 @@
 		{
 			"doubleSided":true,
 			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				},
 				"KHR_materials_transmission":{
 					"transmissionFactor":1
 				},
@@ -115,12 +136,6 @@
 			},
 			"name":"Material.004",
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[
-					0.800000011920929,
-					0.800000011920929,
-					0.800000011920929,
-					1
-				],
 				"metallicFactor":0,
 				"roughnessFactor":0
 			}
@@ -128,6 +143,9 @@
 		{
 			"doubleSided":true,
 			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				},
 				"KHR_materials_transmission":{
 					"transmissionFactor":1
 				},
@@ -145,9 +163,9 @@
 			"name":"Material.005",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.8009237051010132,
-					0.6114792823791504,
-					0.0014716587029397488,
+					0,
+					0.04319041967391968,
+					0.8040210008621216,
 					1
 				],
 				"metallicFactor":0,
@@ -162,6 +180,9 @@
 				1
 			],
 			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				},
 				"KHR_materials_emissive_strength":{
 					"emissiveStrength":25
 				}
@@ -195,6 +216,28 @@
 				],
 				"metallicFactor":0,
 				"roughnessFactor":0
+			}
+		},
+		{
+			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_transmission":{
+					"transmissionFactor":1
+				},
+				"KHR_materials_ior":{
+					"ior":2
+				}
+			},
+			"name":"Material.001",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0,
+					0.38120442628860474,
+					0.8007099628448486,
+					1
+				],
+				"metallicFactor":0,
+				"roughnessFactor":0.20000000298023224
 			}
 		}
 	],
@@ -265,6 +308,20 @@
 					},
 					"indices":18,
 					"material":3
+				}
+			]
+		},
+		{
+			"name":"Torus.001",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":19,
+						"NORMAL":20,
+						"TEXCOORD_0":21
+					},
+					"indices":22,
+					"material":4
 				}
 			]
 		}
@@ -433,6 +490,40 @@
 			"componentType":5123,
 			"count":36,
 			"type":"SCALAR"
+		},
+		{
+			"bufferView":19,
+			"componentType":5126,
+			"count":637,
+			"max":[
+				0.6000000238418579,
+				0.10000000149011612,
+				0.6000000238418579
+			],
+			"min":[
+				-0.6000000238418579,
+				-0.10000000149011612,
+				-0.6000000238418579
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":20,
+			"componentType":5126,
+			"count":637,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":21,
+			"componentType":5126,
+			"count":637,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":22,
+			"componentType":5123,
+			"count":3456,
+			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
@@ -549,11 +640,35 @@
 			"byteLength":72,
 			"byteOffset":48332,
 			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":7644,
+			"byteOffset":48404,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":7644,
+			"byteOffset":56048,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":5096,
+			"byteOffset":63692,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":6912,
+			"byteOffset":68788,
+			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":48404,
+			"byteLength":75700,
 			"uri":"nested-dielectrics.bin"
 		}
 	]
