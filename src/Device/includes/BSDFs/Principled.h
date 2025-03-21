@@ -392,14 +392,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     float HoV = hippt::dot(local_view_direction, local_half_vector);
 
     if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
-    {
         // Backfacing microfacets when the microfacet normal isn't in the same
         // hemisphere as the view dir or light dir
-        /*pdf = 1.0f;
-        return ColorRGB32F(1.0e10f, 0.0f, 0.0f);*/
-        
         return ColorRGB32F(0.0f);
-    }
 
     float thin_film = material.thin_film;
     ColorRGB32F F_thin_film;

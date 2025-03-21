@@ -88,11 +88,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
     float3 sampled_bsdf_direction;
     BSDFIncidentLightInfo incident_ligth_info;
 
-    const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = true;
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false,
                                                     view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction,
                                                     bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_ligth_info);
-    const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = false;
 
     bool intersection_found = false;
     ShadowLightRayHitInfo shadow_light_ray_hit_info;
@@ -156,10 +154,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
             if (!in_shadow)
             {
                 float bsdf_pdf;
+                const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = true;
                 ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false,
                     view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
                     bsdf_pdf, random_number_generator, ray_payload.bounce);
-                if (bsdf_pdf != 0.0f)
+                const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = false;
+
+                bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false,
+                    view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+                    bsdf_pdf, random_number_generator, ray_payload.bounce);
+                if (bsdf_pdf >= 0.0f)
                 {
                     float cos_theta_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, shadow_ray.direction));
 
@@ -173,7 +177,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
 
                         float mis_weight = balance_heuristic(light_sample_pdf, bsdf_pdf);
 
-                        float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
+                        float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
                         light_source_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
 
                         // Just a CPU-only sanity check
@@ -184,19 +188,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
         }
     }
 
-    ColorRGB32F bsdf_radiance_mis;
 
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
     float3 bsdf_shadow_ray_origin = closest_hit_info.inter_point;
-    BSDFIncidentLightInfo incident_ligth_info;
+    BSDFIncidentLightInfo incident_light_info;
+    ColorRGB32F bsdf_radiance_mis;
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false,
                                                     view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
-                                                    bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_ligth_info);
+                                                    bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_light_info);
 
     bool intersection_found = false;
     ShadowLightRayHitInfo shadow_light_ray_hit_info;
-    if (bsdf_sample_pdf > 0)
+    if (bsdf_sample_pdf > 0.0f)
     {
         hiprtRay new_ray;
         new_ray.origin = bsdf_shadow_ray_origin;
@@ -233,7 +237,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     // we're never going to read the intersection point anyway.
     // So it doesn't matter if it's garbage
     float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-    mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED, incident_ligth_info);
+    mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED, incident_light_info);
 
     return light_source_radiance_mis + bsdf_radiance_mis;
 }
