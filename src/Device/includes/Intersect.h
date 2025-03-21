@@ -140,7 +140,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray_payload, HitInfo& hit_info, const float3& view_direction)
 {
-    if (ray_payload.volume_state.before_trace_ray_is_outside_object() && hippt::dot(view_direction, hit_info.geometric_normal) < 0.0f)
+    if (hippt::dot(view_direction, hit_info.geometric_normal) < 0.0f)
     {
         // The geometry isn't front-facing
 
@@ -148,7 +148,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray
         hit_info.shading_normal *= -1.0f;
     }
 
-    if (ray_payload.volume_state.before_trace_ray_is_outside_object())
+    if (!ray_payload.volume_state.inside_material)
     {
         if (hippt::dot(view_direction, hit_info.shading_normal) < 0.0f)
             // Flipping the normal such that the view direction isn't below the shading hemisphere anymore
@@ -231,20 +231,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         // multiple-levels BVH (TLAS/BLAS). We'll have to  transform by the BLAS transform
         out_hit_info.geometric_normal = hippt::normalize(hit.normal);
         out_hit_info.shading_normal = get_shading_normal(render_data, out_hit_info.geometric_normal, triangle_vertex_indices, triangle_texcoords, hit.primID, hit.uv, out_hit_info.texcoords);
-
         out_hit_info.t = hit.t;
-
-        if (!in_out_ray_payload.volume_state.before_trace_ray_is_outside_object())
-            // If we're traveling inside a volume, accumulating the distance for Beer's law
-            in_out_ray_payload.volume_state.distance_in_volume += hit.t;
 
         int material_index = render_data.buffers.material_indices[hit.primID];
         in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
-        fix_backfacing_normals(in_out_ray_payload, out_hit_info, -ray.direction);
-
         skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
             in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
+
+        if (in_out_ray_payload.volume_state.inside_material)
+            // If we're traveling inside a volume, accumulating the distance for Beer's law
+            in_out_ray_payload.volume_state.distance_in_volume += hit.t;
+
+        fix_backfacing_normals(in_out_ray_payload, out_hit_info, -ray.direction);
 
         if (skipping_volume_boundary)
         {

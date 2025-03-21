@@ -60,7 +60,7 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
     }
     else
     {
-        if (ray_payload.bounce >= render_data.render_settings.russian_roulette_min_depth && render_data.render_settings.use_russian_roulette)
+        if (ray_payload.bounce >= render_data.render_settings.russian_roulette_min_depth && render_data.render_settings.do_russian_roulette)
             // Advancing the random number generation just to match non-ReSTIR GI path tracing in terms of randomness
             random_number_generator();
     }

@@ -431,7 +431,7 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	if (ImGui::Checkbox("Do Russian Roulette", &render_settings.use_russian_roulette))
+	if (ImGui::Checkbox("Do Russian Roulette", &render_settings.do_russian_roulette))
 		m_render_window->set_render_dirty(true);
 
 	const char* items[] = { "- Max throughput", "- Arnold, Langlands, 2014" };
@@ -1608,12 +1608,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			if (render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightUncorrelated && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_TRUE)
 			{
 				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-				ImGui::SameLine();
-				ImGui::Text("Multiple-scattering energy compensation look-up tables \n"
-							"were not precomputed for smith height-uncorrelated \n"
-							"masking-shadowing term.\n"
-							"\n"
-							"Energy conservation is not guaranteed.");
+				ImGuiRenderer::show_help_marker("Multiple-scattering energy compensation look-up tables \n"
+					"were not precomputed for smith height-uncorrelated \n"
+					"masking-shadowing term.\n"
+					"\n"
+					"Energy conservation is not guaranteed.");
 			}
 
 			ImGui::TreePop();
@@ -2440,7 +2439,9 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			"For clearcoated and specular materials, 0 is enough for smooth clearcoat/specular layers. "
 			"For high roughness clearcoats/specular layers, the situation is the same as for metals: "
 			"0 should be good enough as long as there are not too many concentrated inter-reflections "
-			"(in which case, a higher value, 4+, is going to be preferred).");
+			"(in which case, a higher value, 4+, is going to be preferred).\n\n"
+			""
+			"-1 to disable and always do energy compensation.");
 		setting_changed |= ImGui::SliderInt("Glass", &render_data.bsdfs_data.glass_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
 		setting_changed |= ImGui::SliderInt("Clearcoat", &render_data.bsdfs_data.clearcoat_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
 		setting_changed |= ImGui::SliderInt("Specular/diffuse", &render_data.bsdfs_data.glossy_base_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
