@@ -19,7 +19,7 @@ enum AmbientLightType
 struct WorldSettings
 {
 	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
-	ColorRGB32F uniform_light_color = ColorRGB32F(1.0f);
+	ColorRGB32F uniform_light_color = ColorRGB32F(0.0f);
 
 	// Width and height in pixels. Both in the range [1, XXX]
 	unsigned int envmap_width = 0, envmap_height = 0;

@@ -167,6 +167,12 @@
  */
 #define PrincipledBSDFDoMicrofacetRegularization KERNEL_OPTION_TRUE
 
+/**
+ * For microfacet model regularization, whether or not the use the consistent parametertization for tau_0 as
+ * given by equation 16 of the paper
+ */
+#define PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization KERNEL_OPTION_TRUE
+
 #endif // #ifndef __KERNELCC__
 
 #endif

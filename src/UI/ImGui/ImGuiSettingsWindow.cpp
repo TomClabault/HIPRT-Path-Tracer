@@ -4,6 +4,7 @@
  */
 
 #include "Compiler/GPUKernelCompiler.h"
+#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
@@ -1589,10 +1590,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 				ImGuiRenderer::show_help_marker("Same as the glossy layer fresnel-based sampling but for the coat layer.");
 
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::TreePop();
 			}
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("GGX");
 
 			std::vector<const char*> ggx_sampling_items = { "- VNDF", "- VNDF Spherical Caps" };
@@ -2988,7 +2989,22 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			ImGui::TreePop();
 		}
 
-		if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau, 10.0f, 1000.0f))
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		bool do_consistent_tau = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION);
+		if (ImGui::Checkbox("Consistent parameterization", &do_consistent_tau))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION, do_consistent_tau ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+		if (do_consistent_tau)
+		{
+			ImGui::TreePush("Consistent tau tree");
+			ImGui::Text("Current effective tau: %f", MicrofacetRegularization::consistent_tau(render_data.bsdfs_data.microfacet_regularization.tau_0, render_data.render_settings.sample_number));
+			ImGui::TreePop();
+		}
+		if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
 			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
