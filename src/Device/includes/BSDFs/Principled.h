@@ -704,8 +704,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_compute_darkening(con
  * 'internal' functions are just so that 'principled_bsdf_eval' looks nicer
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
-                                                                    const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal, 
-                                                                    float incident_ior, float coat_weight, bool refracting, float coat_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf,
+                                                                    const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal,
+                                                                    float incident_ior, bool refracting, float coat_weight, float coat_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf,
                                                                     BSDFIncidentLightInfo incident_light_info,
                                                                     int current_bounce)
 {
@@ -813,10 +813,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_sheen_layer(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
                                                                      const float3& local_view_direction, const float3& local_to_light_direction, 
                                                                      const float3& world_space_to_light_direction, const float3& shading_normal,
-                                                                     float incident_ior, float sheen_weight, float sheen_proba, 
+                                                                     float incident_ior, bool refracting, float sheen_weight, float sheen_proba, 
                                                                      ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
-    if (sheen_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
+    if ((sheen_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || refracting)
     {
         float sheen_reflectance;
         float sheen_pdf;
@@ -1286,10 +1286,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // (because their weight becomes 0)
     final_color += internal_eval_coat_layer(render_data, material,
                                             local_view_direction, local_to_light_direction, local_half_vector, shading_normal, 
-                                            incident_medium_ior, coat_weight, refracting, coat_proba, layers_throughput, pdf, incident_light_info, current_bounce);
+                                            incident_medium_ior, refracting, coat_weight, coat_proba, layers_throughput, pdf, incident_light_info, current_bounce);
     final_color += internal_eval_sheen_layer(render_data, material, 
                                              local_view_direction, local_to_light_direction, to_light_direction, shading_normal, 
-                                             incident_medium_ior, sheen_weight, sheen_proba, layers_throughput, pdf);
+                                             incident_medium_ior, refracting, sheen_weight, sheen_proba, layers_throughput, pdf);
     final_color += internal_eval_metal_layer(render_data, material, material.roughness, material.anisotropy, 
                                              local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior, 
                                              metal_1_weight * !refracting, metal_1_proba, layers_throughput, pdf, incident_light_info, true, current_bounce);
