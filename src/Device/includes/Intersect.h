@@ -148,32 +148,29 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray
         hit_info.shading_normal *= -1.0f;
     }
 
-    if (!ray_payload.volume_state.inside_material)
+    if (hippt::dot(view_direction, hit_info.shading_normal) < 0.0f)
+        // Flipping the normal such that the view direction isn't below the shading hemisphere anymore
+        hit_info.shading_normal *= -1.0f;
+
+    // Now ensuring that a perfectly reflected direction (about the shading normal) doesn't go below the *geometric* surface
+    float3 perfect_reflected_direction = reflect_ray(view_direction, hit_info.shading_normal);
+    if (hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) <= 0.0f)
     {
-        if (hippt::dot(view_direction, hit_info.shading_normal) < 0.0f)
-            // Flipping the normal such that the view direction isn't below the shading hemisphere anymore
-            hit_info.shading_normal *= -1.0f;
+        // The perfectly reflected direction *is* below the geometric normal,
+        // we're going to pull the shading normal towards the geometric normal such that
+        // the perfectly reflected direction now is just an epsilon above the surface
+        //
+        // This is done by first computing a new reflected direction that is just above the surface
+        // and then recomputing the new shading normal as the half vector between the new reflect direction
+        // and the view direction
 
-        // Now ensuring that a perfectly reflected direction (about the shading normal) doesn't go below the *geometric* surface
-        float3 perfect_reflected_direction = reflect_ray(view_direction, hit_info.shading_normal);
-        if (hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) <= 0.0f)
-        {
-            // The perfectly reflected direction *is* below the geometric normal,
-            // we're going to pull the shading normal towards the geometric normal such that
-            // the perfectly reflected direction now is just an epsilon above the surface
-            //
-            // This is done by first computing a new reflected direction that is just above the surface
-            // and then recomputing the new shading normal as the half vector between the new reflect direction
-            // and the view direction
+        constexpr float epsilon = 0.01;
 
-            constexpr float epsilon = 0.01;
+        perfect_reflected_direction -= hippt::normalize((hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) - epsilon) * hit_info.geometric_normal);
 
-            perfect_reflected_direction -= hippt::normalize((hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) - epsilon) * hit_info.geometric_normal);
-
-            // The new shading normal is the half vector between the pulled up reflected direction
-            // and the view direction
-            hit_info.shading_normal = hippt::normalize(view_direction + perfect_reflected_direction);
-        }
+        // The new shading normal is the half vector between the pulled up reflected direction
+        // and the view direction
+        hit_info.shading_normal = hippt::normalize(view_direction + perfect_reflected_direction);
     }
 }
 
