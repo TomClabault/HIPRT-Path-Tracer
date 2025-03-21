@@ -982,7 +982,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
                                                                         BSDFIncidentLightInfo incident_light_info,
                                                                         int current_bounce)
 {
-    if (specular_weight > 0.0f && ((local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || refracting))
+    // To even attempt the evaluation of the specular lobe, we need the specular weight to be non-zero
+    // 
+    // We also need the view and light direction to be above the normal hemisphere because the specular layer
+    // is a BRDF: reflections only.
+    //
+    // However, we may still want to compute the layer throughput of the specular layer if we're given an
+    // incident light direction that comes from the diffuse transmission lobe: such a direction has to go through
+    // the specular layer first before going through the diffuse transmission lobe
+    // The microfacet BRDF will actually evaluate to 0 but the layer throughput will attenuate some light
+    //
+    // This applies to diffuse transmission but doesn't apply to glass though (for example) because the glass layer
+    // isn't "below" the specular layer, it's "adjacent" to it.
+    if (specular_weight > 0.0f && ((local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || (refracting && incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE)))
     {
         float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
 

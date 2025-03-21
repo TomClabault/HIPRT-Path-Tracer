@@ -42,7 +42,7 @@
 #define BSDF_OREN_NAYAR 2
 #define BSDF_PRINCIPLED 3
 
-#define NESTED_DIELECTRICS_STACK_SIZE 8
+#define NESTED_DIELECTRICS_STACK_SIZE 4
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_UNIFORM_ONE_LIGHT 1
@@ -167,7 +167,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RESTIR_DI
+#define DirectLightSamplingStrategy LSS_NO_DIRECT_LIGHT_SAMPLING
 
 /**
  * Whether or not to use NEE++ features at all

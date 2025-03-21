@@ -123,8 +123,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             // small that we cannot compute their normal and their area (the cross
             // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
 
-            float3 to_light_direction;
-            to_light_direction = random_light_point - closest_hit_info.inter_point;
+            float3 to_light_direction = random_light_point - closest_hit_info.inter_point;
             distance_to_light = hippt::length(to_light_direction);
             to_light_direction = to_light_direction / distance_to_light; // Normalization
             cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
