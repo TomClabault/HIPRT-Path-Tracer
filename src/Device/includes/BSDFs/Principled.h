@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
                                                                     float& pdf, BSDFIncidentLightInfo incident_light_info,
                                                                     int current_bounce)
 {
-    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, roughness);
+    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, roughness, render_data.render_settings.sample_number);
 
     MaterialUtils::SpecularDeltaReflectionSampled metal_delta_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(material, regularized_roughness, anisotropy, incident_light_info);
     if (metal_delta_direction_sampled == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
@@ -441,7 +441,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     }
     else
     {
-        float regularized_roughness = MicrofacetRegularization::regularize_refraction(render_data.bsdfs_data.microfacet_regularization, material.roughness, eta_i, eta_t);
+        float regularized_roughness = MicrofacetRegularization::regularize_refraction(render_data.bsdfs_data.microfacet_regularization, material.roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 
         color = torrance_sparrow_GGX_eval_refract(material, regularized_roughness, relative_eta, F,
             local_view_direction, local_to_light_direction, local_half_vector, 

@@ -12,7 +12,7 @@ struct MicrofacetRegularizationSettings
 
 	// Maximum value that the microfacet distribution is allowed to take
 	// The regularized roughness will be derived from this value
-	float tau = 100.0f;
+	float tau_0 = 30.0f;
 };
 
 #endif

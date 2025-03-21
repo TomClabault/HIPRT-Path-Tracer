@@ -35,6 +35,7 @@ const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_E
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL = "PrincipledBSDFSampleGlossyBasedOnFresnel";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL = "PrincipledBSDFSampleCoatBasedOnFresnel";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION = "PrincipledBSDFDoMicrofacetRegularization";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION = "PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
 const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION = "NestedDielectricsStackSize";
 
@@ -85,6 +86,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
 
@@ -139,6 +141,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL] = std::make_shared<int>(PrincipledBSDFSampleGlossyBasedOnFresnel);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL] = std::make_shared<int>(PrincipledBSDFSampleCoatBasedOnFresnel);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION] = std::make_shared<int>(PrincipledBSDFDoMicrofacetRegularization);
+	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION] = std::make_shared<int>(PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization);
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = std::make_shared<int>(PrincipledBSDFAnisotropicGGXSampleFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION] = std::make_shared<int>(NestedDielectricsStackSize);
 
