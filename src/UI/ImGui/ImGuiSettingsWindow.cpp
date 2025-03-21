@@ -204,7 +204,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	};
 
 	ImGui::SeparatorText("Global settings presets");
-	if (ImGuiRenderer::ComboWithTooltips("Performance Preset", &preset_selected, preset_items.data(), preset_items.size(), tooltips.data()))
+	if (ImGuiRenderer::ComboWithTooltips("Rendering preset", &preset_selected, preset_items.data(), preset_items.size(), tooltips.data()))
 		apply_performance_preset(static_cast<ImGuiRendererSettingsPreset>(preset_selected));
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -626,12 +626,16 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 
 	case SETTINGS_PRESET_REFERENCE_PATH_TRACER:
 		render_settings.do_alpha_testing = true;
-		render_settings.alpha_testing_indirect_bounce = 6;
+		render_settings.alpha_testing_indirect_bounce = render_settings.nb_bounces + 1;
+		render_settings.direct_contribution_clamp = 0.0f;
+		render_settings.indirect_contribution_clamp = 0.0f;
+		render_settings.envmap_contribution_clamp = 0.0f;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_NO_DIRECT_LIGHT_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_NO_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_FALSE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, KERNEL_OPTION_FALSE);
 		m_renderer->recompile_kernels();
 
 		m_render_window->set_render_dirty(true);
@@ -1090,7 +1094,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
-				static bool use_visibility_ris_target_function = RISUseVisiblityTargetFunction;
+				bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
 				if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1154,7 +1158,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
 
 					{
-						static bool do_light_presampling = ReSTIR_DI_DoLightsPresampling;
+						bool do_light_presampling = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING);
 						if (ImGui::Checkbox("Do Light Presampling", &do_light_presampling))
 						{
 							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, do_light_presampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1168,7 +1172,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							" lights by avoiding cache trashing because of the memory random walk that"
 							" light sampling becomes with that many lights");
 
-						static bool use_initial_target_function_visibility = ReSTIR_DI_InitialTargetFunctionVisibility;
+						bool use_initial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY);
 						if (ImGui::Checkbox("Use visibility in target function", &use_initial_target_function_visibility))
 						{
 							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, use_initial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1219,7 +1223,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::TreePush("ReSTIR DI - Visibility Reuse Pass Tree");
 
 					{
-						static bool do_visibility_reuse = ReSTIR_DI_DoVisibilityReuse;
+						bool do_visibility_reuse = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE);
 						if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 						{
 							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1320,7 +1324,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 						case RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT:
 						{
-							static bool use_visibility_ris_target_function = RISUseVisiblityTargetFunction;
+							bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
 							if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 							{
 								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1412,7 +1416,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 				// If we do have an importance sampling strategy
-				static bool do_envmap_bsdf_mis = EnvmapSamplingDoBSDFMIS;
+				bool do_envmap_bsdf_mis = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS);
 				if (ImGui::Checkbox("Do MIS with BSDF", &do_envmap_bsdf_mis))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS, do_envmap_bsdf_mis ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1467,7 +1471,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 				}
 
-				static bool double_bsdf_target_function = ReSTIRGIDoubleBSDFInTargetFunction;
+				bool double_bsdf_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DOUBLE_BSDF_TARGET_FUNCTION);
 				if (ImGui::Checkbox("Evaluate sample-point BSDF in target function", &double_bsdf_target_function))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DOUBLE_BSDF_TARGET_FUNCTION, double_bsdf_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1550,7 +1554,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			{
 				ImGui::TreePush("Principled bsdf glossy lobe tree");
 
-				static bool sample_glossy_based_on_fresnel = PrincipledBSDFSampleGlossyBasedOnFresnel;
+				bool sample_glossy_based_on_fresnel = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL);
 				if (ImGui::Checkbox("Fresnel-based sampling##glossy", &sample_glossy_based_on_fresnel))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_GLOSSY_BASED_ON_FRESNEL, sample_glossy_based_on_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1575,7 +1579,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			{
 				ImGui::TreePush("Principled bsdf coat lobe tree");
 
-				static bool sample_coat_based_on_fresnel = PrincipledBSDFSampleCoatBasedOnFresnel;
+				bool sample_coat_based_on_fresnel = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL);
 				if (ImGui::Checkbox("Fresnel-based sampling##coat", &sample_coat_based_on_fresnel))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON_FRESNEL, sample_coat_based_on_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -1842,7 +1846,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 			if (restir_settings.do_spatial_reuse_pass)
 			{
-				static bool use_spatial_target_function_visibility = IsReSTIRGI ? ReSTIR_GI_SpatialTargetFunctionVisibility : ReSTIR_DI_SpatialTargetFunctionVisibility;
+				bool use_spatial_target_function_visibility;
+				if constexpr (IsReSTIRGI)
+					use_spatial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY);
+				else
+					use_spatial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY);
 				if (ImGui::Checkbox("Use visibility in target function", &use_spatial_target_function_visibility))
 				{
 					global_kernel_options->set_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY : GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, use_spatial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2100,7 +2108,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 
 			// No visibility bias correction for 1/M weights
 			bool bias_correction_visibility_disabled = *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_M : RESTIR_DI_BIAS_CORRECTION_1_OVER_M);
-			static bool bias_correction_use_visibility = IsReSTIRGI ? ReSTIR_GI_BiasCorrectionUseVisibility : ReSTIR_DI_BiasCorrectionUseVisibility;
+			bool bias_correction_use_visibility;
+			if constexpr (IsReSTIRGI)
+				bias_correction_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY);
+			else
+				bias_correction_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY);
 			ImGui::BeginDisabled(bias_correction_visibility_disabled);
 			if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
 			{
@@ -2125,16 +2137,16 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	if (ImGui::CollapsingHeader("Next Event Estimation++"))
 	{
 		ImGui::TreePush("Use NEE++ Tree");
 
-		static bool use_nee_plus_plus = DirectLightUseNEEPlusPlus;
+		bool use_nee_plus_plus = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS);
 		if (ImGui::Checkbox("Use NEE++", &use_nee_plus_plus))
 		{
-			kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS, use_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS, use_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
@@ -2177,10 +2189,10 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					"stop to save some performance because accumulating forever isn't necessary.");
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-				static bool use_nee_plus_plus_rr = DirectLightUseNEEPlusPlusRR;
+				bool use_nee_plus_plus_rr = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE);
 				if (ImGui::Checkbox("Use NEE++ Russian Roulette", &use_nee_plus_plus_rr))
 				{
-					kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE, use_nee_plus_plus_rr ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE, use_nee_plus_plus_rr ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
@@ -2261,7 +2273,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			}
 
 			{
-				static bool display_shadow_rays = DirectLightNEEPlusPlusDisplayShadowRaysDiscarded;
+				bool display_shadow_rays = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED);
 				if (ImGui::Checkbox("Display shadow rays discarded", &display_shadow_rays))
 				{
 					m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED, display_shadow_rays ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2308,7 +2320,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 	ImGui::SeparatorText("BSDF Energy Conservation Settings");
 
-	static bool do_energy_conservation = PrincipledBSDFDoEnergyCompensation;
+	bool do_energy_conservation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION);
 	if (ImGui::Checkbox("Do energy conservation", &do_energy_conservation))
 	{
 		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, do_energy_conservation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2322,7 +2334,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 	{
 		ImGui::TreePush("Energy conservation options tree");
 
-		static bool do_bsdf_energy_conservation = PrincipledBSDFEnforceStrongEnergyConservation;
+		bool do_bsdf_energy_conservation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION);
 		if (ImGui::Checkbox("Enforce BSDF strong energy conservation", &do_bsdf_energy_conservation))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION, do_bsdf_energy_conservation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2349,7 +2361,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		{
-			static bool do_glass_energy_compensation = PrincipledBSDFDoGlassEnergyCompensation;
+			bool do_glass_energy_compensation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION);
 			if (ImGui::Checkbox("Do glass lobe energy compensation", &do_glass_energy_compensation))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION, do_glass_energy_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2363,7 +2375,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 		}
 
 		{
-			static bool do_clearcoat_energy_compensation = PrincipledBSDFDoClearcoatEnergyCompensation;
+			bool do_clearcoat_energy_compensation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION);
 			if (ImGui::Checkbox("Do clearcoat lobe energy compensation", &do_clearcoat_energy_compensation))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION, do_clearcoat_energy_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2377,7 +2389,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 		}
 
 		{
-			static bool do_specular_energy_compensation = PrincipledBSDFDoSpecularEnergyCompensation;
+			bool do_specular_energy_compensation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION);
 			if (ImGui::Checkbox("Do specular/diffuse lobe energy compensation", &do_specular_energy_compensation))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION, do_specular_energy_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2391,7 +2403,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 		}
 
 		{
-			static bool do_metallic_energy_compensation = PrincipledBSDFDoMetallicEnergyCompensation;
+			bool do_metallic_energy_compensation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION);
 			if (ImGui::Checkbox("Do metallic lobe energy compensation", &do_metallic_energy_compensation))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION, do_metallic_energy_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2407,7 +2419,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			{
 				ImGui::TreePush("Fresnel multiscatter tree");
 
-				static bool use_multiple_scattering_fresnel = PrincipledBSDFDoMetallicFresnelEnergyCompensation;
+				bool use_multiple_scattering_fresnel = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION);
 				if (ImGui::Checkbox("Do GGX Multiple scattering fresnel", &use_multiple_scattering_fresnel))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION, use_multiple_scattering_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2957,7 +2969,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 
 		HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-		static bool do_regularization = PrincipledBSDFDoMicrofacetRegularization;
+		bool do_regularization = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION);
 		if (ImGui::Checkbox("Do microfacet model regularization", &do_regularization))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, do_regularization ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2998,7 +3010,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	HardwareAccelerationSupport hwi_supported = m_renderer->device_supports_hardware_acceleration();
 
 	if (ImGui::CollapsingHeader("General Settings"))
@@ -3015,10 +3027,10 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		draw_russian_roulette_options();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		static bool reuse_bsdf_mis_ray = ReuseBSDFMISRay;
+		bool reuse_bsdf_mis_ray = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY);
 		if (ImGui::Checkbox("Reuse MIS BSDF ray", &reuse_bsdf_mis_ray))
 		{
-			kernel_options->set_macro_value(GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY, reuse_bsdf_mis_ray ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY, reuse_bsdf_mis_ray ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
@@ -3028,10 +3040,11 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			""
 			"There is virtually no point in disabling that option. This options i there only for "
 			"performance comparisons with and without reuse");
-		static bool do_direction_reuse = DoFirstBounceWarpDirectionReuse;
+
+		bool do_direction_reuse = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE);
 		if (ImGui::Checkbox("Warp BSDF sampled directions reuse", &do_direction_reuse))
 		{
-			kernel_options->set_macro_value(GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE, do_direction_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE, do_direction_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 			m_renderer->recompile_kernels();
 
 			m_render_window->set_render_dirty(true);
@@ -3039,10 +3052,10 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGuiRenderer::show_help_marker("Partial and experimental implementation of[Generate Coherent Rays Directly, Liu et al., 2024] "
 			"for reuse sampled directions on the first hit accross the threads of warps");
 
-		static bool delta_distrib_opti = PrincipledBSDFDeltaDistributionEvaluationOptimization;
+		bool delta_distrib_opti = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION);
 		if (ImGui::Checkbox("BSDF delta distribution optimization", &delta_distrib_opti))
 		{
-			kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION, delta_distrib_opti ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION, delta_distrib_opti ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 			m_renderer->recompile_kernels();
 
 			m_render_window->set_render_dirty(true);
@@ -3059,7 +3072,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			"Same with all the other lobes that can be delta distributions.\n\n"
 			""
 			"There is basically no point in disabling that, this is just for performance comparisons.");
-		if (!delta_distrib_opti && kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
+		if (!delta_distrib_opti && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
 		{
 			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
 			ImGuiRenderer::show_help_marker("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
@@ -3069,10 +3082,10 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 				"Enable \"BSDF delta distribution optimization\" to get rid of this issue.");
 		}
 
-		static bool direct_light_delta_distrib_opti = DirectLightSamplingDeltaDistributionOptimization;
+		bool direct_light_delta_distrib_opti = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION);
 		if (ImGui::Checkbox("NEE delta distribution optimization", &direct_light_delta_distrib_opti))
 		{
-			kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION, direct_light_delta_distrib_opti ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION, direct_light_delta_distrib_opti ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 			m_renderer->recompile_kernels();
 
 			m_render_window->set_render_dirty(true);
@@ -3089,11 +3102,11 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 	{
 		ImGui::TreePush("Ray-tracing settings tree");
 
-		static bool use_hardware_acceleration = kernel_options->has_macro("__USE_HWI__");
+		static bool use_hardware_acceleration = global_kernel_options->has_macro("__USE_HWI__");
 		ImGui::BeginDisabled(hwi_supported != HardwareAccelerationSupport::SUPPORTED);
 		if (ImGui::Checkbox("Use ray tracing hardware acceleration", &use_hardware_acceleration))
 		{
-			kernel_options->set_macro_value("__USE_HWI__", use_hardware_acceleration);
+			global_kernel_options->set_macro_value("__USE_HWI__", use_hardware_acceleration);
 
 			m_renderer->recompile_kernels();
 		}
