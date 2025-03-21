@@ -106,6 +106,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
                                                                                 int current_bounce)
 {
     out_pdf = 0.0f;
+
     if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
     {
         // Fast path for perfectly specular BRDF
@@ -136,6 +137,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
             return ColorRGB32F(MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE) * F / hippt::abs(local_to_light_direction.z);
         }
     }
+
+    if (local_to_light_direction.z < 0.0f)
+        // A direction that is below the surface is invalid for a microfacet ** BRDF **
+        return ColorRGB32F(0.0f);
 
     float alpha_x;
     float alpha_y;
