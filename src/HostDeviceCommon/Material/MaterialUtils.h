@@ -70,7 +70,10 @@ struct MaterialUtils
      */
     HIPRT_HOST_DEVICE static bool can_do_light_sampling(float material_roughness, float material_metallic, float material_specular_transmission, float material_coat, float material_coat_roughness, float material_second_roughness, float material_second_roughness_weight, float roughness_threshold)
     {
-#if DirectLightSamplingDeltaDistributionOptimization == KERNEL_OPTION_FALSE || PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE
+#if DirectLightSamplingDeltaDistributionOptimization == KERNEL_OPTION_FALSE
+        return true;
+#elif PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE
+        // If we have BSDF regularization, everything can do light sampling now
         return true;
 #endif
 

@@ -2970,15 +2970,15 @@ void ImGuiSettingsWindow::draw_quality_panel()
 
 		HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-		bool do_regularization = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION);
-		if (ImGui::Checkbox("Do microfacet model regularization", &do_regularization))
+		bool regularize_bsdf = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION);
+		if (ImGui::Checkbox("Do microfacet model regularization", &regularize_bsdf))
 		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, do_regularization ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, regularize_bsdf ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
 		}
-		if (do_regularization && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
+		if (regularize_bsdf && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
 		{
 			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
 			ImGuiRenderer::show_help_marker("Microfacet model regularization cannot be used with height-correlated masking shadowing");
@@ -2989,7 +2989,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			ImGui::TreePop();
 		}
 
-		if (do_regularization)
+		if (regularize_bsdf)
 		{
 			bool do_consistent_tau = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION);
 			if (ImGui::Checkbox("Consistent parameterization", &do_consistent_tau))
