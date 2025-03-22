@@ -57,7 +57,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         float cosine_at_evaluated_point;
 
         BSDFIncidentLightInfo incident_light_info = sample.flags_to_BSDF_incident_light_info();
-        BSDFContext bsdf_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, &incident_light_info, &ray_payload.volume_state, false, ray_payload.material, /* bounce. Always 0 for ReSTIR DI */ 0, 0.0f);
+        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, /* bounce. Always 0 for ReSTIR DI */ 0, 0.0f);
         ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
         cosine_at_evaluated_point = hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction);

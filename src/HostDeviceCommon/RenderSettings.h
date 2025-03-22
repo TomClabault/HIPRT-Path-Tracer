@@ -108,7 +108,7 @@ struct HIPRTRenderSettings
 	// 1 is direct light only.
 	int nb_bounces = 30;
 
-	bool do_russian_roulette = false;
+	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to russian roulette termination
@@ -210,7 +210,7 @@ struct HIPRTRenderSettings
 	int number_of_nee_samples = 1;
 
 	// Whether or not to do alpha testing for geometry with transparent base color textures
-	bool do_alpha_testing = true;
+	bool do_alpha_testing = false;
 	// At what bounce to stop doing alpha testing
 	// 
 	// A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera

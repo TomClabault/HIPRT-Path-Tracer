@@ -224,7 +224,7 @@
  *		luminance using an alias table for constant time sampling
  *		Good convergence and faster than ESS_BINARY_SEARCH
  */
-#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
+#define EnvmapSamplingStrategy ESS_NO_SAMPLING
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
@@ -247,8 +247,8 @@
  * 
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-//#define PathSamplingStrategy PSS_BSDF
-#define PathSamplingStrategy PSS_RESTIR_GI
+#define PathSamplingStrategy PSS_BSDF
+//#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
