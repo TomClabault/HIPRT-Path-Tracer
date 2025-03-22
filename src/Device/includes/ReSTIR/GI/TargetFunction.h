@@ -80,7 +80,7 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	if (!sample.is_envmap_path())
 	{
 		float sample_point_bsdf_pdf;
-		BSDFContext bsdf_context_sample_point(-incident_light_direction, sample.sample_point_shading_normal, sample.sample_point_geometric_normal, sample.incident_light_direction_at_sample_point, &sample.incident_light_info_at_sample_point, const_cast<RayVolumeState*>(&sample.sample_point_volume_state), false, sample.sample_point_material.unpack(), 1, 0.0f); // TODO accumulated-roughness
+		BSDFContext bsdf_context_sample_point(-incident_light_direction, sample.sample_point_shading_normal, sample.sample_point_geometric_normal, sample.incident_light_direction_at_sample_point, &sample.incident_light_info_at_sample_point, const_cast<RayVolumeState*>(&sample.sample_point_volume_state), false, sample.sample_point_material.unpack(), 1, /* we don't care about accumulated path roughness here */ 0.0f);
 		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context_sample_point, sample_point_bsdf_pdf);
 		ColorRGB32F incoming_radiance_to_visible_point_reconstructed;
 

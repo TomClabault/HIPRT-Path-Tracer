@@ -195,7 +195,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 /**
  * Returns true if a hit was found, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)

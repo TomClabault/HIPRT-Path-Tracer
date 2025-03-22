@@ -59,7 +59,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
 
             const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = true;
             BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
             ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
             const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = false;
 
@@ -88,7 +88,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
     float3 sampled_bsdf_direction;
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 
-    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
     bool intersection_found = false;
@@ -155,7 +155,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
                 float bsdf_pdf;
                 const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = true;
                 BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
                 ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
                 const_cast<HIPRTRenderData&>(render_data).bsdfs_data.microfacet_regularization.DEBUG_DO_REGULARIZATION = false;
 
@@ -192,7 +192,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
     ColorRGB32F bsdf_radiance_mis;
 
-    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
     bool intersection_found = false;

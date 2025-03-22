@@ -33,7 +33,7 @@ struct BSDFContext
 
 	/**
 	 * 'to_light_direction' is only needed if evaluating the BSDF // TODO create a separate eval context and sampling context
-	 * 'incident_light_info' can be passed nullptr if you don't care about what lobe the BSDF sampled of if you don't have the information about
+	 * 'incident_light_info' should be passed as BSDFIncidentLightInfo::NO_INFO if you don't care about what lobe the BSDF sampled of if you don't have the information about
 	 * what lobe the 'to_light_direction' comes from (during NEE light sampling for example)
 	 */
 	HIPRT_HOST_DEVICE BSDFContext(const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, const float3& to_light_direction,

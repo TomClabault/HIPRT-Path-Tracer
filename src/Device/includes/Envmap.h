@@ -199,7 +199,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
             {
                 float bsdf_pdf;
                 BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO; 
-                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
                 ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 #if EnvmapSamplingDoBSDFMIS
@@ -244,13 +244,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
     {
         // No BSDF MIS ray to reuse, let's sample the BSDF
         BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
         bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
     }
 #else
         // No BSDF MIS ray to reuse, let's sample the BSDF
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
         bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
 #endif
 

@@ -20,7 +20,7 @@ HIPRT_HOST_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRende
 		return reuse_mis_ray(render_data, -ray.direction, out_ray_payload, out_closest_hit_info, mis_reuse);
 	else
 		// Not tracing for the primary ray because this has already been done in the camera ray pass
-		return trace_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, out_ray_payload.bounce, random_number_generator);
+		return trace_main_path_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, out_ray_payload.bounce, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, ColorRGB32F& out_bsdf_color, float3& out_bounce_direction, float& out_bsdf_pdf, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
@@ -29,9 +29,11 @@ HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData&
         out_bsdf_color = reuse_mis_bsdf_sample(out_bounce_direction, out_bsdf_pdf, ray_payload, mis_reuse, out_sampled_light_info);
     else
     {
-        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), *out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), *out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
         out_bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
     }
+
+    ray_payload.accumulate_roughness(*out_sampled_light_info);
 
 #if DoFirstBounceWarpDirectionReuse
     warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);

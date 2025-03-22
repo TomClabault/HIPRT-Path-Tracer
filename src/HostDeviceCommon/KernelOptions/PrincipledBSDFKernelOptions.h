@@ -173,6 +173,11 @@
  */
 #define PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization KERNEL_OPTION_TRUE
 
+/**
+ * Whether or not to take the path's roughness into account when regularizing the BSDFs
+ */
+#define PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic KERNEL_OPTION_TRUE
+
 #endif // #ifndef __KERNELCC__
 
 #endif

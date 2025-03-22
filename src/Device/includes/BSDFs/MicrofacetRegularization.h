@@ -12,25 +12,58 @@
 
 struct MicrofacetRegularization
 {
-	HIPRT_HOST_DEVICE static float regularize_reflection(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, int sample_number)
+	HIPRT_HOST_DEVICE static float regularize_reflection(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, float accumulated_path_roughness, int sample_number)
 	{
 		if (!regularization_settings.DEBUG_DO_REGULARIZATION || PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE)
 			return initial_roughness;
 
 		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number + 1);
-		float regularized_roughness = sqrtf(sqrtf(1.0f / (consistent_tau * M_PI)));
+		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
+		// because the one of the paper requires the mean curvature of the surface and this requires additional
+		// per vertex data to be computed... Sounds a bit heavy just for path regularization
+		//
+		// So instead, we're just using the maximum roughness found on the path so far (which is
+		// 'accumulated_path_roughness') to decide whether or not we should use a strong regularization
+		// or not.
+		//
+		// Caustics only happen on diffuse surfaces (roughness 1). So for such a surface, tau should be
+		// unchanged i.e., we use the full regularization.
+		// 
+		// But for smooth surfaces (mirrors, clear glass), we shouldn't regularize anything to keep the sharpness
+		// of the glossy reflections.
+		//
+		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled 
+		float path_diffusion_tau = consistent_tau / hippt::max(accumulated_path_roughness, 1.0e-6f);
+
+		float regularized_roughness = sqrtf(sqrtf(1.0f / (path_diffusion_tau * M_PI)));
 
 		return hippt::max(initial_roughness, regularized_roughness);
 	}
 
-	HIPRT_HOST_DEVICE static float regularize_refraction(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, float eta_i, float eta_t, int sample_number)
+	HIPRT_HOST_DEVICE static float regularize_refraction(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, float accumulated_path_roughness, float eta_i, float eta_t, int sample_number)
 	{
 		if (!regularization_settings.DEBUG_DO_REGULARIZATION || PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE)
 			return initial_roughness;
 
-		// We're missing an inverse here
 		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number + 1);
-		float regularized_roughness = sqrtf(sqrtf(1.0f / (consistent_tau * M_PI * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
+		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
+		// because the one of the paper requires the mean curvature of the surface and this requires additional
+		// per vertex data to be computed... Sounds a bit heavy just for path regularization
+		//
+		// So instead, we're just using the maximum roughness found on the path so far (which is
+		// 'accumulated_path_roughness') to decide whether or not we should use a strong regularization
+		// or not.
+		//
+		// Caustics only happen on diffuse surfaces (roughness 1). So for such a surface, tau should be
+		// unchanged i.e., we use the full regularization.
+		// 
+		// But for smooth surfaces (mirrors, clear glass), we shouldn't regularize anything to keep the sharpness
+		// of the glossy reflections.
+		//
+		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled
+		float path_diffusion_tau = consistent_tau / hippt::max(accumulated_path_roughness, 1.0e-6f);
+
+		float regularized_roughness = sqrtf(sqrtf(1.0f / (path_diffusion_tau * M_PI * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
 		return hippt::max(initial_roughness, regularized_roughness);
 	}

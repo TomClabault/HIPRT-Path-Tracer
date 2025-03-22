@@ -215,7 +215,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             unsigned int seed_before = random_number_generator.m_state.seed;
 
             BSDFIncidentLightInfo incident_light_info;
-            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
             ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf_solid_angle, random_number_generator);
 
             // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
@@ -294,7 +294,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
         unsigned int state_before = random_number_generator.m_state.seed;
 
         BSDFIncidentLightInfo sampled_lobe_info;
-        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), sampled_lobe_info, ray_payload.volume_state, false, ray_payload.material, /* bounce */ 0, 0.0f); // TODO accumulated-roughness
+        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), sampled_lobe_info, ray_payload.volume_state, false, ray_payload.material, /* bounce */ 0, ray_payload.accumulated_roughness);
         ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_direction, bsdf_sample_pdf_solid_angle, random_number_generator);
 
         if (bsdf_sample_pdf_solid_angle > 0.0f)
