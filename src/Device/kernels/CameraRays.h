@@ -168,17 +168,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     RayPayload ray_payload;
 
     HitInfo closest_hit_info;
-    bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, /* bounce. Always 0 for camera rays*/ 0, random_number_generator);
+    bool intersection_found = trace_main_path_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, /* bounce. Always 0 for camera rays*/ 0, random_number_generator);
 
     if (intersection_found)
     {
-        if (ray_payload.material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
-        {
-            // TODO necessary? Not already handled by trace_ray() ?
-            closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
-            closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
-        }
-
         render_data.g_buffer.geometric_normals[pixel_index].pack(closest_hit_info.geometric_normal);
         render_data.g_buffer.shading_normals[pixel_index].pack(closest_hit_info.shading_normal);
 
