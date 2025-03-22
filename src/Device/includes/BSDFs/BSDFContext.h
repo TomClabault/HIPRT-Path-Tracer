@@ -32,7 +32,8 @@ struct BSDFContext
 	bool update_ray_volume_state = false;
 
 	// Whether or not to regularize the BSDF when sampling/evaluating it
-	bool regularize_bsdf = false;
+	MicrofacetRegularization::RegularizationMode bsdf_regularization_mode = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION;
+	//bool regularize_bsdf = false;
 
 	/**
 	 * 'to_light_direction' is only needed if evaluating the BSDF // TODO create a separate eval context and sampling context
@@ -44,11 +45,12 @@ struct BSDFContext
 		RayVolumeState& ray_volume_state, bool update_ray_volume_state,
 		const DeviceUnpackedEffectiveMaterial& material,
 		int current_bounce, float accumulated_path_roughness,
-		bool do_regularization = false) :
+		MicrofacetRegularization::RegularizationMode regularize_bsdf = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION) :
+
 		material(material), volume_state(ray_volume_state), 
 		view_direction(view_direction), shading_normal(shading_normal), geometric_normal(geometric_normal), to_light_direction(to_light_direction),
 		incident_light_info(incident_light_info), update_ray_volume_state(update_ray_volume_state),
-		current_bounce(current_bounce), accumulated_path_roughness(accumulated_path_roughness), regularize_bsdf(do_regularization) {}
+		current_bounce(current_bounce), accumulated_path_roughness(accumulated_path_roughness), bsdf_regularization_mode(regularize_bsdf) {}
 };
 
 #endif

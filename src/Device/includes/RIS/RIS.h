@@ -66,21 +66,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(HIPRTRender
         else
         {
             BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
+            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
             bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
-            cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
+            cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
         }
 
-        if (cosine_at_evaluated_point > 0.0f)
-        {
-            int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
-            ColorRGB32F sample_emission = render_data.buffers.materials_buffer.get_emission(material_index);
+        int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
+        ColorRGB32F sample_emission = render_data.buffers.materials_buffer.get_emission(material_index);
 
-            final_color = bsdf_color * reservoir.UCW * sample_emission * cosine_at_evaluated_point;
-            if (!sample.is_bsdf_sample)
-                final_color /= nee_plus_plus_context.unoccluded_probability;
-        }
+        final_color = bsdf_color * reservoir.UCW * sample_emission * cosine_at_evaluated_point;
+        if (!sample.is_bsdf_sample)
+            final_color /= nee_plus_plus_context.unoccluded_probability;
     }
 
     return final_color;
@@ -88,12 +85,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(HIPRTRender
 
 HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
-    // Pushing the intersection point outside the surface (if we're already outside)
-    // or inside the surface (if we're inside the surface)
-    // We'll use that intersection point as the origin of our shadow rays
-    bool inside_surface = hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
-    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
     int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
@@ -130,7 +121,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
             // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
             // for the dot product to be "properly" oriented.
-            cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
+            cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));
             if (cosine_at_evaluated_point > 0.0f && cosine_at_light_source > 1.0e-6f)
             {
                 // Converting the PDF from area measure to solid angle measure requires dividing by
@@ -151,7 +142,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                     // Only going to evaluate the target function if we passed the preliminary minimum light contribution test
 
                     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-                    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
+                    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
                     bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
                     ColorRGB32F light_contribution = bsdf_color * light_source_info.emission * cosine_at_evaluated_point;
@@ -207,9 +198,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float candidate_weight = 0.0f;
         float3 sampled_bsdf_direction;
         ColorRGB32F bsdf_color;
-        BSDFIncidentLightInfo incident_light_info;
 
-        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
+        BSDFIncidentLightInfo incident_light_info;
+        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
         bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
         bool hit_found = false;
@@ -246,22 +237,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 target_function = light_contribution.luminance();
 
                 float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
-                // If we refracting, drop the light PDF to 0
-                // 
-                // Why?
-                // 
-                // Because right now, we allow sampling BSDF refractions. This means that we can sample a light
-                // that is inside an object with a BSDF sample. However, a light sample to the same light cannot
-                // be sampled because there's is going to be the surface of the object we're currently on in-between.
-                // Basically, we are not allowing light sample refractions and so they should have a weight of 0 which
-                // is what we're doing here: the pdf of a light sample that refracts through a surface is 0.
-                //
-                // If not doing that, we're going to have bad MIS weights that don't sum up to 1
-                // (because the BSDF sample, that should have weight 1 [or to be precise: 1 / nb_bsdf_samples]
-                // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
-                // and this is going to cause darkening as the number of light samples grows)
-                light_pdf *= incident_light_info != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE;
-
                 bool contributes_enough = bsdf_sample_pdf <= 0.0f || check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf);
                 if (!contributes_enough)
                     target_function = 0.0f;
