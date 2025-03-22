@@ -8,11 +8,13 @@
 
 struct MicrofacetRegularizationSettings
 {
-	bool DEBUG_DO_REGULARIZATION = false;
-
 	// Maximum value that the microfacet distribution is allowed to take
 	// The regularized roughness will be derived from this value
 	float tau_0 = 30.0f;
+
+	// Minimum roughness. Useful when lights are so small that even camera ray jittering
+	// causes variance
+	float min_roughness = 0.0f;
 };
 
 #endif

@@ -31,6 +31,9 @@ struct BSDFContext
 	// nested dielectrics stack
 	bool update_ray_volume_state = false;
 
+	// Whether or not to regularize the BSDF when sampling/evaluating it
+	bool regularize_bsdf = false;
+
 	/**
 	 * 'to_light_direction' is only needed if evaluating the BSDF // TODO create a separate eval context and sampling context
 	 * 'incident_light_info' should be passed as BSDFIncidentLightInfo::NO_INFO if you don't care about what lobe the BSDF sampled of if you don't have the information about
@@ -40,11 +43,12 @@ struct BSDFContext
 		BSDFIncidentLightInfo& incident_light_info,
 		RayVolumeState& ray_volume_state, bool update_ray_volume_state,
 		const DeviceUnpackedEffectiveMaterial& material,
-		int current_bounce, float accumulated_path_roughness) :
+		int current_bounce, float accumulated_path_roughness,
+		bool do_regularization = false) :
 		material(material), volume_state(ray_volume_state), 
 		view_direction(view_direction), shading_normal(shading_normal), geometric_normal(geometric_normal), to_light_direction(to_light_direction),
 		incident_light_info(incident_light_info), update_ray_volume_state(update_ray_volume_state),
-		current_bounce(current_bounce), accumulated_path_roughness(accumulated_path_roughness) {}
+		current_bounce(current_bounce), accumulated_path_roughness(accumulated_path_roughness), regularize_bsdf(do_regularization) {}
 };
 
 #endif
