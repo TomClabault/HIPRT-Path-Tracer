@@ -2978,46 +2978,50 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
 		}
-		if (do_regularization && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
-		{
-			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-			ImGuiRenderer::show_help_marker("Microfacet model regularization cannot be used with height-correlated masking shadowing");
 
-			ImGui::TreePush("Use height uncorrelated button tree");
-			if (ImGui::Button("Switch to height-uncorrelated masking shadowing"))
-				render_data.bsdfs_data.GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightUncorrelated;
-			ImGui::TreePop();
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		bool do_consistent_tau = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION);
-		if (ImGui::Checkbox("Consistent parameterization", &do_consistent_tau))
+		if (do_regularization)
 		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION, do_consistent_tau ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			if (do_regularization && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
+			{
+				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
+				ImGuiRenderer::show_help_marker("Microfacet model regularization cannot be used with height-correlated masking shadowing");
 
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("With this feature enabled, tau will refine over time to help sharpen caustics a bit"
-			" while keeping variance in check.");
-		if (do_consistent_tau)
-		{
-			ImGui::TreePush("Consistent tau tree");
-			ImGui::Text("Current tau0: %f", MicrofacetRegularization::consistent_tau(render_data.bsdfs_data.microfacet_regularization.tau_0, render_data.render_settings.sample_number));
-			ImGui::TreePop();
-		}
-		bool do_diffusion_heuristic = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC);
-		if (ImGui::Checkbox("Use diffusion heuristic", &do_diffusion_heuristic))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC, do_consistent_tau ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				ImGui::TreePush("Use height uncorrelated button tree");
+				if (ImGui::Button("Switch to height-uncorrelated masking shadowing"))
+					render_data.bsdfs_data.GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightUncorrelated;
+				ImGui::TreePop();
+			}
 
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			bool do_consistent_tau = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION);
+			if (ImGui::Checkbox("Consistent parameterization", &do_consistent_tau))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION, do_consistent_tau ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("With this feature enabled, tau will refine over time to help sharpen caustics a bit"
+				" while keeping variance in check.");
+			if (do_consistent_tau)
+			{
+				ImGui::TreePush("Consistent tau tree");
+				ImGui::Text("Current tau0: %f", MicrofacetRegularization::consistent_tau(render_data.bsdfs_data.microfacet_regularization.tau_0, render_data.render_settings.sample_number));
+				ImGui::TreePop();
+			}
+			bool do_diffusion_heuristic = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC);
+			if (ImGui::Checkbox("Use diffusion heuristic", &do_diffusion_heuristic))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC, do_diffusion_heuristic ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to take the path's roughness into account when regularizing the BSDFs.\n"
+				"This feature is essential to keep highlights sharp on directly visible surfaces.");
+			if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
+				m_render_window->set_render_dirty(true);
 		}
-		ImGuiRenderer::show_help_marker("Whether or not to take the path's roughness into account when regularizing the BSDFs.\n"
-			"This feature is essential to keep highlights sharp on directly visible surfaces.");
-		if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
-			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

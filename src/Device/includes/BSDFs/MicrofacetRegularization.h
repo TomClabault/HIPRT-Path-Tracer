@@ -35,7 +35,13 @@ struct MicrofacetRegularization
 		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled 
 		float path_diffusion_tau = consistent_tau / hippt::max(accumulated_path_roughness, 1.0e-6f);
 
-		float regularized_roughness = sqrtf(sqrtf(1.0f / (path_diffusion_tau * M_PI)));
+#if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
+		float final_tau = path_diffusion_tau;
+#else
+		float final_tau = consistent_tau;
+#endif
+
+		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * M_PI)));
 
 		return hippt::max(initial_roughness, regularized_roughness);
 	}
@@ -63,7 +69,13 @@ struct MicrofacetRegularization
 		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled
 		float path_diffusion_tau = consistent_tau / hippt::max(accumulated_path_roughness, 1.0e-6f);
 
-		float regularized_roughness = sqrtf(sqrtf(1.0f / (path_diffusion_tau * M_PI * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
+#if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
+		float final_tau = path_diffusion_tau;
+#else
+		float final_tau = consistent_tau;
+#endif
+
+		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * M_PI * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
 		return hippt::max(initial_roughness, regularized_roughness);
 	}
