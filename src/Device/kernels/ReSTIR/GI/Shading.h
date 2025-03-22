@@ -139,7 +139,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             //  - view direction: towards the camera
             //  - incident light direction: towards the sample point
             float bsdf_pdf_first_hit;
-            BSDFContext bsdf_first_hit_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, geometric_normal, restir_resampled_indirect_direction, &resampling_reservoir.sample.incident_light_info_at_visible_point, &ray_payload.volume_state, false, ray_payload.material, 0, 0.0f);
+            BSDFContext bsdf_first_hit_context(view_direction, closest_hit_info.shading_normal, geometric_normal, restir_resampled_indirect_direction, resampling_reservoir.sample.incident_light_info_at_visible_point, ray_payload.volume_state, false, ray_payload.material, 0, 0.0f);
             ColorRGB32F bsdf_color_first_hit = bsdf_dispatcher_eval(render_data, bsdf_first_hit_context, bsdf_pdf_first_hit, random_number_generator);
 
             ColorRGB32F first_hit_throughput;
@@ -177,7 +177,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                         //  - view direction: towards the first hit
                         //  - incident light direction: towards what's after the sample point (i.e. the second bounce direction)
                         float bsdf_pdf_second_hit;
-                        BSDFContext bsdf_second_hit_context = BSDFContext::create_context(-restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, &resampling_reservoir.sample.incident_light_info_at_sample_point, &ray_payload.volume_state, false, ray_payload.material, 1, 0.0f);
+                        BSDFContext bsdf_second_hit_context(-restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, resampling_reservoir.sample.incident_light_info_at_sample_point, ray_payload.volume_state, false, ray_payload.material, 1, 0.0f);
                         ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, bsdf_second_hit_context, bsdf_pdf_second_hit, random_number_generator);
                         ColorRGB32F second_hit_throughput;
                         if (bsdf_pdf_second_hit > 0.0f)

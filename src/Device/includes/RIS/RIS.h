@@ -65,7 +65,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(HIPRTRender
         }
         else
         {
-            BSDFContext bsdf_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized, nullptr, &ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+            BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
             bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
             cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
@@ -149,7 +150,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 {
                     // Only going to evaluate the target function if we passed the preliminary minimum light contribution test
 
-                    BSDFContext bsdf_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, nullptr, &ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+                    BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+                    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
                     bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
                     ColorRGB32F light_contribution = bsdf_color * light_source_info.emission * cosine_at_evaluated_point;
@@ -207,7 +209,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         ColorRGB32F bsdf_color;
         BSDFIncidentLightInfo incident_light_info;
 
-        BSDFContext bsdf_context = BSDFContext::create_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), &incident_light_info, &ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
+        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, 0.0f); // TODO accumulated-roughness
         bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
         bool hit_found = false;

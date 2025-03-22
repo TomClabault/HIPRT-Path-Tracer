@@ -37,7 +37,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 		return 0.0f;
 
 	BSDFIncidentLightInfo incident_light_info = sample.flags_to_BSDF_incident_light_info();
-	BSDFContext bsdf_context = BSDFContext::create_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, sample_direction, &incident_light_info, &surface.ray_volume_state, false, surface.material, /* bounce. Always 0 for ReSTIR DI */ 0, 0.0f);
+	BSDFContext bsdf_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, sample_direction, incident_light_info, surface.ray_volume_state, false, surface.material, /* bounce. Always 0 for ReSTIR DI */ 0, 0.0f);
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 	ColorRGB32F sample_emission;

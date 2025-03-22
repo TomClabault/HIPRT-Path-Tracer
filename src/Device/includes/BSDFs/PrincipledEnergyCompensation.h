@@ -159,14 +159,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_monte_carlo_directional_al
     white_material.sheen_color = ColorRGB32F(1.0f);
     white_material.specular_color = ColorRGB32F(1.0f);
 
-    bsdf_context.material = white_material;
 
     unsigned char samples = bsdf_context.material.energy_preservation_monte_carlo_samples;
     for (int i = 0; i < samples; i++)
     {
         float pdf;
         float3 sampled_direction;
-        ColorRGB32F bsdf_directional_albedo_sample = principled_bsdf_sample(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
+        BSDFContext white_material_context(bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.geometric_normal, bsdf_context.to_light_direction, bsdf_context.incident_light_info, bsdf_context.volume_state, bsdf_context.update_ray_volume_state, white_material, bsdf_context.current_bounce, bsdf_context.accumulated_path_roughness);
+        ColorRGB32F bsdf_directional_albedo_sample = principled_bsdf_sample(render_data, white_material_context, sampled_direction, pdf, random_number_generator);
         if (pdf != 0.0f)
             // Correct sampled direction
             // 
