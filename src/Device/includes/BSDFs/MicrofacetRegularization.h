@@ -14,8 +14,9 @@ struct MicrofacetRegularization
 {
 	HIPRT_HOST_DEVICE static float regularize_reflection(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, float accumulated_path_roughness, int sample_number)
 	{
-		if (!regularization_settings.DEBUG_DO_REGULARIZATION || PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE)
-			return initial_roughness;
+#if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
+		return initial_roughness;
+#endif
 
 		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number + 1);
 		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
@@ -43,13 +44,14 @@ struct MicrofacetRegularization
 
 		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * M_PI)));
 
-		return hippt::max(initial_roughness, regularized_roughness);
+		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
 
 	HIPRT_HOST_DEVICE static float regularize_refraction(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, float accumulated_path_roughness, float eta_i, float eta_t, int sample_number)
 	{
-		if (!regularization_settings.DEBUG_DO_REGULARIZATION || PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE)
+#if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 			return initial_roughness;
+#endif
 
 		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number + 1);
 		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
@@ -77,7 +79,7 @@ struct MicrofacetRegularization
 
 		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * M_PI * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
-		return hippt::max(initial_roughness, regularized_roughness);
+		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
 
 	/**
