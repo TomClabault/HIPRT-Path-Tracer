@@ -19,8 +19,10 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
+void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
 {
+    ThreadManager::set_monothread(true);
+
     const aiScene* scene;
     scene = assimp_importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
     if (scene == nullptr)
@@ -29,6 +31,8 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
         g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Falling back to default scene...");
 
         scene = assimp_importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+        scene_filepath = CommandlineArguments::DEFAULT_SCENE;
+
         if (scene == nullptr)
         {
             // Couldn't even load the default scene either

@@ -7,6 +7,9 @@
 #include "Compiler/GPUKernel.h"
 #include "Threads/ThreadFunctions.h"
 
+// For replacing backslashes in texture paths
+#include <regex>
+
 void ThreadFunctions::compile_kernel(GPUKernel& kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
     kernel.compile(hiprt_orochi_ctx, func_name_sets);
@@ -36,13 +39,26 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 {
     // Preparing the scene_filepath so that it's ready to be appended with the texture name
     std::string corrected_filepath;
+    // Starting with the .GLTF/.OBJ/.whatever-scene-format file
     corrected_filepath = scene_path;
-    corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('/') + 1);
+    // Removing the name of the .GLTF / .OBJ / .XXX file by looking at the *last* '/' or '\'
+    if (corrected_filepath.find('/') != std::string::npos)
+        corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('/') + 1);
+    else if (corrected_filepath.find('\\') != std::string::npos)
+        corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('\\') + 1);
+    // Converting the path to absolute
+    corrected_filepath = std::filesystem::absolute(corrected_filepath).string();
+    // Replacing backslashes by forward slashes
+    corrected_filepath = std::regex_replace(corrected_filepath, std::regex("\\\\"), "/"); // replace 'def' -> 'klm'
 
     // While loop here so that a single thread can parse multiple textures
     while (thread_index < parsed_scene.textures.size())
     {
-        std::string full_path = corrected_filepath + tex_paths[thread_index].second;
+        // Taking the name of the texture
+        std::string texture_file_path = tex_paths[thread_index].second;
+        // Adding the name of the texture to the absolute path of the scene file such that
+        // we're looking for textures next to the GLTF file
+        std::string full_path = corrected_filepath + texture_file_path;
         aiTextureType type = tex_paths[thread_index].first;
         int nb_channels;
 

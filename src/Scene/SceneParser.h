@@ -166,7 +166,7 @@ public:
      * Without this parameter, this would result in rendering the scene with an aspect different of 16:9 in the default 
      * framebuffer of the renderer which is 16:9, resulting in deformations.
      */
-    static void parse_scene_file(const std::string& filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options);
+    static void parse_scene_file(std::string filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options);
 
 private:
 

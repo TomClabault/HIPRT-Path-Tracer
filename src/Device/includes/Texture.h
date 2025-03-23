@@ -47,7 +47,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
     if (flip_uv_y)
         v = -v;
 
-    if (reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index] == NULL)
+    if (reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index] == 0)
         return ColorRGBA32F(0.0f);
 
     rgba = ColorRGBA32F(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], u, v));
