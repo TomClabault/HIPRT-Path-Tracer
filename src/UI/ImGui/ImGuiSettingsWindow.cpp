@@ -3021,7 +3021,9 @@ void ImGuiSettingsWindow::draw_quality_panel()
 
 			if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
 				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("Main parameter to control the regularization. The lower this parameter, the stronger the regularization.");
+			ImGuiRenderer::show_help_marker("Main parameter to control the regularization. The lower this parameter, the stronger the regularization.\n\n"
+				"Note that if \"Consistent parameterization\" is enabled, this parameter will be adjusted dynamically (starting from the given value) based on the number "
+				"of samples rendered so far.");
 			if (ImGui::SliderFloat("Minimum roughness", &render_data.bsdfs_data.microfacet_regularization.min_roughness, 0.0f, 1.0f))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("All materials in the scene will at least have that much roughness.\n\n"
