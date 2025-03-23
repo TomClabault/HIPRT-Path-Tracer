@@ -19,11 +19,14 @@ struct MicrofacetRegularization
 		REGULARIZATION_MIS = 2, // Should be used when the regularized BSDF PDF ** is ** going to be used in a MIS weight or if this is for evaluating a BSDF whose sample comes from MIS sampling
 	};
 
-	HIPRT_HOST_DEVICE static float regularize_reflection(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, float accumulated_path_roughness, int sample_number)
+	HIPRT_HOST_DEVICE static float regularize_reflection(const MicrofacetRegularizationSettings& regularization_settings, RegularizationMode regularization_mode, float initial_roughness, float accumulated_path_roughness, int sample_number)
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
 #endif
+
+		if (regularization_mode == RegularizationMode::NO_REGULARIZATION)
+			return initial_roughness;
 
 		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number);
 		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
@@ -54,11 +57,14 @@ struct MicrofacetRegularization
 		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
 
-	HIPRT_HOST_DEVICE static float regularize_refraction(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, float accumulated_path_roughness, float eta_i, float eta_t, int sample_number)
+	HIPRT_HOST_DEVICE static float regularize_refraction(const MicrofacetRegularizationSettings& regularization_settings, RegularizationMode regularization_mode, float initial_roughness, float accumulated_path_roughness, float eta_i, float eta_t, int sample_number)
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
 #endif
+
+		if (regularization_mode == RegularizationMode::NO_REGULARIZATION)
+			return initial_roughness;
 
 		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number + 1);
 		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
@@ -89,11 +95,14 @@ struct MicrofacetRegularization
 		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
 
-	HIPRT_HOST_DEVICE static float regularize_mix_reflection_refraction(const MicrofacetRegularizationSettings& regularization_settings, float initial_roughness, float accumulated_path_roughness, float eta_i, float eta_t, int sample_number)
+	HIPRT_HOST_DEVICE static float regularize_mix_reflection_refraction(const MicrofacetRegularizationSettings& regularization_settings, RegularizationMode regularization_mode, float initial_roughness, float accumulated_path_roughness, float eta_i, float eta_t, int sample_number)
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
 #endif
+
+		if (regularization_mode == RegularizationMode::NO_REGULARIZATION)
+			return initial_roughness;
 
 		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number);
 		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper

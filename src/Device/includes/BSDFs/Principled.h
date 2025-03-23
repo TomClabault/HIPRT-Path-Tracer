@@ -52,7 +52,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRende
 {
     // The coat lobe is just a microfacet lobe
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
-    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.material.coat_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
     // We're only evaluating the coat lobe if, either:
     // - The incident light direction was sampled from the clearcoat lobe
@@ -77,7 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRende
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_coat_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.material.coat_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
     return microfacet_GGX_sample_reflection(regularized_roughness, bsdf_context.material.coat_anisotropy, local_view_direction, random_number_generator);
 }
 
@@ -98,9 +98,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
                                                                     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, 
                                                                     float& pdf)
 {
-    float regularized_roughness = roughness;
-    if (bsdf_context.bsdf_regularization_mode != MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-        regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
     MaterialUtils::SpecularDeltaReflectionSampled metal_delta_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, regularized_roughness, anisotropy, bsdf_context.incident_light_info);
     if (metal_delta_direction_sampled == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
@@ -131,9 +129,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_metallic_sample(const HIPRTRenderData& render_data, const BSDFContext& bsdf_context, float roughness, float anisotropy,
     const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    float regularized_roughness = roughness;
-    if (bsdf_context.bsdf_regularization_mode != MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-        regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
     return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator);
 }
@@ -437,9 +433,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         float regularized_roughness = scaled_roughness;
         if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
             // If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights are correct
-            regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(render_data.bsdfs_data.microfacet_regularization, scaled_roughness, bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+            regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness, bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
         else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-            regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, scaled_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+            regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
         MaterialUtils::SpecularDeltaReflectionSampled delta_glass_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
@@ -461,9 +457,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         float regularized_roughness = scaled_roughness;
         if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
             // If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights are correct
-            regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(render_data.bsdfs_data.microfacet_regularization, scaled_roughness, bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+            regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness, bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
         else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-            regularized_roughness = MicrofacetRegularization::regularize_refraction(render_data.bsdfs_data.microfacet_regularization, scaled_roughness, bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+            regularized_roughness = MicrofacetRegularization::regularize_refraction(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness, bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 
         color = torrance_sparrow_GGX_eval_refract(bsdf_context.material, regularized_roughness, relative_eta, F,
             local_view_direction, local_to_light_direction, local_half_vector, 
@@ -534,7 +530,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const HIPRTRenderD
         // 
         // So we take the average. This is going to be over-roughened for reflection and under-roughened
         // for refractions but this should still be effective
-        thin_walled_scaled_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(render_data.bsdfs_data.microfacet_regularization, thin_walled_scaled_roughness, bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+        thin_walled_scaled_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, thin_walled_scaled_roughness, bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 
     float alpha_x, alpha_y;
     MaterialUtils::get_alphas(thin_walled_scaled_roughness, bsdf_context.material.anisotropy, alpha_x, alpha_y);
