@@ -21,6 +21,9 @@
 // TODO commit regularization min roughness + test it
 // TODO why is default integrator broken with uniform light sampling since we're passing bsdf context to glass_sample and glass_eval?
 // TODO fix p1-environment-light brightening at 1SPP
+// TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
+// TODO minimum coat/specular sampling proba to avoid bad convergence on glossy highlights
+// TODO minimum fresnel sampling proba for camera rays? to avoid bad convergence on glossy highlights
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;

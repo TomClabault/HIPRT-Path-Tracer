@@ -53,7 +53,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRende
     // The coat lobe is just a microfacet lobe
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
     float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-
+     
     // We're only evaluating the coat lobe if, either:
     // - The incident light direction was sampled from the clearcoat lobe
     // - The coat is not a delta distribution (not perfectly smooth)
@@ -231,14 +231,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const Devi
  * 'relative_ior' is eta_t / eta_i with 'eta_t' the IOR of the glossy layer and
  * 'eta_i' the IOR of 
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float relative_ior, 
-                                                                    const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, 
-                                                                    float& pdf, BSDFIncidentLightInfo incident_light_info,
-                                                                    int current_bounce)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float relative_ior, 
+                                                                    const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
 {
-    ColorRGB32F F = principled_specular_fresnel(material, relative_ior, hippt::dot(local_to_light_direction, local_half_vector));
-
-    MaterialUtils::SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled = MaterialUtils::is_specular_delta_reflection_sampled(material, material.roughness, material.anisotropy, incident_light_info);
+    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+    MaterialUtils::SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
     // The specular lobe is just another GGX lobe
     // 
@@ -246,17 +243,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(const HIPRTR
     // (hence the torrance_sparrow_GGX_eval_reflect<0>) because energy compensation
     // for the specular layer is handled for the glossy based (specular + diffuse lobe)
     // as a whole, not just in the specular layer 
-    ColorRGB32F specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, material.roughness, material.anisotropy, /* do_energy_compensation */ false, F, 
+    ColorRGB32F F = principled_specular_fresnel(bsdf_context.material, relative_ior, hippt::dot(local_to_light_direction, local_half_vector));
+    ColorRGB32F specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, regularized_roughness, bsdf_context.material.anisotropy, /* do_energy_compensation */ false, F,
                                                                 local_view_direction, local_to_light_direction, local_half_vector, 
                                                                 pdf, is_specular_delta_reflection_sampled,
-                                                                current_bounce);
+                                                                bsdf_context.current_bounce);
 
     return specular;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_specular_sample(float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_specular_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    return microfacet_GGX_sample_reflection(roughness, anisotropy, local_view_direction, random_number_generator);
+    float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+    return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_beer_absorption(const HIPRTRenderData& render_data, RayVolumeState& ray_volume_state)
@@ -985,13 +984,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_compute_darkening
     return darkening;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material,
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HIPRTRenderData& render_data, BSDFContext& bsdf_context,
                                                                         const float3& local_view_direction, const float3 local_to_light_direction, 
                                                                         const float3& local_half_vector, const float3& shading_normal, 
                                                                         float incident_medium_ior, float specular_weight, bool refracting, float specular_proba, 
-                                                                        ColorRGB32F& layers_throughput, float& out_cumulative_pdf,
-                                                                        BSDFIncidentLightInfo incident_light_info,
-                                                                        int current_bounce)
+                                                                        ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     // To even attempt the evaluation of the specular lobe, we need the specular weight to be non-zero
     // 
@@ -1005,20 +1002,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
     //
     // This applies to diffuse transmission but doesn't apply to glass though (for example) because the glass layer
     // isn't "below" the specular layer, it's "adjacent" to it.
-    if (specular_weight > 0.0f && ((local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || (refracting && incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE)))
+    if (specular_weight > 0.0f && ((local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || (refracting && bsdf_context.incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE)))
     {
-        float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
+        float relative_ior = principled_specular_relative_ior(bsdf_context.material, incident_medium_ior);
 
         float specular_pdf = 0.0f;
         ColorRGB32F contribution;
         
-        contribution = principled_specular_eval(render_data, material,
+        contribution = principled_specular_eval(render_data, bsdf_context,
                                                 relative_ior, local_view_direction, local_to_light_direction, local_half_vector, 
-                                                specular_pdf, incident_light_info,
-                                                current_bounce);
+                                                specular_pdf);
 
         // Tinting the specular reflection color
-        contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);
+        contribution *= hippt::lerp(ColorRGB32F(1.0f), bsdf_context.material.specular_tint * bsdf_context.material.specular_color, bsdf_context.material.specular);
         contribution *= specular_weight;
         contribution *= layers_throughput;
 
@@ -1046,7 +1042,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         //
         // We need the hippt::abs() here because we may be evaluating the fresnel terms with light directions/view 
         // directions that are below the surface because we're evaluating the specular lobe for a refracted direction
-        ColorRGB32F light_dir_fresnel = principled_specular_fresnel(material, relative_ior, hippt::abs(local_to_light_direction.z));
+        ColorRGB32F light_dir_fresnel = principled_specular_fresnel(bsdf_context.material, relative_ior, hippt::abs(local_to_light_direction.z));
         // If we have a diffuse transmission lobe below the specular instead of the diffuse lobe, then we cannot
         // have TIR in between the diffuse lobe and the specular lobe (inside the specular layer) because the diffuse
         // transmission lobe is a BTDF only, it doesn't reflect any light --> no TIR
@@ -1054,7 +1050,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // We're cancelling the light_dir_fresnel instead of the view_dir_fresnel (which is the one that models the TIR)
         // though because otherwise it seems to break, not sure why. The handling of fresnel effects when light is coming
         // from below the specular (or coat lobe) lobe isn't perfect yet
-        light_dir_fresnel *= (1.0f - material.diffuse_transmission);
+        light_dir_fresnel *= (1.0f - bsdf_context.material.diffuse_transmission);
         layer_below_attenuation *= ColorRGB32F(1.0f) - light_dir_fresnel;
 
         // Also, when light reflects off of the layer below the specular layer, some of that reflected light
@@ -1065,20 +1061,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // computing that fresnel with the direction reflected from the base layer or with the viewer direction
         // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
         // base layer, we're using the view direction instead
-        ColorRGB32F view_dir_fresnel = principled_specular_fresnel(material, relative_ior, hippt::abs(local_view_direction.z));
+        ColorRGB32F view_dir_fresnel = principled_specular_fresnel(bsdf_context.material, relative_ior, hippt::abs(local_view_direction.z));
         layer_below_attenuation *= ColorRGB32F(1.0f) - view_dir_fresnel;
 
         // Taking into account the total internal reflection inside the specular layer 
         // (bouncing on the base diffuse layer). We're using the luminance of the fresnel here because
         // the specular layer may have thin film interference which colors the fresnel but
         // we're going to assume that the fresnel is non-colored and thus we just take the luminance
-        layer_below_attenuation *= principled_specular_compute_darkening(material, relative_ior, view_dir_fresnel.luminance());
+        layer_below_attenuation *= principled_specular_compute_darkening(bsdf_context.material, relative_ior, view_dir_fresnel.luminance());
 
         // If the specular layer has 0 weight, we should not get any light absorption.
         // But if the specular layer has 1 weight, we should get the full absorption that we
         // computed in 'layer_below_attenuation' so we're lerping between no absorption
         // and full absorption based on the material specular weight.
-        layer_below_attenuation = hippt::lerp(ColorRGB32F(1.0f), layer_below_attenuation, material.specular);
+        layer_below_attenuation = hippt::lerp(ColorRGB32F(1.0f), layer_below_attenuation, bsdf_context.material.specular);
 
         layers_throughput *= layer_below_attenuation;
 
@@ -1115,24 +1111,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_diffuse_layer(const HIP
  * The "glossy base" is the combination of a specular GGX layer
  * on top of a diffuse BRDF.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material,
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRTRenderData& render_data, BSDFContext& bsdf_context,
                                                                      const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, 
                                                                      const float3& local_view_direction_rotated, const float3 local_to_light_direction_rotated, const float3& local_half_vector_rotated,
                                                                      const float3& shading_normal, 
                                                                      float incident_medium_ior, float diffuse_weight, float specular_weight, bool refracting,
                                                                      float diffuse_proba_norm, float specular_proba_norm, 
-                                                                     ColorRGB32F& layers_throughput, float& out_cumulative_pdf,
-                                                                     BSDFIncidentLightInfo incident_light_info, int current_bounce)
+                                                                     ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     ColorRGB32F glossy_base_contribution = ColorRGB32F(0.0f);
 
     // Evaluating the two components of the glossy base
-    glossy_base_contribution += internal_eval_specular_layer(render_data, material,
+    glossy_base_contribution += internal_eval_specular_layer(render_data, bsdf_context,
         local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, shading_normal, 
-        incident_medium_ior, specular_weight, refracting, specular_proba_norm, layers_throughput, out_cumulative_pdf, incident_light_info, current_bounce);
-    glossy_base_contribution += internal_eval_diffuse_layer(render_data, incident_medium_ior, material, local_view_direction, local_to_light_direction, diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
+        incident_medium_ior, specular_weight, refracting, specular_proba_norm, layers_throughput, out_cumulative_pdf);
+    glossy_base_contribution += internal_eval_diffuse_layer(render_data, incident_medium_ior, bsdf_context.material, local_view_direction, local_to_light_direction, diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
 
-    float glossy_base_energy_compensation = get_principled_energy_compensation_glossy_base(render_data, material, incident_medium_ior, local_view_direction.z, current_bounce);
+    float glossy_base_energy_compensation = get_principled_energy_compensation_glossy_base(render_data, bsdf_context.material, incident_medium_ior, local_view_direction.z, bsdf_context.current_bounce);
     return glossy_base_contribution / glossy_base_energy_compensation;
 }
 
@@ -1319,13 +1314,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // the specular layer so we don't want the specular-layer-fresnel-attenuation
     // there
     final_color += internal_eval_glass_layer(render_data, bsdf_context, local_view_direction_rotated, local_to_light_direction_rotated, glass_weight, glass_proba, layers_throughput, pdf);
-    final_color += internal_eval_glossy_base(render_data, bsdf_context.material,
+    final_color += internal_eval_glossy_base(render_data, bsdf_context,
                                              local_view_direction, local_to_light_direction, local_half_vector, 
                                              local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, bsdf_context.shading_normal,
                                              incident_medium_ior, diffuse_weight * !refracting, specular_weight, refracting, 
                                              diffuse_proba, specular_proba, 
-                                             layers_throughput, pdf, 
-                                             bsdf_context.incident_light_info, bsdf_context.current_bounce);
+                                             layers_throughput, pdf);
     final_color += internal_eval_diffuse_transmission_layer(render_data, bsdf_context.material,
                                                             bsdf_context.volume_state, bsdf_context.update_ray_volume_state,
                                                             local_view_direction, local_to_light_direction, diffuse_transmission_weight, diffuse_transmission_proba, layers_throughput, pdf);
@@ -1440,7 +1434,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     {
         // Sampling the specular lobe
         bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE;
-        output_direction = local_to_world_frame(TR, BR, bsdf_context.shading_normal, principled_specular_sample(bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated, random_number_generator));
+        output_direction = local_to_world_frame(TR, BR, bsdf_context.shading_normal, principled_specular_sample(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated, random_number_generator));
     }
     else if (rand_1 < cdf5)
     {
