@@ -914,17 +914,17 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	take_kernel_compilation_priority();
 
 	for (auto& name_to_kenel : m_kernels)
-		name_to_kenel.second.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
+		name_to_kenel.second.compile(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
-		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
-	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, true, use_cache);
+		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
+	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, false, use_cache);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
-		m_nee_plus_plus.recompile(m_hiprt_orochi_ctx);
+		m_nee_plus_plus.recompile(m_hiprt_orochi_ctx, false, use_cache);
 
-	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
+	m_ray_volume_state_byte_size_kernel.compile(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
 	// The main thread is done with the compilation, we can release the other threads
 	// so that they can continue compiling (background compilation of shaders most likely)
