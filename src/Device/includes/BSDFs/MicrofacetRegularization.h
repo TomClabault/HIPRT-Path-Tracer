@@ -25,7 +25,7 @@ struct MicrofacetRegularization
 		return initial_roughness;
 #endif
 
-		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number + 1);
+		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number);
 		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
 		// because the one of the paper requires the mean curvature of the surface and this requires additional
 		// per vertex data to be computed... Sounds a bit heavy just for path regularization
@@ -95,7 +95,7 @@ struct MicrofacetRegularization
 		return initial_roughness;
 #endif
 
-		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number + 1);
+		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number);
 		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
 		// because the one of the paper requires the mean curvature of the surface and this requires additional
 		// per vertex data to be computed... Sounds a bit heavy just for path regularization

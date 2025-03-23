@@ -210,7 +210,7 @@ struct HIPRTRenderSettings
 	int number_of_nee_samples = 1;
 
 	// Whether or not to do alpha testing for geometry with transparent base color textures
-	bool do_alpha_testing = false;
+	bool do_alpha_testing = true;
 	// At what bounce to stop doing alpha testing
 	// 
 	// A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera
