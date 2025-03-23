@@ -47,6 +47,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
     if (flip_uv_y)
         v = -v;
 
+    if (reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index] == NULL)
+        return ColorRGBA32F(0.0f);
+
     rgba = ColorRGBA32F(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], u, v));
 #else
     const ImageType& texture = reinterpret_cast<const ImageType*>(texture_buffer)[texture_index];
@@ -139,6 +142,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F internal_bilinear_sample_on_3D_textu
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3 texture_dims, float3 uvw, bool hardware_interpolation = false)
 {
+    if (texture == nullptr)
+        return ColorRGB32F(0.0f);
+
 #ifdef __KERNELCC__
     // Sampling in repeat mode so we're just keeping the fractional part
     float u = uvw.x;
