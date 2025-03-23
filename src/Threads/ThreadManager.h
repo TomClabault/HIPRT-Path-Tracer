@@ -131,7 +131,7 @@ public:
 				// There seems to be some very rare bug in the ThreadManager where sometimes, 
 				// we're trying to join (with thraed.join()) below a thread that has a NULL
 				// handle from the 'ParseEmissiveTrianglesKey' thread key
-				if (thread.native_handle() == nullptr)
+				if (thread.native_handle() == 0)
 					Utils::debugbreak();
 
 				if (thread.joinable())
