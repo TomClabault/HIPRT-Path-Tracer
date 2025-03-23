@@ -140,7 +140,7 @@ struct MicrofacetRegularization
 #endif
 
 		// Eq. 16 of the paper
-		return 1.0f / (2.0f * M_PI * (1.0f - cosf(atanf(powf(sample_number, -1.0f / 6.0f) * sqrt(M_FOUR_PI * tau_0 - 1.0f) / (M_TWO_PI * tau_0 - 1.0f)))));
+		return 1.0f / (2.0f * M_PI * (1.0f - cosf(atanf(powf(sample_number + 1, -1.0f / 6.0f) * sqrt(M_FOUR_PI * tau_0 - 1.0f) / (M_TWO_PI * tau_0 - 1.0f)))));
 	}
 };
 
