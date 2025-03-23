@@ -127,10 +127,10 @@ if (WIN32)
 	# For copying HIPRT's DLL
 	get_target_property(HIPRT_DLL_NAME hiprt02004 OUTPUT_NAME)
 
-	if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND MSVC_IDE)
+	#if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND MSVC_IDE)
 		# Adding the 'd' suffix that MSVC adds to debug libraries file names
-		set(HIPRT_DLL_NAME ${HIPRT_DLL_NAME}d)
-	endif()
+		set(HIPRT_DLL_NAME_DEBUG ${HIPRT_DLL_NAME}d.dll)
+	#endif()
 	# Appending .dll extension
 	set(HIPRT_DLL_NAME ${HIPRT_DLL_NAME}.dll)
 
@@ -139,8 +139,15 @@ if (WIN32)
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt02004>
         ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
     DEPENDS hiprt02004)
+
+	add_custom_command(OUTPUT
+        ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG}
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt02004>
+        ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG}
+    DEPENDS hiprt02004)
+
 	# Create target which consume the command via DEPENDS.
-	add_custom_target(hiprtCopyDLL ALL DEPENDS ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME})
+	add_custom_target(hiprtCopyDLL ALL DEPENDS ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME} ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG})
 	add_dependencies(HIPRTPathTracer hiprtCopyDLL)
 
 	message(STATUS "Copying Glew binaries...")
