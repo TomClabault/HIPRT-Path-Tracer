@@ -20,7 +20,7 @@
 
 // TODO commit regularization min roughness + test it
 // TODO why is default integrator broken with uniform light sampling since we're passing bsdf context to glass_sample and glass_eval?
-// TODO for regularized BSDF sampling, maybe we can use the fresnel from the average of reflection/refraction roughness instead of the fresnel of smooth reflection
+// TODO fix p1-environment-light brightening at 1SPP
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;

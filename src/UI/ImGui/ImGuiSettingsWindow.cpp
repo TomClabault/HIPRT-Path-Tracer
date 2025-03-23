@@ -2988,6 +2988,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 				render_data.bsdfs_data.GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightUncorrelated;
 			ImGui::TreePop();
 		}
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		if (regularize_bsdf)
 		{
@@ -3004,7 +3005,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			if (do_consistent_tau)
 			{
 				ImGui::TreePush("Consistent tau tree");
-				ImGui::Text("Current tau0: %f", MicrofacetRegularization::consistent_tau(render_data.bsdfs_data.microfacet_regularization.tau_0, render_data.render_settings.sample_number));
+				ImGui::Text("Current tau: %f", MicrofacetRegularization::consistent_tau(render_data.bsdfs_data.microfacet_regularization.tau_0, render_data.render_settings.sample_number));
 				ImGui::TreePop();
 			}
 			bool do_diffusion_heuristic = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC);

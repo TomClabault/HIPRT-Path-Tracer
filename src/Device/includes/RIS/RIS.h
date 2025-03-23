@@ -147,7 +147,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
 
                     ColorRGB32F light_contribution = bsdf_color * light_source_info.emission * cosine_at_evaluated_point;
                     // Checking the light contribution and taking the BSDF and light PDFs into account
-                    contributes_enough = bsdf_pdf <= 0.0f || check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / bsdf_pdf / light_sample_pdf);
+                    contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / bsdf_pdf / light_sample_pdf);
                     if (!contributes_enough)
                         // The light doesn't contribute enough, setting the target function to 0.0f
                         // so that this light sample is skipped
