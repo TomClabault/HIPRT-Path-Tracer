@@ -71,8 +71,7 @@ struct RayPayload
 
 		case LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE:
 			// The specular roughness is just material.roughness
-			// accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
-			accumulated_roughness = hippt::max(1.0f, accumulated_roughness);
+			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
 			break;
 
 		case LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE:
