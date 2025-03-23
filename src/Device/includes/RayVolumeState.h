@@ -28,7 +28,8 @@ struct RayVolumeState
 #else
 		// On the CPU, the priority stack is a "global" variable because it is
 		// in shared memory
-#define stack_variable stack_entries
+#define stack_variable interior_stack.stack_entries
+//#define stack_variable stack_entries
 #endif
 
 		for (int i = 0; i < NestedDielectricsStackSize; i++)

@@ -173,7 +173,7 @@ void ReSTIRDIRenderPass::pre_render_update()
 				m_renderer->invalidate_render_data_buffers();
 			}
 		}
-		else
+		else if (presampled_lights_buffer.get_element_count() > 0)
 			presampled_lights_buffer.free();
 	}
 	else

@@ -332,7 +332,7 @@ void OrochiBuffer<T>::free()
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
 	else
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Freeing an OpenGLInterop buffer that hasn't been initialized (or has been freed already)!");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Freeing an Orochi buffer that hasn't been initialized (or has been freed already)!");
 
 		return;
 	}

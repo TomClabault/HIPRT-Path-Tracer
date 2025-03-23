@@ -136,7 +136,7 @@ struct ReSTIRDISettings
 	// Because the spatial must then resample without the output of the temporal pass, the spatial
 	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
 	// (which is the output of the temporal pass). This is usually imperceptible.
-	bool do_fused_spatiotemporal = true;
+	bool do_fused_spatiotemporal = false;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.

@@ -419,7 +419,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
         renderer_material.specular_tint = 1.0f;
         renderer_material.specular_color = ColorRGB32F(1.0f);
     }
-    
+
     mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.coat);
     mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.coat_roughness);
     mesh_material->Get(AI_MATKEY_REFRACTI, renderer_material.ior);

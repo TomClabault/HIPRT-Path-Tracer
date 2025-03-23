@@ -63,6 +63,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
 
 	// enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
+	// compiler_options.push_back("-g");
+	// compiler_options.push_back("-ggdb");
 
 	// Locking because neither NVIDIA or AMD cannot compile kernels on multiple threads so we may as well
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times
