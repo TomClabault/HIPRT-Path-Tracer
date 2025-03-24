@@ -10,9 +10,10 @@
 
 struct GGXFresnelDirectionalAlbedoSettings
 {
-	int texture_size_cos_theta = GPUBakerConstants::GGX_FRESNEL_ESS_TEXTURE_SIZE_COS_THETA_O;
-	int texture_size_roughness = GPUBakerConstants::GGX_FRESNEL_ESS_TEXTURE_SIZE_ROUGHNESS;
-	int texture_size_ior = GPUBakerConstants::GGX_FRESNEL_ESS_TEXTURE_SIZE_IOR;
+	int texture_size_cos_theta = GPUBakerConstants::GGX_FRESNEL_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O;
+	int texture_size_roughness = GPUBakerConstants::GGX_FRESNEL_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS;
+	int texture_size_ior = GPUBakerConstants::GGX_FRESNEL_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR;
+	GGXMaskingShadowingFlavor masking_shadowing_term;
 
 	int integration_sample_count = 65536;
 };

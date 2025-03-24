@@ -1607,18 +1607,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
 			if (ImGui::Combo("GGX Masking-Shadowing", (int*)&render_data.bsdfs_data.GGX_masking_shadowing, masking_shadowing_items.data(), masking_shadowing_items.size()))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("Which masking-shadowing term to use with the GGX NDF.");
-
-			if (render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightUncorrelated && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_TRUE)
 			{
-				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-				ImGuiRenderer::show_help_marker("Multiple-scattering energy compensation look-up tables \n"
-					"were not precomputed for smith height-uncorrelated \n"
-					"masking-shadowing term.\n"
-					"\n"
-					"Energy conservation is not guaranteed.");
+				// Reloading all the energy compensation textures because if we change the masking-shadowing term,
+				// the precomputed directional albedo isn't correct anymore
+				m_renderer->load_GGX_energy_compensation_textures();
+				m_renderer->load_GGX_glass_energy_compensation_textures();
+				m_renderer->load_glossy_dielectric_energy_compensation_textures();
+
+				m_render_window->set_render_dirty(true);
 			}
+			ImGuiRenderer::show_help_marker("Which masking-shadowing term to use with the GGX NDF.");
 
 			ImGui::TreePop();
 		}
@@ -2475,7 +2473,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::Checkbox("Use hardware texture interpolation", &render_data.bsdfs_data.use_hardware_tex_interpolation))
 		{
-			m_renderer->init_GGX_glass_Ess_texture(render_data.bsdfs_data.use_hardware_tex_interpolation ? hipFilterModeLinear : hipFilterModePoint);
+			m_renderer->load_GGX_glass_energy_compensation_textures(render_data.bsdfs_data.use_hardware_tex_interpolation ? hipFilterModeLinear : hipFilterModePoint);
 			m_render_window->set_render_dirty(true);
 		}
 		ImGuiRenderer::show_help_marker("Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");

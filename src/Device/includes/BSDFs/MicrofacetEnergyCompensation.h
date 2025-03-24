@@ -11,7 +11,7 @@
 
 #include "Device/includes/SanityCheck.h"
 #include "HostDeviceCommon/RenderData.h"
- // To be able to access GPUBakerConstants::GGX_ESS_TEXTURE_SIZE && GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE
+ // To be able to access GPUBakerConstants::GGX_DIRECTIONAL_ALBEDO_TEXTURE_SIZE && GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE
 #include "Renderer/Baker/GPUBakerConstants.h"
 
  /**
@@ -32,11 +32,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 	if (!material_do_energy_compensation || smooth_enough || max_bounce_reached || invalid_view_direction)
 		return ColorRGB32F(1.0f);
 
-    const void* GGX_Ess_texture_pointer = nullptr;
+    const void* GGX_directional_albedo_texture_pointer = nullptr;
 #ifdef __KERNELCC__
-    GGX_Ess_texture_pointer = &render_data.bsdfs_data.GGX_conductor_Ess;
+    GGX_directional_albedo_texture_pointer = &render_data.bsdfs_data.GGX_conductor_directional_albedo;
 #else
-    GGX_Ess_texture_pointer = render_data.bsdfs_data.GGX_conductor_Ess;
+    GGX_directional_albedo_texture_pointer = render_data.bsdfs_data.GGX_conductor_directional_albedo;
 #endif
 
     // Reading the precomputed directional albedo from the texture
@@ -46,7 +46,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 	// because that GGX energy compensation texture is created with a clamp address mode, not wrap
 	// and we have to do the Y-flipping manually when not sampling in wrap mode
 	uv.y = 1.0f - uv.y;
-	float Ess = sample_texture_rgb_32bits(GGX_Ess_texture_pointer, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
+	float Ess = sample_texture_rgb_32bits(GGX_directional_albedo_texture_pointer, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
 
     // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
     float kms = (1.0f - Ess) / Ess;
@@ -669,15 +669,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
 		float3 uvw = make_float3(view_direction_tex_fetch, custom_roughness, F0_remapped);
 		if (material.thin_walled)
 		{
-			void* texture = render_data.bsdfs_data.GGX_Ess_thin_glass;
-			int3 dims = make_int3(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR);
+			void* texture = render_data.bsdfs_data.GGX_thin_glass_directional_albedo;
+			int3 dims = make_int3(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 
 			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 		}
 		else
 		{
-			void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
-			int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
+			void* texture = inside_object ? render_data.bsdfs_data.GGX_glass_directional_albedo_inverse : render_data.bsdfs_data.GGX_glass_directional_albedo;
+			int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 
 			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 		}

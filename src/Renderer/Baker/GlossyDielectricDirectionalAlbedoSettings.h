@@ -13,6 +13,7 @@ struct GlossyDielectricDirectionalAlbedoSettings
 	int texture_size_cos_theta_o = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O;
 	int texture_size_roughness = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS;
 	int texture_size_ior = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR;
+	GGXMaskingShadowingFlavor masking_shadowing_term;
 
 	int integration_sample_count = 131072;
 };

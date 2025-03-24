@@ -84,7 +84,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 thin_glass_sample(float relative_eta, floa
     return sampled_direction;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float thin_glass_eval(float relative_eta, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE float thin_glass_eval(float relative_eta, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
 {
     pdf = 0.0f;
 
@@ -159,7 +159,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float thin_glass_eval(float relative_eta, float r
     if (reflecting)
     {
         HIPRTRenderData fake_render_data;
-        float color = torrance_sparrow_GGX_eval_reflect<0>(fake_render_data, roughness, /* anisotropy */ 0.0f, ColorRGB32F(F), local_view_direction, local_to_light_direction, local_half_vector, pdf).r;
+        fake_render_data.bsdfs_data.GGX_masking_shadowing = masking_shadowing_term;
+
+        float color = torrance_sparrow_GGX_eval_reflect<0>(fake_render_data, roughness, /* anisotropy */ 0.0f, false,
+            ColorRGB32F(F), local_view_direction, local_to_light_direction, local_half_vector, pdf,
+            MaterialUtils::SPECULAR_PEAK_SAMPLED, 0).r;
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;
@@ -244,7 +248,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXThinGlassDirectionalAlbedoBake(int kerne
         float3 sampled_local_to_light_direction = thin_glass_sample(relative_ior, thin_walled_roughness, local_view_direction, random_number_generator);
 
         float eval_pdf = 0.0f;
-        float directional_albedo = thin_glass_eval(relative_ior, thin_walled_roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf);
+        float directional_albedo = thin_glass_eval(relative_ior, thin_walled_roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf, bake_settings.masking_shadowing_term);
         if (eval_pdf == 0.0f)
             continue;
 

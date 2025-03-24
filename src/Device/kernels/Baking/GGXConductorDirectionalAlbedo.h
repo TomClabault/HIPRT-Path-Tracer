@@ -66,9 +66,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXConductorDirectionalAlbedoBake(int kerne
             // Sampled direction below surface
             continue;
 
+        HIPRTRenderData dummy_render_data;
+        // Just updating the masking shadowing term
+        dummy_render_data.bsdfs_data.GGX_masking_shadowing = bake_settings.masking_shadowing_term;
+
         float eval_pdf;
-        float directional_albedo = torrance_sparrow_GGX_eval_reflect<0>(HIPRTRenderData(), roughness, 0.0f, /* fresnel */ ColorRGB32F(1.0f), 
-                                                                 local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction), eval_pdf).r;
+        float directional_albedo = torrance_sparrow_GGX_eval_reflect<0>(dummy_render_data,
+            roughness, 0.0f, false, /* fresnel */ ColorRGB32F(1.0f),
+            local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction), 
+            eval_pdf, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0).r;
+
         directional_albedo /= eval_pdf;
         directional_albedo *= sampled_local_to_light_direction.z;
 

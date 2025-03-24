@@ -34,7 +34,7 @@
 * The second texture is used when inside the object: its IOR is simply inversed
 */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
 {
     pdf = 0.0f;
 
@@ -80,8 +80,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float 
     if (reflecting)
     {
         HIPRTRenderData render_data;
-        albedo = torrance_sparrow_GGX_eval_reflect<0>(render_data, roughness, 0.0f, ColorRGB32F(F),
-                                               local_view_direction, local_to_light_direction, local_half_vector, pdf).r;
+        render_data.bsdfs_data.GGX_masking_shadowing = masking_shadowing_term;
+
+        albedo = torrance_sparrow_GGX_eval_reflect<0>(render_data, roughness, 0.0f, false, ColorRGB32F(F),                                   
+            local_view_direction, local_to_light_direction, local_half_vector, 
+            pdf, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0).r;
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;
@@ -150,7 +153,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_glass_E_sample(float relative_ior, flo
             // Relative_eta as already been flipped above in the code
             microfacet_normal = -microfacet_normal;
 
-        refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_ior);
+        sampled_direction = refract_ray(local_view_direction, microfacet_normal, relative_ior);
     }
 
     return sampled_direction;
@@ -192,7 +195,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void glass_directional_albedo_integration(int ker
         float3 sampled_local_to_light_direction = GGX_glass_E_sample(relative_ior, roughness, local_view_direction, random_number_generator);
 
         float eval_pdf;
-        float directional_albedo = GGX_glass_E_eval(relative_ior, roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf);
+        float directional_albedo = GGX_glass_E_eval(relative_ior, roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf, bake_settings.masking_shadowing_term);
         if (eval_pdf == 0.0f)
             continue;
 
