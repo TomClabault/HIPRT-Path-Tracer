@@ -38,18 +38,24 @@ void ThreadFunctions::precompile_kernel(const std::string& kernel_function_name,
 void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads)
 {
     // Preparing the scene_filepath so that it's ready to be appended with the texture name
-    std::string corrected_filepath;
+    // 
     // Starting with the .GLTF/.OBJ/.whatever-scene-format file
-    corrected_filepath = scene_path;
+    std::string corrected_filepath = scene_path;
+    std::cout << "Start scene path: " << corrected_filepath << std::endl;
     // Removing the name of the .GLTF / .OBJ / .XXX file by looking at the *last* '/' or '\'
     if (corrected_filepath.find('/') != std::string::npos)
         corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('/') + 1);
     else if (corrected_filepath.find('\\') != std::string::npos)
         corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('\\') + 1);
+    std::cout << "After removing /: " << corrected_filepath << std::endl;
     // Converting the path to absolute
     corrected_filepath = std::filesystem::absolute(corrected_filepath).string();
+    std::cout << "Absolute: " << corrected_filepath << std::endl;
     // Replacing backslashes by forward slashes
     corrected_filepath = std::regex_replace(corrected_filepath, std::regex("\\\\"), "/"); // replace 'def' -> 'klm'
+    std::cout << "Regex replace (final): " << corrected_filepath << std::endl;
+
+    std::exit(0);
 
     // While loop here so that a single thread can parse multiple textures
     while (thread_index < parsed_scene.textures.size())
