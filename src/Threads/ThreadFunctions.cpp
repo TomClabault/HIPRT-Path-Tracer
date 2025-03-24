@@ -55,8 +55,6 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
     corrected_filepath = std::regex_replace(corrected_filepath, std::regex("\\\\"), "/"); // replace 'def' -> 'klm'
     std::cout << "Regex replace (final): " << corrected_filepath << std::endl;
 
-    std::exit(0);
-
     // While loop here so that a single thread can parse multiple textures
     while (thread_index < parsed_scene.textures.size())
     {
