@@ -146,11 +146,11 @@ private:
     } m_restir_gi_state;
 
     Image32Bit m_sheen_ltc_params;
-    Image32Bit m_GGX_conductor_Ess;
-    Image32Bit3D m_glossy_dielectrics_Ess;
-    Image32Bit3D m_GGX_Ess_glass;
-    Image32Bit3D m_GGX_Ess_glass_inverse;
-    Image32Bit3D m_GGX_Ess_thin_glass;
+    Image32Bit m_GGX_conductor_directional_albedo;
+    Image32Bit3D m_glossy_dielectrics_directional_albedo;
+    Image32Bit3D m_GGX_glass_directional_albedo;
+    Image32Bit3D m_GGX_glass_inverse_directional_albedo;
+    Image32Bit3D m_GGX_thin_glass_directional_albedo;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

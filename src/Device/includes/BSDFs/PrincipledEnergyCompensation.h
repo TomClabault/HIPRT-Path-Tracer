@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
     float F0_remapped = sqrt(sqrt(F0_from_eta_t_and_relative_ior(ior, relative_ior)));
 
     float3 uvw = make_float3(view_dir_remapped, material.roughness, F0_remapped);
-    float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
+    float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_directional_albedo, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 
     // Applying the compensation term for energy preservation
     // If material.specular == 1, then we want the full energy compensation
@@ -109,7 +109,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoa
     float F0_remapped = sqrt(sqrt(F0_from_eta(material.coat_ior, incident_medium_ior)));
 
     float3 uvw = make_float3(view_dir_remapped, material.coat_roughness, F0_remapped);
-    float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
+    float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_directional_albedo, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 
     // Applying the compensation term for energy preservation
     // If material.coat == 1, then we want the full energy compensation

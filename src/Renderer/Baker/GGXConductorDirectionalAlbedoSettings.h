@@ -10,10 +10,11 @@
 
 struct GGXConductorDirectionalAlbedoSettings
 {
-	int texture_size_cos_theta = GPUBakerConstants::GGX_CONDUCTOR_ESS_TEXTURE_SIZE_COS_THETA_O;
-	int texture_size_roughness = GPUBakerConstants::GGX_CONDUCTOR_ESS_TEXTURE_SIZE_ROUGHNESS;
+	int texture_size_cos_theta = GPUBakerConstants::GGX_CONDUCTOR_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O;
+	int texture_size_roughness = GPUBakerConstants::GGX_CONDUCTOR_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS;
+	GGXMaskingShadowingFlavor masking_shadowing_term;
 
-	int integration_sample_count = 65536;
+	int integration_sample_count = 262144;
 };
 
 #endif

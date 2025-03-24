@@ -108,42 +108,42 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 void CPURenderer::setup_brdfs_data()
 {
     m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
-    m_GGX_conductor_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_conductor_Ess_filename(), 1, true);
+    m_GGX_conductor_directional_albedo = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing), 1, true);
 
     std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
     for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
     {
-        std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_Ess_filename();
+        std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
         std::string filepath = "../data/BRDFsData/GlossyDielectrics/" + filename;
         images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
-    m_glossy_dielectrics_Ess = Image32Bit3D(images);
+    m_glossy_dielectrics_directional_albedo = Image32Bit3D(images);
 
-    images.resize(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
-    for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+    images.resize(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
+    for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
     {
-        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_Ess_filename();
+        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
         std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
         images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
-    m_GGX_Ess_glass = Image32Bit3D(images);
+    m_GGX_glass_directional_albedo = Image32Bit3D(images);
 
-    for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+    for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
     {
-        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_inv_Ess_filename();
+        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_inv_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
         std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
         images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
-    m_GGX_Ess_glass_inverse = Image32Bit3D(images);
+    m_GGX_glass_inverse_directional_albedo = Image32Bit3D(images);
 
-    images.resize(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR);
-    for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+    images.resize(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
+    for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
     {
-        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_Ess_filename();
+        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
         std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
         images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
-    m_GGX_Ess_thin_glass = Image32Bit3D(images);
+    m_GGX_thin_glass_directional_albedo = Image32Bit3D(images);
 }
 
 void CPURenderer::setup_nee_plus_plus()
@@ -238,11 +238,11 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
 
     m_render_data.bsdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
-    m_render_data.bsdfs_data.GGX_conductor_Ess = &m_GGX_conductor_Ess;
-    m_render_data.bsdfs_data.glossy_dielectric_Ess = &m_glossy_dielectrics_Ess;
-    m_render_data.bsdfs_data.GGX_Ess_glass = &m_GGX_Ess_glass;
-    m_render_data.bsdfs_data.GGX_Ess_glass_inverse = &m_GGX_Ess_glass_inverse;
-    m_render_data.bsdfs_data.GGX_Ess_thin_glass = &m_GGX_Ess_thin_glass;
+    m_render_data.bsdfs_data.GGX_conductor_directional_albedo = &m_GGX_conductor_directional_albedo;
+    m_render_data.bsdfs_data.glossy_dielectric_directional_albedo = &m_glossy_dielectrics_directional_albedo;
+    m_render_data.bsdfs_data.GGX_glass_directional_albedo = &m_GGX_glass_directional_albedo;
+    m_render_data.bsdfs_data.GGX_glass_directional_albedo_inverse = &m_GGX_glass_inverse_directional_albedo;
+    m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo = &m_GGX_thin_glass_directional_albedo;
 
     ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     m_render_data.buffers.material_textures = parsed_scene.textures.data();

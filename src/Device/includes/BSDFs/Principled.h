@@ -395,22 +395,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 
-    float f_reflect_proba;
-
-    /*if (bsdf_context.bsdf_regularization_mode != MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION)
-    {
-        float HoV_regularize = local_view_direction.z;
-
-        ColorRGB32F F_thin_film_regularize = thin_film_fresnel(bsdf_context.material, eta_i, HoV_regularize);
-        ColorRGB32F F_no_thin_film_regularize;
-        if (thin_film < 1.0f)
-            F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV_regularize, relative_eta));
-        ColorRGB32F F_regularize = hippt::lerp(F_no_thin_film_regularize, F_thin_film_regularize, thin_film);
-
-        f_reflect_proba = F.luminance();
-    }
-    else*/
-        f_reflect_proba = F.luminance();
+    float f_reflect_proba = F.luminance();
 
     if (thin_walled && f_reflect_proba < 1.0f && thin_film == 0.0f && scaled_roughness < 0.1f)
         // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface

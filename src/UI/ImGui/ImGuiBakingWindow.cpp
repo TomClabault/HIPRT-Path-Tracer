@@ -78,7 +78,7 @@ void ImGuiBakingWindow::draw_ggx_energy_compensation_panel()
 			{
 				if (m_render_window->is_rendering_done() && m_renderer->get_render_settings().sample_number > m_renderer->get_render_settings().adaptive_sampling_min_samples)
 				{
-					std::string filename = "Screenshot" + std::to_string(roughnesses[step / iors.size()]) + "x" + std::to_string(iors[step % iors.size()]) + " - " +std::to_string(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O) + "x" + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS) + "x" + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR) + "x" + ".png";
+					std::string filename = "Screenshot" + std::to_string(roughnesses[step / iors.size()]) + "x" + std::to_string(iors[step % iors.size()]) + " - " +std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O) + "x" + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS) + "x" + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR) + "x" + ".png";
 					m_render_window->get_screenshoter()->write_to_png(filename);
 
 					next_step_ready = true;
@@ -109,6 +109,9 @@ void ImGuiBakingWindow::draw_GGX_conductors()
 		ImGui::InputInt("Texture Size - Cos Theta", &ggx_dir_albedo_settings.texture_size_cos_theta);
 		ImGui::InputInt("Texture Size - Roughness", &ggx_dir_albedo_settings.texture_size_roughness);
 		ImGui::InputInt("Integration Sample Count", &ggx_dir_albedo_settings.integration_sample_count);
+		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
@@ -116,7 +119,9 @@ void ImGuiBakingWindow::draw_GGX_conductors()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_conductor_Ess_filename(ggx_dir_albedo_settings.texture_size_cos_theta, ggx_dir_albedo_settings.texture_size_roughness);
+			output_filename = GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(ggx_dir_albedo_settings.masking_shadowing_term,
+				ggx_dir_albedo_settings.texture_size_cos_theta, 
+				ggx_dir_albedo_settings.texture_size_roughness);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -163,6 +168,9 @@ void ImGuiBakingWindow::draw_GGX_fresnel()
 		ImGui::InputInt("Texture Size - Roughness", &ggx_fresnel_dir_albedo_settings.texture_size_roughness);
 		ImGui::InputInt("Texture Size - IOR", &ggx_fresnel_dir_albedo_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &ggx_fresnel_dir_albedo_settings.integration_sample_count);
+		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_fresnel_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
@@ -170,7 +178,10 @@ void ImGuiBakingWindow::draw_GGX_fresnel()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_fresnel_Ess_filename(ggx_fresnel_dir_albedo_settings.texture_size_cos_theta, ggx_fresnel_dir_albedo_settings.texture_size_roughness, ggx_fresnel_dir_albedo_settings.texture_size_ior);
+			output_filename = GPUBakerConstants::get_GGX_fresnel_directional_albedo_texture_filename(ggx_fresnel_dir_albedo_settings.masking_shadowing_term,
+				ggx_fresnel_dir_albedo_settings.texture_size_cos_theta, 
+				ggx_fresnel_dir_albedo_settings.texture_size_roughness, 
+				ggx_fresnel_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -218,6 +229,9 @@ void ImGuiBakingWindow::draw_GGX_glass()
 		ImGui::InputInt("Texture Size - Roughness", &ggx_glass_dir_albedo_settings.texture_size_roughness);
 		ImGui::InputInt("Texture Size - IOR", &ggx_glass_dir_albedo_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &ggx_glass_dir_albedo_settings.integration_sample_count);
+		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_glass_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
@@ -225,7 +239,8 @@ void ImGuiBakingWindow::draw_GGX_glass()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_glass_Ess_filename(ggx_glass_dir_albedo_settings.texture_size_cos_theta_o,
+			output_filename = GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(ggx_glass_dir_albedo_settings.masking_shadowing_term,
+				ggx_glass_dir_albedo_settings.texture_size_cos_theta_o,
 				ggx_glass_dir_albedo_settings.texture_size_roughness,
 				ggx_glass_dir_albedo_settings.texture_size_ior);
 
@@ -271,6 +286,9 @@ void ImGuiBakingWindow::draw_GGX_thin_glass()
 		ImGui::InputInt("Texture Size - Roughness", &ggx_thin_glass_dir_albedo_settings.texture_size_roughness);
 		ImGui::InputInt("Texture Size - IOR", &ggx_thin_glass_dir_albedo_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &ggx_thin_glass_dir_albedo_settings.integration_sample_count);
+		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_thin_glass_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
@@ -278,7 +296,8 @@ void ImGuiBakingWindow::draw_GGX_thin_glass()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_thin_glass_Ess_filename(ggx_thin_glass_dir_albedo_settings.texture_size_cos_theta_o,
+			output_filename = GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(ggx_thin_glass_dir_albedo_settings.masking_shadowing_term,
+				ggx_thin_glass_dir_albedo_settings.texture_size_cos_theta_o,
 				ggx_thin_glass_dir_albedo_settings.texture_size_roughness,
 				ggx_thin_glass_dir_albedo_settings.texture_size_ior);
 
@@ -327,6 +346,9 @@ void ImGuiBakingWindow::draw_glossy_dielectric()
 		ImGui::InputInt("Texture Size - Roughness", &glossy_dielectric_albedo_settings.texture_size_roughness);
 		ImGui::InputInt("Texture Size - IOR", &glossy_dielectric_albedo_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &glossy_dielectric_albedo_settings.integration_sample_count);
+		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&glossy_dielectric_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
@@ -334,9 +356,10 @@ void ImGuiBakingWindow::draw_glossy_dielectric()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_glossy_dielectric_Ess_filename(glossy_dielectric_albedo_settings.texture_size_cos_theta_o,
-																					glossy_dielectric_albedo_settings.texture_size_roughness,
-																					glossy_dielectric_albedo_settings.texture_size_ior);
+			output_filename = GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(glossy_dielectric_albedo_settings.masking_shadowing_term,
+				glossy_dielectric_albedo_settings.texture_size_cos_theta_o,
+				glossy_dielectric_albedo_settings.texture_size_roughness,
+				glossy_dielectric_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 

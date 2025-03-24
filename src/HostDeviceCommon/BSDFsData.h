@@ -36,23 +36,23 @@ struct BRDFsData
 	// 2D texture for the precomputed directional albedo
 	// for the GGX BRDFs used in the principled BSDF for energy compensation
 	// of conductors
-	void* GGX_conductor_Ess = nullptr;
+	void* GGX_conductor_directional_albedo = nullptr;
 
 	// 3D texture for the precomputed directional albedo of the base layer
 	// of the principled BSDF (specular GGX layer + diffuse below)
-	void* glossy_dielectric_Ess = nullptr;
+	void* glossy_dielectric_directional_albedo = nullptr;
 
 	// 3D texture (cos_theta_o, roughness, relative_eta) for the precomputed
 	// directional albedo used for energy compensation of glass objects when
 	// entering a medium
-	void* GGX_Ess_glass = nullptr;
+	void* GGX_glass_directional_albedo = nullptr;
 	// Table when leaving a medium
-	void* GGX_Ess_glass_inverse = nullptr;
+	void* GGX_glass_directional_albedo_inverse = nullptr;
 
 	// Table for energy compesantion of thin walled glass
 	// Fetching into this table should use the base roughness
 	// of the material i.e. **not** the remapped thin-walled roughness
-	void* GGX_Ess_thin_glass = nullptr;
+	void* GGX_thin_glass_directional_albedo = nullptr;
 
 	// Whether or not to use the texture unit's hardware texel interpolation
 	// when fetching the LUTs. It's faster but less precise.

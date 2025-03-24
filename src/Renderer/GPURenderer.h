@@ -75,18 +75,18 @@ public:
 	/**
  	 * Initializes the precomputed texture used for GGX energy conservation
 	 */
-	void init_GGX_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModeLinear);
+	void load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode = hipFilterModeLinear);
 
 	/**
 	 * Initializes the precomputed texture used for glossy dielectrics 
 	 * energy conservation
 	 */
-	void init_glossy_dielectric_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModePoint);
+	void load_glossy_dielectric_energy_compensation_textures(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
 	/**
 	 * Initializes the precomputed textures used for GGX glass BSDF energy conservation
 	 */
-	void init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModePoint);
+	void load_GGX_glass_energy_compensation_textures(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
 	/**
 	 * Sets up the bounds of the scene for the grid of NEE++
@@ -593,11 +593,11 @@ private:
 
 	// Precomputed tables for GGX energy compensation
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
-	OrochiTexture m_GGX_conductor_Ess;
-	OrochiTexture3D m_glossy_dielectric_Ess;
-	OrochiTexture3D m_GGX_Ess_glass;
-	OrochiTexture3D m_GGX_Ess_glass_inverse;
-	OrochiTexture3D m_GGX_Ess_thin_glass;
+	OrochiTexture m_GGX_conductor_directional_albedo;
+	OrochiTexture3D m_glossy_dielectric_directional_albedo;
+	OrochiTexture3D m_GGX_glass_directional_albedo;
+	OrochiTexture3D m_GGX_glass_inverse_directional_albedo;
+	OrochiTexture3D m_GGX_thin_glass_directional_albedo;
 
 	OrochiBuffer<int> m_DEBUG_SUM_COUNT;
 	OrochiBuffer<float> m_DEBUG_SUMS;

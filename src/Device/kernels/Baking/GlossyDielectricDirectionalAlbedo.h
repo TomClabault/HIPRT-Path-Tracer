@@ -90,10 +90,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
         float3 microfacet_normal = hippt::normalize(local_view_direction + sampled_local_to_light_direction);
         float total_pdf = 0.0f;
 
+        HIPRTRenderData render_data;
+        render_data.bsdfs_data.GGX_masking_shadowing = bake_settings.masking_shadowing_term;
+
         float F = full_fresnel_dielectric(hippt::dot(microfacet_normal, sampled_local_to_light_direction), relative_ior);
         float eval_pdf_specular;
-        float directional_albedo_specular = torrance_sparrow_GGX_eval_reflect<0>(HIPRTRenderData(), roughness, /* aniso */ 0.0f, ColorRGB32F(F),
-                                                                          local_view_direction, sampled_local_to_light_direction, microfacet_normal, eval_pdf_specular).r;
+        float directional_albedo_specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, roughness, /* aniso */ 0.0f, false, ColorRGB32F(F),
+            local_view_direction, sampled_local_to_light_direction, microfacet_normal, eval_pdf_specular, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0).r;
         // Multiplying the PDF by 0.5f because we have a 50% chance to sample the specular lobe
         total_pdf += eval_pdf_specular * 0.5f;
         float specular_layer_throughput = 1.0f;
