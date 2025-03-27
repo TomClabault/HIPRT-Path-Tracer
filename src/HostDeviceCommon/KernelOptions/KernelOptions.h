@@ -123,7 +123,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_NONE
+#define BSDFOverride BSDF_LAMBERTIAN
 
 /**
  * The stack size for handling nested dielectrics
@@ -167,7 +167,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_NO_DIRECT_LIGHT_SAMPLING
 
 /**
  * Whether or not to use NEE++ features at all
@@ -247,8 +247,8 @@
  * 
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-#define PathSamplingStrategy PSS_BSDF
-//#define PathSamplingStrategy PSS_RESTIR_GI
+//#define PathSamplingStrategy PSS_BSDF
+#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're

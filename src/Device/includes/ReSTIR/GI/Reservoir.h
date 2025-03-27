@@ -31,7 +31,7 @@ struct ReSTIRGISample
     // outgoing_radiance: can be packed
     
     // TODO can be accessed through the G-buffer
-    float3 visible_point = make_float3(-1.0f, -1.0f, -1.0f);
+    // float3 visible_point = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
     int sample_point_primitive_index = -1;
 

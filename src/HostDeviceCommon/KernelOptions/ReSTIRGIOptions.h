@@ -28,7 +28,7 @@
  *
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_GI_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
+#define ReSTIR_GI_SpatialTargetFunctionVisibility KERNEL_OPTION_TRUE
 
 /** 
  * Whether or not to include the change in BSDF at the sample point when resampling a neighbor.
@@ -82,7 +82,7 @@
 *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
 *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
 */
-#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
+#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 
 #endif // #ifndef __KERNELCC__
 

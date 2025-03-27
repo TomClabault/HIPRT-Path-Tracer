@@ -129,20 +129,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			if (!check_neighbor_similarity_heuristics<true>(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 				continue;
 
-		float shift_mapping_jacobian = 1.0f;
 		ReSTIRGIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+
+		float shift_mapping_jacobian = 1.0f;
 		if (neighbor_reservoir.UCW > 0.0f && !is_center_pixel && !neighbor_reservoir.sample.is_envmap_path())
 			// Only attempting the shift if the neighbor reservoir is valid
 			// 
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel), 
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
-			neighbor_reservoir = shift_sample_reconnection_shift(neighbor_reservoir, shift_mapping_jacobian, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-		if (shift_mapping_jacobian == -1.0f)
-			// Neighbor rejected because the jacobian are too dissimilar
-			shift_mapping_jacobian = 0.0f;
+ 			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.sample_point_geometric_normal, center_pixel_surface.shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index], render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
 		float target_function_at_center = 0.0f;
-		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<true>(render_data, neighbor_index);
+		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (is_center_pixel)
@@ -179,7 +177,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
-			target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			center_pixel_surface.shading_point, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc,/* resampling canonical */ is_center_pixel, random_number_generator);
 #elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
@@ -189,7 +187,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
-			target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			center_pixel_surface.shading_point, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
 #else
 #error "Unsupported bias correction mode"

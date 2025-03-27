@@ -37,6 +37,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO ReSTIR GI
+// - distance rejection heuristic for reconnection
 // - The quick skip to the center pixel resampling when there are no valid neighbors 
 //		--> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
 //		--> it does cause divergence. maybe solve that 
@@ -146,6 +147,9 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// - Eta scaling for russian roulette refractions
+// - Efficient Image-Space Shape Splatting for Monte Carlo Rendering
+// - https://joeylitalien.github.io/assets/drmlt/drmlt.pdf
 // - What's NEE-AT of RTXPT?
 // - Not very happy with the quality of NEE++ right now but what if go for the prepass instead of progressive refinement? 
 //		We would trace rays recursuvely for the indirect very very simply and could be fast
@@ -161,6 +165,7 @@ extern ImGuiLogger g_imgui_logger;
 //		- For MIS with BSDF, use some arbitrary roughness-MIS-weights?
 //			RTXPT 1.5 has some ideas in "PathTracerNEE.hlsli" for that MIS weights issue
 //			Does RTXDI also hase some ideas?
+//		- the standard NEE pdf as a proxy just for computing MIS weights
 // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
 // - Some automatic metric to determine automatically what GMoN blend factor to use
 // - software opacity micromaps

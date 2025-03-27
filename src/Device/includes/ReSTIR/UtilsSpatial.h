@@ -111,19 +111,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 
-		//if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.y < 0)
-		//{
-		//	// Rejecting the sample if it's outside of the viewport
-		//	//return -1;
-		//	neighbor_pixel_coords.x = hippt::abs(neighbor_pixel_coords.x);
-		//	neighbor_pixel_coords.y = hippt::abs(neighbor_pixel_coords.y);
-		//}
-		//else if (neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
-		//{
-		//	neighbor_pixel_coords.x = render_data.render_settings.render_resolution.x - (render_data.render_settings.render_resolution.x - neighbor_pixel_coords.x);
-		//	neighbor_pixel_coords.y = render_data.render_settings.render_resolution.y - (render_data.render_settings.render_resolution.y - neighbor_pixel_coords.y);
-		//}
-
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x ||
 			neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
 			// Rejecting the sample if it's outside of the viewport

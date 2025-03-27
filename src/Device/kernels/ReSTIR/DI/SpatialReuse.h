@@ -176,7 +176,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
-			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+ 			center_pixel_surface.shading_point, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc,/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
@@ -186,7 +186,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, 
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
-			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			center_pixel_surface.shading_point, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #else
 #error "Unsupported bias correction mode"

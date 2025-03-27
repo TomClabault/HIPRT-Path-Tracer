@@ -117,7 +117,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function, 
 		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample, int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
 
-		float target_function_at_center,
+		float3 center_pixel_shading_point, float target_function_at_center,
 		int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
 		bool update_mc, bool resampling_canonical,
 		Xorshift32Generator& random_number_generator)
@@ -169,8 +169,8 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 						// If this is an envmap path the jacobian is just 1 so this is not needed
 						if (!center_pixel_reservoir_sample.is_envmap_path())
 						{
-							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.visible_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-							if (jacobian == -1.0f)
+							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_shading_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							if (jacobian == 0.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 								// and has been rejected), the target function is set to 0
 								target_function_center_reservoir_at_neighbor = 0.0f;
@@ -233,7 +233,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_D
 		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function, 
 		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample, int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
 
-		float target_function_at_center,
+		float3 center_pixel_shading_point, float target_function_at_center,
 		int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
 		bool update_mc, bool resampling_canonical,
 		Xorshift32Generator& random_number_generator)
@@ -297,8 +297,8 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_D
 						{
 							// If this is an envmap path the jacobian is just 1 so this is not needed
 
-							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.visible_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-							if (jacobian == -1.0f)
+							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_shading_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							if (jacobian == 0.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 								// and has been rejected), the target function is set to 0
 								target_function_center_reservoir_at_neighbor = 0.0f;

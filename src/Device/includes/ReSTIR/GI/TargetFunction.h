@@ -36,7 +36,8 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 		incident_light_direction /= distance_to_sample_point;
 	}
 
-	if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.0f && sample.incident_light_info_at_visible_point != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
+	float cosine_term = hippt::dot(incident_light_direction, surface.shading_normal);
+	if (cosine_term <= 0.0f && sample.incident_light_info_at_visible_point != BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
 		return 0.0f;
 	else if constexpr (resamplingNeighbor)
 	{
@@ -74,14 +75,14 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	BSDFContext bsdf_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_visible_point), surface.ray_volume_state, false, surface.material, 0, 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
 	ColorRGB32F visible_point_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 	if (bsdf_pdf > 0.0f)
-		visible_point_bsdf_color *= hippt::abs(hippt::dot(surface.shading_normal, incident_light_direction));
+		visible_point_bsdf_color *= cosine_term;
 
 #if ReSTIRGIDoubleBSDFInTargetFunction == KERNEL_OPTION_TRUE
 	if (!sample.is_envmap_path())
 	{
 		float sample_point_bsdf_pdf;
-		BSDFContext bsdf_context_sample_point(-incident_light_direction, sample.sample_point_shading_normal, sample.sample_point_geometric_normal, sample.incident_light_direction_at_sample_point, &sample.incident_light_info_at_sample_point, const_cast<RayVolumeState*>(&sample.sample_point_volume_state), false, sample.sample_point_material.unpack(), 1, /* we don't care about accumulated path roughness here */ 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
-		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context_sample_point, sample_point_bsdf_pdf);
+		BSDFContext bsdf_context_sample_point(-incident_light_direction, sample.sample_point_shading_normal, sample.sample_point_geometric_normal, sample.incident_light_direction_at_sample_point, const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point), const_cast<RayVolumeState&>(sample.sample_point_volume_state), false, sample.sample_point_material.unpack(), 1, /* we don't care about accumulated path roughness here because no regularization */ 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
+		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context_sample_point, sample_point_bsdf_pdf, random_number_generator);
 		ColorRGB32F incoming_radiance_to_visible_point_reconstructed;
 
 		RayPayload sample_point_ray_payload;
