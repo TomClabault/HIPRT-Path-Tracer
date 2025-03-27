@@ -30,13 +30,9 @@ struct ReSTIRGISample
     // sample_po_ntonormal: can be packed
     // outgoing_radiance: can be packed
     
-    // TODO can be accessed through the G-buffer
-    // float3 visible_point = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
     int sample_point_primitive_index = -1;
 
-    // TODO can be accessed through the G-buffer
-    float3 first_hit_normal = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point_shading_normal = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point_geometric_normal = make_float3(-1.0f, -1.0f, -1.0f);
 

@@ -159,7 +159,7 @@
 /**
  * Same PrincipledBSDFSampleGlossyBasedOnFresnel but for the coat layer
  */
-#define PrincipledBSDFSampleCoatBasedOnFresnel KERNEL_OPTION_TRUE
+#define PrincipledBSDFSampleCoatBasedOnFresnel KERNEL_OPTION_FALSE
 
 /**
  * Implementation of [Microfacet Model Regularization for Robust Light Transport, Jendersie et al. 2019]

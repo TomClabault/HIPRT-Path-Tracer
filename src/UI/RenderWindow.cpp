@@ -37,6 +37,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO ReSTIR GI
+// - jacobians in restir gi temporal
 // - distance rejection heuristic for reconnection
 // - The quick skip to the center pixel resampling when there are no valid neighbors 
 //		--> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
