@@ -98,7 +98,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
     float bsdf_sample_pdf = 0.0f;
     ReSTIRGISample restir_gi_initial_sample;
-    restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
 
     ColorRGB32F incoming_radiance_to_visible_point;
     ColorRGB32F incoming_radiance_to_sample_point;

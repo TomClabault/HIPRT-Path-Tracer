@@ -167,6 +167,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
                     // Using the same seed for direct lighting as when generating the initial candidate
                     random_number_generator.m_state.seed = resampling_reservoir.sample.direct_lighting_at_sample_point_random_seed;
+
                     // Taking the direct lighting at the sample point hit into account
                     ColorRGB32F direct_lighting_second_hit = estimate_direct_lighting(render_data, ray_payload, first_hit_throughput, closest_hit_info, -restir_resampled_indirect_direction, x, y, mis_reuse, random_number_generator);
                     camera_outgoing_radiance += direct_lighting_second_hit;
@@ -177,32 +178,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                         //  - view direction: towards the first hit
                         //  - incident light direction: towards what's after the sample point (i.e. the second bounce direction)
                         float bsdf_pdf_second_hit;
-                        BSDFContext bsdf_second_hit_context(-restir_resampled_indirect_direction, resampling_reservoir.sample.sample_point_shading_normal, resampling_reservoir.sample.sample_point_geometric_normal, resampling_reservoir.sample.incident_light_direction_at_sample_point, resampling_reservoir.sample.incident_light_info_at_sample_point, ray_payload.volume_state, false, ray_payload.material, 1, 0.0f);
+                        BSDFContext bsdf_second_hit_context(hippt::normalize(-restir_resampled_indirect_direction), hippt::normalize(resampling_reservoir.sample.sample_point_shading_normal), hippt::normalize(resampling_reservoir.sample.sample_point_geometric_normal), hippt::normalize(resampling_reservoir.sample.incident_light_direction_at_sample_point), resampling_reservoir.sample.incident_light_info_at_sample_point, ray_payload.volume_state, false, ray_payload.material, 1, 0.0f);
                         ColorRGB32F bsdf_color_second_hit = bsdf_dispatcher_eval(render_data, bsdf_second_hit_context, bsdf_pdf_second_hit, random_number_generator);
                         ColorRGB32F second_hit_throughput;
                         if (bsdf_pdf_second_hit > 0.0f)
-                            second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(resampling_reservoir.sample.incident_light_direction_at_sample_point, closest_hit_info.shading_normal)) / bsdf_pdf_second_hit;
-
-                        // ColorRGB32F reconstructed = first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
-
-                        //#ifndef __KERNELCC__
-                        //                        static std::atomic<float> max_diff = -1000000.0f;
-                        //                        float max_comp = (reconstructed - (first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point)).max_component();
-                        //                        hippt::atomic_max(&max_diff, max_comp);
-                        //
-                        //                        if (max_diff == max_comp)
-                        //                            std::cout << "Max: " << max_diff << "[" << x << ", " << y << "]" << std::endl;
-                        //#endif
+                            second_hit_throughput = bsdf_color_second_hit * hippt::abs(hippt::dot(resampling_reservoir.sample.incident_light_direction_at_sample_point, resampling_reservoir.sample.sample_point_shading_normal)) / bsdf_pdf_second_hit;
 
                         camera_outgoing_radiance += first_hit_throughput * second_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_sample_point;
                     }
                 }
                 else
-                {
-                    DEBUG_direct_light_ = first_hit_throughput;
-
                     camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.incoming_radiance_to_visible_point;
-                }
             }
         }
     }
