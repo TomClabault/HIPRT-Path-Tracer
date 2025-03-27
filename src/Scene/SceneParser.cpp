@@ -437,7 +437,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
     renderer_material.specular = 1.0f;
-    renderer_material.roughness = 0.3f;
+    renderer_material.roughness = 0.030f;
     renderer_material.ior = 1.0f;
     renderer_material.coat_ior = 1.0f;
     renderer_material.coat = 0.0f;

@@ -1160,7 +1160,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights(const Devi
     out_diffuse_weight = (1.0f - metallic) * (1.0f - specular_transmission) * (1.0f - diffuse_transmission) * outside_object;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
+HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(const HIPRTRenderData& render_data,
     const DeviceUnpackedEffectiveMaterial& material,
     float NoV,
     float incident_medium_ior,
@@ -1180,7 +1180,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
     {
         float specular_relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
         float specular_fresnel = full_fresnel_dielectric(NoV, specular_relative_ior);
-        float specular_fresnel_sampling_weight = 0.9f;// specular_fresnel* material.specular;
+        float specular_fresnel_sampling_weight = render_data.render_settings.fresnel_proba_DEBUG;
 
         // The specular weight gets affected
         specular_weight *= specular_fresnel_sampling_weight;
@@ -1261,7 +1261,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 
     float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;
     float specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba;
-    principled_bsdf_get_lobes_sampling_proba(bsdf_context.material, local_view_direction.z, incident_medium_ior,
+    principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior,
                                              coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
                                              specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight,
 
@@ -1346,7 +1346,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     float metal_2_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
     float glass_sampling_proba, diffuse_transmission_sampling_proba;
     float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
-    principled_bsdf_get_lobes_sampling_proba(
+    principled_bsdf_get_lobes_sampling_proba(render_data,
         bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior,
         coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,
         specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
