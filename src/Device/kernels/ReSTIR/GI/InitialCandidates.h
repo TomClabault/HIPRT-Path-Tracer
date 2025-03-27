@@ -34,6 +34,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
     if (!render_data.aux_buffers.pixel_active[pixel_index])
+        // Pixel isn't active because of adaptive sampling or render resolution scaling
         return;
 
     if (render_data.render_settings.do_render_low_resolution())
@@ -98,7 +99,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     float bsdf_sample_pdf = 0.0f;
     ReSTIRGISample restir_gi_initial_sample;
     restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
-    restir_gi_initial_sample.visible_point = closest_hit_info.inter_point;
 
     ColorRGB32F incoming_radiance_to_visible_point;
     ColorRGB32F incoming_radiance_to_sample_point;

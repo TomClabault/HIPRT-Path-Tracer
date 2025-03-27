@@ -155,6 +155,18 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 	return render_data_invalidated;
 }
 
+void ReSTIRGIRenderPass::configure_input_output_buffers()
+{
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_initial_candidates_buffer.get_device_pointer();
+
+	// The temporal reuse pass reads into the output of the spatial pass of the last frame + the initial candidates
+	// and outputs in the 'temporal buffer'
+	render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_initial_candidates_buffer.get_device_pointer();
+	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = m_temporal_buffer.get_device_pointer();
+}
+
 void ReSTIRGIRenderPass::configure_initial_candidates_pass()
 {
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
@@ -268,18 +280,6 @@ void ReSTIRGIRenderPass::launch_shading_pass()
 	void* launch_args[] = { m_render_data };
 
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
-}
-
-void ReSTIRGIRenderPass::configure_input_output_buffers()
-{
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
-	render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_initial_candidates_buffer.get_device_pointer();
-
-	// The temporal reuse pass reads into the output of the spatial pass of the last frame + the initial candidates
-	// and outputs in the 'temporal buffer'
-	render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_initial_candidates_buffer.get_device_pointer();
-	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = m_temporal_buffer.get_device_pointer();
 }
 
 bool ReSTIRGIRenderPass::launch()

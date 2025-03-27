@@ -35,9 +35,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRende
 #endif
 
 #elif BSDFOverride == BSDF_LAMBERTIAN
-	return lambertian_brdf_eval(material, hippt::dot(to_light_direction, shading_normal), pdf);
+	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
 #elif BSDFOverride == BSDF_OREN_NAYAR
-	return oren_nayar_brdf_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+	return oren_nayar_brdf_eval(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction, pdf);
 #endif
 }
 
@@ -64,7 +64,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRen
 #endif
 
 #elif BSDFOverride == BSDF_LAMBERTIAN
-	return lambertian_brdf_sample(material, surface_normal, sampled_direction, pdf, random_number_generator, out_sampled_light_info);
+	return lambertian_brdf_sample(bsdf_context.material, bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator, bsdf_context.incident_light_info);
 #elif BSDFOverride == BSDF_OREN_NAYAR
 	return oren_nayar_brdf_sample(material, view_direction, surface_normal, sampled_direction, pdf, random_number_generator, out_sampled_light_info);
 #endif

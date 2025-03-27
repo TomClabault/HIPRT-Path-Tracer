@@ -102,18 +102,11 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsRe
 			{	
 				// ReSTIR GI target function
 
-				float jacobian = get_jacobian_determinant_reconnection_shift(final_reservoir_sample.sample_point, final_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-				if (jacobian == -1.0f && !final_reservoir_sample.is_envmap_path())
-					// Rejected neighbor because of its jacobian
-					target_function_at_neighbor = 0.0f;
-				else
-				{
-					// TODO DEBUG REMOVE THIS AND LEAVE JUST THE ELSE BRANCH
-					if (jacobian == 1.0f)
-						target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility, false>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
-					else
-						target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility, true>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
-				}
+				float jacobian = 1.0f;
+				if (!final_reservoir_sample.is_envmap_path())
+					jacobian = get_jacobian_determinant_reconnection_shift(final_reservoir_sample.sample_point, final_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+
+				target_function_at_neighbor = jacobian * ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility, true>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 			}
 			else
 				// ReSTIR DI target function

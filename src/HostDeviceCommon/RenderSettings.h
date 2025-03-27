@@ -52,7 +52,7 @@ struct HIPRTRenderSettings
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	int debug_x = 138, debug_y = 151;
 	int debug_x2 = 136, debug_y2 = 147;
-	bool DEBUG_DO_ONLY_NEIGHBOR = false;
+	bool DEBUG_DO_ONLY_NEIGHBOR = true;
 	int debug_size = 0;
 	int debug_count_multiplier = 2;
 	int precision = 256;
@@ -106,7 +106,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 30;
+	int nb_bounces = 8;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -175,7 +175,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 99.0f;
+	float stop_pixel_percentage_converged = 25.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;

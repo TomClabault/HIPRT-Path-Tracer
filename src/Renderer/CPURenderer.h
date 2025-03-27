@@ -75,15 +75,16 @@ public:
 
     void tracing_pass();
 
+    void configure_ReSTIR_GI_input_output_buffers();
     void configure_ReSTIR_GI_initial_candidates_pass();
-    void configure_ReSTIR_GI_temporal_pass();
-    void configure_ReSTIR_GI_spatial_pass(int spatial_reuse_pass_index);
+    void configure_ReSTIR_GI_temporal_reuse_pass();
+    void configure_ReSTIR_GI_spatial_reuse_pass(int spatial_reuse_pass_index);
     void configure_ReSTIR_GI_shading_pass();
     void configure_ReSTIR_GI_output_buffer();
 
     void launch_ReSTIR_GI_initial_candidates_pass();
     void launch_ReSTIR_GI_temporal_reuse_pass();
-    void launch_ReSTIR_GI_spatial_reuse_pass(int spatial_reuse_pass_index);
+    void launch_ReSTIR_GI_spatial_reuse_pass();
     void launch_ReSTIR_GI_shading_pass();
 
     void gmon_compute_median_of_means();

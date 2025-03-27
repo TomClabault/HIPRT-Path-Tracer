@@ -1504,6 +1504,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				draw_ReSTIR_spatial_reuse_panel<true>([&render_settings, this]() {
 					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				});
 
 				draw_ReSTIR_bias_correction_panel<true>();
@@ -3030,7 +3031,6 @@ void ImGuiSettingsWindow::draw_quality_panel()
 				"Regularization is only applied during NEE so the direct apperance of smooth objects isn't affected.");
 		}
 
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
 

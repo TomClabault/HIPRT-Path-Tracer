@@ -50,19 +50,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(const ReSTIRC
 	return hippt::abs(neighbor_roughness - center_pixel_roughness) < threshold;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool jacobian_similarity_heuristic(const HIPRTRenderData& render_data, int neighbor_pixel_index, int center_pixel_index, float3 current_shading_point, float3 neighbor_shading_point)
-{
-	if (render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].UCW == 0.0f)
-		return true;
-
-	float3 reconnection_normal = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point_geometric_normal;
-	if (ReSTIRGISample::is_envmap_path(reconnection_normal))
-		return true;
-
-	float3 reconnection_point = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point;
-	float jacobian = get_jacobian_determinant_reconnection_shift(reconnection_point, reconnection_normal, current_shading_point, neighbor_shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-	return jacobian != -1.0f;
-}
+//HIPRT_HOST_DEVICE HIPRT_INLINE bool jacobian_similarity_heuristic(const HIPRTRenderData& render_data, int neighbor_pixel_index, int center_pixel_index, float3 current_shading_point, float3 neighbor_shading_point)
+//{
+//	if (render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].UCW == 0.0f)
+//		return true;
+//
+//	float3 reconnection_normal = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point_geometric_normal;
+//	if (ReSTIRGISample::is_envmap_path(reconnection_normal))
+//		return true;
+//
+//	float3 reconnection_point = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point;
+//	float jacobian = get_jacobian_determinant_reconnection_shift(reconnection_point, reconnection_normal, current_shading_point, neighbor_shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+//	return jacobian != -1.0f;
+//}
 
 template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& render_data,

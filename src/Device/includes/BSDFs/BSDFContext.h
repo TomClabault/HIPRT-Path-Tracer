@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_BSDF_CONTEXT_H
 
 #include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
+#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/RayVolumeState.h"
 
 struct BSDFContext
