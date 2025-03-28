@@ -46,14 +46,15 @@ struct HIPRTRenderSettings
 	int DEBUG_BOUNCE = 1;
 
 	bool enable_direct = true;
-	bool DEBUG_DOUBLE_BSDF_SHADING = true;
+	bool DEBUG_DO_BSDF_RATIO = false;
+	bool DEBUG_DOUBLE_BSDF_SHADING = false;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	int debug_x = 138, debug_y = 151;
 	int debug_x2 = 136, debug_y2 = 147;
-	bool DEBUG_DO_ONLY_NEIGHBOR = true;
-	float fresnel_proba_DEBUG = 1.0f;
+	bool DEBUG_DO_ONLY_NEIGHBOR = false;
+	float fresnel_proba_DEBUG = -1.0f;
 	int debug_size = 0;
 	int debug_count_multiplier = 2;
 	int precision = 256;
@@ -107,9 +108,9 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 4;
+	int nb_bounces = 15;
 
-	bool do_russian_roulette = true;
+	bool do_russian_roulette = false;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to russian roulette termination
@@ -155,12 +156,12 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = false;
+	bool enable_adaptive_sampling = true;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 256;
+	int adaptive_sampling_min_samples = 512;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.0750f;
 
@@ -176,7 +177,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 25.0f;
+	float stop_pixel_percentage_converged = 40.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;

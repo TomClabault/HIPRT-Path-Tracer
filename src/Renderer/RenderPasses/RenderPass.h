@@ -90,6 +90,11 @@ public:
 	 */
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) { return false; }
 
+	///**
+	// * This function is called everytime the renderer
+	// */
+	//virtual bool prepass() {}
+
 	/**
 	 * Called at each frame, before launch()
 	 * 
