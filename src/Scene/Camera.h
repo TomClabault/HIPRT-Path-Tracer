@@ -68,7 +68,7 @@ struct Camera
     glm::mat4x4 projection_matrix;
 
     // Whether or not to jitter rays direction for anti-aliasing during the rendering
-    bool do_jittering = false;
+    bool do_jittering = true;
 
     // Vertical FOV in radians
     float vertical_fov = M_PI * 0.5f;

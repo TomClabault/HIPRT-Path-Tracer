@@ -37,12 +37,21 @@
  // - Not a normal mapping issue?
  // - With everything specular at IOR 1.0f but roughness 1.0f, there's basically no bias. Even though the specular layer has no effect because of IOR 1.0f. So if the roughness of an inexistant layer changes the bias, it can only be a PDF issue?
  // - Because there is no bias on full Lambertian, this isn't a jacobian issue?
+ // 
+ // With a specular IOR 1 + diffuse lobe setup
+ //     - increasing the roughness of the specular (still at IOR 1) reduces the bias
+ //     - artificially fixing the proba of sampling the specular to 90 % and diffuse 10 % increases the bias quiiite a lot(but still converges correctly without ReSTIR and when reusing 0 neighbor).Even more so when approaching 100 % specular(but not quite 100 %)
+ //     - sampling the specular & diffuse lobe based on the fresnel reflectance yields a different bias vs.sampling 50 / 50 (or 90 / 10).
+ //     - resampling more spatial neighbors makes things a bit worse.But only up to a certain point.For example, 6 spatial reuse passes with 16 candidates each(which is huge) is barely worse than 1 spatial pass @ 16 candidates
+ //     - with 0 spatial neighbor reuse, it converges correctly, no matter the BSDF / sampling probas / ...
+ //     - there seems to be no bias with only 1 bounce(i.e.with paths, being at most : "camera -> first hit -> second hit").Bias only comes in with # of bounce >= 2
  // -------------------------- WHAT WE KNOW --------------------------
  // 
  // -------------------------- DIRTY FIX RIGHT NOW --------------------------
  // - No double BSDF shading
  // - No double BSDF in target function
  // - Reuse on specular is ok
+ // - Using rejection heuristics is better
  // -------------------------- DIRTY FIX RIGHT NOW --------------------------
  // 
  // -------------------------- TODO TO TRY TO DEBUG IT --------------------------
