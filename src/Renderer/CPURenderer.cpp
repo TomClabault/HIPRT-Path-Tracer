@@ -8,14 +8,17 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
+
 #include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 #include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
 #include "Device/kernels/ReSTIR/DI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/DI/FusedSpatiotemporalReuse.h"
+
 #include "Device/kernels/ReSTIR/GI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/GI/TemporalReuse.h"
+#include "Device/kernels/ReSTIR/GI/SpatialRadii.h"
 #include "Device/kernels/ReSTIR/GI/Shading.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -45,8 +48,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 431
-#define DEBUG_PIXEL_Y 234
+#define DEBUG_PIXEL_X 352
+#define DEBUG_PIXEL_Y 112
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -70,7 +73,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 32
+#define DEBUG_NEIGHBORHOOD_SIZE 75
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -96,6 +99,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_gi_state.temporal_reservoirs.resize(width * height);
     m_restir_gi_state.spatial_reservoirs.resize(width * height);
+    m_restir_gi_state.per_pixel_spatial_reuse_directions_mask.resize(width * height);
+    m_restir_gi_state.per_pixel_spatial_reuse_radius.resize(width * height);
 
     m_g_buffer.resize(width * height);
     m_g_buffer_prev_frame.resize(width * height);
@@ -290,6 +295,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_gi_reservoir_buffer_1 = m_restir_gi_state.initial_candidates_reservoirs.data();
     m_render_data.aux_buffers.restir_gi_reservoir_buffer_2 = m_restir_gi_state.spatial_reservoirs.data();
     m_render_data.aux_buffers.restir_gi_reservoir_buffer_3 = m_restir_gi_state.temporal_reservoirs.data();
+    m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask = m_restir_gi_state.per_pixel_spatial_reuse_directions_mask.data();
+    m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
 
     float3 grid_min_point_with_envmap, grid_max_point_with_envmap;
     m_nee_plus_plus.base_grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;
@@ -562,6 +569,8 @@ void CPURenderer::ReSTIR_DI_pass()
 
 void CPURenderer::ReSTIR_GI_pass()
 {
+    compute_ReSTIR_GI_optimal_spatial_reuse_radii();
+
     configure_ReSTIR_GI_input_output_buffers();
 
     configure_ReSTIR_GI_initial_candidates_pass();
@@ -814,6 +823,15 @@ void CPURenderer::tracing_pass()
 
     debug_render_pass([this](int x, int y) {
         MegaKernel(m_render_data, x, y);
+    });
+}
+
+void CPURenderer::compute_ReSTIR_GI_optimal_spatial_reuse_radii()
+{
+    m_render_data.random_number = m_rng.xorshift32();
+
+    debug_render_pass([this](int x, int y) {
+        ReSTIR_GI_Spatial_Radii(m_render_data, x, y);
     });
 }
 

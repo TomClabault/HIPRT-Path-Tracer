@@ -558,6 +558,11 @@ void GPURenderer::render_path_tracing()
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
 
+	if (m_render_data.render_settings.sample_number == 0)
+		// If this is the very first sample, launching the prepass
+		// of all the render passes
+		m_render_graph.prepass();
+
 	for (int i = 1; i <= m_render_data.render_settings.samples_per_frame; i++)
 	{
 		// Updating the previous and current camera

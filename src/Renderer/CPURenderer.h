@@ -75,6 +75,7 @@ public:
 
     void tracing_pass();
 
+    void compute_ReSTIR_GI_optimal_spatial_reuse_radii();
     void configure_ReSTIR_GI_input_output_buffers();
     void configure_ReSTIR_GI_initial_candidates_pass();
     void configure_ReSTIR_GI_temporal_reuse_pass();
@@ -144,6 +145,9 @@ private:
         std::vector<ReSTIRGIReservoir> initial_candidates_reservoirs;
         std::vector<ReSTIRGIReservoir> temporal_reservoirs;
         std::vector<ReSTIRGIReservoir> spatial_reservoirs;
+
+        std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask;
+        std::vector<unsigned int> per_pixel_spatial_reuse_radius;
     } m_restir_gi_state;
 
     Image32Bit m_sheen_ltc_params;

@@ -7,6 +7,8 @@
 #define DEVICE_RESTIR_UTILS_SPATIAL_H
 
 #include "Device/includes/PathTracing.h"
+#include "Device/includes/ReSTIR/Surface.h"
+
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 

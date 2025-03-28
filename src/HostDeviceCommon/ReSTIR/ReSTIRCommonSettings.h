@@ -81,6 +81,9 @@ struct ReSTIRCommonSpatialPassSettings
 	// Visibility term in the target function will only be used for the first
 	// 'neighbor_visibility_count' neighbors, not all.
 	int neighbor_visibility_count;
+
+	unsigned int* per_pixel_spatial_reuse_directions_mask = nullptr;
+	unsigned int* per_pixel_spatial_reuse_radius = nullptr;
 };
 
 struct ReSTIRCommonNeighborSimiliaritySettings
