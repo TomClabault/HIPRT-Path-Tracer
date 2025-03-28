@@ -20,6 +20,7 @@ public:
 	static const std::string RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_GI_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_GI_SHADING_KERNEL_ID;
+	static const std::string RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID;
 
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
@@ -32,6 +33,13 @@ public:
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache) override;
 	virtual bool pre_render_update(float delta_time) override;
 
+	/**
+	 * This pass computes the optimal reuse radius and reuse directions to use, per-pixel
+	 * during the spatial reuse passes
+	 *
+	 * This is a no-op if not accumulating i.e. this is only available for offline rendering
+	 */
+	void compute_optimal_spatial_reuse_radii();
 	void configure_initial_candidates_pass();
 	void launch_initial_candidates_pass();
 	void configure_temporal_reuse_pass();
@@ -65,6 +73,9 @@ private:
 	OrochiBuffer<ReSTIRGIReservoir> m_initial_candidates_buffer;
 	OrochiBuffer<ReSTIRGIReservoir> m_temporal_buffer;
 	OrochiBuffer<ReSTIRGIReservoir> m_spatial_buffer;
+
+	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_radius;
+	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_direction_mask;
 };
 
 #endif

@@ -41,6 +41,12 @@ bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& 
 	return recompiled;
 }
 
+void RenderGraph::prepass()
+{
+	for (auto& name_to_render_pass : m_render_passes)
+		name_to_render_pass.second->prepass();
+}
+
 bool RenderGraph::pre_render_update(float delta_time)
 {
 	bool render_data_invalidated = false;

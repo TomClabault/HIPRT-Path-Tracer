@@ -40,6 +40,8 @@ enum ReSTIRGIDebugView
 	TARGET_FUNCTION = 2,
 	WEIGHT_SUM = 3,
 	M_COUNT = 4,
+	PER_PIXEL_REUSE_RADIUS = 5,
+	PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE = 6,
 };
 
 struct ReSTIRGISettings : public ReSTIRCommonSettings
@@ -85,7 +87,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 
 		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
-		neighbor_similarity_settings.normal_similarity_angle_degrees = 25.0f;
+		neighbor_similarity_settings.normal_similarity_angle_degrees = 37.5f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
 
 		neighbor_similarity_settings.use_plane_distance_heuristic = true;
@@ -103,8 +105,8 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		m_cap = 3;
 		use_confidence_weights = true;
 
-		debug_view = ReSTIRGIDebugView::NO_DEBUG;
-		debug_view_scale_factor = 0.04f;
+		debug_view = ReSTIRGIDebugView::PER_PIXEL_REUSE_RADIUS;
+		debug_view_scale_factor = 1.0f;
 	}
 
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;

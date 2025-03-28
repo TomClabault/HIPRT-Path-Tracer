@@ -78,7 +78,7 @@ namespace hippt
 #define M_FOUR_PI	12.5663706143591729539f // 4.0f * M_PI
 #define M_INV_PI	0.31830988618379067154f // 1.0f / M_PI
 #define M_INV_2_PI	0.15915494309189533577f // 1.0f / (2.0f * M_PI)
-#define M_TWO_PIPI	19.73920880217871723767f
+#define M_TWO_PI_SQUARED	19.73920880217871723767f
 #define NEAR_ZERO	1.0e-10f
 
 	__device__ int thread_idx_x() { return threadIdx.x + blockIdx.x * blockDim.x; }
@@ -292,7 +292,7 @@ namespace hippt
 #define M_FOUR_PI	12.5663706143591729539f // 4.0f * M_PI
 #define M_INV_PI	0.31830988618379067154f // 1.0f / M_PI
 #define M_INV_2_PI	0.15915494309189533577f // 1.0f / (2.0f * M_PI)
-#define M_TWO_PIPI	19.73920880217871723767f
+#define M_TWO_PI_SQUARED	19.73920880217871723767f // 2.0f * pi^2
 #define NEAR_ZERO	1.0e-10f
 
 	inline int thread_idx_x() { return 0; }
