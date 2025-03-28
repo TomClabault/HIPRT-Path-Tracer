@@ -162,6 +162,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Don't reuse specular", &render_settings.DEBUG_DONT_REUSE_SPECULAR))
 		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("BSDF PDF Ratio jacobian", &render_settings.DEBUG_DO_BSDF_RATIO))
+		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Double BSDF shading", &render_settings.DEBUG_DOUBLE_BSDF_SHADING))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Do only neighbor", &render_settings.DEBUG_DO_ONLY_NEIGHBOR))

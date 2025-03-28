@@ -46,14 +46,15 @@ struct HIPRTRenderSettings
 	int DEBUG_BOUNCE = 1;
 
 	bool enable_direct = true;
+	bool DEBUG_DO_BSDF_RATIO = true;
 	bool DEBUG_DOUBLE_BSDF_SHADING = true;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	int debug_x = 138, debug_y = 151;
 	int debug_x2 = 136, debug_y2 = 147;
-	bool DEBUG_DO_ONLY_NEIGHBOR = true;
-	float fresnel_proba_DEBUG = 1.0f;
+	bool DEBUG_DO_ONLY_NEIGHBOR = false;
+	float fresnel_proba_DEBUG = 0.9f;
 	int debug_size = 0;
 	int debug_count_multiplier = 2;
 	int precision = 256;
@@ -109,7 +110,7 @@ struct HIPRTRenderSettings
 	// 1 is direct light only.
 	int nb_bounces = 4;
 
-	bool do_russian_roulette = true;
+	bool do_russian_roulette = false;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to russian roulette termination

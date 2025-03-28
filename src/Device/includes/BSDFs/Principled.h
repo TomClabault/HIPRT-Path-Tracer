@@ -1180,7 +1180,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(con
     {
         float specular_relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
         float specular_fresnel = full_fresnel_dielectric(NoV, specular_relative_ior);
-        float specular_fresnel_sampling_weight = render_data.render_settings.fresnel_proba_DEBUG;
+        float specular_fresnel_sampling_weight = render_data.render_settings.fresnel_proba_DEBUG == -1.0f ? specular_fresnel * material.specular : render_data.render_settings.fresnel_proba_DEBUG;
 
         // The specular weight gets affected
         specular_weight *= specular_fresnel_sampling_weight;
