@@ -134,7 +134,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
     envmap_pdf = 1.0f / (world_settings.envmap_width * world_settings.envmap_height);
 #endif
     // Converting the PDF from area measure on the envmap to solid angle measure
-    envmap_pdf /= (M_TWO_PIPI * sin_theta);
+    envmap_pdf /= (M_TWO_PI_SQUARED * sin_theta);
 
     return env_map_radiance;
 }
@@ -166,7 +166,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
 #endif
 
     // Converting from "texel on envmap measure" to solid angle
-    pdf /= (M_TWO_PIPI * sin_theta);
+    pdf /= (M_TWO_PI_SQUARED * sin_theta);
 
     return envmap_radiance;
 }

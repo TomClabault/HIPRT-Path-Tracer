@@ -18,12 +18,12 @@
 std::mutex g_mutex;
 #endif
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB32F final_color)
+HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, ColorRGB32F final_color)
 {
     if (render_data.render_settings.sample_number == 0)
-        render_data.buffers.accumulated_ray_colors[y * res_x + x] = final_color;
+        render_data.buffers.accumulated_ray_colors[y * render_data.render_settings.render_resolution.x + x] = final_color;
     else
-        render_data.buffers.accumulated_ray_colors[y * res_x + x] = final_color * render_data.render_settings.sample_number;
+        render_data.buffers.accumulated_ray_colors[y * render_data.render_settings.render_resolution.x + x] = final_color * render_data.render_settings.sample_number;
 }
 
 /**
@@ -94,7 +94,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
 #endif
 
         if (render_data.render_settings.display_NaNs)
-            debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(1.0e30f, 0.0f, 1.0e30f));
+            debug_set_final_color(render_data, x, y, ColorRGB32F(1.0e30f, 0.0f, 1.0e30f));
         else
             in_out_color = ColorRGB32F(0.0f);
     }

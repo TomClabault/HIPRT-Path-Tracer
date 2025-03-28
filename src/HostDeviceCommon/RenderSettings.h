@@ -51,7 +51,7 @@ struct HIPRTRenderSettings
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
-	int debug_x = 138, debug_y = 151;
+	int debug_x = 639/2, debug_y = 346/2;
 	int debug_x2 = 136, debug_y2 = 147;
 	bool DEBUG_DO_ONLY_NEIGHBOR = false;
 	float fresnel_proba_DEBUG = -1.0f;
