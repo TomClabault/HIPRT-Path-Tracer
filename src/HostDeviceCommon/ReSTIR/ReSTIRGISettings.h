@@ -65,7 +65,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.do_spatial_reuse_pass = true;
 
 		common_spatial_pass.spatial_pass_index = 0;
-		common_spatial_pass.number_of_passes = 3;
+		common_spatial_pass.number_of_passes = 1;
 		common_spatial_pass.reuse_radius = 20;
 		common_spatial_pass.reuse_neighbor_count = 10;
 
@@ -99,13 +99,13 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		use_jacobian_rejection_heuristic = true;
 		jacobian_rejection_threshold = 15.0f;
 
-		use_neighbor_sample_point_roughness_heuristic = true;
+		use_neighbor_sample_point_roughness_heuristic = false;
 		neighbor_sample_point_roughness_threshold = 0.1f;
 
 		m_cap = 3;
 		use_confidence_weights = true;
 
-		debug_view = ReSTIRGIDebugView::PER_PIXEL_REUSE_RADIUS;
+		debug_view = ReSTIRGIDebugView::NO_DEBUG;
 		debug_view_scale_factor = 1.0f;
 	}
 

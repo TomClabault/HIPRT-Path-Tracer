@@ -94,6 +94,7 @@ private:
 	void configure_spatiotemporal_pass();
 	void configure_output_buffer();
 
+	void compute_optimal_spatial_reuse_radii();
 	void launch_presampling_lights_pass();
 	void launch_initial_candidates_pass();
 	void launch_temporal_reuse_pass();

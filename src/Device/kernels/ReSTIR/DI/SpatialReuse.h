@@ -59,12 +59,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		return;
 
 	// Initializing the random generator
-	unsigned int seed;
-	if (render_data.render_settings.freeze_random)
-		seed = wang_hash(center_pixel_index + 1);
-	else
-		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+	// TODO try having multiply instead of XOR again
+	unsigned int seed = render_data.render_settings.freeze_random ? wang_hash(center_pixel_index + 1) : wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
+
+	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used
+	render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
 
 	ReSTIRDIReservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
 	ReSTIRDIReservoir spatial_reuse_output_reservoir;
@@ -98,6 +98,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
+	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
+
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
@@ -112,17 +114,25 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		// We can already check whether or not this neighbor is going to be
 		// accepted at all by checking the heuristic cache
 		if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
+		{	
 			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
 			// we know that the center pixel will be accepted
 			// 
 			// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
 			// going to have issues if we try to read more than that.
 			if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
+			{
+				// Advancing the rng for generating the spatial neighbors since if we "continue" here, the spatial neighbors rng
+				// isn't going to be advanced by the call to 'get_spatial_neighbor_pixel_index' below so we're doing it manually
+				spatial_neighbor_advance_rng<true>(render_data, spatial_neighbors_rng);
+
 				// Neighbor not passing the heuristics tests, skipping it right away
 				continue;
+			}
+		}
 
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data,
-			neighbor_index, center_pixel_coords, cos_sin_theta_rotation);
+			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
@@ -176,7 +186,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
- 			center_pixel_surface.shading_point, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+ 			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc,/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
@@ -186,7 +196,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir.M, neighbor_reservoir.sample.target_function, 
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
-			center_pixel_surface.shading_point, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #else
 #error "Unsupported bias correction mode"

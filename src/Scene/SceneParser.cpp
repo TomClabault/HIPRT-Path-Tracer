@@ -433,7 +433,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
     /*renderer_material.specular = 1.0f;
-    renderer_material.roughness = 0.030f;
+    renderer_material.roughness = 0.0f;
     renderer_material.ior = 1.0f;
     renderer_material.coat_ior = 1.0f;
     renderer_material.coat = 0.0f;
@@ -442,8 +442,8 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     renderer_material.metallic = 0.0f;
     renderer_material.specular_transmission = 0.0f;*/
 
-    /*renderer_material.base_color = ColorRGB32F(1.0f);
-    renderer_material.emission_strength = 0.0f;*/
+    //renderer_material.base_color = ColorRGB32F(1.0f);
+    //renderer_material.emission_strength = 0.0f;
 
     if (std::string(mesh_material->GetName().C_Str()).find("Curtain") != std::string::npos)
     {

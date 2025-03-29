@@ -316,7 +316,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Stopping condition tree");
 		{
-			if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
+			if (ImGui::InputInt("Max sample count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
 			if (m_renderer->get_gmon_render_pass()->is_render_pass_used())
 			{
@@ -348,7 +348,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 				}
 			}
 
-			if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
+			if (ImGui::InputFloat("Max render time (s)", &m_application_settings->max_render_time))
 				m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -446,7 +446,7 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 	static bool min_depth_modified = false;
 	if (!min_depth_modified)
 		render_settings.russian_roulette_min_depth = std::min(5, render_settings.nb_bounces / 2);
-	if (ImGui::SliderInt("RR Min Depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
+	if (ImGui::SliderInt("RR min depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
 	{
 		m_render_window->set_render_dirty(true);
 		min_depth_modified = true;
@@ -455,7 +455,7 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 									"For example, 0 means that the camera ray hits, and then the next bounce "
 									"is already susceptible to russian roulette kill. 1 would mean that the first "
 									"bounce is never going to be cutoff by the russian roulette.");
-	if (ImGui::SliderFloat("RR Throughput Clamp", &render_settings.russian_roulette_throughput_clamp, 1.0f, 20.0f))
+	if (ImGui::SliderFloat("RR throughput clamp", &render_settings.russian_roulette_throughput_clamp, 1.0f, 20.0f))
 		m_render_window->set_render_dirty(true);
 	ImGuiRenderer::show_help_marker("After applying russian roulette (dividing by the continuation probability) "
 									"the energy added to the ray throughput is clamped to this maximum value.\n"
@@ -489,7 +489,7 @@ void ImGuiSettingsWindow::display_view_selector()
 
 	int display_view_selected_index = display_view_system->get_current_display_view_type();
 
-	if (ImGui::BeginCombo("Display View", items[display_view_selected_index]))
+	if (ImGui::BeginCombo("Display view", items[display_view_selected_index]))
 	{
 		for (int i = 0; i < items.size(); i++)
 		{
@@ -2006,12 +2006,19 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					}
 				}
 
-				if (ImGui::Checkbox("Neighbor Samples Random Rotation", &restir_settings.do_neighbor_rotation))
+				if (ImGui::Checkbox("Spatial neighbors random rotation", &restir_settings.do_neighbor_rotation))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) "
 					"will be randomly rotated. Because neighbor locations are generated with a Hammersley point set "
 					"(deterministic), not rotating them results in every pixel of every rendered image reusing the "
 					"same neighbor locations which decreases reuse efficiency.");
+
+				if (ImGui::Checkbox("Use Hammersley point set for spatial neighbors", &restir_settings.use_hammersley))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("Whether or not to use a Hammersley point set for generating the position of the "
+					"spatial neighbors.\n\n"
+					""
+					"If not using Hammersely, uncorrelated random numbers will be used.");
 
 				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 				if (ImGui::Checkbox("Allow Reuse of Converged Neighbors", &restir_settings.allow_converged_neighbors_reuse))
