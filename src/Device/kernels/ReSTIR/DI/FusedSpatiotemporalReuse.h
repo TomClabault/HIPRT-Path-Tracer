@@ -123,10 +123,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const H
 {
 	int reused_neighbors_count = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<false>(render_data).reuse_neighbor_count;
 
+	// The RNG for generating the neighbors. It's important to use the same RNG here as the one used in the main for-loop
+	// of the spatial reuse such that we count the right neighbors
+	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
+
 	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, neighbor_index, temporal_neighbor_position, cos_sin_theta_rotation);
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, neighbor_index, temporal_neighbor_position, cos_sin_theta_rotation, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport / invalid
 			continue;
@@ -164,12 +168,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		return;
 
 	// Initializing the random generator
-	unsigned int seed;
-	if (render_data.render_settings.freeze_random)
-		seed = wang_hash(center_pixel_index + 1);
-	else
-		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+	// TODO try having multiply instead of XOR again
+	unsigned int seed = render_data.render_settings.freeze_random ? wang_hash(center_pixel_index + 1) : wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
+
+	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used
+	render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
 
 	int2 center_pixel_coords = make_int2(x, y);
 
@@ -321,6 +325,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 
 	ReSTIRDIReservoir* spatial_input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
+	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
 
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample the *initial candidates reservoir*
@@ -352,7 +357,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// Resampling around the temporal neighbor location
 			neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, 
 				spatial_neighbor_index, 
-				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation);
+				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation, spatial_neighbors_rng);
 
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport

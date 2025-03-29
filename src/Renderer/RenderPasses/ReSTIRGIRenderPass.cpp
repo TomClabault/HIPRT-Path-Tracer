@@ -396,5 +396,9 @@ bool ReSTIRGIRenderPass::is_render_pass_used() const
 
 float ReSTIRGIRenderPass::get_VRAM_usage() const
 {
-	return (m_initial_candidates_buffer.get_byte_size() + m_temporal_buffer.get_byte_size() + m_spatial_buffer.get_byte_size()) / 1000000.0f;
+	return (m_initial_candidates_buffer.get_byte_size() + 
+		m_temporal_buffer.get_byte_size() + 
+		m_spatial_buffer.get_byte_size() + 
+		m_per_pixel_spatial_reuse_direction_mask.get_byte_size() +
+		m_per_pixel_spatial_reuse_radius.get_byte_size()) / 1000000.0f;
 }

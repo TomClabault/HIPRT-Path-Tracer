@@ -43,6 +43,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_hammersley_2D(unsigned int number_o
 /**
  * Returns integer pixel coordinates offset from the center of the disk
  * given the radius of the disk and two random numbers in [0, 1] u and v
+ * 
+ * uv.x is used as theta for sampling the disk
+ * uv.y is used for sampling the distance from the center of the disk
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk_uv(float radius, float2 uv)
 {

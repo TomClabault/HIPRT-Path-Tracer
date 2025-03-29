@@ -274,6 +274,8 @@ bool ReSTIRDIRenderPass::launch()
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
 			launch_presampling_lights_pass();
 
+		compute_optimal_spatial_reuse_radii();
+
 		launch_initial_candidates_pass();
 
 		if (m_render_data->render_settings.restir_di_settings.do_fused_spatiotemporal)
@@ -303,6 +305,23 @@ void ReSTIRDIRenderPass::post_render_update()
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag
 	m_render_data->render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = false;
+}
+
+void ReSTIRDIRenderPass::compute_optimal_spatial_reuse_radii()
+{
+	if (!m_render_data->render_settings.accumulate || m_render_data->render_settings.sample_number > 0 || m_render_data->render_settings.wants_render_low_resolution)
+		// If we're not accumulating, we have no guarantee that the camera isn't moving and so
+		// there isn't really an "optimal" reuse radius per pixel to find
+		//
+		// But if the camera isn't moving, then the neighborhood of a pixel is fixed and we can optimize
+		// the best spatial reuse radius
+		//
+		// Also, we're only doing this as a "prepass" at sample 0: we only need this once for the whole rendering
+		return;
+
+	void* launch_args[] = { m_render_data,  };
+
+	// m_kernels[ReSTIRDIRenderPass::RESTIR_DI_COMPUTE_SPATIAL_RADII_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
 LightPresamplingParameters ReSTIRDIRenderPass::configure_light_presampling_pass()

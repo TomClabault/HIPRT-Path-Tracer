@@ -101,7 +101,7 @@
 #define ReuseBSDFMISRay KERNEL_OPTION_FALSE
 
 /**
- * Partial and experimental implementation of [Generate Coherent Rays Directly, Liu et al., 2024]
+ * Partial and (very) experimental implementation of [Generate Coherent Rays Directly, Liu et al., 2024]
  * for reuse sampled directions on the first hit accross the threads of warps
  */
 #define DoFirstBounceWarpDirectionReuse KERNEL_OPTION_FALSE

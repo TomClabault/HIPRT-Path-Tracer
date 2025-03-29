@@ -51,7 +51,7 @@ struct HIPRTRenderSettings
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
 	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
-	int debug_x = 639/2, debug_y = 346/2;
+	int debug_x = 387, debug_y = 346-(200)-1;
 	int debug_x2 = 136, debug_y2 = 147;
 	bool DEBUG_DO_ONLY_NEIGHBOR = false;
 	float fresnel_proba_DEBUG = -1.0f;
@@ -110,7 +110,7 @@ struct HIPRTRenderSettings
 	// 1 is direct light only.
 	int nb_bounces = 15;
 
-	bool do_russian_roulette = false;
+	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to russian roulette termination

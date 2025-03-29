@@ -11,6 +11,8 @@
 
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
+#include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
 template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
@@ -40,6 +42,46 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
 }
 
 /**
+ * directions_mask = spatial_pass_settings.per_pixel_spatial_reuse_directions_mask[center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x]
+ * 
+ * Note that this function will sample the first sector if there are no sectors available around the given pixel
+ */
+HIPRT_HOST_DEVICE float2 sample_spatial_neighbor_from_allowed_directions(const HIPRTRenderData& render_data, const ReSTIRCommonSpatialPassSettings& spatial_pass_settings, int2 center_pixel_coords, Xorshift32Generator& rng)
+{
+	// TODO directions_mask can be fetched only once per pixel invocation
+	unsigned int directions_mask = spatial_pass_settings.per_pixel_spatial_reuse_directions_mask[center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x];
+	unsigned int number_of_allowed_sectors = hippt::popc(directions_mask);
+	unsigned int random_sector_index = rng.random_index(number_of_allowed_sectors);
+
+	// Now that we have our random sector, we need to find what theta rotation that corresponds to:
+	// - Each sector is 2Pi / 32 wide
+	// 
+	// So we're counting how many sectors come before our 'random_sector_index' and we're going to
+	// multiply that sector count by 2Pi / 32
+	char count_left_to_go = random_sector_index + 1;
+
+	// Counting how many sectors there before we reach our 'random_sector_index'
+	int i;
+	for (i = 0; i < 32; i++)
+	{
+		if (directions_mask & (1 << i))
+		{
+			--count_left_to_go;
+
+			if (count_left_to_go <= 0)
+				break;
+		}
+	}
+
+	float theta_start = i / 32.0f;
+	// Generating a random theta in between theta_start and the start of the next sector (which is 1.0f / 32.0f wide)
+	// i.e. a random theta inside our disk sector
+	float random_theta = theta_start + rng() * (1.0f / 32.0f);
+
+	return make_float2(random_theta, rng());
+}
+
+/**
  * Returns the linear index that can be used directly to index a buffer
  * of render_data of the 'neighbor_number'th neighbor that we're going
  * to spatially reuse from
@@ -57,16 +99,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
  *		sampler so that not each pixel on the image resample the exact same neighbors (and so
  *		that a given pixel P resamples different neighbors accros different frame, otherwise
  *		the Hammersley sampler would always generate the exact same points
- * 'rng_converged_neighbor_reuse' is a random generator used specifically for generating
- *		random numbers to test against the 'spatial_pass_settings.converged_neighbor_reuse_probability'
- *		if the user has allowed reusing converged neighbors (when adaptive sampling is used).
- *		The same random number generator with the same seed must be given to *all* get_spatial_neighbor_pixel_index()
- *		calls of this thread invocation
+ * 'rng' is a random generator used for generating spatial neighbor positions if not using a Hammersley
+ *		point set. 
+ * 
+ *		Only used if render_data.render_settings.restir_settings.common_spatial_pass.use_hammersley == false
  */
 template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data,
 	int neighbor_index,
-	int2 center_pixel_coords, float2 cos_sin_theta_rotation, bool debug = false)
+	int2 center_pixel_coords, float2 cos_sin_theta_rotation, Xorshift32Generator& rng)
 {
 	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 
@@ -84,7 +125,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		// which means that we would be resampling ourselves (the center pixel) --> 
 		// pointless because we already resample ourselves "manually" (that's why there's that
 		// "if (neighbor_index == neighbor_reuse_count)" above, to resample the center pixel)
-		float2 uv = sample_hammersley_2D(spatial_pass_settings.reuse_neighbor_count + 1, neighbor_index + 1);
+		float2 uv;
+		if (render_data.render_settings.restir_gi_settings.common_spatial_pass.use_hammersley)
+			uv = sample_hammersley_2D(spatial_pass_settings.reuse_neighbor_count + 1, neighbor_index + 1);
+		else
+			uv = sample_spatial_neighbor_from_allowed_directions(render_data, spatial_pass_settings, center_pixel_coords, rng);
 
 		float2 neighbor_offset_in_disk = sample_in_disk_uv(spatial_pass_settings.reuse_radius, uv);
 
@@ -150,6 +195,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 	return neighbor_pixel_index;
 }
 
+template <bool IsReSTIRGI>
+HIPRT_HOST_DEVICE void spatial_neighbor_advance_rng(const HIPRTRenderData& render_data, Xorshift32Generator& rng)
+{
+	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+
+	if (spatial_pass_settings.use_hammersley)
+	{
+		// Each spatial neighbor is two rng calls (for U and V for sampling the disk)
+		// so we're advancing by 2 rng calls
+		rng();
+		rng();
+	}
+	else
+	{
+		// If not using Hammersley, then each point is generated with 3 random numbers
+		// 
+		// One for the random sector
+		// One for the random theta
+		// One for the random radius
+		rng();
+		rng();
+		rng();
+	}
+}
+
 /**
  * Counts how many neighbors are eligible for reuse.
  * This is needed for proper normalization by pairwise MIS weights.
@@ -170,15 +240,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 	int2 center_pixel_coords, float2 cos_sin_theta_rotation,
 	int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
+	out_valid_neighbor_count = 0;
+
 	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
 
 	int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 	int reused_neighbors_count = spatial_pass_settings.reuse_neighbor_count;
 
-	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor_index, center_pixel_coords, cos_sin_theta_rotation);
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor_index, center_pixel_coords, cos_sin_theta_rotation, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;

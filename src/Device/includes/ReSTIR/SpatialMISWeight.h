@@ -115,9 +115,9 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
 		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function, 
-		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample, int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
+		ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample, int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
 
-		float3 center_pixel_shading_point, float target_function_at_center,
+		ReSTIRSurface& center_pixel_surface, float target_function_at_center,
 		int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
 		bool update_mc, bool resampling_canonical,
 		Xorshift32Generator& random_number_generator)
@@ -169,7 +169,23 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 						// If this is an envmap path the jacobian is just 1 so this is not needed
 						if (!center_pixel_reservoir_sample.is_envmap_path())
 						{
-							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_shading_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							
+							// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
+							/*if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
+							{
+								float new_pdf;
+								BSDFContext new_pdf_context(hippt::normalize(neighbor_pixel_surface.shading_point - center_pixel_reservoir_sample.sample_point), center_pixel_reservoir_sample.sample_point_shading_normal, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.incident_light_direction_at_sample_point, center_pixel_reservoir_sample.incident_light_info_at_sample_point, center_pixel_reservoir_sample.sample_point_volume_state, false, center_pixel_reservoir_sample.sample_point_material.unpack(), 1, 0.0f);
+								bsdf_dispatcher_eval(render_data, new_pdf_context, new_pdf, random_number_generator);
+
+								float old_pdf;
+								BSDFContext old_pdf_context(hippt::normalize(center_pixel_surface.shading_point - center_pixel_reservoir_sample.sample_point), center_pixel_reservoir_sample.sample_point_shading_normal, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_reservoir_sample.incident_light_direction_at_sample_point, center_pixel_reservoir_sample.incident_light_info_at_sample_point, center_pixel_reservoir_sample.sample_point_volume_state, false, center_pixel_reservoir_sample.sample_point_material.unpack(), 1, 0.0f);
+								bsdf_dispatcher_eval(render_data, old_pdf_context, old_pdf, random_number_generator);
+
+								float bsdf_pdf_ratio = new_pdf / old_pdf;
+								jacobian *= bsdf_pdf_ratio;
+							}*/
+
 							if (jacobian == 0.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 								// and has been rejected), the target function is set to 0
@@ -233,7 +249,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_D
 		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function, 
 		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample, int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
 
-		float3 center_pixel_shading_point, float target_function_at_center,
+		ReSTIRSurface& center_pixel_surface, float target_function_at_center,
 		int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
 		bool update_mc, bool resampling_canonical,
 		Xorshift32Generator& random_number_generator)
@@ -297,7 +313,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_D
 						{
 							// If this is an envmap path the jacobian is just 1 so this is not needed
 
-							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_shading_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 							if (jacobian == 0.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 								// and has been rejected), the target function is set to 0

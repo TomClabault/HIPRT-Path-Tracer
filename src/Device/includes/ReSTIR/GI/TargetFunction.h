@@ -75,7 +75,7 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	BSDFContext bsdf_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_visible_point), surface.ray_volume_state, false, surface.material, 0, 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
 	ColorRGB32F visible_point_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 	if (bsdf_pdf > 0.0f)
-		visible_point_bsdf_color *= cosine_term;
+		visible_point_bsdf_color *= hippt::abs(cosine_term);
 
 #if ReSTIRGIDoubleBSDFInTargetFunction == KERNEL_OPTION_TRUE
 	if (!sample.is_envmap_path())
