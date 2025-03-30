@@ -83,11 +83,6 @@ struct ReSTIRCommonSpatialPassSettings
 	// This increases the spatial reuse "hit rate" (i.e. the number of neighbors that are not rejected by G-Buffer heuristics)
 	// and thus increases convergence speed.
 	bool use_adaptive_directional_spatial_reuse;
-	// If the adaptive directional spatial reuse is used and a pixel has less than
-	// 'adaptive_directional_spatial_reuse_minimum_valid_directions' valid directions (spatial disk sectors)
-	// to reuse from, this pixel will not do spatial reuse at all to help a little bit with efficiency:
-	// we don't want to spend resources doing spatial reuse on a pixel that has no valid neighborhood
-	int adaptive_directional_spatial_reuse_minimum_valid_directions;
 
 	// If true, neighboring pixels that have converged (if adaptive sampling is enabled)
 	// won't be reused to reduce bias.

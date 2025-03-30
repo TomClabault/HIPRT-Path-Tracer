@@ -13,7 +13,7 @@ const std::string ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID = "
 const std::string ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID = "ReSTIR GI Temporal reuse";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID = "ReSTIR GI Spatial reuse";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID = "ReSTIR GI Shading";
-const std::string ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID = "ReSTIR GI Adaptive-directional compute pass";
+const std::string ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID = "ReSTIR GI Adaptive-directional compute";
 
 const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES =
 {
@@ -234,7 +234,7 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 
 	if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.auto_reuse_radius)
 		// A percentage of the maximum render resolution extent for automatic spatial reuse radius
-		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.0125f;
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.02f;
 
 	return render_data_invalidated;
 }

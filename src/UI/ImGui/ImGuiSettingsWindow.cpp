@@ -1933,45 +1933,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 					m_render_window->set_render_dirty(true);
 				}
-				ImGui::BeginDisabled(restir_settings.auto_reuse_radius);
-				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
-				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 1, 64))
-				{
-					if (!restir_settings.debug_neighbor_location)
-						// Clamping if not debugging (we do allow negative values when debugging)
-						restir_settings.reuse_radius = std::max(1, restir_settings.reuse_radius);
-
-					m_render_window->set_render_dirty(true);
-				}
-				ImGui::EndDisabled();
-
-				{
-					ImGui::TreePush("Spatial reuse radius optimal tree");
-
-					if (ImGui::Checkbox("Auto radius", &restir_settings.auto_reuse_radius))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
-						"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
-					if (ImGui::Checkbox("Use adaptive-directional spatial reuse", &restir_settings.use_adaptive_directional_spatial_reuse))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::show_help_marker("Precomputes the best per-pixel spatial reuse radius to use as "
-						"well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse.\n\n"
-						""
-						"This increases the spatial reuse \"hit rate\" (i.e. the number of neighbors that are not rejected by "
-						"G-Buffer heuristics) and thus increases convergence speed.");
-
-					if (restir_settings.use_adaptive_directional_spatial_reuse)
-					{
-						if (ImGui::SliderInt("Minimum valid directions", &restir_settings.adaptive_directional_spatial_reuse_minimum_valid_directions, 0, 32))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("If the adaptive directional spatial reuse is used and a pixel has less than "
-							"this number of valid directions (spatial disk sectors) to reuse from, this pixel will "
-							"not do spatial reuse at all to help a little bit with efficiency: we don't want to "
-							"spend resources doing spatial reuse on a pixel that has no valid neighborhood");
-					}
-
-					ImGui::TreePop();
-				}
 
 				// Checking the value before the "Neighbor Reuse Count" slider is modified
 				// so that we know whether or not we'll have to keep the
@@ -2001,6 +1962,39 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						restir_settings.disocclusion_reuse_count = restir_settings.reuse_neighbor_count;
 
 					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::BeginDisabled(restir_settings.auto_reuse_radius);
+				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
+				ImGui::PushItemWidth(10 * ImGui::GetFontSize());
+				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 1, 64))
+				{
+					if (!restir_settings.debug_neighbor_location)
+						// Clamping if not debugging (we do allow negative values when debugging)
+						restir_settings.reuse_radius = std::max(1, restir_settings.reuse_radius);
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGui::PopItemWidth();
+				ImGui::EndDisabled();
+				ImGui::SameLine();
+				if (ImGui::Checkbox("Auto", &restir_settings.auto_reuse_radius))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
+					"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
+
+				{
+					ImGui::TreePush("Spatial reuse radius optimal tree");
+
+					if (ImGui::Checkbox("Use adaptive-directional spatial reuse", &restir_settings.use_adaptive_directional_spatial_reuse))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("Precomputes the best per-pixel spatial reuse radius to use as "
+						"well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse.\n\n"
+						""
+						"This increases the spatial reuse \"hit rate\" (i.e. the number of neighbors that are not rejected by "
+						"G-Buffer heuristics) and thus increases convergence speed.");
+
+					ImGui::TreePop();
 				}
 
 				if (ImGui::Checkbox("Increase disocclusion reuse count", &restir_settings.do_disocclusion_reuse_boost))
