@@ -48,7 +48,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	//m_gmon.result_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 
 	m_DEBUG_SUMS.resize(1024);
-	m_DEBUG_SUM_COUNT.resize(1);
+	m_DEBUG_SUM_COUNT.resize(1024);
 
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
@@ -1095,9 +1095,8 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 
 void GPURenderer::reset()
 {
-	int zero_data_int = 0;
 	m_DEBUG_SUMS.memset_whole_buffer(0);
-	m_DEBUG_SUM_COUNT.upload_data(&zero_data_int);
+	m_DEBUG_SUM_COUNT.memset_whole_buffer(0);
 
 	m_render_graph.reset();
 
@@ -1127,7 +1126,7 @@ void GPURenderer::update_render_data()
 		m_render_data.GPU_BVH = m_hiprt_scene.geometry.m_geometry;
 
 		m_render_data.render_settings.DEBUG_SUMS = reinterpret_cast<AtomicType<float>*>(m_DEBUG_SUMS.get_device_pointer());
-		m_render_data.render_settings.DEBUG_SUM_COUNT = reinterpret_cast<AtomicType<int>*>(m_DEBUG_SUM_COUNT.get_device_pointer());
+		m_render_data.render_settings.DEBUG_SUM_COUNT = reinterpret_cast<AtomicType<unsigned long long int>*>(m_DEBUG_SUM_COUNT.get_device_pointer());
 
 		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);

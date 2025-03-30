@@ -42,14 +42,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 0
+#define DEBUG_FLIP_Y 1
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 387
-#define DEBUG_PIXEL_Y 200
+#define DEBUG_PIXEL_X 442
+#define DEBUG_PIXEL_Y 171
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -82,6 +82,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_render_data.render_settings.render_resolution = m_resolution;
 
     m_DEBUG_SUMS = std::vector<AtomicType<float>>(1024);
+    m_DEBUG_SUM_COUNT = std::vector<AtomicType<unsigned long long int>>(1024);
 
     // Resizing buffers + initial value
     m_pixel_active_buffer.resize(width * height, 0);
@@ -262,7 +263,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.stop_noise_threshold_converged_count = &m_stop_noise_threshold_count;
 
     m_render_data.render_settings.DEBUG_SUMS = m_DEBUG_SUMS.data();
-    m_render_data.render_settings.DEBUG_SUM_COUNT = &m_DEBUG_SUM_COUNT;
+    m_render_data.render_settings.DEBUG_SUM_COUNT = m_DEBUG_SUM_COUNT.data();
 
     m_render_data.g_buffer.materials = m_g_buffer.materials.data();
     m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.data();

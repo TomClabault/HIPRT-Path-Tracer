@@ -599,7 +599,7 @@ private:
 	OrochiTexture3D m_GGX_glass_inverse_directional_albedo;
 	OrochiTexture3D m_GGX_thin_glass_directional_albedo;
 
-	OrochiBuffer<int> m_DEBUG_SUM_COUNT;
+	OrochiBuffer<unsigned long long int> m_DEBUG_SUM_COUNT;
 	OrochiBuffer<float> m_DEBUG_SUMS;
 };
 

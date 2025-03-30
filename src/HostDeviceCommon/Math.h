@@ -191,6 +191,8 @@ namespace hippt
 	template <typename T>
 	__device__ T atomic_fetch_add(T* address, T increment) { return atomicAdd(address, increment); }
 
+	template <typename T>
+	__device__ T atomic_load(T* address) { return *address; }
 	/**
 	 * Reads the 16/32/64 bit word at the 'address' in global or shared memory, 
 	 * computes(*address == expected ? new_value : *address), and stores the result
@@ -412,6 +414,9 @@ namespace hippt
 
 	template <typename T>
 	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
+
+	template <typename T>
+	T atomic_load(std::atomic<T>* atomic_address) { return atomic_address->load(); }
 
 	/**
 	 * Reads the 16/32/64 bit word at the 'address' in global or shared memory,

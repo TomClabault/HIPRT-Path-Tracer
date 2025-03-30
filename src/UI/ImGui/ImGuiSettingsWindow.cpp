@@ -2043,7 +2043,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				}
 				ImGui::EndDisabled();
 
-				if (ImGui::Checkbox("Debug Neighbor Reuse Positions", &restir_settings.debug_neighbor_location))
+				if (ImGui::Checkbox("Debug neighbor reuse positions", &restir_settings.debug_neighbor_location))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
 					"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
