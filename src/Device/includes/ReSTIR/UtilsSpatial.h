@@ -42,14 +42,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
 }
 
 /**
- * directions_mask = spatial_pass_settings.per_pixel_spatial_reuse_directions_mask[center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x]
+ * Returns a pair of random numbers that should be used to sample the spatial neighbor disk of the current pixel
+ * (i.e. pass the returned float2 to 'sample_in_disk_uv').
+ * 
+ * This function samples UVs for sampling in a disk such that the point sampled is only sampled in the allowed
+ * directions of a pixel (according to its direction reuse masks).
  * 
  * Note that this function will sample the first sector if there are no sectors available around the given pixel
  */
 HIPRT_HOST_DEVICE float2 sample_spatial_neighbor_from_allowed_directions(const HIPRTRenderData& render_data, const ReSTIRCommonSpatialPassSettings& spatial_pass_settings, int2 center_pixel_coords, Xorshift32Generator& rng)
 {
-	// TODO directions_mask can be fetched only once per pixel invocation
-	unsigned int directions_mask = spatial_pass_settings.per_pixel_spatial_reuse_directions_mask[center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x];
+	unsigned int directions_mask = spatial_pass_settings.current_pixel_directions_reuse_mask;
 	unsigned int number_of_allowed_sectors = hippt::popc(directions_mask);
 	unsigned int random_sector_index = rng.random_index(number_of_allowed_sectors);
 
@@ -68,7 +71,7 @@ HIPRT_HOST_DEVICE float2 sample_spatial_neighbor_from_allowed_directions(const H
 		{
 			--count_left_to_go;
 
-			if (count_left_to_go <= 0)
+			if (count_left_to_go == 0)
 				break;
 		}
 	}
@@ -200,20 +203,15 @@ HIPRT_HOST_DEVICE void spatial_neighbor_advance_rng(const HIPRTRenderData& rende
 {
 	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 
-	if (spatial_pass_settings.use_hammersley)
-	{
-		// Each spatial neighbor is two rng calls (for U and V for sampling the disk)
-		// so we're advancing by 2 rng calls
-		rng();
-		rng();
-	}
-	else
+	if (!spatial_pass_settings.use_hammersley)
 	{
 		// If not using Hammersley, then each point is generated with 3 random numbers
 		// 
-		// One for the random sector
-		// One for the random theta
+		// One for the random sector in the disk
+		// One for the random theta within that sector
 		// One for the random radius
+		//
+		// See the 'sample_spatial_neighbor_from_allowed_directions' function
 		rng();
 		rng();
 		rng();
@@ -255,7 +253,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 			// Neighbor out of the viewport
 			continue;
 
-		if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data, 
+		if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 			neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 			continue;
 

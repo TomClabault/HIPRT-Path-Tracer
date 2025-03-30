@@ -51,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk_uv(float radius, float2 uv)
 {
     float r_sqrt_v = radius * sqrtf(uv.y);
     float x = r_sqrt_v * cos(M_TWO_PI * uv.x);
-    float y = r_sqrt_v* sin(M_TWO_PI * uv.x);
+    float y = r_sqrt_v * sin(M_TWO_PI * uv.x);
 
     return make_float2(x, y);
 }
