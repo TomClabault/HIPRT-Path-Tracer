@@ -1272,6 +1272,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					}
 				});
 
+				ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 				draw_ReSTIR_spatial_reuse_panel<false>([&render_settings, this] () {
 					if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 					{
@@ -1297,6 +1298,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							render_settings.restir_di_settings.do_fused_spatiotemporal = false;
 					}
 				});
+				ImGui::PopItemWidth();
 
 
 
@@ -1469,9 +1471,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
+				if (ImGui::SliderInt("M-cap", &render_settings.restir_gi_settings.m_cap, 0, 48))
 				{
-					render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+					render_settings.restir_gi_settings.m_cap = std::max(0, render_settings.restir_gi_settings.m_cap);
 					if (render_settings.accumulate)
 						m_render_window->set_render_dirty(true);
 				}
@@ -1501,6 +1503,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				}
 
+				ImGui::PushItemWidth(12 * ImGui::GetFontSize());
 				draw_ReSTIR_temporal_reuse_panel(render_settings.restir_gi_settings, [&render_settings, this]() {
 					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
 						m_render_window->set_render_dirty(true);
@@ -1510,6 +1513,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				});
+				ImGui::PopItemWidth();
 
 				draw_ReSTIR_bias_correction_panel<true>();
 
@@ -1517,6 +1521,27 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					ImGui::TreePush("ReSTIR GI options tree");
 
+					if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
+						"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+					if (render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location)
+					{
+						ImGui::TreePush("Debug neighbor location vertical tree");
+
+						ImGui::Text("Debug reuse direction");
+						bool reuse_direction_changed = false;
+						reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 0); ImGui::SameLine();
+						reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 1); ImGui::SameLine();
+						reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_gi_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
+
+						if (reuse_direction_changed)
+							m_render_window->set_render_dirty(true);
+
+						ImGui::TreePop();
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					const char* debug_view_items[] = { "No debug view", "- Final reservoir UCW", "- Final reservoir target function", "- Final reservoir weight sum" , "- Final reservoir M", "- Per pixel reuse radius", "- Valid directions percentage"};
 					if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 						m_render_window->set_render_dirty(true);
@@ -1848,6 +1873,15 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 		{
 			draw_before_panel();
 
+			if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
+			{
+				// Clamping
+				restir_settings.number_of_passes = std::max(1, restir_settings.number_of_passes);
+
+				m_render_window->set_render_dirty(true);
+			}
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 			if (restir_settings.do_spatial_reuse_pass)
 			{
 				bool use_spatial_target_function_visibility;
@@ -1874,7 +1908,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					ImGui::TreePush("VisibilitySpatialReuseLastPassOnly Tree");
 
 					{
-						if (ImGui::SliderInt("Partial Neighbor Visibility", &partial_visibility_neighbor_count, 0, max_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
+						if (ImGui::SliderInt("Partial neighbor visibility", &partial_visibility_neighbor_count, 0, max_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
 						{
 							// Using -1 so that the user manipulates intuitive numbers between 0 and
 							// 'restir_settings.reuse_neighbor_count'
@@ -1901,22 +1935,44 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					ImGui::TreePop();
 				}
 
-
-				if (ImGui::SliderInt("Spatial Reuse Pass Count", &restir_settings.number_of_passes, 1, 8))
-				{
-					// Clamping
-					restir_settings.number_of_passes = std::max(1, restir_settings.number_of_passes);
-
-					m_render_window->set_render_dirty(true);
-				}
-
-				if (ImGui::SliderInt("Spatial Reuse Radius (px)", &restir_settings.reuse_radius, 1, 64))
+				ImGui::BeginDisabled(restir_settings.auto_reuse_radius);
+				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
+				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 1, 64))
 				{
 					if (!restir_settings.debug_neighbor_location)
 						// Clamping if not debugging (we do allow negative values when debugging)
 						restir_settings.reuse_radius = std::max(1, restir_settings.reuse_radius);
 
 					m_render_window->set_render_dirty(true);
+				}
+				ImGui::EndDisabled();
+
+				{
+					ImGui::TreePush("Spatial reuse radius optimal tree");
+
+					if (ImGui::Checkbox("Auto radius", &restir_settings.auto_reuse_radius))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
+						"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
+					if (ImGui::Checkbox("Use adaptive-directional spatial reuse", &restir_settings.use_adaptive_directional_spatial_reuse))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("Precomputes the best per-pixel spatial reuse radius to use as "
+						"well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse.\n\n"
+						""
+						"This increases the spatial reuse \"hit rate\" (i.e. the number of neighbors that are not rejected by "
+						"G-Buffer heuristics) and thus increases convergence speed.");
+
+					if (restir_settings.use_adaptive_directional_spatial_reuse)
+					{
+						if (ImGui::SliderInt("Minimum valid directions", &restir_settings.adaptive_directional_spatial_reuse_minimum_valid_directions, 0, 32))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If the adaptive directional spatial reuse is used and a pixel has less than "
+							"this number of valid directions (spatial disk sectors) to reuse from, this pixel will "
+							"not do spatial reuse at all to help a little bit with efficiency: we don't want to "
+							"spend resources doing spatial reuse on a pixel that has no valid neighborhood");
+					}
+
+					ImGui::TreePop();
 				}
 
 				// Checking the value before the "Neighbor Reuse Count" slider is modified
@@ -1949,7 +2005,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::Checkbox("Increase Disocclusion Reuse Count", &restir_settings.do_disocclusion_reuse_boost))
+				if (ImGui::Checkbox("Increase disocclusion reuse count", &restir_settings.do_disocclusion_reuse_boost))
 				{
 					m_render_window->set_render_dirty(true);
 					if (restir_settings.do_disocclusion_reuse_boost)
@@ -2006,20 +2062,24 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					}
 				}
 
-				if (ImGui::Checkbox("Spatial neighbors random rotation", &restir_settings.do_neighbor_rotation))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) "
-					"will be randomly rotated. Because neighbor locations are generated with a Hammersley point set "
-					"(deterministic), not rotating them results in every pixel of every rendered image reusing the "
-					"same neighbor locations which decreases reuse efficiency.");
-
-				if (ImGui::Checkbox("Use Hammersley point set for spatial neighbors", &restir_settings.use_hammersley))
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::BeginDisabled(restir_settings.use_adaptive_directional_spatial_reuse);
+				if (ImGui::Checkbox("Use Hammersley", &restir_settings.use_hammersley))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("Whether or not to use a Hammersley point set for generating the position of the "
 					"spatial neighbors.\n\n"
 					""
 					"If not using Hammersely, uncorrelated random numbers will be used.");
 
+				if (ImGui::Checkbox("Spatial neighbors random rotation", &restir_settings.do_neighbor_rotation))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) "
+					"will be randomly rotated. Because neighbor locations are generated with a Hammersley point set "
+					"(deterministic), not rotating them results in every pixel of every rendered image reusing the "
+					"same neighbor locations which decreases reuse efficiency.");
+				ImGui::EndDisabled();
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 				if (ImGui::Checkbox("Allow Reuse of Converged Neighbors", &restir_settings.allow_converged_neighbors_reuse))
 					m_render_window->set_render_dirty(true);
@@ -2042,26 +2102,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"\n\n 1.0 always reuses converged neighbors. Biased but no performance impact.");
 				}
 				ImGui::EndDisabled();
-
-				if (ImGui::Checkbox("Debug neighbor reuse positions", &restir_settings.debug_neighbor_location))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
-					"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
-				if (restir_settings.debug_neighbor_location)
-				{
-					ImGui::TreePush("Debug neighbor location vertical tree");
-
-					ImGui::Text("Debug reuse direction");
-					bool reuse_direction_changed = false;
-					reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&restir_settings.debug_neighbor_location_direction), 0); ImGui::SameLine();
-					reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&restir_settings.debug_neighbor_location_direction), 1); ImGui::SameLine();
-					reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&restir_settings.debug_neighbor_location_direction), 2);
-
-					if (reuse_direction_changed)
-						m_render_window->set_render_dirty(true);
-
-					ImGui::TreePop();
-				}
 			}
 		}
 

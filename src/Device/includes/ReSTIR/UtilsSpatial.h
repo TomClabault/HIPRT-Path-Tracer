@@ -14,6 +14,28 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
+HIPRT_HOST_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& render_data, unsigned int center_pixel_index, float2& cos_sin_theta_rotation, Xorshift32Generator& random_number_generator)
+{
+	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used
+	render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
+	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse)
+	{
+		render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius[center_pixel_index];
+		// Storing the direction reuse mask in the 'current_pixel_directions_reuse_mask' field of the spatial
+		// reuse settings so that we don't have to carry that parameter around in function calls everywhere...
+		//
+		// This parameter will be read by later by the function that samples a neighbor based on the allowed directions
+		render_data.render_settings.restir_gi_settings.common_spatial_pass.current_pixel_directions_reuse_mask = render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask[center_pixel_index];
+
+		if (hippt::popc(render_data.render_settings.restir_gi_settings.common_spatial_pass.current_pixel_directions_reuse_mask) < render_data.render_settings.restir_gi_settings.common_spatial_pass.adaptive_directional_spatial_reuse_minimum_valid_directions || render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius == 0)
+			render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count = 0;
+
+		// No random rotation if using the adaptive directional spatial reuse so we're setting cos theta to 1.0f
+		// and sin theta to 0.0f for no rotation
+		cos_sin_theta_rotation = make_float2(1.0f, 0.0f);
+	}
+}
+
 template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
 {
@@ -129,10 +151,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		// pointless because we already resample ourselves "manually" (that's why there's that
 		// "if (neighbor_index == neighbor_reuse_count)" above, to resample the center pixel)
 		float2 uv;
-		if (render_data.render_settings.restir_gi_settings.common_spatial_pass.use_hammersley)
+		if (spatial_pass_settings.use_hammersley)
 			uv = sample_hammersley_2D(spatial_pass_settings.reuse_neighbor_count + 1, neighbor_index + 1);
 		else
-			uv = sample_spatial_neighbor_from_allowed_directions(render_data, spatial_pass_settings, center_pixel_coords, rng);
+		{
+			if (spatial_pass_settings.use_adaptive_directional_spatial_reuse)
+				uv = sample_spatial_neighbor_from_allowed_directions(render_data, spatial_pass_settings, center_pixel_coords, rng);
+			else
+				uv = make_float2(rng(), rng());
+		}
 
 		float2 neighbor_offset_in_disk = sample_in_disk_uv(spatial_pass_settings.reuse_radius, uv);
 
@@ -205,16 +232,27 @@ HIPRT_HOST_DEVICE void spatial_neighbor_advance_rng(const HIPRTRenderData& rende
 
 	if (!spatial_pass_settings.use_hammersley)
 	{
-		// If not using Hammersley, then each point is generated with 3 random numbers
-		// 
-		// One for the random sector in the disk
-		// One for the random theta within that sector
-		// One for the random radius
-		//
-		// See the 'sample_spatial_neighbor_from_allowed_directions' function
-		rng();
-		rng();
-		rng();
+		if (spatial_pass_settings.use_adaptive_directional_spatial_reuse)
+		{
+			// If not using Hammersley, then each point is generated with 3 random numbers
+			// 
+			// One for the random sector in the disk
+			// One for the random theta within that sector
+			// One for the random radius
+			//
+			// See the 'sample_spatial_neighbor_from_allowed_directions' function
+			rng();
+			rng();
+			rng();
+		}
+		else
+		{
+			// If not using Hammersley and not using the adaptive directional spatial reuse
+			// then we're just sampling with white noise and so this requires two random numbers
+			// for sampling a neighbor in the disk
+			rng();
+			rng();
+		}
 	}
 }
 

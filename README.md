@@ -58,7 +58,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Path sampling:
 	- BSDF Sampling:
 		- One sample MIS for lobe sampling [\[Hery et al., 2017\]](https://graphics.pixar.com/library/PxrMaterialsCourse2017/paper.pdf)
-	- Unbiased ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+		- Adaptive-directional spatial reuse for improved offline rendering efficiency
 	- Experimental warp-wide direction reuse for improved indirect rays coherency [\[Liu et al., 2023\]](https://arxiv.org/abs/2310.07182)
 ### Other rendering features
 - Microfacet Model Regularization for Robust Light Transport [\[Jendersie et al., 2019\]](https://jojendersie.de/wp-content/uploads/2013/06/2019_Jendersie_brdfregularization.pdf)
