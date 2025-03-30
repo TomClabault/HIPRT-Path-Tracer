@@ -148,20 +148,47 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 		if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse)
 		{
 			if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() == 0)
+			{
 				m_per_pixel_spatial_reuse_direction_mask.resize(render_resolution.x * render_resolution.y);
-
-			if (m_per_pixel_spatial_reuse_radius.get_element_count() == 0)
 				m_per_pixel_spatial_reuse_radius.resize(render_resolution.x * render_resolution.y);
+
+				render_data_invalidated = true;
+			}
 		}
 		else
 		{
 			// We're not using the feature so we can free the buffers
 
 			if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() > 0)
+			{
 				m_per_pixel_spatial_reuse_direction_mask.free();
+				m_per_pixel_spatial_reuse_radius.free();
 
-			if (m_per_pixel_spatial_reuse_radius.get_element_count() > 0)
-			m_per_pixel_spatial_reuse_radius.free();
+				render_data_invalidated = true;
+			}
+		}
+
+		// Also allocating / deallocating the buffers for the statistics
+		if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.compute_spatial_reuse_hit_rate)
+		{
+			if (m_spatial_reuse_statistics_hit_total.get_element_count() == 0)
+			{
+				m_spatial_reuse_statistics_hit_total.resize(1);
+				m_spatial_reuse_statistics_hit_hits.resize(1);	
+
+				render_data_invalidated = true;
+			}
+		}
+		else
+		{
+			// Freeing the buffers if the feature isn't used
+			if (m_spatial_reuse_statistics_hit_total.get_element_count() > 0)
+			{
+				m_spatial_reuse_statistics_hit_total.free();
+				m_spatial_reuse_statistics_hit_hits.free();
+
+				render_data_invalidated = true;
+			}
 		}
 	}
 	else
@@ -184,6 +211,22 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 		if (m_spatial_buffer.get_element_count() > 0)
 		{
 			m_spatial_buffer.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() > 0)
+		{
+			m_per_pixel_spatial_reuse_direction_mask.free();
+			m_per_pixel_spatial_reuse_radius.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_spatial_reuse_statistics_hit_total.get_element_count() > 0)
+		{
+			m_spatial_reuse_statistics_hit_total.free();
+			m_spatial_reuse_statistics_hit_hits.free();
 
 			render_data_invalidated = true;
 		}
@@ -393,6 +436,9 @@ void ReSTIRGIRenderPass::update_render_data()
 
 		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask = m_per_pixel_spatial_reuse_direction_mask.get_device_pointer();
 		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.get_device_pointer();
+
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_total.get_device_pointer());
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_hits.get_device_pointer());
 	}
 	else
 	{
@@ -411,6 +457,12 @@ void ReSTIRGIRenderPass::update_render_data()
 
 void ReSTIRGIRenderPass::reset()
 {
+	if (m_spatial_reuse_statistics_hit_hits.get_element_count() > 0)
+	{
+		m_spatial_reuse_statistics_hit_hits.memset_whole_buffer(0);
+		m_spatial_reuse_statistics_hit_total.memset_whole_buffer(0);
+	}
+
 	MegaKernelRenderPass::reset();
 }
 

@@ -167,15 +167,91 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 			if (m_presampled_lights_buffer.get_element_count() > 0)
 				m_presampled_lights_buffer.free();
 		}
+
+		// Also allocating / deallocating the adaptive directional spatial reuse buffers if the feature
+		// isn't used
+		if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse)
+		{
+			if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() == 0)
+			{
+				m_per_pixel_spatial_reuse_direction_mask.resize(render_resolution.x * render_resolution.y);
+				m_per_pixel_spatial_reuse_radius.resize(render_resolution.x * render_resolution.y);
+
+				render_data_invalidated = true;
+			}
+		}
+		else
+		{
+			// We're not using the feature so we can free the buffers
+
+			if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() > 0)
+			{
+				m_per_pixel_spatial_reuse_direction_mask.free();
+				m_per_pixel_spatial_reuse_radius.free();
+
+				render_data_invalidated = true;
+			}
+		}
+
+		// Also allocating / deallocating the buffers for the statistics
+		if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.compute_spatial_reuse_hit_rate)
+		{
+			if (m_spatial_reuse_statistics_hit_total.get_element_count() == 0)
+			{
+				m_spatial_reuse_statistics_hit_total.resize(1);
+				m_spatial_reuse_statistics_hit_hits.resize(1);
+
+				render_data_invalidated = true;
+			}
+		}
+		else
+		{
+			// Freeing the buffers if the feature isn't used
+			if (m_spatial_reuse_statistics_hit_total.get_element_count() > 0)
+			{
+				m_spatial_reuse_statistics_hit_total.free();
+				m_spatial_reuse_statistics_hit_hits.free();
+
+				render_data_invalidated = true;
+			}
+		}
 	}
 	else
 	{
 		// ReSTIR DI disabled, we're going to free the buffers if that's not already done
-		if (m_initial_candidates_reservoirs.get_element_count() > 0 || m_spatial_output_reservoirs_1.get_element_count() > 0 || m_spatial_output_reservoirs_2.get_element_count() > 0)
+		if (m_initial_candidates_reservoirs.get_element_count() > 0)
 		{
 			m_initial_candidates_reservoirs.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_spatial_output_reservoirs_1.get_element_count() > 0)
+		{
 			m_spatial_output_reservoirs_1.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_spatial_output_reservoirs_2.get_element_count() > 0)
+		{
 			m_spatial_output_reservoirs_2.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() > 0)
+		{
+			m_per_pixel_spatial_reuse_direction_mask.free();
+			m_per_pixel_spatial_reuse_radius.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_spatial_reuse_statistics_hit_total.get_element_count() > 0)
+		{
+			m_spatial_reuse_statistics_hit_total.free();
+			m_spatial_reuse_statistics_hit_hits.free();
 
 			render_data_invalidated = true;
 		}
@@ -196,6 +272,9 @@ void ReSTIRDIRenderPass::update_render_data()
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_1 = m_initial_candidates_reservoirs.get_device_pointer();
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_2 = m_spatial_output_reservoirs_1.get_device_pointer();
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_3 = m_spatial_output_reservoirs_2.get_device_pointer();
+
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_total.get_device_pointer());
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_hits.get_device_pointer());
 
 		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
 		std::vector<ReSTIRDIReservoir> empty_reservoirs(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, ReSTIRDIReservoir());

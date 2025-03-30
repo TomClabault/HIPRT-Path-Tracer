@@ -76,6 +76,9 @@ private:
 
 	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_radius;
 	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_direction_mask;
+
+	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
+	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
 };
 
 #endif

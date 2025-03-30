@@ -267,10 +267,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     else
         // Regular output
         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
-
-    /*static int counter = 0;
-    if (x == 0 && y == 0 && (counter++ % 50 == 0))
-        printf("[%lld, %lld]: Percentage: %f\n", hippt::atomic_load(&render_data.render_settings.DEBUG_SUM_COUNT[1]), hippt::atomic_load(&render_data.render_settings.DEBUG_SUM_COUNT[0]), 100.0f * render_data.render_settings.DEBUG_SUM_COUNT[1] / render_data.render_settings.DEBUG_SUM_COUNT[0]);*/
 }
 
 #endif

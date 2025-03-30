@@ -298,6 +298,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_gi_reservoir_buffer_3 = m_restir_gi_state.temporal_reservoirs.data();
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask = m_restir_gi_state.per_pixel_spatial_reuse_directions_mask.data();
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
+    m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_gi_state.spatial_reuse_hit_rate_total;
+    m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
 
     float3 grid_min_point_with_envmap, grid_max_point_with_envmap;
     m_nee_plus_plus.base_grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;

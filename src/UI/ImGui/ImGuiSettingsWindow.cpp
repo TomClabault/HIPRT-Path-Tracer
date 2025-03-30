@@ -1873,15 +1873,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 		{
 			draw_before_panel();
 
-			if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
-			{
-				// Clamping
-				restir_settings.number_of_passes = std::max(1, restir_settings.number_of_passes);
-
-				m_render_window->set_render_dirty(true);
-			}
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
 			if (restir_settings.do_spatial_reuse_pass)
 			{
 				bool use_spatial_target_function_visibility;
@@ -1935,6 +1926,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					ImGui::TreePop();
 				}
 
+				if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
+				{
+					// Clamping
+					restir_settings.number_of_passes = std::max(1, restir_settings.number_of_passes);
+
+					m_render_window->set_render_dirty(true);
+				}
 				ImGui::BeginDisabled(restir_settings.auto_reuse_radius);
 				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
 				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 1, 64))
@@ -2081,7 +2079,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-				if (ImGui::Checkbox("Allow Reuse of Converged Neighbors", &restir_settings.allow_converged_neighbors_reuse))
+				if (ImGui::Checkbox("Allow reuse of converged neighbors", &restir_settings.allow_converged_neighbors_reuse))
 					m_render_window->set_render_dirty(true);
 				std::string reuse_of_converged_neighbors_help = "If checked, then the spatial reuse passes are allowed "
 					"to reuse from neighboring pixels which have converged (and thus neighbors that "
@@ -2102,6 +2100,32 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"\n\n 1.0 always reuses converged neighbors. Biased but no performance impact.");
 				}
 				ImGui::EndDisabled();
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				if (ImGui::Checkbox("Compute spatial reuse hit rate", &restir_settings.compute_spatial_reuse_hit_rate))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("Whether or not to gather statistics on the hit rate of the spatial reuse "
+					"pass (i.e. how many neighbors are rejected because of the G-Buffer heuristics vs. the maximum number "
+					"of neighbors that can be reused).\n\n"
+					""
+					"This is mainly useful to evaluate the effectiveness of the \"adaptive-directional spatial reuse\".\n"
+					"Note that this isn't great for performance.");
+				if (restir_settings.compute_spatial_reuse_hit_rate)
+				{
+					ImGui::TreePush("Spatial reuse hit rate statistics");
+
+					if (restir_settings.spatial_reuse_hit_rate_total != nullptr)
+					{
+						// Making sure that the buffers are indeed allocated
+
+						unsigned long long int spatial_reuse_total = OrochiBuffer<unsigned long long int>::download_data(reinterpret_cast<unsigned long long int*>(restir_settings.spatial_reuse_hit_rate_total), 1)[0];
+						unsigned long long int spatial_reuse_hit = OrochiBuffer<unsigned long long int>::download_data(reinterpret_cast<unsigned long long int*>(restir_settings.spatial_reuse_hit_rate_hits), 1)[0];
+
+						ImGui::Text("Hit rate: %f", spatial_reuse_hit * 100.0f / spatial_reuse_total);
+					}
+
+					ImGui::TreePop();
+				}
 			}
 		}
 
