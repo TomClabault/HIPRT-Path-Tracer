@@ -44,6 +44,8 @@ struct ReSTIRCommonSpatialPassSettings
 	int number_of_passes;
 	// The radius within which neighbor are going to be reused spatially
 	int reuse_radius;
+	// if true, the reuse radius will automatically be adjusted based on the render resolution
+	bool auto_reuse_radius = true;
 	// How many neighbors to reuse during the spatial pass
 	int reuse_neighbor_count;
 
@@ -70,9 +72,22 @@ struct ReSTIRCommonSpatialPassSettings
 	// spatial neighbors
 	//
 	// If not using Hammersely, uncorrelated random numbers will be used
-	bool use_hammersley = false;
+	bool use_hammersley;
 	// This seed is used to generate the spatial neighbors positions if not using Hammersley
-	unsigned int spatial_neighbors_rng_seed = 42;
+	unsigned int spatial_neighbors_rng_seed;
+
+	// If true, the best per-pixel spatial reuse radius to use as
+	// well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse
+	// will be precomputed in a prepass
+	//
+	// This increases the spatial reuse "hit rate" (i.e. the number of neighbors that are not rejected by G-Buffer heuristics)
+	// and thus increases convergence speed.
+	bool use_adaptive_directional_spatial_reuse;
+	// If the adaptive directional spatial reuse is used and a pixel has less than
+	// 'adaptive_directional_spatial_reuse_minimum_valid_directions' valid directions (spatial disk sectors)
+	// to reuse from, this pixel will not do spatial reuse at all to help a little bit with efficiency:
+	// we don't want to spend resources doing spatial reuse on a pixel that has no valid neighborhood
+	int adaptive_directional_spatial_reuse_minimum_valid_directions;
 
 	// If true, neighboring pixels that have converged (if adaptive sampling is enabled)
 	// won't be reused to reduce bias.
