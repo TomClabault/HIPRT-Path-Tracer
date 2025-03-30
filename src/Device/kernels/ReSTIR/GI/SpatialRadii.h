@@ -133,7 +133,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Spatial_Radii(HIPRTRenderData ren
     float best_area = 0.0f;
     int best_radius_index = 0;
 
-    // Each long long int in there contains, in each bit, whether or not the sample 
+    // Each long long int in there contains, in each bit, whether or not the direction for that radius is reusable or not
     unsigned long long int valid_samples_per_radius[NB_RADIUS] = { 0 };
 
     for (int radius_index = 0; radius_index < NB_RADIUS; radius_index++)
@@ -186,7 +186,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Spatial_Radii(HIPRTRenderData ren
 
     render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = (int)best_radius;
 
-    // Now that apparently we have the best radius
     /*if (render_data.render_settings.debug_x == x && render_data.render_settings.debug_y == y)
     {
         for (int i = 0; i < 128; i++)

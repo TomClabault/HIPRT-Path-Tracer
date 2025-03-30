@@ -118,6 +118,12 @@ private:
 	// [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
 	OrochiBuffer<ReSTIRDIPresampledLight> m_presampled_lights_buffer;
 
+	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_radius;
+	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_direction_mask;
+
+	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
+	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
+
 	// Whether or not we're currently rendering an odd frame.
 	// This is used to adjust which buffers are used as input/outputs
 	// and ping-pong between them

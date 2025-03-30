@@ -113,6 +113,13 @@ struct ReSTIRCommonSpatialPassSettings
 	//
 	// This is purely to avoid passing yet another arguments to every function in the code...
 	unsigned int current_pixel_directions_reuse_mask = 0;
+
+	// Whether or not to gather statistics on the hit rate of the spatial reuse pass (i.e. how many
+	// neighbors are rejected because of the G-Buffer heuristics vs. the maximum number of neighbors that can be reused)
+	bool compute_spatial_reuse_hit_rate;
+	// Counters for gathering the statistics on the spatial reuse hit rate
+	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_hits = nullptr;
+	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_total = nullptr;
 };
 
 struct ReSTIRCommonNeighborSimiliaritySettings

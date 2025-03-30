@@ -148,6 +148,9 @@ private:
 
         std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask;
         std::vector<unsigned int> per_pixel_spatial_reuse_radius;
+
+        AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
+        AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
     } m_restir_gi_state;
 
     Image32Bit m_sheen_ltc_params;
