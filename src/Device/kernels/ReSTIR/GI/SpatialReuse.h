@@ -144,8 +144,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
 			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.sample_point_geometric_normal, center_pixel_surface.shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index], render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
+#if 0
 			// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
-			/*if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
+			if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
 			{
 				float new_pdf;
 				BSDFContext new_pdf_context(hippt::normalize(center_pixel_surface.shading_point - neighbor_reservoir.sample.sample_point), neighbor_reservoir.sample.sample_point_shading_normal, neighbor_reservoir.sample.sample_point_geometric_normal, neighbor_reservoir.sample.incident_light_direction_at_sample_point, neighbor_reservoir.sample.incident_light_info_at_sample_point, neighbor_reservoir.sample.sample_point_volume_state, false, neighbor_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
@@ -157,7 +158,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 				float bsdf_pdf_ratio = new_pdf / old_pdf;
 				shift_mapping_jacobian *= bsdf_pdf_ratio;
-			}*/
+			}
+#endif
 		}
 
 		float target_function_at_center = 0.0f;

@@ -27,7 +27,7 @@ HIPRT_HOST_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData&
 		// This parameter will be read by later by the function that samples a neighbor based on the allowed directions
 		render_data.render_settings.restir_gi_settings.common_spatial_pass.current_pixel_directions_reuse_mask = render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask[center_pixel_index];
 
-		if (hippt::popc(render_data.render_settings.restir_gi_settings.common_spatial_pass.current_pixel_directions_reuse_mask) < render_data.render_settings.restir_gi_settings.common_spatial_pass.adaptive_directional_spatial_reuse_minimum_valid_directions || render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius == 0)
+		if (render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius == 0)
 			render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count = 0;
 
 		// No random rotation if using the adaptive directional spatial reuse so we're setting cos theta to 1.0f

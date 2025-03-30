@@ -259,7 +259,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 
 	if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.auto_reuse_radius)
 		// A percentage of the maximum render resolution extent for automatic spatial reuse radius
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.0125f;
+		m_render_data->render_settings.restir_di_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * 0.02f;
 
 	return render_data_invalidated;
 }
