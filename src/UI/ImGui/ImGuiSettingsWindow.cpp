@@ -170,8 +170,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
 		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Debug opti", &render_settings.DEBUG_OPTI))
-		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug bounce", &render_settings.DEBUG_BOUNCE, 0, 10))
 		m_render_window->set_render_dirty(true);
@@ -1966,18 +1964,16 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					m_render_window->set_render_dirty(true);
 				}
 
-				ImGui::BeginDisabled(restir_settings.auto_reuse_radius);
 				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
-				ImGui::PushItemWidth(10 * ImGui::GetFontSize());
-				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 1, 64))
+				ImGui::BeginDisabled(restir_settings.auto_reuse_radius);
+				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 0, 64))
 				{
 					if (!restir_settings.debug_neighbor_location)
 						// Clamping if not debugging (we do allow negative values when debugging)
-						restir_settings.reuse_radius = std::max(1, restir_settings.reuse_radius);
+						restir_settings.reuse_radius = std::max(0, restir_settings.reuse_radius);
 
 					m_render_window->set_render_dirty(true);
 				}
-				ImGui::PopItemWidth();
 				ImGui::EndDisabled();
 				ImGui::SameLine();
 				if (ImGui::Checkbox("Auto", &restir_settings.auto_reuse_radius))
@@ -1985,8 +1981,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
 					"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
 
+				if (ImGui::CollapsingHeader("Directional spatial reuse"))
 				{
-					ImGui::TreePush("Spatial reuse radius optimal tree");
+					ImGui::TreePush("Directional spatial reuse tree");
 
 					if (ImGui::Checkbox("Use adaptive-directional spatial reuse", &restir_settings.use_adaptive_directional_spatial_reuse))
 						m_render_window->set_render_dirty(true);
@@ -1996,23 +1993,34 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"This increases the spatial reuse \"hit rate\" (i.e. the number of neighbors that are not rejected by "
 						"G-Buffer heuristics) and thus increases convergence speed.");
 
-					bool bitcount_changed = false;
-					static int spatial_reuse_directional_masks_bitcount = ReSTIR_GI_SpatialDirectionalReuseBitCount;
-					bitcount_changed |= ImGui::RadioButton("32 Bits", &spatial_reuse_directional_masks_bitcount, 32); ImGui::SameLine();
-					bitcount_changed |= ImGui::RadioButton("64 Bits", &spatial_reuse_directional_masks_bitcount, 64);
-					ImGuiRenderer::show_help_marker("How many bits to use for the directional spatial reuse bit masks.\n"
-						"More bits yields more precise result but use a little bit more VRAM.");
-					if (bitcount_changed)
+					if (restir_settings.use_adaptive_directional_spatial_reuse)
 					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT, spatial_reuse_directional_masks_bitcount);
-						m_renderer->recompile_kernels();
+						if (ImGui::SliderInt("Minimum reuse radius (px)", &restir_settings.minimum_per_pixel_reuse_radius, 0, restir_settings.reuse_radius))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("The minimum radius that will be used per pixel when the optimal per-pixel spatial reuse "
+							"radius is computed by \"adaptive-directional spatial reuse\"");
 
-						m_render_window->set_render_dirty(true);
+
+
+						bool bitcount_changed = false;
+						static int spatial_reuse_directional_masks_bitcount = ReSTIR_GI_SpatialDirectionalReuseBitCount;
+						bitcount_changed |= ImGui::RadioButton("32 Bits", &spatial_reuse_directional_masks_bitcount, 32); ImGui::SameLine();
+						bitcount_changed |= ImGui::RadioButton("64 Bits", &spatial_reuse_directional_masks_bitcount, 64);
+						ImGuiRenderer::show_help_marker("How many bits to use for the directional spatial reuse bit masks.\n"
+							"More bits yields more precise result but use a little bit more VRAM.");
+						if (bitcount_changed)
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT, spatial_reuse_directional_masks_bitcount);
+							m_renderer->recompile_kernels();
+
+							m_render_window->set_render_dirty(true);
+						}
 					}
 
 					ImGui::TreePop();
 				}
 
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::Checkbox("Increase disocclusion reuse count", &restir_settings.do_disocclusion_reuse_boost))
 				{
 					m_render_window->set_render_dirty(true);

@@ -104,6 +104,9 @@ struct ReSTIRCommonSpatialPassSettings
 	// Framebuffer that contains per-pixel spatial radius for use in the spatial reuse passes of ReSTIR.
 	// This framebuffer is filled by the 
 	unsigned char* per_pixel_spatial_reuse_radius = nullptr;
+	// The minimum radius that will be used per pixel when the optimal per - pixel spatial reuse
+	// radius is computed by adaptive-directional spatial reuse
+	int minimum_per_pixel_reuse_radius = 3;
 
 	// This variable here is spatial because it is written to at the beginning of the spatial reuse pass.
 	// The only goal of this variable is to be able to carry around the function the direction reuse mask

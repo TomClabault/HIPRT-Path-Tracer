@@ -218,7 +218,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		float cos_theta = cos_sin_theta_rotation.x;
 		float sin_theta = cos_sin_theta_rotation.y;
 		float2 neighbor_offset_rotated = make_float2(neighbor_offset_in_disk.x * cos_theta - neighbor_offset_in_disk.y * sin_theta, neighbor_offset_in_disk.x * sin_theta + neighbor_offset_in_disk.y * cos_theta);
-		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
+		int2 neighbor_offset_int = make_int2(static_cast<int>(roundf(neighbor_offset_rotated.x)), static_cast<int>(roundf(neighbor_offset_rotated.y)));
 
 		int2 neighbor_pixel_coords;
 		if (spatial_pass_settings.debug_neighbor_location)
