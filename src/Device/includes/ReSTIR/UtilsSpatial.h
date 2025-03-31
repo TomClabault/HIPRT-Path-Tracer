@@ -14,6 +14,7 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
+template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& render_data, unsigned int center_pixel_index, float2& cos_sin_theta_rotation, Xorshift32Generator& random_number_generator)
 {
 	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used
@@ -25,7 +26,7 @@ HIPRT_HOST_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData&
 		// reuse settings so that we don't have to carry that parameter around in function calls everywhere...
 		//
 		// This parameter will be read by later by the function that samples a neighbor based on the allowed directions
-		render_data.render_settings.restir_gi_settings.common_spatial_pass.current_pixel_directions_reuse_mask = render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask[center_pixel_index];
+		render_data.render_settings.restir_gi_settings.common_spatial_pass.current_pixel_directions_reuse_mask = ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull<IsReSTIRGI>(render_data, center_pixel_index);
 
 		if (render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius == 0)
 			render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count = 0;
@@ -74,34 +75,84 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
  */
 HIPRT_HOST_DEVICE float2 sample_spatial_neighbor_from_allowed_directions(const HIPRTRenderData& render_data, const ReSTIRCommonSpatialPassSettings& spatial_pass_settings, int2 center_pixel_coords, Xorshift32Generator& rng)
 {
-	unsigned int directions_mask = spatial_pass_settings.current_pixel_directions_reuse_mask;
-	unsigned int number_of_allowed_sectors = hippt::popc(directions_mask);
-	unsigned int random_sector_index = rng.random_index(number_of_allowed_sectors);
+	unsigned long long int directions_mask = spatial_pass_settings.current_pixel_directions_reuse_mask;
+	int number_of_allowed_sectors = hippt::popc(directions_mask);
+	unsigned char random_sector_index = rng.random_index(number_of_allowed_sectors);
 
-	// Now that we have our random sector, we need to find what theta rotation that corresponds to:
-	// - Each sector is 2Pi / 32 wide
+	// Now that we have our random sector, we need to find what theta rotation corresponds
+	// to that sector
 	// 
 	// So we're counting how many sectors come before our 'random_sector_index' and we're going to
-	// multiply that sector count by 2Pi / 32
-	char count_left_to_go = random_sector_index + 1;
+	// multiply that sector count by 2Pi / 32 (or / 64 if using 64 bits)
+	unsigned char count_left_to_go = random_sector_index + 1;
 
 	// Counting how many sectors there before we reach our 'random_sector_index'
-	int i;
-	for (i = 0; i < 32; i++)
-	{
-		if (directions_mask & (1 << i))
-		{
-			--count_left_to_go;
+	int sector_index = 0;
 
-			if (count_left_to_go == 0)
-				break;
+	unsigned char bit_count_so_far = 0;
+	if (hippt::popc(directions_mask) == ReSTIR_GI_SpatialDirectionalReuseBitCount)
+		// Fast path if all the directions are allowed
+		sector_index = random_sector_index;
+	else
+	{
+		// A naive implementation of this would go something like
+		// 
+		// for (i = 0; i < ReSTIR_GI_SpatialDirectionalReuseBitCount; i++)
+		// {
+		//     if (directions_mask & (1ull << i))
+		//     {
+		//         --count_left_to_go;
+		//
+		//         if (count_left_to_go == 0)
+		//             break;
+		//     }
+		// }
+		// sector_index = i;
+		// 
+		// i.e., counting the bits one by one until we counted the number of bits we needed
+		// 
+		// 
+		// But here we're going to count the sectors 'count_left_to_go' by 'count_left_to_go' to get things
+		// a bit faster.
+		// 
+		// So if we have the directions mask:
+		//	- 01110000
+		//
+		// and we want the 4th valid sector, i.e. random_sector_index == 3, then we can just go ahead and
+		// count bits 4 by 4:
+		//
+		// 11110000 <--- 'directions_mask'
+		// &
+		// 00001111 <--- 'mask'
+		// =
+		// 00000000. 
+		// --> popc(00000000) = 0 -----> 0 bits found
+		//
+		// We move the mask to the left by the number of bits we still have to find (which is still 4):
+		// 11110000 <--- 'directions_mask'
+		// &
+		// 11110000 <--- 'mask'
+		// =
+		// 11110000. 
+		// --> popc(11110000) = 4 -----> 4 bits found --> we found all the bits we needed so the sector index
+		// is in position '10000000' = 7 here
+		while (count_left_to_go > 0)
+		{
+			unsigned char mask_length = count_left_to_go;
+			unsigned long long int mask = ((1ull << mask_length) - 1ull) << bit_count_so_far;
+			int count_mask = hippt::popc(directions_mask & mask);
+
+			count_left_to_go -= count_mask;
+			bit_count_so_far += mask_length;
 		}
+
+		sector_index = --bit_count_so_far;
 	}
 
-	float theta_start = i / 32.0f;
+	float theta_start = sector_index / (float)ReSTIR_GI_SpatialDirectionalReuseBitCount;
 	// Generating a random theta in between theta_start and the start of the next sector (which is 1.0f / 32.0f wide)
 	// i.e. a random theta inside our disk sector
-	float random_theta = theta_start + rng() * (1.0f / 32.0f);
+	float random_theta = theta_start + rng() * (1.0f / (float)ReSTIR_GI_SpatialDirectionalReuseBitCount);
 
 	return make_float2(random_theta, rng());
 }

@@ -13,6 +13,9 @@
 #define RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS 4
 #define RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 5
 
+#define RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT 64 // CHANGE THIS ONE TO MODIFY THE NUMBER OF BITS.
+#define RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT_INTERNAL (RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT) // Just another macro for clamping to 64
+
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -83,6 +86,13 @@
 *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
 */
 #define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
+
+/**
+ * How many bits to use for the directional reuse masks
+ * 
+ * More bits use more VRAM but increase the precision of the directional reuse
+ */
+#define ReSTIR_GI_SpatialDirectionalReuseBitCount RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT_INTERNAL
 
 #endif // #ifndef __KERNELCC__
 

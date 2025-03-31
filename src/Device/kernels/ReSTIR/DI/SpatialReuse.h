@@ -77,7 +77,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		rotation_theta = 0.0f;
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
-	setup_adaptive_directional_spatial_reuse(render_data, center_pixel_index, cos_sin_theta_rotation, random_number_generator);
+	setup_adaptive_directional_spatial_reuse<false>(render_data, center_pixel_index, cos_sin_theta_rotation, random_number_generator);
 
 	ReSTIRDIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if ((center_pixel_reservoir.M <= 1) && render_data.render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)

@@ -170,6 +170,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
 		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("Debug opti", &render_settings.DEBUG_OPTI))
+		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug bounce", &render_settings.DEBUG_BOUNCE, 0, 10))
 		m_render_window->set_render_dirty(true);
@@ -1994,6 +1996,20 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"This increases the spatial reuse \"hit rate\" (i.e. the number of neighbors that are not rejected by "
 						"G-Buffer heuristics) and thus increases convergence speed.");
 
+					bool bitcount_changed = false;
+					static int spatial_reuse_directional_masks_bitcount = ReSTIR_GI_SpatialDirectionalReuseBitCount;
+					bitcount_changed |= ImGui::RadioButton("32 Bits", &spatial_reuse_directional_masks_bitcount, 32); ImGui::SameLine();
+					bitcount_changed |= ImGui::RadioButton("64 Bits", &spatial_reuse_directional_masks_bitcount, 64);
+					ImGuiRenderer::show_help_marker("How many bits to use for the directional spatial reuse bit masks.\n"
+						"More bits yields more precise result but use a little bit more VRAM.");
+					if (bitcount_changed)
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT, spatial_reuse_directional_masks_bitcount);
+						m_renderer->recompile_kernels();
+
+						m_render_window->set_render_dirty(true);
+					}
+
 					ImGui::TreePop();
 				}
 
@@ -2054,7 +2070,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					}
 				}
 
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::BeginDisabled(restir_settings.use_adaptive_directional_spatial_reuse);
 				if (ImGui::Checkbox("Use Hammersley", &restir_settings.use_hammersley))
 					m_render_window->set_render_dirty(true);
@@ -2071,7 +2086,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					"same neighbor locations which decreases reuse efficiency.");
 				ImGui::EndDisabled();
 
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 				if (ImGui::Checkbox("Allow reuse of converged neighbors", &restir_settings.allow_converged_neighbors_reuse))
 					m_render_window->set_render_dirty(true);

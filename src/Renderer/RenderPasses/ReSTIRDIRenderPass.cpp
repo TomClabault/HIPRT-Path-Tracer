@@ -172,9 +172,9 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		// isn't used
 		if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse)
 		{
-			if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() == 0)
+			if (m_per_pixel_spatial_reuse_direction_mask_u.get_element_count() == 0)
 			{
-				m_per_pixel_spatial_reuse_direction_mask.resize(render_resolution.x * render_resolution.y);
+				m_per_pixel_spatial_reuse_direction_mask_u.resize(render_resolution.x * render_resolution.y);
 				m_per_pixel_spatial_reuse_radius.resize(render_resolution.x * render_resolution.y);
 
 				render_data_invalidated = true;
@@ -184,9 +184,9 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		{
 			// We're not using the feature so we can free the buffers
 
-			if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() > 0)
+			if (m_per_pixel_spatial_reuse_direction_mask_u.get_element_count() > 0)
 			{
-				m_per_pixel_spatial_reuse_direction_mask.free();
+				m_per_pixel_spatial_reuse_direction_mask_u.free();
 				m_per_pixel_spatial_reuse_radius.free();
 
 				render_data_invalidated = true;
@@ -240,9 +240,9 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 			render_data_invalidated = true;
 		}
 
-		if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() > 0)
+		if (m_per_pixel_spatial_reuse_direction_mask_u.get_element_count() > 0)
 		{
-			m_per_pixel_spatial_reuse_direction_mask.free();
+			m_per_pixel_spatial_reuse_direction_mask_u.free();
 			m_per_pixel_spatial_reuse_radius.free();
 
 			render_data_invalidated = true;

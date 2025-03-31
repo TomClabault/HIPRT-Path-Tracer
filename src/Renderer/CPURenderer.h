@@ -146,8 +146,9 @@ private:
         std::vector<ReSTIRGIReservoir> temporal_reservoirs;
         std::vector<ReSTIRGIReservoir> spatial_reservoirs;
 
-        std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask;
-        std::vector<unsigned int> per_pixel_spatial_reuse_radius;
+        std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask_u;
+        std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
+        std::vector<unsigned char> per_pixel_spatial_reuse_radius;
 
         AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
         AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;

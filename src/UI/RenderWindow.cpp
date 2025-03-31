@@ -18,10 +18,14 @@
 
 #include "stb_image_write.h"
 
-// TODO re-bake energy conservation LUTs for uncorrelated G term
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // TODO minimum coat/specular sampling proba to avoid bad convergence on glossy highlights
 // TODO minimum fresnel sampling proba for camera rays? to avoid bad convergence on glossy highlights
+// - Test ReSTIR GI with diffuse transmission
+// - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
+// - distance rejection heuristic for reconnection
+// - Test 64 bits directional spatial reuse masks
+// - Same random neighbors seed per warp for coaslescing
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;
@@ -30,15 +34,11 @@ extern ImGuiLogger g_imgui_logger;
 // - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
-// TODO immediate
-// - Test ReSTIR GI with diffuse transmission
-// - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 
 
 
 // TODO ReSTIR GI
 // - jacobians in restir gi temporal
-// - distance rejection heuristic for reconnection
 // - The quick skip to the center pixel resampling when there are no valid neighbors 
 //		--> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
 //		--> it does cause divergence. maybe solve that 
@@ -149,15 +149,15 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO Features:
 // - Eta scaling for russian roulette refractions
+// - Disable back facing lights for performance because most of those lights, for correct meshes, are going to be occluded
+//		- Add an option to re-enable manually back facing lights in the material
 // - Efficient Image-Space Shape Splatting for Monte Carlo Rendering
-// - https://joeylitalien.github.io/assets/drmlt/drmlt.pdf
+// - DRMLT: https://joeylitalien.github.io/assets/drmlt/drmlt.pdf
 // - What's NEE-AT of RTXPT?
 // - Not very happy with the quality of NEE++ right now but what if go for the prepass instead of progressive refinement? 
 //		We would trace rays recursuvely for the indirect very very simply and could be fast
 //		Or, for the indirect, we could distribute random points in the bounding boxes of the objects of the scene, same as in Disney cache points
-// - Add a "prepass" method to the render pass class
-// - Multi sample model for specular/diffuse BSDF sampling?
-//		- Even RIS for sampling the BSDF?
+// - RIS for sampling the BSDF? (maybe just for the specular+diffuse? or coat, since those are common options)
 // - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
 // - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
 // - Some MIS weights ideas in: https://momentsingraphics.de/ToyRenderer4RayTracing.html in "Combining diffuse and specular"
@@ -171,24 +171,23 @@ extern ImGuiLogger g_imgui_logger;
 // - Some automatic metric to determine automatically what GMoN blend factor to use
 // - software opacity micromaps
 // - Add parameters to increase the strength of specular / coat darkening
-// - sample BSDF based on view fresnel for glossy layer
-//		- sample diffuse proba based on its luminance?
-// - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
-//		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
-// - how to help with shaders combination compilation times? upload bitcodes that ** I ** compile locally to Github? Change some #if to if() where this does not increase register pressure also.
-// - next event estimation++? --> 2023 paper improvement
+// - sample BSDF diffuse lobe proba based on its luminance?
+// - how to help with shaders combination compilation times?
+//		- Change some #if to if() where this does not increase register pressure also.
+//		- wavefront path tracing should help
+//		- Maybe have two sets of shaders:
+//			- One that uses the #if for performance
+//			- One that uses if() everywhere instead of #if for fast preview
+//				- to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
+// - next event estimation++? --> 2023 paper improvement with the octree
 // - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance
 // - envmap visibility cache? 
-// - ReSTIR DI & GI in a single reservoir (probably better performance at almost no additional cost, instead of having two ReSTIR passes), idea coming from: https://www.reddit.com/r/GraphicsProgramming/comments/1j03npo/comment/mfo1kgr/?context=3
 // - If GMoN is enabled, it would be cool to be able to denoise the GMoN blend between GMoN and the default framebuffer but currently the denoiser only denoises the full GMoN and nothing else
 // - Exploiting Visibility Correlation in Direct Illumination
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
-// - ray splitting on specular/diffuse BSDFs? Trace a diffuse ray and also a specular ray to reduce the noise: only on the primary surface though otherwise this is an exponential increase in the number of rays
-// - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - for volumes, we don't have to use the same phase function at each bounce, for artistic control of the "blur shape"
 // - --help on the commandline
-// - Search for textures next to the GLTF file location
 // - Normal mapping seems broken again, light rays going under the surface... p1 env light
 // - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
@@ -202,31 +201,25 @@ extern ImGuiLogger g_imgui_logger;
 // - We're using an approximation of the clearcoated BSDF directional albedo for energy compensation right now. The approximation breaks down when what's below the coat is 0.0f roughness. We could potentially bake the directional albedo for a mirror-coated BSDF and interpolate between that mirror-coated LUT and the typical rough-coated BSDF LUT based on the roughness of what's below the coat. This mirror-coated LUT doesn't work very well if there's a smooth-dielectric-coated lambert below the coat so maybe we would need a third LUT for that case
 // - For/switch paradigm for instruction cache misses? https://youtu.be/lxRgmZTEBHM?si=FcaEYqAMVO_QyfwX&t=3061 
 //		- kind of need a good way to profile that to see the difference though
-// - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically)
-//		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
-// - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive
+// - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive ------> we're going to need another shadow ray though because if we're intersecting solely against the light BVH we don't have the rest of the geometry of the scene to occluded the lights. So we're going to need a shadow ray in case we do hit a light in the light BVH to make sure that light isn't occluded
 // - shadow terminator issue on sphere low smooth scene: [Taming the Shadow Terminator], Matt Jen-Yuan Chiang, https://github.com/aconty/aconty/blob/main/pdf/bump-terminator-nvidia2019.pdf
 // - use HIP/CUDA graphs to reduce launch overhead
 // - linear interpolation (spatial, object space, world space) function for the parameters of the BSDF
 // - compensated importance sampling of envmap
 // - Product importance sampling envmap: https://github.com/aconty/aconty/blob/main/pdf/fast-product-importance-abstract.pdf
 // - multiple GLTF, one GLB for different point of views per model
-// - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
-// - add clear shader cache in ImGui
-// - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use __any() intrinsic for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
-// - UI scaling in ImGui
 // - clay render
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - play with SBVH building parameters alpha/beta for memory/performance tradeoff + ImGui for that
 // - ability to change the color of the heatmap shader in ImGui
 // - do not store alpha from envmap
 // - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise? --> it probably is since we're probably memory lantency bound, not memory bandwidth
-// - look at blender cycles "medium contrast", "medium low constract", "medium high", ...
+// - look at blender cycles "medium contrast", "medium low constract", "medium high", ... --> filmic tonemapper does it?
 // - normal mapping strength
 // - blackbody light emitters
-// - ACES mapping
-// - better post processing: contrast, low, medium, high exposure curve
+// - ACES mapping --> filmic tonemapper may be more comprehensive
+// - better post processing: contrast, low, medium, high exposure curve --> filmic tonemapper
 // - bloom post processing
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
 // - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
@@ -275,7 +268,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Focus blur
 // - Flakes BRDF (maybe look at OSPRay implementation for a reference ?)
 // - ImGuizmo for moving objects in the scene
-// - Paths roughness regularization
 // - choose denoiser quality in imgui
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
 // - write scene details to imgui (nb vertices, triangles, ...)
@@ -284,7 +276,6 @@ extern ImGuiLogger g_imgui_logger;
 // - lock camera checkbox to avoid messing up when big render in progress
 // - PBRT v3 scene parser
 // - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
-// - Manifold Next Event Estimation (for refractive caustics) https://jo.dreggn.org/home/2015_mnee.pdf
 // - Efficiency Aware Russian roulette and splitting
 // - ReSTIR PT
 

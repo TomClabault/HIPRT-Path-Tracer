@@ -817,9 +817,9 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	take_kernel_compilation_priority();
 
 	for (auto& name_to_kenel : m_kernels)
-		name_to_kenel.second->compile(m_hiprt_orochi_ctx, m_func_name_sets, use_cache, true);
+		name_to_kenel.second->compile(m_hiprt_orochi_ctx, m_func_name_sets, use_cache, false);
 
-	m_render_graph.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true);
+	m_render_graph.recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		m_nee_plus_plus.recompile(m_hiprt_orochi_ctx, false, use_cache);

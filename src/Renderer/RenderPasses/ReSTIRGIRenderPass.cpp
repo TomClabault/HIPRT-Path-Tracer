@@ -13,7 +13,7 @@ const std::string ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID = "
 const std::string ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID = "ReSTIR GI Temporal reuse";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID = "ReSTIR GI Spatial reuse";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID = "ReSTIR GI Shading";
-const std::string ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID = "ReSTIR GI Adaptive-directional compute";
+const std::string ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID = "ReSTIR GI Directional reuse compute";
 
 const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES =
 {
@@ -21,7 +21,7 @@ const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FU
 	{ RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR_GI_TemporalReuse" },
 	{ RESTIR_GI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_GI_SpatialReuse" },
 	{ RESTIR_GI_SHADING_KERNEL_ID, "ReSTIR_GI_Shading" },
-	{ RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID, "ReSTIR_GI_Spatial_Radii" },
+	{ RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID, "ReSTIR_GI_Directional_Reuse_Compute" },
 };
 
 const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FILES =
@@ -30,7 +30,7 @@ const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FI
 	{ RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/TemporalReuse.h" },
 	{ RESTIR_GI_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/SpatialReuse.h" },
 	{ RESTIR_GI_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/Shading.h" },
-	{ RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/SpatialRadii.h" },
+	{ RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DirectionalReuseCompute.h" },
 };
 
 ReSTIRGIRenderPass::ReSTIRGIRenderPass() : ReSTIRGIRenderPass(nullptr) {}
@@ -72,6 +72,7 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer) : MegaKernelRender
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID]->set_kernel_file_path(ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID]->set_kernel_function_name(ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID));
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID]->synchronize_options_with(global_compiler_options);
 }
 
 void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -84,7 +85,11 @@ void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_spatial_buffer.resize(new_width * new_height);
 
 	m_per_pixel_spatial_reuse_radius.resize(new_width * new_height);
-	m_per_pixel_spatial_reuse_direction_mask.resize(new_width * new_height);
+
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT) <= 32)
+		m_per_pixel_spatial_reuse_direction_mask_u.resize(new_width * new_height);
+	else
+		m_per_pixel_spatial_reuse_direction_mask_ull.resize(new_width * new_height);
 }
 
 bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -147,10 +152,22 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 		// isn't used
 		if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse)
 		{
-			if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() == 0)
+			// Allocating the proper buffer whether or not we're using less than 32 bits per mask or more 
+			if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT) <= 32 && m_per_pixel_spatial_reuse_direction_mask_u.get_element_count() == 0)
 			{
-				m_per_pixel_spatial_reuse_direction_mask.resize(render_resolution.x * render_resolution.y);
+				m_per_pixel_spatial_reuse_direction_mask_u.resize(render_resolution.x * render_resolution.y);
 				m_per_pixel_spatial_reuse_radius.resize(render_resolution.x * render_resolution.y);
+				if (m_per_pixel_spatial_reuse_direction_mask_ull.get_element_count() > 0)
+				m_per_pixel_spatial_reuse_direction_mask_ull.free();
+
+				render_data_invalidated = true;
+			}
+			else if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT) > 32 && m_per_pixel_spatial_reuse_direction_mask_ull.get_element_count() == 0)
+			{
+				m_per_pixel_spatial_reuse_direction_mask_ull.resize(render_resolution.x * render_resolution.y);
+				m_per_pixel_spatial_reuse_radius.resize(render_resolution.x * render_resolution.y);
+				if (m_per_pixel_spatial_reuse_direction_mask_u.get_element_count() > 0)
+					m_per_pixel_spatial_reuse_direction_mask_u.free();
 
 				render_data_invalidated = true;
 			}
@@ -159,9 +176,17 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 		{
 			// We're not using the feature so we can free the buffers
 
-			if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() > 0)
+			// Freeing the proper buffer depending on whether we use the 64 bits buffer or not
+			if (m_per_pixel_spatial_reuse_direction_mask_u.get_element_count() > 0)
 			{
-				m_per_pixel_spatial_reuse_direction_mask.free();
+				m_per_pixel_spatial_reuse_direction_mask_u.free();
+				m_per_pixel_spatial_reuse_radius.free();
+
+				render_data_invalidated = true;
+			}
+			else if (m_per_pixel_spatial_reuse_direction_mask_ull.get_element_count() > 0)
+			{
+				m_per_pixel_spatial_reuse_direction_mask_ull.free();
 				m_per_pixel_spatial_reuse_radius.free();
 
 				render_data_invalidated = true;
@@ -215,9 +240,17 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 			render_data_invalidated = true;
 		}
 
-		if (m_per_pixel_spatial_reuse_direction_mask.get_element_count() > 0)
+		if (m_per_pixel_spatial_reuse_direction_mask_u.get_element_count() > 0)
 		{
-			m_per_pixel_spatial_reuse_direction_mask.free();
+			m_per_pixel_spatial_reuse_direction_mask_u.free();
+			m_per_pixel_spatial_reuse_radius.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_per_pixel_spatial_reuse_direction_mask_ull.get_element_count() > 0)
+		{
+			m_per_pixel_spatial_reuse_direction_mask_ull.free();
 			m_per_pixel_spatial_reuse_radius.free();
 
 			render_data_invalidated = true;
@@ -256,7 +289,7 @@ void ReSTIRGIRenderPass::compute_optimal_spatial_reuse_radii()
 		//
 		// Also, we're only doing this as a "prepass" at sample 0: we only need this once for the whole rendering
 
-		void* launch_args[] = { m_render_data };
+		void* launch_args[] = { m_render_data, m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer_address(), m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer_address(), m_per_pixel_spatial_reuse_radius.get_device_pointer_address() };
 
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 	}
@@ -434,7 +467,8 @@ void ReSTIRGIRenderPass::update_render_data()
 		m_render_data->aux_buffers.restir_gi_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
 		m_render_data->aux_buffers.restir_gi_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask = m_per_pixel_spatial_reuse_direction_mask.get_device_pointer();
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer();
 		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.get_device_pointer();
 
 		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_total.get_device_pointer());
@@ -450,7 +484,8 @@ void ReSTIRGIRenderPass::update_render_data()
 		m_render_data->aux_buffers.restir_gi_reservoir_buffer_2 = nullptr;
 		m_render_data->aux_buffers.restir_gi_reservoir_buffer_3 = nullptr;
 
-		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask = nullptr;
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = nullptr;
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
 		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = nullptr;
 	}
 }
@@ -481,6 +516,7 @@ float ReSTIRGIRenderPass::get_VRAM_usage() const
 	return (m_initial_candidates_buffer.get_byte_size() + 
 		m_temporal_buffer.get_byte_size() + 
 		m_spatial_buffer.get_byte_size() + 
-		m_per_pixel_spatial_reuse_direction_mask.get_byte_size() +
+		m_per_pixel_spatial_reuse_direction_mask_u.get_byte_size() +
+		m_per_pixel_spatial_reuse_direction_mask_ull.get_byte_size() +
 		m_per_pixel_spatial_reuse_radius.get_byte_size()) / 1000000.0f;
 }
