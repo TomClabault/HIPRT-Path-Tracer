@@ -3,28 +3,33 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef KERNELS_RESTIR_GI_COMPUTE_SPATIAL_RADII_H
-#define KERNELS_RESTIR_GI_COMPUTE_SPATIAL_RADII_H
+#ifndef KERNELS_RESTIR_DIRECTIONAL_REUSE_COMPUTE_H
+#define KERNELS_RESTIR_DIRECTIONAL_REUSE_COMPUTE_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/UtilsSpatial.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
 #define NB_RADIUS 32
+#if ComputingSpatialDirectionalReuseForReSTIRGI == KERNEL_OPTION_TRUE
 #define NB_SAMPLES_PER_RADIUS_INTERNAL ReSTIR_GI_SpatialDirectionalReuseBitCount // CHANGE THIS ONE
+#else
+#define NB_SAMPLES_PER_RADIUS_INTERNAL ReSTIR_DI_SpatialDirectionalReuseBitCount // CHANGE THIS ONE
+#endif
+
 #define NB_SAMPLES_PER_RADIUS (NB_SAMPLES_PER_RADIUS_INTERNAL > 64 ? 64 : NB_SAMPLES_PER_RADIUS_INTERNAL) // Max to 64 for unsigned long long int
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_Directional_Reuse_Compute(HIPRTRenderData render_data,
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
     unsigned int* __restrict__ out_directional_reuse_masks_buffer_u,
     unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
     unsigned char* __restrict__ out_adaptive_radius_buffer)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Directional_Reuse_Compute(HIPRTRenderData render_data, int x, int y,
+template <bool IsReSTIRGI>
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data, int x, int y,
     unsigned int* __restrict__ out_directional_reuse_masks_buffer_u,
     unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
     unsigned char* __restrict__ out_adaptive_radius_buffer)
@@ -65,13 +70,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Directional_Reuse_Compute(HIPRTRe
 
 
 
+#ifdef __KERNELCC__
+    // If on the GPU, using the 'ComputingSpatialDirectionalReuseForReSTIRGI' macro
+    // (that is passed to the compiler in the ReSTIRDI/GI RenderPass.cpp)
+    //
+    // To get the settings
+    ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data);
+#else
+    // On the CPU, it is the template argument that dictates whether this is for ReSTIR DI or GI
+    ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+#endif
+
     float best_area = 0.0f;
     int best_radius_index = 0;
-
     // Each long long int in there contains, in each bit, whether or not the direction for that radius is reusable or not
     unsigned long long int valid_samples_per_radius[NB_RADIUS] = { 0 };
-
-    ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<true>(render_data);
     for (int radius_index = 0; radius_index < NB_RADIUS; radius_index++)
     {
         float current_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius + (radius_index / (float)NB_RADIUS) * (spatial_pass_settings.reuse_radius - spatial_pass_settings.minimum_per_pixel_reuse_radius);
@@ -99,8 +112,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Directional_Reuse_Compute(HIPRTRe
 
             int neighbor_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x;
 
-            if (!check_neighbor_similarity_heuristics<true>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_shading_normal))
+#ifdef __KERNELCC__
+            // If on the GPU, using the 'ComputingSpatialDirectionalReuseForReSTIRGI' macro
+            // (that is passed to the compiler in the ReSTIRDI/GI RenderPass.cpp)
+            //
+            // To determine whether this is for ReSTIR DI or GI
+            if (!check_neighbor_similarity_heuristics<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_shading_normal))
                 continue;
+#else
+            // On the CPU, it is the template argument that dictates whether this is for ReSTIR DI or GI
+            if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_shading_normal))
+                continue;
+#endif
 
             valid_samples_per_radius[radius_index] |= (1ull << sample_index);
             area_at_current_radius += current_radius_circle_area * (1.0f / NB_SAMPLES_PER_RADIUS);

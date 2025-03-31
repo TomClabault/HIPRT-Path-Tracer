@@ -60,6 +60,7 @@ public:
 	static const std::string RESTIR_DI_BIAS_CORRECTION_WEIGHTS;
 	static const std::string RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY;
 	static const std::string RESTIR_DI_DO_LIGHTS_PRESAMPLING;
+	static const std::string RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
 
 	static const std::string RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;

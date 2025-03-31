@@ -62,6 +62,7 @@ public:
     void launch_ReSTIR_DI_presampling_lights_pass();
     void launch_ReSTIR_DI_initial_candidates_pass();
 
+    void compute_ReSTIR_DI_optimal_spatial_reuse_radii();
     void configure_ReSTIR_DI_temporal_pass();
     void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
     void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
@@ -134,6 +135,13 @@ private:
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
         std::vector<ReSTIRDIPresampledLight> presampled_lights_buffer;
+
+        std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask_u;
+        std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;
+        std::vector<unsigned char> per_pixel_spatial_reuse_radius;
+
+        AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
+        AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
 
         ReSTIRDIReservoir* output_reservoirs = nullptr;
 

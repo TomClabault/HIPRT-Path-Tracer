@@ -27,6 +27,7 @@ public:
 	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID;
+	static const std::string RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
 
 	static const std::string RESTIR_DI_RENDER_PASS_NAME;
 
@@ -118,8 +119,9 @@ private:
 	// [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
 	OrochiBuffer<ReSTIRDIPresampledLight> m_presampled_lights_buffer;
 
-	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_radius;
+	OrochiBuffer<unsigned char> m_per_pixel_spatial_reuse_radius;
 	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_direction_mask_u;
+	OrochiBuffer<unsigned long long int> m_per_pixel_spatial_reuse_direction_mask_ull;
 
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;

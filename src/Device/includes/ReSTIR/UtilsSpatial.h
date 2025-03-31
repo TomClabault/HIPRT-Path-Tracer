@@ -17,19 +17,20 @@
 template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& render_data, unsigned int center_pixel_index, float2& cos_sin_theta_rotation, Xorshift32Generator& random_number_generator)
 {
+	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used
-	render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
-	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse)
+	spatial_pass_settings.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
+	if (spatial_pass_settings.use_adaptive_directional_spatial_reuse)
 	{
-		render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius[center_pixel_index];
+		spatial_pass_settings.reuse_radius = spatial_pass_settings.per_pixel_spatial_reuse_radius[center_pixel_index];
 		// Storing the direction reuse mask in the 'current_pixel_directions_reuse_mask' field of the spatial
 		// reuse settings so that we don't have to carry that parameter around in function calls everywhere...
 		//
 		// This parameter will be read by later by the function that samples a neighbor based on the allowed directions
-		render_data.render_settings.restir_gi_settings.common_spatial_pass.current_pixel_directions_reuse_mask = ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull<IsReSTIRGI>(render_data, center_pixel_index);
+		spatial_pass_settings.current_pixel_directions_reuse_mask = ReSTIRSettingsHelper::get_spatial_reuse_direction_mask_ull<IsReSTIRGI>(render_data, center_pixel_index);
 
-		if (render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius == 0)
-			render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count = 0;
+		if (spatial_pass_settings.reuse_radius == 0)
+			spatial_pass_settings.reuse_neighbor_count = 0;
 
 		// No random rotation if using the adaptive directional spatial reuse so we're setting cos theta to 1.0f
 		// and sin theta to 0.0f for no rotation
@@ -330,7 +331,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 	out_valid_neighbor_count = 0;
 
 	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
+	Xorshift32Generator spatial_neighbors_rng(spatial_pass_settings.spatial_neighbors_rng_seed);
 
 	int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 	int reused_neighbors_count = spatial_pass_settings.reuse_neighbor_count;

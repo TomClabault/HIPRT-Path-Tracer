@@ -48,6 +48,15 @@ struct ReSTIRSettingsHelper
 	}
 
 	template <bool IsReSTIRGI>
+	HIPRT_HOST_DEVICE static ReSTIRCommonSpatialPassSettings& get_restir_spatial_pass_settings(HIPRTRenderData& render_data)
+	{
+		if constexpr (IsReSTIRGI)
+			return render_data.render_settings.restir_gi_settings.common_spatial_pass;
+		else
+			return render_data.render_settings.restir_di_settings.common_spatial_pass;
+	}
+
+	template <bool IsReSTIRGI>
 	HIPRT_HOST_DEVICE static ReSTIRCommonTemporalPassSettings get_restir_temporal_pass_settings(const HIPRTRenderData& render_data)
 	{
 		if constexpr (IsReSTIRGI)
@@ -92,7 +101,7 @@ struct ReSTIRSettingsHelper
 		}
 		else
 		{
-#if ReSTIR_GI_SpatialDirectionalReuseBitCount > 32
+#if ReSTIR_DI_SpatialDirectionalReuseBitCount > 32
 			return render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index];
 #else
 			return render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u[pixel_index];
