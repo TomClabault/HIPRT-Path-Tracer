@@ -14,7 +14,6 @@
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-#define MINIMUM_RADIUS_SIZE 5
 #define NB_RADIUS 32
 #define NB_SAMPLES_PER_RADIUS_INTERNAL ReSTIR_GI_SpatialDirectionalReuseBitCount // CHANGE THIS ONE
 #define NB_SAMPLES_PER_RADIUS (NB_SAMPLES_PER_RADIUS_INTERNAL > 64 ? 64 : NB_SAMPLES_PER_RADIUS_INTERNAL) // Max to 64 for unsigned long long int
@@ -72,9 +71,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Directional_Reuse_Compute(HIPRTRe
     // Each long long int in there contains, in each bit, whether or not the direction for that radius is reusable or not
     unsigned long long int valid_samples_per_radius[NB_RADIUS] = { 0 };
 
+    ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<true>(render_data);
     for (int radius_index = 0; radius_index < NB_RADIUS; radius_index++)
     {
-        float current_radius = MINIMUM_RADIUS_SIZE + (radius_index / (float)NB_RADIUS) * (ReSTIRSettingsHelper::get_restir_spatial_pass_settings<true>(render_data).reuse_radius - MINIMUM_RADIUS_SIZE);
+        float current_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius + (radius_index / (float)NB_RADIUS) * (spatial_pass_settings.reuse_radius - spatial_pass_settings.minimum_per_pixel_reuse_radius);
         float current_radius_circle_area = M_PI * current_radius * current_radius;
 
         // Now sampling a bunch of neighbors *on* that radius, exactly at that radius distance from the center (i.e. *not* within the disk of that radius)
@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Directional_Reuse_Compute(HIPRTRe
             float x_circle = current_radius * cosf(theta);
             float y_circle = current_radius * sinf(theta);
 
-            int2 neighbor_offset_in_disk = make_int2(static_cast<int>(x_circle), static_cast<int>(y_circle));
+            int2 neighbor_offset_in_disk = make_int2(static_cast<int>(roundf(x_circle)), static_cast<int>(roundf(y_circle)));
             int2 neighbor_pixel_coords = make_int2(x, y) + neighbor_offset_in_disk;
             if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x ||
                 neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
@@ -114,7 +114,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Directional_Reuse_Compute(HIPRTRe
     }
 
     // Computing the actual radius from the best radius index
-    float best_radius = MINIMUM_RADIUS_SIZE + (best_radius_index / (float)NB_RADIUS) * (ReSTIRSettingsHelper::get_restir_spatial_pass_settings<true>(render_data).reuse_radius - MINIMUM_RADIUS_SIZE);
+    float best_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius + (best_radius_index / (float)NB_RADIUS) * (spatial_pass_settings.reuse_radius - spatial_pass_settings.minimum_per_pixel_reuse_radius);
     if (best_area == 0.0f)
         best_radius = 0.0f;
 
