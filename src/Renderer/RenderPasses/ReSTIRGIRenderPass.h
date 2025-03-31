@@ -20,7 +20,7 @@ public:
 	static const std::string RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_GI_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_GI_SHADING_KERNEL_ID;
-	static const std::string RESTIR_GI_COMPUTE_SPATIAL_RADII_KERNEL_ID;
+	static const std::string RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
 
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;

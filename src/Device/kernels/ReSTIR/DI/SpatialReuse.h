@@ -77,14 +77,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		rotation_theta = 0.0f;
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
-	setup_adaptive_directional_spatial_reuse<false>(render_data, center_pixel_index, cos_sin_theta_rotation, random_number_generator);
-
 	ReSTIRDIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if ((center_pixel_reservoir.M <= 1) && render_data.render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
 		// Increasing the number of spatial samples for disocclusions
 		render_data.render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count = render_data.render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count;
 
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+
+	setup_adaptive_directional_spatial_reuse<false>(render_data, center_pixel_index, cos_sin_theta_rotation, random_number_generator);
 
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
@@ -96,7 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
-	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
+	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed);
 
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
@@ -122,7 +122,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			{
 				// Advancing the rng for generating the spatial neighbors since if we "continue" here, the spatial neighbors rng
 				// isn't going to be advanced by the call to 'get_spatial_neighbor_pixel_index' below so we're doing it manually
-				spatial_neighbor_advance_rng<true>(render_data, spatial_neighbors_rng);
+				spatial_neighbor_advance_rng<false>(render_data, spatial_neighbors_rng);
 
 				// Neighbor not passing the heuristics tests, skipping it right away
 				continue;

@@ -125,7 +125,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const H
 
 	// The RNG for generating the neighbors. It's important to use the same RNG here as the one used in the main for-loop
 	// of the spatial reuse such that we count the right neighbors
-	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
+	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed);
 
 	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
@@ -201,7 +201,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
-	// Only used with MIS-like weight
+	setup_adaptive_directional_spatial_reuse<false>(render_data, center_pixel_index, cos_sin_theta_rotation, random_number_generator);
+
+	// 'selected_neighbor' is only used with MIS-like weight
 	// 
 	// Will keep the index of the neighbor that has been selected by resampling. 
 	int selected_neighbor = 0;
@@ -325,7 +327,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 
 	ReSTIRDIReservoir* spatial_input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
-	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
+	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed);
 
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample the *initial candidates reservoir*
@@ -346,8 +348,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
 			// going to have issues if we try to read more than that.
 			if ((neighbor_heuristics_cache & (1 << spatial_neighbor_index)) == 0)
+			{
+				// Advancing the rng for generating the spatial neighbors since if we "continue" here, the spatial neighbors rng
+				// isn't going to be advanced by the call to 'get_spatial_neighbor_pixel_index' below so we're doing it manually
+				spatial_neighbor_advance_rng<false>(render_data, spatial_neighbors_rng);
+
 				// Neighbor not passing the heuristics tests, skipping it right away
 				continue;
+			}
 
 		int neighbor_pixel_index = -1;
 		if (spatial_neighbor_index == reused_neighbors_count)

@@ -63,8 +63,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		rotation_theta = 0.0f;
 	float2 cos_sin_theta_rotation = make_float2(cosf(rotation_theta), sinf(rotation_theta));
 
-	setup_adaptive_directional_spatial_reuse<true>(render_data, center_pixel_index, cos_sin_theta_rotation, random_number_generator);
-
 	ReSTIRGIReservoir* input_reservoir_buffer = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs;
 	ReSTIRGIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if ((center_pixel_reservoir.M <= 1) && render_data.render_settings.restir_gi_settings.common_spatial_pass.do_disocclusion_reuse_boost)
@@ -73,6 +71,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+
+	setup_adaptive_directional_spatial_reuse<true>(render_data, center_pixel_index, cos_sin_theta_rotation, random_number_generator);
 
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
