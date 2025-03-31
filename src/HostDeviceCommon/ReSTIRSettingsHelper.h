@@ -78,6 +78,27 @@ struct ReSTIRSettingsHelper
 		else
 			return render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[pixel_index].M;
 	}
+
+	template <bool IsReSTIRGI>
+	HIPRT_HOST_DEVICE static unsigned long long int get_spatial_reuse_direction_mask_ull(const HIPRTRenderData& render_data, int pixel_index)
+	{
+		if constexpr (IsReSTIRGI)
+		{
+#if ReSTIR_GI_SpatialDirectionalReuseBitCount > 32
+			return render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index];
+#else
+			return render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u[pixel_index];
+#endif
+		}
+		else
+		{
+#if ReSTIR_GI_SpatialDirectionalReuseBitCount > 32
+			return render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index];
+#else
+			return render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u[pixel_index];
+#endif
+		}
+	}
 };
 
 #endif

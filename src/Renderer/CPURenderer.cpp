@@ -18,7 +18,7 @@
 #include "Device/kernels/ReSTIR/GI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/GI/TemporalReuse.h"
-#include "Device/kernels/ReSTIR/GI/SpatialRadii.h"
+#include "Device/kernels/ReSTIR/DirectionalReuseCompute.h"
 #include "Device/kernels/ReSTIR/GI/Shading.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -73,7 +73,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 75
+#define DEBUG_NEIGHBORHOOD_SIZE 30
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -100,7 +100,11 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_gi_state.temporal_reservoirs.resize(width * height);
     m_restir_gi_state.spatial_reservoirs.resize(width * height);
-    m_restir_gi_state.per_pixel_spatial_reuse_directions_mask.resize(width * height);
+#if ReSTIR_GI_SpatialDirectionalReuseBitCount > 32
+    m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
+#else
+    m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.resize(width * height);
+#endif
     m_restir_gi_state.per_pixel_spatial_reuse_radius.resize(width * height);
 
     m_g_buffer.resize(width * height);
@@ -296,7 +300,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_gi_reservoir_buffer_1 = m_restir_gi_state.initial_candidates_reservoirs.data();
     m_render_data.aux_buffers.restir_gi_reservoir_buffer_2 = m_restir_gi_state.spatial_reservoirs.data();
     m_render_data.aux_buffers.restir_gi_reservoir_buffer_3 = m_restir_gi_state.temporal_reservoirs.data();
-    m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask = m_restir_gi_state.per_pixel_spatial_reuse_directions_mask.data();
+    m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_u.data();
+    m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = m_restir_gi_state.per_pixel_spatial_reuse_directions_mask_ull.data();
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_gi_state.spatial_reuse_hit_rate_total;
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
@@ -834,7 +839,10 @@ void CPURenderer::compute_ReSTIR_GI_optimal_spatial_reuse_radii()
     m_render_data.random_number = m_rng.xorshift32();
 
     debug_render_pass([this](int x, int y) {
-        ReSTIR_GI_Spatial_Radii(m_render_data, x, y);
+        ReSTIR_GI_Directional_Reuse_Compute(m_render_data, x, y,
+            m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u,
+            m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
+            m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
     });
 }
 

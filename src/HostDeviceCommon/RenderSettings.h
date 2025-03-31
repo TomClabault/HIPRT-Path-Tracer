@@ -38,6 +38,7 @@ struct HIPRTRenderSettings
 	bool DEBUG_gmon_auto_blending_weights = true;
 	float DEBUG_GMON_DIVIDER = 3.0f;
 	int DEBUG_GMON_WINDOW_SIZE = 3;
+	bool DEBUG_OPTI = true;
 
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;

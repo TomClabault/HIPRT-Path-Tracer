@@ -83,6 +83,7 @@ namespace hippt
 
 	__device__ int thread_idx_x() { return threadIdx.x + blockIdx.x * blockDim.x; }
 	__device__ int thread_idx_y() { return threadIdx.y + blockIdx.y * blockDim.y; }
+	__device__ bool is_pixel_index(int x, int y) { return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
 
 	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
@@ -238,7 +239,14 @@ namespace hippt
 	__device__ float fract(float a) { return a - floorf(a); }
 	__device__ float asfloat(unsigned int x) { return __uint_as_float(x); }
 	__device__ unsigned int asuint(float x) { return __float_as_uint(x); }
-	__device__ unsigned int popc(unsigned int bitmask) { return __popc(bitmask); }
+
+	template <typename T>
+	__device__ int popc(T bitmask) { return 0; }
+	template <>
+	__device__ int popc(unsigned int bitmask) { return __popc(bitmask); }
+	template <>
+	__device__ int popc(unsigned long long int bitmask) { return __popcll(bitmask); }
+
 	/**
 	 * Finds the position of least signigicant bit set to 1 in a 32 bit unsigned integer.
 	 * Returs a value between 0 and 32 inclusive.
@@ -298,6 +306,7 @@ namespace hippt
 
 	inline int thread_idx_x() { return 0; }
 	inline int thread_idx_y() { return 0; }
+	inline bool is_pixel_index(int x, int y) { return false; }
 
 	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
@@ -462,7 +471,9 @@ namespace hippt
 	inline float fract(float a) { return a - floorf(a); }
 	inline float asfloat(unsigned int x) { return std::bit_cast<float, unsigned int>(x); }
 	inline unsigned int asuint(float x) { return std::bit_cast<unsigned int, float>(x); }
-	inline unsigned int popc(unsigned int bitmask) { return std::popcount(bitmask); }
+	template <typename T>
+	inline int popc(T bitmask) { return std::popcount(bitmask); }
+
 	/**
 	 * Finds the position of least signigicant bit set to 1 in a 32 bit unsigned integer.
 	 * Returs a value between 0 and 32 inclusive.

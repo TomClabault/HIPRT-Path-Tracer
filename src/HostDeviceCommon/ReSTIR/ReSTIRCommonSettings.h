@@ -99,15 +99,18 @@ struct ReSTIRCommonSpatialPassSettings
 	// 'neighbor_visibility_count' neighbors, not all.
 	int neighbor_visibility_count;
 
-	unsigned int* per_pixel_spatial_reuse_directions_mask = nullptr;
-	unsigned int* per_pixel_spatial_reuse_radius = nullptr;
+	unsigned int* per_pixel_spatial_reuse_directions_mask_u = nullptr;
+	unsigned long long int* per_pixel_spatial_reuse_directions_mask_ull = nullptr;
+	// Framebuffer that contains per-pixel spatial radius for use in the spatial reuse passes of ReSTIR.
+	// This framebuffer is filled by the 
+	unsigned char* per_pixel_spatial_reuse_radius = nullptr;
 
 	// This variable here is spatial because it is written to at the beginning of the spatial reuse pass.
 	// The only goal of this variable is to be able to carry around the function the direction reuse mask
 	// (i.e. which directions are allowed for reuse)of the pixel.
 	//
 	// This is purely to avoid passing yet another arguments to every function in the code...
-	unsigned int current_pixel_directions_reuse_mask = 0;
+	unsigned long long int current_pixel_directions_reuse_mask = 0;
 
 	// Whether or not to gather statistics on the hit rate of the spatial reuse pass (i.e. how many
 	// neighbors are rejected because of the G-Buffer heuristics vs. the maximum number of neighbors that can be reused)
