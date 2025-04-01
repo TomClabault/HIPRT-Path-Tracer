@@ -137,7 +137,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const H
 
 		if (!check_neighbor_similarity_heuristics<false>(render_data,
 			neighbor_pixel_index, center_pixel_index, 
-			center_pixel_surface.shading_point, center_pixel_surface.shading_normal, 
+			center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<false>(render_data, center_pixel_surface),
 			render_data.render_settings.use_prev_frame_g_buffer()))
 			continue;
 
@@ -378,7 +378,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
 			if (!check_neighbor_similarity_heuristics<false>(render_data,
 				neighbor_pixel_index, center_pixel_index,
-				center_pixel_surface.shading_point, center_pixel_surface.shading_normal,
+				center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<false>(render_data, center_pixel_surface),
 				render_data.render_settings.use_prev_frame_g_buffer()))
 			{
 				continue;

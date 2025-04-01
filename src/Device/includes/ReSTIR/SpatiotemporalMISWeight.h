@@ -86,7 +86,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 
 				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 					neighbor_index_j, center_pixel_index, 
-					center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
+					center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface), render_data.render_settings.use_prev_frame_g_buffer()))
 					// Neighbor too dissimilar according to heuristics, skipping
 					continue;
 			}

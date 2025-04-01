@@ -107,6 +107,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 37.5f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
+		neighbor_similarity_settings.reject_using_geometric_normals = true;
 
 		neighbor_similarity_settings.use_plane_distance_heuristic = true;
 		neighbor_similarity_settings.plane_distance_threshold = 0.1f;

@@ -63,8 +63,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
 #endif
     out_adaptive_radius_buffer[center_pixel_index] = 0;
 
-    float3 center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
-    float3 center_shading_normal = render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 
 
 
@@ -79,6 +77,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
 #else
     // On the CPU, it is the template argument that dictates whether this is for ReSTIR DI or GI
     ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+#endif
+
+    float3 center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
+#ifdef __KERNELCC__
+    float3 center_normal = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data).reject_using_geometric_normals ? render_data.g_buffer.geometric_normals[center_pixel_index].unpack() : render_data.g_buffer.shading_normals[center_pixel_index].unpack();
+#else
+    float3 center_normal = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data).reject_using_geometric_normals ? render_data.g_buffer.geometric_normals[center_pixel_index].unpack() : render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 #endif
 
     float best_area = 0.0f;
@@ -117,11 +122,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
             // (that is passed to the compiler in the ReSTIRDI/GI RenderPass.cpp)
             //
             // To determine whether this is for ReSTIR DI or GI
-            if (!check_neighbor_similarity_heuristics<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_shading_normal))
+            if (!check_neighbor_similarity_heuristics<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_normal))
                 continue;
 #else
             // On the CPU, it is the template argument that dictates whether this is for ReSTIR DI or GI
-            if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_shading_normal))
+            if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_normal))
                 continue;
 #endif
 
