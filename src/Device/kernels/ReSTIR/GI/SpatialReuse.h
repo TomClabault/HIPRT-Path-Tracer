@@ -130,7 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// 
 			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
 			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
-			if (!check_neighbor_similarity_heuristics<true>(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+			if (!check_neighbor_similarity_heuristics<true>(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<false>(render_data, center_pixel_surface)))
 				continue;
 
 		ReSTIRGIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];

@@ -49,7 +49,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsRe
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 			if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface)))
 				continue;
 
 			out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
@@ -91,7 +91,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsRe
 				continue;
 
 			if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface)))
 				continue;
 
 			// Getting the surface data at the neighbor
@@ -152,7 +152,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsRe
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 			if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface)))
 				continue;
 
 			// Getting the surface data at the neighbor

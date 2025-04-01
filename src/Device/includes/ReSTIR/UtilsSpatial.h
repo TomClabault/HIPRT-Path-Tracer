@@ -350,7 +350,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 			continue;
 
 		if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-			neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+			neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface)))
 			continue;
 
 		if (spatial_pass_settings.compute_spatial_reuse_hit_rate)

@@ -132,6 +132,11 @@ struct ReSTIRCommonNeighborSimiliaritySettings
 	float normal_similarity_angle_degrees;
 	// Precomputed cosine of the angle for use in the shader
 	float normal_similarity_angle_precomp; // Normals must be within 25 degrees by default
+	// If true, the geometric normals will be compared for the normal rejection heuristic.
+	// If false, smooth vertex normals (or normal map normals) will be compared
+	//
+	// Geometric normals are prefered as they are not disturbed by high details normal maps
+	bool reject_using_geometric_normals;
 
 	bool use_plane_distance_heuristic;
 	// Threshold used when determining whether a temporal neighbor is acceptable

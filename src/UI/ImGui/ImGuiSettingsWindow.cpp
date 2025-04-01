@@ -1723,11 +1723,15 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 	if (use_heuristics_at_all)
 	{
 		ImGui::TreePush("ReSTIR Heursitics Tree");
-
+		ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
 
 		{
 			if (ImGui::Checkbox("Use normal similarity heuristic", &common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::TreePush("Normal similarity heuristic tree");
+			if (ImGui::Checkbox("Use geometric normals", &common_settings.neighbor_similarity_settings.reject_using_geometric_normals))
 				m_render_window->set_render_dirty(true);
 
 			if (common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic)
@@ -1739,36 +1743,43 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 					m_render_window->set_render_dirty(true);
 				}
 			}
+			ImGui::TreePop();
 		}
-
+		ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
 
 		{
 			if (ImGui::Checkbox("Use plane distance heuristic", &common_settings.neighbor_similarity_settings.use_plane_distance_heuristic))
 				m_render_window->set_render_dirty(true);
 
+			ImGui::TreePush("Plane distance heuristic tree");
 			if (common_settings.neighbor_similarity_settings.use_plane_distance_heuristic)
 				if (ImGui::SliderFloat("Distance threshold", &common_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
+			ImGui::TreePop();
 		}
-
+		ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
 
 		{
 			if (ImGui::Checkbox("Use roughness heuristic", &common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic))
 				m_render_window->set_render_dirty(true);
 
+			ImGui::TreePush("Roughness heuristic tree");
 			if (common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic)
 				if (ImGui::SliderFloat("Roughness threshold", &common_settings.neighbor_similarity_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 					m_render_window->set_render_dirty(true);
+			ImGui::TreePop();
 		}
 
 
 		if constexpr (IsReSTIRGI)
 		{
+			ImGui::Dummy(ImVec2(0.0f, 10.0f));
 			if (ImGui::Checkbox("Use jacobian heuristic", &render_settings.restir_gi_settings.use_jacobian_rejection_heuristic))
 				m_render_window->set_render_dirty(true);
 
+			ImGui::TreePush("Jacobian heuristic tree");
 			if (render_settings.restir_gi_settings.use_jacobian_rejection_heuristic)
 			{
 				if (ImGui::SliderFloat("Jacobian threshold", render_settings.restir_gi_settings.get_jacobian_heuristic_threshold_pointer(), 5.0f, 100.0f))
@@ -1777,6 +1788,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 					m_render_window->set_render_dirty(true);
 				}
 			}
+			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
 			if (ImGui::Checkbox("Use sample point roughness heuristic", &render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic))
 				m_render_window->set_render_dirty(true);
@@ -1787,9 +1800,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 				"high variance) when the primary hit (visible point) is on a rough surface and the secondary hit (sample point) is on a "
 				"specular surface: a rough primary hit bouncing into a window / mirror for example.");
 
+			ImGui::TreePush("Sample point roughness heuristic tree");
 			if (render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic)
 				if (ImGui::SliderFloat("Min. neighbor roughness", &render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
+			ImGui::TreePop();
 		}
 		// ReSTIR DI Heursitics Tree
 		ImGui::TreePop();
