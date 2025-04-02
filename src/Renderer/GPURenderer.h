@@ -345,7 +345,7 @@ public:
 
 	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
 
-	void reset();
+	void reset(bool reset_by_camera_movement);
 
 	Xorshift32Generator& get_rng_generator();
 

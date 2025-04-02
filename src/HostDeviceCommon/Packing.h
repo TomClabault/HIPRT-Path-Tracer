@@ -235,6 +235,14 @@ private:
 struct Octahedral24BitNormal
 {
 public:
+	HIPRT_HOST_DEVICE static Octahedral24BitNormal pack_static(float3 normal)
+	{
+		Octahedral24BitNormal packed;
+		packed.pack(normal);
+
+		return packed;
+	}
+
 	HIPRT_HOST_DEVICE void pack(float3 normal)
 	{
 		float2_to_Snorm12_2x_as_3UChar(octahedral_encode(normal), packed_x, packed_y, packed_z);

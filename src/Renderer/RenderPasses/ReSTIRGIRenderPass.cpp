@@ -324,7 +324,6 @@ bool ReSTIRGIRenderPass::launch()
 {
 	if (!is_render_pass_used())
 		return false;
-
 	compute_optimal_spatial_reuse_radii();
 
 	configure_initial_candidates_pass();
