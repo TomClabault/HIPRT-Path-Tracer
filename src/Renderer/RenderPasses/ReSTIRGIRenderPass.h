@@ -48,7 +48,6 @@ public:
 	void launch_spatial_reuse_pass();
 	void configure_shading_pass();
 	void launch_shading_pass();
-	void configure_input_output_buffers();
 	virtual bool launch() override;
 
 	virtual void post_render_update() override;

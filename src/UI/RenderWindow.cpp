@@ -25,7 +25,7 @@
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 // - distance rejection heuristic for reconnection
 // - Test 64 bits directional spatial reuse masks
-// - Same random neighbors seed per warp for coaslescing
+// - Same random neighbors seed per warp for coaslescing even with directional spatial reuse
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;
@@ -148,6 +148,14 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// - flush to zero denormal float numbers compiler option?
+//		
+ /*
+ * 
+    -fcuda-flush-denormals-to-zero
+    -fgpu-flush-denormals-to-zero
+
+ */
 // - Eta scaling for russian roulette refractions
 // - Disable back facing lights for performance because most of those lights, for correct meshes, are going to be occluded
 //		- Add an option to re-enable manually back facing lights in the material
@@ -201,7 +209,7 @@ extern ImGuiLogger g_imgui_logger;
 // - We're using an approximation of the clearcoated BSDF directional albedo for energy compensation right now. The approximation breaks down when what's below the coat is 0.0f roughness. We could potentially bake the directional albedo for a mirror-coated BSDF and interpolate between that mirror-coated LUT and the typical rough-coated BSDF LUT based on the roughness of what's below the coat. This mirror-coated LUT doesn't work very well if there's a smooth-dielectric-coated lambert below the coat so maybe we would need a third LUT for that case
 // - For/switch paradigm for instruction cache misses? https://youtu.be/lxRgmZTEBHM?si=FcaEYqAMVO_QyfwX&t=3061 
 //		- kind of need a good way to profile that to see the difference though
-// - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive ------> we're going to need another shadow ray though because if we're intersecting solely against the light BVH we don't have the rest of the geometry of the scene to occluded the lights. So we're going to need a shadow ray in case we do hit a light in the light BVH to make sure that light isn't occluded
+// - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive ------> we're going to need another shadow ray though because if we're intersecting solely against the light BVH we don't have the rest of the geometry of the scene to occluded the lights. So we're going to need a shadow ray in case we do hit a light in the light BVH to make sure that light isn't occluded ----> Maybe collect statistics on how many BSDF rays light sample miss lights: this can help see what's going to be the benefit of a light BVH because the drawback of a light BVH is going to be only if we hit a light because then we need another BVH traversal to check for occlusion
 // - shadow terminator issue on sphere low smooth scene: [Taming the Shadow Terminator], Matt Jen-Yuan Chiang, https://github.com/aconty/aconty/blob/main/pdf/bump-terminator-nvidia2019.pdf
 // - use HIP/CUDA graphs to reduce launch overhead
 // - linear interpolation (spatial, object space, world space) function for the parameters of the BSDF

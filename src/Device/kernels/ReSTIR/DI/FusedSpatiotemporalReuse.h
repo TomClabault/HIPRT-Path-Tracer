@@ -233,7 +233,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			if (temporal_neighbor_reservoir.UCW > 0.0f)
 				// Only resampling if the temporal neighbor isn't empty
 				//
-				// If the temporal neiughor's reservoir is empty, then we do not get
+				// If the temporal neighbor's reservoir is empty, then we do not get
 				// inside that if() and the target function stays at 0.0f which eliminates
 				// most of the computations afterwards
 				//

@@ -16,6 +16,8 @@ public:
 	static constexpr const char* const DIRECTIONAL_REUSE_KERNEL_FILE = DEVICE_KERNELS_DIRECTORY "/ReSTIR/DirectionalReuseCompute.h";
 	static constexpr const char* const DIRECTIONAL_REUSE_IS_RESTIR_GI_COMPILE_OPTION_NAME = "ComputingSpatialDirectionalReuseForReSTIRGI";
 
+	static constexpr float AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE = 0.025f;
+
 	template <bool IsReSTIRGI>
 	static void resize_directional_reuse_buffers(GPURenderer* renderer, int new_width, int new_height,
 		OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius, 

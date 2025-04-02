@@ -28,17 +28,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
         // if ReSTIR DI is currently disabled (using another direct lighting strategy).
         // We only need to check 1 buffer for that.
 
-        render_data.aux_buffers.restir_di_reservoir_buffer_1[pixel_index] = ReSTIRDIReservoir();
-        render_data.aux_buffers.restir_di_reservoir_buffer_2[pixel_index] = ReSTIRDIReservoir();
-        render_data.aux_buffers.restir_di_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();
+        if (render_data.aux_buffers.restir_di_reservoir_buffer_1)
+            render_data.aux_buffers.restir_di_reservoir_buffer_1[pixel_index] = ReSTIRDIReservoir();
+
+        if (render_data.aux_buffers.restir_di_reservoir_buffer_2)
+            render_data.aux_buffers.restir_di_reservoir_buffer_2[pixel_index] = ReSTIRDIReservoir();
+
+        if (render_data.aux_buffers.restir_di_reservoir_buffer_3)
+            render_data.aux_buffers.restir_di_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();
     }
 
     if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
     {
         // Same for ReSTIR GI
-        render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
-        render_data.aux_buffers.restir_gi_reservoir_buffer_2[pixel_index] = ReSTIRGIReservoir();
-        render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
+        if (render_data.aux_buffers.restir_gi_reservoir_buffer_1)
+            render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
+
+        if (render_data.aux_buffers.restir_gi_reservoir_buffer_2)
+            render_data.aux_buffers.restir_gi_reservoir_buffer_2[pixel_index] = ReSTIRGIReservoir();
+
+        if (render_data.aux_buffers.restir_gi_reservoir_buffer_3)
+            render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
     }
 
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
@@ -86,9 +96,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
     uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
-    /*if (pixel_index == 0)
-        hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[0], 0.0f);*/
-
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
@@ -107,12 +114,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         pixel_index /= res_scaling;
     }
 
-    if (render_data.render_settings.use_prev_frame_g_buffer())
+    if (render_data.render_settings.use_prev_frame_g_buffer() && render_data.render_settings.sample_number > 0)
     {
         render_data.g_buffer_prev_frame.geometric_normals[pixel_index] = render_data.g_buffer.geometric_normals[pixel_index];
         render_data.g_buffer_prev_frame.shading_normals[pixel_index] = render_data.g_buffer.shading_normals[pixel_index];
         render_data.g_buffer_prev_frame.materials[pixel_index] = render_data.g_buffer.materials[pixel_index];
         render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] = render_data.g_buffer.primary_hit_position[pixel_index];
+        /*if (x == 317 && y == 344)
+            printf("G-Buffer current frame sample: %d | %f %f %f\n\n", render_data.render_settings.sample_number, render_data.g_buffer.primary_hit_position[pixel_index].x, render_data.g_buffer.primary_hit_position[pixel_index].y, render_data.g_buffer.primary_hit_position[pixel_index].z);*/
         render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index] = render_data.g_buffer.first_hit_prim_index[pixel_index];
     }
 

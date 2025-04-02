@@ -27,8 +27,6 @@ extern ImGuiLogger g_imgui_logger;
 
 int main(int argc, char* argv[])
 {   
-    ThreadManager::set_monothread(true);
-
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     int width = cmd_arguments.render_width;

@@ -21,12 +21,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int2 apply_permutation_sampling(int2 pixel_positi
 	return pixel_position;
 }
 /**
- * Returns a pair (x, y, z) with
+ * Returns a triplet (x, y, z) with
  *	x the linear index that can be used directly to index a buffer
  *	of render_data for getting data of the temporal neighbor. x is -1
  *	if there is no valid temporal neighbor (disoccluion / occlusion / out of viewport)
  *
- *	(y, z) the pixel coordinates of the backproject temporal neighbor position
+ *	(y, z) the pixel coordinates of the backprojected temporal neighbor position
  *	These two values will always be filled even if the temporal neighbor is invalid
  *	(disoccluion / occlusion / out of viewport)
  */
