@@ -269,8 +269,14 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	}
 
 	if (ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame))
+	{
 		// Clamping to 1
 		render_settings.samples_per_frame = std::max(1, render_settings.samples_per_frame);
+		// If the user manually changed to number of samples per frame, let's disable auto sample per frame
+		// because the user probably doesn't want it
+		m_application_settings->auto_sample_per_frame = false;
+	}
+
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
 	if (m_application_settings->auto_sample_per_frame)
@@ -1320,6 +1326,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							m_render_window->set_render_dirty(true);
 						}
 						ImGuiRenderer::show_help_marker("What direct lighting strategy to use for bounces that come after the first one (camera ray hit) since ReSTIR DI only applies on the first bounce.");
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 						switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY))
 						{
@@ -2545,7 +2552,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 		bool setting_changed = false;
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Energy conservation max bounces");
-		ImGui::Text("");
+		ImGui::Text("%s", "");
 		ImGuiRenderer::show_help_marker("After what bounce to stop doing energy conservation (depending on the type of material)\n\n"
 			""
 			"0 means that energy conservation will only be done on the first hit (of camera rays) for example.\n\n"

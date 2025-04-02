@@ -11,9 +11,11 @@
  */
 struct ReSTIRDISample;
 struct ReSTIRGISample;
+struct ReSTIRDIReservoir;
+struct ReSTIRGIReservoir;
 
  /**
- * The SampleTypeStruct is used to automatically determine what SampleType to use
+ * The ReSTIRTypeStruct is used to automatically determine what SampleType to use
  * based on the 'IsReSTIRGI' template parameter
  *
  * This allows us to use the ReSTIRDISample type of ReSTIRGISample type automatically
@@ -22,21 +24,26 @@ struct ReSTIRGISample;
  * This sample type is then used in some of the specialization to pass to the target functions
  */
 template <bool IsReSTIRGI>
-struct SampleTypeStruct {};
+struct ReSTIRTypeStruct {};
 
 template <>
-struct SampleTypeStruct<false>
+struct ReSTIRTypeStruct<false>
 {
-	using Type = ReSTIRDISample;
+	using SampleType = ReSTIRDISample;
+	using ReservoirType = ReSTIRDIReservoir;
 };
 
 template <>
-struct SampleTypeStruct<true>
+struct ReSTIRTypeStruct<true>
 {
-	using Type = ReSTIRGISample;
+	using SampleType = ReSTIRGISample;
+	using ReservoirType = ReSTIRGIReservoir;
 };
 
 template <bool IsReSTIRGI>
-using ReSTIRSampleType = typename SampleTypeStruct<IsReSTIRGI>::Type;
+using ReSTIRSampleType = typename ReSTIRTypeStruct<IsReSTIRGI>::SampleType;
+
+template <bool IsReSTIRGI>
+using ReSTIRReservoirType = typename ReSTIRTypeStruct<IsReSTIRGI>::ReservoirType;
 
 #endif

@@ -45,7 +45,7 @@ struct HIPRTRenderSettings
 	ColorRGB32F DEBUG_COLOR;
 	int DEBUG_BOUNCE = 1;
 
-	bool enable_direct = true;
+	bool enable_direct = false;
 	bool DEBUG_DO_BSDF_RATIO = false;
 	bool DEBUG_DOUBLE_BSDF_SHADING = false;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
@@ -161,9 +161,9 @@ struct HIPRTRenderSettings
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 512;
+	int adaptive_sampling_min_samples = 256;
 	// Adaptive sampling noise threshold
-	float adaptive_sampling_noise_threshold = 0.1f;
+	float adaptive_sampling_noise_threshold = 0.075f;
 
 	// If true, the rendering will stop after a certain proportion (defined by 'stop_pixel_percentage_converged')
 	// of pixels of the image have converged. "converged" here is defined according to the adaptive sampling if
@@ -177,7 +177,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 40.0f;
+	float stop_pixel_percentage_converged = 75.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;

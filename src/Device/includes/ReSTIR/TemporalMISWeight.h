@@ -6,6 +6,8 @@
 #ifndef DEVICE_RESTIR_DI_MIS_WEIGHT_H
 #define DEVICE_RESTIR_DI_MIS_WEIGHT_H
 
+#include "Device/includes/ReSTIR/DI/TargetFunction.h"
+#include "Device/includes/ReSTIR/GI/TargetFunction.h"
 #include "Device/includes/ReSTIR/MISWeightsCommon.h"
 #include "Device/includes/ReSTIR/Utils.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
@@ -162,25 +164,25 @@ template<bool IsReSTIRGI>
 struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
+		ReSTIRReservoirType<IsReSTIRGI>& temporal_neighbor_reservoir,
+		ReSTIRReservoirType<IsReSTIRGI>& initial_candidates_reservoir,
+		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 
-		int temporal_neighbor_reservoir_M, float temporal_neighbor_reservoir_target_function,
-		const ReSTIRSampleType<IsReSTIRGI>& initial_candidates_reservoir_sample, int initial_candidates_reservoir_M, float initial_candidates_reservoir_target_function,
-
-		ReSTIRSurface& temporal_neighbor_surface,
 		float neighbor_sample_target_function_at_center, int current_neighbor_index,
+
 		Xorshift32Generator& random_number_generator)
 	{
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
 		{
 			// Resampling the temporal neighbor
 
-			float target_function_at_neighbor = temporal_neighbor_reservoir_target_function;
+			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_at_center = neighbor_sample_target_function_at_center;
 
 			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
-			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
-			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir_M : 1;
-			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
+			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
+			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir.M : 1;
+			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
@@ -188,13 +190,52 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS,
 
 			float target_function_center_reservoir_at_neighbor;
 			if constexpr (IsReSTIRGI)
+			{
 				// ReSTIR GI target function
-				target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+
+				// Because we're using the target function as a PDF here, we need to scale the PDF
+				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
+
+				// Only doing this if we at least have a target function to scale by the jacobian
+				if (target_function_center_reservoir_at_neighbor > 0.0f)
+				{
+					// If this is an envmap path the jacobian is just 1 so this is not needed
+					if (!initial_candidates_reservoir.sample.is_envmap_path())
+					{
+						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, center_pixel_surface.shading_point, temporal_neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+
+#if 0
+						// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
+						if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
+						{
+							float new_pdf;
+							BSDFContext new_pdf_context(hippt::normalize(temporal_neighbor_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
+							bsdf_dispatcher_eval(render_data, new_pdf_context, new_pdf, random_number_generator);
+
+							float old_pdf;
+							BSDFContext old_pdf_context(hippt::normalize(center_pixel_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
+							bsdf_dispatcher_eval(render_data, old_pdf_context, old_pdf, random_number_generator);
+
+							float bsdf_pdf_ratio = new_pdf / old_pdf;
+							jacobian *= bsdf_pdf_ratio;
+						}
+#endif
+
+						if (jacobian == 0.0f)
+							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
+							// and has been rejected), the target function is set to 0
+							target_function_center_reservoir_at_neighbor = 0.0f;
+						else
+							target_function_center_reservoir_at_neighbor /= jacobian;
+					}
+				}
+			}
 			else
 				// ReSTIR DI target function
-				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
-			float target_function_center_reservoir_at_center = initial_candidates_reservoir_target_function;
+			float target_function_center_reservoir_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
 			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;
@@ -233,23 +274,25 @@ template <bool IsReSTIRGI>
 struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		int temporal_neighbor_reservoir_M, float temporal_neighbor_reservoir_target_function, 
-		const ReSTIRSampleType<IsReSTIRGI>& initial_candidates_reservoir_sample, int initial_candidates_reservoir_M, float initial_candidates_reservoir_target_function,
-		ReSTIRSurface& temporal_neighbor_surface,
+		ReSTIRReservoirType<IsReSTIRGI>& temporal_neighbor_reservoir,
+		ReSTIRReservoirType<IsReSTIRGI>& initial_candidates_reservoir,
+		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
+
 		float neighbor_sample_target_function_at_center, int current_neighbor_index,
+
 		Xorshift32Generator& random_number_generator)
 	{
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
 		{
 			// Resampling the temporal neighbor
 
-			float target_function_at_neighbor = temporal_neighbor_reservoir_target_function;
+			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
 			float target_function_at_center = neighbor_sample_target_function_at_center;
 
 			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
-			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
-			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir_M : 1;
-			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
+			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
+			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir.M : 1;
+			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
@@ -260,13 +303,52 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_
 
 			float target_function_center_reservoir_at_neighbor;
 			if constexpr (IsReSTIRGI)
+			{
 				// ReSTIR GI target function
-				target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+
+				// Because we're using the target function as a PDF here, we need to scale the PDF
+				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
+
+				// Only doing this if we at least have a target function to scale by the jacobian
+				if (target_function_center_reservoir_at_neighbor > 0.0f)
+				{
+					// If this is an envmap path the jacobian is just 1 so this is not needed
+					if (!initial_candidates_reservoir.sample.is_envmap_path())
+					{
+						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, center_pixel_surface.shading_point, temporal_neighbor_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+
+#if 1
+						// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
+						if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
+						{
+							float new_pdf;
+							BSDFContext new_pdf_context(hippt::normalize(temporal_neighbor_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
+							bsdf_dispatcher_eval(render_data, new_pdf_context, new_pdf, random_number_generator);
+
+							float old_pdf;
+							BSDFContext old_pdf_context(hippt::normalize(center_pixel_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
+							bsdf_dispatcher_eval(render_data, old_pdf_context, old_pdf, random_number_generator);
+
+							float bsdf_pdf_ratio = new_pdf / old_pdf;
+							jacobian *= bsdf_pdf_ratio;
+						}
+#endif
+
+						if (jacobian == 0.0f)
+							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
+							// and has been rejected), the target function is set to 0
+							target_function_center_reservoir_at_neighbor = 0.0f;
+						else
+							target_function_center_reservoir_at_neighbor /= jacobian;
+					}
+				}
+			}
 			else
 				// ReSTIR DI target function
-				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
-			float target_function_center_reservoir_at_center = initial_candidates_reservoir_target_function;
+			float target_function_center_reservoir_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
 			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;
@@ -305,7 +387,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
 				if (ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
-					return mc + static_cast<float>(initial_candidates_reservoir_M) / static_cast<float>(initial_candidates_reservoir_M + temporal_neighbor_reservoir_M);
+					return mc + static_cast<float>(initial_candidates_reservoir.M) / static_cast<float>(initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
 				else
 					return (1.0f + mc) * 0.5f;
 			}

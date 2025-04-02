@@ -140,7 +140,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		if (temporal_neighbor_reservoir.UCW > 0.0f)
 			// Only resampling if the temporal neighbor isn't empty
 			//
-			// If the temporal neiughor's reservoir is empty, then we do not get
+			// If the temporal neighbor's reservoir is empty, then we do not get
 			// inside that if() and the target function stays at 0.0f which eliminates
 			// most of the computations afterwards
 			//
@@ -167,19 +167,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			temporal_neighbor_surface, center_pixel_surface, 
 			temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
-		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 			
-			temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
-			initial_candidates_reservoir.sample, initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
-
-			temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+			temporal_neighbor_reservoir, initial_candidates_reservoir,
+			center_pixel_surface, temporal_neighbor_surface, 
+			target_function_at_center, TEMPORAL_NEIGHBOR_ID, 
+			random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
+			temporal_neighbor_reservoir, initial_candidates_reservoir,
+			center_pixel_surface, temporal_neighbor_surface, 
 			
-			temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
-			initial_candidates_reservoir.sample, initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
-			
-			temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+			target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -225,19 +224,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		temporal_neighbor_surface, center_pixel_surface, 
 		temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
-	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 		
-		temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
-		initial_candidates_reservoir.sample, initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
-
-		temporal_neighbor_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
+		temporal_neighbor_reservoir, initial_candidates_reservoir, 
+		center_pixel_surface, temporal_neighbor_surface, 
+		/* unused */ 0.0f, INITIAL_CANDIDATES_ID, 
+		random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
-		
-		temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
-		initial_candidates_reservoir.sample, initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
-		
-		temporal_neighbor_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
+		temporal_neighbor_reservoir, initial_candidates_reservoir,
+		center_pixel_surface, temporal_neighbor_surface,
+
+		/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif

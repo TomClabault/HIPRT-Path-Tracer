@@ -125,8 +125,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         // Adding the direct lighting contribution at the first hit in the direction of the camera
         camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
 
-    ColorRGB32F DEBUG_direct_light_;
-
     ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index];
 
     if (render_data.render_settings.nb_bounces > 0)

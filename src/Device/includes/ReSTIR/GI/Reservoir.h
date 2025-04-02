@@ -127,8 +127,6 @@ struct ReSTIRGIReservoir
             UCW = 1.0f / sample.target_function * weight_sum;
     }
 
-    float DEBUG_VALUE = 0.0f;
-
     HIPRT_HOST_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
     {
         // Checking some limit values
@@ -139,8 +137,6 @@ struct ReSTIRGIReservoir
 
         // Hard limiting M to avoid explosions if the user decides not to use any M-cap (M-cap == 0)
         M = hippt::min(M, 1000000);
-
-        DEBUG_VALUE = sample.target_function / normalization_denominator;
     }
 
     HIPRT_HOST_DEVICE HIPRT_INLINE void sanity_check(int2 pixel_coords)
@@ -199,13 +195,13 @@ struct ReSTIRGIReservoir
 #endif
     }
 
+    ReSTIRGISample sample;
+
     int M = 0;
     // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
     float weight_sum = 0.0f;
     // If the UCW is set to -1, this is because the reservoir was killed by visibility reuse
     float UCW = 0.0f;
-
-    ReSTIRGISample sample;
 };
 
 #endif

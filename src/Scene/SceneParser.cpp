@@ -27,7 +27,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
     {
         std::cerr << assimp_importer.GetErrorString() << std::endl;
         std::string message = "Falling back to default scene...: " + std::string(CommandlineArguments::DEFAULT_SCENE);
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, message.c_str());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "%s", message.c_str());
 
         scene = assimp_importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
         if (scene == nullptr)
@@ -509,7 +509,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
         // Popping the texture so that we don't load it
         texture_paths.pop_back();
 
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Material \"%s\" uses its base color texture as a normal map (texture is: %s); This is not supported and normal mapping will be disabled for this material.", mesh_material->GetName(), texture_paths[texture_indices.base_color_texture_index].second.c_str());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Material \"%s\" uses its base color texture as a normal map (texture is: %s); This is not supported and normal mapping will be disabled for this material.", mesh_material->GetName().C_Str(), texture_paths[texture_indices.base_color_texture_index].second.c_str());
     }
 
     return texture_paths;
