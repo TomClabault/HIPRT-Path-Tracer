@@ -1093,7 +1093,7 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 		perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 }
 
-void GPURenderer::reset()
+void GPURenderer::reset(bool reset_by_camera_movement)
 {
 	m_DEBUG_SUMS.memset_whole_buffer(0);
 	m_DEBUG_SUM_COUNT.memset_whole_buffer(0);
@@ -1112,6 +1112,10 @@ void GPURenderer::reset()
 	reset_nee_plus_plus();
 
 	internal_clear_m_status_buffers();
+
+	bool moving_camera_while_not_accumulating = reset_by_camera_movement && !m_render_data.render_settings.accumulate;
+	if (!moving_camera_while_not_accumulating)
+		m_render_data.render_settings.need_to_reset = true;
 }
 
 Xorshift32Generator& GPURenderer::get_rng_generator()

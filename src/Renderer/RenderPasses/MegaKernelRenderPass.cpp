@@ -75,7 +75,6 @@ void MegaKernelRenderPass::reset()
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter = 0;
 
 	m_render_data->render_settings.sample_number = 0;
-	m_render_data->render_settings.need_to_reset = true;
 }
 
 bool MegaKernelRenderPass::is_render_pass_used() const

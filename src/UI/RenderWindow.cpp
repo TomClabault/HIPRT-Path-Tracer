@@ -772,7 +772,7 @@ void RenderWindow::reset_render()
 	m_application_state->render_dirty = false;
 	m_application_state->frame_number = 0;
 
-	m_renderer->reset();
+	m_renderer->reset(is_interacting() || m_application_state->interacting_last_frame);
 }
 
 void RenderWindow::set_render_dirty(bool render_dirty)
@@ -1008,10 +1008,11 @@ void RenderWindow::render()
 				// This is to keep the GPU busy and improve rendering performance
 				render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_application_state->samples_per_second / m_application_settings->target_GPU_framerate)), 65536);
 
-			m_application_state->interacting_last_frame = is_interacting();
-			m_application_state->GPU_stall_duration_left = compute_GPU_stall_duration();
 			if (m_application_state->render_dirty)
 				reset_render();
+
+			m_application_state->GPU_stall_duration_left = compute_GPU_stall_duration();
+			m_application_state->interacting_last_frame = is_interacting();
 
 			// Queuing a new frame for the GPU to render
 			uint64_t current_timestamp = glfwGetTimerValue();
