@@ -45,7 +45,7 @@ struct HIPRTRenderSettings
 	ColorRGB32F DEBUG_COLOR;
 	int DEBUG_BOUNCE = 1;
 
-	bool enable_direct = false;
+	bool enable_direct = true;
 	bool DEBUG_DO_BSDF_RATIO = false;
 	bool DEBUG_DOUBLE_BSDF_SHADING = false;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;

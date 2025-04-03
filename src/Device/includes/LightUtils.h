@@ -75,6 +75,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render
 
 HIPRT_INLINE HIPRT_HOST_DEVICE float area_to_solid_angle_pdf(float area_pdf, float distance, float cos_theta)
 {
+    if (cos_theta < 1.0e-8f)
+        return 0.0f;
+
     return area_pdf * hippt::square(distance) / cos_theta;
 }
 
@@ -86,7 +89,7 @@ HIPRT_INLINE HIPRT_HOST_DEVICE float area_to_solid_angle_pdf(float area_pdf, flo
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution, float clamp_max_value, bool clamp_condition)
 {
-    if (!light_contribution.has_NaN() && clamp_max_value > 0.0f && clamp_condition)
+    if (!light_contribution.has_nan() && clamp_max_value > 0.0f && clamp_condition)
         // We don't want to clamp NaNs because that's UB (kind of) and the NaNs get
         // immediately clamped to 'clamp_max_value' in my experience
         //

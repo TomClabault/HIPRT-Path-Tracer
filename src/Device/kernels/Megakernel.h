@@ -130,17 +130,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     if (!sanity_check(render_data, ray_payload.ray_color, x, y))
         return;
 
-
     // If we got here, this means that we still have at least one ray active
     // This is a concurrent write by the way but we don't really care, everyone is writing
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
     path_tracing_accumulate_color(render_data, ray_payload.ray_color, pixel_index);
-
-    /*static int counter;
-    if (x == 0 && y == 0 && ++counter % 50 == 0)
-        printf("%f\n", render_data.render_settings.DEBUG_SUM_COUNT[0] / (double)render_data.render_settings.DEBUG_SUM_COUNT[1]);*/
 }
 
 #endif
