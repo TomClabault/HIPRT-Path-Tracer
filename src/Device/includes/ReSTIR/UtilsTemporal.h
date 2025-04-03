@@ -34,6 +34,11 @@ template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_data,
 	const float3& current_shading_point, const float3& current_normal, int center_pixel_index, Xorshift32Generator& random_number_generator)
 {
+	if (render_data.render_settings.accumulate)
+		// If accumulating, the camera isn't moving, just returning
+		// the current pixel index
+		return make_int3(center_pixel_index, center_pixel_index % render_data.render_settings.render_resolution.x, center_pixel_index / render_data.render_settings.render_resolution.x);
+
 	const ReSTIRCommonTemporalPassSettings& temporal_pass_settings = ReSTIRSettingsHelper::get_restir_temporal_pass_settings<IsReSTIRGI>(render_data);
 
 	float3 previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);

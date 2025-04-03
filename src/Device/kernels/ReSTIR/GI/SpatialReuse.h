@@ -44,9 +44,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	int2 center_pixel_coords = make_int2(x, y);
 
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
+	{
 		// Pixel inactive because of adaptive sampling, returning
 		// Or also we don't have a primary hit
+		render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = ReSTIRGIReservoir();
+
 		return;
+	}
 
 	// Initializing the random generator
 	// TODO try having multiply instead of XOR again

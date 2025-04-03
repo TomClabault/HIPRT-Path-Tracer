@@ -38,15 +38,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
-	int DEBUG_X = 317;
-	int DEBUG_Y = 344;
-
 	uint32_t center_pixel_index = (x + y * render_data.render_settings.render_resolution.x);
 
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
+	{
 		// Pixel inactive because of adaptive sampling, returning
 		// Or also we don't have a primary hit
+		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = ReSTIRGIReservoir();
+
 		return;
+	}
 
 	if (render_data.render_settings.restir_gi_settings.common_temporal_pass.temporal_buffer_clear_requested)
 		// We requested a temporal buffer clear for ReSTIR GI
@@ -174,14 +175,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #error "Unsupported bias correction mode"
 #endif
 
-		//if (x == DEBUG_X && y == DEBUG_Y)
-		//{
-		//	hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUM_COUNT[0], 1ull);
-		//	printf("2. sample %d --> [%d, %d] ; temporal cand = [targ: %f, MIS: %f, shift: %f, UCW: %f]\n", render_data.render_settings.sample_number, x, y, temporal_neighbor_reservoir.sample.target_function, temporal_neighbor_resampling_mis_weight, shift_mapping_jacobian, temporal_neighbor_reservoir.UCW);
-		//	// printf("2. sample %d --> [%d, %d] ; init cand = [targ: %f, UCW: %f, MIS: %f]\n", render_data.render_settings.sample_number, x, y, initial_candidates_reservoir.sample.target_function, initial_candidates_mis_weight, initial_candidates_reservoir.UCW);
-		//	// printf("2. sample %d --> [%d, %d], targ: %f, UCW: %f, weight_sum: %f, nume: %f, denom: %f\n", render_data.render_settings.sample_number, x, y, temporal_neighbor_reservoir.sample.target_function, temporal_reuse_output_reservoir.UCW, temporal_reuse_output_reservoir.weight_sum, normalization_numerator, normalization_denominator);
-		//}
-
 		// Combining as in Alg. 6 of the paper
 		temporal_reuse_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator);
 		temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
@@ -244,10 +237,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_gi_settings.m_cap);
 
 	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = temporal_reuse_output_reservoir;
-
-	static int counter = 0;
-	/*if (counter++ % 10 == 0 && hippt::is_nan(render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index].UCW) || hippt::is_inf(render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index].UCW))
-		printf("HERE %d: [%d, %d], %f/%f, %f/%f\n", render_data.render_settings.sample_number, x, y, temporal_reuse_output_reservoir.UCW, render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index].UCW, temporal_reuse_output_reservoir.weight_sum, render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index].weight_sum);*/
 }
 
 #endif
