@@ -96,20 +96,12 @@ struct ReSTIRGIReservoir
         // Bullet point 4. of the intro of Section 5.2 of [A Gentle Introduction to ReSTIR: Path Reuse in Real-time] https://intro-to-restir.cwyman.org/
         float reservoir_resampling_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
 
-        //// TODO is this valid? adding M even if UCW == 0.0f
-        //if (other_reservoir.UCW <= 0.0f || reservoir_resampling_weight <= 0.0f)
-        //{
-        //    // Not going to be resampled anyways because of invalid UCW so quick exit
-        //    M += other_reservoir.M;
-
-        //    return false;
-        //}
-
-        M += other_reservoir.M;
         weight_sum += reservoir_resampling_weight;
 
         if (random_number_generator() < reservoir_resampling_weight / weight_sum)
         {
+            M += other_reservoir.M;
+
             sample = other_reservoir.sample;
             sample.target_function = target_function;
 

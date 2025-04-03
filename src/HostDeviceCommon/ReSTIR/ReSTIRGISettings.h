@@ -67,7 +67,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 1;
 		common_spatial_pass.reuse_radius = 20;
-		common_spatial_pass.reuse_neighbor_count = 10;
+		common_spatial_pass.reuse_neighbor_count = 1;
 
 		common_spatial_pass.do_disocclusion_reuse_boost = false;
 		common_spatial_pass.disocclusion_reuse_count = 5;
@@ -108,7 +108,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		use_neighbor_sample_point_roughness_heuristic = false;
 		neighbor_sample_point_roughness_threshold = 0.1f;
 
-		m_cap = 3;
+		m_cap = 30;
 		use_confidence_weights = true;
 
 		debug_view = ReSTIRGIDebugView::NO_DEBUG;
