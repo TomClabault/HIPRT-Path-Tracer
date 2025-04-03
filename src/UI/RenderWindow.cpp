@@ -24,7 +24,6 @@
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 // - distance rejection heuristic for reconnection
-// - Test 64 bits directional spatial reuse masks
 // - Same random neighbors seed per warp for coaslescing even with directional spatial reuse
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
@@ -38,30 +37,13 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO ReSTIR GI
-// - jacobians in restir gi temporal
 // - The quick skip to the center pixel resampling when there are no valid neighbors 
 //		--> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
-//		--> it does cause divergence. maybe solve that 
-// 
-// - possibility to read the visible positions from the G buffer instead of storing in the reservoir
+//		--> it does cause divergence. maybe solve that, needs wavefront though
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
-// - do adaptive radius spatial reuse --> also for ReSTIR DI? --> maybe start super wide to avoid spatial reuse patterns and progressively lower the reuse radius
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - BSDF MIS Reuse for ReSTIR DI
-// - Fix spatial reuse pattern because the concentric circles created by Hammersley don't cover the neighborhood of the center pixel well at all --> white noise instead
 // - Force albedo to white for spatial reuse? Because what's interesting to reuse is the shape of the BRDF and the incident radiance. Resampling from a black diffuse is still interesting. The albedo doesn't matter
-// - some kind of reuse direction masks for spatial reuse offline rendering? 
-//		the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
-//		We could do that in a prepass:
-//			- For each pixel, sample a bunch of neighbors in each "quadrant" of the spatial reuse circle
-//			- Count how many of these neighbors per quadrant are valid --> this gives us an idea of whether or not we should reuse from that quadrant
-//			- In the same pass, we can also check at what distance the neighbors fail to be interesting to determine the best spatial radius to use per-pixel
-//			- Maybe use hammersley to position all the sampled neighbors in the spatial circle of a given pixel so that the circle is well covered instead of white noise
-//			- If we have a minimum spatial radius allowed, some pixels may not be able to reuse neighbors at all (if they have no valid neighbors before the spatial radius gets too low)
-//				We'll thus have pixels not reusing neighbors while some other pixels of the image fully reuse their neighbors
-//				--> potential for wavefront style dispatch where we dispatch multiple kernels, depending on how many neighbors are being reused to avoid the divergence
-//				or just skip the spatial reuse dispatch for the pixels not reusing neighbors
-// 
 // - OVS - Optimal visibility shaidng
 // - symmetric ratio MIS
 // - shade secondary surface by looking up screen space reservoir if possible ReSTIR DI --> 
@@ -76,7 +58,8 @@ extern ImGuiLogger g_imgui_logger;
 //		decoupledShadingSampleCount++;
 //		https://www.reddit.com/r/GraphicsProgramming/comments/1j03npo/comment/mg07h5a/?context=3
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
-//  If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
+// - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
+// - Decoupled shading reuse restir gi
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?

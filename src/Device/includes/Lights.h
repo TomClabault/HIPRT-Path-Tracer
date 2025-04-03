@@ -124,11 +124,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
-    float light_sample_pdf;
     ColorRGB32F light_source_radiance_mis;
 
     if (MaterialUtils::can_do_light_sampling(ray_payload.material))
     {
+        float light_sample_pdf;
         LightSourceInformation light_source_info;
         float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
 
@@ -155,8 +155,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
                 BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
                 ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
-
-                if (bsdf_pdf >= 0.0f)
+                if (bsdf_pdf > 0.0f)
                 {
                     float cos_theta_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, shadow_ray.direction));
 
@@ -180,7 +179,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
             }
         }
     }
-
 
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
