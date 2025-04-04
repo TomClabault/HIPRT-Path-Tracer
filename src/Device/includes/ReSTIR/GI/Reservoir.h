@@ -97,11 +97,10 @@ struct ReSTIRGIReservoir
         float reservoir_resampling_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
 
         weight_sum += reservoir_resampling_weight;
+        M += other_reservoir.M;
 
         if (random_number_generator() < reservoir_resampling_weight / weight_sum)
         {
-            M += other_reservoir.M;
-
             sample = other_reservoir.sample;
             sample.target_function = target_function;
 

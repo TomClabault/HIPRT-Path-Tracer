@@ -168,7 +168,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		}
 
 		float target_function_at_center = 0.0f;
-		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
+		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<true>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (is_center_pixel)
