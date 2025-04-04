@@ -437,12 +437,12 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     renderer_material.metallic = 0.0f;*/
     renderer_material.coat = 0.0f;
 
-    /*renderer_material.base_color = ColorRGB32F(1.0f);
-    renderer_material.emission_strength = 0.0f;*/
+    // renderer_material.base_color = ColorRGB32F(1.0f);
+    // renderer_material.emission_strength = 0.0f;
 
-    if (std::string(mesh_material->GetName().C_Str()).find("outer") != std::string::npos)
+    if (std::string(mesh_material->GetName().C_Str()).find("Curtain") != std::string::npos)
     {
-        renderer_material.specular_transmission = 1.0f;
+        renderer_material.alpha_opacity = 1.0f;
     }
 
     renderer_material.make_safe();

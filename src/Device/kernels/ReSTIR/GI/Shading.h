@@ -17,7 +17,6 @@
 #include "Device/includes/ReSTIR/UtilsSpatial.h"
 #include "Device/includes/SanityCheck.h"
 
-
 #include "HostDeviceCommon/Xorshift.h"
 
  // ReSTIR GI shading/resampling is still a bit broken, there's still some brightening bias coming from
@@ -55,9 +54,6 @@
  // - Reuse on specular is ok
  // - Using rejection heuristics is better
  // -------------------------- DIRTY FIX RIGHT NOW --------------------------
- // 
- // -------------------------- TODO TO TRY TO DEBUG IT --------------------------
- // - We've seen that when reusing only the neighbor, it is still brighter than expected. Maybe we can inspect how the shading of the resued neighbor path is computed and compare that to what would happen if the center pixel produced that path itself
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_Shading(HIPRTRenderData render_data)
@@ -114,19 +110,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
     float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
-    ColorRGB32F camera_outgoing_radiance;
-    ColorRGB32F DEBUG_COLOR;
-    ColorRGB32F DEBUG_FIRST_HIT_THROUGHPUT;
-    ColorRGB32F DEBUG_FIRST_BSDF_COLOR_DOT;
-
     // Dummy mis_reuse variable
     MISBSDFRayReuse mis_reuse;
+    ColorRGB32F camera_outgoing_radiance;
     if (render_data.render_settings.enable_direct)
         // Adding the direct lighting contribution at the first hit in the direction of the camera
         camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
 
     ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index];
-
     if (render_data.render_settings.nb_bounces > 0)
     {
         // Only doing the ReSTIR GI stuff if we have more than 1 bounce

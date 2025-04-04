@@ -273,13 +273,23 @@ void ReSTIRGIRenderPass::configure_spatial_reuse_pass(int spatial_pass_index)
 	ReSTIRGIReservoir* input_reservoirs;
 	ReSTIRGIReservoir* output_reservoirs;
 
-	if (m_render_data->render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
-		// and we have a temporal reuse pass so we're going to read from the temporal reservoirs
-		input_reservoirs = m_render_data->render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
+	if (spatial_pass_index > 0)
+		// If this is the second spatial reuse pass or more, reading from the output of the previous pass
+		input_reservoirs = m_render_data->render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
 	else
-		// and we do not have a temporal reuse pass so we're just going to read from the initial candidates
-		input_reservoirs = m_initial_candidates_buffer.get_device_pointer();
+	{
+		// This is the first spatial reuse pass, reading from the output of the temporal pass
+		// or the initial candidates depending on whether or not we have a temporal reuse pass at all
 
+		if (m_render_data->render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
+			// and we have a temporal reuse pass so we're going to read from the temporal reservoirs
+			input_reservoirs = m_render_data->render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
+		else
+			// and we do not have a temporal reuse pass so we're just going to read from the initial candidates
+			input_reservoirs = m_initial_candidates_buffer.get_device_pointer();
+	}
+
+	// Outputting to whichever reservoir we're not reading from to avoid race conditions
 	if (input_reservoirs == m_temporal_buffer.get_device_pointer())
 		output_reservoirs = m_spatial_buffer.get_device_pointer();
 	else

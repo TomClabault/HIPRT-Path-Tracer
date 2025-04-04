@@ -48,8 +48,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 201
-#define DEBUG_PIXEL_Y 58
+#define DEBUG_PIXEL_X 256
+#define DEBUG_PIXEL_Y 10
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -878,6 +878,8 @@ static unsigned int seed;
 
 void CPURenderer::launch_ReSTIR_GI_initial_candidates_pass()
 {
+    seed = m_render_data.random_number;
+
     if (m_render_data.render_settings.nb_bounces > 0)
     {
         debug_render_pass([this](int x, int y) {
@@ -906,7 +908,7 @@ void CPURenderer::configure_ReSTIR_GI_temporal_reuse_pass()
 
 void CPURenderer::launch_ReSTIR_GI_temporal_reuse_pass()
 {
-    if (m_render_data.render_settings.nb_bounces > 0)
+    if (m_render_data.render_settings.nb_bounces > 0 && m_render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
     {
         debug_render_pass([this](int x, int y) {
             ReSTIR_GI_TemporalReuse(m_render_data, x, y);
@@ -924,13 +926,23 @@ void CPURenderer::configure_ReSTIR_GI_spatial_reuse_pass(int spatial_pass_index)
     ReSTIRGIReservoir* input_reservoirs;
     ReSTIRGIReservoir* output_reservoirs;
 
-    if (m_render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
-        // and we have a temporal reuse pass so we're going to read from the temporal reservoirs
-        input_reservoirs = m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
+    if (spatial_pass_index > 0)
+        // If this is the second spatial reuse pass or more, reading from the output of the previous pass
+        input_reservoirs = m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
     else
-        // and we do not have a temporal reuse pass so we're just going to read from the initial candidates
-        input_reservoirs = m_restir_gi_state.initial_candidates_reservoirs.data();
+    {
+        // This is the first spatial reuse pass, reading from the output of the temporal pass
+        // or the initial candidates depending on whether or not we have a temporal reuse pass at all
 
+        if (m_render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
+            // and we have a temporal reuse pass so we're going to read from the temporal reservoirs
+            input_reservoirs = m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
+        else
+            // and we do not have a temporal reuse pass so we're just going to read from the initial candidates
+            input_reservoirs = m_restir_gi_state.initial_candidates_reservoirs.data();
+    }
+
+    // Outputting to whichever reservoir we're not reading from to avoid race conditions
     if (input_reservoirs == m_restir_gi_state.temporal_reservoirs.data())
         output_reservoirs = m_restir_gi_state.spatial_reservoirs.data();
     else
