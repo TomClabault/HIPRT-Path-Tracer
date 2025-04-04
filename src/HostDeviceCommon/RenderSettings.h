@@ -49,6 +49,7 @@ struct HIPRTRenderSettings
 	bool DEBUG_DO_BSDF_RATIO = false;
 	bool DEBUG_DOUBLE_BSDF_SHADING = false;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
+	float DEBUG_FRESBNEL_REFLECTANCE = 0.9f;
 	AtomicType<unsigned long long int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	int debug_x = 442, debug_y = 346-(171)-1;
@@ -177,7 +178,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 75.0f;
+	float stop_pixel_percentage_converged = 98.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;

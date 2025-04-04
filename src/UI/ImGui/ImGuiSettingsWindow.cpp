@@ -170,6 +170,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
 		m_render_window->set_render_dirty(true);
+	if (ImGui::SliderFloat("Fresnel reflectance", &render_settings.DEBUG_FRESBNEL_REFLECTANCE, 0.0f, 1.0f))
+		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug bounce", &render_settings.DEBUG_BOUNCE, 0, 10))
 		m_render_window->set_render_dirty(true);
@@ -1655,6 +1657,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGuiRenderer::show_help_marker("Which masking-shadowing term to use with the GGX NDF.");
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Microfacet model regularization");
+			draw_microfacet_model_regularization_tree();
+
 			ImGui::TreePop();
 		}
 
@@ -3078,74 +3084,79 @@ void ImGuiSettingsWindow::draw_quality_panel()
 	}
 
 	if (ImGui::CollapsingHeader("Microfacet regularization"))
+		draw_microfacet_model_regularization_tree();
+
+	ImGui::TreePop();
+}
+
+void ImGuiSettingsWindow::draw_microfacet_model_regularization_tree()
+{
+	ImGui::TreePush("Microfacet regularization");
+
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	bool regularize_bsdf = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION);
+	if (ImGui::Checkbox("Do microfacet model regularization", &regularize_bsdf))
 	{
-		ImGui::TreePush("Microfacet regularization");
+		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, regularize_bsdf ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
-		HIPRTRenderData& render_data = m_renderer->get_render_data();
+		m_renderer->recompile_kernels();
+		m_render_window->set_render_dirty(true);
+	}
+	if (regularize_bsdf && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
+	{
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
+		ImGuiRenderer::show_help_marker("Microfacet model regularization cannot be used with height-correlated masking shadowing");
 
-		bool regularize_bsdf = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION);
-		if (ImGui::Checkbox("Do microfacet model regularization", &regularize_bsdf))
+		ImGui::TreePush("Use height uncorrelated button tree");
+		if (ImGui::Button("Switch to height-uncorrelated masking shadowing"))
+			render_data.bsdfs_data.GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightUncorrelated;
+		ImGui::TreePop();
+	}
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+	if (regularize_bsdf)
+	{
+		bool do_consistent_tau = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION);
+		if (ImGui::Checkbox("Consistent parameterization", &do_consistent_tau))
 		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, regularize_bsdf ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION, do_consistent_tau ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
 		}
-		if (regularize_bsdf && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
+		ImGuiRenderer::show_help_marker("With this feature enabled, tau will refine over time to help sharpen caustics a bit"
+			" while keeping variance in check.");
+		if (do_consistent_tau)
 		{
-			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-			ImGuiRenderer::show_help_marker("Microfacet model regularization cannot be used with height-correlated masking shadowing");
-
-			ImGui::TreePush("Use height uncorrelated button tree");
-			if (ImGui::Button("Switch to height-uncorrelated masking shadowing"))
-				render_data.bsdfs_data.GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightUncorrelated;
+			ImGui::TreePush("Consistent tau tree");
+			ImGui::Text("Current tau: %f", MicrofacetRegularization::consistent_tau(render_data.bsdfs_data.microfacet_regularization.tau_0, render_data.render_settings.sample_number));
 			ImGui::TreePop();
 		}
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		if (regularize_bsdf)
+		bool do_diffusion_heuristic = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC);
+		if (ImGui::Checkbox("Use diffusion heuristic", &do_diffusion_heuristic))
 		{
-			bool do_consistent_tau = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION);
-			if (ImGui::Checkbox("Consistent parameterization", &do_consistent_tau))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION, do_consistent_tau ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC, do_diffusion_heuristic ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("With this feature enabled, tau will refine over time to help sharpen caustics a bit"
-				" while keeping variance in check.");
-			if (do_consistent_tau)
-			{
-				ImGui::TreePush("Consistent tau tree");
-				ImGui::Text("Current tau: %f", MicrofacetRegularization::consistent_tau(render_data.bsdfs_data.microfacet_regularization.tau_0, render_data.render_settings.sample_number));
-				ImGui::TreePop();
-			}
-			bool do_diffusion_heuristic = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC);
-			if (ImGui::Checkbox("Use diffusion heuristic", &do_diffusion_heuristic))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC, do_diffusion_heuristic ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to take the path's roughness into account when regularizing the BSDFs.\n"
-				"This feature is essential to keep highlights sharp on directly visible surfaces.");
-
-			if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("Main parameter to control the regularization. The lower this parameter, the stronger the regularization.\n\n"
-				"Note that if \"Consistent parameterization\" is enabled, this parameter will be adjusted dynamically (starting from the given value) based on the number "
-				"of samples rendered so far.");
-			if (ImGui::SliderFloat("Minimum roughness", &render_data.bsdfs_data.microfacet_regularization.min_roughness, 0.0f, 1.0f))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("All materials in the scene will at least have that much roughness.\n\n"
-				"Useful when lights are so small that even camera ray jittering causes variance and so roughening the surface helps "
-				"BSDF rays hit the light source more often (and light samples too). The main purpose is to help with very sharp glossy highlights. "
-				"Regularization is only applied during NEE so the direct apperance of smooth objects isn't affected.");
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
 		}
+		ImGuiRenderer::show_help_marker("Whether or not to take the path's roughness into account when regularizing the BSDFs.\n"
+			"This feature is essential to keep highlights sharp on directly visible surfaces.");
 
-		ImGui::TreePop();
+		if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("Main parameter to control the regularization. The lower this parameter, the stronger the regularization.\n\n"
+			"Note that if \"Consistent parameterization\" is enabled, this parameter will be adjusted dynamically (starting from the given value) based on the number "
+			"of samples rendered so far.");
+		if (ImGui::SliderFloat("Minimum roughness", &render_data.bsdfs_data.microfacet_regularization.min_roughness, 0.0f, 1.0f))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("All materials in the scene will at least have that much roughness.\n\n"
+			"Useful when lights are so small that even camera ray jittering causes variance and so roughening the surface helps "
+			"BSDF rays hit the light source more often (and light samples too). The main purpose is to help with very sharp glossy highlights. "
+			"Regularization is only applied during NEE so the direct apperance of smooth objects isn't affected.");
 	}
 
 	ImGui::TreePop();
