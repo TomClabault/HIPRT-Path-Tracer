@@ -395,9 +395,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 
-    float f_reflect_proba = F.luminance();
-
-    if (thin_walled && f_reflect_proba < 1.0f && thin_film == 0.0f && scaled_roughness < 0.1f)
+    if (thin_walled && F.r < 1.0f && thin_film == 0.0f && scaled_roughness < 0.1f)
         // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
         // Not doing this if thin-film is present because that would not be accurate at all. Thin-film
         // effect require phase shift computations and that's expensive so we're just not doing it here
@@ -409,7 +407,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // value for all RGB wavelengths. This means that f_reflect_proba is actually just the fresnel reflection factor
         //
         // This fresnel scaling only works at roughness 0 but still using below 0.1f for a close enough approximation
-        f_reflect_proba += hippt::square(1.0f - f_reflect_proba) * f_reflect_proba / (1.0f - hippt::square(f_reflect_proba));
+        F += ColorRGB32F(hippt::square(1.0f - F.r) * F.r / (1.0f - hippt::square(F.r)));
+
+    float f_reflect_proba = F.luminance();
+    if (bsdf_context.current_bounce == 0)
+        // On the first bounce, we're giving reflection a minimum of 25% chance
+        // to reduce variance on glass surfaces whose color is dominated by reflection
+        // (a window reflecting the envmap for example)
+        f_reflect_proba = hippt::max(0.25f, f_reflect_proba);
 
     ColorRGB32F color;
     if (reflecting)
@@ -527,10 +532,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const HIPRTRenderD
     ColorRGB32F F_no_thin_film;
     if (thin_film < 1.0f)
         F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
-
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
-    float f_reflect_proba = F.luminance();
-    if (f_reflect_proba < 1.0f && thin_film == 0.0f && thin_walled && thin_walled_scaled_roughness < 0.1f)
+
+    if (thin_walled && F.r < 1.0f && thin_film == 0.0f && thin_walled_scaled_roughness < 0.1f)
         // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
         // Not doing this if thin-film is present because that would not be accurate at all. Thin-film
         // effect require phase shift computations and that's very expensive so we're just not doing it here
@@ -542,7 +546,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const HIPRTRenderD
         // value for all RGB wavelengths. This means that f_reflect_proba is actually just the fresnel reflection factor
         //
         // This fresnel scaling only works at roughness 0 but still using below 0.1f for a close enough approximation
-        f_reflect_proba += hippt::square(1.0f - f_reflect_proba) * f_reflect_proba / (1.0f - hippt::square(f_reflect_proba));
+        F += ColorRGB32F(hippt::square(1.0f - F.r) * F.r / (1.0f - hippt::square(F.r)));
+
+    float f_reflect_proba = F.luminance();
+    if (bsdf_context.current_bounce == 0)
+        // On the first bounce, we're giving reflection a minimum of 25% chance
+        // to reduce variance on glass surfaces whose color is dominated by reflection
+        // (a window reflecting the envmap for example)
+        f_reflect_proba = hippt::max(0.25f, f_reflect_proba);
 
     float rand_1 = random_number_generator();
 
@@ -1162,6 +1173,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights(const Devi
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(const HIPRTRenderData& render_data,
     const DeviceUnpackedEffectiveMaterial& material,
+    const BSDFContext& bsdf_context,
     float NoV,
     float incident_medium_ior,
 
@@ -1181,6 +1193,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(con
         float specular_relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
         float specular_fresnel = full_fresnel_dielectric(NoV, specular_relative_ior);
         float specular_fresnel_sampling_weight = render_data.render_settings.fresnel_proba_DEBUG == -1.0f ? specular_fresnel * material.specular : render_data.render_settings.fresnel_proba_DEBUG;
+        if (bsdf_context.current_bounce == 0)
+            // Minimum 25% on the first bounce to help with specular surfaces that directly reflect light
+            // because relying only on the pure fresnel reflectance probability for that is going to be inefficient
+            specular_fresnel_sampling_weight = hippt::max(0.25f, specular_fresnel_sampling_weight);
 
         // The specular weight gets affected
         specular_weight *= specular_fresnel_sampling_weight;
@@ -1195,6 +1211,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(con
     {
         float coat_fresnel = full_fresnel_dielectric(NoV, material.coat_ior / incident_medium_ior);
         float coat_fresnel_sampling_weight = coat_fresnel * material.coat;
+        if (bsdf_context.current_bounce == 0)
+            // Minimum 25% on the first bounce to help with specular surfaces that directly reflect light
+            // because relying only on the pure fresnel reflectance probability for that is going to be inefficient
+            coat_fresnel_sampling_weight = hippt::max(0.25f, coat_fresnel_sampling_weight);
 
         // The coat weight gets affected
         coat_weight *= coat_fresnel_sampling_weight;
@@ -1261,7 +1281,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 
     float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;
     float specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba;
-    principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior,
+    principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, bsdf_context, local_view_direction.z, incident_medium_ior,
                                              coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
                                              specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight,
 
@@ -1347,7 +1367,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     float glass_sampling_proba, diffuse_transmission_sampling_proba;
     float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
     principled_bsdf_get_lobes_sampling_proba(render_data,
-        bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior,
+        bsdf_context.material, bsdf_context, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior,
         coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,
         specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
 

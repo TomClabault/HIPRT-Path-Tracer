@@ -108,7 +108,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		use_neighbor_sample_point_roughness_heuristic = false;
 		neighbor_sample_point_roughness_threshold = 0.1f;
 
-		m_cap = 30;
+		m_cap = 3;
 		use_confidence_weights = true;
 
 		debug_view = ReSTIRGIDebugView::NO_DEBUG;
