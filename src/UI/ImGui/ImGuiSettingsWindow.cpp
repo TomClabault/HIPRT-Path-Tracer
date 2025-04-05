@@ -3661,6 +3661,8 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 			m_renderer->recompile_kernels(false);
 			m_render_window->set_render_dirty(true);
 		}
+		ImGuiRenderer::show_help_marker("Forces the recompilation of the shaders.");
+
 		if (ImGui::Button("Clear shader cache"))
 			std::filesystem::remove_all("shader_cache");
 		ImGuiRenderer::show_help_marker("Completely clears the shader cache on the disk.");

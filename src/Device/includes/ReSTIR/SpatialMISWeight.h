@@ -116,6 +116,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 
 		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function, 
 		ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample, int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
+		ReSTIRReservoirType<IsReSTIRGI>& neighbor_pixel_reservoir,
 
 		ReSTIRSurface& center_pixel_surface, float target_function_at_center,
 		int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
@@ -169,9 +170,9 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 						// If this is an envmap path the jacobian is just 1 so this is not needed
 						if (!center_pixel_reservoir_sample.is_envmap_path())
 						{
-							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 							
-#if 0
+#if 1
 							// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
 							if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
 							{
@@ -193,7 +194,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, 
 								// and has been rejected), the target function is set to 0
 								target_function_center_reservoir_at_neighbor = 0.0f;
 							else
-								target_function_center_reservoir_at_neighbor /= jacobian;
+								target_function_center_reservoir_at_neighbor *= jacobian;
 						}
 					}
 				}
@@ -315,13 +316,13 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_D
 						{
 							// If this is an envmap path the jacobian is just 1 so this is not needed
 
-							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, center_pixel_surface.shading_point, neighbor_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 							if (jacobian == 0.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 								// and has been rejected), the target function is set to 0
 								target_function_center_reservoir_at_neighbor = 0.0f;
 							else
-								target_function_center_reservoir_at_neighbor /= jacobian;
+								target_function_center_reservoir_at_neighbor *= jacobian;
 						}
 					}
 				}

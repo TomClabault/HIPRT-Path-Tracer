@@ -157,6 +157,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                     ray_payload.material = resampling_reservoir.sample.sample_point_material.unpack();
                     ray_payload.volume_state = resampling_reservoir.sample.sample_point_volume_state;
                     ray_payload.bounce = 1;
+                    ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
 
                     // TODO create a new closest hit variable for clarity and check that the registers don't go up
                     // Loading the second hit in the closest hit
