@@ -221,4 +221,15 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_D
 	}
 };
 
+template <bool IsReSTIRGI>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO, IsReSTIRGI>
+{
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
+	{
+		// Nothing more to normalize, everything is already handled by the MIS weights when resampling the neighbors
+		out_normalization_nume = 1.0f;
+		out_normalization_denom = 1.0f;
+	}
+};
+
 #endif

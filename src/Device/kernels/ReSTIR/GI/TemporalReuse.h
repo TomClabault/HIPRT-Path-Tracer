@@ -171,6 +171,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 
 			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID,
 			random_number_generator);
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO
+		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
+			temporal_neighbor_reservoir, initial_candidates_reservoir,
+			center_pixel_surface, temporal_neighbor_surface,
+
+			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID,
+			random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -207,6 +214,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		center_pixel_surface, temporal_neighbor_surface, 
 
 		/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO
+	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
+		temporal_neighbor_reservoir, initial_candidates_reservoir,
+		center_pixel_surface, temporal_neighbor_surface,
+
+		/* unused */ 0.0f, INITIAL_CANDIDATES_ID,
+		random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -223,6 +237,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
 #error "Unsupported bias correction mode"

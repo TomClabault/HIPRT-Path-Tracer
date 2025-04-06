@@ -19,13 +19,10 @@
 #include "stb_image_write.h"
 
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
-// TODO minimum coat/specular sampling proba to avoid bad convergence on glossy highlights
-// TODO minimum fresnel sampling proba for camera rays? to avoid bad convergence on glossy highlights
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 // - distance rejection heuristic for reconnection
 // - Same random neighbors seed per warp for coaslescing even with directional spatial reuse
-// - Now that we have an implementation very close to the ground truth, is it still that bad with temporal reuse, the correlations?
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;

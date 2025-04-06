@@ -170,8 +170,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
 		m_render_window->set_render_dirty(true);
-	if (ImGui::SliderFloat("Fresnel reflectance", &render_settings.DEBUG_FRESBNEL_REFLECTANCE, 0.0f, 1.0f))
-		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug bounce", &render_settings.DEBUG_BOUNCE, 0, 10))
 		m_render_window->set_render_dirty(true);
@@ -1151,6 +1149,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					if (render_settings.accumulate)
 						m_render_window->set_render_dirty(true);
 				}
+				ImGuiRenderer::show_help_marker("0 disables the M-cap");
 
 				if (ImGui::CollapsingHeader("Rejection Heuristics"))
 				{
@@ -2203,6 +2202,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 				"- Generalied Balance Heuristic (Unbiased)",
 				"- Pairwise MIS (Unbiased)",
 				"- Pairwise MIS Defensive (Unbiased)",
+				"- Pairwise Symmetric Ratio (Unbiased)",
+				"- Pairwise Asymmetric Ratio (Unbiased)",
 			};
 
 			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);

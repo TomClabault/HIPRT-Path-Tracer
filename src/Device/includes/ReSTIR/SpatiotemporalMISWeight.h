@@ -181,18 +181,18 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWIS
 			if (update_mc)
 			{
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
-				float target_function_center_reservoir_at_neighbor;
+				float target_function_center_sample_at_neighbor;
 
 				if constexpr (IsReSTIRGI)
 					// ReSTIR GI target function
-					target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 				else
 					// ReSTIR DI target function
-					target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
-				float target_function_center_reservoir_at_center = center_pixel_reservoir_target_function;
+					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+				float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
-				float nume_mc = target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
-				float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
+				float nume_mc = target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
+				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
 
 				// (Eq. 7.7 of "A Gentle Introduction to ReSTIR"), c_j / (Sum_{k!=c}^M c_k)
 				float confidence_weights_multiplier = use_confidence_weights ? reservoir_resampled_M / neighbors_confidence_sum : 1;
@@ -278,21 +278,21 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWIS
 				//
 				// So we can avoid computing all that stuff
 
-				float target_function_center_reservoir_at_center = center_pixel_reservoir_target_function;
+				float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
 				// TODO are we loading this surface again where the caller had it already?
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
-				float target_function_center_reservoir_at_neighbor;
+				float target_function_center_sample_at_neighbor;
 				if constexpr (IsReSTIRGI)
 					// ReSTIR GI target function
-					target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 				else
 					// ReSTIR DI target function
-					target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
-				float nume_mc = target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
-				float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
+				float nume_mc = target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
+				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
 				float confidence_multiplier = 1.0f;
 				if (use_confidence_weights)
 					confidence_multiplier = reservoir_resampled_M / (center_reservoir_M + neighbors_confidence_sum);
