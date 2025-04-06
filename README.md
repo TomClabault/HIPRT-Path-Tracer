@@ -21,7 +21,9 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - On-the-fly Monte Carlo integration for energy compensation of interlayer clearcoat multiple scattering
 - SGGX Volumetric Sheen Lobe LTC Fit [\[Zeltner, Burley, Chiang, 2022\]](https://tizianzeltner.com/projects/Zeltner2022Practical/)
 - Specular Microfacet GGX Layer
-- Oren-Nayar Diffuse BRDF Lobe
+- Diffuse BRDF lobe. Support for:
+	- Lambertian
+	- Oren-nayar
 - Metallic Microfacet GGX Layer + Anisotropy & Anisotropy Rotation + Double Roughness [\[Kulla & Conty, 2017\]](https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf)
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
 - Diffuse lambertian BTDF
@@ -39,11 +41,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Light sampling:
 	- Uniform light sampling for direct lighting estimation + MIS
 	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
-	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/)
-		- Supports envmap sampling
-		- Many bias correction weighting schemes for experimentations (1/M, 1/Z, MIS-like, Generalized Balance Heuristic, Pairwise MIS [\[Bitterli, 2022\]](https://digitalcommons.dartmouth.edu/dissertations/77/), Pairwise MIS with defensive formulation [\[Lin et al., 2022\]](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir))
-		- Fused Spatiotemporal Reuse [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
-		- Light Presampling [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
+	- ReSTIR DI
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://graphics.tudelft.nl/Publications-new/2020/GEE20/GEE20-NEE++.pdf) + Custom envmap support
 	- HDR Environment map + Multiple Importance Sampling using
 		- CDF-inversion & binary search
@@ -51,7 +49,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	
 - BSDF sampling:
 	- MIS
-	- Smith GGX Sampling:
+	- GGX NDF Sampling:
 		- Visible Normal Distribution Function (VNDF) [\[Heitz, 2018\]](https://jcgt.org/published/0007/04/01/)
 		- Spherical caps VNDF Sampling [\[Dupuy, Benyoub, 2023\]](https://arxiv.org/abs/2306.05044)
 	
@@ -59,8 +57,21 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- BSDF Sampling:
 		- One sample MIS for lobe sampling [\[Hery et al., 2017\]](https://graphics.pixar.com/library/PxrMaterialsCourse2017/paper.pdf)
 	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
-		- Adaptive-directional spatial reuse for improved offline rendering efficiency
 	- Experimental warp-wide direction reuse for improved indirect rays coherency [\[Liu et al., 2023\]](https://arxiv.org/abs/2310.07182)
+- ReSTIR Samplers:
+	- ReSTIR DI [\[Bitterli et al., 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/)
+		- Supports envmap sampling
+		- Fused Spatiotemporal Reuse [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
+		- Light Presampling [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
+	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+		- Adaptive-directional spatial reuse for improved offline rendering efficiency
+	- Many bias correction weighting schemes:
+		- 1/M
+		- 1/Z
+		- MIS-like,
+		- Generalized balance heuristic
+		- Pairwise MIS [\[Bitterli, 2022\]](https://digitalcommons.dartmouth.edu/dissertations/77/) & defensive formulation [\[Lin et al., 2022\]](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir))
+		- Pairwise symmetric & asymmetric ratio MIS [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
 ### Other rendering features
 - Microfacet Model Regularization for Robust Light Transport [\[Jendersie et al., 2019\]](https://jojendersie.de/wp-content/uploads/2013/06/2019_Jendersie_brdfregularization.pdf)
 - G-MoN - Adaptive median of means for unbiased firefly removal [\[Buisine et al., 2021\]](https://hal.science/hal-03201630v2)
@@ -69,7 +80,6 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Stochastic material opacity support
 - Normal mapping
 - Nested dielectrics support 
-	- Automatic handling as presented in [\[Ray Tracing Gems, 2019\]](https://www.realtimerendering.com/raytracinggems/rtg/index.html)
 	- Handling with priorities as proposed in [\[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]](https://www.researchgate.net/publication/247523037_Simple_Nested_Dielectrics_in_Ray_Traced_Images)
 - Per-pixel adaptive sampling
 - Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
@@ -77,7 +87,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Interactive ImGui interface
 	- Asynchronous interface to guarantee smooth UI interactions even with heavy path tracing kernels
 - Interactive first-person camera
-- Different frame-buffer visualization (visualize the adaptive sampling heatmap, the denoiser normals / albedo, ...)
+- Different frame-buffer visualization (visualize the adaptive sampling heatmap, converged pixels, the denoiser normals / albedo, ...)
 ### Other features
 - Use of the [\[ASSIMP\]](https://github.com/assimp/assimp) library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Multithreaded scene parsing/texture loading/shader compiling/BVH building/envmap processing/... for faster application startup times

@@ -149,7 +149,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
 			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.sample_point_geometric_normal, center_pixel_surface.shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index], render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
-#if 1
+#if 0
 			// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
 			if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
 			{
@@ -218,6 +218,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO
+		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
+
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
+
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
+			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
+			neighbor_reservoir,
+
+			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			update_mc,/* resampling canonical */ is_center_pixel, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -253,6 +264,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 #elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
 #error "Unsupported bias correction mode"
