@@ -165,7 +165,7 @@
  * Implementation of [Microfacet Model Regularization for Robust Light Transport, Jendersie et al. 2019]
  * for regularizing (roughening) microfacet materials and help with caustics rendering
  */
-#define PrincipledBSDFDoMicrofacetRegularization KERNEL_OPTION_FALSE
+#define PrincipledBSDFDoMicrofacetRegularization KERNEL_OPTION_TRUE
 
 /**
  * For microfacet model regularization, whether or not the use the consistent parametertization for tau_0 as

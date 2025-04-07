@@ -412,9 +412,11 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATI
 			if (update_mc)
 			{
 				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+
 				float target_function_center_sample_at_neighbor;
 				if constexpr (IsReSTIRGI)
 				{
+
 					// ReSTIR GI target function
 					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 

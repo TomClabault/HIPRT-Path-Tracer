@@ -2199,11 +2199,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 				"- 1/M (Biased)",
 				"- 1/Z (Unbiased)",
 				"- MIS-like (Unbiased)",
-				"- Generalied Balance Heuristic (Unbiased)",
+				"- Generalized balance heuristic (Unbiased)",
 				"- Pairwise MIS (Unbiased)",
-				"- Pairwise MIS Defensive (Unbiased)",
-				"- Pairwise Symmetric Ratio (Unbiased)",
-				"- Pairwise Asymmetric Ratio (Unbiased)",
+				"- Pairwise MIS defensive (Unbiased)",
+				"- Pairwise symmetric ratio (Unbiased)",
+				"- Pairwise asymmetric ratio (Unbiased)",
 			};
 
 			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);
@@ -3070,7 +3070,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
+		if (ImGui::SliderFloat("Minimum light contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
 		{
 			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
 			m_render_window->set_render_dirty(true);

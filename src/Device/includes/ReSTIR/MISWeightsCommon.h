@@ -48,16 +48,13 @@ using ReSTIRReservoirType = typename ReSTIRTypeStruct<IsReSTIRGI>::ReservoirType
 
 HIPRT_HOST_DEVICE float symmetric_ratio_MIS_weights_difference_function(float target_function_at_center, float target_function_from_i)
 {
-	if (target_function_at_center == 0.0f && target_function_from_i == 0.0f)
-		return 0.0f;
-	else if (target_function_at_center == 0.0f || target_function_from_i == 0.0f)
-		// Maximum difference
+	if (target_function_at_center == 0.0f || target_function_from_i == 0.0f)
 		return 0.0f;
 
 	float ratio = hippt::min(target_function_at_center / target_function_from_i, target_function_from_i / target_function_at_center);
 
 	// Pow beta=3
-	return ratio * ratio * ratio;
+	return ratio * ratio;
 }
 
 #endif
