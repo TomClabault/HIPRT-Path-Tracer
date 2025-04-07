@@ -47,7 +47,7 @@
 *
 *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
 */
-#define ReSTIR_DI_SpatialTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_DI_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
 * Whether or not to do a visibility check at the end of the initial candidates sampling.
@@ -103,7 +103,7 @@
 *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
 *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
 */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO
 
 /**
 * What direct lighting sampling strategy to use for secondary bounces when ReSTIR DI is used for sampling the first bounce

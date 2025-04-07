@@ -1193,6 +1193,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(con
         float specular_relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
         float specular_fresnel = full_fresnel_dielectric(NoV, specular_relative_ior);
         float specular_fresnel_sampling_weight = render_data.render_settings.fresnel_proba_DEBUG == -1.0f ? specular_fresnel * material.specular : render_data.render_settings.fresnel_proba_DEBUG;
+
+        // Some experiments with having the fresnel be at least 25% such that we're not missing too much
+        // specular reflections but that reduces overall convergence efficiency so meh
         //if (bsdf_context.current_bounce == 0)
         //    // Minimum 25% on the first bounce to help with specular surfaces that directly reflect light
         //    // because relying only on the pure fresnel reflectance probability for that is going to be inefficient
@@ -1211,10 +1214,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(con
     {
         float coat_fresnel = full_fresnel_dielectric(NoV, material.coat_ior / incident_medium_ior);
         float coat_fresnel_sampling_weight = coat_fresnel * material.coat;
-        if (bsdf_context.current_bounce == 0)
-            // Minimum 25% on the first bounce to help with specular surfaces that directly reflect light
-            // because relying only on the pure fresnel reflectance probability for that is going to be inefficient
-            coat_fresnel_sampling_weight = hippt::max(0.25f, coat_fresnel_sampling_weight);
+        // Some experiments with having the fresnel be at least 25% such that we're not missing too much
+        // specular reflections but that reduces overall convergence efficiency so meh
+        //if (bsdf_context.current_bounce == 0)
+        //    // Minimum 25% on the first bounce to help with specular surfaces that directly reflect light
+        //    // because relying only on the pure fresnel reflectance probability for that is going to be inefficient
+        //    coat_fresnel_sampling_weight = hippt::max(0.25f, coat_fresnel_sampling_weight);
 
         // The coat weight gets affected
         coat_weight *= coat_fresnel_sampling_weight;

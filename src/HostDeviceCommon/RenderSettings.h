@@ -108,7 +108,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 3;
+	int nb_bounces = 0;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -156,7 +156,7 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = true;
+	bool enable_adaptive_sampling = false;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
@@ -177,10 +177,10 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 90.0f;
+	float stop_pixel_percentage_converged = 50.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
-	float stop_pixel_noise_threshold = 0.0f;
+	float stop_pixel_noise_threshold = 0.075f;
 
 
 
