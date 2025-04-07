@@ -281,6 +281,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(con
         color = material.base_color * D * (ColorRGB32F(1.0f) - fresnel_reflectance) * G2 * hippt::abs(HoL * HoV / denom);
     }
 
+    // Account for non-symmetric scattering when refracting
+    // Reference: https://www.pbr-book.org/4ed/Reflection_Models/Dielectric_BSDF#Non-SymmetricScatteringandRefraction
+    color /= hippt::square(relative_eta);
+
     return color;
 }
 
