@@ -424,7 +424,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RAT
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
-			float difference_function = symmetric_ratio_MIS_weights_difference_function(target_function_neighbor_sample_at_center, target_function_neighbor_sample_at_neighbor);
+			float difference_function = symmetric_ratio_MIS_weights_difference_function(target_function_neighbor_sample_at_center, target_function_neighbor_sample_at_neighbor, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
 			float nume_mi = difference_function * temporal_neighbor_M;
 			float denom_mi = center_reservoir_M + neighbors_confidence_sum * difference_function;
 			float mi = nume_mi / denom_mi;
@@ -479,7 +479,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RAT
 			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = center_reservoir_M;
-			float denom_mc = center_reservoir_M + neighbors_confidence_sum * symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center);
+			float denom_mc = center_reservoir_M + neighbors_confidence_sum * symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
 
 			float confidence_weights_multiplier;
 			if (use_confidence_weights)
@@ -543,7 +543,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RA
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
-			float difference_function = symmetric_ratio_MIS_weights_difference_function(neighbor_sample_target_function_at_center, target_function_neighbor_sample_at_neighbor);
+			float difference_function = symmetric_ratio_MIS_weights_difference_function(neighbor_sample_target_function_at_center, target_function_neighbor_sample_at_neighbor, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
 			float nume_mi, denom_mi;
 
 			// Eq. 16 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
@@ -564,7 +564,6 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RA
 			float target_function_center_sample_at_neighbor;
 			if constexpr (IsReSTIRGI)
 			{
-
 				// ReSTIR GI target function
 				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
@@ -594,7 +593,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RA
 
 			float nume_mc, denom_mc;
 
-			float difference_function_mc = symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center);
+			float difference_function_mc = symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
 			if (target_function_center_sample_at_center <= target_function_center_sample_at_neighbor)
 			{
 				nume_mc = difference_function_mc * temporal_neighbor_M;

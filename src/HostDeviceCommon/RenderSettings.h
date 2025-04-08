@@ -45,7 +45,7 @@ struct HIPRTRenderSettings
 	ColorRGB32F DEBUG_COLOR;
 	int DEBUG_BOUNCE = 1;
 
-	bool enable_direct = true;
+	bool enable_direct = false;
 	bool DEBUG_DO_BSDF_RATIO = false;
 	bool DEBUG_DOUBLE_BSDF_SHADING = false;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
@@ -108,7 +108,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 5;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -177,7 +177,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 50.0f;
+	float stop_pixel_percentage_converged = 90.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.075f;

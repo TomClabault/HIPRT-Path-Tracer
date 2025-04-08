@@ -46,15 +46,21 @@ using ReSTIRSampleType = typename ReSTIRTypeStruct<IsReSTIRGI>::SampleType;
 template <bool IsReSTIRGI>
 using ReSTIRReservoirType = typename ReSTIRTypeStruct<IsReSTIRGI>::ReservoirType;
 
-HIPRT_HOST_DEVICE float symmetric_ratio_MIS_weights_difference_function(float target_function_at_center, float target_function_from_i)
+HIPRT_HOST_DEVICE float symmetric_ratio_MIS_weights_difference_function(float target_function_at_center, float target_function_from_i, float exponent)
 {
 	if (target_function_at_center == 0.0f || target_function_from_i == 0.0f)
 		return 0.0f;
 
 	float ratio = hippt::min(target_function_at_center / target_function_from_i, target_function_from_i / target_function_at_center);
 
-	// Pow beta=3
-	return ratio * ratio;
+	if (exponent == 2.0f)
+		return hippt::square(ratio);
+	else if (exponent == 3.0f)
+		return hippt::pow_3(ratio);
+	else if (exponent == 4.0f)
+		return hippt::pow_4(ratio);
+	else
+		return powf(ratio, exponent);
 }
 
 #endif

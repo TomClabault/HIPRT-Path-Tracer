@@ -197,7 +197,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir.sample,
 
 			center_pixel_surface, neighbor_index, center_pixel_coords, cos_sin_theta_rotation, random_number_generator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
@@ -208,17 +208,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc,/* resampling canonical */ is_center_pixel, random_number_generator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
-
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
-
-			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
-			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
-
-			center_pixel_surface, target_function_at_center * shift_mapping_jacobian, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_ASYMMETRIC_RATIO
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
@@ -261,11 +251,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		center_pixel_coords, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO
+#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_ASYMMETRIC_RATIO
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
 #error "Unsupported bias correction mode"
