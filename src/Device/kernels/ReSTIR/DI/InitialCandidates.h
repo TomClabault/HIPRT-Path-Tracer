@@ -510,7 +510,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
 
 #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
-    ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point, hit_info.primitive_index, random_number_generator);
+    ReSTIR_DI_visibility_test_kill_reservoir(render_data, initial_candidates_reservoir, hit_info.inter_point, hit_info.primitive_index, random_number_generator);
 #endif
 
     render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;

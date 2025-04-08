@@ -99,11 +99,16 @@
 	N being the number of neighbors resampled.
 *		Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.
 *
-*	- RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS (and the defensive version)
+*	- RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS (and the defensive version RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE)
 *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
 *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
+* 
+*	- RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO (and the defensive version RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO)
+*		A bit more variance than pairwise MIS but way more robust to temporal correlations
+* 
+*		Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
 */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO
 
 /**
 * What direct lighting sampling strategy to use for secondary bounces when ReSTIR DI is used for sampling the first bounce
@@ -142,6 +147,13 @@
  * More bits use more VRAM but increase the precision of the directional reuse
  */
 #define ReSTIR_DI_SpatialDirectionalReuseBitCount RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT_INTERNAL
+
+/**
+ * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
+ * 
+ * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
+ */
+#define ReSTIR_DI_DoOptimalVisibilitySampling KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 

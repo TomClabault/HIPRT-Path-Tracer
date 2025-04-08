@@ -10,6 +10,7 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
+#include "Device/includes/ReSTIR/OptimalVisibilitySampling.h"
 #include "Device/includes/ReSTIR/SpatialMISWeight.h"
 #include "Device/includes/ReSTIR/SpatialNormalizationWeight.h"
 #include "Device/includes/ReSTIR/Utils.h"
@@ -229,6 +230,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			selected_neighbor = neighbor_index;
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
+
+		ReSTIR_optimal_visibility_sampling<true>(render_data,
+			spatial_reuse_output_reservoir, center_pixel_reservoir,
+			center_pixel_surface,
+			neighbor_index, reused_neighbors_count,
+			random_number_generator);
 	}
 
 	float normalization_numerator = 1.0f;
