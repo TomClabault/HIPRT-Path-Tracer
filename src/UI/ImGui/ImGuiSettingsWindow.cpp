@@ -2197,13 +2197,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 		{
 			const char* bias_correction_mode_items[] = {
 				"- 1/M (Biased)",
-				"- 1/Z (Unbiased)",
-				"- MIS-like (Unbiased)",
-				"- Generalized balance heuristic (Unbiased)",
-				"- Pairwise MIS (Unbiased)",
-				"- Pairwise MIS defensive (Unbiased)",
-				"- Pairwise symmetric ratio (Unbiased)",
-				"- Pairwise asymmetric ratio (Unbiased)",
+				"- 1/Z",
+				"- MIS-like",
+				"- Generalized balance heuristic",
+				"- Pairwise MIS",
+				"- Pairwise MIS defensive",
+				"- Pairwise symmetric ratio",
+				"- Pairwise asymmetric ratio",
 			};
 
 			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);
@@ -2217,6 +2217,17 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 
 			bool disable_confidence_weights = *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_M : RESTIR_DI_BIAS_CORRECTION_1_OVER_M)
 										   || *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_Z : RESTIR_DI_BIAS_CORRECTION_1_OVER_Z);
+
+			if (*bias_correction_weights_option_pointer == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO ||
+				*bias_correction_weights_option_pointer == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO ||
+				*bias_correction_weights_option_pointer == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO ||
+				*bias_correction_weights_option_pointer == RESTIR_GI_BIAS_CORRECTION_ASYMMETRIC_RATIO)
+			{
+				if (ImGui::SliderFloat("Beta exponent", &restir_settings->symmetric_ratio_mis_weights_beta_exponent, 1.0f, 5.0f))
+					m_render_window->set_render_dirty(true);
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			}
 
 			ImGui::BeginDisabled(disable_confidence_weights);
 			if (ImGui::Checkbox("Use confidence weights", &restir_settings->use_confidence_weights))
