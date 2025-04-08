@@ -517,4 +517,133 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RAT
 	float mc = 0.0f;
 };
 
+template <bool IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO, IsReSTIRGI>
+{
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
+		ReSTIRReservoirType<IsReSTIRGI>& temporal_neighbor_reservoir,
+		ReSTIRReservoirType<IsReSTIRGI>& initial_candidates_reservoir,
+		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
+
+		float neighbor_sample_target_function_at_center, int current_neighbor_index,
+
+		Xorshift32Generator& random_number_generator)
+	{
+		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
+		{
+			// Resampling a neighbor
+
+			float target_function_neighbor_sample_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
+			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
+
+			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
+			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir.M : 1;
+			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_M : 1;
+
+			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
+			// with confidence weights
+			float difference_function = symmetric_ratio_MIS_weights_difference_function(neighbor_sample_target_function_at_center, target_function_neighbor_sample_at_neighbor);
+			float nume_mi, denom_mi;
+
+			// Eq. 16 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
+			// with confidence weights
+			if (neighbor_sample_target_function_at_center <= target_function_neighbor_sample_at_neighbor)
+			{
+				nume_mi = difference_function * temporal_neighbor_M;
+				denom_mi = center_reservoir_M + neighbors_confidence_sum * difference_function;
+			}
+			else
+			{
+				nume_mi = difference_function * temporal_neighbor_M;
+				denom_mi = center_reservoir_M + neighbors_confidence_sum;
+			}
+
+			float mi = nume_mi / denom_mi;
+
+			float target_function_center_sample_at_neighbor;
+			if constexpr (IsReSTIRGI)
+			{
+
+				// ReSTIR GI target function
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+
+				// Because we're using the target function as a PDF here, we need to scale the PDF
+				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
+
+				// Only doing this if we at least have a target function to scale by the jacobian
+				if (target_function_center_sample_at_neighbor > 0.0f)
+				{
+					// If this is an envmap path the jacobian is just 1 so this is not needed
+					if (!initial_candidates_reservoir.sample.is_envmap_path())
+					{
+						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+
+						if (jacobian == 0.0f)
+							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
+							// and has been rejected), the target function is set to 0
+							target_function_center_sample_at_neighbor = 0.0f;
+						else
+							target_function_center_sample_at_neighbor *= jacobian;
+					}
+				}
+			}
+			else
+				// ReSTIR DI target function
+				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+
+			float nume_mc, denom_mc;
+
+			float difference_function_mc = symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center);
+			if (target_function_center_sample_at_center <= target_function_center_sample_at_neighbor)
+			{
+				nume_mc = difference_function_mc * temporal_neighbor_M;
+				denom_mc = center_reservoir_M + neighbors_confidence_sum * difference_function_mc;
+			}
+			else
+			{
+				nume_mc = difference_function_mc * temporal_neighbor_M;
+				denom_mc = center_reservoir_M + neighbors_confidence_sum;
+			}
+
+			/*float confidence_weights_multiplier;
+			if (use_confidence_weights)
+			{
+				if (neighbors_confidence_sum == 0.0f)
+					confidence_weights_multiplier = 0.0f;
+				else
+					confidence_weights_multiplier = reservoir_resampled_M / neighbors_confidence_sum;
+			}
+			else
+				confidence_weights_multiplier = 1.0f / valid_neighbors_count;*/
+
+			mc += nume_mc / denom_mc;
+
+			return mi;
+		}
+		else
+		{
+			// Resampling the center pixel
+
+			if (mc == 0.0f)
+				// If there was no neighbor resampling (and mc hasn't been accumulated),
+				// then the MIS weight should be 1 for the center pixel. It gets all the weight
+				// since no neighbor was resampled
+				return 1.0f;
+			else
+				// Returning the weight accumulated so far when resampling the neighbors.
+				// 
+				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
+				//
+				// This is Eq. 16 of the paper: y not in R: m_i(y) = 1 - Sum(...) / |R|
+				// mc here is the sum
+				// and |R| is 1
+				return 1.0f - mc;
+		}
+	}
+
+	// Weight for the canonical sample (center pixel)
+	float mc = 0.0f;
+};
+
 #endif

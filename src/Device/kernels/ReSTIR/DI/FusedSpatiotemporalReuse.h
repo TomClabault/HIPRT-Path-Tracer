@@ -261,7 +261,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				TEMPORAL_NEIGHBOR_ID, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, 
 				center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 				cos_sin_theta_rotation, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
@@ -272,19 +272,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
 				update_mc, /* resample canonical */ false, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
-
-			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
-
-				temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
-				initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
-
-				initial_candidates_reservoir.sample,
-
-				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
-				update_mc, /* resample canonical */ false, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
@@ -439,7 +427,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			spatial_neighbor_index + 1, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, 
 			center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 			cos_sin_theta_rotation, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
@@ -450,19 +438,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
-
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
-				
-				neighbor_reservoir.M, neighbor_reservoir.sample.target_function, 
-				initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function, 
-				
-				initial_candidates_reservoir.sample,
-
-				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
@@ -530,11 +506,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
 #error "Unsupported bias correction mode"
@@ -547,7 +521,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #if (ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z \
 	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS \
 	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE \
-	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO) \
+	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO \
+	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO) \
 	&& ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_TRUE \
 	&& (ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE || (ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE && ReSTIR_DI_SpatialTargetFunctionVisibility == KERNEL_OPTION_TRUE))
 	// Why is this needed?
