@@ -18,7 +18,7 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
 {
-    if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_di_reservoir_buffer_1 != nullptr)
+    if (render_data.aux_buffers.restir_di_reservoir_buffer_1 != nullptr)
     {
         // Only resetting if we're accumulating for offline rendering. Otherwise, we want the
         // temporal side of ReSTIR and so we're not resetting to at least keep the temporal
@@ -38,7 +38,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
             render_data.aux_buffers.restir_di_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();
     }
 
-    if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
+    if (render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
     {
         // Same for ReSTIR GI
         if (render_data.aux_buffers.restir_gi_reservoir_buffer_1)
@@ -113,7 +113,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
     uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
-    if (render_data.render_settings.sample_number == 0 || render_data.render_settings.need_to_reset)
+    if (render_data.render_settings.need_to_reset)
         reset_render(render_data, pixel_index);
 
     // 'Render low resolution' means that the user is moving the camera for example

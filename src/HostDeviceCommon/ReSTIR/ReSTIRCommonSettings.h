@@ -84,6 +84,22 @@ struct ReSTIRCommonSpatialPassSettings
 	// and thus increases convergence speed.
 	bool use_adaptive_directional_spatial_reuse;
 
+	/**
+	 * If you want to check whether you should use the features of the adaptive directional spatial
+	 * reuse, prefer using this function rather than directly checking the 'use_adaptive_directional_spatial_reuse'
+	 * member
+	 * 
+	 * This is because the directional spatial reuse feature cannot be used in realtime mode so if you use the
+	 * 'use_adaptive_directional_spatial_reuse' member directly, you would also have to check for 'render_data.render_settings.accumulate'
+	 * everytime.
+	 * 
+	 * This function does it all
+	 */
+	HIPRT_HOST_DEVICE bool do_adaptive_directional_spatial_reuse(bool render_data_render_settings_accumulate) const
+	{
+		return use_adaptive_directional_spatial_reuse && render_data_render_settings_accumulate;
+	}
+
 	// If true, neighboring pixels that have converged (if adaptive sampling is enabled)
 	// won't be reused to reduce bias.
 	// If false, even neighboring pixels that have converged can be reused by the spatial pass
