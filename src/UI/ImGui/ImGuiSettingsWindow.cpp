@@ -1283,7 +1283,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				draw_ReSTIR_spatial_reuse_panel<false>([&render_settings, this] () {
 					if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 					{
-						if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+						if (ImGui::Checkbox("Do fused spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
 						{
 							render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
 
@@ -1296,7 +1296,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							"(which is the output of the temporal pass). This is usually imperceptible.");
 					}
 
-					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
+					if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
 					{
 						m_render_window->set_render_dirty(true);
 
@@ -1517,7 +1517,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 				});
 				draw_ReSTIR_spatial_reuse_panel<true>([&render_settings, this]() {
-					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
+					if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				});
@@ -1902,6 +1902,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 			if (restir_settings.do_spatial_reuse_pass)
 			{
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				bool use_spatial_target_function_visibility;
 				if constexpr (IsReSTIRGI)
 					use_spatial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY);
@@ -1953,6 +1954,16 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					ImGui::TreePop();
 				}
 
+				static bool do_optimal_vis_sampling = IsReSTIRGI ? ReSTIR_GI_DoOptimalVisibilitySampling : ReSTIR_DI_DoOptimalVisibilitySampling;
+				if (ImGui::Checkbox("Do optimal visibility sampling", &do_optimal_vis_sampling))
+				{
+					global_kernel_options->set_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING : GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING, do_optimal_vis_sampling? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
 				{
 					// Clamping
@@ -2018,11 +2029,11 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse.\n\n"
 						""
 						"This increases the spatial reuse \"hit rate\" (i.e. the number of neighbors that are not rejected by "
-						"G-Buffer heuristics) and thus increases convergence speed.\n\n""
+						"G-Buffer heuristics) and thus increases convergence speed.\n\n"
 						""
 						"Has no effect if not accumulating.");
 
-					if (restir_settings.use_adaptive_directional_spatial_reuse)
+					if (restir_settings.use_adaptive_directional_spatial_reuse)	
 					{
 						if (ImGui::SliderInt("Minimum reuse radius (px)", &restir_settings.minimum_per_pixel_reuse_radius, 0, restir_settings.reuse_radius))
 							m_render_window->set_render_dirty(true);

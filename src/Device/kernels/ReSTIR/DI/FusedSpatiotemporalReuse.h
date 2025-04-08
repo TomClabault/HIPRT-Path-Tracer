@@ -566,7 +566,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
 	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
 	if (render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index)
-		ReSTIR_DI_visibility_reuse(render_data, spatiotemporal_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
+		ReSTIR_DI_visibility_test_kill_reservoir(render_data, spatiotemporal_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
 #endif
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame

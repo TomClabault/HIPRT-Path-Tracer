@@ -64,7 +64,6 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Fused Spatiotemporal Reuse [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
 		- Light Presampling [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
 	- ReSTIR GI [\[Ouyang et al., 2021\]](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
-		- Adaptive-directional spatial reuse for improved offline rendering efficiency
 	- Many bias correction weighting schemes:
 		- 1/M
 		- 1/Z
@@ -72,6 +71,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Generalized balance heuristic
 		- Pairwise MIS [\[Bitterli, 2022\]](https://digitalcommons.dartmouth.edu/dissertations/77/) & defensive formulation [\[Lin et al., 2022\]](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir))
 		- Pairwise symmetric & asymmetric ratio MIS weights [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
+	- Adaptive-directional spatial reuse for improved offline rendering efficiency
+	- Optimal visibility sampling [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
 ### Other rendering features
 - Microfacet Model Regularization for Robust Light Transport [\[Jendersie et al., 2019\]](https://jojendersie.de/wp-content/uploads/2013/06/2019_Jendersie_brdfregularization.pdf)
 - G-MoN - Adaptive median of means for unbiased firefly removal [\[Buisine et al., 2021\]](https://hal.science/hal-03201630v2)

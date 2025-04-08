@@ -13,6 +13,7 @@
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
+#include "Device/includes/ReSTIR/OptimalVisibilitySampling.h"
 #include "Device/includes/ReSTIR/SpatialMISWeight.h"
 #include "Device/includes/ReSTIR/SpatialNormalizationWeight.h"
 #include "Device/includes/ReSTIR/Surface.h"
@@ -112,7 +113,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		// We can already check whether or not this neighbor is going to be
 		// accepted at all by checking the heuristic cache
 		if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
-		{	
+		{
 			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
 			// we know that the center pixel will be accepted
 			// 
@@ -142,7 +143,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
 			if (!check_neighbor_similarity_heuristics<false>(render_data,
 				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<false>(render_data, center_pixel_surface)))
-			 	continue;
+				continue;
 
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 		float target_function_at_center = 0.0f;
@@ -170,7 +171,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.M);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
 			neighbor_reservoir.UCW,
 			neighbor_reservoir.sample,
@@ -179,13 +180,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
-			
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
+
 			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 			neighbor_reservoir,
 
- 			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			center_pixel_surface, target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc,/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
@@ -224,7 +225,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 					spatial_reuse_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 			}
 		}
+
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
+
+		ReSTIR_optimal_visibility_sampling<false>(render_data,
+			spatial_reuse_output_reservoir, center_pixel_reservoir,
+			center_pixel_surface,
+			neighbor_index, reused_neighbors_count,
+			random_number_generator);
 	}
 
 	float normalization_numerator = 1.0f;
@@ -232,7 +240,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	ReSTIRSpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights, /* Is ReSTIR GI */ false> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-	normalization_function.get_normalization(render_data, 
+	normalization_function.get_normalization(render_data,
 		spatial_reuse_output_reservoir.weight_sum,
 		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
@@ -241,9 +249,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		center_pixel_surface,
 		center_pixel_coords, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-	normalization_function.get_normalization(render_data, 
+	normalization_function.get_normalization(render_data,
 		spatial_reuse_output_reservoir.sample, spatial_reuse_output_reservoir.weight_sum,
-		center_pixel_surface, selected_neighbor, 
+		center_pixel_surface, selected_neighbor,
 		center_pixel_coords, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
@@ -307,7 +315,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
 	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
 	if (render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index)
-		ReSTIR_DI_visibility_reuse(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
+		ReSTIR_DI_visibility_test_kill_reservoir(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
 #endif
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame

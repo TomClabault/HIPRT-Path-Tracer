@@ -247,7 +247,7 @@
  * 
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-// #define PathSamplingStrategy PSS_BSDF
+//#define PathSamplingStrategy PSS_BSDF
 #define PathSamplingStrategy PSS_RESTIR_GI
 
 /**

@@ -19,14 +19,16 @@
 /**
  * 'last_primitive_hit_index' is the index of the triangle we're currently sitting 
  * on and that we're shooting a ray from. This is used to avoid self intersections.
+ * 
+ * Returns true if the reservoir was killed, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point, int last_primitive_hit_index, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point, int last_primitive_hit_index, Xorshift32Generator& random_number_generator)
 {
-	if (reservoir.UCW <= 0.0f)
-		return;
+	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
+		return false;
 	else if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED)
 		// The sample is already unoccluded, no need to test for visibility
-		return;
+		return false;
 
 	float distance_to_light;
 	float3 sample_direction;
@@ -47,17 +49,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 
 	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, last_primitive_hit_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
 	if (!visible)
+	{
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
-		reservoir.UCW = -1.0f;
+		reservoir.UCW = 0.0f;
+
+		return true;
+	}
 	else
+	{
 		// Visible so the sample is unoccluded
 		reservoir.sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
+
+		return false;
+	}
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3 shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+/**
+ * Tests the visibility of the sample containde in 'reservoir' from the given shading point and kills the reservoir
+ * if the visibility is occluded
+ * 
+ * Returns true if the reservoir was killed, false otherwise
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3 shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
-	if (reservoir.UCW <= 0.0f)
-		return;
+	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
+		return false;
 
 	float distance_to_sample_point;
 	float3 sample_direction;
@@ -76,9 +92,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_GI_visibility_validation(const HIPRTR
 		if (distance_to_sample_point <= 1.0e-6f)
 		{
 			// To avoid numerical instabilities, killing the reservoir
-			reservoir.UCW = -1.0f;
+			reservoir.UCW = 0.0f;
 
-			return;
+			return true;
 		}
 
 		sample_direction /= distance_to_sample_point;
@@ -92,11 +108,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_GI_visibility_validation(const HIPRTR
 		/* bounce. Always 1 for ReSTIR GI from visible point to sample point */ 1, random_number_generator);
 
 	if (!visible)
+	{
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
-		reservoir.UCW = -1.0f;
-	//else
-	//	// Visible so the sample is unoccluded
-	//	reservoir.sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
+		reservoir.UCW = 0.0f;
+
+		return true;
+	}
+
+	return false;
 }
 
 #endif
