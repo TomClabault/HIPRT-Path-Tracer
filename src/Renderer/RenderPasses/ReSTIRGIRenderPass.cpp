@@ -239,7 +239,7 @@ void ReSTIRGIRenderPass::launch_initial_candidates_pass()
 
 void ReSTIRGIRenderPass::configure_temporal_reuse_pass()
 {
-	if (m_render_data->render_settings.sample_number == 0)
+	if ((m_render_data->render_settings.sample_number == 0 && m_render_data->render_settings.accumulate) || m_render_data->render_settings.need_to_reset)
 		// First frame, using the initial candidates as the input
 		m_render_data->render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_render_data->render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
 	else
@@ -334,6 +334,7 @@ bool ReSTIRGIRenderPass::launch()
 {
 	if (!is_render_pass_used())
 		return false;
+
 	compute_optimal_spatial_reuse_radii();
 
 	configure_initial_candidates_pass();

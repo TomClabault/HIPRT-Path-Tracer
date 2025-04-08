@@ -71,7 +71,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- MIS-like,
 		- Generalized balance heuristic
 		- Pairwise MIS [\[Bitterli, 2022\]](https://digitalcommons.dartmouth.edu/dissertations/77/) & defensive formulation [\[Lin et al., 2022\]](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir))
-		- Pairwise symmetric & asymmetric ratio MIS [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
+		- Pairwise symmetric & asymmetric ratio MIS weights [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
 ### Other rendering features
 - Microfacet Model Regularization for Robust Light Transport [\[Jendersie et al., 2019\]](https://jojendersie.de/wp-content/uploads/2013/06/2019_Jendersie_brdfregularization.pdf)
 - G-MoN - Adaptive median of means for unbiased firefly removal [\[Buisine et al., 2021\]](https://hal.science/hal-03201630v2)
@@ -93,7 +93,6 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Multithreaded scene parsing/texture loading/shader compiling/BVH building/envmap processing/... for faster application startup times
 - Background-asynchronous path tracing kernels pre-compilation
 - Shader cache to avoid recompiling kernels unnecessarily
-### Some of the features are (or will be) presented in more details in my [blog posts](https://tomclabault.github.io/blog/)!
 
 # Building
 ## Prerequisites

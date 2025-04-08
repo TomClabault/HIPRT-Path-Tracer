@@ -20,7 +20,8 @@ HIPRT_HOST_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData&
 	ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used
 	spatial_pass_settings.spatial_neighbors_rng_seed = random_number_generator.xorshift32();
-	if (spatial_pass_settings.use_adaptive_directional_spatial_reuse)
+
+	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 	{
 		spatial_pass_settings.reuse_radius = spatial_pass_settings.per_pixel_spatial_reuse_radius[center_pixel_index];
 		// Storing the direction reuse mask in the 'current_pixel_directions_reuse_mask' field of the spatial
@@ -207,7 +208,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 			uv = sample_hammersley_2D(spatial_pass_settings.reuse_neighbor_count + 1, neighbor_index + 1);
 		else
 		{
-			if (spatial_pass_settings.use_adaptive_directional_spatial_reuse)
+			if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 				uv = sample_spatial_neighbor_from_allowed_directions(render_data, spatial_pass_settings, center_pixel_coords, rng);
 			else
 				uv = make_float2(rng(), rng());
@@ -284,7 +285,7 @@ HIPRT_HOST_DEVICE void spatial_neighbor_advance_rng(const HIPRTRenderData& rende
 
 	if (!spatial_pass_settings.use_hammersley)
 	{
-		if (spatial_pass_settings.use_adaptive_directional_spatial_reuse)
+		if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 		{
 			// If not using Hammersley, then each point is generated with 3 random numbers
 			// 

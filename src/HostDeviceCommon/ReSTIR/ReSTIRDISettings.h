@@ -120,7 +120,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 
 		m_cap = 3;
-		use_confidence_weights = false;
+		use_confidence_weights = true;
 	}
 
 	// Settings for the initial candidates generation pass

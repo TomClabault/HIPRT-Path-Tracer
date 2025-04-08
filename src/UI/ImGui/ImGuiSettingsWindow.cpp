@@ -77,7 +77,7 @@ void ImGuiSettingsWindow::draw_header()
 		ImGui::Text("Frame time (GPU): %.3fms", m_render_window_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 	float time_before_viewport_refresh_ms = m_render_window->get_time_ms_before_viewport_refresh();
-	if (!m_render_window->is_rendering_done())
+	if (!m_render_window->is_rendering_done() && render_settings.accumulate)
 	{
 		// Only displaying the refresh timer if we actually need to wait before refreshin'
 		// And also, not displaying that if the rendering is done
@@ -96,7 +96,7 @@ void ImGuiSettingsWindow::draw_header()
 				ImGui::Text("Viewport refresh in: %.3fs", std::max(0.0f, time_before_refresh_seconds));
 		}
 	}
-	else
+	else if (render_settings.accumulate)
 		// If the rendering is done, displaying 0.000s
 		ImGui::Text("Viewport refresh in: 0.000s");
 
@@ -2018,7 +2018,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						"well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse.\n\n"
 						""
 						"This increases the spatial reuse \"hit rate\" (i.e. the number of neighbors that are not rejected by "
-						"G-Buffer heuristics) and thus increases convergence speed.");
+						"G-Buffer heuristics) and thus increases convergence speed.\n\n""
+						""
+						"Has no effect if not accumulating.");
 
 					if (restir_settings.use_adaptive_directional_spatial_reuse)
 					{
@@ -2043,6 +2045,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 							m_render_window->set_render_dirty(true);
 						}
+
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+						if (ImGui::Checkbox("Compute spatial reuse hit rate", &restir_settings.compute_spatial_reuse_hit_rate))
+							m_render_window->set_render_dirty(true);
 					}
 
 					ImGui::TreePop();
@@ -2145,9 +2151,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				}
 				ImGui::EndDisabled();
 
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::Checkbox("Compute spatial reuse hit rate", &restir_settings.compute_spatial_reuse_hit_rate))
-					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("Whether or not to gather statistics on the hit rate of the spatial reuse "
 					"pass (i.e. how many neighbors are rejected because of the G-Buffer heuristics vs. the maximum number "
 					"of neighbors that can be reused).\n\n"

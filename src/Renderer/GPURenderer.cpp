@@ -667,6 +667,7 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	m_render_data.render_settings.render_resolution = m_render_resolution;
 	m_render_data_buffers_invalidated = true;
+	m_render_data.render_settings.need_to_reset = true;
 }
 
 void GPURenderer::map_buffers_for_render()
@@ -1107,6 +1108,7 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 		// so we don't get into that if block and we don't reset the seed
 		m_rng.m_state.seed = 42;
 		m_render_data.random_number = 42;
+		m_render_data.render_settings.need_to_reset = true;
 	}
 
 	reset_nee_plus_plus();
@@ -1169,6 +1171,7 @@ void GPURenderer::update_render_data()
 		m_render_graph.update_render_data();
 
 		m_render_data_buffers_invalidated = false;
+		m_render_data.render_settings.need_to_reset = true;
 	}
 }
 
