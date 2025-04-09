@@ -14,6 +14,7 @@ HIPRTCamera Camera::to_hiprt()
     glm::mat4x4 view_matrix_inv = glm::inverse(view_matrix);
     glm::mat4x4 projection_matrix_inv = glm::inverse(projection_matrix);
 
+    hiprt_cam.view_matrix = *reinterpret_cast<float4x4*>(&view_matrix);
     hiprt_cam.inverse_view = *reinterpret_cast<float4x4*>(&view_matrix_inv);
     hiprt_cam.inverse_projection = *reinterpret_cast<float4x4*>(&projection_matrix_inv);
 

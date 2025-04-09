@@ -94,6 +94,67 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     // hit and to return some color
     bool intersection_found = closest_hit_info.primitive_index != -1;
 
+    if (hippt::length(closest_hit_info.inter_point - make_float3(2.818762, 0.028752, 4.717620)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(-2.444311, 1.469026, 5.866215)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(1.050903, 3.168610, 4.925434)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(2.102447, 3.168610, 1.879861)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(2.709950, 3.168610, 3.367921)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(1.260683, 3.168610, 2.113529)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(0.345086, 3.168610, 3.836916)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(2.683169, 3.168610, 1.789520)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(3.010442, 2.082285, 4.948732)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(1.967728, 3.168610, 2.702963)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(2.816880, 3.153150, 4.755924)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(2.032967, 3.168610, 5.288183)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(1.761621, 3.168610, 3.683570)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(2.346399, 0.028752, 5.008325)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+    else if (hippt::length(closest_hit_info.inter_point - make_float3(2.326585, 0.028752, 6.517389)) <= 0.125f / 2.0f) {
+        path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 0.0f, 1.0e35f), pixel_index);
+        return;
+    }
+
     for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
     {
         if (ray_payload.next_ray_state != RayState::MISSED)

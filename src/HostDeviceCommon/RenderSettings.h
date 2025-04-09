@@ -38,6 +38,7 @@ struct HIPRTRenderSettings
 	bool DEBUG_gmon_auto_blending_weights = true;
 	float DEBUG_GMON_DIVIDER = 3.0f;
 	int DEBUG_GMON_WINDOW_SIZE = 3;
+	bool DEBUG_DO_MIS = true;
 
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
@@ -56,6 +57,7 @@ struct HIPRTRenderSettings
 	bool DEBUG_DO_ONLY_NEIGHBOR = false;
 	float fresnel_proba_DEBUG = -1.0f;
 	int debug_size = 0;
+	int DEBUG_BOUNCE_REPROJECTION = 2;
 	int debug_count_multiplier = 2;
 	int precision = 256;
 	int stop_value = SAMPLE_STOP * MULTIPLIER - 10;
@@ -108,7 +110,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 5;
+	int nb_bounces = 2;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -156,7 +158,7 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = false;
+	bool enable_adaptive_sampling = true;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
@@ -177,7 +179,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 90.0f;
+	float stop_pixel_percentage_converged = 5.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.075f;

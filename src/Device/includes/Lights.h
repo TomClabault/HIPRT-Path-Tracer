@@ -264,10 +264,60 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRende
     // have a loop for it
 
     ColorRGB32F direct_light_contribution;
+
+    bool fallback_shading_needed = false;
     if (ray_payload.bounce == 0)
-        // Can only do ReSTIR DI on the first bounce
         direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
+    else if (ray_payload.bounce <= render_data.render_settings.DEBUG_BOUNCE_REPROJECTION)
+    {
+        float3 point_vs = matrix_X_point(render_data.current_camera.view_matrix, closest_hit_info.inter_point);
+        if (point_vs.z > 0.0f)
+            // Behind the camera
+            fallback_shading_needed = true;
+        else
+        {
+            // Reprojecting the current world hit to the screen to find what ReSTIR DI reservoir we can reuse for that hit
+            float3 previous_screen_space_point_xyz = matrix_X_point(render_data.current_camera.view_projection, closest_hit_info.inter_point);
+            float2 previous_screen_space_point = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
+
+            // Bringing back in [0, 1] from [-1, 1]
+            previous_screen_space_point += make_float2(1.0f, 1.0f);
+            previous_screen_space_point *= make_float2(0.5f, 0.5f);
+
+            int2 resolution = render_data.render_settings.render_resolution;
+            float2 prev_pixel_float = make_float2(previous_screen_space_point.x * resolution.x, previous_screen_space_point.y * resolution.y);
+            // Bringing back in the center of the pixel
+            prev_pixel_float -= make_float2(0.5f, 0.5f);
+
+            if (prev_pixel_float.x < 0.0f
+                || prev_pixel_float.y < 0.0f
+                || prev_pixel_float.x >= render_data.render_settings.render_resolution.x
+                || prev_pixel_float.y >= render_data.render_settings.render_resolution.y)
+                // In front of the camera but out of the field of view
+                fallback_shading_needed = true;
+            else
+            {
+                hiprtRay shadow_ray;
+                shadow_ray.origin = closest_hit_info.inter_point;
+                shadow_ray.direction = hippt::normalize(render_data.current_camera.position - closest_hit_info.inter_point);
+
+                bool occluded = evaluate_shadow_ray(render_data, shadow_ray, hippt::length(render_data.current_camera.position - closest_hit_info.inter_point), closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+                if (!occluded)
+                {
+                    if (render_data.render_settings.DEBUG_DO_MIS)
+                        direct_light_contribution = sample_light_ReSTIR_DI_MIS_BSDF(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(prev_pixel_float.x, prev_pixel_float.y));
+                    else
+                        direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(prev_pixel_float.x, prev_pixel_float.y));
+                }
+                else
+                    fallback_shading_needed = true;
+            }
+        }
+    }
     else
+        fallback_shading_needed = true;
+
+    if (fallback_shading_needed)
     {
         // ReSTIR DI isn't used for the secondary/tertiary/... bounces
         // so there we can take multiple light samples per path vertex
