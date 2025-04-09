@@ -153,15 +153,16 @@
  * 
  * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
  */
-#define ReSTIR_DI_DoOptimalVisibilitySampling KERNEL_OPTION_TRUE
+#define ReSTIR_DI_DoOptimalVisibilitySampling KERNEL_OPTION_FALSE
 
 /**
  * Decoupled shading and reuse for the spatial neighbors as proposed in
  * [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]
  * 
- * All spatial neighbors will be shaded if this option is true
+ * This is implemented by shading multiple reservoirs at path tracing time. This does not exactly
+ * follow the ideas of the paper.
  */
-#define ReSTIR_DI_DoSpatialNeighborsDecoupledShading KERNEL_OPTION_FALSE
+#define ReSTIR_DI_DoSpatialNeighborsDecoupledShading KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 

@@ -15,6 +15,7 @@ const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID = "ReSTI
 const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Spatiotemporal reuse";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID = "ReSTIR DI Lights presampling";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID = "ReSTIR DI Directional reuse compute";
+const std::string ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID = "ReSTIR DI Decoupled shading";
 
 const std::string ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME = "ReSTIR DI Render Pass";
 
@@ -26,6 +27,7 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FU
 	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatiotemporalReuse" },
 	{ RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, "ReSTIR_DI_LightsPresampling" },
 	{ RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME },
+	{ RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID, "ReSTIR_DI_DecoupledShading" },
 };
 
 const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FILES =
@@ -36,6 +38,7 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FI
 	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/FusedSpatiotemporalReuse.h" },
 	{ RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/LightsPresampling.h" },
 	{ RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
+	{ RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/DecoupledShading.h" },
 };
 
 ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME)
@@ -85,10 +88,19 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(rende
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->synchronize_options_with(global_compiler_options);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->get_kernel_options().set_macro_value(ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_IS_RESTIR_GI_COMPILE_OPTION_NAME, KERNEL_OPTION_FALSE);
+
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 }
 
 void ReSTIRDIRenderPass::precompile_kernels(GPUKernelCompilerOptions partial_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
+	// THIS CODE IS UNMAINTAINED
+
 	GPUKernelCompilerOptions options;
 
 	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_kernel_options().deep_copy();
@@ -184,7 +196,8 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer);
+			m_decoupled_shading_reuse_buffer,
+			m_decoupled_shading_reuse_mis_weights);
 	}
 	else
 	{
@@ -223,7 +236,8 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer);
+			m_decoupled_shading_reuse_buffer,
+			m_decoupled_shading_reuse_mis_weights);
 	}
 
 	if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.auto_reuse_radius)
@@ -242,13 +256,14 @@ void ReSTIRDIRenderPass::update_render_data()
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_2 = m_spatial_output_reservoirs_1.get_device_pointer();
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_3 = m_spatial_output_reservoirs_2.get_device_pointer();
 
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer();
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.get_device_pointer();
-
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_total = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_total.get_device_pointer());
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_hits.get_device_pointer());
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer = m_decoupled_shading_reuse_buffer.get_device_pointer();
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<false>(*m_render_data,
+			m_per_pixel_spatial_reuse_radius,
+			m_per_pixel_spatial_reuse_direction_mask_u,
+			m_per_pixel_spatial_reuse_direction_mask_ull,
+			m_spatial_reuse_statistics_hit_hits,
+			m_spatial_reuse_statistics_hit_total,
+			m_decoupled_shading_reuse_buffer,
+			m_decoupled_shading_reuse_mis_weights);
 
 		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
 		m_render_data->render_settings.restir_di_settings.restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
@@ -284,7 +299,8 @@ void ReSTIRDIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 		m_per_pixel_spatial_reuse_radius, 
 		m_per_pixel_spatial_reuse_direction_mask_u, 
 		m_per_pixel_spatial_reuse_direction_mask_ull, 
-		m_decoupled_shading_reuse_buffer);
+		m_decoupled_shading_reuse_buffer,
+		m_decoupled_shading_reuse_mis_weights);
 }
 
 bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -321,8 +337,14 @@ bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	bool need_directional_spatial_reuse = !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->has_been_compiled() && m_render_data->render_settings.restir_di_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse;
 	recompiled |= need_directional_spatial_reuse;
 	if (need_directional_spatial_reuse)
-		// Spatial needed
+		// Directional reuse needed
 		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	bool need_decoupled_shading = !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->has_been_compiled() && m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_TRUE;
+	recompiled |= need_decoupled_shading;
+	if (need_decoupled_shading)
+		// Decoupled shading needed
+		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 	return recompiled;
 }
@@ -365,6 +387,8 @@ bool ReSTIRDIRenderPass::launch()
 		if (restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
 			launch_spatial_reuse_passes();
 	}
+
+	launch_decoupled_shading_pass();
 
 	configure_output_buffer();
 
@@ -713,6 +737,18 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_tracin
 	return out;
 }
 
+void ReSTIRDIRenderPass::launch_decoupled_shading_pass()
+{
+	bool decoupled_shading_disabled = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_FALSE;
+	bool no_spatial_reuse = !m_render_data->render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass;
+	if (decoupled_shading_disabled || no_spatial_reuse)
+		return;
+
+	void* launch_args[] = { m_render_data };
+
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+}
+
 void ReSTIRDIRenderPass::configure_output_buffer()
 {
 	ReSTIRDISettings& restir_di_settings = m_render_data->render_settings.restir_di_settings;
@@ -742,5 +778,6 @@ float ReSTIRDIRenderPass::get_VRAM_usage() const
 		m_spatial_output_reservoirs_1.get_byte_size() +
 		m_spatial_output_reservoirs_2.get_byte_size() +
 		m_presampled_lights_buffer.get_byte_size() +
-		m_decoupled_shading_reuse_buffer.get_byte_size()) / 1000000.0f;
+		m_decoupled_shading_reuse_buffer.get_byte_size() +
+		m_decoupled_shading_reuse_mis_weights.get_byte_size()) / 1000000.0f;
 }

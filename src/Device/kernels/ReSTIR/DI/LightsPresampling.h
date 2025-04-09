@@ -38,41 +38,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
 {
     ReSTIRDIPresampledLight presampled_light;
 
-    int random_index = random_number_generator.random_index(parameters.emissive_triangles_count);
-    int triangle_index = parameters.emissive_triangles_indices[random_index];
+    float light_pdf;
+    LightSourceInformation light_info;
+    float3 point_on_light = uniform_sample_one_emissive_triangle(parameters.triangles_indices, parameters.emissive_triangles_indices, parameters.emissive_triangles_count,
+        parameters.vertices_positions,
+        parameters.material_indices, parameters.materials,
+        random_number_generator, light_pdf, light_info);
 
-    float3 vertex_A = parameters.vertices_positions[parameters.triangles_indices[triangle_index * 3 + 0]];
-    float3 vertex_B = parameters.vertices_positions[parameters.triangles_indices[triangle_index * 3 + 1]];
-    float3 vertex_C = parameters.vertices_positions[parameters.triangles_indices[triangle_index * 3 + 2]];
-
-    float rand_1 = random_number_generator();
-    float rand_2 = random_number_generator();
-
-    float sqrt_r1 = sqrt(rand_1);
-    float u = 1.0f - sqrt_r1;
-    float v = (1.0f - rand_2) * sqrt_r1;
-
-    float3 AB = vertex_B - vertex_A;
-    float3 AC = vertex_C - vertex_A;
-    float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
-
-    float3 normal = hippt::cross(AB, AC);
-    float length_normal = hippt::length(normal);
-    if (length_normal > 1.0e-6f)
+    if (light_pdf > 0.0f)
     {
-        // Avoiding very small triangles
-
-        float triangle_area = length_normal * 0.5f;
-
-        presampled_light.point_on_light_source = random_point_on_triangle;
-        presampled_light.light_source_normal = normal / length_normal;
-        presampled_light.emissive_triangle_index = triangle_index;
+        presampled_light.point_on_light_source = point_on_light;
+        presampled_light.light_source_normal = light_info.light_source_normal;
+        presampled_light.emissive_triangle_index = light_info.emissive_triangle_index;
 
         // PDF in area measure
-        presampled_light.pdf = 1.0f / triangle_area;
-        presampled_light.pdf /= parameters.emissive_triangles_count;
+        presampled_light.pdf = light_pdf;
         presampled_light.pdf *= light_sampling_probability;
-        presampled_light.radiance = parameters.materials.get_emission(parameters.material_indices[triangle_index]);
+        presampled_light.radiance = light_info.emission;
     }
 
     return presampled_light;

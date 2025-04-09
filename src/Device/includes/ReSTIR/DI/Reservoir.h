@@ -153,7 +153,7 @@ struct ReSTIRDIReservoir
             std::cerr << "NaN or inf reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
             Utils::debugbreak();
         }
-        else if (UCW < 0)
+        else if (UCW < 0 && UCW != -1.0f) // Not checking -1.0f because this is a special value for when the reservoir has been killed by some visibility test/validation
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;

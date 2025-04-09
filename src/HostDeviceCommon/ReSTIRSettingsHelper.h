@@ -115,22 +115,32 @@ struct ReSTIRSettingsHelper
 	 * Returns the shading normal or geometric normal of the given surface depending on the rejection heuristics settings
 	 */
 	template <bool IsReSTIRGI>
-	HIPRT_HOST_DEVICE static float3 get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, const ReSTIRSurface& surface)
+	HIPRT_HOST_DEVICE static float3 get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, 
+		const float3& geometric_normal, const float3& shading_normal)
 	{
 		if constexpr (IsReSTIRGI)
 		{
 			if (render_data.render_settings.restir_gi_settings.neighbor_similarity_settings.reject_using_geometric_normals)
-				return surface.geometric_normal;
+				return geometric_normal;
 			else
-				return surface.shading_normal;
+				return shading_normal;
 		}
 		else
 		{
 			if (render_data.render_settings.restir_di_settings.neighbor_similarity_settings.reject_using_geometric_normals)
-				return surface.geometric_normal;
+				return geometric_normal;
 			else
-				return surface.shading_normal;
+				return shading_normal;
 		}
+	}
+	
+	/**
+	 * Returns the shading normal or geometric normal of the given surface depending on the rejection heuristics settings
+	 */
+	template <bool IsReSTIRGI>
+	HIPRT_HOST_DEVICE static float3 get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, const ReSTIRSurface& surface)
+	{
+		return get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, surface.geometric_normal, surface.shading_normal);
 	}
 };
 

@@ -62,7 +62,9 @@ public:
     void launch_ReSTIR_DI_presampling_lights_pass();
     void launch_ReSTIR_DI_initial_candidates_pass();
 
-    void compute_ReSTIR_DI_optimal_spatial_reuse_radii();
+    template <bool IsReSTIRGI>
+    void compute_ReSTIR_optimal_spatial_reuse_radii();
+
     void configure_ReSTIR_DI_temporal_pass();
     void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
     void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
@@ -76,7 +78,6 @@ public:
 
     void tracing_pass();
 
-    void compute_ReSTIR_GI_optimal_spatial_reuse_radii();
     void configure_ReSTIR_GI_initial_candidates_pass();
     void configure_ReSTIR_GI_temporal_reuse_pass();
     void configure_ReSTIR_GI_spatial_reuse_pass(int spatial_reuse_pass_index);
@@ -141,6 +142,8 @@ private:
         AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
         AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
 
+        std::vector<ColorRGB32F> decoupled_shading_reuse_buffer;
+
         ReSTIRDIReservoir* output_reservoirs = nullptr;
 
         bool odd_frame = false;
@@ -158,6 +161,8 @@ private:
 
         AtomicType<unsigned long long int> spatial_reuse_hit_rate_hits;
         AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
+
+        std::vector<ColorRGB32F> decoupled_shading_reuse_buffer;
     } m_restir_gi_state;
 
     Image32Bit m_sheen_ltc_params;

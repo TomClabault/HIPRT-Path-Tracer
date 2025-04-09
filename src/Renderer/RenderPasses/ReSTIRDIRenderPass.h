@@ -28,6 +28,7 @@ public:
 	static const std::string RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID;
 	static const std::string RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
+	static const std::string RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID;
 
 	static const std::string RESTIR_DI_RENDER_PASS_NAME;
 
@@ -77,6 +78,7 @@ public:
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
+
 	
 	virtual bool is_render_pass_used() const override;
 
@@ -101,6 +103,7 @@ private:
 	void launch_temporal_reuse_pass();
 	void launch_spatial_reuse_passes();
 	void launch_spatiotemporal_pass();
+	void launch_decoupled_shading_pass();
 
 	// ReSTIR reservoirs for the initial candidates
 	OrochiBuffer<ReSTIRDIReservoir> m_initial_candidates_reservoirs;
@@ -127,6 +130,7 @@ private:
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
 
 	OrochiBuffer<ColorRGB32F> m_decoupled_shading_reuse_buffer;
+	OrochiBuffer<float> m_decoupled_shading_reuse_mis_weights;
 
 	// Whether or not we're currently rendering an odd frame.
 	// This is used to adjust which buffers are used as input/outputs
