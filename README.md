@@ -71,6 +71,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Generalized balance heuristic
 		- Pairwise MIS [\[Bitterli, 2022\]](https://digitalcommons.dartmouth.edu/dissertations/77/) & defensive formulation [\[Lin et al., 2022\]](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir))
 		- Pairwise symmetric & asymmetric ratio MIS weights [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
+	- Decoupled shading and reuse [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
 	- Adaptive-directional spatial reuse for improved offline rendering efficiency
 	- Optimal visibility sampling [\[Pan et al., 2024\]](https://diglib.eg.org/items/df9d727e-13a1-4d48-9275-57da7fb87f7f)
 ### Other rendering features

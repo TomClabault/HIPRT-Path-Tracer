@@ -155,6 +155,14 @@
  */
 #define ReSTIR_DI_DoOptimalVisibilitySampling KERNEL_OPTION_TRUE
 
+/**
+ * Decoupled shading and reuse for the spatial neighbors as proposed in
+ * [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]
+ * 
+ * All spatial neighbors will be shaded if this option is true
+ */
+#define ReSTIR_DI_DoSpatialNeighborsDecoupledShading KERNEL_OPTION_TRUE
+
 #endif // #ifndef __KERNELCC__
 
 #endif

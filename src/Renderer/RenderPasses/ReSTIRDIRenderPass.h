@@ -126,6 +126,8 @@ private:
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
 
+	OrochiBuffer<ColorRGB32F> m_decoupled_shading_reuse_buffer;
+
 	// Whether or not we're currently rendering an odd frame.
 	// This is used to adjust which buffers are used as input/outputs
 	// and ping-pong between them

@@ -62,6 +62,7 @@ public:
 	static const std::string RESTIR_DI_DO_LIGHTS_PRESAMPLING;
 	static const std::string RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
 	static const std::string RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING;
+	static const std::string RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING;
 
 	static const std::string RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
@@ -69,6 +70,7 @@ public:
 	static const std::string RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY;
 	static const std::string RESTIR_GI_BIAS_CORRECTION_WEIGHTS;
 	static const std::string RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING;
+	static const std::string RESTIR_GI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING;
 	
 	static const std::string GMON_M_SETS_COUNT;
 

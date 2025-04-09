@@ -101,12 +101,20 @@
  */
 #define ReSTIR_GI_SpatialDirectionalReuseBitCount RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT_INTERNAL
 
- /**
-  * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
-  *
-  * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
-  */
+/**
+ * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
+ *
+ * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
+ */
 #define ReSTIR_GI_DoOptimalVisibilitySampling KERNEL_OPTION_TRUE
+
+/**
+ * Decoupled shading and reuse for the spatial neighbors as proposed in
+ * [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]
+ *
+ * All spatial neighbors will be shaded if this option is true
+ */
+#define ReSTIR_GI_DoSpatialNeighborsDecoupledShading KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 

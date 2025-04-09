@@ -1311,6 +1311,33 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 
 				draw_ReSTIR_bias_correction_panel<false>();
+				if (ImGui::CollapsingHeader("Debug"))
+				{
+					ImGui::TreePush("ReSTIR DI debug options tree");
+
+					if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
+						"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+					if (render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location)
+					{
+						ImGui::TreePush("Debug neighbor location vertical tree");
+
+						ImGui::Text("Debug reuse direction");
+						bool reuse_direction_changed = false;
+						reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 0); ImGui::SameLine();
+						reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 1); ImGui::SameLine();
+						reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
+
+						if (reuse_direction_changed)
+							m_render_window->set_render_dirty(true);
+
+						ImGui::TreePop();
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::TreePop();
+				}
 
 
 
@@ -1963,6 +1990,19 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					m_render_window->set_render_dirty(true);
 				}
 
+				static bool do_decoupled_shading = IsReSTIRGI ? ReSTIR_GI_DoSpatialNeighborsDecoupledShading : ReSTIR_DI_DoSpatialNeighborsDecoupledShading;
+				if (ImGui::Checkbox("Do decoupled spatial neighbors shading", &do_decoupled_shading))
+				{
+					global_kernel_options->set_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING : GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING, do_decoupled_shading ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Decoupled shading and reuse for the spatial neighbors as proposed in "
+					"[Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]\n\n"
+					""
+					"All spatial neighbors will be shaded if this option is true.");
+
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
 				{
@@ -2050,8 +2090,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 							"More bits yields more precise result but use a little bit more VRAM.");
 						if (bitcount_changed)
 						{
-							const std::string& mask_bit_count_macro_name = IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT : GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
-							global_kernel_options->set_macro_value(mask_bit_count_macro_name, spatial_reuse_directional_masks_bitcount);
+							global_kernel_options->set_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT : GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT, spatial_reuse_directional_masks_bitcount);
 							m_renderer->recompile_kernels();
 
 							m_render_window->set_render_dirty(true);
@@ -2064,6 +2103,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 					ImGui::TreePop();
 				}
+
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::Checkbox("Increase disocclusion reuse count", &restir_settings.do_disocclusion_reuse_boost))

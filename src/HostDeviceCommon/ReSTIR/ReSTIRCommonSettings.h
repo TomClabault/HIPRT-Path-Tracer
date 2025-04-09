@@ -137,6 +137,11 @@ struct ReSTIRCommonSpatialPassSettings
 	// Counters for gathering the statistics on the spatial reuse hit rate
 	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_hits = nullptr;
 	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_total = nullptr;
+
+	// If the decoupled shading reuse is enabled, the reservoirs will be shaded during the spatial reuse
+	// and the shading result will be stored in this buffer and will then be looked up during path tracing
+	// when we want our ReSTIR DI direct lighting estimation
+	ColorRGB32F* decoupled_shading_reuse_buffer = nullptr;
 };
 
 struct ReSTIRCommonNeighborSimiliaritySettings
