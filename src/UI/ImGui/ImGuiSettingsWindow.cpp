@@ -44,6 +44,7 @@ void ImGuiSettingsWindow::draw()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("General render settings");
 	draw_render_settings_panel();
+	draw_render_stopping_conditions_panel();
 	draw_camera_panel();
 	draw_environment_panel();
 	draw_sampling_panel();
@@ -317,7 +318,14 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	draw_russian_roulette_options();
 
+	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
 	if (ImGui::CollapsingHeader("Render stopping condition"))
 	{
 		ImGui::TreePush("Stopping condition tree");
@@ -337,12 +345,12 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 					ImGui::Text("Warning: ");
 					std::string warning_text = "Currently using GMoN (\"Post-processing\" panel) but the number of "
 						"maximum samples entered here isn't divisible by the number of GMoN sets. This means that "
-						"what's displayed in the viewport will only be " 
+						"what's displayed in the viewport will only be "
 						+ std::to_string(std::max(1u, m_application_settings->max_sample_count / number_of_sets)) + " samples instead of "
 						+ std::to_string(m_application_settings->max_sample_count) + ".\n\n"
 						""
 						"You click the button to the right to round up the maximum number of samples to one that is "
-						"divisible by the number of GMoN sets (" 
+						"divisible by the number of GMoN sets ("
 						+ std::to_string(m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT)) + ")";
 					ImGuiRenderer::show_help_marker(warning_text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 
@@ -433,9 +441,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		// Stopping condition tree
 		ImGui::TreePop();
 	}
-
-	ImGui::TreePop();
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 void ImGuiSettingsWindow::draw_russian_roulette_options()
@@ -2259,8 +2264,42 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 				"- Pairwise asymmetric ratio",
 			};
 
+			const char* tooltips[] = {
+				"Very simple biased weights as described in the 2020 ReSTIR DI paper(Eq. 6).\n"
+				"Those weights are biased because they do not account for cases where "
+				"we resample a sample that couldn't have been produced by some neighbors.\n"
+				"The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary, "
+				"this type of weights can be seen as confidence weights alone c_i / sum(c_j).",
+
+				"Simple unbiased weights as described in the 2020 ReSTIR paper (Eq. 16 and Section 4.3).\n"
+				"Those weights are unbiased but can have * *extremely * *bad variance when a neighbor being resampled "
+				"has a very low target function(when the neighbor is a glossy surface for example).\n"
+				"See Fig. 7 of the 2020 paper.",
+
+				"Unbiased weights as proposed by Eq. 22 of the paper.Way better than 1 / Z in terms of variance "
+				"and still unbiased.",
+
+				"Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N ^ 2) complexity, "
+				"N being the number of neighbors resampled.\n"
+				"Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.",
+
+				"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
+				"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
+
+				"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
+				"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
+
+				"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
+				""
+				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
+
+				"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
+				""
+				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]"
+			};
+
 			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);
-			if (ImGui::Combo("MIS Weights", bias_correction_weights_option_pointer, bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
+			if (ImGuiRenderer::ComboWithTooltips("MIS Weights", bias_correction_weights_option_pointer, bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items), tooltips))
 			{
 				m_renderer->recompile_kernels();
 
