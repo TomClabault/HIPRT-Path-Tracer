@@ -111,12 +111,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRen
 {
 	int pixel_index = pixel_coords.x + pixel_coords.y * render_data.render_settings.render_resolution.x;
 
-    if (render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-    {
-#if ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE
+    if (render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE)
         return render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
-#endif
-    }
     
 	// Because the spatial reuse pass runs last, the output buffer of the spatial
 	// pass contains the reservoir whose sample we're going to shade

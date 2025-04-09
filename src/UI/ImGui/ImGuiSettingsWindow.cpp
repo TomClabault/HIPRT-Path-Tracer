@@ -1546,7 +1546,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				draw_ReSTIR_spatial_reuse_panel<true>([&render_settings, this]() {
 					if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				});
 				ImGui::PopItemWidth();
 

@@ -114,7 +114,7 @@
  *
  * All spatial neighbors will be shaded if this option is true
  */
-#define ReSTIR_GI_DoSpatialNeighborsDecoupledShading KERNEL_OPTION_TRUE
+#define ReSTIR_GI_DoSpatialNeighborsDecoupledShading KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

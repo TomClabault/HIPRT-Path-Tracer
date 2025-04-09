@@ -16,6 +16,7 @@
 #include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/GI/ShadeReservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
@@ -97,6 +98,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	ReSTIRGIReservoir spatial_reuse_output_reservoir;
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, /* IsReSTIRGI */ true> mis_weight_function;
 	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_neighbors_rng_seed);
+	ColorRGB32F decoupled_shading_reuse_result;
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
@@ -236,6 +238,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			center_pixel_surface,
 			neighbor_index, reused_neighbors_count,
 			random_number_generator);
+
+#if ReSTIR_GI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE
+		neighbor_reservoir.UCW *= shift_mapping_jacobian;
+		decoupled_shading_reuse_result += shade_ReSTIR_GI_reservoir(render_data, center_pixel_surface, neighbor_reservoir, x, y, random_number_generator) * mis_weight;
+#endif
 	}
 
 	float normalization_numerator = 1.0f;
@@ -282,6 +289,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_gi_settings.m_cap);
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
+#if ReSTIR_GI_DoSpatialNeighborsDecoupledShading
+	render_data.render_settings.restir_gi_settings.common_spatial_pass.decoupled_shading_reuse_buffer[center_pixel_index] = decoupled_shading_reuse_result;
+#endif
 }
 
 #endif
