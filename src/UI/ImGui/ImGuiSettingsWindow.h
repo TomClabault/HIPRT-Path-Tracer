@@ -29,6 +29,7 @@ public:
 private:
 	void draw_header();
 	void draw_render_settings_panel();
+	void draw_render_stopping_conditions_panel();
 	void draw_russian_roulette_options();
 	void display_view_selector();
 	bool display_view_disabled(DisplayViewType display_view_type);

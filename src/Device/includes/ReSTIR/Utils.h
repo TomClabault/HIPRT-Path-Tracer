@@ -51,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_DI_visibility_test_kill_reservoir(con
 	if (!visible)
 	{
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
-		reservoir.UCW = 0.0f;
+		reservoir.UCW = -1.0f;
 
 		return true;
 	}
@@ -110,7 +110,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_GI_visibility_validation(const HIPRTR
 	if (!visible)
 	{
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
-		reservoir.UCW = 0.0f;
+		reservoir.UCW = -1.0f;
 
 		return true;
 	}
