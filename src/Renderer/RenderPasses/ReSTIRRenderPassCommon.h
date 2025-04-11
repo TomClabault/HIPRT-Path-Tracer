@@ -23,11 +23,10 @@ public:
 		OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
 		OrochiBuffer<unsigned int>& per_pixel_spatial_reuse_direction_mask_u,
 		OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull,
-		OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer,
-		OrochiBuffer<float>& decoupled_shading_reuse_mis_weights)
+		OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer)
 	{
 		resize_decoupled_shading_reuse_buffer<IsReSTIRGI>(renderer, new_width, new_height, 
-			decoupled_shading_reuse_buffer, decoupled_shading_reuse_mis_weights);
+			decoupled_shading_reuse_buffer);
 		resize_directional_reuse_buffers<IsReSTIRGI>(renderer, new_width, new_height,
 			per_pixel_spatial_reuse_radius,
 			per_pixel_spatial_reuse_direction_mask_u,
@@ -36,8 +35,7 @@ public:
 
 	template <bool IsReSTIRGI>
 	static void resize_decoupled_shading_reuse_buffer(GPURenderer* renderer, int new_width, int new_height,
-		OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer,
-		OrochiBuffer<float>& decoupled_shading_reuse_mis_weights)
+		OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer)
 	{
 		bool buffer_needed = (IsReSTIRGI
 			? renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING)
@@ -47,10 +45,7 @@ public:
 		buffer_needed &= spatial_pass_settings.do_spatial_reuse_pass;
 
 		if (buffer_needed)
-		{
 			decoupled_shading_reuse_buffer.resize(new_width * new_height);
-			decoupled_shading_reuse_mis_weights.resize((spatial_pass_settings.reuse_neighbor_count + 1) * new_width * new_height);
-		}
 	}
 
 	template <bool IsReSTIRGI>
@@ -78,13 +73,12 @@ public:
 		OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull,
 		OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_hits,
 		OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_total,
-		OrochiBuffer<ColorRGB32F>& decoupled_shading_buffer,
-		OrochiBuffer<float>& decoupled_shading_reuse_mis_weights)
+		OrochiBuffer<ColorRGB32F>& decoupled_shading_buffer)
 	{
 		bool render_data_updated = false;
 
 		render_data_updated |= pre_render_update_decoupled_shading_buffers<IsReSTIRGI>(render_data, renderer, 
-			decoupled_shading_buffer, decoupled_shading_reuse_mis_weights);
+			decoupled_shading_buffer);
 		render_data_updated |= pre_render_update_directional_reuse_buffers<IsReSTIRGI>(render_data, renderer,
 			per_pixel_spatial_reuse_radius,
 			per_pixel_spatial_reuse_direction_mask_u,
@@ -97,8 +91,7 @@ public:
 
 	template <bool IsReSTIRGI>
 	static bool pre_render_update_decoupled_shading_buffers(const HIPRTRenderData& render_data, GPURenderer* renderer,
-		OrochiBuffer<ColorRGB32F>& decoupled_shading_buffer,
-		OrochiBuffer<float>& decoupled_shading_reuse_mis_weights)
+		OrochiBuffer<ColorRGB32F>& decoupled_shading_buffer)
 	{
 		bool decoupled_shading_reuse_used = (IsReSTIRGI
 			? renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING)
@@ -113,22 +106,15 @@ public:
 
 				return true;
 			}
-
-			if (decoupled_shading_reuse_mis_weights.get_element_count() == 0)
-			{
-				int spatial_sample_count = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).reuse_neighbor_count + 1;
-
-				decoupled_shading_reuse_mis_weights.resize(spatial_sample_count * renderer->m_render_resolution.x * renderer->m_render_resolution.y);
-			}
 		}
 		else
 		{
 			if (decoupled_shading_buffer.get_element_count() > 0)
+			{
 				decoupled_shading_buffer.free();
-			if (decoupled_shading_reuse_mis_weights.get_element_count() > 0)
-				decoupled_shading_reuse_mis_weights.free();
 
-			return true;
+				return true;
+			}
 		}
 
 		return false;
@@ -224,12 +210,11 @@ public:
 		OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull,
 		OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_hits,
 		OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_total,
-		OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer,
-		OrochiBuffer<float>& decoupled_shading_reuse_mis_weights)
+		OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer)
 	{
 		bool render_data_invalidated = false;
 
-		render_data_invalidated |= free_decoupled_shading_reuse_buffer<IsReSTIRGI>(decoupled_shading_reuse_buffer, decoupled_shading_reuse_mis_weights);
+		render_data_invalidated |= free_decoupled_shading_reuse_buffer<IsReSTIRGI>(decoupled_shading_reuse_buffer);
 		render_data_invalidated |= free_directional_reuse_buffers<IsReSTIRGI>(
 			per_pixel_spatial_reuse_radius,
 			per_pixel_spatial_reuse_direction_mask_u,
@@ -241,19 +226,11 @@ public:
 	}
 
 	template <bool IsReSTIRGI>
-	static bool free_decoupled_shading_reuse_buffer(OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer,
-		OrochiBuffer<float>& decoupled_shading_reuse_mis_weights)
+	static bool free_decoupled_shading_reuse_buffer(OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer)
 	{
 		bool buffer_freed = false;
 
 		if (decoupled_shading_reuse_buffer.get_element_count() > 0)
-		{
-			decoupled_shading_reuse_buffer.free();
-
-			buffer_freed = true;
-		}
-
-		if (decoupled_shading_reuse_mis_weights.get_element_count() > 0)
 		{
 			decoupled_shading_reuse_buffer.free();
 
@@ -307,8 +284,7 @@ public:
 		OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull,
 		OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_hits,
 		OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_total,
-		OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer,
-		OrochiBuffer<float>& decoupled_shading_reuse_mis_weights)
+		OrochiBuffer<ColorRGB32F>& decoupled_shading_reuse_buffer)
 	{
 		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 
@@ -320,7 +296,6 @@ public:
 		common_spatial_pass_settings.spatial_reuse_hit_rate_hits = reinterpret_cast<AtomicType<unsigned long long int>*>(spatial_reuse_statistics_hit_hits.get_device_pointer());
 
 		common_spatial_pass_settings.decoupled_shading_reuse_buffer = decoupled_shading_reuse_buffer.get_device_pointer();
-		common_spatial_pass_settings.decoupled_shading_reuse_mis_weights = decoupled_shading_reuse_mis_weights.get_device_pointer();
 	}
 };
 

@@ -90,8 +90,7 @@ void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 		m_per_pixel_spatial_reuse_radius, 
 		m_per_pixel_spatial_reuse_direction_mask_u, 
 		m_per_pixel_spatial_reuse_direction_mask_ull,
-		m_decoupled_shading_reuse_buffer,
-		m_decoupled_shading_reuse_mis_weights);
+		m_decoupled_shading_reuse_buffer);
 }
 
 bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -156,8 +155,7 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer, 
-			m_decoupled_shading_reuse_mis_weights);
+			m_decoupled_shading_reuse_buffer);
 	}
 	else
 	{
@@ -189,8 +187,7 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer,
-			m_decoupled_shading_reuse_mis_weights);
+			m_decoupled_shading_reuse_buffer);
 	}
 
 	if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.auto_reuse_radius)
@@ -403,8 +400,7 @@ void ReSTIRGIRenderPass::update_render_data()
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer,
-			m_decoupled_shading_reuse_mis_weights);
+			m_decoupled_shading_reuse_buffer);
 	}
 	else
 	{
@@ -451,6 +447,5 @@ float ReSTIRGIRenderPass::get_VRAM_usage() const
 		m_per_pixel_spatial_reuse_direction_mask_u.get_byte_size() +
 		m_per_pixel_spatial_reuse_direction_mask_ull.get_byte_size() +
 		m_per_pixel_spatial_reuse_radius.get_byte_size() + 
-		m_decoupled_shading_reuse_buffer.get_byte_size() + 
-		m_decoupled_shading_reuse_mis_weights.get_byte_size()) / 1000000.0f;
+		m_decoupled_shading_reuse_buffer.get_byte_size()) / 1000000.0f;
 }

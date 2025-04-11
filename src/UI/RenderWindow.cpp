@@ -18,16 +18,13 @@
 
 #include "stb_image_write.h"
 
-// TODO immediate: decoupled shading and reuse seems to be okay? Try more
-//		Actually: maybe there is an issue in disabling the decoupled shading reuse because it seems to be working work actually: when playing with "with canonical", "without canon" or "only canon", we can see the difference
+// Maybe we can shade the final neighbors and on top of that, shade the spatial candidates
 
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 // - distance rejection heuristic for reconnection
 // - Same random neighbors seed per warp for coaslescing even with directional spatial reuse
-// - For the decoupled shading and reuse, maybe don't compute the O(N^2) MIS weights but instead just use the pixels litterally next to us and assume they are always correct neighbors (1/M weights) --> maybe use G-buffer heuristics to help
-//		- IF this introduces low frequency noise and this is unusable, maybe try shading the spatial candidates of the second spatial pass? Since we already have good mis weigths for them and in the spatial pass maybe they're not going to be trash and so we're going to get a nice quality boost out of it
 // - Is OVS efficient? Should we have it enabled by default or not? Test on some big scenes
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk

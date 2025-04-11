@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_RESTI_SETTINGS_HELPER_H
 
 #include "Device/includes/ReSTIR/Surface.h"
+#include "Device/includes/ReSTIR/MISWeightsCommon.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -88,6 +89,15 @@ struct ReSTIRSettingsHelper
 			return render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[pixel_index].M;
 		else
 			return render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[pixel_index].M;
+	}
+
+	template <bool IsReSTIRGI>
+	HIPRT_HOST_DEVICE static ReSTIRReservoirType<IsReSTIRGI>* get_restir_spatial_pass_input_reservoirs(const HIPRTRenderData& render_data)
+	{
+		if constexpr (IsReSTIRGI)
+			return render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs;
+		else
+			return render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
 	}
 
 	template <bool IsReSTIRGI>

@@ -9,6 +9,7 @@
 #include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
+#include "Device/kernels/ReSTIR/DI/DecoupledShading.h"
 #include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 #include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
@@ -34,7 +35,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -48,7 +49,7 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 181
+#define DEBUG_PIXEL_X 190
 #define DEBUG_PIXEL_Y 217
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
@@ -589,6 +590,9 @@ void CPURenderer::ReSTIR_DI_pass()
     }
 
     configure_ReSTIR_DI_output_buffer();
+
+    launch_decoupled_shading_pass();
+
     m_restir_di_state.odd_frame = !m_restir_di_state.odd_frame;
 }
 
@@ -830,6 +834,13 @@ void CPURenderer::launch_ReSTIR_DI_spatial_reuse_pass(int spatial_reuse_pass_ind
 
     debug_render_pass([this](int x, int y) {
         ReSTIR_DI_SpatialReuse(m_render_data, x, y);
+    });
+}
+
+void CPURenderer::launch_decoupled_shading_pass()
+{
+    debug_render_pass([this](int x, int y) {
+        ReSTIR_DI_DecoupledShading(m_render_data, x, y);
     });
 }
 

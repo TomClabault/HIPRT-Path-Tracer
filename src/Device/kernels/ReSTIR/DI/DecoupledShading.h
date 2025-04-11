@@ -92,7 +92,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
 	count_valid_spatial_neighbors<false>(render_data,
-		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
+		center_pixel_surface, input_reservoir_buffer,
+		center_pixel_coords, cos_sin_theta_rotation, 
+		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
 	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed);
@@ -145,9 +147,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 				continue;
 
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
-		float target_function_at_center = 0.0f;
 
-		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<false>(render_data, neighbor_index);
+		float target_function_at_center = 0.0f;
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (neighbor_index == reused_neighbors_count)
@@ -155,12 +156,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 				// the target function of the center reservoir
 				target_function_at_center = neighbor_reservoir.sample.target_function;
 			else
-			{
-				if (do_neighbor_target_function_visibility)
-					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-				else
-					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-			}
+				target_function_at_center = ReSTIR_DI_evaluate_target_function<false>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 		}
 
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
@@ -202,14 +198,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 #error "Unsupported bias correction mode"
 #endif
 
-		neighbor_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-		decoupled_shading_reuse_result += shade_ReSTIR_DI_reservoir(render_data, center_pixel_surface.ray_volume_state, center_pixel_surface.material, center_pixel_surface.last_hit_primitive_index,
-			center_pixel_surface.shading_point, center_pixel_surface.view_direction, center_pixel_surface.shading_normal, center_pixel_surface.geometric_normal,
-			neighbor_reservoir, random_number_generator) * mis_weight;
+		if (mis_weight > 0.0f && target_function_at_center > 0.0f)
+		{
+			neighbor_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			decoupled_shading_reuse_result += shade_ReSTIR_DI_reservoir(render_data, center_pixel_surface.ray_volume_state, center_pixel_surface.material, center_pixel_surface.last_hit_primitive_index,
+				center_pixel_surface.shading_point, center_pixel_surface.view_direction, center_pixel_surface.shading_normal, center_pixel_surface.geometric_normal,
+				neighbor_reservoir, random_number_generator) * mis_weight;
+		}
 	}
 
 	render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[center_pixel_index] = decoupled_shading_reuse_result;
-
 }
 
 #endif

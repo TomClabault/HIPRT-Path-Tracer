@@ -142,7 +142,6 @@ struct ReSTIRCommonSpatialPassSettings
 	// and the shading result will be stored in this buffer and will then be looked up during path tracing
 	// when we want our ReSTIR DI direct lighting estimation
 	ColorRGB32F* decoupled_shading_reuse_buffer = nullptr;
-	float* decoupled_shading_reuse_mis_weights = nullptr;
 };
 
 struct ReSTIRCommonNeighborSimiliaritySettings

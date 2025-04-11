@@ -47,6 +47,7 @@ struct HIPRTRenderSettings
 
 	bool enable_direct = true;
 	bool DEBUG_DO_BSDF_RATIO = false;
+	int DEBUG_RESTIR_FRAME_SKIP  = 2;
 	bool DEBUG_DOUBLE_BSDF_SHADING = false;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
 	AtomicType<unsigned long long int>* DEBUG_SUM_COUNT = nullptr;

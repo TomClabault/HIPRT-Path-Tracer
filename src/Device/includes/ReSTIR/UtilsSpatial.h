@@ -326,6 +326,7 @@ HIPRT_HOST_DEVICE void spatial_neighbor_advance_rng(const HIPRTRenderData& rende
 template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRenderData& render_data,
 	const ReSTIRSurface& center_pixel_surface,
+	const ReSTIRReservoirType<IsReSTIRGI>* spatial_reservoirs,
 	int2 center_pixel_coords, float2 cos_sin_theta_rotation,
 	int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
@@ -357,10 +358,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 		if (spatial_pass_settings.compute_spatial_reuse_hit_rate)
 			hippt::atomic_fetch_add(spatial_pass_settings.spatial_reuse_hit_rate_hits, 1ull);
 
-		out_valid_neighbor_M_sum += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
+		out_valid_neighbor_M_sum += spatial_reservoirs[neighbor_index].M;
 		out_valid_neighbor_count++;
 		out_neighbor_heuristics_cache |= (1 << neighbor_index);
 	}
+}
+
+template <bool IsReSTIRGI>
+HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRenderData& render_data,
+	const ReSTIRSurface& center_pixel_surface,
+	int2 center_pixel_coords, float2 cos_sin_theta_rotation,
+	int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
+{
+	const ReSTIRReservoirType<IsReSTIRGI>* spatial_reservoirs = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoirs<IsReSTIRGI>(render_data);
+	count_valid_spatial_neighbors<IsReSTIRGI>(render_data, 
+		center_pixel_surface, spatial_reservoirs,
+		center_pixel_coords, cos_sin_theta_rotation, 
+		out_valid_neighbor_count, out_valid_neighbor_M_sum, out_neighbor_heuristics_cache);
 }
 
 #endif

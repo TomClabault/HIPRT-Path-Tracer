@@ -46,7 +46,7 @@ using ReSTIRSampleType = typename ReSTIRTypeStruct<IsReSTIRGI>::SampleType;
 template <bool IsReSTIRGI>
 using ReSTIRReservoirType = typename ReSTIRTypeStruct<IsReSTIRGI>::ReservoirType;
 
-HIPRT_HOST_DEVICE float symmetric_ratio_MIS_weights_difference_function(float target_function_at_center, float target_function_from_i, float exponent)
+HIPRT_HOST_DEVICE HIPRT_INLINE float symmetric_ratio_MIS_weights_difference_function(float target_function_at_center, float target_function_from_i, float exponent)
 {
 	if (target_function_at_center == 0.0f || target_function_from_i == 0.0f)
 		return 0.0f;

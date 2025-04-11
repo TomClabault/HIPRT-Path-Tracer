@@ -196,8 +196,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer,
-			m_decoupled_shading_reuse_mis_weights);
+			m_decoupled_shading_reuse_buffer);
 	}
 	else
 	{
@@ -236,8 +235,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer,
-			m_decoupled_shading_reuse_mis_weights);
+			m_decoupled_shading_reuse_buffer);
 	}
 
 	if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.auto_reuse_radius)
@@ -262,8 +260,7 @@ void ReSTIRDIRenderPass::update_render_data()
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer,
-			m_decoupled_shading_reuse_mis_weights);
+			m_decoupled_shading_reuse_buffer);
 
 		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
 		m_render_data->render_settings.restir_di_settings.restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
@@ -299,8 +296,7 @@ void ReSTIRDIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 		m_per_pixel_spatial_reuse_radius, 
 		m_per_pixel_spatial_reuse_direction_mask_u, 
 		m_per_pixel_spatial_reuse_direction_mask_ull, 
-		m_decoupled_shading_reuse_buffer,
-		m_decoupled_shading_reuse_mis_weights);
+		m_decoupled_shading_reuse_buffer);
 }
 
 bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -367,30 +363,33 @@ bool ReSTIRDIRenderPass::launch()
 
 	// If ReSTIR DI is enabled
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
-		launch_presampling_lights_pass();
-
-	compute_optimal_spatial_reuse_radii();
-
-	launch_initial_candidates_pass();
-
-	if (m_render_data->render_settings.restir_di_settings.do_fused_spatiotemporal)
-		// Launching the fused spatiotemporal kernel
-		launch_spatiotemporal_pass();
-	else
+	if (m_render_data->render_settings.sample_number % m_render_data->render_settings.DEBUG_RESTIR_FRAME_SKIP == 0)
 	{
-		// Launching the temporal and spatial passes separately
+		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+			launch_presampling_lights_pass();
 
-		if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-			launch_temporal_reuse_pass();
+		compute_optimal_spatial_reuse_radii();
 
-		if (restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-			launch_spatial_reuse_passes();
+		launch_initial_candidates_pass();
+
+		if (m_render_data->render_settings.restir_di_settings.do_fused_spatiotemporal)
+			// Launching the fused spatiotemporal kernel
+			launch_spatiotemporal_pass();
+		else
+		{
+			// Launching the temporal and spatial passes separately
+
+			if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+				launch_temporal_reuse_pass();
+
+			if (restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
+				launch_spatial_reuse_passes();
+		}
+
+		configure_output_buffer();
 	}
 
 	launch_decoupled_shading_pass();
-
-	configure_output_buffer();
 
 	odd_frame = !odd_frame;
 
@@ -696,6 +695,11 @@ void ReSTIRDIRenderPass::compute_render_times()
 		if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.number_of_passes > 1 && m_spatial_reuse_events_recorded)
 			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start, m_spatial_reuse_time_stop));
 	}
+
+	bool decoupled_shading_enabled = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_TRUE;
+	bool spatial_reuse = m_render_data->render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass;
+	if (decoupled_shading_enabled || spatial_reuse)
+		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->get_last_execution_time();
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_kernels()
@@ -778,6 +782,5 @@ float ReSTIRDIRenderPass::get_VRAM_usage() const
 		m_spatial_output_reservoirs_1.get_byte_size() +
 		m_spatial_output_reservoirs_2.get_byte_size() +
 		m_presampled_lights_buffer.get_byte_size() +
-		m_decoupled_shading_reuse_buffer.get_byte_size() +
-		m_decoupled_shading_reuse_mis_weights.get_byte_size()) / 1000000.0f;
+		m_decoupled_shading_reuse_buffer.get_byte_size()) / 1000000.0f;
 }

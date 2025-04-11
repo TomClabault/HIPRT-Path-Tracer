@@ -98,7 +98,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
 	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed);
-	ColorRGB32F decoupled_shading_reuse_result;
 
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
@@ -234,17 +233,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			center_pixel_surface,
 			neighbor_index, reused_neighbors_count,
 			random_number_generator);
-
-		if (render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index == render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 &&
-			ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE)
-		{
-			// TODO, set mis weighty to 0 if target function is 0
-			render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_mis_weights[center_pixel_index + render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * neighbor_index] = mis_weight;
-			/*neighbor_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-			decoupled_shading_reuse_result += shade_ReSTIR_DI_reservoir(render_data, center_pixel_surface.ray_volume_state, center_pixel_surface.material, center_pixel_surface.last_hit_primitive_index,
-				center_pixel_surface.shading_point, center_pixel_surface.view_direction, center_pixel_surface.shading_normal, center_pixel_surface.geometric_normal,
-				neighbor_reservoir, random_number_generator) * mis_weight;*/
-		}
 	}
 
 	float normalization_numerator = 1.0f;
@@ -336,9 +324,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
-#if ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE
-	render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[center_pixel_index] = decoupled_shading_reuse_result;
-#endif
 
 }
 

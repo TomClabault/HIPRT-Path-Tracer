@@ -74,6 +74,7 @@ public:
 
     void launch_ReSTIR_DI_temporal_reuse_pass();
     void launch_ReSTIR_DI_spatial_reuse_pass(int spatial_reuse_pass_index);
+    void launch_decoupled_shading_pass();
     void launch_ReSTIR_DI_spatiotemporal_reuse_pass();
 
     void tracing_pass();

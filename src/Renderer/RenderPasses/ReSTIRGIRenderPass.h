@@ -81,7 +81,6 @@ private:
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
 
 	OrochiBuffer<ColorRGB32F> m_decoupled_shading_reuse_buffer;
-	OrochiBuffer<float> m_decoupled_shading_reuse_mis_weights;
 };
 
 #endif

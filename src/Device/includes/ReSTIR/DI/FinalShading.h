@@ -111,7 +111,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRen
 {
 	int pixel_index = pixel_coords.x + pixel_coords.y * render_data.render_settings.render_resolution.x;
 
-    if (render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE)
+    bool decoupled_reuse_shading_enabled = render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE;
+    if (decoupled_reuse_shading_enabled)
     {
         ColorRGB32F color = render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
 
@@ -128,7 +129,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRen
     // anymore i.e. if it refers to a light that doesn't exist anymore
     validate_reservoir(render_data, reservoir);
 
-    bool decoupled_reuse_shading_enabled = render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE;
     if (!decoupled_reuse_shading_enabled)
     {
         // No decoupled
