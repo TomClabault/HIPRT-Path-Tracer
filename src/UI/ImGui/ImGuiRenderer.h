@@ -38,6 +38,7 @@ public:
 	static void wrapping_tooltip(const std::string& text);
 	static void show_help_marker(const std::string& text, ImVec4 color = ImVec4(-1.0f, -1.0f, -1.0f, -1.0f));
 	static void add_tooltip(const std::string& tooltip_text, ImGuiHoveredFlags flags = ImGuiHoveredFlags_AllowWhenDisabled);
+	static void add_warning(const std::string& warning_text);
 
 	static bool ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips);
 

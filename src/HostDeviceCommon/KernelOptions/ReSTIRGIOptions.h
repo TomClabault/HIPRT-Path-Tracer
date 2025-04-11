@@ -99,7 +99,7 @@
  * 
  * More bits use more VRAM but increase the precision of the directional reuse
  */
-#define ReSTIR_GI_SpatialDirectionalReuseBitCount RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT_INTERNAL
+#define ReSTIR_GI_SpatialDirectionalReuseBitCount (RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT) // Just clamping to 64
 
 /**
  * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]

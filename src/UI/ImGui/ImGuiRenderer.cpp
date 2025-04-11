@@ -40,6 +40,12 @@ void ImGuiRenderer::add_tooltip(const std::string& tooltip_text, ImGuiHoveredFla
 		ImGuiRenderer::wrapping_tooltip(tooltip_text);
 }
 
+void ImGuiRenderer::add_warning(const std::string& warning_text)
+{
+	ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
+	ImGuiRenderer::show_help_marker(warning_text.c_str());
+}
+
 bool ImGuiRenderer::ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips)
 {
 	if (ImGui::BeginCombo(combo_text.c_str(), items[*combo_value]))

@@ -342,7 +342,6 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 					ImGui::TreePush("Number of samples not divisible GMoN tree");
 
 					// But the maximum number of samples isn't divisible by the number of sets
-					ImGui::Text("Warning: ");
 					std::string warning_text = "Currently using GMoN (\"Post-processing\" panel) but the number of "
 						"maximum samples entered here isn't divisible by the number of GMoN sets. This means that "
 						"what's displayed in the viewport will only be "
@@ -352,7 +351,7 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 						"You click the button to the right to round up the maximum number of samples to one that is "
 						"divisible by the number of GMoN sets ("
 						+ std::to_string(m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT)) + ")";
-					ImGuiRenderer::show_help_marker(warning_text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+					ImGuiRenderer::add_warning(warning_text);
 
 					ImGui::SameLine();
 					if (ImGui::Button("Round up"))
@@ -974,8 +973,7 @@ void ImGuiSettingsWindow::draw_environment_panel()
 			render_made_piggy |= ImGui::Checkbox("Scale background intensity", (bool*)&m_renderer->get_world_settings().envmap_scale_background_intensity);
 			if (m_renderer->get_world_settings().envmap_intensity != 1.0f && !m_renderer->get_world_settings().envmap_scale_background_intensity)
 			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Using a custom envmap intensity without scaling the background "
+				ImGuiRenderer::add_warning("Using a custom envmap intensity without scaling the background "
 					"intensity can result in discrepancies when looking at the envmap through a mirror or "
 					"transparent glass for example (glass with IOR 1.0f). In these rare cases, the envmap "
 					"will appear brighter through the objects than when viewed directly.\n"
@@ -1028,6 +1026,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			if (!render_settings.accumulate)
 				ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI ||
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
+			{
+				ImGuiRenderer::add_warning("Adaptive sampling may not be efficient when used with ReSTIR. This is because "
+					"ReSTIR looks around the current pixel to find neighbor to reuse but with adaptive sampling enabled, most pixels "
+					"are not going to be sampled anymore. This means that these pixels contain stale samples that strongly biases ReSTIR is reused.\n"
+					"Thus, these sample are not reused to avoid bias but this then drastically reduces the efficiency of ReSTIR and the overall "
+					"setup becomes inefficient.");
+			}
 
 			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
@@ -1501,14 +1508,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage());
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION) == KERNEL_OPTION_FALSE)
-				{
-					ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-					ImGuiRenderer::show_help_marker("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
+					ImGuiRenderer::add_warning("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
 						"are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
 						"\nThis will manifest as some darkening (somewhat similar to rendering with less bounces) on perfectly specular surfaces (delta distributions).\n\n"
 						""
 						"Enable \"BSDF delta distribution optimization\" in \"Performance Settings\" --> \"General Settings\" to get rid of this issue.");
-				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::SliderInt("M-cap", &render_settings.restir_gi_settings.m_cap, 0, 48))
@@ -2963,8 +2967,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	if (!render_data.render_settings.accumulate)
 	{
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::Text("Warning: ");
-		ImGuiRenderer::show_help_marker("GMoN cannot be used without enabling accumulation.", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+
+		ImGuiRenderer::add_warning("GMoN cannot be used without enabling accumulation.");
 	}
 	ImGui::BeginDisabled(!render_data.render_settings.accumulate);
 	if (ImGui::CollapsingHeader("GMoN"))
@@ -3061,10 +3065,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (m_render_window->get_display_view_system()->get_current_display_view_type() != DisplayViewType::GMON_BLEND)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("The display view currently in used isn't \"GMoN blend\" so the output of GMoN cannot be visualized.", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
+				ImGuiRenderer::add_warning("The display view currently in used isn't \"GMoN blend\" so the output of GMoN cannot be visualized.");
 		}
 
 		ImGui::TreePop();
@@ -3231,8 +3232,7 @@ void ImGuiSettingsWindow::draw_microfacet_model_regularization_tree()
 	}
 	if (regularize_bsdf && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
 	{
-		ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-		ImGuiRenderer::show_help_marker("Microfacet model regularization cannot be used with height-correlated masking shadowing");
+		ImGuiRenderer::add_warning("Microfacet model regularization cannot be used with height-correlated masking shadowing");
 
 		ImGui::TreePush("Use height uncorrelated button tree");
 		if (ImGui::Button("Switch to height-uncorrelated masking shadowing"))
@@ -3362,8 +3362,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			"There is basically no point in disabling that, this is just for performance comparisons.");
 		if (!delta_distrib_opti && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
 		{
-			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-			ImGuiRenderer::show_help_marker("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
+			ImGuiRenderer::add_warning("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
 				"are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
 				"\nThis will manifest as darkening on perfectly specular surfaces (delta distributions).\n\n"
 				""

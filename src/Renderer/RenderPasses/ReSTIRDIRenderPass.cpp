@@ -389,8 +389,8 @@ bool ReSTIRDIRenderPass::launch()
 
 		configure_output_buffer();
 	}
-
-	launch_decoupled_shading_pass();
+	//else
+		launch_decoupled_shading_pass();
 
 	odd_frame = !odd_frame;
 

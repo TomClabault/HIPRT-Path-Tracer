@@ -18,9 +18,8 @@
 
 #include "stb_image_write.h"
 
-// We're having some issues with the frame skip feature because the frame skip essentially has us rely strongly on the reuse: and where the reuse doesn't work (glossy), we have quite a bit of noise. Idea: during skipped frames, shade using our direct +1/-1 neighbors as the canonical sample
+// Can we maybe not do the decoupled shading to save on performance (i.e. shade during the last spatial reuse pass instead of in a separate pass). The quality should be equivalent ish to not using the separate shading pass but with an increase in performance --> beneficial to get more samples and better cover the flaws of the frame skip feature
 // Fix MIS weights compilation
-// Fix adaptive sampling with decoupled shading reuse
 
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission
