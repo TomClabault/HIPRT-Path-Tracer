@@ -340,9 +340,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		unsigned long long int* spatial_reuse_hit_rate_hits = nullptr;
-		unsigned long long int* spatial_reuse_hit_rate_total = nullptr;
-
 		if (spatial_pass_settings.compute_spatial_reuse_hit_rate)
 			hippt::atomic_fetch_add(spatial_pass_settings.spatial_reuse_hit_rate_total, 1ull);
 

@@ -18,14 +18,15 @@
 
 #include "stb_image_write.h"
 
-// Maybe we can shade the final neighbors and on top of that, shade the spatial candidates
+// We're having some issues with the frame skip feature because the frame skip essentially has us rely strongly on the reuse: and where the reuse doesn't work (glossy), we have quite a bit of noise. Idea: during skipped frames, shade using our direct +1/-1 neighbors as the canonical sample
+// Fix MIS weights compilation
 
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission
+// - Test ReSTIR GI with dispersion
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 // - distance rejection heuristic for reconnection
 // - Same random neighbors seed per warp for coaslescing even with directional spatial reuse
-// - Is OVS efficient? Should we have it enabled by default or not? Test on some big scenes
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;
@@ -45,19 +46,6 @@ extern ImGuiLogger g_imgui_logger;
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - BSDF MIS Reuse for ReSTIR DI
 // - Force albedo to white for spatial reuse? Because what's interesting to reuse is the shape of the BRDF and the incident radiance. Resampling from a black diffuse is still interesting. The albedo doesn't matter
-// - OVS - Optimal visibility shaidng
-// - symmetric ratio MIS
-// - shade secondary surface by looking up screen space reservoir if possible ReSTIR DI --> 
-//		-We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir 
-//			was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. 
-//			--> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it 
-//			won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
-// 
-//			Or we can use some fake MIS weights to combine a BSDF sample to the light reservoir
-// - Decoupled shading reuse for ReSTIR DI running average for the shading weights?
-//		(decoupledShadingBuffer = decoupledShadingBuffer + ((sampleColor * sampleReservoir.W) - decoupledShadingBuffer) / (float) (decoupledShadingSampleCount + 1);
-//		decoupledShadingSampleCount++;
-//		https://www.reddit.com/r/GraphicsProgramming/comments/1j03npo/comment/mg07h5a/?context=3
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 // - Decoupled shading reuse restir gi
@@ -132,6 +120,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// - Do not do ReSTIR on specular surfaces: apploies to ReSTIR DI and GI
 // - flush to zero denormal float numbers compiler option?
 //		
  /*

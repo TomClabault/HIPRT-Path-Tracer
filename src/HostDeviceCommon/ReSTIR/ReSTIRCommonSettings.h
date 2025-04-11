@@ -142,6 +142,13 @@ struct ReSTIRCommonSpatialPassSettings
 	// and the shading result will be stored in this buffer and will then be looked up during path tracing
 	// when we want our ReSTIR DI direct lighting estimation
 	ColorRGB32F* decoupled_shading_reuse_buffer = nullptr;
+	// If using decoupled shading reuse, ReSTIR will only be run every
+	// 'decoupled_shading_reuse_frame_skip' frames. On the frames where ReSTIR isn't run,
+	// the shading is going to be done solely by looking at the output reservoirs of the last
+	// ReSTIR run and by shading using random reservoirs around the pixel being shaded
+	//
+	// This amortizes the resampling cost at a slight bias cost on glossy surfaces
+	int decoupled_shading_reuse_frame_skip;
 };
 
 struct ReSTIRCommonNeighborSimiliaritySettings

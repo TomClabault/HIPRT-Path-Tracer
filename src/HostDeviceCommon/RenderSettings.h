@@ -47,7 +47,6 @@ struct HIPRTRenderSettings
 
 	bool enable_direct = true;
 	bool DEBUG_DO_BSDF_RATIO = false;
-	int DEBUG_RESTIR_FRAME_SKIP  = 2;
 	bool DEBUG_DOUBLE_BSDF_SHADING = false;
 	bool DEBUG_DONT_REUSE_SPECULAR = false;
 	AtomicType<unsigned long long int>* DEBUG_SUM_COUNT = nullptr;
@@ -171,14 +170,14 @@ struct HIPRTRenderSettings
 	// enabled or according to 'stop_pixel_noise_threshold' if adaptive sampling is not enabled.
 	//
 	// If false, the render will not stop until all pixels have converged
-	bool enable_pixel_stop_noise_threshold = false;
+	bool enable_pixel_stop_noise_threshold = true;
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 90.0f;
+	float stop_pixel_percentage_converged = 80.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.075f;

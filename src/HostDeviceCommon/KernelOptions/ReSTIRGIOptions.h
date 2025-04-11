@@ -106,7 +106,7 @@
  *
  * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
  */
-#define ReSTIR_GI_DoOptimalVisibilitySampling KERNEL_OPTION_TRUE
+#define ReSTIR_GI_DoOptimalVisibilitySampling KERNEL_OPTION_FALSE
 
 /**
  * Decoupled shading and reuse for the spatial neighbors as proposed in

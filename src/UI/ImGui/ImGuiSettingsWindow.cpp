@@ -172,8 +172,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
 		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
-	if (ImGui::SliderInt("Debug farme skip", &render_settings.DEBUG_RESTIR_FRAME_SKIP, 1, 10))
-		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug bounce", &render_settings.DEBUG_BOUNCE, 0, 10))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
@@ -2008,6 +2006,26 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					"[Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]\n\n"
 					""
 					"All spatial neighbors will be shaded if this option is true.");
+				if (do_decoupled_shading)
+				{
+					ImGui::TreePush("Decoupled spatial reuse tree");
+
+					if (ImGui::SliderInt("Frame skip", &restir_settings.decoupled_shading_reuse_frame_skip, 1, 4))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("If using decoupled shading reuse, ReSTIR will only be run every N "
+						"frames. On the frames where ReSTIR isn't run, the shading is going to be done solely by "
+						"looking at the output reservoirs of the last ReSTIR run and by shading using random reservoirs "
+						"around the pixel being shaded\n\n."
+						""
+						"This amortizes the resampling cost at a slight bias cost on glossy surfaces.\n\n"
+						""
+						"1 disables the feature.\n"
+						"2 skips 1 frame\n"
+						"3 skips 2 frames\n"
+						"...");
+
+					ImGui::TreePop();
+				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::SliderInt("Spatial reuse pass count", &restir_settings.number_of_passes, 1, 8))
@@ -2049,16 +2067,16 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				}
 
 				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
-				ImGui::BeginDisabled(restir_settings.auto_reuse_radius);
 				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 0, 64))
 				{
+					restir_settings.auto_reuse_radius = false;
+
 					if (!restir_settings.debug_neighbor_location)
 						// Clamping if not debugging (we do allow negative values when debugging)
 						restir_settings.reuse_radius = std::max(0, restir_settings.reuse_radius);
 
 					m_render_window->set_render_dirty(true);
 				}
-				ImGui::EndDisabled();
 				ImGui::SameLine();
 				if (ImGui::Checkbox("Auto", &restir_settings.auto_reuse_radius))
 					m_render_window->set_render_dirty(true);

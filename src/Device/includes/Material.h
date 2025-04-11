@@ -109,15 +109,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
         emission = material.emission;
 
     DeviceUnpackedEffectiveMaterial unpacked_material(material);
-    // TODO DEBUGGING RESTIR GI REMOVE THESE LINES
-    //-------------------------------------------
-    //unpacked_material.roughness = 0.0f;// material.roughness;
-    //unpacked_material.metallic = 0.0f;// material.metallic;
-    //unpacked_material.specular = 1.0f;// material.metallic;
-    //-------------------------------------------
-
     unpacked_material.emissive_texture_used = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
     unpacked_material.emission = emission;
+
     // Roughening of the base roughness and second metallic roughness based
     // on the coat roughness. This should be precomputed instead of being done here
     //

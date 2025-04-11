@@ -352,6 +352,7 @@ void ReSTIRDIRenderPass::reset()
 
 bool ReSTIRDIRenderPass::launch()
 {
+	// If ReSTIR DI is enabled
 	if (!is_render_pass_used())
 		return false;
 
@@ -361,9 +362,9 @@ bool ReSTIRDIRenderPass::launch()
 	// pass oroEvents (if that flag isn't set to true before)
 	m_spatial_reuse_events_recorded = false;
 
-	// If ReSTIR DI is enabled
-
-	if (m_render_data->render_settings.sample_number % m_render_data->render_settings.DEBUG_RESTIR_FRAME_SKIP == 0)
+	bool decoupled_shading_reuse_disabled = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_FALSE;
+	bool not_skipping_frame = m_render_data->render_settings.sample_number % m_render_data->render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_frame_skip == 0;
+	if (decoupled_shading_reuse_disabled || not_skipping_frame)
 	{
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
 			launch_presampling_lights_pass();

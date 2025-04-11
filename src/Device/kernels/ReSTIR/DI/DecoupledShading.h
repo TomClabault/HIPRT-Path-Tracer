@@ -131,8 +131,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 			}
 		}
 
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data,
-			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, spatial_neighbors_rng);
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, neighbor_index, center_pixel_coords, cos_sin_theta_rotation, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
