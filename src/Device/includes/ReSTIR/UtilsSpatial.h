@@ -355,7 +355,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 		if (spatial_pass_settings.compute_spatial_reuse_hit_rate)
 			hippt::atomic_fetch_add(spatial_pass_settings.spatial_reuse_hit_rate_hits, 1ull);
 
-		out_valid_neighbor_M_sum += spatial_reservoirs[neighbor_index].M;
+		out_valid_neighbor_M_sum += spatial_reservoirs[neighbor_pixel_index].M;
 		out_valid_neighbor_count++;
 		out_neighbor_heuristics_cache |= (1 << neighbor_index);
 	}

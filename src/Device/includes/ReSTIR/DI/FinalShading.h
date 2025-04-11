@@ -118,125 +118,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRen
 
         return render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
     }
-    
-    ColorRGB32F out_color;
-
-    // Because the spatial reuse pass runs last, the output buffer of the spatial
-        // pass contains the reservoir whose sample we're going to shade
-    ReSTIRDIReservoir& reservoir = render_data.render_settings.restir_di_settings.restir_output_reservoirs[pixel_index];
-
-    // Validates the reservoir i.e. kills the reservoir if it isn't valid
-    // anymore i.e. if it refers to a light that doesn't exist anymore
-    validate_reservoir(render_data, reservoir);
-
-    if (!decoupled_reuse_shading_enabled)
+    else
     {
-        // No decoupled
+        // Because the spatial reuse pass runs last, the output buffer of the spatial
+            // pass contains the reservoir whose sample we're going to shade
+        ReSTIRDIReservoir& reservoir = render_data.render_settings.restir_di_settings.restir_output_reservoirs[pixel_index];
+
+        // Validates the reservoir i.e. kills the reservoir if it isn't valid
+        // anymore i.e. if it refers to a light that doesn't exist anymore
+        validate_reservoir(render_data, reservoir);
 
         return shade_ReSTIR_DI_reservoir(render_data,
             ray_payload.volume_state, ray_payload.material, closest_hit_info.primitive_index,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             reservoir, random_number_generator);
     }
-
-    float2 cos_sin_theta_rotation;
-    setup_adaptive_directional_spatial_reuse<false>(const_cast<HIPRTRenderData&>(render_data), pixel_index, cos_sin_theta_rotation, random_number_generator);
-
-    unsigned int random_neighbors_seed = render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_neighbors_rng_seed;
-
-    int valid_neighbor_count = 0;
-
-#define DO_OVER_Z 1
-#define DO_VERY_CLOSE_NEIGHBORS_OVER_M 0
-#if DO_OVER_Z == 1
-    if (render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE)
-    {
-        Xorshift32Generator spatial_neighbors_rng(random_neighbors_seed);
-
-        for (int i = 0; i < render_data.render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count + 1; i++)
-        {
-            int neighbor_index = get_spatial_neighbor_pixel_index<false>(render_data, i, pixel_coords, cos_sin_theta_rotation, spatial_neighbors_rng);
-            if (neighbor_index == -1)
-                continue;
-            else if (!check_neighbor_similarity_heuristics<false>(render_data, neighbor_index, pixel_index, closest_hit_info.inter_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<false>(render_data, closest_hit_info.geometric_normal, closest_hit_info.shading_normal)))
-                continue;
-
-            ReSTIRDIReservoir current_sample_reservoir = render_data.render_settings.restir_di_settings.restir_output_reservoirs[neighbor_index];
-            current_sample_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-
-            // Counting how many neighbors could have produced that sample, i.e, target_function > 0
-            int valid_neighbors_for_that_sample = 0;
-
-            Xorshift32Generator spatial_neighbors_rng_local(random_neighbors_seed);
-            for (int valid_neghbor_index = 0; valid_neghbor_index < render_data.render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count + 1; valid_neghbor_index++)
-            {
-                if (valid_neghbor_index == i)
-                    // The neighbor itself can always produce its own samples obviously
-                    valid_neighbors_for_that_sample++;
-                else
-                {
-                    int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, valid_neghbor_index, pixel_coords, cos_sin_theta_rotation, spatial_neighbors_rng_local);
-                    if (neighbor_pixel_index == -1)
-                        continue;
-                    else if (!check_neighbor_similarity_heuristics<false>(render_data, neighbor_pixel_index, pixel_index, closest_hit_info.inter_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<false>(render_data, closest_hit_info.geometric_normal, closest_hit_info.shading_normal)))
-                        continue;
-
-                    ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
-
-                    // valid_neighbors_for_that_sample++;
-                    valid_neighbors_for_that_sample += ReSTIR_DI_evaluate_target_function<true>(render_data, current_sample_reservoir.sample, neighbor_pixel_surface, random_number_generator) > 0;
-                }
-            }
-
-            if (neighbor_index != -1)
-            {
-                out_color += shade_ReSTIR_DI_reservoir(render_data,
-                    ray_payload.volume_state, ray_payload.material, closest_hit_info.primitive_index,
-                    closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-                    current_sample_reservoir, random_number_generator) / valid_neighbors_for_that_sample;
-            }
-        }
-    }
-
-    valid_neighbor_count = 1;
-
-#elif DO_VERY_CLOSE_NEIGHBORS_OVER_M == 1
-    if (render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE)
-    {
-        for (int i = 0; i < 5; i++)
-        {
-            int neighbor_index = -1;
-
-            if (i == 4)
-                // Center pixel
-                neighbor_index = pixel_index;
-            else
-            {
-                int2 offset = make_int2((i > 2 ? -1 : 1) * (i + 1) & 1, (i > 2 ? -1 : 1) * (i + 1) & 2);
-                offset *= 2;
-                int2 neighbor_pixel_coords = pixel_coords + offset;
-                if (neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.x < 0 ||
-                    neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y || neighbor_pixel_coords.y < 0)
-                    neighbor_index = -1;
-                else
-                    neighbor_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x;
-            }
-
-            if (neighbor_index != -1)
-            {
-                ReSTIRDIReservoir reservoir_to_shade = render_data.render_settings.restir_di_settings.restir_output_reservoirs[neighbor_index];
-
-                out_color += shade_ReSTIR_DI_reservoir(render_data,
-                    ray_payload.volume_state, ray_payload.material, closest_hit_info.primitive_index,
-                    closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-                    reservoir_to_shade, random_number_generator);
-                valid_neighbor_count++;
-            }
-        }
-    }
-#endif
-
-    return out_color / valid_neighbor_count;
 }
 
 #endif

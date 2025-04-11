@@ -134,7 +134,7 @@ public:
 		// Allocating / deallocating the adaptive directional spatial reuse buffers if the feature
 		// isn't used
 		bool render_data_invalidated = false;
-		if (spatial_pass_settings.use_adaptive_directional_spatial_reuse)
+		if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 		{
 			// Allocating the proper buffer whether or not we're using less than 32 bits per mask or more 
 			if (renderer->get_global_compiler_options()->get_macro_value(mask_bit_count_macro_name) <= 32 && per_pixel_spatial_reuse_direction_mask_u.get_element_count() == 0)

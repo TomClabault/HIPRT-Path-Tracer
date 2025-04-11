@@ -146,8 +146,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				continue;
 
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
-		float target_function_at_center = 0.0f;
 
+		float target_function_at_center = 0.0f;
 		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<false>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
@@ -312,11 +312,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// We also give the user the choice to remove bias using this option or not as it introduces very little bias
 	// in practice (but noticeable when switching back and forth between reference image/biased image)
 	//
-	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
-	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
-	if (render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass || 
-		render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index ||
-		(render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 == render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE))
+	// We only need this if we have a pass coming after that spatial pass (temporal reuse or decoupled shading or another spatial pass)
+	bool temporal_reuse = render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass;
+	bool decoupled_shading = (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 == render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE);
+	bool another_spatial = render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index;
+	bool another_pass_after = temporal_reuse || decoupled_shading || another_spatial;
+	if (another_pass_after)
 		ReSTIR_DI_visibility_test_kill_reservoir(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
 #endif
 

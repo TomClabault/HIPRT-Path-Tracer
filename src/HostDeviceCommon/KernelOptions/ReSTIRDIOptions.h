@@ -162,7 +162,7 @@
  * This is implemented by shading multiple reservoirs at path tracing time. This does not exactly
  * follow the ideas of the paper.
  */
-#define ReSTIR_DI_DoSpatialNeighborsDecoupledShading KERNEL_OPTION_TRUE
+#define ReSTIR_DI_DoSpatialNeighborsDecoupledShading KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 
