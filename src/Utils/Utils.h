@@ -21,6 +21,9 @@ public:
     static std::vector<unsigned char> tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure);
     static std::vector<unsigned char> tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure);
 
+    static void compute_alias_table(const std::vector<float>& input, std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum);
+    static void compute_alias_table(const std::vector<float>& input, float in_input_total_sum, std::vector<float>& out_probas, std::vector<int>& out_alias);
+
     static std::string file_to_string(const char* filepath);
     static void get_current_date_string(std::stringstream& ss);
 

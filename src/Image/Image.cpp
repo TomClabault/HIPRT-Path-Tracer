@@ -575,8 +575,6 @@ float& Image32Bit::operator[](int index)
     return m_pixel_data[index];
 }
 
-#define PRINT_MAX_RADIANCE 0
-
 std::vector<float> Image32Bit::compute_cdf() const
 {
     std::vector<float> out_cdf;
@@ -598,10 +596,6 @@ std::vector<float> Image32Bit::compute_cdf() const
         }
     }
 
-#if PRINT_MAX_RADIANCE == 1
-    std::cout << "Maximum luminance of envmap: " << max_luminance << std::endl;
-#endif
-
     return out_cdf;
 }
 
@@ -610,90 +604,24 @@ std::vector<float> Image32Bit::compute_cdf() const
  */
 void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum) const
 {
-    // TODO try using floats here to reduce memory usage during the construction and see if precision is an issue or not
+    float luminance_sum = 0.0f;
 
-    // A vector of the luminance of all the pixels of the envmap
-    // normalized such that the average of the elements of this vector is 'width*height'
-    std::vector<double> normalized_luminance_of_pixels(width * height);
-    double max_luminance = 0.0f;
-    double luminance_sum = 0.0f;
+    std::vector<float> texel_luminance(width * height);
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
         {
-            int index = y * width + x;
+            float luminance = luminance_of_pixel(x, y);
 
-            double luminance = static_cast<double>(luminance_of_pixel(x, y));
-            normalized_luminance_of_pixels[index] = luminance;
             luminance_sum += luminance;
-            max_luminance = std::max(max_luminance, luminance);
+            texel_luminance[x + y * width] = luminance;
         }
     }
 
-#if PRINT_MAX_RADIANCE == 1
-    std::cout << "Maximum luminance of envmap: " << max_luminance << std::endl;
-#endif
-
-    if (out_luminance_total_sum != nullptr)
+    if (out_luminance_total_sum)
         *out_luminance_total_sum = luminance_sum;
 
-    for (double& luminance_value : normalized_luminance_of_pixels)
-    {
-        // Normalize so that the sum of the elements is 1
-        luminance_value /= luminance_sum;
-
-        // Scale for alias table construction such that the average of
-        // the elements is 1
-        luminance_value *= (width * height);
-    }
-
-    out_probas.resize(width * height);
-    out_alias.resize(width * height);
-
-    std::deque<int> small;
-    std::deque<int> large;
-
-    for (int i = 0; i < normalized_luminance_of_pixels.size(); i++)
-    {
-        if (normalized_luminance_of_pixels[i] < 1.0f)
-            small.push_back(i);
-        else
-            large.push_back(i);
-    }
-
-    while (!small.empty() && !large.empty())
-    {
-        int small_index = small.front();
-        int large_index = large.front();
-
-        small.pop_front();
-        large.pop_front();
-
-        out_probas[small_index] = normalized_luminance_of_pixels[small_index];
-        out_alias[small_index] = large_index;
-
-        normalized_luminance_of_pixels[large_index] = (normalized_luminance_of_pixels[large_index] + normalized_luminance_of_pixels[small_index]) - 1.0f;
-        if (normalized_luminance_of_pixels[large_index] > 1.0f)
-            large.push_back(large_index);
-        else
-            small.push_back(large_index);
-    }
-
-    while (!large.empty())
-    {
-        int index = large.front();
-        large.pop_front();
-
-        out_probas[index] = 1.0f;
-    }
-
-    while (!small.empty())
-    {
-        int index = small.front();
-        small.pop_front();
-
-        out_probas[index] = 1.0f;
-    }
+    Utils::compute_alias_table(texel_luminance, luminance_sum, out_probas, out_alias);
 }
 
 float Image32Bit::compute_luminance_sum() const
