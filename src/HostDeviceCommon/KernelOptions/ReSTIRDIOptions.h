@@ -21,7 +21,6 @@
 #define RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT 3
 
 #define RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT 64 // CHANGE THIS ONE TO MODIFY THE NUMBER OF BITS.
-#define RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT_INTERNAL (RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT) // Just another macro for clamping to 64
 
 /**
 * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -146,14 +145,14 @@
  *
  * More bits use more VRAM but increase the precision of the directional reuse
  */
-#define ReSTIR_DI_SpatialDirectionalReuseBitCount RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT_INTERNAL
+#define ReSTIR_DI_SpatialDirectionalReuseBitCount (RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT)
 
 /**
  * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
  * 
  * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
  */
-#define ReSTIR_DI_DoOptimalVisibilitySampling KERNEL_OPTION_TRUE
+#define ReSTIR_DI_DoOptimalVisibilitySampling KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

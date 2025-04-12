@@ -13,17 +13,24 @@
 /**
  * The PDF is computed in area measure
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 uniform_sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 uniform_sample_one_emissive_triangle(
+    const int* triangles_indices, const int* emissive_triangles_indices, int emissive_triangle_count,
+    const float3* vertices_positions,
+    const int* material_indices, const DevicePackedTexturedMaterialSoA& materials_buffer,
+    Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
-    int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
-    int triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
+    //int random_index = 0;
+    int random_index = random_number_generator.random_index(emissive_triangle_count);
+    int triangle_index = emissive_triangles_indices[random_index];
 
-    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
-    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
-    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
+    float3 vertex_A = vertices_positions[triangles_indices[triangle_index * 3 + 0]];
+    float3 vertex_B = vertices_positions[triangles_indices[triangle_index * 3 + 1]];
+    float3 vertex_C = vertices_positions[triangles_indices[triangle_index * 3 + 2]];
 
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
+    //float rand_1 = 0.258484f;
+    //float rand_2 = 0.00124f;
 
     float sqrt_r1 = sqrt(rand_1);
     float u = 1.0f - sqrt_r1;
@@ -47,12 +54,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 uniform_sample_one_emissive_triangle(const
     light_info.emissive_triangle_index = triangle_index;
     light_info.light_source_normal = normal / length_normal; // Normalization
     light_info.light_area = length_normal * 0.5f;
-    light_info.emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[triangle_index]);
+    light_info.emission = materials_buffer.get_emission(material_indices[triangle_index]);
 
     pdf = 1.0f / light_info.light_area;
-    pdf /= render_data.buffers.emissive_triangles_count;
+    pdf /= emissive_triangle_count;
 
     return random_point_on_triangle;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 uniform_sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
+{
+    return uniform_sample_one_emissive_triangle(render_data.buffers.triangles_indices, render_data.buffers.emissive_triangles_indices, render_data.buffers.emissive_triangles_count,
+        render_data.buffers.vertices_positions,
+        render_data.buffers.material_indices, render_data.buffers.materials_buffer,
+        random_number_generator, pdf, light_info);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)

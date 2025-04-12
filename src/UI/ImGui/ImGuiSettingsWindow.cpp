@@ -44,6 +44,7 @@ void ImGuiSettingsWindow::draw()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("General render settings");
 	draw_render_settings_panel();
+	draw_render_stopping_conditions_panel();
 	draw_camera_panel();
 	draw_environment_panel();
 	draw_sampling_panel();
@@ -317,7 +318,14 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	draw_russian_roulette_options();
 
+	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
 	if (ImGui::CollapsingHeader("Render stopping condition"))
 	{
 		ImGui::TreePush("Stopping condition tree");
@@ -334,17 +342,16 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 					ImGui::TreePush("Number of samples not divisible GMoN tree");
 
 					// But the maximum number of samples isn't divisible by the number of sets
-					ImGui::Text("Warning: ");
 					std::string warning_text = "Currently using GMoN (\"Post-processing\" panel) but the number of "
 						"maximum samples entered here isn't divisible by the number of GMoN sets. This means that "
-						"what's displayed in the viewport will only be " 
+						"what's displayed in the viewport will only be "
 						+ std::to_string(std::max(1u, m_application_settings->max_sample_count / number_of_sets)) + " samples instead of "
 						+ std::to_string(m_application_settings->max_sample_count) + ".\n\n"
 						""
 						"You click the button to the right to round up the maximum number of samples to one that is "
-						"divisible by the number of GMoN sets (" 
+						"divisible by the number of GMoN sets ("
 						+ std::to_string(m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT)) + ")";
-					ImGuiRenderer::show_help_marker(warning_text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+					ImGuiRenderer::add_warning(warning_text);
 
 					ImGui::SameLine();
 					if (ImGui::Button("Round up"))
@@ -433,9 +440,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		// Stopping condition tree
 		ImGui::TreePop();
 	}
-
-	ImGui::TreePop();
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 void ImGuiSettingsWindow::draw_russian_roulette_options()
@@ -969,8 +973,7 @@ void ImGuiSettingsWindow::draw_environment_panel()
 			render_made_piggy |= ImGui::Checkbox("Scale background intensity", (bool*)&m_renderer->get_world_settings().envmap_scale_background_intensity);
 			if (m_renderer->get_world_settings().envmap_intensity != 1.0f && !m_renderer->get_world_settings().envmap_scale_background_intensity)
 			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Using a custom envmap intensity without scaling the background "
+				ImGuiRenderer::add_warning("Using a custom envmap intensity without scaling the background "
 					"intensity can result in discrepancies when looking at the envmap through a mirror or "
 					"transparent glass for example (glass with IOR 1.0f). In these rare cases, the envmap "
 					"will appear brighter through the objects than when viewed directly.\n"
@@ -1023,6 +1026,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			if (!render_settings.accumulate)
 				ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI ||
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
+			{
+				ImGuiRenderer::add_warning("Adaptive sampling may not be efficient when used with ReSTIR. This is because "
+					"ReSTIR looks around the current pixel to find neighbor to reuse but with adaptive sampling enabled, most pixels "
+					"are not going to be sampled anymore. This means that these pixels contain stale samples that strongly biases ReSTIR is reused.\n"
+					"Thus, these sample are not reused to avoid bias but this then drastically reduces the efficiency of ReSTIR and the overall "
+					"setup becomes inefficient.");
+			}
 
 			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
@@ -1311,6 +1323,33 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 
 				draw_ReSTIR_bias_correction_panel<false>();
+				if (ImGui::CollapsingHeader("Debug"))
+				{
+					ImGui::TreePush("ReSTIR DI debug options tree");
+
+					if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
+						"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+					if (render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location)
+					{
+						ImGui::TreePush("Debug neighbor location vertical tree");
+
+						ImGui::Text("Debug reuse direction");
+						bool reuse_direction_changed = false;
+						reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 0); ImGui::SameLine();
+						reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 1); ImGui::SameLine();
+						reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
+
+						if (reuse_direction_changed)
+							m_render_window->set_render_dirty(true);
+
+						ImGui::TreePop();
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::TreePop();
+				}
 
 
 
@@ -1469,14 +1508,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage());
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION) == KERNEL_OPTION_FALSE)
-				{
-					ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-					ImGuiRenderer::show_help_marker("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
+					ImGuiRenderer::add_warning("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
 						"are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
 						"\nThis will manifest as some darkening (somewhat similar to rendering with less bounces) on perfectly specular surfaces (delta distributions).\n\n"
 						""
 						"Enable \"BSDF delta distribution optimization\" in \"Performance Settings\" --> \"General Settings\" to get rid of this issue.");
-				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::SliderInt("M-cap", &render_settings.restir_gi_settings.m_cap, 0, 48))
@@ -1519,7 +1555,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				draw_ReSTIR_spatial_reuse_panel<true>([&render_settings, this]() {
 					if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				});
 				ImGui::PopItemWidth();
 
@@ -2003,16 +2038,16 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				}
 
 				std::string spatial_reuse_radius_text = restir_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
-				ImGui::BeginDisabled(restir_settings.auto_reuse_radius);
 				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_settings.reuse_radius, 0, 64))
 				{
+					restir_settings.auto_reuse_radius = false;
+
 					if (!restir_settings.debug_neighbor_location)
 						// Clamping if not debugging (we do allow negative values when debugging)
 						restir_settings.reuse_radius = std::max(0, restir_settings.reuse_radius);
 
 					m_render_window->set_render_dirty(true);
 				}
-				ImGui::EndDisabled();
 				ImGui::SameLine();
 				if (ImGui::Checkbox("Auto", &restir_settings.auto_reuse_radius))
 					m_render_window->set_render_dirty(true);
@@ -2050,8 +2085,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 							"More bits yields more precise result but use a little bit more VRAM.");
 						if (bitcount_changed)
 						{
-							const std::string& mask_bit_count_macro_name = IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT : GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
-							global_kernel_options->set_macro_value(mask_bit_count_macro_name, spatial_reuse_directional_masks_bitcount);
+							global_kernel_options->set_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT : GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT, spatial_reuse_directional_masks_bitcount);
 							m_renderer->recompile_kernels();
 
 							m_render_window->set_render_dirty(true);
@@ -2064,6 +2098,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 					ImGui::TreePop();
 				}
+
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::Checkbox("Increase disocclusion reuse count", &restir_settings.do_disocclusion_reuse_boost))
@@ -2220,8 +2255,42 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 				"- Pairwise asymmetric ratio",
 			};
 
+			const char* tooltips[] = {
+				"Very simple biased weights as described in the 2020 ReSTIR DI paper(Eq. 6).\n"
+				"Those weights are biased because they do not account for cases where "
+				"we resample a sample that couldn't have been produced by some neighbors.\n"
+				"The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary, "
+				"this type of weights can be seen as confidence weights alone c_i / sum(c_j).",
+
+				"Simple unbiased weights as described in the 2020 ReSTIR paper (Eq. 16 and Section 4.3).\n"
+				"Those weights are unbiased but can have * *extremely * *bad variance when a neighbor being resampled "
+				"has a very low target function(when the neighbor is a glossy surface for example).\n"
+				"See Fig. 7 of the 2020 paper.",
+
+				"Unbiased weights as proposed by Eq. 22 of the paper.Way better than 1 / Z in terms of variance "
+				"and still unbiased.",
+
+				"Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N ^ 2) complexity, "
+				"N being the number of neighbors resampled.\n"
+				"Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.",
+
+				"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
+				"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
+
+				"Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.\n"
+				"Section 7.1.3 of \"A Gentle Introduction to ReSTIR\", 2023",
+
+				"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
+				""
+				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]",
+
+				"A bit more variance than pairwise MIS but way more robust to temporal correlations.\n\n"
+				""
+				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]"
+			};
+
 			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);
-			if (ImGui::Combo("MIS Weights", bias_correction_weights_option_pointer, bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
+			if (ImGuiRenderer::ComboWithTooltips("MIS Weights", bias_correction_weights_option_pointer, bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items), tooltips))
 			{
 				m_renderer->recompile_kernels();
 
@@ -2865,8 +2934,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	if (!render_data.render_settings.accumulate)
 	{
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::Text("Warning: ");
-		ImGuiRenderer::show_help_marker("GMoN cannot be used without enabling accumulation.", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+
+		ImGuiRenderer::add_warning("GMoN cannot be used without enabling accumulation.");
 	}
 	ImGui::BeginDisabled(!render_data.render_settings.accumulate);
 	if (ImGui::CollapsingHeader("GMoN"))
@@ -2963,10 +3032,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (m_render_window->get_display_view_system()->get_current_display_view_type() != DisplayViewType::GMON_BLEND)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("The display view currently in used isn't \"GMoN blend\" so the output of GMoN cannot be visualized.", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
+				ImGuiRenderer::add_warning("The display view currently in used isn't \"GMoN blend\" so the output of GMoN cannot be visualized.");
 		}
 
 		ImGui::TreePop();
@@ -3133,8 +3199,7 @@ void ImGuiSettingsWindow::draw_microfacet_model_regularization_tree()
 	}
 	if (regularize_bsdf && render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightCorrelated)
 	{
-		ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-		ImGuiRenderer::show_help_marker("Microfacet model regularization cannot be used with height-correlated masking shadowing");
+		ImGuiRenderer::add_warning("Microfacet model regularization cannot be used with height-correlated masking shadowing");
 
 		ImGui::TreePush("Use height uncorrelated button tree");
 		if (ImGui::Button("Switch to height-uncorrelated masking shadowing"))
@@ -3172,7 +3237,8 @@ void ImGuiSettingsWindow::draw_microfacet_model_regularization_tree()
 		ImGuiRenderer::show_help_marker("Whether or not to take the path's roughness into account when regularizing the BSDFs.\n"
 			"This feature is essential to keep highlights sharp on directly visible surfaces.");
 
-		if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
+		std::string tau_text = "Tau" + do_consistent_tau ? "_0" : "";
+		if (ImGui::SliderFloat(tau_text.c_str(), &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Main parameter to control the regularization. The lower this parameter, the stronger the regularization.\n\n"
 			"Note that if \"Consistent parameterization\" is enabled, this parameter will be adjusted dynamically (starting from the given value) based on the number "
@@ -3264,8 +3330,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			"There is basically no point in disabling that, this is just for performance comparisons.");
 		if (!delta_distrib_opti && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
 		{
-			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
-			ImGuiRenderer::show_help_marker("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
+			ImGuiRenderer::add_warning("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
 				"are expected with ReSTIR GI if not using \"BSDF delta distribution optimization\"."
 				"\nThis will manifest as darkening on perfectly specular surfaces (delta distributions).\n\n"
 				""
@@ -3682,12 +3747,18 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 		}
 		ImGuiRenderer::show_help_marker("Click to " + (g_background_shader_compilation_enabled ? std::string("stop") : std::string("resume")) + " background shaders precompilation");
 
-		if (ImGui::Button("Force shaders reload"))
+		if (ImGui::Button("Hard shaders reload"))
 		{
 			m_renderer->recompile_kernels(false);
 			m_render_window->set_render_dirty(true);
 		}
-		ImGuiRenderer::show_help_marker("Forces the recompilation of the shaders.");
+		ImGuiRenderer::show_help_marker("Forces the recompilation of the shaders without using the shader cache.");
+		if (ImGui::Button("Soft shaders reload"))
+		{
+			m_renderer->recompile_kernels(true);
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("Recompiles the shaders using the shader cache.");
 
 		if (ImGui::Button("Clear shader cache"))
 			std::filesystem::remove_all("shader_cache");
