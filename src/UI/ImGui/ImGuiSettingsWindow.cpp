@@ -171,6 +171,14 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
 		m_render_window->set_render_dirty(true);
+
+	const char* items[] = { "- FULL_SHADE_DURING_LAST_PASS_SKIP_SHADE_AROUND_CENTER", "- FULL_SHADE_OUTPUT_SKIP_SHADE_AROUND_CENTER", "- FULL_SHADE_OUTPUT_SKIP_SPATIAL_REUSE_SHADE_NEIGHBORS (bad? need skip>2)", "- FULL_SHADE_OUTPUT_SKIP_SPATIAL_REUSE_SHADE_OUTPUT", "- FULL_SHADE_AROUND_CENTER_SKIP_SHADE_AROUND_CENTER"};
+	if (ImGui::Combo("Frame skip mode", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE), items, IM_ARRAYSIZE(items)))
+	{
+		m_renderer->recompile_kernels();
+		m_render_window->set_render_dirty(true);
+	}
+
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug bounce", &render_settings.DEBUG_BOUNCE, 0, 10))
 		m_render_window->set_render_dirty(true);
@@ -3270,7 +3278,8 @@ void ImGuiSettingsWindow::draw_microfacet_model_regularization_tree()
 		ImGuiRenderer::show_help_marker("Whether or not to take the path's roughness into account when regularizing the BSDFs.\n"
 			"This feature is essential to keep highlights sharp on directly visible surfaces.");
 
-		if (ImGui::SliderFloat("Tau", &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
+		std::string tau_text = "Tau" + do_consistent_tau ? "_0" : "";
+		if (ImGui::SliderFloat(tau_text.c_str(), &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Main parameter to control the regularization. The lower this parameter, the stronger the regularization.\n\n"
 			"Note that if \"Consistent parameterization\" is enabled, this parameter will be adjusted dynamically (starting from the given value) based on the number "
@@ -3779,12 +3788,18 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 		}
 		ImGuiRenderer::show_help_marker("Click to " + (g_background_shader_compilation_enabled ? std::string("stop") : std::string("resume")) + " background shaders precompilation");
 
-		if (ImGui::Button("Force shaders reload"))
+		if (ImGui::Button("Hard shaders reload"))
 		{
 			m_renderer->recompile_kernels(false);
 			m_render_window->set_render_dirty(true);
 		}
-		ImGuiRenderer::show_help_marker("Forces the recompilation of the shaders.");
+		ImGuiRenderer::show_help_marker("Forces the recompilation of the shaders without using the shader cache.");
+		if (ImGui::Button("Soft shaders reload"))
+		{
+			m_renderer->recompile_kernels(true);
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("Recompiles the shaders using the shader cache.");
 
 		if (ImGui::Button("Clear shader cache"))
 			std::filesystem::remove_all("shader_cache");

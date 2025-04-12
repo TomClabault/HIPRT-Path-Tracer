@@ -130,8 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			}
 		}
 
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data,
-			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, spatial_neighbors_rng);
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, neighbor_index, center_pixel_coords, cos_sin_theta_rotation, spatial_neighbors_rng);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
@@ -234,14 +233,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			neighbor_index, reused_neighbors_count,
 			random_number_generator);
 
-		/*if (render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index == render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 &&
-			ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE)
+#if ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE
+#if ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_DURING_LAST_PASS_SKIP_SHADE_AROUND_CENTER
+		if (render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index == render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1)
 		{
 			neighbor_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 			decoupled_shading_reuse_result += shade_ReSTIR_DI_reservoir(render_data, center_pixel_surface.ray_volume_state, center_pixel_surface.material, center_pixel_surface.last_hit_primitive_index,
 				center_pixel_surface.shading_point, center_pixel_surface.view_direction, center_pixel_surface.shading_normal, center_pixel_surface.geometric_normal,
 				neighbor_reservoir, random_number_generator) * mis_weight;
-		}*/
+		}
+#elif ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SHADE_AROUND_CENTER
+#elif ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_AROUND_CENTER_SKIP_SHADE_AROUND_CENTER
+#endif
+#endif
 	}
 
 	float normalization_numerator = 1.0f;
@@ -336,6 +340,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
+#if ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE
+	render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[center_pixel_index] = decoupled_shading_reuse_result;
+#endif
 
 }
 

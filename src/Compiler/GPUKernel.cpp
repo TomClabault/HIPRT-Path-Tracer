@@ -133,7 +133,7 @@ void GPUKernel::synchronize_options_with(std::shared_ptr<GPUKernelCompilerOption
 
 		if (options_excluded.find(macro_name) == options_excluded.end())
 			// Option is not excluded
-			m_compiler_options.set_pointer_to_macro(macro_name, other_options->get_pointer_to_macro_value(macro_name));
+			m_compiler_options.set_pointer_to_macro(macro_name, other_options->get_shared_ptr_to_macro_value(macro_name));
 	}
 
 	// Same thing with the custom macros
@@ -144,7 +144,7 @@ void GPUKernel::synchronize_options_with(std::shared_ptr<GPUKernelCompilerOption
 
 		if (options_excluded.find(macro_name) == options_excluded.end())
 			// Option is not excluded
-			m_compiler_options.set_pointer_to_macro(macro_name, other_options->get_pointer_to_macro_value(macro_name));
+			m_compiler_options.set_pointer_to_macro(macro_name, other_options->get_shared_ptr_to_macro_value(macro_name));
 	}
 }
 

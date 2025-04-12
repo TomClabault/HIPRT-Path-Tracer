@@ -18,8 +18,35 @@
 
 #include "stb_image_write.h"
 
+// Investigating why spatial reuse is two times as slow
+
 // Can we maybe not do the decoupled shading to save on performance (i.e. shade during the last spatial reuse pass instead of in a separate pass). The quality should be equivalent ish to not using the separate shading pass but with an increase in performance --> beneficial to get more samples and better cover the flaws of the frame skip feature
+//	- Configs to test:
+//		- Full frames: shade every neighbor on the last spatial pass
+//		- Skip frames: shade from a couple of neighbors (tweak the number?) around the ceter pixel
+//		
+//		- Full frames: completely normal frame, shade only the center reservoir from the full output of ReSTIR
+//		- Skip frames: shade from a couple of neighbors (tweak the number?) around the ceter pixel
+// 
+//		- Full frames: completely normal frame, shade only the center reservoir from the full output of ReSTIR
+//		- Skip frames: actually do a spatial reuse pass and shade from a couple of neighbors at the same time
+// 
+//		- Full frames: completely normal frame, shade only the center reservoir from the full output of ReSTIR
+//		- Skip frames: actually do a spatial reuse pass and shade the result
+// 
+//		- BASE_CONFIG
+//		- Full frames: shade around center from the output buffers of the spatial pass
+//		- Skip frames: shade from a couple of neighbors around the center pixel
+// 
+//	BEST SO FAR: FULL_SHADE_OUTPUT_SKIP_SHADE_AROUND_CENTER
+// 
+// 
+// 
+// 
 // Fix MIS weights compilation
+// - On the bistro direct lighting only, we have darkening bias on the window on the left: the reflection of the light with frame skips: probably easy to debug
+// - Maybe we can debug the darkening bias in a furnace test and using the generalized balance heuristic ?
+// - ReSTIR DI darkening alpha test
 
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission

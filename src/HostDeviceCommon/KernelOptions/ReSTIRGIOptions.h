@@ -16,7 +16,6 @@
 #define RESTIR_GI_BIAS_CORRECTION_ASYMMETRIC_RATIO 7
 
 #define RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT 64 // CHANGE THIS ONE TO MODIFY THE NUMBER OF BITS.
-#define RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT_INTERNAL (RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT) // Just another macro for clamping to 64
 
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -33,7 +32,7 @@
  *
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_GI_SpatialTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_GI_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /** 
  * Whether or not to include the change in BSDF at the sample point when resampling a neighbor.

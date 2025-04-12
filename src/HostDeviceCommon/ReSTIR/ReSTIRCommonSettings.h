@@ -149,6 +149,7 @@ struct ReSTIRCommonSpatialPassSettings
 	//
 	// This amortizes the resampling cost at a slight bias cost on glossy surfaces
 	int decoupled_shading_reuse_frame_skip;
+	bool is_skipped_frame = false;
 };
 
 struct ReSTIRCommonNeighborSimiliaritySettings

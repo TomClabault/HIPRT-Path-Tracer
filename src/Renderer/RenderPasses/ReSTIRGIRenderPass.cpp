@@ -343,31 +343,13 @@ bool ReSTIRGIRenderPass::launch()
 	configure_initial_candidates_pass();
 	launch_initial_candidates_pass();
 
-	/*m_renderer->synchronize_kernel();
-	std::vector<ReSTIRGIReservoir> initial_cand = m_initial_candidates_buffer.download_data();
-	for (ReSTIRGIReservoir& res : initial_cand)
-		if (hippt::is_nan(res.UCW) || hippt::is_inf(res.UCW))
-			Utils::debugbreak();*/
-
 	configure_temporal_reuse_pass();
 	launch_temporal_reuse_pass();
 
-	/*m_renderer->synchronize_kernel();
-	initial_cand = OrochiBuffer<ReSTIRGIReservoir>::download_data(m_render_data->render_settings.restir_gi_settings.temporal_pass.output_reservoirs, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
-	for (ReSTIRGIReservoir& res : initial_cand)
-		if (hippt::is_nan(res.UCW) || hippt::is_inf(res.UCW))
-			Utils::debugbreak();*/
-	
 	for (int i = 0; i < m_render_data->render_settings.restir_gi_settings.common_spatial_pass.number_of_passes; i++)
 	{
 		configure_spatial_reuse_pass(i);
 		launch_spatial_reuse_pass();
-
-		/*m_renderer->synchronize_kernel();
-		initial_cand = OrochiBuffer<ReSTIRGIReservoir>::download_data(m_render_data->render_settings.restir_gi_settings.spatial_pass.output_reservoirs, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
-		for (ReSTIRGIReservoir& res : initial_cand)
-			if (hippt::is_nan(res.UCW) || hippt::is_inf(res.UCW))
-				Utils::debugbreak();*/
 	}
 
 	configure_shading_pass();

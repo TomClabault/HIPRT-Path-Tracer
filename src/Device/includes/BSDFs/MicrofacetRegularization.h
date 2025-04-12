@@ -44,7 +44,7 @@ struct MicrofacetRegularization
 		// of the glossy reflections.
 		//
 		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled 
-		float path_diffusion_tau = consistent_tau / hippt::max(hippt::square(accumulated_path_roughness), 1.0e-7f);
+		float path_diffusion_tau = consistent_tau / hippt::max(hippt::square(accumulated_path_roughness), 1.0e-11f);
 
 #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
 		float final_tau = path_diffusion_tau;
@@ -82,7 +82,7 @@ struct MicrofacetRegularization
 		// of the glossy reflections.
 		//
 		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled
-		float path_diffusion_tau = consistent_tau / hippt::max(hippt::square(accumulated_path_roughness), 1.0e-7f);
+		float path_diffusion_tau = consistent_tau / hippt::max(hippt::square(accumulated_path_roughness), 1.0e-11f);
 
 #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
 		float final_tau = path_diffusion_tau;
@@ -120,7 +120,7 @@ struct MicrofacetRegularization
 		// of the glossy reflections.
 		//
 		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled
-		float path_diffusion_tau = consistent_tau / hippt::max(hippt::square(accumulated_path_roughness), 1.0e-6f);
+		float path_diffusion_tau = consistent_tau / hippt::max(hippt::square(accumulated_path_roughness), 1.0e-11f);
 
 #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
 		float final_tau = path_diffusion_tau;

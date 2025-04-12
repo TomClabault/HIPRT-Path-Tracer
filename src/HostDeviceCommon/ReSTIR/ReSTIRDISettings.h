@@ -99,7 +99,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 		common_spatial_pass.neighbor_visibility_count = common_spatial_pass.do_disocclusion_reuse_boost ? common_spatial_pass.disocclusion_reuse_count : common_spatial_pass.reuse_neighbor_count;
 
 		common_spatial_pass.compute_spatial_reuse_hit_rate = false;
-		common_spatial_pass.decoupled_shading_reuse_frame_skip = 1;
+		common_spatial_pass.decoupled_shading_reuse_frame_skip = 2;
 
 
 

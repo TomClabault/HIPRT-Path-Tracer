@@ -63,6 +63,7 @@ public:
 	static const std::string RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
 	static const std::string RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING;
 	static const std::string RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING;
+	static const std::string DEBUG_RESTIR_DI_EXPERIMENT_TYPE;
 
 	static const std::string RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
@@ -158,7 +159,7 @@ public:
 	 * 
 	 * nullptr is returned if the option doesn't exist (set_macro_value() wasn't called yet)
 	 */
-	const std::shared_ptr<int> get_pointer_to_macro_value(const std::string& name) const;
+	const std::shared_ptr<int> get_shared_ptr_to_macro_value(const std::string& name) const;
 	int* get_raw_pointer_to_macro_value(const std::string& name);
 
 	/**

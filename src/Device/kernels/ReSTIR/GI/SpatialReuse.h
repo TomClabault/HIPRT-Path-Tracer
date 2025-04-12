@@ -289,7 +289,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_gi_settings.m_cap);
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
-#if ReSTIR_GI_DoSpatialNeighborsDecoupledShading
+#if ReSTIR_GI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE
 	render_data.render_settings.restir_gi_settings.common_spatial_pass.decoupled_shading_reuse_buffer[center_pixel_index] = decoupled_shading_reuse_result;
 #endif
 }

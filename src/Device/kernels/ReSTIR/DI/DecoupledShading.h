@@ -64,7 +64,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 	unsigned int seed = render_data.render_settings.freeze_random ? wang_hash(center_pixel_index + 1) : wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
 
+#if ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SPATIAL_REUSE_SHADE_OUTPUT
+	ReSTIRDIReservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
+#else
 	ReSTIRDIReservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.restir_output_reservoirs;
+#endif
 
 	int2 center_pixel_coords = make_int2(x, y);
 
@@ -77,6 +81,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 		rotation_theta = 0.0f;
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
+	ReSTIRDIReservoir spatial_reuse_output_reservoir;
 	ReSTIRDIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if ((center_pixel_reservoir.M <= 1) && render_data.render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
 		// Increasing the number of spatial samples for disocclusions
@@ -197,6 +202,31 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 #error "Unsupported bias correction mode"
 #endif
 
+		// Combining as in Alg. 6 of the paper
+		float jacobian_determinant = 1.0f;
+		if (spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
+		{
+			// Only used with MIS-like weight
+			selected_neighbor = neighbor_index;
+
+			bool do_neighbor_target_function_visibility = false;
+			if (do_neighbor_target_function_visibility)
+				// If we resampled the neighbor with visibility, then we are sure that we can set the flag
+				spatial_reuse_output_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			else
+			{
+				// If we didn't resample the neighbor with visibility
+				if (neighbor_index == reused_neighbors_count)
+					// If we just resampled the center pixel, then we can copy the visibility flag
+					spatial_reuse_output_reservoir.sample.flags |= neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+				else
+					// This was not the center pixel, we cannot be certain what the visibility at the center
+					// pixel of the neighbor sample we just resample is so we're clearing the bit
+					spatial_reuse_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			}
+		}
+
+#if ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_DURING_LAST_PASS_SKIP_SHADE_AROUND_CENTER || ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SHADE_AROUND_CENTER
 		if (mis_weight > 0.0f && target_function_at_center > 0.0f)
 		{
 			neighbor_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
@@ -204,7 +234,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_DecoupledShading(HIPRTRenderData 
 				center_pixel_surface.shading_point, center_pixel_surface.view_direction, center_pixel_surface.shading_normal, center_pixel_surface.geometric_normal,
 				neighbor_reservoir, random_number_generator) * mis_weight;
 		}
+#endif
 	}
+
+#if ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SPATIAL_REUSE_SHADE_OUTPUT
+	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
+#endif
 
 	render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[center_pixel_index] = decoupled_shading_reuse_result;
 }

@@ -364,8 +364,11 @@ bool ReSTIRDIRenderPass::launch()
 
 	bool decoupled_shading_reuse_disabled = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_FALSE;
 	bool not_skipping_frame = m_render_data->render_settings.sample_number % m_render_data->render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_frame_skip == 0;
-	if (decoupled_shading_reuse_disabled || not_skipping_frame)
+	bool need_full_restir_pass = decoupled_shading_reuse_disabled || not_skipping_frame;
+	if (need_full_restir_pass)
 	{
+		m_render_data->render_settings.restir_di_settings.common_spatial_pass.is_skipped_frame = false;
+
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
 			launch_presampling_lights_pass();
 
@@ -389,8 +392,13 @@ bool ReSTIRDIRenderPass::launch()
 
 		configure_output_buffer();
 	}
-	//else
+
+	if (!need_full_restir_pass || m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE) == FULL_SHADE_AROUND_CENTER_SKIP_SHADE_AROUND_CENTER)
+	{
+		m_render_data->render_settings.restir_di_settings.common_spatial_pass.is_skipped_frame = true;
+
 		launch_decoupled_shading_pass();
+	}
 
 	odd_frame = !odd_frame;
 
@@ -744,6 +752,12 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_tracin
 
 void ReSTIRDIRenderPass::launch_decoupled_shading_pass()
 {
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE) == FULL_SHADE_OUTPUT_SKIP_SPATIAL_REUSE_SHADE_OUTPUT)
+	{
+		configure_spatial_pass(m_render_data->render_settings.restir_di_settings.common_spatial_pass.number_of_passes);
+		configure_output_buffer();
+	}
+
 	bool decoupled_shading_disabled = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_FALSE;
 	bool no_spatial_reuse = !m_render_data->render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass;
 	if (decoupled_shading_disabled || no_spatial_reuse)

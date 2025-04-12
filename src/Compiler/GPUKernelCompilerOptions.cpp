@@ -62,6 +62,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING = "R
 const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT = "ReSTIR_DI_SpatialDirectionalReuseBitCount";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING = "ReSTIR_DI_DoOptimalVisibilitySampling";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING = "ReSTIR_DI_DoSpatialNeighborsDecoupledShading";
+const std::string GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE = "ReSTIRDIFrameSkipDebugExperimentationMode";
 
 const std::string GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_GI_SpatialTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT = "ReSTIR_GI_SpatialDirectionalReuseBitCount";
@@ -120,6 +121,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING,
+	GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE,
 
 	GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT,
@@ -182,6 +184,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT] = std::make_shared<int>(ReSTIR_DI_SpatialDirectionalReuseBitCount);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING] = std::make_shared<int>(ReSTIR_DI_DoOptimalVisibilitySampling);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING] = std::make_shared<int>(ReSTIR_DI_DoSpatialNeighborsDecoupledShading);
+	m_options_macro_map[GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE] = std::make_shared<int>(ReSTIRDIFrameSkipDebugExperimentationMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_GI_SpatialTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT] = std::make_shared<int>(ReSTIR_GI_SpatialDirectionalReuseBitCount);
@@ -318,7 +321,7 @@ int GPUKernelCompilerOptions::get_macro_value(const std::string& name) const
 		return *find->second;
 }
 
-const std::shared_ptr<int> GPUKernelCompilerOptions::get_pointer_to_macro_value(const std::string& name) const
+const std::shared_ptr<int> GPUKernelCompilerOptions::get_shared_ptr_to_macro_value(const std::string& name) const
 {
 	auto find = m_options_macro_map.find(name);
 
@@ -337,7 +340,7 @@ const std::shared_ptr<int> GPUKernelCompilerOptions::get_pointer_to_macro_value(
 
 int* GPUKernelCompilerOptions::get_raw_pointer_to_macro_value(const std::string& name)
 {
-	std::shared_ptr<int> pointer = get_pointer_to_macro_value(name);
+	std::shared_ptr<int> pointer = get_shared_ptr_to_macro_value(name);
 	if (pointer != nullptr)
 		return pointer.get();
 

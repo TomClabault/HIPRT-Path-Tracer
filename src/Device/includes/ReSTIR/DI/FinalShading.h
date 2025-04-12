@@ -114,9 +114,43 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRen
     bool decoupled_reuse_shading_enabled = render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && ReSTIR_DI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE;
     if (decoupled_reuse_shading_enabled)
     {
-        ColorRGB32F color = render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
-
+#if ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_DURING_LAST_PASS_SKIP_SHADE_AROUND_CENTER
         return render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
+#elif ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SHADE_AROUND_CENTER
+        if (render_data.render_settings.restir_di_settings.common_spatial_pass.is_skipped_frame)
+            return render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
+        else
+        {
+            // Because the spatial reuse pass runs last, the output buffer of the spatial
+            // pass contains the reservoir whose sample we're going to shade
+            ReSTIRDIReservoir& reservoir = render_data.render_settings.restir_di_settings.restir_output_reservoirs[pixel_index];
+
+            // Validates the reservoir i.e. kills the reservoir if it isn't valid
+            // anymore i.e. if it refers to a light that doesn't exist anymore
+            validate_reservoir(render_data, reservoir);
+
+            return shade_ReSTIR_DI_reservoir(render_data,
+                ray_payload.volume_state, ray_payload.material, closest_hit_info.primitive_index,
+                closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+                reservoir, random_number_generator);
+        }
+#elif ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SPATIAL_REUSE_SHADE_NEIGHBORS
+#elif ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SPATIAL_REUSE_SHADE_OUTPUT
+        // Because the spatial reuse pass runs last, the output buffer of the spatial
+            // pass contains the reservoir whose sample we're going to shade
+        ReSTIRDIReservoir& reservoir = render_data.render_settings.restir_di_settings.restir_output_reservoirs[pixel_index];
+
+        // Validates the reservoir i.e. kills the reservoir if it isn't valid
+        // anymore i.e. if it refers to a light that doesn't exist anymore
+        validate_reservoir(render_data, reservoir);
+
+        return shade_ReSTIR_DI_reservoir(render_data,
+            ray_payload.volume_state, ray_payload.material, closest_hit_info.primitive_index,
+            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+            reservoir, random_number_generator);
+#elif ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_AROUND_CENTER_SKIP_SHADE_AROUND_CENTER
+        return render_data.render_settings.restir_di_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
+#endif
     }
     else
     {
