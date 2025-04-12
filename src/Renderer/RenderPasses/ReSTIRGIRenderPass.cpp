@@ -396,8 +396,7 @@ void ReSTIRGIRenderPass::update_render_data()
 			m_per_pixel_spatial_reuse_direction_mask_u,
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
-			m_spatial_reuse_statistics_hit_total,
-			m_decoupled_shading_reuse_buffer);
+			m_spatial_reuse_statistics_hit_total);
 	}
 	else
 	{
