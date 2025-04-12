@@ -370,8 +370,10 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
         m_render_data.world_settings.envmap_cdf = m_envmap_cdf.data();
     else if (EnvmapSamplingStrategy == ESS_ALIAS_TABLE)
     {
-        m_render_data.world_settings.alias_table_probas = m_alias_table_probas.data();
-        m_render_data.world_settings.alias_table_alias = m_alias_table_alias.data();
+        m_render_data.world_settings.envmap_alias_table.alias_table_probas = m_alias_table_probas.data();
+        m_render_data.world_settings.envmap_alias_table.alias_table_alias = m_alias_table_alias.data();
+        m_render_data.world_settings.envmap_alias_table.sum_elements = m_render_data.world_settings.envmap_total_sum;
+        m_render_data.world_settings.envmap_alias_table.size = envmap_image.width * envmap_image.height;
     }
 }
 
@@ -667,7 +669,7 @@ void CPURenderer::launch_ReSTIR_DI_presampling_lights_pass()
         LightPresamplingParameters launch_parameters = configure_ReSTIR_DI_light_presampling_pass();
 
         for (int index = 0; index < launch_parameters.number_of_subsets * launch_parameters.subset_size; index++)
-            ReSTIR_DI_LightsPresampling(launch_parameters, index);
+            ReSTIR_DI_LightsPresampling(launch_parameters, m_render_data, index);
     }
 }
 

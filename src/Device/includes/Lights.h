@@ -30,7 +30,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
     float light_sample_pdf;
     LightSourceInformation light_source_info;
     ColorRGB32F light_source_radiance;
-    float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+    float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
     if (light_sample_pdf <= 0.0f)
         // Can happen for very small triangles
         return ColorRGB32F(0.0f);
@@ -130,7 +130,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     {
         float light_sample_pdf;
         LightSourceInformation light_source_info;
-        float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+        float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
 
         // Can happen for very small triangles that the PDF of the sampled triangle couldn't be computed
         if (light_sample_pdf > 0.0f)
@@ -241,7 +241,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIP
     // per each shading point, effectively "amortizing" camera and bounce rays
     for (int i = 0; i < render_data.render_settings.number_of_nee_samples; i++)
     {
-#if DirectLightSamplingStrategy == LSS_UNIFORM_ONE_LIGHT
+#if DirectLightSamplingStrategy == LSS_ONE_LIGHT
         direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_BSDF
         direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);

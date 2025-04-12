@@ -34,16 +34,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_envmap(const Wo
     return presampled_envmap;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triangle(const LightPresamplingParameters& parameters, float light_sampling_probability, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triangle(const HIPRTRenderData& render_data, float light_sampling_probability, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_light;
 
     float light_pdf;
     LightSourceInformation light_info;
-    float3 point_on_light = uniform_sample_one_emissive_triangle(parameters.triangles_indices, parameters.emissive_triangles_indices, parameters.emissive_triangles_count,
-        parameters.vertices_positions,
-        parameters.material_indices, parameters.materials,
-        random_number_generator, light_pdf, light_info);
+    float3 point_on_light = sample_one_emissive_triangle(render_data, random_number_generator, light_pdf, light_info);
 
     if (light_pdf > 0.0f)
     {
@@ -61,21 +58,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
 }
 
 // TODO try just passing LightPresamplingParameters in there instead of everything individually
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight ReSTIR_DI_presample_one_light(const LightPresamplingParameters& parameters, float envmap_sampling_probability, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight ReSTIR_DI_presample_one_light(const HIPRTRenderData& render_data, const LightPresamplingParameters& parameters, float envmap_sampling_probability, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_light;
     if (random_number_generator() < envmap_sampling_probability)
         presampled_light = presample_envmap(parameters.world_settings, envmap_sampling_probability, random_number_generator);
     else
-        presampled_light = presample_emissive_triangle(parameters, 1.0f - envmap_sampling_probability, random_number_generator);
+        presampled_light = presample_emissive_triangle(render_data, 1.0f - envmap_sampling_probability, random_number_generator);
 
     return presampled_light;
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_LightsPresampling(LightPresamplingParameters presampling_parameters)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_LightsPresampling(LightPresamplingParameters presampling_parameters, HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_LightsPresampling(LightPresamplingParameters presampling_parameters, int x)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_LightsPresampling(LightPresamplingParameters presampling_parameters, HIPRTRenderData render_data, int x)
 #endif
 {
     if (presampling_parameters.emissive_triangles_count == 0 && presampling_parameters.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -108,7 +105,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_LightsPresampling(LightPresamplin
             envmap_candidate_probability = presampling_parameters.envmap_sampling_probability;
     }
 
-    presampling_parameters.out_light_samples[x] = ReSTIR_DI_presample_one_light(presampling_parameters, envmap_candidate_probability, random_number_generator);
+    presampling_parameters.out_light_samples[x] = ReSTIR_DI_presample_one_light(render_data, presampling_parameters, envmap_candidate_probability, random_number_generator);
 }
 
 #endif
