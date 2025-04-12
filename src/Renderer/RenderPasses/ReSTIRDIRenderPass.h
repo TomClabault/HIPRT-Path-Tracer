@@ -95,7 +95,7 @@ private:
 	void configure_spatial_pass(int spatial_pass_index);
 	void configure_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index);
 	void configure_spatiotemporal_pass();
-	void configure_output_buffer();
+	void configure_output_buffers();
 
 	void compute_optimal_spatial_reuse_radii();
 	void launch_presampling_lights_pass();

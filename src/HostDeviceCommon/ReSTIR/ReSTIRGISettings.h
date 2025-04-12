@@ -62,7 +62,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 
 
-		common_spatial_pass.do_spatial_reuse_pass = false;
+		common_spatial_pass.do_spatial_reuse_pass = true;
 
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 2;
@@ -78,7 +78,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.do_neighbor_rotation = false;
 		common_spatial_pass.use_hammersley = false;
 		common_spatial_pass.spatial_neighbors_rng_seed = 42;
-		common_spatial_pass.use_adaptive_directional_spatial_reuse = false;
+		common_spatial_pass.use_adaptive_directional_spatial_reuse = true;
 
 		common_spatial_pass.allow_converged_neighbors_reuse = false;
 		common_spatial_pass.converged_neighbor_reuse_probability = 0.5f;
@@ -87,7 +87,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.neighbor_visibility_count = common_spatial_pass.do_disocclusion_reuse_boost ? common_spatial_pass.disocclusion_reuse_count : common_spatial_pass.reuse_neighbor_count;
 
 		common_spatial_pass.compute_spatial_reuse_hit_rate = false;
-
+		common_spatial_pass.decoupled_shading_reuse_frame_skip = 1;
 
 
 

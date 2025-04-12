@@ -19,6 +19,7 @@
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 
  // ReSTIR GI shading/resampling is still a bit broken, there's still some brightening bias coming from
  // I don't know where, supposedly when the BRDF starts to include smooth/glossy BRDFs
@@ -116,12 +117,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 #if ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_DURING_LAST_PASS_SKIP_SHADE_AROUND_CENTER
         shaded_reservoir_color = render_data.render_settings.restir_gi_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
 #elif ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SHADE_AROUND_CENTER
-        if (render_data.render_settings.restir_gi_settings.common_spatial_pass.is_skipped_frame)
+        //if (render_data.render_settings.restir_gi_settings.common_spatial_pass.is_skipped_frame)
             shaded_reservoir_color = shade_ReSTIR_GI_reservoir(render_data,
                 render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index],
                 view_direction, ray_payload, closest_hit_info, x, y, random_number_generator);
-        else
-            shaded_reservoir_color = render_data.render_settings.restir_gi_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
+        //else
+            //shaded_reservoir_color = render_data.render_settings.restir_gi_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
 #endif
 #else
         shaded_reservoir_color = shade_ReSTIR_GI_reservoir(render_data,

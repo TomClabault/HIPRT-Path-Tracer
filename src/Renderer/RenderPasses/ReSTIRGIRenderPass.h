@@ -47,7 +47,7 @@ public:
 	void launch_temporal_reuse_pass();
 	void configure_spatial_reuse_pass(int spatial_pass_index);
 	void launch_spatial_reuse_pass();
-	void configure_shading_pass();
+	void configure_output_buffers();
 	void launch_shading_pass();
 	void launch_decoupled_shading_pass();
 	virtual bool launch() override;

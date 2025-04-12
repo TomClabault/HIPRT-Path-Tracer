@@ -39,14 +39,15 @@
 //		- Skip frames: shade from a couple of neighbors around the center pixel
 // 
 //	BEST SO FAR: FULL_SHADE_OUTPUT_SKIP_SHADE_AROUND_CENTER
-// 
+//  WE NEED TO REDO THE RESTIR DI RAME SKIP MODE TESTS BEFORE THE #define WHERE NOT TAKEN INTO ACCOUNT PROPERLY BY THE GPU COMPILER
 // 
 // 
 // 
 // Fix MIS weights compilation
 // - On the bistro direct lighting only, we have darkening bias on the window on the left: the reflection of the light with frame skips: probably easy to debug
-// - Maybe we can debug the darkening bias in a furnace test and using the generalized balance heuristic ?
 // - ReSTIR DI darkening alpha test
+// - Maybe we can reduce the ReSTIR darkening on specular+diffuse surface by not reusing the specular samples of the neighbors? 
+// - Clamp jacobians option to reduce noise in corners?
 
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission

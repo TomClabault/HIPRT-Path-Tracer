@@ -65,7 +65,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	compiler_options.push_back("-g");
 	compiler_options.push_back("-ggdb");
 	
-	// enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
+	enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
 
 	// Locking because neither NVIDIA or AMD cannot compile kernels on multiple threads so we may as well
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times

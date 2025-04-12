@@ -390,7 +390,7 @@ bool ReSTIRDIRenderPass::launch()
 				launch_spatial_reuse_passes();
 		}
 
-		configure_output_buffer();
+		configure_output_buffers();
 	}
 
 	if (!need_full_restir_pass || m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE) == FULL_SHADE_AROUND_CENTER_SKIP_SHADE_AROUND_CENTER)
@@ -755,7 +755,7 @@ void ReSTIRDIRenderPass::launch_decoupled_shading_pass()
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE) == FULL_SHADE_OUTPUT_SKIP_SPATIAL_REUSE_SHADE_OUTPUT)
 	{
 		configure_spatial_pass(m_render_data->render_settings.restir_di_settings.common_spatial_pass.number_of_passes);
-		configure_output_buffer();
+		configure_output_buffers();
 	}
 
 	bool decoupled_shading_disabled = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_FALSE;
@@ -768,7 +768,7 @@ void ReSTIRDIRenderPass::launch_decoupled_shading_pass()
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DECOUPLED_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
-void ReSTIRDIRenderPass::configure_output_buffer()
+void ReSTIRDIRenderPass::configure_output_buffers()
 {
 	ReSTIRDISettings& restir_di_settings = m_render_data->render_settings.restir_di_settings;
 

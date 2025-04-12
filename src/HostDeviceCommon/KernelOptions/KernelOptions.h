@@ -260,12 +260,12 @@
  */
 #define RISUseVisiblityTargetFunction KERNEL_OPTION_FALSE
 
+#endif // #ifndef __KERNELCC__
+
 /**
  * This is a handy macro that tells us whether or not we have any other kernel option 
  * that overrides the color of the framebuffer
  */
 #define ViewportColorOverriden (DirectLightNEEPlusPlusDisplayShadowRaysDiscarded)
-
-#endif // #ifndef __KERNELCC__
 
 #endif
