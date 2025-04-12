@@ -9,6 +9,7 @@
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
 
+#include <deque>
 #include <iostream>
 #include <iomanip> // get_current_date_string()
 #include <OpenImageDenoise/oidn.hpp>
@@ -53,6 +54,85 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
     }
 
     return tonemapped_data;
+}
+
+void Utils::compute_alias_table(const std::vector<float>& input, float in_input_total_sum, std::vector<float>& out_probas, std::vector<int>& out_alias)
+{
+    // TODO try using floats here to reduce memory usage during the construction and see if precision is an issue or not
+
+    // A vector of the luminance of all the pixels of the envmap
+    // normalized such that the average of the elements of this vector is 'width*height'
+    double input_total_sum_double = in_input_total_sum;
+    std::vector<double> normalized_elements(input.size());
+    for (int i = 0; i < input.size(); i++)
+    {
+        // Normalized
+        normalized_elements[i] = static_cast<double>(input[i]) / input_total_sum_double;
+
+        // Scale for alias table construction such that the average of
+        // the elements is 1
+        normalized_elements[i] *= input.size();
+    }
+
+    out_probas.resize(input.size());
+    out_alias.resize(input.size());
+
+    std::deque<int> smalls;
+    std::deque<int> larges;
+
+    for (int i = 0; i < normalized_elements.size(); i++)
+    {
+        if (normalized_elements[i] < 1.0f)
+            smalls.push_back(i);
+        else
+            larges.push_back(i);
+    }
+
+    while (!smalls.empty() && !larges.empty())
+    {
+        int small_index = smalls.front();
+        int large_index = larges.front();
+
+        smalls.pop_front();
+        larges.pop_front();
+
+        out_probas[small_index] = normalized_elements[small_index];
+        out_alias[small_index] = large_index;
+
+        normalized_elements[large_index] = (normalized_elements[large_index] + normalized_elements[small_index]) - 1.0f;
+        if (normalized_elements[large_index] > 1.0f)
+            larges.push_back(large_index);
+        else
+            smalls.push_back(large_index);
+    }
+
+    while (!larges.empty())
+    {
+        int index = larges.front();
+        larges.pop_front();
+
+        out_probas[index] = 1.0f;
+    }
+
+    while (!smalls.empty())
+    {
+        int index = smalls.front();
+        smalls.pop_front();
+
+        out_probas[index] = 1.0f;
+    }
+}
+
+void Utils::compute_alias_table(const std::vector<float>& input, std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_input_total_sum)
+{
+    float sum = 0.0f;
+    for (float input_element : input)
+        sum += input_element;
+
+    if (out_input_total_sum)
+        *out_input_total_sum = sum;
+
+    Utils::compute_alias_table(input, sum, out_probas, out_alias);
 }
 
 std::string Utils::file_to_string(const char* filepath)
