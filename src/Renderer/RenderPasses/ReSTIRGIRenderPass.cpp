@@ -15,6 +15,7 @@ const std::string ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID = "ReST
 const std::string ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID = "ReSTIR GI Spatial reuse";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID = "ReSTIR GI Shading";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID = "ReSTIR GI Directional reuse compute";
+const std::string ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID = "ReSTIR GI Decoupled shading";
 
 const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES =
 {
@@ -23,6 +24,7 @@ const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FU
 	{ RESTIR_GI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_GI_SpatialReuse" },
 	{ RESTIR_GI_SHADING_KERNEL_ID, "ReSTIR_GI_Shading" },
 	{ RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME },
+	{ RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID, "ReSTIR_GI_DecoupledShading"},
 };
 
 const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FILES =
@@ -32,6 +34,7 @@ const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FI
 	{ RESTIR_GI_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/SpatialReuse.h" },
 	{ RESTIR_GI_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/Shading.h" },
 	{ RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
+	{ RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/DecoupledShading.h" },
 };
 
 ReSTIRGIRenderPass::ReSTIRGIRenderPass() : ReSTIRGIRenderPass(nullptr) {}
@@ -75,6 +78,13 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer) : MegaKernelRender
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_function_name(ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->synchronize_options_with(global_compiler_options);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->get_kernel_options().set_macro_value(ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_IS_RESTIR_GI_COMPILE_OPTION_NAME, KERNEL_OPTION_TRUE);
+
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID]->set_kernel_file_path(ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID));
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID]->set_kernel_function_name(ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID));
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 }
 
 void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -117,6 +127,12 @@ bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	if (need_directional_spatial_reuse)
 		// Spatial needed
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	bool need_decoupled_shading = !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID]->has_been_compiled() && m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_TRUE;
+	recompiled |= need_decoupled_shading;
+	if (need_decoupled_shading)
+		// Decoupled shading needed
+		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 	return recompiled;
 }
@@ -333,6 +349,18 @@ void ReSTIRGIRenderPass::launch_shading_pass()
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
+void ReSTIRGIRenderPass::launch_decoupled_shading_pass()
+{
+	bool decoupled_shading_disabled = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_FALSE;
+	bool no_spatial_reuse = !m_render_data->render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass;
+	if (decoupled_shading_disabled || no_spatial_reuse)
+		return;
+
+	void* launch_args[] = { m_render_data };
+
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+}
+
 bool ReSTIRGIRenderPass::launch()
 {
 	if (!is_render_pass_used())
@@ -340,19 +368,33 @@ bool ReSTIRGIRenderPass::launch()
 
 	compute_optimal_spatial_reuse_radii();
 
-	configure_initial_candidates_pass();
-	launch_initial_candidates_pass();
-
-	configure_temporal_reuse_pass();
-	launch_temporal_reuse_pass();
-
-	for (int i = 0; i < m_render_data->render_settings.restir_gi_settings.common_spatial_pass.number_of_passes; i++)
+	bool decoupled_shading_reuse_disabled = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_FALSE;
+	bool not_skipping_frame = m_render_data->render_settings.sample_number % m_render_data->render_settings.restir_gi_settings.common_spatial_pass.decoupled_shading_reuse_frame_skip == 0;
+	bool need_full_restir_pass = decoupled_shading_reuse_disabled || not_skipping_frame;
+	if (need_full_restir_pass)
 	{
-		configure_spatial_reuse_pass(i);
-		launch_spatial_reuse_pass();
+		configure_initial_candidates_pass();
+		launch_initial_candidates_pass();
+
+		configure_temporal_reuse_pass();
+		launch_temporal_reuse_pass();
+
+		for (int i = 0; i < m_render_data->render_settings.restir_gi_settings.common_spatial_pass.number_of_passes; i++)
+		{
+			configure_spatial_reuse_pass(i);
+			launch_spatial_reuse_pass();
+		}
+
+		configure_shading_pass();
 	}
 
-	configure_shading_pass();
+	if (!need_full_restir_pass || (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DEBUG_RESTIR_DI_EXPERIMENT_TYPE) == FULL_SHADE_AROUND_CENTER_SKIP_SHADE_AROUND_CENTER) && m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DO_SPATIAL_NEIGHBORS_DECOUPLED_SHADING) == KERNEL_OPTION_TRUE)
+	{
+		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.is_skipped_frame = true;
+
+		launch_decoupled_shading_pass();
+	}
+
 	launch_shading_pass();
 
 	return true;

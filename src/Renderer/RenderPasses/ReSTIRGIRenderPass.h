@@ -21,6 +21,7 @@ public:
 	static const std::string RESTIR_GI_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_GI_SHADING_KERNEL_ID;
 	static const std::string RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
+	static const std::string RESTIR_GI_DECOUPLED_SHADING_KERNEL_ID;
 
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
@@ -48,6 +49,7 @@ public:
 	void launch_spatial_reuse_pass();
 	void configure_shading_pass();
 	void launch_shading_pass();
+	void launch_decoupled_shading_pass();
 	virtual bool launch() override;
 
 	virtual void post_render_update() override;

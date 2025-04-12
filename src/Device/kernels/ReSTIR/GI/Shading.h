@@ -110,12 +110,31 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
     ColorRGB32F shaded_reservoir_color;
-    if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass && ReSTIR_GI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE)
+    if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
+    {
+#if ReSTIR_GI_DoSpatialNeighborsDecoupledShading == KERNEL_OPTION_TRUE
+#if ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_DURING_LAST_PASS_SKIP_SHADE_AROUND_CENTER
         shaded_reservoir_color = render_data.render_settings.restir_gi_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
-    else
+#elif ReSTIRDIFrameSkipDebugExperimentationMode == FULL_SHADE_OUTPUT_SKIP_SHADE_AROUND_CENTER
+        if (render_data.render_settings.restir_gi_settings.common_spatial_pass.is_skipped_frame)
+            shaded_reservoir_color = shade_ReSTIR_GI_reservoir(render_data,
+                render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index],
+                view_direction, ray_payload, closest_hit_info, x, y, random_number_generator);
+        else
+            shaded_reservoir_color = render_data.render_settings.restir_gi_settings.common_spatial_pass.decoupled_shading_reuse_buffer[pixel_index];
+#endif
+#else
         shaded_reservoir_color = shade_ReSTIR_GI_reservoir(render_data,
             render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index],
             view_direction, ray_payload, closest_hit_info, x, y, random_number_generator);
+#endif
+    }
+    else
+    {
+        shaded_reservoir_color = shade_ReSTIR_GI_reservoir(render_data,
+            render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index],
+            view_direction, ray_payload, closest_hit_info, x, y, random_number_generator);
+    }
 
     path_tracing_accumulate_color(render_data, shaded_reservoir_color, pixel_index);
 }
