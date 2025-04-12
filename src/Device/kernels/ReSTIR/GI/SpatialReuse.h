@@ -88,7 +88,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	count_valid_spatial_neighbors<true>(render_data,
 		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, 
 		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
-	return;
 
 	int reused_neighbors_count = render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index = 0;

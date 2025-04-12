@@ -376,7 +376,7 @@ void ReSTIRGIRenderPass::update_render_data()
 		m_render_data->aux_buffers.restir_gi_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
 		m_render_data->aux_buffers.restir_gi_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<false>(*m_render_data,
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<true>(*m_render_data,
 			m_per_pixel_spatial_reuse_radius,
 			m_per_pixel_spatial_reuse_direction_mask_u,
 			m_per_pixel_spatial_reuse_direction_mask_ull,
