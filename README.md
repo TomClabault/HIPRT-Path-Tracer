@@ -122,7 +122,8 @@ sudo apt install libglew-dev
 
 2) Install AMD HIP (if you already have ROCm installed, you should have a `/opt/rocm` folder on your system and you can skip this step):
 
-Download `amdgpu-install` package: https://www.amd.com/en/support/linux-drivers
+Download `amdgpu-install` package: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/amdgpu-install.html
+
 Install the package: 
 
 ```sh
