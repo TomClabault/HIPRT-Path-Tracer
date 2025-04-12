@@ -45,11 +45,14 @@
 #define NESTED_DIELECTRICS_STACK_SIZE 4
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
-#define LSS_UNIFORM_ONE_LIGHT 1
+#define LSS_ONE_LIGHT 1
 #define LSS_BSDF 2
 #define LSS_MIS_LIGHT_BSDF 3
 #define LSS_RIS_BSDF_AND_LIGHT 4
 #define LSS_RESTIR_DI 5
+
+#define LSS_BASE_UNIFORM 0
+#define LSS_BASE_POWER_AREA 1
 
 #define ESS_NO_SAMPLING 0
 #define ESS_BINARY_SEARCH 1
@@ -149,7 +152,7 @@
  *	- LSS_NO_DIRECT_LIGHT_SAMPLING
  *		No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.
  * 
- *	- LSS_UNIFORM_ONE_LIGHT
+ *	- LSS_ONE_LIGHT
  *		Samples one random light in the scene without MIS. 
  *		Efficient as long as there are not too many lights in the scene and no glossy surfaces
  * 
@@ -167,7 +170,19 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
+
+/**
+ * How to sample lights in the scene. 
+ * This directly affects the 'DirectLightSamplingStrategy' strategies that sample lights
+ * 
+ *	- LSS_BASE_UNIFORM
+ *		Lights are sampled uniformly
+ * 
+ *	- LSS_BASE_POWER_AREA
+ *		Lights are sampled proportionally to their 'power * area'
+ */
+#define DirectLightSamplingBaseStrategy LSS_BASE_UNIFORM
 
 /**
  * Whether or not to use NEE++ features at all

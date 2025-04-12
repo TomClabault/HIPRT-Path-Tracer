@@ -106,7 +106,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         ColorRGB32F bsdf_color;
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
-        float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+        float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
 
         if (light_sample_pdf > 0.0f)
         {

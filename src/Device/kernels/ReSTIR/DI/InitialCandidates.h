@@ -104,7 +104,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
         // Light sample
 
         LightSourceInformation light_source_info;
-        light_sample.point_on_light_source = uniform_sample_one_emissive_triangle(render_data, random_number_generator, out_sample_pdf, light_source_info);
+        light_sample.point_on_light_source = sample_one_emissive_triangle(render_data, random_number_generator, out_sample_pdf, light_source_info);
         light_sample.emissive_triangle_index = light_source_info.emissive_triangle_index;
 
         if (out_sample_pdf > 0.0f)

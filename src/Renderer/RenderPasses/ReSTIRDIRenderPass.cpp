@@ -443,7 +443,7 @@ void ReSTIRDIRenderPass::launch_presampling_lights_pass()
 {
 	LightPresamplingParameters launch_parameters = configure_light_presampling_pass();
 
-	void* launch_args[] = { &launch_parameters };
+	void* launch_args[] = { &launch_parameters, m_render_data };
 	int thread_count = m_render_data->render_settings.restir_di_settings.light_presampling.number_of_subsets * m_render_data->render_settings.restir_di_settings.light_presampling.subset_size;
 
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->launch_asynchronous(32, 1, thread_count, 1, launch_args, m_renderer->get_main_stream());

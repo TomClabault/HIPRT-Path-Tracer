@@ -84,11 +84,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
     // Importance sampling a texel of the envmap with a binary search on the CDF
     envmap_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
 #elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
-    int random_index = random_number_generator.random_index(world_settings.envmap_height * world_settings.envmap_width);
-    float probability = world_settings.alias_table_probas[random_index];
-    if (random_number_generator() > probability)
-        // Picking the alias
-        random_index = world_settings.alias_table_alias[random_index];
+    int random_index = world_settings.envmap_alias_table.sample(random_number_generator);
 
     y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
     x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
@@ -127,7 +123,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
     // The texel was sampled according to its luminance
     envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
 
-    // TODO why do we have that here?
     envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
 #else
     // Uniform probability of sampling the texel

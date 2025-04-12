@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_WORLD_SETTINGS_H
 #define HOST_DEVICE_COMMON_WORLD_SETTINGS_H
 
+#include "Device/includes/DeviceAliasTable.h"
+
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Packing.h"
 
@@ -43,8 +45,7 @@ struct WorldSettings
 	float* envmap_cdf = nullptr;
 
 	// Probabilities and aliases for sampling the envmap with the alias table strategy
-	int* alias_table_alias = nullptr;
-	float* alias_table_probas = nullptr;
+	DeviceAliasTable envmap_alias_table;
 
 	// Rotation matrix for rotating the envmap around in the current frame
 	float3x3 envmap_to_world_matrix = float3x3{ { {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } };

@@ -1107,7 +1107,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
-			case LSS_UNIFORM_ONE_LIGHT:
+			case LSS_ONE_LIGHT:
 				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
