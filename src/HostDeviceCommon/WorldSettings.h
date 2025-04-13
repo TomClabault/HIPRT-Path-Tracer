@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_WORLD_SETTINGS_H
 #define HOST_DEVICE_COMMON_WORLD_SETTINGS_H
 
-#include "Device/includes/DeviceAliasTable.h"
+#include "Device/includes/AliasTable.h"
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Packing.h"
