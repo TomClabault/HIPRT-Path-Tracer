@@ -11,6 +11,24 @@
 #include "HostDeviceCommon/RenderData.h"
 
 /**
+ * Reference: [A Low-Distortion Map Between Triangle and Square, Heitz, 2019]
+ * 
+ * Maps a point in a square to a point in an arbitrary triangle
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE void square_to_triangle(float& x, float& y)
+{
+    if (y > x) 
+    {
+        x *= 0.5f;
+        y -= x;
+    }
+    else 
+        {
+        y *= 0.5f;
+        x -= y;
+    }
+}
+/**
  * Samples a point uniformly on the given triangle (given with the triangle index)
  * 
  * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
@@ -25,9 +43,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sample_point_on_triangle(int triangle_index,
     float rand_1 = rng();
     float rand_2 = rng();
 
+#if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_TURK_1990
     float sqrt_r1 = sqrt(rand_1);
     float u = 1.0f - sqrt_r1;
     float v = (1.0f - rand_2) * sqrt_r1;
+#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_HEITZ_2019
+    square_to_triangle(rand_1, rand_2);
+
+    float u = rand_1;
+    float v = rand_2;
+#endif
 
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;

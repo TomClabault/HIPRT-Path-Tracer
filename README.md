@@ -40,6 +40,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 ### Sampling
 - Light sampling:
 	- Uniform light sampling for direct lighting estimation + MIS
+	- Power-area proportional light sampling
 	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 	- ReSTIR DI
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://graphics.tudelft.nl/Publications-new/2020/GEE20/GEE20-NEE++.pdf) + Custom envmap support
@@ -82,6 +83,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Normal mapping
 - Nested dielectrics support 
 	- Handling with priorities as proposed in [\[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]](https://www.researchgate.net/publication/247523037_Simple_Nested_Dielectrics_in_Ray_Traced_Images)
+- A Low-Distortion Map Between Triangle and Square [\[Heitz, 2019\]](https://hal.science/hal-02073696v2/document)
 - Per-pixel adaptive sampling
 - Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
 ### UI
