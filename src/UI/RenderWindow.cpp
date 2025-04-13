@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * Copyright 2025 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
@@ -23,7 +23,9 @@
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
 // - distance rejection heuristic for reconnection
 // - Same random neighbors seed per warp for coaslescing even with directional spatial reuse
+// - Alpah tests darkening ReSTIR DI
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
+// - Greedy spatial reuse to retry neighbors if we didn't get a good one
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;
