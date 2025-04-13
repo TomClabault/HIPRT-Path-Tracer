@@ -44,6 +44,9 @@
 
 #define NESTED_DIELECTRICS_STACK_SIZE 4
 
+#define TRIANGLE_POINT_SAMPLING_TURK_1990 0
+#define TRIANGLE_POINT_SAMPLING_HEITZ_2019 1
+
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_ONE_LIGHT 1
 #define LSS_BSDF 2
@@ -143,6 +146,20 @@
  * In practice, no performance difference was observed between KERNEL_OPTION_FALSE and KERNEL_OPTION_TRUE
  */
 #define NestedDielectricsStackUseSharedMemory KERNEL_OPTION_FALSE
+
+/**
+ * How to randomly sample a point on a triangle
+ * 
+ *	- TRIANGLE_POINT_SAMPLING_TURK_1990
+ *		Common way of warping from a square to a triangle using square roots:
+ *		V = (1.0f - sqrt(u1)) * V1 + sqrt(u1) * (s2 * V2 + (1.0f - s2) * V3)
+ * 
+ *	- TRIANGLE_POINT_SAMPLING_HEITZ_2019
+ *		Implementation of [A Low-Distortion Map Between Triangle and Square, Heitz, 2019]
+ *		It is faster than Turk method's and better perserves the stratification of the random
+ *		number samplers
+ */
+#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_HEITZ_2019
 
 /**
  * What direct lighting sampling strategy to use.

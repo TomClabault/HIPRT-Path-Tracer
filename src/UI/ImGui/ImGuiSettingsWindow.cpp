@@ -3156,6 +3156,29 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
+	if (ImGui::CollapsingHeader("Triangle sampling"))
+	{
+		ImGui::TreePush("Triangle sampling tree");
+
+		const char* items_triangle_sampling[] = { "- Turk 1990", "- Heitz 2019" };
+		const char* tooltips_triangle_sampling[] = {
+			"Common way of warping from a square to a triangle using square roots:\n"
+			"V = (1.0f - sqrt(u1))* V1 + sqrt(u1)* (s2* V2 + (1.0f - s2) * V3)",
+
+			"Implementation of[A Low - Distortion Map Between Triangle and Square, Heitz, 2019]\n"
+			"It is faster than Turk method's and better perserves the stratification of the random "
+			"number samplers"
+		};
+		if (ImGuiRenderer::ComboWithTooltips("Triangle point sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY), items_triangle_sampling, IM_ARRAYSIZE(items_triangle_sampling), tooltips_triangle_sampling))
+		{
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
 	if (ImGui::CollapsingHeader("Light clamping"))
 	{
 		ImGui::TreePush("Lighting Settings Performance Tree");

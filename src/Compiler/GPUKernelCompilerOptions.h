@@ -41,6 +41,8 @@ public:
 	static const std::string GGX_SAMPLE_FUNCTION;
 	static const std::string NESTED_DIELETRCICS_STACK_SIZE_OPTION;
 
+	static const std::string TRIANGLE_POINT_SAMPLING_STRATEGY;
+
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
 	static const std::string DIRECT_LIGHT_SAMPLING_BASE_STRATEGY;
 	static const std::string DIRECT_LIGHT_USE_NEE_PLUS_PLUS;

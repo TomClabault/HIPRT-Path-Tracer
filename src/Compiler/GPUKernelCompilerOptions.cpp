@@ -40,6 +40,8 @@ const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZ
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
 const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION = "NestedDielectricsStackSize";
 
+const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY = "TrianglePointSamplingStrategy";
+
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY = "DirectLightSamplingBaseStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS = "DirectLightUseNEEPlusPlus";
@@ -96,6 +98,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC ,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
+
+	GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY,
 
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY,
@@ -157,6 +161,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC] = std::make_shared<int>(PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic);
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = std::make_shared<int>(PrincipledBSDFAnisotropicGGXSampleFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION] = std::make_shared<int>(NestedDielectricsStackSize);
+
+	m_options_macro_map[GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY] = std::make_shared<int>(TrianglePointSamplingStrategy);
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY] = std::make_shared<int>(DirectLightSamplingBaseStrategy);
