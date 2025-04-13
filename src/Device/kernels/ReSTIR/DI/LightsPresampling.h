@@ -62,7 +62,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight ReSTIR_DI_presample_one_l
 {
     ReSTIRDIPresampledLight presampled_light;
     if (random_number_generator() < envmap_sampling_probability)
-        presampled_light = presample_envmap(parameters.world_settings, envmap_sampling_probability, random_number_generator);
+        presampled_light = presample_envmap(render_data.world_settings, envmap_sampling_probability, random_number_generator);
     else
         presampled_light = presample_emissive_triangle(render_data, 1.0f - envmap_sampling_probability, random_number_generator);
 
@@ -75,7 +75,7 @@ GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_LightsPresampling(
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_LightsPresampling(LightPresamplingParameters presampling_parameters, HIPRTRenderData render_data, int x)
 #endif
 {
-    if (presampling_parameters.emissive_triangles_count == 0 && presampling_parameters.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+    if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
         // No initial candidates to sample since no lights
         return;
 
@@ -88,17 +88,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_LightsPresampling(LightPresamplin
     uint32_t thread_index = x;
 
     unsigned int seed;
-    if (presampling_parameters.freeze_random)
+    if (render_data.render_settings.freeze_random)
         seed = wang_hash(thread_index + 1);
     else
-        seed = wang_hash((thread_index + 1) * (presampling_parameters.sample_number + 1) * presampling_parameters.random_number);
+        seed = wang_hash((thread_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
     Xorshift32Generator random_number_generator(seed);
 
     float envmap_candidate_probability = 0.0f;
-    if (presampling_parameters.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+    if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
     {
-        if (presampling_parameters.emissive_triangles_count == 0)
+        if (render_data.buffers.emissive_triangles_count == 0)
             // Only the envmap to sample
             envmap_candidate_probability = 1.0f;
         else

@@ -25,24 +25,6 @@ struct LightPresamplingParameters
 	// Buffer that holds the presampled lights
 	ReSTIRDIPresampledLight* out_light_samples;
 
-	/**
-	 * Generic parameters needed by the kernel
-	 */
-	int emissive_triangles_count = 0;
-	int* emissive_triangles_indices = nullptr;
-	int* triangles_indices = nullptr;
-	float3* vertices_positions = nullptr;
-	int* material_indices = nullptr;
-	DevicePackedTexturedMaterialSoA materials;
-
-	// World settings for sampling the envmap
-	WorldSettings world_settings;
-
-	bool freeze_random = false;
-	int sample_number = 0;
-	// Random seed for varying the randomness between frames
-	int random_number = 42;
-
 	// For each presampled light, the probability that this is going to be an envmap sample
 	float envmap_sampling_probability;
 };

@@ -413,26 +413,6 @@ LightPresamplingParameters ReSTIRDIRenderPass::configure_light_presampling_pass(
 	// Buffer that holds the presampled lights
 	parameters.out_light_samples = m_presampled_lights_buffer.get_device_pointer();
 
-
-
-
-	/**
-	 * Generic parameters needed by the kernel
-	 */
-	parameters.emissive_triangles_count = m_render_data->buffers.emissive_triangles_count;
-	parameters.emissive_triangles_indices = m_render_data->buffers.emissive_triangles_indices;
-	parameters.triangles_indices = m_render_data->buffers.triangles_indices;
-	parameters.vertices_positions = m_render_data->buffers.vertices_positions;
-	parameters.material_indices = m_render_data->buffers.material_indices;
-	parameters.materials = m_render_data->buffers.materials_buffer;
-
-	// World settings for sampling the envmap
-	parameters.world_settings = m_render_data->world_settings;
-
-	parameters.freeze_random = m_render_data->render_settings.freeze_random;
-	parameters.sample_number = m_render_data->render_settings.sample_number;
-	parameters.random_number = m_renderer->get_rng_generator().xorshift32();
-
 	// For each presampled light, the probability that this is going to be an envmap sample
 	parameters.envmap_sampling_probability = m_render_data->render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
 

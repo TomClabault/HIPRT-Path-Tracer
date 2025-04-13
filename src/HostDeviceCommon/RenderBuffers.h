@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_BUFFERS_H
 #define HOST_DEVICE_COMMON_RENDER_BUFFERS_H
 
-#include "Device/includes/DeviceAliasTable.h"
+#include "Device/includes/AliasTable.h"
 #include "Device/includes/GMoN/GMoNDevice.h"
 
 #include "HostDeviceCommon/Material/MaterialPackedSoA.h"
