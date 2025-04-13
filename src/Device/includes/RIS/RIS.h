@@ -101,12 +101,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float distance_to_light;
         float cosine_at_light_source;
         float cosine_at_evaluated_point;
-        LightSourceInformation light_source_info;
+        LightSampleInformation light_sample_info;
 
         ColorRGB32F bsdf_color;
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
-        float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+        float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_sample_info);
 
         if (light_sample_pdf > 0.0f)
         {
@@ -118,7 +118,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             float3 to_light_direction = random_light_point - closest_hit_info.inter_point;
             distance_to_light = hippt::length(to_light_direction);
             to_light_direction = to_light_direction / distance_to_light; // Normalization
-            cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
+            cosine_at_light_source = hippt::abs(hippt::dot(light_sample_info.light_source_normal, -to_light_direction));
             // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
             // for the dot product to be "properly" oriented.
             cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));
@@ -134,7 +134,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // Early check for minimum light contribution: if the light itself doesn't contribute enough,
                 // adding the BSDF attenuation on top of it will only make it worse so we can already
                 // skip the light and saves ourselves the evaluation of the BSDF
-                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_source_info.emission / light_sample_pdf);
+                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_sample_info.emission / light_sample_pdf);
                 if (!contributes_enough)
                     target_function = 0.0f;
                 else
@@ -145,7 +145,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                     BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
                     bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
-                    ColorRGB32F light_contribution = bsdf_color * light_source_info.emission * cosine_at_evaluated_point;
+                    ColorRGB32F light_contribution = bsdf_color * light_sample_info.emission * cosine_at_evaluated_point;
                     // Checking the light contribution and taking the BSDF and light PDFs into account
                     contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / bsdf_pdf / light_sample_pdf);
                     if (!contributes_enough)
@@ -184,7 +184,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         light_RIS_sample.is_bsdf_sample = false;
         light_RIS_sample.point_on_light_source = random_light_point;
         light_RIS_sample.target_function = target_function;
-        light_RIS_sample.emissive_triangle_index = light_source_info.emissive_triangle_index;
+        light_RIS_sample.emissive_triangle_index = light_sample_info.emissive_triangle_index;
 
         reservoir.add_one_candidate(light_RIS_sample, candidate_weight, random_number_generator);
         reservoir.sanity_check();

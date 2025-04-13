@@ -48,8 +48,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 518
-#define DEBUG_PIXEL_Y 94
+#define DEBUG_PIXEL_X 508
+#define DEBUG_PIXEL_Y 65
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -328,10 +328,62 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_indices.size();
     m_render_data.buffers.emissive_triangles_indices = parsed_scene.emissive_triangle_indices.data();
 
-    std::cout << "Building scene BVH..." << std::endl;
+    std::cout << "Building scene's BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
     m_render_data.cpu_only.bvh = m_bvh.get();
+
+#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA
+    std::cout << "Building scene's power-area alias table" << std::endl;
+    compute_emissives_power_area_alias_table(parsed_scene);
+#endif
+}
+
+void CPURenderer::compute_emissives_power_area_alias_table(const Scene& scene)
+{
+    ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+    ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, [this, &scene]()
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        std::vector<float> power_area_list(scene.emissive_triangle_indices.size());
+        float power_area_sum = 0.0f;
+
+        for (int i = 0; i < scene.emissive_triangle_indices.size(); i++)
+        {
+            int emissive_triangle_index = scene.emissive_triangle_indices[i];
+
+            // Computing the area of the triangle
+            float3 vertex_A = scene.vertices_positions[scene.triangle_indices[emissive_triangle_index * 3 + 0]];
+            float3 vertex_B = scene.vertices_positions[scene.triangle_indices[emissive_triangle_index * 3 + 1]];
+            float3 vertex_C = scene.vertices_positions[scene.triangle_indices[emissive_triangle_index * 3 + 2]];
+
+            float3 AB = vertex_B - vertex_A;
+            float3 AC = vertex_C - vertex_A;
+
+            float3 normal = hippt::cross(AB, AC);
+            float length_normal = hippt::length(normal);
+            float triangle_area = 0.5f * length_normal;
+
+            int mat_index = scene.material_indices[emissive_triangle_index];
+            float emission_luminance = scene.materials[mat_index].emission.luminance() * scene.materials[mat_index].emission_strength * scene.materials[mat_index].global_emissive_factor;
+
+            float area_power = emission_luminance * triangle_area;
+
+            power_area_list[i] = area_power;
+            power_area_sum += area_power;
+        }
+
+        Utils::compute_alias_table(power_area_list, power_area_sum, m_power_area_alias_table_probas, m_power_area_alias_table_alias);
+
+        m_render_data.buffers.emissives_power_area_alias_table.alias_table_alias = m_power_area_alias_table_alias.data();
+        m_render_data.buffers.emissives_power_area_alias_table.alias_table_probas = m_power_area_alias_table_probas.data();
+        m_render_data.buffers.emissives_power_area_alias_table.sum_elements = power_area_sum;
+        m_render_data.buffers.emissives_power_area_alias_table.size = scene.emissive_triangle_indices.size();
+
+        auto stop = std::chrono::high_resolution_clock::now();
+        std::cout << "Power-area alias table construction time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+    });
 }
 
 void CPURenderer::set_envmap(Image32Bit& envmap_image)
@@ -356,7 +408,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
     {
         float total_sum;
 
-        envmap_image.compute_alias_table(m_alias_table_probas, m_alias_table_alias, &total_sum);
+        envmap_image.compute_alias_table(m_envmap_alias_table_probas, m_envmap_alias_table_alias, &total_sum);
         m_render_data.world_settings.envmap_total_sum = total_sum;
     }
 
@@ -370,8 +422,8 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
         m_render_data.world_settings.envmap_cdf = m_envmap_cdf.data();
     else if (EnvmapSamplingStrategy == ESS_ALIAS_TABLE)
     {
-        m_render_data.world_settings.envmap_alias_table.alias_table_probas = m_alias_table_probas.data();
-        m_render_data.world_settings.envmap_alias_table.alias_table_alias = m_alias_table_alias.data();
+        m_render_data.world_settings.envmap_alias_table.alias_table_probas = m_envmap_alias_table_probas.data();
+        m_render_data.world_settings.envmap_alias_table.alias_table_alias = m_envmap_alias_table_alias.data();
         m_render_data.world_settings.envmap_alias_table.sum_elements = m_render_data.world_settings.envmap_total_sum;
         m_render_data.world_settings.envmap_alias_table.size = envmap_image.width * envmap_image.height;
     }

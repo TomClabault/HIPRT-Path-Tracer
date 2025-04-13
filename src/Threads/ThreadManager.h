@@ -55,6 +55,7 @@ public:
 	static std::string RENDERER_UPLOAD_MATERIALS;
 	static std::string RENDERER_UPLOAD_TEXTURES;
 	static std::string RENDERER_UPLOAD_EMISSIVE_TRIANGLES;
+	static std::string RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE;
 
 	static std::string RENDERER_PRECOMPILE_KERNELS;
 	static std::string RESTIR_DI_PRECOMPILE_KERNELS;

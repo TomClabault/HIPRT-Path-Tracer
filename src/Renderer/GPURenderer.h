@@ -98,6 +98,20 @@ public:
 	 */
 	void reset_nee_plus_plus();
 
+	/**
+	 * Computes the alias table for sampling emissive triangles according to power-area
+	 */
+	void compute_emissives_power_area_alias_table(const Scene& scene);
+	/**
+	 * Overload for computing the alias table at runtime.
+	 * This will read the data from the GPU and is thus slower than the overload with the 'scene' parameter
+	 * 
+	 * This function is mainly used because at runtime, we don't have the scene data anymore since it's been freed
+	 * from the CPU to save on RAM
+	 */
+	void recompute_emissives_power_area_alias_table();
+	void free_emissives_power_area_alias_table();
+
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
@@ -359,6 +373,20 @@ public:
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 	void update_render_data();
+
+	/**
+	 * Private function that does the actual alias table recomputation
+	 */
+	void compute_emissives_power_area_alias_table(
+		const std::vector<int>& emissive_triangle_indices,
+		const std::vector<float3>& vertices_positions,
+		const std::vector<int>& triangle_indices,
+		const std::vector<int>& material_indices,
+		const std::vector<CPUMaterial>& materials,
+
+		OrochiBuffer<float>& alias_table_probas_buffer,
+		OrochiBuffer<int>& alias_table_alias_buffer,
+		DeviceAliasTable& power_area_alias_table);
 
 	/**
 	 * This function increments some counters (such as the number of samples rendered so far) after a

@@ -89,7 +89,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
     for (int i = 0; i < caching_sample_count; i++)
     {
         float trash_pdf;
-        LightSourceInformation light_info;
+        LightSampleInformation light_info;
 
         float3 target_point = sample_one_emissive_triangle(render_data, random_number_generator, trash_pdf, light_info);
         float3 direction = target_point - intersection_position;

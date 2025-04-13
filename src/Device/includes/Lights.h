@@ -28,9 +28,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
         return ColorRGB32F(0.0f);
 
     float light_sample_pdf;
-    LightSourceInformation light_source_info;
+    LightSampleInformation light_sample_info;
     ColorRGB32F light_source_radiance;
-    float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+    float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_sample_info);
     if (light_sample_pdf <= 0.0f)
         // Can happen for very small triangles
         return ColorRGB32F(0.0f);
@@ -45,7 +45,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
     shadow_ray.direction = shadow_ray_direction_normalized;
 
     // abs() here to allow backfacing light sources
-    float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, shadow_ray.direction));
+    float dot_light_source = hippt::abs(hippt::dot(light_sample_info.light_source_normal, shadow_ray.direction));
     if (dot_light_source > 0.0f)
     {
         NEEPlusPlusContext nee_plus_plus_context;
@@ -68,7 +68,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
                 light_sample_pdf /= dot_light_source;
 
                 float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-                light_source_radiance = light_source_info.emission * cosine_term * bsdf_color / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
+                light_source_radiance = light_sample_info.emission * cosine_term * bsdf_color / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
 
                 // Just a CPU-only sanity check
                 sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
@@ -129,8 +129,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     if (MaterialUtils::can_do_light_sampling(ray_payload.material))
     {
         float light_sample_pdf;
-        LightSourceInformation light_source_info;
-        float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+        LightSampleInformation light_sample_info;
+        float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_sample_info);
 
         // Can happen for very small triangles that the PDF of the sampled triangle couldn't be computed
         if (light_sample_pdf > 0.0f)
@@ -157,7 +157,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
 
                 if (bsdf_pdf > 0.0f)
                 {
-                    float cos_theta_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, shadow_ray.direction));
+                    float cos_theta_at_light_source = hippt::abs(hippt::dot(light_sample_info.light_source_normal, shadow_ray.direction));
 
                     // Preventing division by 0 in the conversion to solid angle here
                     if (cos_theta_at_light_source > 1.0e-5f)
@@ -170,7 +170,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
                         float mis_weight = balance_heuristic(light_sample_pdf, bsdf_pdf);
 
                         float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-                        light_source_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
+                        light_source_radiance_mis = bsdf_color * cosine_term * light_sample_info.emission * mis_weight / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
 
                         // Just a CPU-only sanity check
                         sanity_check</* CPUOnly */ true>(render_data, light_source_radiance_mis, 0, 0);

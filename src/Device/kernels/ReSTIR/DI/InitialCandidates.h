@@ -103,9 +103,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
     {
         // Light sample
 
-        LightSourceInformation light_source_info;
-        light_sample.point_on_light_source = sample_one_emissive_triangle(render_data, random_number_generator, out_sample_pdf, light_source_info);
-        light_sample.emissive_triangle_index = light_source_info.emissive_triangle_index;
+        LightSampleInformation light_sample_info;
+        light_sample.point_on_light_source = sample_one_emissive_triangle(render_data, random_number_generator, out_sample_pdf, light_sample_info);
+        light_sample.emissive_triangle_index = light_sample_info.emissive_triangle_index;
 
         if (out_sample_pdf > 0.0f)
         {
@@ -120,8 +120,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
 
             out_sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, to_light_direction));
 
-            float cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
-            bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_source_info.emission * out_sample_cosine_term / out_sample_pdf);
+            float cosine_at_light_source = hippt::abs(hippt::dot(light_sample_info.light_source_normal, -to_light_direction));
+            bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_sample_info.emission * out_sample_cosine_term / out_sample_pdf);
             if (!contributes_enough)
             {
                 // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
@@ -137,7 +137,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
             // (which has probability 'envmap_candidate_probability')
             out_sample_pdf *= (1.0f - envmap_candidate_probability);
 
-            out_sample_radiance = light_source_info.emission;
+            out_sample_radiance = light_sample_info.emission;
         }
     }
     else
