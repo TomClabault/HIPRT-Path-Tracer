@@ -92,6 +92,8 @@ int main(int argc, char* argv[])
     cpu_renderer.set_camera(parsed_scene.camera);
     cpu_renderer.set_scene(parsed_scene);
 
+    ThreadManager::join_all_threads();
+
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     cpu_renderer.render();

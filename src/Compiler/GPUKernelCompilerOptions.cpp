@@ -41,6 +41,7 @@ const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSD
 const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION = "NestedDielectricsStackSize";
 
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
+const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY = "DirectLightSamplingBaseStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS = "DirectLightUseNEEPlusPlus";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE = "DirectLightUseNEEPlusPlusRR";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED = "DirectLightNEEPlusPlusDisplayShadowRaysDiscarded";
@@ -97,6 +98,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
 
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
+	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED,
@@ -157,6 +159,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION] = std::make_shared<int>(NestedDielectricsStackSize);
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
+	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY] = std::make_shared<int>(DirectLightSamplingBaseStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS] = std::make_shared<int>(DirectLightUseNEEPlusPlus);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE] = std::make_shared<int>(DirectLightUseNEEPlusPlusRR);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED] = std::make_shared<int>(DirectLightNEEPlusPlusDisplayShadowRaysDiscarded);

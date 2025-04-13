@@ -449,6 +449,11 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
         renderer_material.alpha_opacity = 1.0f;
     }
 
+    /*if (std::string(mesh_material->GetName().C_Str()).find("Rear") == std::string::npos && std::string(mesh_material->GetName().C_Str()).find("LightSphere") == std::string::npos)
+    {
+        renderer_material.emission_strength = 0.0f;
+    }*/
+
     renderer_material.make_safe();
 }
 

@@ -33,7 +33,7 @@ struct HIPRTGeometry
 			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
 	}
 
-	void upload_indices(const std::vector<int>& triangles_indices)
+	void upload_triangle_indices(const std::vector<int>& triangles_indices)
 	{
 		int triangle_count = triangles_indices.size() / 3;
 		// Allocating and initializing the indices buffer
@@ -43,13 +43,29 @@ struct HIPRTGeometry
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_mesh.triangleIndices), triangles_indices.data(), triangle_count * sizeof(int3), oroMemcpyHostToDevice));
 	}
 
-	void upload_vertices(const std::vector<float3>& vertices_positions)
+	std::vector<int> download_triangle_indices()
+	{
+		if (m_mesh.vertices != nullptr)
+			return OrochiBuffer<int>::download_data(reinterpret_cast<int*>(m_mesh.triangleIndices), m_mesh.triangleCount * 3);
+
+		return std::vector<int>();
+	}
+
+	void upload_vertices_positions(const std::vector<float3>& vertices_positions)
 	{
 		// Allocating and initializing the vertices positions buiffer
 		m_mesh.vertexCount = vertices_positions.size();
 		m_mesh.vertexStride = sizeof(float3);
 		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_mesh.vertices), m_mesh.vertexCount * sizeof(float3)));
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_mesh.vertices), vertices_positions.data(), m_mesh.vertexCount * sizeof(float3), oroMemcpyHostToDevice));
+	}
+
+	std::vector<float3> download_vertices_positions()
+	{
+		if (m_mesh.vertices != nullptr)
+			return OrochiBuffer<float3>::download_data(reinterpret_cast<float3*>(m_mesh.vertices), m_mesh.vertexCount);
+
+		return std::vector<float3>();
 	}
 
 	void log_bvh_building(hiprtBuildFlags build_flags)
@@ -134,6 +150,8 @@ struct HIPRTScene
 
 	int emissive_triangles_count = 0;
 	OrochiBuffer<int> emissive_triangles_indices;
+	OrochiBuffer<float> emissive_power_area_alias_table_probas;
+	OrochiBuffer<int> emissive_power_area_alias_table_alias;
 
 	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
 	// be destroyed which means that the underlying textures would be destroyed

@@ -39,7 +39,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
     ReSTIRDIPresampledLight presampled_light;
 
     float light_pdf;
-    LightSourceInformation light_info;
+    LightSampleInformation light_info;
     float3 point_on_light = sample_one_emissive_triangle(render_data, random_number_generator, light_pdf, light_info);
 
     if (light_pdf > 0.0f)

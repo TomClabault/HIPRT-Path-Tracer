@@ -185,6 +185,137 @@ void GPURenderer::reset_nee_plus_plus()
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
 
+void GPURenderer::compute_emissives_power_area_alias_table(const Scene& scene)
+{
+	compute_emissives_power_area_alias_table(
+		scene.emissive_triangle_indices, 
+		scene.vertices_positions, 
+		scene.triangle_indices, 
+		scene.material_indices,
+		scene.materials,
+		
+		m_hiprt_scene.emissive_power_area_alias_table_probas, 
+		m_hiprt_scene.emissive_power_area_alias_table_alias,
+		m_render_data.buffers.emissives_power_area_alias_table);
+
+	// Not joining the thread that does the computation here because it will
+	// be joined before starting the render since this method is called during
+	// the initialization of the renderer
+}
+
+void GPURenderer::recompute_emissives_power_area_alias_table()
+{
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) != LSS_BASE_POWER_AREA)
+		// Not using power-area sampling, no need to compute the alias table
+		return;
+
+	synchronize_kernel();
+
+	std::vector<int> emissive_triangle_indices = m_hiprt_scene.emissive_triangles_indices.download_data();
+	std::vector<float3> vertices_positions = m_hiprt_scene.geometry.download_vertices_positions();
+	std::vector<int> triangle_indices = m_hiprt_scene.geometry.download_triangle_indices();
+	std::vector<int> material_indices = m_hiprt_scene.material_indices.download_data();
+
+	compute_emissives_power_area_alias_table(
+		emissive_triangle_indices,
+		vertices_positions,
+		triangle_indices,
+		material_indices,
+		m_current_materials,
+
+		m_hiprt_scene.emissive_power_area_alias_table_probas,
+		m_hiprt_scene.emissive_power_area_alias_table_alias,
+		m_render_data.buffers.emissives_power_area_alias_table);
+
+	ThreadManager::join_threads(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE);
+}
+
+void GPURenderer::compute_emissives_power_area_alias_table(
+	const std::vector<int>& emissive_triangle_indices,
+	const std::vector<float3>& vertices_positions,
+	const std::vector<int>& triangle_indices,
+	const std::vector<int>& material_indices,
+	const std::vector<CPUMaterial>& materials,
+
+	OrochiBuffer<float>& alias_table_probas_buffer,
+	OrochiBuffer<int>& alias_table_alias_buffer,
+	DeviceAliasTable& power_area_alias_table)
+{
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) != LSS_BASE_POWER_AREA)
+		// Not using power-area sampling, no need to compute the alias table
+		return;
+
+	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, [ 
+		&emissive_triangle_indices, 
+		&vertices_positions,
+		&triangle_indices, 
+		&material_indices,
+		&materials,
+
+		&alias_table_alias_buffer,
+		&alias_table_probas_buffer,
+		&power_area_alias_table] ()
+	{
+		std::vector<float> power_area_list(emissive_triangle_indices.size());
+		float power_area_sum = 0.0f;
+
+		for (int i = 0; i < emissive_triangle_indices.size(); i++)
+		{
+			int emissive_triangle_index = emissive_triangle_indices[i];
+
+			// Computing the area of the triangle
+			float3 vertex_A = vertices_positions[triangle_indices[emissive_triangle_index * 3 + 0]];
+			float3 vertex_B = vertices_positions[triangle_indices[emissive_triangle_index * 3 + 1]];
+			float3 vertex_C = vertices_positions[triangle_indices[emissive_triangle_index * 3 + 2]];
+
+			float3 AB = vertex_B - vertex_A;
+			float3 AC = vertex_C - vertex_A;
+
+			float3 normal = hippt::cross(AB, AC);
+			float length_normal = hippt::length(normal);
+			float triangle_area = 0.5f * length_normal;
+
+			int mat_index = material_indices[emissive_triangle_index];
+			float emission_luminance = materials[mat_index].emission.luminance() * materials[mat_index].emission_strength * materials[mat_index].global_emissive_factor;
+
+			float area_power = emission_luminance * triangle_area;
+
+			power_area_list[i] = area_power;
+			power_area_sum += area_power;
+		}
+
+		std::vector<float> alias_probas;
+		std::vector<int> alias_aliases;
+		Utils::compute_alias_table(power_area_list, power_area_sum, alias_probas, alias_aliases);
+
+		alias_table_probas_buffer.resize(emissive_triangle_indices.size());
+		alias_table_alias_buffer.resize(emissive_triangle_indices.size());
+
+		alias_table_probas_buffer.upload_data(alias_probas);
+		alias_table_alias_buffer.upload_data(alias_aliases);
+
+		power_area_alias_table.alias_table_probas = alias_table_probas_buffer.get_device_pointer();
+		power_area_alias_table.alias_table_alias = alias_table_alias_buffer.get_device_pointer();
+		power_area_alias_table.size = emissive_triangle_indices.size();
+		power_area_alias_table.sum_elements = power_area_sum;
+	});
+}
+
+void GPURenderer::free_emissives_power_area_alias_table()
+{
+	if (m_hiprt_scene.emissive_power_area_alias_table_alias.get_element_count() > 0)
+		m_hiprt_scene.emissive_power_area_alias_table_alias.free();
+
+	if (m_hiprt_scene.emissive_power_area_alias_table_probas.get_element_count() > 0)
+		m_hiprt_scene.emissive_power_area_alias_table_probas.free();
+
+	m_render_data.buffers.emissives_power_area_alias_table.alias_table_alias = nullptr;
+	m_render_data.buffers.emissives_power_area_alias_table.alias_table_probas = nullptr;
+	m_render_data.buffers.emissives_power_area_alias_table.size = 0;
+	m_render_data.buffers.emissives_power_area_alias_table.sum_elements = 0;
+}
+
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 {
 	return std::dynamic_pointer_cast<GMoNRenderPass>(m_render_graph.get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
@@ -1181,8 +1312,8 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 		// Empty scene, nothing todo
 		return;
 
-	m_hiprt_scene.geometry.upload_indices(scene.triangle_indices);
-	m_hiprt_scene.geometry.upload_vertices(scene.vertices_positions);
+	m_hiprt_scene.geometry.upload_triangle_indices(scene.triangle_indices);
+	m_hiprt_scene.geometry.upload_vertices_positions(scene.vertices_positions);
 	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
 	rebuild_renderer_bvh(hiprtBuildFlagBitPreferHighQualityBuild, true);
 
@@ -1280,6 +1411,7 @@ void GPURenderer::set_scene(const Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
 	setup_nee_plus_plus_from_scene(scene);
+	compute_emissives_power_area_alias_table(scene);
 
 	m_original_materials = scene.materials;
 	m_current_materials = scene.materials;

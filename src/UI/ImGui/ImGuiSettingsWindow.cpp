@@ -1082,6 +1082,23 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				(disabled ? std::string("\n\nDisabled because not supported by ReSTIR DI") : ""));
 			ImGui::EndDisabled();
 
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
+			const char* tooltips_base_strategy[] = {
+				"All lights are sampled uniformly.",
+				"Lights are sampled proportionally to their 'power * area'."
+			};
+			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
+			{
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER_AREA)
+					m_renderer->recompute_emissives_power_area_alias_table();
+				else
+					// The power-area alias table isn't used, freeing it
+					m_renderer->free_emissives_power_area_alias_table();
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
 			const char* tooltips[] = {
