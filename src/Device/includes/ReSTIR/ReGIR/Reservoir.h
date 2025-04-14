@@ -26,7 +26,7 @@ struct ReGIRReservoir
 {
 	HIPRT_HOST_DEVICE void stream_sample(float mis_weight, float target_function, float source_pdf, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
 	{
-		float resampling_weight = mis_weight * target_function * source_pdf;
+		float resampling_weight = mis_weight * target_function / source_pdf;
 
 		M++;
 		weight_sum += resampling_weight;

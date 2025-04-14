@@ -211,7 +211,7 @@
  * This is a handy macro that tells us whether or not we have any other kernel option 
  * that overrides the color of the framebuffer
  */
-#define ViewportColorOverriden (DirectLightNEEPlusPlusDisplayShadowRaysDiscarded)
+#define ViewportColorOverriden (DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE || ReGIR_DisplayGridCells == KERNEL_OPTION_TRUE)
 
 #endif // #ifndef __KERNELCC__
 

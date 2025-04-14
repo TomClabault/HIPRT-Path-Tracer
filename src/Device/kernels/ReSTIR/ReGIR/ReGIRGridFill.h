@@ -27,7 +27,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
         return;
 
 #ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t linear_cell_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 
     ReGIRGrid& regir_grid = render_data.render_settings.regir_grid;

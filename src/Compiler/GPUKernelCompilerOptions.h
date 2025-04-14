@@ -44,6 +44,7 @@ public:
 	static const std::string TRIANGLE_POINT_SAMPLING_STRATEGY;
 
 	static const std::string REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY;
+	static const std::string REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY;
 
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
 	static const std::string DIRECT_LIGHT_SAMPLING_BASE_STRATEGY;

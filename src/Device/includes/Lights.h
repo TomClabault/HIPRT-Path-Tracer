@@ -62,11 +62,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
             if (bsdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure
-                float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+                float solid_angle_pdf = LightSampleInformation::get_solid_angle_measure_pdf<false>(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
                 if (solid_angle_pdf > 0.0f)
                 {
                     float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-                    light_source_radiance = light_sample.emission * cosine_term * bsdf_color * solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+                    light_source_radiance = light_sample.emission * cosine_term * bsdf_color / solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
 
                     // Just a CPU-only sanity check
                     sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
