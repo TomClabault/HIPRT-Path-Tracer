@@ -94,31 +94,44 @@ namespace hippt
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
 	__device__ float abs(float a) { return fabsf(a); }
 
+
+
+
+
 	template <typename T>
 	__device__ T max(T a, T b) { return a > b ? a : b; }
 
+	/**
+	 * Component-wise max of float3 and int3
+	 */
 	template <>
-	__device__ float3 max(float3 a, float3 b) { return make_float3(hippt::max(a.x, b.x), hippt::max(a.y, b.y), hippt::max(a.z, b.z)); }
+	__device__ float3 max(float3 a, float3 b) { return make_float3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
+	template <>
+	__device__ int3 max(int3 a, int3 b) { return make_int3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
+
+
+
+
 
 	template <typename T>
 	__device__ T min(T a, T b) { return a < b ? a : b; }
 
 	/**
-	 * Component-wise min of float3
+	 * Component-wise min of float3 and int3
 	 */
 	template <>
 	__device__ float3 min(float3 a, float3 b) { return make_float3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+	template <>
+	__device__ int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
 	/**
 	 * Minimum of each component of the float3 against x
 	 */
 	__device__ float3 min(float3 a, float x) { return make_float3(hiprt::min(a.x, x), hiprt::min(a.y, x), hiprt::min(a.z, x)); }
 	__device__ float3 min(float x, float3 a) { return hippt::min(a, x); }
 
-	/**
-	 * Component-wise min of int3
-	 */
-	template <>
-	__device__ int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+
+
+
 
 	template <typename T>
 	__device__ T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
@@ -318,31 +331,44 @@ namespace hippt
 	inline float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
 	inline float abs(float a) { return std::abs(a); }
 
-	template <typename T>
-	inline T max(T a, T b) { return hiprt::max(a, b); }
 
+
+
+
+
+	template <typename T>
+	inline T max(T a, T b) { return a > b ? a : b; }
+	/**
+	 * Component-wise max of float3 and int3
+	 */
 	template <>
-	inline float3 max(float3 a, float3 b) { return make_float3(hippt::max(a.x, b.x), hippt::max(a.y, b.y), hippt::max(a.z, b.z)); }
+	inline float3 max(float3 a, float3 b) { return make_float3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
+	template <>
+	inline int3 max(int3 a, int3 b) { return make_int3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
+
+
+
 
 	template <typename T>
-	inline T min(T a, T b) { return hiprt::min(a, b); }
+	inline T min(T a, T b) { return a < b ? a : b; }
 
 	/**
-	 * Component-wise min of float3
+	 * Component-wise min of float3 and int3
 	 */
 	template <>
 	inline float3 min(float3 a, float3 b) { return make_float3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+	template <>
+	inline int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+
+
+
+
+
 	/**
 	 * Minimum of each component of the float3 against x
 	 */
 	inline float3 min(float3 a, float x) { return make_float3(hiprt::min(a.x, x), hiprt::min(a.y, x), hiprt::min(a.z, x)); }
 	inline float3 min(float x, float3 a) { return hippt::min(a, x); }
-
-	/**
-	 * Component-wise min of int3
-	 */
-	template <>
-	inline int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
 
 	template <typename T>
 	inline T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }

@@ -6,6 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_COLOR_H
 #define HOST_DEVICE_COMMON_COLOR_H
 
+#include "Device/includes/Hash.h"
 #include "HostDeviceCommon/Math.h"
 
 struct ColorRGBA32F
@@ -103,6 +104,17 @@ struct ColorRGB32F
 
     HIPRT_HOST_DEVICE float& operator[](int index) { return *(&r + index); }
     HIPRT_HOST_DEVICE float operator[](int index) const { return *(&r + index); }
+
+    HIPRT_HOST_DEVICE static ColorRGB32F random_color(unsigned int seed) 
+    {
+        constexpr unsigned int UNSIGNED_INT_MAX = 0xffffffff;
+
+        unsigned int seed1 = wang_hash(seed);
+        unsigned int seed2 = wang_hash(seed1);
+        unsigned int seed3 = wang_hash(seed2);
+
+        return ColorRGB32F(seed1 / static_cast<float>(UNSIGNED_INT_MAX), seed2 / static_cast<float>(UNSIGNED_INT_MAX), seed3 / static_cast<float>(UNSIGNED_INT_MAX));
+    }
 
     float r, g, b;
 };

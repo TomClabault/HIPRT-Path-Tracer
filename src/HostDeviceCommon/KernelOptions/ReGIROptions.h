@@ -18,11 +18,27 @@
 #ifndef __KERNELCC__
 
 /**
-* Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
+* How to sample lights in the scene for filling the ReGIR grid.
 *
-* Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
+*	- LSS_BASE_UNIFORM
+*		Lights are sampled uniformly
+*
+*	- LSS_BASE_POWER_AREA
+*		Lights are sampled proportionally to their 'power * area'
 */
 #define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_POWER_AREA
+
+/**
+ * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
+ * 
+ * All LSS_BASE_XXX strategies are allowed except LSS_BASE_REGIR
+ */
+#define ReGIR_FallbackLightSamplingStrategy LSS_BASE_POWER_AREA
+
+/**
+ * Debug option to color the scene with the grid cells
+ */
+#define ReGIR_DisplayGridCells KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

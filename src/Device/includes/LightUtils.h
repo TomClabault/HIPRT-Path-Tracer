@@ -6,6 +6,7 @@
 #ifndef DEVICE_LIGHT_UTILS_H
 #define DEVICE_LIGHT_UTILS_H
 
+#include "Device/includes/PDFConversion.h"
 #include "Device/includes/ReSTIR/ReGIR/Grid.h"
 
 #include "HostDeviceCommon/Color.h"
@@ -142,12 +143,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     const float3& shading_point,
     const ReGIRGrid& regir_grid,
     const int* material_indices, const DevicePackedTexturedMaterialSoA& materials_buffer,
+    bool& out_shading_point_outside_of_grid,
     Xorshift32Generator& random_number_generator)
 {
-    ReGIRReservoir cell_reservoir = regir_grid.get_cell_reservoir(shading_point);
+    ReGIRReservoir cell_reservoir = regir_grid.get_cell_reservoir(shading_point, out_shading_point_outside_of_grid);
+    if (out_shading_point_outside_of_grid)
+        return LightSampleInformation();
 
     LightSampleInformation out_sample;
-    out_sample.area_measure_pdf = cell_reservoir.UCW;
+    out_sample.area_measure_pdf = 1.0f / cell_reservoir.UCW;
     out_sample.emission = materials_buffer.get_emission(material_indices[cell_reservoir.sample.emissive_triangle_index]);
     out_sample.emissive_triangle_index = cell_reservoir.sample.emissive_triangle_index;
     out_sample.light_area = cell_reservoir.sample.light_area;
@@ -176,10 +180,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     }
     else if constexpr (samplingStrategy == LSS_BASE_REGIR)
     {
-        return sample_one_emissive_triangle_regir(shading_point,
+        bool point_outside_grid;
+
+        LightSampleInformation light_sample = sample_one_emissive_triangle_regir(shading_point,
             render_data.render_settings.regir_grid,
             render_data.buffers.material_indices, render_data.buffers.materials_buffer,
+            point_outside_grid,
             random_number_generator);
+
+        if (!point_outside_grid)
+            return light_sample;
+        else
+        {
+#if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
+            // Invalid fallback strategy
+            invalid ReGIR light sampling fallback strategy
+#endif
+
+            // Fallback method as the point was outside of the ReGIR grid
+            return sample_one_emissive_triangle<ReGIR_FallbackLightSamplingStrategy>(render_data, shading_point, random_number_generator);
+        }
     }
 }
 
@@ -199,14 +219,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render
 {
     float3 normal = get_triangle_normal_not_normalized(render_data, triangle_index);
     return hippt::length(normal) * 0.5f;
-}
-
-HIPRT_INLINE HIPRT_HOST_DEVICE float area_to_solid_angle_pdf(float area_pdf, float distance, float cos_theta)
-{
-    if (cos_theta < 1.0e-8f)
-        return 0.0f;
-
-    return area_pdf * hippt::square(distance) / cos_theta;
 }
 
 /**

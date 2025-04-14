@@ -135,6 +135,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
+#if ViewportColorOverriden == 1
+    // Modifying the ray color such that we display some debug color to the screen
+
+#if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
+    // Nothing to do, the debug is already handled in the shadow ray NEE function
+#elif ReGIR_DisplayGridCells == KERNEL_OPTION_TRUE
+    ray_payload.ray_color = ColorRGB32F(0.0f);
+    if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+        // We have a first hit
+        ray_payload.ray_color = render_data.render_settings.regir_grid.get_random_cell_color(render_data.g_buffer.primary_hit_position[pixel_index], true, &random_number_generator) * (render_data.render_settings.sample_number + 1);
+#endif
+#endif
+
     path_tracing_accumulate_color(render_data, ray_payload.ray_color, pixel_index);
 }
 

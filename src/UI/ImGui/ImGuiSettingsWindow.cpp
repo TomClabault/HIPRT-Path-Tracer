@@ -1082,10 +1082,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				(disabled ? std::string("\n\nDisabled because not supported by ReSTIR DI") : ""));
 			ImGui::EndDisabled();
 
-			const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling", "- ReGIR"};
 			const char* tooltips_base_strategy[] = {
 				"All lights are sampled uniformly.",
-				"Lights are sampled proportionally to their 'power * area'."
+
+				"Lights are sampled proportionally to their 'power * area'.",
+
+				"Uses ReGIR to sample lights.\n\n"
+				"Implementation of[Rendering many lights with grid - based reservoirs, Boksansky, 2021]"
 			};
 			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 			{

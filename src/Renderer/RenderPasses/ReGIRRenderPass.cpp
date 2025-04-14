@@ -32,6 +32,23 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
 }
 
+bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
+{
+	if (is_render_pass_used())
+	{
+		bool compiled = m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->has_been_compiled();
+		if (!compiled)
+		{
+			// Spatiotemporal is needed but hasn't been compiled yet
+			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool ReGIRRenderPass::pre_render_update(float delta_time)
 {
 	if (is_render_pass_used())
@@ -69,7 +86,7 @@ bool ReGIRRenderPass::launch()
 	if (!is_render_pass_used())
 		return false;
 
-	void* launch_args[] = {m_render_data, &m_regir_data.settings };
+	void* launch_args[] = { m_render_data, &m_regir_data.settings };
 
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->launch_asynchronous(64, 1, m_regir_data.get_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
 

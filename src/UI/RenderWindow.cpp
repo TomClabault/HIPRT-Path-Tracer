@@ -26,6 +26,7 @@
 // - Alpah tests darkening ReSTIR DI
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 // - Greedy spatial reuse to retry neighbors if we didn't get a good one
+// - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;
@@ -141,6 +142,7 @@ extern ImGuiLogger g_imgui_logger;
 
  */
 // - Eta scaling for russian roulette refractions
+// - Projected solid angle light sampling https://momentsingraphics.de/ToyRenderer4RayTracing.html
 // - Disable back facing lights for performance because most of those lights, for correct meshes, are going to be occluded
 //		- Add an option to re-enable manually back facing lights in the material
 // - Efficient Image-Space Shape Splatting for Monte Carlo Rendering

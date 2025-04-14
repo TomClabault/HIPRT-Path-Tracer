@@ -403,6 +403,7 @@ void GPURenderer::setup_render_passes()
 	gmon_render_pass->add_dependency(restir_gi_render_pass);
 
 	m_render_graph.add_render_pass(camera_rays_render_pass);
+	m_render_graph.add_render_pass(regir_render_pass);
 	m_render_graph.add_render_pass(restir_di_render_pass);
 	m_render_graph.add_render_pass(megakernel_render_pass);
 	m_render_graph.add_render_pass(restir_gi_render_pass);
