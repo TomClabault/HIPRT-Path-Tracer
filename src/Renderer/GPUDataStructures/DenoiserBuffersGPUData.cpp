@@ -56,7 +56,7 @@ void DenoiserBuffersGPUData::set_use_interop_AOV_buffers(GPURenderer* renderer, 
 		// Nothing to change
 		return;
 
-	renderer->synchronize_kernel();
+	renderer->synchronize_all_kernels();
 
 	use_interop_AOVs = use_interop;
 

@@ -47,6 +47,11 @@ struct BoundingBox
 		return *(&maxi.x + coord) - *(&mini.x + coord);
 	}
 
+	float3 get_extents() const
+	{
+		return make_float3(get_extent(0), get_extent(1), get_extent(2));
+	}
+
 	float3 get_center() const
 	{
 		return (mini + maxi) * 0.5f;

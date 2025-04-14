@@ -111,6 +111,7 @@ public:
 	 */
 	void recompute_emissives_power_area_alias_table();
 	void free_emissives_power_area_alias_table();
+	bool needs_emissives_power_area_alias_table();
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
@@ -166,7 +167,7 @@ public:
 	 * Blocking that waits for all the operations queued on
 	 * the main stream to complete
 	 */
-	void synchronize_kernel();
+	void synchronize_all_kernels();
 
 	/**
 	 * Returns false if the frame queued asynchronously by a previous call to render()
@@ -243,6 +244,7 @@ public:
 	Camera& get_previous_frame_camera();
 	CameraAnimation& get_camera_animation();
 	RendererEnvmap& get_envmap();
+	SceneMetadata& get_scene_metadata();
 
 	void set_scene(const Scene& scene);
 	void rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction);
@@ -350,6 +352,7 @@ public:
 	void set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options = GPUKernelCompilerOptions());
 	bool is_using_debug_kernel();
 	oroStream_t get_main_stream();
+	oroStream_t get_async_stream_1();
 
 	std::unordered_map<std::string, float>& get_render_pass_times();
 	/**
@@ -523,10 +526,10 @@ private:
 	// This buffer is necessary because with adaptive sampling, each pixel
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count_buffer;
-	StatusBuffersGPUData m_status_buffers;
-	// Whether or not the pixel at the given index is active and needs more samples
 	OrochiBuffer<unsigned char> m_pixel_active;
 
+	StatusBuffersGPUData m_status_buffers;
+	// Whether or not the pixel at the given index is active and needs more samples
 	// Structure that holds the values of the one-variable buffers of the renderer.
 	// These values are 'one_ray_active' or 'pixel_converged_count' for example.
 	// These values are updated when the pre_render_update() is called
@@ -576,8 +579,11 @@ private:
 	// HIPRT and Orochi contexts
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 
-	// Custom stream onto which kernels are dispatched asynchronously
+	// Custom stream onto which kernels are dispatched
 	oroStream_t m_main_stream = nullptr;
+	// Custom stream onto which kernels can be dispatched asynchronously from the 'main_stream'
+	oroStream_t m_async_stream_1 = nullptr;
+
 	// Whether or not the frame queued on the GPU by the last call to render() 
 	// is done rendering or not
 	bool m_frame_rendered = true;
@@ -613,6 +619,7 @@ private:
 
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
+
 
 	// 32x32 texture containing the precomputed parameters of the LTC
 	// fitted to approximate the SSGX sheen volumetric layer.

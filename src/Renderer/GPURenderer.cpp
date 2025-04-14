@@ -11,6 +11,7 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
+#include "Renderer/RenderPasses/ReGIRRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
@@ -58,11 +59,8 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	setup_filter_functions();
 	setup_render_passes();
 
-	/*m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = 0.0f;
-	for (auto& id_to_pass : GPURenderer::KERNEL_FUNCTION_NAMES)
-		m_render_pass_times[id_to_pass.first] = 0.0f;*/
-
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_async_stream_1));
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
 	m_status_buffers.still_one_ray_active_buffer.resize(1);
@@ -115,7 +113,7 @@ void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode fil
 
 void GPURenderer::load_glossy_dielectric_energy_compensation_textures(hipTextureFilterMode filtering_mode)
 {
-	synchronize_kernel();
+	synchronize_all_kernels();
 
 	std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
@@ -131,7 +129,7 @@ void GPURenderer::load_glossy_dielectric_energy_compensation_textures(hipTexture
 
 void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMode filtering_mode)
 {
-	synchronize_kernel();
+	synchronize_all_kernels();
 
 	std::vector<Image32Bit> images(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
@@ -205,11 +203,10 @@ void GPURenderer::compute_emissives_power_area_alias_table(const Scene& scene)
 
 void GPURenderer::recompute_emissives_power_area_alias_table()
 {
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) != LSS_BASE_POWER_AREA)
-		// Not using power-area sampling, no need to compute the alias table
-		return;
+	if (!needs_emissives_power_area_alias_table())
+		free_emissives_power_area_alias_table();
 
-	synchronize_kernel();
+	synchronize_all_kernels();
 
 	std::vector<int> emissive_triangle_indices = m_hiprt_scene.emissive_triangles_indices.download_data();
 	std::vector<float3> vertices_positions = m_hiprt_scene.geometry.download_vertices_positions();
@@ -241,7 +238,7 @@ void GPURenderer::compute_emissives_power_area_alias_table(
 	OrochiBuffer<int>& alias_table_alias_buffer,
 	DeviceAliasTable& power_area_alias_table)
 {
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) != LSS_BASE_POWER_AREA)
+	if (!needs_emissives_power_area_alias_table())
 		// Not using power-area sampling, no need to compute the alias table
 		return;
 
@@ -316,6 +313,16 @@ void GPURenderer::free_emissives_power_area_alias_table()
 	m_render_data.buffers.emissives_power_area_alias_table.sum_elements = 0;
 }
 
+bool GPURenderer::needs_emissives_power_area_alias_table()
+{
+	bool directly_using_power_area = m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER_AREA;
+	bool using_regir_power_area =
+		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR &&
+		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER_AREA;
+
+	return directly_using_power_area || using_regir_power_area;
+}
+
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 {
 	return std::dynamic_pointer_cast<GMoNRenderPass>(m_render_graph.get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
@@ -371,8 +378,12 @@ void GPURenderer::setup_render_passes()
 
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = std::make_shared<FillGBufferRenderPass>(this);
 
+	std::shared_ptr<ReGIRRenderPass> regir_render_pass = std::make_shared<ReGIRRenderPass>(this);
+	regir_render_pass->add_dependency(camera_rays_render_pass);
+
 	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = std::make_shared<ReSTIRDIRenderPass>(this);
 	restir_di_render_pass->add_dependency(camera_rays_render_pass);
+	restir_di_render_pass->add_dependency(regir_render_pass);
 
 	// Note that the megakernel pass will only be used if ReSTIR GI is not used.
 	// But we're still adding the render pass to the render graph in case the user
@@ -742,12 +753,13 @@ void GPURenderer::launch_debug_kernel()
 	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
-void GPURenderer::synchronize_kernel()
+void GPURenderer::synchronize_all_kernels()
 {
 	if (m_main_stream == nullptr)
 		return;
 
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_async_stream_1));
 }
 
 bool GPURenderer::frame_render_done()
@@ -767,7 +779,7 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	m_render_resolution = make_int2(new_width, new_height);
 
-	synchronize_kernel();
+	synchronize_all_kernels();
 	unmap_buffers();
 
 	m_framebuffer->resize(new_width * new_height);
@@ -939,7 +951,7 @@ extern std::condition_variable g_condition_for_compilation;
 
 void GPURenderer::recompile_kernels(bool use_cache)
 {
-	synchronize_kernel();
+	synchronize_all_kernels();
 
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Recompiling kernels...");
 
@@ -1171,6 +1183,11 @@ bool GPURenderer::is_using_debug_kernel()
 oroStream_t GPURenderer::get_main_stream()
 {
 	return m_main_stream;
+}
+
+oroStream_t GPURenderer::get_async_stream_1()
+{
+	return m_async_stream_1;
 }
 
 void GPURenderer::compute_render_pass_times()
@@ -1546,6 +1563,11 @@ CameraAnimation& GPURenderer::get_camera_animation()
 RendererEnvmap& GPURenderer::get_envmap()
 {
 	return m_envmap;
+}
+
+SceneMetadata& GPURenderer::get_scene_metadata()
+{
+	return m_parsed_scene_metadata;
 }
 
 void GPURenderer::set_camera(const Camera& camera)

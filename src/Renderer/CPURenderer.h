@@ -7,8 +7,11 @@
 #define CPU_RENDERER_H
 
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
+
 #include "HostDeviceCommon/RenderData.h"
+
 #include "Image/Image.h"
 #include "Image/EnvmapRGBE9995.h"
 #include "Renderer/BVH.h"
@@ -53,7 +56,7 @@ public:
 
     void nee_plus_plus_cache_visibility_pass();
     void camera_rays_pass();
-
+    void ReGIR_grid_fill_pass();
     void ReSTIR_DI_pass();
     void ReSTIR_GI_pass();
 
@@ -164,6 +167,14 @@ private:
         AtomicType<unsigned long long int> spatial_reuse_hit_rate_total;
     } m_restir_gi_state;
 
+    struct ReGIRState
+    {
+        ReGIRSettings settings;
+        ReGIRGrid grid;
+
+        std::vector<ReGIRReservoir> grid_buffer;
+    } m_regir_state;
+
     Image32Bit m_sheen_ltc_params;
     Image32Bit m_GGX_conductor_directional_albedo;
     Image32Bit3D m_glossy_dielectrics_directional_albedo;
@@ -174,8 +185,6 @@ private:
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;
 
-    // Random seed used for the whole frame when launching the camera rays kernel
-    unsigned int m_camera_rays_random_seed;
     Camera m_camera;
     HIPRTRenderData m_render_data;
 };

@@ -30,7 +30,7 @@ void RenderGraph::resize(unsigned int new_width, unsigned int new_height)
 
 bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
 {
-	m_renderer->synchronize_kernel();
+	m_renderer->synchronize_all_kernels();
 
 	bool recompiled = false;
 	m_renderer->take_kernel_compilation_priority();

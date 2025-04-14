@@ -97,44 +97,35 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
     RISReservoir reservoir;
     for (int i = 0; i < nb_light_candidates; i++)
     {
-        float light_sample_pdf;
-        float distance_to_light;
-        float cosine_at_light_source;
-        float cosine_at_evaluated_point;
-        LightSampleInformation light_sample_info;
-
         ColorRGB32F bsdf_color;
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
-        float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_sample_info);
+        LightSampleInformation light_sample_info = sample_one_emissive_triangle(render_data, closest_hit_info.inter_point, random_number_generator);
 
-        if (light_sample_pdf > 0.0f)
+        if (light_sample_info.area_measure_pdf > 0.0f)
         {
             // It can happen that the light PDF returned by the emissive triangle
             // sampling function is 0 because of emissive triangles that are so
             // small that we cannot compute their normal and their area (the cross
             // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
 
-            float3 to_light_direction = random_light_point - closest_hit_info.inter_point;
-            distance_to_light = hippt::length(to_light_direction);
+            float3 to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
+            float distance_to_light = hippt::length(to_light_direction);
             to_light_direction = to_light_direction / distance_to_light; // Normalization
-            cosine_at_light_source = hippt::abs(hippt::dot(light_sample_info.light_source_normal, -to_light_direction));
+            float cosine_at_light_source = hippt::abs(hippt::dot(light_sample_info.light_source_normal, -to_light_direction));
             // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
             // for the dot product to be "properly" oriented.
-            cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));
+            float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));
             if (cosine_at_evaluated_point > 0.0f && cosine_at_light_source > 1.0e-6f)
             {
-                // Converting the PDF from area measure to solid angle measure requires dividing by
-                // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
-                // which is what we're doing here
-                light_sample_pdf *= distance_to_light * distance_to_light;
-                light_sample_pdf /= cosine_at_light_source;
+                // Converting the PDF from area measure to solid angle measure
+                light_sample_info.area_measure_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
 
                 float bsdf_pdf = 0.0f;
                 // Early check for minimum light contribution: if the light itself doesn't contribute enough,
                 // adding the BSDF attenuation on top of it will only make it worse so we can already
                 // skip the light and saves ourselves the evaluation of the BSDF
-                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_sample_info.emission / light_sample_pdf);
+                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_sample_info.emission / light_sample_info.area_measure_pdf);
                 if (!contributes_enough)
                     target_function = 0.0f;
                 else
@@ -147,7 +138,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
 
                     ColorRGB32F light_contribution = bsdf_color * light_sample_info.emission * cosine_at_evaluated_point;
                     // Checking the light contribution and taking the BSDF and light PDFs into account
-                    contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / bsdf_pdf / light_sample_pdf);
+                    contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / bsdf_pdf / light_sample_info.area_measure_pdf);
                     if (!contributes_enough)
                         // The light doesn't contribute enough, setting the target function to 0.0f
                         // so that this light sample is skipped
@@ -175,14 +166,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 }
 #endif
 
-                float mis_weight = balance_heuristic(light_sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
-                candidate_weight = mis_weight * target_function / light_sample_pdf;
+                float mis_weight = balance_heuristic(light_sample_info.area_measure_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+                candidate_weight = mis_weight * target_function / light_sample_info.area_measure_pdf;
             }
         }
 
         RISSample light_RIS_sample;
         light_RIS_sample.is_bsdf_sample = false;
-        light_RIS_sample.point_on_light_source = random_light_point;
+        light_RIS_sample.point_on_light_source = light_sample_info.point_on_light;
         light_RIS_sample.target_function = target_function;
         light_RIS_sample.emissive_triangle_index = light_sample_info.emissive_triangle_index;
 

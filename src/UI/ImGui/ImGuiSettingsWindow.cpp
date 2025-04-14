@@ -1089,11 +1089,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			};
 			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 			{
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER_AREA)
-					m_renderer->recompute_emissives_power_area_alias_table();
-				else
-					// The power-area alias table isn't used, freeing it
-					m_renderer->free_emissives_power_area_alias_table();
+				// Will recompute the alias table if necessary
+				m_renderer->recompute_emissives_power_area_alias_table();
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -2452,7 +2449,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 			{
 				static bool use_cube_grid = true;
-				ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+				ImGui::Checkbox("Use cubic gpu_grid", &use_cube_grid);
 				bool size_changed = false;
 				if (use_cube_grid)
 				{
