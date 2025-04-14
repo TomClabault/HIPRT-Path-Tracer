@@ -1100,6 +1100,74 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+			{
+				// Adding options for ReGIR
+				if (ImGui::CollapsingHeader("ReGIR Settings"))
+				{
+					ImGui::TreePush("ReGIR settings tree");
+
+					ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReGIR_render_pass()->get_VRAM_usage());
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+					ReGIRGPUData& regir_data = m_renderer->get_ReGIR_render_pass()->get_ReGIR_data();
+					ReGIRGrid& regir_grid = regir_data.gpu_grid;
+
+					bool size_changed = false;
+					static bool use_cube_grid = true;
+
+					ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+					if (use_cube_grid)
+					{
+						static int grid_size = regir_grid.grid_resolution.x;
+						if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
+						{
+							regir_grid.grid_resolution.x = grid_size;
+							regir_grid.grid_resolution.y = grid_size;
+							regir_grid.grid_resolution.z = grid_size;
+
+							size_changed = true;
+						}
+					}
+					else
+					{
+						ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+						size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_grid.grid_resolution.x, 2, 30);
+						ImGui::SameLine();
+						size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_grid.grid_resolution.y, 2, 30);
+						ImGui::SameLine();
+						size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_grid.grid_resolution.z, 2, 30);
+
+						// Back to default size
+						ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+					}
+
+					if (ImGui::SliderInt("Samples per reservoir", &regir_data.settings.light_samples_per_reservoir, 1, 32))
+						m_render_window->set_render_dirty(true);
+
+					if (size_changed)
+						m_render_window->set_render_dirty(true);
+
+					if (ImGui::CollapsingHeader("Debug"))
+					{
+						ImGui::TreePush("ReGIR Settings debug tree");
+
+						static bool visualize_grid_cells = ReGIR_DisplayGridCells;
+						if (ImGui::Checkbox("Visualize grid cells", &visualize_grid_cells))
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_DISPLAY_GRID_CELLS, visualize_grid_cells ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+							m_renderer->recompile_kernels();
+							m_render_window->set_render_dirty(true);
+						}
+
+						ImGui::TreePop();
+					}
+
+					ImGui::TreePop();
+				}
+			}
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
 			const char* tooltips[] = {
@@ -1111,7 +1179,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be changed in the ReSTIR DI settings."
 			};
 
-			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips))
+			if (ImGuiRenderer::ComboWithTooltips("NEE strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -2453,7 +2521,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 			{
 				static bool use_cube_grid = true;
-				ImGui::Checkbox("Use cubic gpu_grid", &use_cube_grid);
+				ImGui::Checkbox("Use cubic grid", &use_cube_grid);
 				bool size_changed = false;
 				if (use_cube_grid)
 				{

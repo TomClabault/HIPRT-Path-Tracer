@@ -56,6 +56,8 @@ public:
 	 */
 	float get_VRAM_usage() const;
 
+	ReGIRGPUData& get_ReGIR_data();
+
 private:
 	ReGIRGPUData m_regir_data;
 };

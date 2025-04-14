@@ -54,14 +54,13 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	if (is_render_pass_used())
 	{
 		// Resizing the grid if it is not the right size
-		if (m_regir_data.grid_buffer.get_element_count() < m_regir_data.gpu_grid.grid_resolution.x * m_regir_data.gpu_grid.grid_resolution.y * m_regir_data.gpu_grid.grid_resolution.z)
+		if (m_regir_data.grid_buffer.get_element_count() != m_regir_data.gpu_grid.grid_resolution.x * m_regir_data.gpu_grid.grid_resolution.y * m_regir_data.gpu_grid.grid_resolution.z)
 		{
 			m_regir_data.grid_buffer.resize(m_regir_data.gpu_grid.grid_resolution.x * m_regir_data.gpu_grid.grid_resolution.y * m_regir_data.gpu_grid.grid_resolution.z);
 
 			m_regir_data.gpu_grid.grid_buffer = m_regir_data.grid_buffer.get_device_pointer();
 			m_regir_data.gpu_grid.origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 			m_regir_data.gpu_grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
-			m_regir_data.gpu_grid.grid_resolution = m_regir_data.gpu_grid.grid_resolution;
 
 			return true;
 		}
@@ -117,4 +116,9 @@ bool ReGIRRenderPass::is_render_pass_used() const
 float ReGIRRenderPass::get_VRAM_usage() const
 {
 	return m_regir_data.grid_buffer.get_byte_size() / 1000000.0f;
+}
+
+ReGIRGPUData& ReGIRRenderPass::get_ReGIR_data()
+{
+	return m_regir_data;
 }

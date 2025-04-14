@@ -11,8 +11,6 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
-#include "Renderer/RenderPasses/ReGIRRenderPass.h"
-#include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
@@ -326,6 +324,11 @@ bool GPURenderer::needs_emissives_power_area_alias_table()
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 {
 	return std::dynamic_pointer_cast<GMoNRenderPass>(m_render_graph.get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+}
+
+std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass()
+{
+	return std::dynamic_pointer_cast<ReGIRRenderPass>(m_render_graph.get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
