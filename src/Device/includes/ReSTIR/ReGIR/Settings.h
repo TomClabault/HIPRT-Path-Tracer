@@ -8,7 +8,7 @@
 
 struct ReGIRSettings
 {
-	int light_samples_per_grid_cell = 128;
+	int light_samples_per_reservoir = 128;
 };
 
 #endif

@@ -45,13 +45,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
 
     ReGIRReservoir cell_reservoir;
 	float3 cell_center = regir_grid.get_cell_center(linear_cell_index);
-	for (int light_sample_index = 0; light_sample_index < regir_settings.light_samples_per_grid_cell; light_sample_index++)
+	for (int light_sample_index = 0; light_sample_index < regir_settings.light_samples_per_reservoir; light_sample_index++)
 	{
         LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, make_float3(0.0f, 0.0f, 0.0f), random_number_generator);
         if (light_sample.area_measure_pdf <= 0.0f)
             continue;
 
-        float mis_weight = 1.0f / regir_settings.light_samples_per_grid_cell;
+        float mis_weight = 1.0f / regir_settings.light_samples_per_reservoir;
         float target_function = ReGIR_grid_fill_evaluate_target_function(render_data, cell_center, light_sample);
         float source_pdf = light_sample.area_measure_pdf;
 

@@ -22,9 +22,10 @@
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
-#include "Renderer/StatusBuffersValues.h"
+#include "Renderer/RenderPasses/ReGIRRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
+#include "Renderer/StatusBuffersValues.h"
 #include "Scene/Camera.h"
 #include "Scene/CameraAnimation.h"
 #include "Scene/SceneParser.h"
@@ -114,6 +115,7 @@ public:
 	bool needs_emissives_power_area_alias_table();
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
+	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
 

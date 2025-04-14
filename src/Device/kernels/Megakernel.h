@@ -138,13 +138,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 #if ViewportColorOverriden == 1
     // Modifying the ray color such that we display some debug color to the screen
 
+
 #if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
     // Nothing to do, the debug is already handled in the shadow ray NEE function
 #elif ReGIR_DisplayGridCells == KERNEL_OPTION_TRUE
     ray_payload.ray_color = ColorRGB32F(0.0f);
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+    {
         // We have a first hit
-        ray_payload.ray_color = render_data.render_settings.regir_grid.get_random_cell_color(render_data.g_buffer.primary_hit_position[pixel_index], true, &random_number_generator) * (render_data.render_settings.sample_number + 1);
+        ray_payload.ray_color = render_data.render_settings.regir_grid.get_random_cell_color(render_data.g_buffer.primary_hit_position[pixel_index], false) * (render_data.render_settings.sample_number + 1);
+        ray_payload.ray_color *= hippt::dot(render_data.g_buffer.shading_normals[pixel_index].unpack(), render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index));
+    }
 #endif
 #endif
 
