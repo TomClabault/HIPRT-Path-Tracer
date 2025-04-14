@@ -9,14 +9,6 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
 
-struct LightSampleInformation
-{
-    int emissive_triangle_index = -1;
-    float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
-    float light_area = 1.0f;
-    ColorRGB32F emission;
-};
-
 struct HitInfo
 {
     float3 inter_point = { 0, 0, 0 };

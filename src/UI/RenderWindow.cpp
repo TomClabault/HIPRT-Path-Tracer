@@ -149,6 +149,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Not very happy with the quality of NEE++ right now but what if go for the prepass instead of progressive refinement? 
 //		We would trace rays recursuvely for the indirect very very simply and could be fast
 //		Or, for the indirect, we could distribute random points in the bounding boxes of the objects of the scene, same as in Disney cache points
+// - NEE++ some kind of hashmap that's centered on the camera + gets wider the further away from the camera + maybe try the importance sampling, may be good, especially for ReGIR grid fill
 // - RIS for sampling the BSDF? (maybe just for the specular+diffuse? or coat, since those are common options)
 // - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
 // - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
@@ -430,7 +431,7 @@ RenderWindow::~RenderWindow()
 	// we're probably going to close the window / destroy the
 	// GL context / etc... while the renderer might still be
 	// using so OpenGL Interop buffers --> segfault
-	m_renderer->synchronize_kernel();
+	m_renderer->synchronize_all_kernels();
 	// Manually destroying the renderer now before we destroy the GL context
 	// glfwDestroyWindow()
 	m_renderer = nullptr;

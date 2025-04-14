@@ -9,6 +9,8 @@
 #include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
+#include "Device/kernels/ReSTIR/ReGIR/ReGIRGridFill.h"
+
 #include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 #include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
@@ -48,8 +50,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 508
-#define DEBUG_PIXEL_Y 65
+#define DEBUG_PIXEL_X 174
+#define DEBUG_PIXEL_Y 320
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -70,7 +72,7 @@
 // If you were only rendering the precise pixel at the given debug coordinates, you
 // wouldn't be able to debug correctly since all the neighborhood wouldn't have been
 // rendered which means no reservoir which means improper rendering
-#define DEBUG_RENDER_NEIGHBORHOOD 1
+#define DEBUG_RENDER_NEIGHBORHOOD 0
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
 #define DEBUG_NEIGHBORHOOD_SIZE 50
@@ -91,6 +93,9 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_pixel_sample_count.resize(width * height, 0);
     m_pixel_converged_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
+
+    m_regir_state.grid_buffer.resize(m_regir_state.grid.grid_resolution.x * m_regir_state.grid.grid_resolution.y * m_regir_state.grid.grid_resolution.z);
+
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
@@ -281,15 +286,23 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer.primary_hit_position = m_g_buffer.primary_hit_position.data();
     m_render_data.g_buffer.first_hit_prim_index = m_g_buffer.first_hit_prim_index.data();
 
-
-
-
-
     m_render_data.g_buffer_prev_frame.materials = m_g_buffer_prev_frame.materials.data();
     m_render_data.g_buffer_prev_frame.geometric_normals = m_g_buffer_prev_frame.geometric_normals.data();
     m_render_data.g_buffer_prev_frame.shading_normals = m_g_buffer_prev_frame.shading_normals.data();
     m_render_data.g_buffer_prev_frame.primary_hit_position = m_g_buffer_prev_frame.primary_hit_position.data();
     m_render_data.g_buffer_prev_frame.first_hit_prim_index = m_g_buffer_prev_frame.first_hit_prim_index.data();
+
+
+
+
+
+    m_regir_state.grid.origin = parsed_scene.metadata.scene_bounding_box.mini;
+    m_regir_state.grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
+
+    m_render_data.render_settings.regir_grid.extents = m_regir_state.grid.extents;
+    m_render_data.render_settings.regir_grid.grid_resolution = m_regir_state.grid.grid_resolution;
+    m_render_data.render_settings.regir_grid.origin = m_regir_state.grid.origin;
+    m_render_data.render_settings.regir_grid.grid_buffer = m_regir_state.grid_buffer.data();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -333,7 +346,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
     m_render_data.cpu_only.bvh = m_bvh.get();
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA
+#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER_AREA)
     std::cout << "Building scene's power-area alias table" << std::endl;
     compute_emissives_power_area_alias_table(parsed_scene);
 #endif
@@ -468,6 +481,11 @@ void CPURenderer::render()
         update_render_data(frame_number);
 
         camera_rays_pass();
+
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+        ReGIR_grid_fill_pass();
+#endif
+
 #if DirectLightSamplingStrategy == LSS_RESTIR_DI
         // Only doing ReSTIR DI is ReSTIR DI is enabled 
         ReSTIR_DI_pass();
@@ -609,12 +627,19 @@ void CPURenderer::nee_plus_plus_cache_visibility_pass()
 
 void CPURenderer::camera_rays_pass()
 {
-    m_camera_rays_random_seed = m_rng.xorshift32();
-    m_render_data.random_number = m_camera_rays_random_seed;
+    m_render_data.random_number = m_rng.xorshift32();
 
     debug_render_pass([this](int x, int y) {
         CameraRays(m_render_data, x, y);
     });
+}
+
+void CPURenderer::ReGIR_grid_fill_pass()
+{
+    m_render_data.random_number = m_rng.xorshift32();
+
+    for (int index = 0; index < m_regir_state.grid.grid_resolution.x * m_regir_state.grid.grid_resolution.y * m_regir_state.grid.grid_resolution.z; index++)
+        ReGIR_Grid_Fill(m_render_data, m_regir_state.settings, index);
 }
 
 void CPURenderer::ReSTIR_DI_pass()

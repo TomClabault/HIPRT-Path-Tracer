@@ -103,9 +103,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
     {
         // Light sample
 
-        LightSampleInformation light_sample_info;
-        light_sample.point_on_light_source = sample_one_emissive_triangle(render_data, random_number_generator, out_sample_pdf, light_sample_info);
+        LightSampleInformation light_sample_info = sample_one_emissive_triangle(render_data, closest_hit_info.inter_point, random_number_generator);
         light_sample.emissive_triangle_index = light_sample_info.emissive_triangle_index;
+        out_sample_pdf = light_sample_info.area_measure_pdf;
 
         if (out_sample_pdf > 0.0f)
         {

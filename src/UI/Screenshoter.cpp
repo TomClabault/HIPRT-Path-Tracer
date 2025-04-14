@@ -139,7 +139,7 @@ void Screenshoter::write_to_png(const char* filepath)
 	// so that the screenshoter outputs the correct image (and needless to say that we would forget, most of time, 
 	// to update the HIP kernels so that's why code duplication here is annoying)
 
-	m_renderer->synchronize_kernel();
+	m_renderer->synchronize_all_kernels();
 	m_renderer->unmap_buffers();
 	// We upload the data to the OpenGL textures for displaying
 	m_render_window->get_display_view_system()->upload_relevant_buffers_to_texture();

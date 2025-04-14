@@ -8,6 +8,7 @@
 
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/ReGIR/Grid.h"
 
 #include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
@@ -235,6 +236,8 @@ struct HIPRTRenderSettings
 	ReSTIRDISettings restir_di_settings;
 	// Settings for ReSTIR GI
 	ReSTIRGISettings restir_gi_settings;
+
+	ReGIRGrid regir_grid;
 
 	/**
 	 * Returns true if the current frame should be renderer at low resolution, false otherwise.

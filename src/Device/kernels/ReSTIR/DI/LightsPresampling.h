@@ -38,20 +38,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
 {
     ReSTIRDIPresampledLight presampled_light;
 
-    float light_pdf;
-    LightSampleInformation light_info;
-    float3 point_on_light = sample_one_emissive_triangle(render_data, random_number_generator, light_pdf, light_info);
+    // We're passing 0.0f as the position here because we do not have a position when presampling lights in screen space
+    // The position is only used for "spatial sampling" schemes such as ReGIR or light trees for example and such schemes are not
+    // compatible with ReSTIR light presampling anyways
+    LightSampleInformation light_sample = sample_one_emissive_triangle(render_data, make_float3(0.0f, 0.0f, 0.f), random_number_generator);
 
-    if (light_pdf > 0.0f)
+    if (light_sample.area_measure_pdf > 0.0f)
     {
-        presampled_light.point_on_light_source = point_on_light;
-        presampled_light.light_source_normal = light_info.light_source_normal;
-        presampled_light.emissive_triangle_index = light_info.emissive_triangle_index;
+        presampled_light.point_on_light_source = light_sample.point_on_light;
+        presampled_light.light_source_normal = light_sample.light_source_normal;
+        presampled_light.emissive_triangle_index = light_sample.emissive_triangle_index;
 
         // PDF in area measure
-        presampled_light.pdf = light_pdf;
+        presampled_light.pdf = light_sample.area_measure_pdf;
         presampled_light.pdf *= light_sampling_probability;
-        presampled_light.radiance = light_info.emission;
+        presampled_light.radiance = light_sample.emission;
     }
 
     return presampled_light;

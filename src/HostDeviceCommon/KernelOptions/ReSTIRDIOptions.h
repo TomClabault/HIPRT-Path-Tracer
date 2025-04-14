@@ -138,7 +138,7 @@
 * lights by avoiding cache trashing because of the memory random walk that
 * light sampling becomes with that many lights
 */
-#define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_TRUE
+#define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_FALSE
 
 /**
  * How many bits to use for the directional reuse masks

@@ -88,11 +88,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
     // Now sampling random lights from the camera ray first hit and caching the visibility
     for (int i = 0; i < caching_sample_count; i++)
     {
-        float trash_pdf;
-        LightSampleInformation light_info;
-
-        float3 target_point = sample_one_emissive_triangle(render_data, random_number_generator, trash_pdf, light_info);
-        float3 direction = target_point - intersection_position;
+        LightSampleInformation light_info = sample_one_emissive_triangle(render_data, intersection_position, random_number_generator);
+        float3 direction = light_info.point_on_light - intersection_position;
         float distance_to_point = hippt::length(direction);
         direction /= distance_to_point;
 
@@ -107,7 +104,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
 
         NEEPlusPlusContext context;
         context.shaded_point = intersection_position;
-        context.point_on_light = target_point;
+        context.point_on_light = light_info.point_on_light;
 
         // Is the point on the light visible?
         bool visible = shadow_ray_hit.hasHit() && shadow_ray_hit.primID == light_info.emissive_triangle_index;

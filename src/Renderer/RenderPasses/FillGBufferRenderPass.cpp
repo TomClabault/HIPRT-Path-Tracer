@@ -135,7 +135,7 @@ size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
 
 void FillGBufferRenderPass::resize_g_buffer_ray_volume_states()
 {
-	m_renderer->synchronize_kernel();
+	m_renderer->synchronize_all_kernels();
 
 	m_g_buffer.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
 	if (m_renderer->get_render_data().render_settings.use_prev_frame_g_buffer())
