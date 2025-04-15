@@ -59,7 +59,7 @@ public:
 	ReGIRGPUData& get_ReGIR_data();
 
 private:
-	ReGIRGPUData m_regir_data;
+	OrochiBuffer<ReGIRReservoir> m_grid_buffer;
 };
 
 #endif

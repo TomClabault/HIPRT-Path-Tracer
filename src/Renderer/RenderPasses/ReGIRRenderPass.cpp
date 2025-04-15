@@ -54,18 +54,18 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	if (is_render_pass_used())
 	{
 		// Resizing the grid if it is not the right size
-		if (m_regir_data.grid_buffer.get_element_count() != m_regir_data.get_number_of_reservoirs_in_grid(*m_render_data))
+		if (m_grid_buffer.get_element_count() != m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs())
 		{
-			m_regir_data.grid_buffer.resize(m_regir_data.get_number_of_reservoirs_in_grid(*m_render_data));
+			m_grid_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs());
 
 			return true;
 		}
 	}
 	else
 	{
-		if (m_regir_data.grid_buffer.get_element_count() > 0)
+		if (m_grid_buffer.get_element_count() > 0)
 		{
-			m_regir_data.grid_buffer.free();
+			m_grid_buffer.free();
 
 			return true;
 		}
@@ -81,7 +81,7 @@ bool ReGIRRenderPass::launch()
 
 	void* launch_args[] = { m_render_data };
 
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->launch_asynchronous(64, 1, m_regir_data.get_number_of_reservoirs_in_grid(*m_render_data), 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs(), 1, launch_args, m_renderer->get_main_stream());
 
 	return true;
 }
@@ -90,7 +90,7 @@ void ReGIRRenderPass::update_render_data()
 {
 	if (is_render_pass_used())
 	{
-		m_render_data->render_settings.regir_settings.grid_buffer = m_regir_data.grid_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.grid_buffer = m_grid_buffer.get_device_pointer();
 		m_render_data->render_settings.regir_settings.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 		m_render_data->render_settings.regir_settings.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 	}
@@ -111,10 +111,5 @@ bool ReGIRRenderPass::is_render_pass_used() const
 
 float ReGIRRenderPass::get_VRAM_usage() const
 {
-	return m_regir_data.grid_buffer.get_byte_size() / 1000000.0f;
-}
-
-ReGIRGPUData& ReGIRRenderPass::get_ReGIR_data()
-{
-	return m_regir_data;
+	return m_grid_buffer.get_byte_size() / 1000000.0f;
 }

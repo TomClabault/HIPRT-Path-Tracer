@@ -13,13 +13,6 @@
 
 struct ReGIRGPUData
 {
-	int get_number_of_reservoirs_in_grid(HIPRTRenderData& render_data) const
-	{
-		ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
-		return regir_settings.grid_resolution.x * regir_settings.grid_resolution.y * regir_settings.grid_resolution.z * regir_settings.reservoirs_count_per_grid_cell;
-	}
-
-	OrochiBuffer<ReGIRReservoir> grid_buffer;
 };
 
 #endif
