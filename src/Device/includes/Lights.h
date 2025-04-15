@@ -190,6 +190,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
     ColorRGB32F bsdf_radiance_mis;
 
+    unsigned int previous_seed = random_number_generator.m_state.seed;
+
+    random_number_generator.m_state.seed = previous_seed;
     BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
