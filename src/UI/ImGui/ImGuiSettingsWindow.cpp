@@ -1316,6 +1316,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							"This improves performance in scenes with dozens of thousands / millions of"
 							" lights by avoiding cache trashing because of the memory random walk that"
 							" light sampling becomes with that many lights");
+						if (do_light_presampling && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+							ImGuiRenderer::add_warning("Light presampling cannot benefit from ReGIR as light presampling is done in screen-space.\n"
+								"It is advised to disable light presampling when using ReGIR.\n"
+								"The benefits of the light presampling are pretty much covered in the same way by ReGIR.");
 
 						bool use_initial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY);
 						if (ImGui::Checkbox("Use visibility in target function", &use_initial_target_function_visibility))
