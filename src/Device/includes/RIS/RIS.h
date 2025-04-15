@@ -101,7 +101,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
         LightSampleInformation light_sample_info = sample_one_emissive_triangle(render_data,
-            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload,
+            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
+            closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
         if (light_sample_info.area_measure_pdf > 0.0f)
@@ -121,7 +122,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             if (cosine_at_evaluated_point > 0.0f && cosine_at_light_source > 1.0e-6f)
             {
                 // Converting the PDF from area measure to solid angle measure
-                light_sample_info.area_measure_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
+                float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
 
                 float bsdf_pdf = 0.0f;
                 // Early check for minimum light contribution: if the light itself doesn't contribute enough,
@@ -168,8 +169,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 }
 #endif
 
-                float mis_weight = balance_heuristic(light_sample_info.area_measure_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
-                candidate_weight = mis_weight * target_function / light_sample_info.area_measure_pdf;
+                float mis_weight = balance_heuristic(solid_angle_light_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+                candidate_weight = mis_weight * target_function / solid_angle_light_pdf;
             }
         }
 

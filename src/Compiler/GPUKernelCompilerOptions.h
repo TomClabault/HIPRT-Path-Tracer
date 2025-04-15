@@ -44,6 +44,7 @@ public:
 	static const std::string TRIANGLE_POINT_SAMPLING_STRATEGY;
 
 	static const std::string REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY;
+	static const std::string REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY;
 	static const std::string REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY;
 	static const std::string REGIR_DISPLAY_GRID_CELLS;
 

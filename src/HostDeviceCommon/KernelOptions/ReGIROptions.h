@@ -29,6 +29,12 @@
 #define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_POWER_AREA
 
 /**
+ * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
+ * This reduces visibility noise
+ */
+#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_FALSE
+
+/**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
  * 
  * All LSS_BASE_XXX strategies are allowed except LSS_BASE_REGIR
