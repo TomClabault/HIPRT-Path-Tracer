@@ -38,7 +38,7 @@
 /**
  * Debug option to color the scene with the grid cells
  */
-#define ReGIR_DisplayGridCells KERNEL_OPTION_TRUE
+#define ReGIR_DisplayGridCells KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

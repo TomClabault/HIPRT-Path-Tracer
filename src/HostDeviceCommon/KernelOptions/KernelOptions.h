@@ -215,6 +215,6 @@
  */
 #define ViewportColorOverriden (												\
 	DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE ||	\
-	ReGIR_DisplayGridCells == KERNEL_OPTION_TRUE)
+	(DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_DisplayGridCells == KERNEL_OPTION_TRUE))
 
 #endif

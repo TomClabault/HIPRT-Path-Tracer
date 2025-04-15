@@ -9,7 +9,6 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/ReSTIR/ReGIR/Grid.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 
@@ -17,9 +16,9 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReGIR_Grid_Fill(HIPRTRenderData render_data, ReGIRSettings regir_settings)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReGIR_Grid_Fill(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data, ReGIRSettings regir_settings, int linear_cell_index)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data, int reservoir_index)
 #endif
 {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -27,31 +26,32 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
         return;
 
 #ifdef __KERNELCC__
-    const uint32_t linear_cell_index = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t reservoir_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 
-    ReGIRGrid& regir_grid = render_data.render_settings.regir_grid;
-    if (linear_cell_index >= regir_grid.grid_resolution.x * regir_grid.grid_resolution.y * regir_grid.grid_resolution.z)
+    ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+    if (reservoir_index >= regir_settings.grid_resolution.x * regir_settings.grid_resolution.y * regir_settings.grid_resolution.z * regir_settings.reservoirs_count_per_grid_cell)
         return;
 
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
-        seed = wang_hash(linear_cell_index + 1);
+        seed = wang_hash(reservoir_index + 1);
     else
-        seed = wang_hash((linear_cell_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+        seed = wang_hash((reservoir_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
     Xorshift32Generator random_number_generator(seed);
 
 
     ReGIRReservoir cell_reservoir;
-	float3 cell_center = regir_grid.get_cell_center(linear_cell_index);
-	for (int light_sample_index = 0; light_sample_index < regir_settings.light_samples_per_reservoir; light_sample_index++)
+    int linear_cell_index = reservoir_index / regir_settings.reservoirs_count_per_grid_cell;
+	float3 cell_center = regir_settings.get_cell_center(linear_cell_index);
+	for (int light_sample_index = 0; light_sample_index < regir_settings.light_samples_count_per_reservoir; light_sample_index++)
 	{
-        LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, make_float3(0.0f, 0.0f, 0.0f), random_number_generator);
+        LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, random_number_generator);
         if (light_sample.area_measure_pdf <= 0.0f)
             continue;
 
-        float mis_weight = 1.0f / regir_settings.light_samples_per_reservoir;
+        float mis_weight = 1.0f / regir_settings.light_samples_count_per_reservoir;
         float target_function = ReGIR_grid_fill_evaluate_target_function(render_data, cell_center, light_sample);
         float source_pdf = light_sample.area_measure_pdf;
 
@@ -60,7 +60,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
 
     cell_reservoir.finalize_resampling();
 
-    regir_grid.grid_buffer[linear_cell_index] = cell_reservoir;
+    regir_settings.grid_buffer[reservoir_index] = cell_reservoir;
 }
 
 #endif

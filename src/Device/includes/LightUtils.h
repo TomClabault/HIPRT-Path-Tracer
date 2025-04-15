@@ -7,7 +7,8 @@
 #define DEVICE_LIGHT_UTILS_H
 
 #include "Device/includes/PDFConversion.h"
-#include "Device/includes/ReSTIR/ReGIR/Grid.h"
+#include "Device/includes/ReSTIR/ReGIR/Settings.h"
+#include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"
@@ -140,29 +141,52 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_regir(
-    const float3& shading_point,
-    const ReGIRGrid& regir_grid,
-    const int* material_indices, const DevicePackedTexturedMaterialSoA& materials_buffer,
+    const HIPRTRenderData& render_data,
+    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, RayPayload& ray_payload,
     bool& out_shading_point_outside_of_grid,
     Xorshift32Generator& random_number_generator)
 {
-    ReGIRReservoir cell_reservoir = regir_grid.get_cell_reservoir(shading_point, out_shading_point_outside_of_grid);
-    if (out_shading_point_outside_of_grid)
-        return LightSampleInformation();
-
     LightSampleInformation out_sample;
-    out_sample.area_measure_pdf = 1.0f / cell_reservoir.UCW;
-    out_sample.emission = materials_buffer.get_emission(material_indices[cell_reservoir.sample.emissive_triangle_index]);
-    out_sample.emissive_triangle_index = cell_reservoir.sample.emissive_triangle_index;
-    out_sample.light_area = cell_reservoir.sample.light_area;
-    out_sample.light_source_normal = cell_reservoir.sample.light_source_normal;
-    out_sample.point_on_light = cell_reservoir.sample.point_on_light;
+    ReGIRReservoir out_reservoir;
+    ColorRGB32F picked_sample_emission;
+
+    for (int i = 0; i < render_data.render_settings.regir_settings.cell_reservoir_resample_per_shading_point; i++)
+    {
+        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_cell_reservoir(shading_point, out_shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.do_jittering);
+        if (out_shading_point_outside_of_grid)
+            continue;
+
+        ColorRGB32F current_emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[cell_reservoir.sample.emissive_triangle_index]);
+
+        float mis_weight = 1.0f / render_data.render_settings.regir_settings.cell_reservoir_resample_per_shading_point;
+        float target_function = ReGIR_shading_evaluate_target_function(render_data, 
+            shading_point, view_direction, shading_normal, geometric_normal, ray_payload,
+            cell_reservoir, current_emission,
+            random_number_generator);
+
+        if (out_reservoir.stream_reservoir(mis_weight, target_function, cell_reservoir, random_number_generator))
+            picked_sample_emission = current_emission;
+    }
+
+    if (out_reservoir.weight_sum == 0.0f)
+        return LightSampleInformation();
+    out_reservoir.finalize_resampling();
+
+    // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
+    out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
+    out_sample.emission = picked_sample_emission;
+    out_sample.emissive_triangle_index = out_reservoir.sample.emissive_triangle_index;
+    out_sample.light_area = out_reservoir.sample.light_area;
+    out_sample.light_source_normal = out_reservoir.sample.light_source_normal;
+    out_sample.point_on_light = out_reservoir.sample.point_on_light;
 
     return out_sample;
 }
 
 template <int samplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, const float3& shading_point, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, 
+    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, RayPayload& ray_payload,
+    Xorshift32Generator& random_number_generator)
 {
     if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
     {
@@ -182,9 +206,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     {
         bool point_outside_grid;
 
-        LightSampleInformation light_sample = sample_one_emissive_triangle_regir(shading_point,
-            render_data.render_settings.regir_grid,
-            render_data.buffers.material_indices, render_data.buffers.materials_buffer,
+        LightSampleInformation light_sample = sample_one_emissive_triangle_regir(render_data,
+            shading_point, view_direction, shading_normal, geometric_normal, ray_payload,
             point_outside_grid,
             random_number_generator);
 
@@ -198,9 +221,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 #endif
 
             // Fallback method as the point was outside of the ReGIR grid
-            return sample_one_emissive_triangle<ReGIR_FallbackLightSamplingStrategy>(render_data, shading_point, random_number_generator);
+            return sample_one_emissive_triangle<ReGIR_FallbackLightSamplingStrategy>(render_data,
+                shading_point, view_direction, shading_normal, geometric_normal, ray_payload,
+                random_number_generator);
         }
     }
+}
+
+/**
+ * Overload of the function used when sampling lights without a world shading point (as in ReSTIR DI light presampling for example)
+ * 
+ * This means that positional light sampling schemes such as ReGIR or light trees cannot be used as the template argument here
+ * and will produced incorrect results if used anyways
+ */
+template <int samplingStrategy = DirectLightSamplingBaseStrategy>
+HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
+{
+    RayPayload dummy_ray_payload;
+
+    return sample_one_emissive_triangle<samplingStrategy>(render_data,
+        make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f),
+        dummy_ray_payload,
+        random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)

@@ -152,6 +152,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 #endif
 #endif
 
+    if (hippt::length(render_data.g_buffer.primary_hit_position[pixel_index] - make_float3(0.530051470, 1.99034083, 0.360196233)) < 0.02f)
+        ray_payload.ray_color = ColorRGB32F(1.0f, 0.0f, 0.0f);
+
     path_tracing_accumulate_color(render_data, ray_payload.ray_color, pixel_index);
 }
 

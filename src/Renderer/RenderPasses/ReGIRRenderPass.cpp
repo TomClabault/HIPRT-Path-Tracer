@@ -54,13 +54,9 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	if (is_render_pass_used())
 	{
 		// Resizing the grid if it is not the right size
-		if (m_regir_data.grid_buffer.get_element_count() != m_regir_data.gpu_grid.grid_resolution.x * m_regir_data.gpu_grid.grid_resolution.y * m_regir_data.gpu_grid.grid_resolution.z)
+		if (m_regir_data.grid_buffer.get_element_count() != m_regir_data.get_number_of_reservoirs_in_grid(*m_render_data))
 		{
-			m_regir_data.grid_buffer.resize(m_regir_data.gpu_grid.grid_resolution.x * m_regir_data.gpu_grid.grid_resolution.y * m_regir_data.gpu_grid.grid_resolution.z);
-
-			m_regir_data.gpu_grid.grid_buffer = m_regir_data.grid_buffer.get_device_pointer();
-			m_regir_data.gpu_grid.origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
-			m_regir_data.gpu_grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
+			m_regir_data.grid_buffer.resize(m_regir_data.get_number_of_reservoirs_in_grid(*m_render_data));
 
 			return true;
 		}
@@ -70,8 +66,6 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		if (m_regir_data.grid_buffer.get_element_count() > 0)
 		{
 			m_regir_data.grid_buffer.free();
-
-			m_regir_data.gpu_grid.grid_buffer = nullptr;
 
 			return true;
 		}
@@ -85,9 +79,9 @@ bool ReGIRRenderPass::launch()
 	if (!is_render_pass_used())
 		return false;
 
-	void* launch_args[] = { m_render_data, &m_regir_data.settings };
+	void* launch_args[] = { m_render_data };
 
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->launch_asynchronous(64, 1, m_regir_data.get_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->launch_asynchronous(64, 1, m_regir_data.get_number_of_reservoirs_in_grid(*m_render_data), 1, launch_args, m_renderer->get_main_stream());
 
 	return true;
 }
@@ -96,11 +90,13 @@ void ReGIRRenderPass::update_render_data()
 {
 	if (is_render_pass_used())
 	{
-		m_render_data->render_settings.regir_grid = m_regir_data.gpu_grid;
+		m_render_data->render_settings.regir_settings.grid_buffer = m_regir_data.grid_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
+		m_render_data->render_settings.regir_settings.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 	}
 	else
 	{
-		m_render_data->render_settings.regir_grid.grid_buffer = nullptr;
+		m_render_data->render_settings.regir_settings.grid_buffer = nullptr;
 	}
 }
 

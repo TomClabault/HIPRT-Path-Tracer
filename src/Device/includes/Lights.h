@@ -27,7 +27,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
     if (!MaterialUtils::can_do_light_sampling(ray_payload.material))
         return ColorRGB32F(0.0f);
 
-    LightSampleInformation light_sample = sample_one_emissive_triangle(render_data, closest_hit_info.inter_point, random_number_generator);
+    LightSampleInformation light_sample = sample_one_emissive_triangle(render_data, 
+        closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload,
+        random_number_generator);
     if (light_sample.area_measure_pdf <= 0.0f)
         // Can happen for very small triangles
         return ColorRGB32F(0.0f);
@@ -127,7 +129,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
 
     if (MaterialUtils::can_do_light_sampling(ray_payload.material))
     {
-        LightSampleInformation light_sample = sample_one_emissive_triangle(render_data, closest_hit_info.inter_point, random_number_generator);
+        LightSampleInformation light_sample = sample_one_emissive_triangle(render_data,
+            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload,
+            random_number_generator);
 
         // Can happen for very small triangles that the PDF of the sampled triangle couldn't be computed
         if (light_sample.area_measure_pdf > 0.0f)

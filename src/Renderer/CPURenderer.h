@@ -170,7 +170,6 @@ private:
     struct ReGIRState
     {
         ReGIRSettings settings;
-        ReGIRGrid grid;
 
         std::vector<ReGIRReservoir> grid_buffer;
     } m_regir_state;
