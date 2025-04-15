@@ -30,7 +30,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
 #endif
 
     ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
-    if (reservoir_index >= regir_settings.grid_resolution.x * regir_settings.grid_resolution.y * regir_settings.grid_resolution.z * regir_settings.reservoirs_count_per_grid_cell)
+    if (reservoir_index >= regir_settings.get_total_number_of_reservoirs())
         return;
 
     unsigned int seed;
@@ -45,13 +45,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
     ReGIRReservoir cell_reservoir;
     int linear_cell_index = reservoir_index / regir_settings.reservoirs_count_per_grid_cell;
 	float3 cell_center = regir_settings.get_cell_center(linear_cell_index);
-	for (int light_sample_index = 0; light_sample_index < regir_settings.light_samples_count_per_reservoir; light_sample_index++)
+	for (int light_sample_index = 0; light_sample_index < regir_settings.sample_count_per_cell_reservoir; light_sample_index++)
 	{
         LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, random_number_generator);
         if (light_sample.area_measure_pdf <= 0.0f)
             continue;
 
-        float mis_weight = 1.0f / regir_settings.light_samples_count_per_reservoir;
+        float mis_weight = 1.0f / regir_settings.sample_count_per_cell_reservoir;
         float target_function = ReGIR_grid_fill_evaluate_target_function(render_data, cell_center, light_sample);
         float source_pdf = light_sample.area_measure_pdf;
 

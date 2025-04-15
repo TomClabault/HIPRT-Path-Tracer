@@ -61,7 +61,7 @@ extern ImGuiLogger g_imgui_logger;
 //			- The issue is that the reservoirs aren't persistent so any data accumulated will be discarded at the next frame when
 //			- the grid is rebuilt
 //		
-//			- We would need a prepass at lower resolution, same as for radiance caching?	
+//			- We would need a prepass at lower resolution, same as for radiance caching?
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?

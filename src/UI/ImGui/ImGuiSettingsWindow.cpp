@@ -1129,9 +1129,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
 					const char* tooltips_base_strategy[] = {
-						"All lights are sampled uniformly.",
+						"All lights are sampled uniformly",
 
-						"Lights are sampled proportionally to their 'power * area'.",
+						"Lights are sampled proportionally to their 'power * area'",
 					};
 					if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 					{
@@ -1187,7 +1187,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 					}
 
-					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.light_samples_count_per_reservoir, 16, 512))
+					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.sample_count_per_cell_reservoir, 16, 512))
 						m_render_window->set_render_dirty(true);
 					if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.reservoirs_count_per_grid_cell, 1, 128))
 						m_render_window->set_render_dirty(true);

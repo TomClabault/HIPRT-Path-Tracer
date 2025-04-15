@@ -84,18 +84,23 @@ struct ReGIRSettings
 		return ColorRGB32F::random_color(cell_index);
 	}
 
+	HIPRT_HOST_DEVICE int get_total_number_of_reservoirs() const
+	{
+		return grid_resolution.x * grid_resolution.y * grid_resolution.z * reservoirs_count_per_grid_cell;
+	}
+
 	float3 grid_origin;
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
 	int3 grid_resolution = make_int3(16, 16, 16);
 
 	// How many light samples are resampled into each reservoir of the grid cell
-	int light_samples_count_per_reservoir = 32;
+	int sample_count_per_cell_reservoir = 32;
 	// How many reservoirs are going to be produced per each cell of the grid
 	int reservoirs_count_per_grid_cell = 64;
 	// At path tracing time, how many reservoirs of the grid cell of the point we're trying to shade
 	// are going to be resampled (with the BRDF term) to produce the final light sample used for NEE
-	int cell_reservoir_resample_per_shading_point = 32;
+	int cell_reservoir_resample_per_shading_point = 8;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
 	bool do_jittering = true;
