@@ -60,6 +60,7 @@ extern ImGuiLogger g_imgui_logger;
 //			- the grid is rebuilt
 //		
 //			- We would need a prepass at lower resolution, same as for radiance caching?
+//			- Maybe we can keep the grids of past frames to help with that?
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?

@@ -1117,8 +1117,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
 			{
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
 				// Adding options for ReGIR
 				if (ImGui::CollapsingHeader("ReGIR Settings"))
 				{

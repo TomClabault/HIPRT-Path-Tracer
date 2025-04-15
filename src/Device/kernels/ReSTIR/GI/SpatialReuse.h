@@ -274,7 +274,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	//		(we are always unoccluded if we resampled the canonical sample for example, in which case we don't have to do the validation)
 	//		It would also probably be beneficial to have another kernel do the validation such that samples that don't need the validation
 	//		(resampled the canonical neighbor) don't do the validation at all
-	ReSTIR_GI_visibility_validation(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
+	ReSTIR_GI_visibility_validation(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.primitive_index, random_number_generator);
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_gi_settings.m_cap > 0)

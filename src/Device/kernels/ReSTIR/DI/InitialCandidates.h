@@ -221,8 +221,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         if (sample_cosine_term > 0.0f && light_pdf_area_measure > 0.0f)
         {
             float bsdf_pdf_solid_angle;
-            unsigned int seed_before = random_number_generator.m_state.seed;
-
             BSDFIncidentLightInfo incident_light_info;
             BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
             ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf_solid_angle, random_number_generator);
@@ -230,7 +228,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
             ReSTIRSurface surface;
             surface.geometric_normal = closest_hit_info.geometric_normal;
-            surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+            surface.primitive_index = closest_hit_info.primitive_index;
             surface.material = ray_payload.material;
             surface.ray_volume_state = ray_payload.volume_state;
             surface.shading_normal = closest_hit_info.shading_normal;
@@ -243,16 +241,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
                 target_function = 0.0f;
             else
             {
-                float light_pdf_solid_angle;
+                float light_pdf_solid_angle_for_MIS;
                 if (light_sample.is_envmap_sample()) 
                     // For envmap sample, the PDF is already in solid angle
-                    light_pdf_solid_angle = light_pdf_area_measure;
+                    light_pdf_solid_angle_for_MIS = light_pdf_area_measure;
                 else
+                {
+                    float3 light_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_index));
+
                     // Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
                     // (same measure for the BSDF PDF and the light PDF)
-                    light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure, distance_to_light, hippt::abs(hippt::dot(to_light_direction, hippt::normalize(get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_index)))));
+                    float light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure, distance_to_light, hippt::abs(hippt::dot(to_light_direction, light_normal)));
 
-                float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
+                    ColorRGB32F light_emission = ReSTIR_DI_get_light_sample_emission(render_data, light_sample, to_light_direction);
+                    // Computing the approximate light sampler PDF for use in MIS in case the light sampler's PDF cannot be
+                    // evaluated for an arbitrary input sample (as will be needed when computing the MIS weight for the BSDF sample)
+                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, surface.primitive_index, light_emission, light_normal, distance_to_light, to_light_direction);
+                }
+
+                float mis_weight = balance_heuristic(light_pdf_solid_angle_for_MIS, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_pdf_area_measure;
 
                 light_sample.target_function = target_function;
@@ -322,7 +329,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
                 ReSTIRSurface surface;
                 surface.geometric_normal = closest_hit_info.geometric_normal;
-                surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+                surface.primitive_index = closest_hit_info.primitive_index;
                 surface.material = ray_payload.material;
                 surface.ray_volume_state = ray_payload.volume_state;
                 surface.shading_normal = closest_hit_info.shading_normal;
@@ -388,7 +395,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
                     ReSTIRSurface surface;
                     surface.geometric_normal = closest_hit_info.geometric_normal;
-                    surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+                    surface.primitive_index = closest_hit_info.primitive_index;
                     surface.material = ray_payload.material;
                     surface.ray_volume_state = ray_payload.volume_state;
                     surface.shading_normal = closest_hit_info.shading_normal;
