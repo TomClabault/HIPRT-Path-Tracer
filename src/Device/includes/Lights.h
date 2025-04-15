@@ -28,7 +28,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
         return ColorRGB32F(0.0f);
 
     LightSampleInformation light_sample = sample_one_emissive_triangle(render_data, 
-        closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload,
+        closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
+        closest_hit_info.primitive_index, ray_payload,
         random_number_generator);
     if (light_sample.area_measure_pdf <= 0.0f)
         // Can happen for very small triangles
@@ -64,11 +65,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
             if (bsdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure
-                float solid_angle_pdf = LightSampleInformation::get_solid_angle_measure_pdf<false>(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-                if (solid_angle_pdf > 0.0f)
+                float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+                if (light_sample_solid_angle_pdf > 0.0f)
                 {
                     float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-                    light_source_radiance = light_sample.emission * cosine_term * bsdf_color / solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+                    light_source_radiance = light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
 
                     // Just a CPU-only sanity check
                     sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
@@ -130,7 +131,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     if (MaterialUtils::can_do_light_sampling(ray_payload.material))
     {
         LightSampleInformation light_sample = sample_one_emissive_triangle(render_data,
-            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload,
+            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
+            closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
         // Can happen for very small triangles that the PDF of the sampled triangle couldn't be computed
@@ -163,12 +165,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
                     // Preventing division by 0 in the conversion to solid angle here
                     if (cos_theta_at_light_source > 1.0e-5f)
                     {
-                        float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, cos_theta_at_light_source);
+                        float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, cos_theta_at_light_source);
 
-                        float mis_weight = balance_heuristic(solid_angle_pdf, bsdf_pdf);
+                        float light_pdf_for_mis = light_sample_pdf_for_MIS_solid_angle_measure(render_data,
+                            light_sample_solid_angle_pdf,
+                            light_sample.emissive_triangle_index, light_sample.emission, light_sample.light_source_normal, 
+                            distance_to_light, shadow_ray_direction_normalized);
+                        float mis_weight = balance_heuristic(light_pdf_for_mis, bsdf_pdf);
 
                         float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-                        light_source_radiance_mis = bsdf_color * cosine_term * light_sample.emission * mis_weight / solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+                        light_source_radiance_mis = bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
 
                         // Just a CPU-only sanity check
                         sanity_check</* CPUOnly */ true>(render_data, light_source_radiance_mis, 0, 0);

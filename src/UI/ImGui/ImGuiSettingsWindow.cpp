@@ -376,14 +376,14 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 			}
 			ImGui::BeginDisabled(!render_settings.accumulate); // Cannot use stopping condition if not accumulating
 			ImGui::SeparatorText("Pixel Stop Noise Threshold");
-			ImGui::Checkbox("Use pixel noise threshold stopping condition", &render_settings.enable_pixel_stop_noise_threshold);
+			ImGui::Checkbox("Use pixel noise threshold stopping condition", &render_settings.use_pixel_stop_noise_threshold);
 			ImGuiRenderer::show_help_marker("If enabled, stops the renderer after a certain proportion "
 				"of pixels of the image have converged. \"converged\" is evaluated according to the "
 				"threshold of the adaptive sampling if it is enabled. If adaptive sampling is not "
 				"enabled, \"converged\" is defined by the \"Pixel noise threshold\" variance "
 				"threshold below.");
 
-			ImGui::BeginDisabled(!render_settings.enable_pixel_stop_noise_threshold);
+			ImGui::BeginDisabled(!render_settings.use_pixel_stop_noise_threshold);
 			{
 				if (ImGui::InputFloat("Pixel proportion", &render_settings.stop_pixel_percentage_converged))
 					render_settings.stop_pixel_percentage_converged = std::max(0.0f, std::min(render_settings.stop_pixel_percentage_converged, 100.0f));
@@ -392,7 +392,7 @@ void ImGuiSettingsWindow::draw_render_stopping_conditions_panel()
 			}
 			ImGui::EndDisabled();
 
-			ImGui::BeginDisabled(render_settings.enable_adaptive_sampling || !render_settings.enable_pixel_stop_noise_threshold);
+			ImGui::BeginDisabled(render_settings.enable_adaptive_sampling || !render_settings.use_pixel_stop_noise_threshold);
 			{
 				// Only letting the user manipulate the stop pixel noise threshold if adaptive sampling is not enabled
 				// because if adaptive sampling is enabled, then the stop pixel noise threshold feature can only
@@ -1060,7 +1060,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::EndDisabled();
 		}
 
-		//ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::CollapsingHeader("Emissive geometry sampling"))
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
@@ -1100,8 +1099,26 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
+			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
+			const char* tooltips[] = {
+				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
+				"Samples one random light in the scene without MIS. Efficient as long as there are not too many lights in the scene and no glossy/specular surfaces.",
+				"Samples lights only using one BSDF sample.",
+				"Samples one random light in the scene with MIS(Multiple Importance Sampling) : light sample + BRDF sample.",
+				"Samples lights in the scene with RIS (Resampled Importance Sampling) with both BSDF and light candidates. The number of light or BSDF candidates can be controlled.",
+				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be changed in the ReSTIR DI settings."
+			};
+
+			if (ImGuiRenderer::ComboWithTooltips("NEE strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips))
+			{
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
 			{
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 				// Adding options for ReGIR
 				if (ImGui::CollapsingHeader("ReGIR Settings"))
 				{
@@ -1110,11 +1127,40 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReGIR_render_pass()->get_VRAM_usage());
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
+					const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
+					const char* tooltips_base_strategy[] = {
+						"All lights are sampled uniformly.",
+
+						"Lights are sampled proportionally to their 'power * area'.",
+					};
+					if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
+					{
+						// Will recompute the alias table if necessary
+						m_renderer->recompute_emissives_power_area_alias_table();
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 					ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
 
 					bool size_changed = false;
 					static bool use_cube_grid = true;
 
+					static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
+					if (ImGui::Checkbox("Use visibility during shading resampling", &use_vis_shading_resampling))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY, use_vis_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
+						"shading a point at path tracing time. This reduces visibility noise.");
+						
+					if (ImGui::Checkbox("Do cell jittering", &regir_settings.do_jittering))
+						m_render_window->set_render_dirty(true);
 					ImGui::Checkbox("Use cubic grid", &use_cube_grid);
 					if (use_cube_grid)
 					{
@@ -1141,16 +1187,17 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 					}
 
-					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.light_samples_count_per_reservoir, 1, 32))
+					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.light_samples_count_per_reservoir, 16, 512))
+						m_render_window->set_render_dirty(true);
+					if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.reservoirs_count_per_grid_cell, 1, 128))
 						m_render_window->set_render_dirty(true);
 					if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.cell_reservoir_resample_per_shading_point, 1, 32))
-						m_render_window->set_render_dirty(true);
-					if (ImGui::Checkbox("Do cell jittering", &regir_settings.do_jittering))
 						m_render_window->set_render_dirty(true);
 
 					if (size_changed)
 						m_render_window->set_render_dirty(true);
 
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					if (ImGui::CollapsingHeader("Debug"))
 					{
 						ImGui::TreePush("ReGIR Settings debug tree");
@@ -1171,22 +1218,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 			}
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
-			const char* tooltips[] = {
-				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
-				"Samples one random light in the scene without MIS. Efficient as long as there are not too many lights in the scene and no glossy/specular surfaces.",
-				"Samples lights only using one BSDF sample.",
-				"Samples one random light in the scene with MIS(Multiple Importance Sampling) : light sample + BRDF sample.",
-				"Samples lights in the scene with RIS (Resampled Importance Sampling) with both BSDF and light candidates. The number of light or BSDF candidates can be controlled.",
-				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be changed in the ReSTIR DI settings."
-			};
-
-			if (ImGuiRenderer::ComboWithTooltips("NEE strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips))
-			{
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
+			
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)

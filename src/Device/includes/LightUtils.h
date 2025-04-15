@@ -142,7 +142,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
 HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_regir(
     const HIPRTRenderData& render_data,
-    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, RayPayload& ray_payload,
+    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, 
+    int last_hit_primitive_index, RayPayload& ray_payload,
     bool& out_shading_point_outside_of_grid,
     Xorshift32Generator& random_number_generator)
 {
@@ -160,7 +161,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
         float mis_weight = 1.0f / render_data.render_settings.regir_settings.cell_reservoir_resample_per_shading_point;
         float target_function = ReGIR_shading_evaluate_target_function(render_data, 
-            shading_point, view_direction, shading_normal, geometric_normal, ray_payload,
+            shading_point, view_direction, shading_normal, geometric_normal, 
+            last_hit_primitive_index, ray_payload,
             cell_reservoir, current_emission,
             random_number_generator);
 
@@ -185,7 +187,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
 template <int samplingStrategy = DirectLightSamplingBaseStrategy>
 HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, 
-    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, RayPayload& ray_payload,
+    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, 
+    int last_hit_primitive_index, RayPayload& ray_payload,
     Xorshift32Generator& random_number_generator)
 {
     if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
@@ -207,7 +210,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
         bool point_outside_grid;
 
         LightSampleInformation light_sample = sample_one_emissive_triangle_regir(render_data,
-            shading_point, view_direction, shading_normal, geometric_normal, ray_payload,
+            shading_point, view_direction, shading_normal, geometric_normal, 
+            last_hit_primitive_index, ray_payload,
             point_outside_grid,
             random_number_generator);
 
@@ -222,7 +226,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
             // Fallback method as the point was outside of the ReGIR grid
             return sample_one_emissive_triangle<ReGIR_FallbackLightSamplingStrategy>(render_data,
-                shading_point, view_direction, shading_normal, geometric_normal, ray_payload,
+                shading_point, view_direction, shading_normal, geometric_normal, 
+                last_hit_primitive_index, ray_payload,
                 random_number_generator);
         }
     }
@@ -241,7 +246,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     return sample_one_emissive_triangle<samplingStrategy>(render_data,
         make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f),
-        dummy_ray_payload,
+        -1, dummy_ray_payload,
         random_number_generator);
 }
 
@@ -291,44 +296,104 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F 
  * 'hit_distance' is the distance to the intersection point on the hit triangle
  * 'ray_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, int hit_primitive_index, ColorRGB32F light_emission)
 {
 #if DirectLightSamplingBaseStrategy == LSS_BASE_UNIFORM
     // Surface area PDF of hitting that point on that triangle in the scene
-    float light_area = triangle_area(render_data, light_hit_info.hit_prim_index);
+    float light_area = triangle_area(render_data, hit_primitive_index);
     float area_measure_pdf = 1.0f / light_area;
     area_measure_pdf /= render_data.buffers.emissive_triangles_count;
 #elif DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA || DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
     // Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
     // faking it with power-area PDF
 
-    float light_area = triangle_area(render_data, light_hit_info.hit_prim_index);
+    float light_area = triangle_area(render_data, hit_primitive_index);
     float area_measure_pdf = 1.0f / light_area;
-    area_measure_pdf *= (light_hit_info.hit_emission.luminance() * light_area) / render_data.buffers.emissives_power_area_alias_table.sum_elements;
+    area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissives_power_area_alias_table.sum_elements;
 #endif
      
     return area_measure_pdf;
 }
 
-/**
- * Returns the PDF (solid angle measure) of the light sampler for the given triangle_hit_info
- * 
- * 'primitive_index' is the index of the emissive triangle hit
- * 'shading_normal' is the shading normal at the intersection point of the emissive triangle hit
- * 'hit_distance' is the distance to the intersection point on the hit triangle
- * 'ray_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info, float3 ray_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info)
+{
+    return pdf_of_emissive_triangle_hit_area_measure(render_data, light_hit_info.hit_prim_index, light_hit_info.hit_emission);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, int hit_primitive_index, 
+    ColorRGB32F light_emission, float3 light_surface_normal,
+    float hit_distance, float3 to_light_direction)
 {
     // abs() here to allow backfacing lights
     // Without abs() here:
     //  - We could be hitting the back of an emissive triangle (think of quad light hanging in the air)
     //  --> triangle normal not facing the same way 
     //  --> cos_angle negative
-    float cosine_light_source = hippt::abs(hippt::dot(light_hit_info.hit_shading_normal, ray_direction));
+    float cosine_light_source = hippt::abs(hippt::dot(light_surface_normal, to_light_direction));
 
-    float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure(render_data, light_hit_info);
-    return area_to_solid_angle_pdf(pdf_area_measure, light_hit_info.hit_distance, cosine_light_source);
+    float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure(render_data, hit_primitive_index, light_emission);
+
+    return area_to_solid_angle_pdf(pdf_area_measure, hit_distance, cosine_light_source);
+}
+
+/**
+ * Returns the PDF (solid angle measure) of the light sampler for the given 'light_hit_info'
+ * 
+ * Note that for light samplers that cannot be point-evaluated (ReGIR for example: we cannot compute a RIS PDF),
+ * the returned PDF is an approximation
+ * 
+ * 'primitive_index' is the index of the emissive triangle hit
+ * 'shading_normal' is the shading normal at the intersection point of the emissive triangle hit
+ * 'hit_distance' is the distance to the intersection point on the hit triangle
+ * 'to_light_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info, float3 to_light_direction)
+{
+    return pdf_of_emissive_triangle_hit_solid_angle(render_data, 
+        light_hit_info.hit_prim_index, light_hit_info.hit_emission, light_hit_info.hit_shading_normal, 
+        light_hit_info.hit_distance, to_light_direction);
+}
+
+/**
+ * This is the function that should always be called when you want the light PDF of a *light* sample for use in
+ * MIS balance heurisitic (or power or whatever)
+ * 
+ * This function exists because some light samplers cannot be "point-evaluated" for a given BSDF sample. 
+ * This is the case for ReGIR for example where we cannot compute the PDF of a given sample.
+ * 
+ * For these light samplers, the light PDF of a BSDF sample is approximated. 
+ * This means that in a MIS weighting scheme, the light PDF of the BSDF sample is going to be approximated.
+ * 
+ * For MIS to stay correct, we also need to use that approximated light-PDF when computing the MIS weight in
+ * the light sampling part of MIS, i.e. we cannot:
+ * 
+ * - Use the correct light PDF for computing the light sample MIS weight
+ * - Use the approxmiated light PDF for computing the BSDF sample MIS weight
+ * 
+ * We need the approximated PDF in both places
+ * 
+ * This function computes the approximated PDF that should be used in the computation of all MIS weights (in the balance/power/... heuristic)
+ * 
+ * If the current light sampler is able to evaluate the correct light-PDF of a given BSDF sample, then this function will just return
+ * 'original_pdf'. This is because is these cases, 'original_pdf' is already the perfect PDF so we don't to approximate anything
+ * 
+ * This function will do some computations for the approximated PDF only if the light sampler's PDF cannot be
+ * evaluated for any given sample (case of ReGIR for example)
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float light_sample_pdf_for_MIS_solid_angle_measure(const HIPRTRenderData& render_data,
+    float original_pdf,
+    int hit_primitive_index,
+    ColorRGB32F light_emission, float3 light_surface_normal,
+    float hit_distance, float3 to_light_direction)
+{
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+    // Approximating the ReGIR light PDF for the given BSDF sample with the basic NEE PDF
+    return pdf_of_emissive_triangle_hit_solid_angle(render_data, hit_primitive_index, light_emission, light_surface_normal, hit_distance, to_light_direction);
+#else
+    // If the light sampler does support the evaluation of the PDF, just returning the PDF unchanged
+    // because this is the exact PDF
+    return original_pdf;
+#endif
 }
 
 /**

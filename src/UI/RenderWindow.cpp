@@ -18,6 +18,17 @@
 
 #include "stb_image_write.h"
 
+// - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
+// - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
+
+
+// GPUKernelCompiler for waiting on threads currently reading files on disk
+extern GPUKernelCompiler g_gpu_kernel_compiler;
+extern ImGuiLogger g_imgui_logger;
+
+
+
+
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
@@ -25,20 +36,9 @@
 // - Same random neighbors seed per warp for coaslescing even with directional spatial reuse
 // - Alpah tests darkening ReSTIR DI
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
-// - Greedy spatial reuse to retry neighbors if we didn't get a good one
-// - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
-
-// GPUKernelCompiler for waiting on threads currently reading files on disk
-extern GPUKernelCompiler g_gpu_kernel_compiler;
-extern ImGuiLogger g_imgui_logger;
-
-// - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
-// - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
-
-
-
 
 // TODO ReSTIR GI
+// - Greedy spatial reuse to retry neighbors if we didn't get a good one
 // - The quick skip to the center pixel resampling when there are no valid neighbors 
 //		--> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
 //		--> it does cause divergence. maybe solve that, needs wavefront though
@@ -46,22 +46,22 @@ extern ImGuiLogger g_imgui_logger;
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - BSDF MIS Reuse for ReSTIR DI
 // - Force albedo to white for spatial reuse? Because what's interesting to reuse is the shape of the BRDF and the incident radiance. Resampling from a black diffuse is still interesting. The albedo doesn't matter
-// - OVS - Optimal visibility shaidng
-// - symmetric ratio MIS
-// - shade secondary surface by looking up screen space reservoir if possible ReSTIR DI --> 
-//		-We probably want that for rough surfaces only because the view directrion isn't going to be the same as when the reservoir 
-//			was generated (it wasd the camera direction then) so this isn't going to work on smooth surfaces. 
-//			--> we're probably going to need some kind of BSDF sampling because the view direction is going to change and it 
-//			won't match the reservoir found in screen space so we may want to combine that reservoir with a reservoir that conatins a BSDF sample
-// 
-//			Or we can use some fake MIS weights to combine a BSDF sample to the light reservoir
-// - Decoupled shading reuse for ReSTIR DI running average for the shading weights?
-//		(decoupledShadingBuffer = decoupledShadingBuffer + ((sampleColor * sampleReservoir.W) - decoupledShadingBuffer) / (float) (decoupledShadingSampleCount + 1);
-//		decoupledShadingSampleCount++;
-//		https://www.reddit.com/r/GraphicsProgramming/comments/1j03npo/comment/mg07h5a/?context=3
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
-// - Decoupled shading reuse restir gi
+
+// TODO ReGIR
+// - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
+// - Maybe we can have something that say that if after 16 frames, a cell of regir has only produced 0 contributions samples, then it's an occluded cell and we shouldn't update it anymore during grid fill
+// - Only rebuild the ReGIR grid every N frames?
+// - Can we have some kind of visibility percentage grid that we can use during the resampling to help with visibility noise? 
+//		- We would have a voxel grid on top of the ReGIR grid. 
+//		- That grid would contain as many floats per cell as there are reservoirs per cell in ReGIR
+//		- Each one of these floats would contain a percentage of visibility for the corresponding reservoir index of the cell
+//		- The visibility percentage would be computed by averaging the successful visibility rays traced during shading
+//			- The issue is that the reservoirs aren't persistent so any data accumulated will be discarded at the next frame when
+//			- the grid is rebuilt
+//		
+//			- We would need a prepass at lower resolution, same as for radiance caching?	
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?
@@ -133,6 +133,9 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
+//		- And maybe we can spatial reuse on that
+// For the greedy neighbor search of restir spatial reuse, maybe reduce progressively the radius ?
 // - flush to zero denormal float numbers compiler option?
 //		
  /*
@@ -674,8 +677,8 @@ bool RenderWindow::is_rendering_done()
 	// using the pixel stop noise threshold feature (enabled + threshold > 0.0f) or if we're using the
 	// stop noise threshold but only for the proportion stopping condition (we're not using the threshold of the pixel
 	// stop noise threshold feature) --> (enabled & adaptive sampling enabled)
-	bool use_proportion_stopping_condition = (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.enable_pixel_stop_noise_threshold)
-		|| (render_settings.enable_pixel_stop_noise_threshold && render_settings.enable_adaptive_sampling);
+	bool use_proportion_stopping_condition = (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.use_pixel_stop_noise_threshold)
+		|| (render_settings.use_pixel_stop_noise_threshold && render_settings.enable_adaptive_sampling);
 	bool minimum_sample_count_reached = render_settings.sample_number >= m_application_settings->pixel_stop_noise_threshold_min_sample_count || render_settings.enable_adaptive_sampling;
 	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && use_proportion_stopping_condition && minimum_sample_count_reached;
 

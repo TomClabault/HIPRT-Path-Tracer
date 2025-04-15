@@ -76,7 +76,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
     // enabled, we probably want to use adaptive sampling only but also stop rendering after 
     // a certain proportion of pixels have converged and we don't actually want to use the 
     // "stop pixel noise threshold" but only the "stop pixel convergence proportion"
-    else if (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.enable_pixel_stop_noise_threshold)
+    else if (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.use_pixel_stop_noise_threshold)
     {
         int pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
 
