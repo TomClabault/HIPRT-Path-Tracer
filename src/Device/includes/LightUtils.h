@@ -156,6 +156,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
         ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_cell_reservoir(shading_point, out_shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.do_jittering);
         if (out_shading_point_outside_of_grid)
             continue;
+        else if (cell_reservoir.UCW == 0.0f)
+            // No valid sample in that reservoir
+            continue;
 
         ColorRGB32F current_emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[cell_reservoir.sample.emissive_triangle_index]);
 
