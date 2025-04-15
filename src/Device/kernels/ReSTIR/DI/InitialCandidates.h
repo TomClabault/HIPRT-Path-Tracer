@@ -93,7 +93,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
     return light_sample;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const HIPRTRenderData& render_data, float envmap_candidate_probability, const HitInfo& closest_hit_info, ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const HIPRTRenderData& render_data, float envmap_candidate_probability, 
+    const float3& view_direction, const HitInfo& closest_hit_info,
+    RayPayload& ray_payload,
+    ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDISample light_sample;
 
@@ -103,7 +106,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
     {
         // Light sample
 
-        LightSampleInformation light_sample_info = sample_one_emissive_triangle(render_data, closest_hit_info.inter_point, random_number_generator);
+        LightSampleInformation light_sample_info = sample_one_emissive_triangle(render_data, 
+            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, ray_payload,
+            random_number_generator);
         light_sample.emissive_triangle_index = light_sample_info.emissive_triangle_index;
         out_sample_pdf = light_sample_info.area_measure_pdf;
 
@@ -191,7 +196,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             sample_radiance, sample_cosine_term, light_pdf_area_measure, distance_to_light, to_light_direction, 
             random_number_generator);
 #else
-        ReSTIRDISample light_sample = sample_fresh_light_candidate(render_data, envmap_candidate_probability, closest_hit_info, sample_radiance, sample_cosine_term, light_pdf_area_measure, random_number_generator);
+        ReSTIRDISample light_sample = sample_fresh_light_candidate(render_data, envmap_candidate_probability, 
+            view_direction, closest_hit_info, ray_payload,
+            sample_radiance, sample_cosine_term, light_pdf_area_measure, random_number_generator);
 
         if (light_sample.is_envmap_sample())
         {

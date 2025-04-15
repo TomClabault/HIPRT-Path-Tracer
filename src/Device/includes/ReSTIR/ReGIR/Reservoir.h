@@ -42,6 +42,24 @@ struct ReGIRReservoir
 		}
 	}
 
+	HIPRT_HOST_DEVICE bool stream_reservoir(float mis_weight, float target_function, const ReGIRReservoir& other_reservoir, Xorshift32Generator& rng)
+	{
+		float resampling_weight = mis_weight * target_function * other_reservoir.UCW;
+
+		M += other_reservoir.M;
+		weight_sum += resampling_weight;
+
+		if (rng() < resampling_weight / weight_sum)
+		{
+			sample = other_reservoir.sample;
+			sample.target_function = target_function;
+
+			return true;
+		}
+
+		return false;
+	}
+
 	HIPRT_HOST_DEVICE void finalize_resampling()
 	{
 		if (weight_sum == 0.0f)

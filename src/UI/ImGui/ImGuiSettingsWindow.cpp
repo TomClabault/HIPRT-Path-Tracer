@@ -1110,8 +1110,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReGIR_render_pass()->get_VRAM_usage());
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-					ReGIRGPUData& regir_data = m_renderer->get_ReGIR_render_pass()->get_ReGIR_data();
-					ReGIRGrid& regir_grid = regir_data.gpu_grid;
+					ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
 
 					bool size_changed = false;
 					static bool use_cube_grid = true;
@@ -1119,12 +1118,12 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::Checkbox("Use cubic grid", &use_cube_grid);
 					if (use_cube_grid)
 					{
-						static int grid_size = regir_grid.grid_resolution.x;
+						static int grid_size = regir_settings.grid_resolution.x;
 						if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
 						{
-							regir_grid.grid_resolution.x = grid_size;
-							regir_grid.grid_resolution.y = grid_size;
-							regir_grid.grid_resolution.z = grid_size;
+							regir_settings.grid_resolution.x = grid_size;
+							regir_settings.grid_resolution.y = grid_size;
+							regir_settings.grid_resolution.z = grid_size;
 
 							size_changed = true;
 						}
@@ -1132,17 +1131,21 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					else
 					{
 						ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-						size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_grid.grid_resolution.x, 2, 30);
+						size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid_resolution.x, 2, 30);
 						ImGui::SameLine();
-						size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_grid.grid_resolution.y, 2, 30);
+						size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid_resolution.y, 2, 30);
 						ImGui::SameLine();
-						size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_grid.grid_resolution.z, 2, 30);
+						size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid_resolution.z, 2, 30);
 
 						// Back to default size
 						ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 					}
 
-					if (ImGui::SliderInt("Samples per reservoir", &regir_data.settings.light_samples_per_reservoir, 1, 32))
+					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.light_samples_count_per_reservoir, 1, 32))
+						m_render_window->set_render_dirty(true);
+					if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.cell_reservoir_resample_per_shading_point, 1, 32))
+						m_render_window->set_render_dirty(true);
+					if (ImGui::Checkbox("Do cell jittering", &regir_settings.do_jittering))
 						m_render_window->set_render_dirty(true);
 
 					if (size_changed)
