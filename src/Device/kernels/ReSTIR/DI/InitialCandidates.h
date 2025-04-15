@@ -110,7 +110,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
+
         light_sample.emissive_triangle_index = light_sample_info.emissive_triangle_index;
+        light_sample.point_on_light_source = light_sample_info.point_on_light;
         out_sample_pdf = light_sample_info.area_measure_pdf;
 
         if (out_sample_pdf > 0.0f)
@@ -180,7 +182,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
     return light_sample;
 }
 
-// Try passing only volume state in here, not ray payload
 HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, Xorshift32Generator& random_number_generator, const int2& pixel_coords)
 {
     for (int i = 0; i < nb_light_candidates; i++)
@@ -447,7 +448,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 
     // Sampling candidates with weighted reservoir sampling
     ReSTIRDIReservoir reservoir;
-
+    
     sample_light_candidates(render_data, closest_hit_info, ray_payload, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, random_number_generator, pixel_coords);
     sample_bsdf_candidates(render_data, closest_hit_info, ray_payload, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, random_number_generator);
 

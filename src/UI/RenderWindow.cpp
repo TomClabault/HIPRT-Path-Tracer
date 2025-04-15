@@ -37,11 +37,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Alpah tests darkening ReSTIR DI
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
-// TODO ReSTIR GI
+// TODO ReSTIR
 // - Greedy spatial reuse to retry neighbors if we didn't get a good one
-// - The quick skip to the center pixel resampling when there are no valid neighbors 
-//		--> doesn't that cause divergence when the other threads of the warp do not skip to the center pixel?
-//		--> it does cause divergence. maybe solve that, needs wavefront though
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - BSDF MIS Reuse for ReSTIR DI
@@ -50,6 +47,7 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - The cells that weren't touched in the last frame shouldn't be rebuilt in the grid fill
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
 // - Maybe we can have something that say that if after 16 frames, a cell of regir has only produced 0 contributions samples, then it's an occluded cell and we shouldn't update it anymore during grid fill
 // - Only rebuild the ReGIR grid every N frames?
