@@ -13,7 +13,7 @@ struct ReSTIRSurface
 {
 	DeviceUnpackedEffectiveMaterial material;
 	RayVolumeState ray_volume_state;
-	int last_hit_primitive_index;
+	int primitive_index;
 
 	// Do we need the view direction here? We can probably reconstruct it
 	float3 view_direction = { 0.0f, 0.0f, 0.0f};
@@ -27,11 +27,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface(const HIPRTRender
 	ReSTIRSurface surface;
 
 	surface.material = render_data.g_buffer.materials[pixel_index].unpack();
-	surface.last_hit_primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
+	surface.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
 	surface.ray_volume_state.reconstruct_first_hit(
 		surface.material,
 		render_data.buffers.material_indices,
-		surface.last_hit_primitive_index,
+		surface.primitive_index,
 		random_number_generator);
 
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
@@ -53,11 +53,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface_previous_frame(co
 	ReSTIRSurface surface;
 
 	surface.material = render_data.g_buffer_prev_frame.materials[pixel_index].unpack();
-	surface.last_hit_primitive_index = render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index];
+	surface.primitive_index = render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index];
 	surface.ray_volume_state.reconstruct_first_hit(
 		surface.material,
 		render_data.buffers.material_indices,
-		surface.last_hit_primitive_index,
+		surface.primitive_index,
 		random_number_generator);
 
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.prev_camera.position, pixel_index);

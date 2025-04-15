@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     ReSTIRSurface initial_surface;
     initial_surface.geometric_normal = closest_hit_info.geometric_normal;
     initial_surface.shading_normal = closest_hit_info.shading_normal;
-    initial_surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+    initial_surface.primitive_index = closest_hit_info.primitive_index;
     initial_surface.material = ray_payload.material;
     initial_surface.ray_volume_state = ray_payload.volume_state;
     initial_surface.shading_point = closest_hit_info.inter_point;
