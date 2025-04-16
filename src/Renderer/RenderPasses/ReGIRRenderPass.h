@@ -44,7 +44,7 @@ public:
 
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch() override;
-	virtual void post_render_update() override {};
+	virtual void post_render_update() override;
 	virtual void update_render_data() override;
 
 	virtual void reset() override;
@@ -56,10 +56,8 @@ public:
 	 */
 	float get_VRAM_usage() const;
 
-	ReGIRGPUData& get_ReGIR_data();
-
 private:
-	OrochiBuffer<ReGIRReservoir> m_grid_buffer;
+	OrochiBuffer<ReGIRReservoir> m_grid_buffers;
 };
 
 #endif

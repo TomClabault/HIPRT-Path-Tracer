@@ -1118,6 +1118,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
 			{
 				// Adding options for ReGIR
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				if (ImGui::CollapsingHeader("ReGIR Settings"))
 				{
 					ImGui::TreePush("ReGIR settings tree");
@@ -1143,8 +1144,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
 
-					bool size_changed = false;
-					static bool use_cube_grid = true;
+					if (ImGui::Checkbox("Do temporal reuse", &regir_settings.do_temporal_reuse))
+						m_render_window->set_render_dirty(true);
+
+					if (ImGui::SliderInt("Temporal history length", &regir_settings.temporal_history_length, 1, 16))
+						m_render_window->set_render_dirty(true);
 
 					static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
 					if (ImGui::Checkbox("Use visibility during shading resampling", &use_vis_shading_resampling))
@@ -1157,8 +1161,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
 						"shading a point at path tracing time. This reduces visibility noise.");
 						
-					if (ImGui::Checkbox("Do cell jittering", &regir_settings.do_jittering))
+					if (ImGui::Checkbox("Do cell jittering", &regir_settings.do_cell_jittering))
 						m_render_window->set_render_dirty(true);
+
+					bool size_changed = false;
+					static bool use_cube_grid = true;
 					ImGui::Checkbox("Use cubic grid", &use_cube_grid);
 					if (use_cube_grid)
 					{
@@ -1185,7 +1192,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 					}
 
-					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.sample_count_per_cell_reservoir, 16, 512))
+					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.sample_count_per_cell_reservoir, 1, 256))
 						m_render_window->set_render_dirty(true);
 					if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.reservoirs_count_per_grid_cell, 1, 128))
 						m_render_window->set_render_dirty(true);
@@ -1200,14 +1207,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					{
 						ImGui::TreePush("ReGIR Settings debug tree");
 
-						static bool visualize_grid_cells = ReGIR_DisplayGridCells;
-						if (ImGui::Checkbox("Visualize grid cells", &visualize_grid_cells))
+						static int regir_debug_mode = ReGIR_DebugMode;
+						const char* items[] = { "- No debug", "- Grid cells", "- Average cell-reservoirs contribution" };
+						if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_DISPLAY_GRID_CELLS, visualize_grid_cells ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
 							m_renderer->recompile_kernels();
 							m_render_window->set_render_dirty(true);
 						}
+						if (regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION)
+							if (ImGui::SliderFloat("Debug view scale factor", &regir_settings.debug_view_scale_factor, 0.0f, 5.0f))
+								m_render_window->set_render_dirty(true);
 
 						ImGui::TreePop();
 					}
@@ -1223,44 +1232,44 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
 			case LSS_NO_DIRECT_LIGHT_SAMPLING:
-				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_ONE_LIGHT:
-				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_MIS_LIGHT_BSDF:
-				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
-				bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
-				if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+				if (ImGui::CollapsingHeader("RIS Settings"))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-					m_renderer->recompile_kernels();
+					bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
+					if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						m_renderer->recompile_kernels();
 
-					m_render_window->set_render_dirty(true);
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+					{
+						// Clamping to 0
+						render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
+					{
+						// Clamping to 0
+						render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
+
+						m_render_window->set_render_dirty(true);
+					}
 				}
-
-				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
-				{
-					// Clamping to 0
-					render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
-
-					m_render_window->set_render_dirty(true);
-				}
-
-				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
-				{
-					// Clamping to 0
-					render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
-
-					m_render_window->set_render_dirty(true);
-				}
-
+					
 				break;
 			}
 
@@ -1274,7 +1283,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
 					m_render_window->set_render_dirty(true);
 
-				if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
+				if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 				{
 					render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
 					if (render_settings.accumulate)
@@ -1547,11 +1556,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_BSDF && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_NO_DIRECT_LIGHT_SAMPLING)
-			{
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
 				draw_next_event_estimation_plus_plus_panel();
-			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -1638,7 +1643,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						"Enable \"BSDF delta distribution optimization\" in \"Performance Settings\" --> \"General Settings\" to get rid of this issue.");
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::SliderInt("M-cap", &render_settings.restir_gi_settings.m_cap, 0, 48))
+				if (ImGui::SliderInt("M-cap", &render_settings.restir_gi_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 				{
 					render_settings.restir_gi_settings.m_cap = std::max(0, render_settings.restir_gi_settings.m_cap);
 					if (render_settings.accumulate)
@@ -2029,7 +2034,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(CommonReSTIRSettings&
 					" to add temporal variations.");
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::SliderInt("M-cap", &restir_settings.m_cap, 0, 48))
+				if (ImGui::SliderInt("M-cap", &restir_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 				{
 					restir_settings.m_cap = std::max(0, restir_settings.m_cap);
 					if (render_settings.accumulate)

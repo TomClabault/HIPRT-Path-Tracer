@@ -8,6 +8,10 @@
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
+#define REGIR_DEBUG_MODE_NO_DEBUG 0
+#define REGIR_DEBUG_MODE_GRID_CELLS 1
+#define REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION 2
+
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -26,7 +30,7 @@
 *	- LSS_BASE_POWER_AREA
 *		Lights are sampled proportionally to their 'power * area'
 */
-#define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_POWER_AREA
+#define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_UNIFORM
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
@@ -44,7 +48,7 @@
 /**
  * Debug option to color the scene with the grid cells
  */
-#define ReGIR_DisplayGridCells KERNEL_OPTION_FALSE
+#define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
 
 #endif // #ifndef __KERNELCC__
 

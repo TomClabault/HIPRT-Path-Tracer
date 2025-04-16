@@ -21,16 +21,21 @@ struct ReGIRSettings
 		return cell_size;
 	}
 
+	HIPRT_HOST_DEVICE int3 get_xyz_cell_index_from_linear(int linear_cell_index) const
+	{
+		int index_x = linear_cell_index % grid_resolution.x;
+		int index_y = (linear_cell_index % (grid_resolution.x * grid_resolution.y)) / grid_resolution.x;
+		int index_z = linear_cell_index % (grid_resolution.x * grid_resolution.y);
+		
+		return make_int3(index_x, index_y, index_z);
+	}
+
 	HIPRT_HOST_DEVICE float3 get_cell_center(unsigned int linear_cell_index) const
 	{
 		float3 cell_size = get_cell_size();
 
-		int index_x = linear_cell_index % grid_resolution.x;
-		int index_y = (linear_cell_index % (grid_resolution.x * grid_resolution.y)) / grid_resolution.x;
-		int index_z = linear_cell_index % (grid_resolution.x * grid_resolution.y);
-
-		int3 cell_index_xyz = make_int3(index_x, index_y, index_z);
-		float3 cell_index_xyz_float = make_float3(static_cast<float>(index_x), static_cast<float>(index_y), static_cast<float>(index_z));
+		int3 cell_index_xyz = get_xyz_cell_index_from_linear(linear_cell_index);
+		float3 cell_index_xyz_float = make_float3(static_cast<float>(cell_index_xyz.x), static_cast<float>(cell_index_xyz.y), static_cast<float>(cell_index_xyz.z));
 
 		return grid_origin + cell_size * cell_index_xyz_float + cell_size / 2.0f;
 	}
@@ -74,7 +79,29 @@ struct ReGIRSettings
 			random_reservoir_index_in_cell = rng.random_index(reservoirs_count_per_grid_cell);
 
 		// Returning the reservoir number 'random_reservoir_index_in_cell' in the cell number 'cell_linear_index'
-		return grid_buffer[cell_linear_index * reservoirs_count_per_grid_cell + random_reservoir_index_in_cell];
+		return get_reservoir(cell_linear_index * reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
+	}
+
+	/**
+	 * Returns the reservoir indicated by lienar_reservoir_index_in_grid but in the grid_index given
+	 * 
+	 * This function only makes sense with temporal reuse where we have more than 1 grid and so a single reservoir index
+	 * isn't enough to fetch the reservoir in the reservoir buffer
+	 */
+	HIPRT_HOST_DEVICE ReGIRReservoir get_reservoir(int linear_reservoir_index_in_grid, int grid_index = -1) const
+	{
+		if (grid_index != -1)
+			return grid_buffers[grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid];
+		else
+			return grid_buffers[current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid];
+	}
+
+	HIPRT_HOST_DEVICE void store_reservoir(ReGIRReservoir reservoir, int linear_reservoir_index_in_grid, int grid_index = -1)
+	{
+		if (grid_index != -1)
+			grid_buffers[grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid] = reservoir;
+		else
+			grid_buffers[current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid] = reservoir;
 	}
 
 	HIPRT_HOST_DEVICE ColorRGB32F get_random_cell_color(float3 position, Xorshift32Generator* rng = nullptr, bool jitter = true) const
@@ -84,28 +111,50 @@ struct ReGIRSettings
 		return ColorRGB32F::random_color(cell_index);
 	}
 
-	HIPRT_HOST_DEVICE int get_total_number_of_reservoirs() const
+	HIPRT_HOST_DEVICE int get_number_of_reservoirs_per_grid() const
 	{
-		return grid_resolution.x * grid_resolution.y * grid_resolution.z * reservoirs_count_per_grid_cell;
+		int number_of_cells = grid_resolution.x * grid_resolution.y * grid_resolution.z;
+
+		return number_of_cells * reservoirs_count_per_grid_cell;
+	}
+
+	HIPRT_HOST_DEVICE int get_total_number_of_reservoirs_ReGIR() const
+	{
+		int temporal_grid_count = do_temporal_reuse ? temporal_history_length : 1;
+
+		return get_number_of_reservoirs_per_grid() * temporal_grid_count;
 	}
 
 	float3 grid_origin;
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
-	int3 grid_resolution = make_int3(16, 16, 16);
+
+	static constexpr int DEFAULT_GRID_SIZE = 16;
+	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 
 	// How many light samples are resampled into each reservoir of the grid cell
-	int sample_count_per_cell_reservoir = 32;
+	int sample_count_per_cell_reservoir = 4;
 	// How many reservoirs are going to be produced per each cell of the grid
-	int reservoirs_count_per_grid_cell = 64;
+	int reservoirs_count_per_grid_cell = 27;
 	// At path tracing time, how many reservoirs of the grid cell of the point we're trying to shade
 	// are going to be resampled (with the BRDF term) to produce the final light sample used for NEE
-	int cell_reservoir_resample_per_shading_point = 8;
+	int cell_reservoir_resample_per_shading_point = 1;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_jittering = true;
+	bool do_cell_jittering = false;
+	// Whether or not to reuse the reservoirs from the last frame as well as current frame
+	bool do_temporal_reuse = true;
+	int m_cap = 50;
 
-	ReGIRReservoir* grid_buffer = nullptr;
+	// How many grids to keep in memory to help with sample quality
+	int temporal_history_length = 8;
+	// Index of the grid of the current frame. In [0, temporal_history_length - 1]
+	int current_grid_index = 0;
+	// This is a linear buffer that contains enough space for 'get_total_number_of_reservoirs_ReGIR()' reservoirs
+	ReGIRReservoir* grid_buffers = nullptr;
+
+	// Multiplicative factor to multiply the output of some debug views
+	float debug_view_scale_factor = 1.0f;
 };
 
 #endif

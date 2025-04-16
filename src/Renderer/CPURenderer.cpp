@@ -37,7 +37,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -51,8 +51,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 113
-#define DEBUG_PIXEL_Y 98
+#define DEBUG_PIXEL_X 621
+#define DEBUG_PIXEL_Y 39
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -95,7 +95,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_pixel_converged_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
 
-    m_regir_state.grid_buffer.resize(m_regir_state.settings.grid_resolution.x * m_regir_state.settings.grid_resolution.y * m_regir_state.settings.grid_resolution.z * m_regir_state.settings.reservoirs_count_per_grid_cell);
+    m_regir_state.grid_buffer.resize(m_regir_state.settings.get_total_number_of_reservoirs_ReGIR());
 
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
@@ -303,7 +303,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.extents = m_regir_state.settings.extents;
     m_render_data.render_settings.regir_settings.grid_resolution = m_regir_state.settings.grid_resolution;
     m_render_data.render_settings.regir_settings.grid_origin = m_regir_state.settings.grid_origin;
-    m_render_data.render_settings.regir_settings.grid_buffer = m_regir_state.grid_buffer.data();
+    m_render_data.render_settings.regir_settings.grid_buffers = m_regir_state.grid_buffer.data();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -640,9 +640,15 @@ void CPURenderer::ReGIR_grid_fill_pass()
     m_render_data.random_number = m_rng.xorshift32();
 
 #pragma omp parallel for
-    for (int index = 0; index < m_regir_state.settings.grid_resolution.x * m_regir_state.settings.grid_resolution.y * m_regir_state.settings.grid_resolution.z * m_regir_state.settings.reservoirs_count_per_grid_cell; index++)
+    for (int index = 0; index < m_regir_state.settings.get_number_of_reservoirs_per_grid(); index++)
     {
         ReGIR_Grid_Fill(m_render_data, index);
+    }
+
+    if (m_render_data.render_settings.regir_settings.do_temporal_reuse)
+    {
+        m_render_data.render_settings.regir_settings.current_grid_index++;
+        m_render_data.render_settings.regir_settings.current_grid_index %= m_render_data.render_settings.regir_settings.temporal_history_length;;
     }
 }
 

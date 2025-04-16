@@ -144,7 +144,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, 
     int last_hit_primitive_index, RayPayload& ray_payload,
-    bool& out_shading_point_outside_of_grid,
+    bool& shading_point_outside_of_grid,
     Xorshift32Generator& random_number_generator)
 {
     LightSampleInformation out_sample;
@@ -153,8 +153,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     for (int i = 0; i < render_data.render_settings.regir_settings.cell_reservoir_resample_per_shading_point; i++)
     {
-        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_cell_reservoir(shading_point, out_shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.do_jittering);
-        if (out_shading_point_outside_of_grid)
+        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_cell_reservoir(shading_point, shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.do_cell_jittering);
+        if (shading_point_outside_of_grid)
             continue;
         else if (cell_reservoir.UCW == 0.0f)
             // No valid sample in that reservoir
@@ -175,6 +175,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     if (out_reservoir.weight_sum == 0.0f)
         return LightSampleInformation();
+        
     out_reservoir.finalize_resampling();
 
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
@@ -301,12 +302,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F 
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, int hit_primitive_index, ColorRGB32F light_emission)
 {
-#if DirectLightSamplingBaseStrategy == LSS_BASE_UNIFORM
+#if DirectLightSamplingBaseStrategy == LSS_BASE_UNIFORM || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_UNIFORM)
     // Surface area PDF of hitting that point on that triangle in the scene
     float light_area = triangle_area(render_data, hit_primitive_index);
     float area_measure_pdf = 1.0f / light_area;
     area_measure_pdf /= render_data.buffers.emissive_triangles_count;
-#elif DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA || DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+#elif DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER_AREA)
     // Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
     // faking it with power-area PDF
 

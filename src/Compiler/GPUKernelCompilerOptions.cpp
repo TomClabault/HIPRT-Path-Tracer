@@ -45,7 +45,7 @@ const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY = "
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY = "ReGIR_GridFillLightSamplingBaseStrategy";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
-const std::string GPUKernelCompilerOptions::REGIR_DISPLAY_GRID_CELLS = "ReGIR_DisplayGridCells";
+const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIR_DebugMode";
 
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY = "DirectLightSamplingBaseStrategy";
@@ -109,7 +109,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
-	GPUKernelCompilerOptions::REGIR_DISPLAY_GRID_CELLS,
+	GPUKernelCompilerOptions::REGIR_DEBUG_MODE,
 
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY,
@@ -177,7 +177,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY] = std::make_shared<int>(ReGIR_GridFillLightSamplingBaseStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DISPLAY_GRID_CELLS] = std::make_shared<int>(ReGIR_DisplayGridCells);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DEBUG_MODE] = std::make_shared<int>(ReGIR_DebugMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY] = std::make_shared<int>(DirectLightSamplingBaseStrategy);
