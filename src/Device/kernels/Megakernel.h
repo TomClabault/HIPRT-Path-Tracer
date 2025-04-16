@@ -141,14 +141,44 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
 #if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
     // Nothing to do, the debug is already handled in the shadow ray NEE function
-#elif ReGIR_DisplayGridCells == KERNEL_OPTION_TRUE
-    ray_payload.ray_color = ColorRGB32F(0.0f);
+#elif ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG
+#if ReGIR_DebugMode  == REGIR_DEBUG_MODE_GRID_CELLS
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
     {
         // We have a first hit
-        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(render_data.g_buffer.primary_hit_position[pixel_index], nullptr, false) * (render_data.render_settings.sample_number + 1);
-        ray_payload.ray_color *= hippt::dot(render_data.g_buffer.shading_normals[pixel_index].unpack(), render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index));
+        float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+        float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+        float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+
+        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, nullptr, false) * (render_data.render_settings.sample_number + 1);
+        ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
     }
+#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION
+    if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+    {
+        float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+
+        int cell_index = render_data.render_settings.regir_settings.get_cell_index(primary_hit);
+
+        float average_contribution = 0.0f;
+        for (int i = 0; i < render_data.render_settings.regir_settings.reservoirs_count_per_grid_cell; i++)
+        {
+            int reservoir_index = cell_index * render_data.render_settings.regir_settings.reservoirs_count_per_grid_cell + i;
+
+            ReGIRReservoir reservoir = render_data.render_settings.regir_settings.get_reservoir(reservoir_index);
+            average_contribution += reservoir.sample.target_function * reservoir.UCW;
+        }
+
+        // Averaging
+        average_contribution /= render_data.render_settings.regir_settings.reservoirs_count_per_grid_cell;
+        // Scaling by the debug factor for visualization purposes
+        average_contribution *= render_data.render_settings.regir_settings.debug_view_scale_factor;
+        // Scaling by SPP
+        average_contribution *= (render_data.render_settings.sample_number + 1);
+
+        ray_payload.ray_color = ColorRGB32F(average_contribution);
+    }
+#endif
 #endif
 #endif
 

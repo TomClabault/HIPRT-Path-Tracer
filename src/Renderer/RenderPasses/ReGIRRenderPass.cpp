@@ -54,18 +54,18 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	if (is_render_pass_used())
 	{
 		// Resizing the grid if it is not the right size
-		if (m_grid_buffer.get_element_count() != m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs())
+		if (m_grid_buffers.get_element_count() != m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR())
 		{
-			m_grid_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs());
+			m_grid_buffers.resize(m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR());
 
 			return true;
 		}
 	}
 	else
 	{
-		if (m_grid_buffer.get_element_count() > 0)
+		if (m_grid_buffers.get_element_count() > 0)
 		{
-			m_grid_buffer.free();
+			m_grid_buffers.free();
 
 			return true;
 		}
@@ -81,27 +81,37 @@ bool ReGIRRenderPass::launch()
 
 	void* launch_args[] = { m_render_data };
 
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs(), 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid(), 1, launch_args, m_renderer->get_main_stream());
 
 	return true;
+}
+
+void ReGIRRenderPass::post_render_update()
+{
+	if (m_render_data->render_settings.regir_settings.do_temporal_reuse)
+	{
+		m_render_data->render_settings.regir_settings.current_grid_index++;
+		m_render_data->render_settings.regir_settings.current_grid_index %= m_render_data->render_settings.regir_settings.temporal_history_length;
+	}
 }
 
 void ReGIRRenderPass::update_render_data()
 {
 	if (is_render_pass_used())
 	{
-		m_render_data->render_settings.regir_settings.grid_buffer = m_grid_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.grid_buffers = m_grid_buffers.get_device_pointer();
 		m_render_data->render_settings.regir_settings.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 		m_render_data->render_settings.regir_settings.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 	}
 	else
 	{
-		m_render_data->render_settings.regir_settings.grid_buffer = nullptr;
+		m_render_data->render_settings.regir_settings.grid_buffers = nullptr;
 	}
 }
 
 void ReGIRRenderPass::reset()
 {
+	m_render_data->render_settings.regir_settings.current_grid_index = 0;
 }
 
 bool ReGIRRenderPass::is_render_pass_used() const
@@ -111,5 +121,5 @@ bool ReGIRRenderPass::is_render_pass_used() const
 
 float ReGIRRenderPass::get_VRAM_usage() const
 {
-	return m_grid_buffer.get_byte_size() / 1000000.0f;
+	return m_grid_buffers.get_byte_size() / 1000000.0f;
 }

@@ -38,6 +38,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
+// - There is bias in ReSTIR DI
 // - Greedy spatial reuse to retry neighbors if we didn't get a good one
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
@@ -45,6 +46,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Force albedo to white for spatial reuse? Because what's interesting to reuse is the shape of the BRDF and the incident radiance. Resampling from a black diffuse is still interesting. The albedo doesn't matter
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
+// - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
 // - The cells that weren't touched in the last frame shouldn't be rebuilt in the grid fill
@@ -61,6 +63,12 @@ extern ImGuiLogger g_imgui_logger;
 //		
 //			- We would need a prepass at lower resolution, same as for radiance caching?
 //			- Maybe we can keep the grids of past frames to help with that?
+// - Spatial reuse pass on neighbors grid cells
+// - Temporal reuse
+// - Can we do some kind of visibility reuse pass at the end of the grid cell population? Such that all occluded reservoirs are discarded and not used during shading
+// - Maybe instead of a visibility reuse pass, we can do something that takes stratified point positions inside the voxel and computes the visibility between the reservoir light sample and these points and the average visibility success can be used as a weight for using that reservoir during shading or not
+//		- Maybe what we can do for the problem a the grid cell center being inside an objects is to always include some canonical samples in the resampling process to cover the cases where the visibility would fail (this would require proper 1/Z mis weights though)
+// - When building a grid around the camera, the size of the voxel can be chosen such that the projected bounding box of a voxel spans a certain amount of pixels on screen ---> maybe this can be done separately for each dimensions
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?
