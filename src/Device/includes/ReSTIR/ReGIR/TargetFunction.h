@@ -12,9 +12,9 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE float ReGIR_grid_fill_evaluate_target_function(HIPRTRenderData& render_data, float3 cell_center, const LightSampleInformation& regir_sample)
+HIPRT_HOST_DEVICE float ReGIR_grid_fill_evaluate_target_function(float3 cell_center, ColorRGB32F sample_emission, float3 sample_position)
 {
-	return regir_sample.emission.luminance() / hippt::length2(cell_center - regir_sample.point_on_light);
+	return sample_emission.luminance() / hippt::length2(cell_center - sample_position);
 }
 
 HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,

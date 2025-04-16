@@ -84,7 +84,7 @@ struct HIPRTRenderSettings
 
 	// Whether or not to accumulate each frame to allow progressive rendering. If false,
 	// each frame will be displayed on screen and discarded on the next frame without accumulation
-	bool accumulate = false;
+	bool accumulate = true;
 
 	// How many samples were accumulated in the denoiser's AOV buffers (albedo & normals)
 	// This is used mainly for the normals AOVs because we want a way to accumulate the normals.
@@ -171,7 +171,7 @@ struct HIPRTRenderSettings
 	// enabled or according to 'stop_pixel_noise_threshold' if adaptive sampling is not enabled.
 	//
 	// If false, the render will not stop until all pixels have converged
-	bool use_pixel_stop_noise_threshold = true;
+	bool use_pixel_stop_noise_threshold = false;
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.

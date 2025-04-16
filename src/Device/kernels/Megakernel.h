@@ -158,7 +158,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 
-        int cell_index = render_data.render_settings.regir_settings.get_cell_index(primary_hit);
+        int cell_index = render_data.render_settings.regir_settings.get_cell_linear_index_from_world_pos(primary_hit);
 
         float average_contribution = 0.0f;
         for (int i = 0; i < render_data.render_settings.regir_settings.reservoirs_count_per_grid_cell; i++)
