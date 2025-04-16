@@ -9,7 +9,8 @@
 #include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
-#include "Device/kernels/ReSTIR/ReGIR/ReGIRGridFill.h"
+#include "Device/kernels/ReSTIR/ReGIR/ReGIRGridFillTemporalReuse.h"
+#include "Device/kernels/ReSTIR/ReGIR/ReGIRSpatialReuse.h"
 
 #include "Device/kernels/ReSTIR/DirectionalReuseCompute.h"
 
@@ -96,6 +97,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_pixel_squared_luminance.resize(width * height, 0.0f);
 
     m_regir_state.grid_buffer.resize(m_regir_state.settings.get_total_number_of_reservoirs_ReGIR());
+    m_regir_state.spatial_grid_buffer.resize(m_regir_state.settings.get_number_of_reservoirs_per_grid());
 
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
@@ -297,13 +299,12 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-    m_regir_state.settings.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
-    m_regir_state.settings.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
 
-    m_render_data.render_settings.regir_settings.extents = m_regir_state.settings.extents;
-    m_render_data.render_settings.regir_settings.grid_resolution = m_regir_state.settings.grid_resolution;
-    m_render_data.render_settings.regir_settings.grid_origin = m_regir_state.settings.grid_origin;
-    m_render_data.render_settings.regir_settings.grid_buffers = m_regir_state.grid_buffer.data();
+    m_render_data.render_settings.regir_settings.grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
+    m_render_data.render_settings.regir_settings.grid.grid_resolution = m_regir_state.settings.grid.grid_resolution;
+    m_render_data.render_settings.regir_settings.grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
+    m_render_data.render_settings.regir_settings.grid_fill.grid_buffers = m_regir_state.grid_buffer.data();
+    m_render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_regir_state.spatial_grid_buffer.data();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -484,7 +485,7 @@ void CPURenderer::render()
         camera_rays_pass();
 
 #if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-        ReGIR_grid_fill_pass();
+        ReGIR_pass();
 #endif
 
 #if DirectLightSamplingStrategy == LSS_RESTIR_DI
@@ -498,16 +499,7 @@ void CPURenderer::render()
         ReSTIR_GI_pass();
 #endif
 
-
-        if (m_render_data.render_settings.accumulate)
-            m_render_data.render_settings.sample_number++;
-        m_render_data.random_number = m_rng.xorshift32();
-        m_render_data.render_settings.need_to_reset = false;
-        // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
-        // and then we can re-use the old buffers of to be filled by the current frame render
-
-        nee_plus_plus_memcpy_accumulation(frame_number);
-        gmon_check_for_sets_accumulation();
+        post_render_update(frame_number);
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
@@ -526,6 +518,28 @@ void CPURenderer::pre_render_update(int frame_number)
 
     if (frame_number > m_nee_plus_plus.stop_update_samples)
         m_render_data.nee_plus_plus.update_visibility_map = false;
+}
+
+void CPURenderer::post_render_update(int frame_number)
+{
+    if (m_render_data.render_settings.accumulate)
+            m_render_data.render_settings.sample_number++;
+    m_render_data.random_number = m_rng.xorshift32();
+    m_render_data.render_settings.need_to_reset = false;
+    // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
+    // and then we can re-use the old buffers of to be filled by the current frame render
+
+    nee_plus_plus_memcpy_accumulation(frame_number);
+    gmon_check_for_sets_accumulation();
+
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+    // Incrementing the index of the current grid for ReGIR temporal reuse
+    if (m_render_data.render_settings.regir_settings.temporal_reuse.do_temporal_reuse)
+    {
+        m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index++;
+        m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index %= m_render_data.render_settings.regir_settings.temporal_reuse.temporal_history_length;
+    }
+#endif
 }
 
 void CPURenderer::update_render_data(int sample)
@@ -635,20 +649,32 @@ void CPURenderer::camera_rays_pass()
     });
 }
 
+void CPURenderer::ReGIR_pass()
+{
+    ReGIR_grid_fill_pass();
+    ReGIR_spatial_reuse_pass();
+}
+
 void CPURenderer::ReGIR_grid_fill_pass()
 {
     m_render_data.random_number = m_rng.xorshift32();
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int index = 0; index < m_regir_state.settings.get_number_of_reservoirs_per_grid(); index++)
     {
-        ReGIR_Grid_Fill(m_render_data, index);
+        ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index);
     }
+}
 
-    if (m_render_data.render_settings.regir_settings.do_temporal_reuse)
+void CPURenderer::ReGIR_spatial_reuse_pass()
+{
+    if (!m_regir_state.settings.spatial_reuse.do_spatial_reuse)
+        return;
+
+    #pragma omp parallel for
+    for (int index = 0; index < m_regir_state.settings.get_number_of_reservoirs_per_grid(); index++)
     {
-        m_render_data.render_settings.regir_settings.current_grid_index++;
-        m_render_data.render_settings.regir_settings.current_grid_index %= m_render_data.render_settings.regir_settings.temporal_history_length;;
+        ReGIR_Spatial_Reuse(m_render_data, index);
     }
 }
 

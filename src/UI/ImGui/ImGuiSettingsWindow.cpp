@@ -1144,10 +1144,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
 
-					if (ImGui::Checkbox("Do temporal reuse", &regir_settings.do_temporal_reuse))
+					if (ImGui::Checkbox("Do temporal reuse", &regir_settings.temporal_reuse.do_temporal_reuse))
 						m_render_window->set_render_dirty(true);
 
-					if (ImGui::SliderInt("Temporal history length", &regir_settings.temporal_history_length, 1, 16))
+					if (ImGui::SliderInt("Temporal history length", &regir_settings.temporal_reuse.temporal_history_length, 1, 16))
+						m_render_window->set_render_dirty(true);
+
+					if (ImGui::Checkbox("Do spatial reuse", &regir_settings.spatial_reuse.do_spatial_reuse))
 						m_render_window->set_render_dirty(true);
 
 					static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
@@ -1161,7 +1164,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
 						"shading a point at path tracing time. This reduces visibility noise.");
 						
-					if (ImGui::Checkbox("Do cell jittering", &regir_settings.do_cell_jittering))
+					if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
 						m_render_window->set_render_dirty(true);
 
 					bool size_changed = false;
@@ -1169,12 +1172,12 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::Checkbox("Use cubic grid", &use_cube_grid);
 					if (use_cube_grid)
 					{
-						static int grid_size = regir_settings.grid_resolution.x;
+						static int grid_size = regir_settings.grid.grid_resolution.x;
 						if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
 						{
-							regir_settings.grid_resolution.x = grid_size;
-							regir_settings.grid_resolution.y = grid_size;
-							regir_settings.grid_resolution.z = grid_size;
+							regir_settings.grid.grid_resolution.x = grid_size;
+							regir_settings.grid.grid_resolution.y = grid_size;
+							regir_settings.grid.grid_resolution.z = grid_size;
 
 							size_changed = true;
 						}
@@ -1182,21 +1185,21 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					else
 					{
 						ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-						size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid_resolution.x, 2, 30);
+						size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
 						ImGui::SameLine();
-						size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid_resolution.y, 2, 30);
+						size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
 						ImGui::SameLine();
-						size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid_resolution.z, 2, 30);
+						size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
 
 						// Back to default size
 						ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 					}
 
-					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.sample_count_per_cell_reservoir, 1, 256))
+					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 256))
 						m_render_window->set_render_dirty(true);
-					if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.reservoirs_count_per_grid_cell, 1, 128))
+					if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.grid_fill.reservoirs_count_per_grid_cell, 1, 128))
 						m_render_window->set_render_dirty(true);
-					if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.cell_reservoir_resample_per_shading_point, 1, 32))
+					if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.shading.cell_reservoir_resample_per_shading_point, 1, 32))
 						m_render_window->set_render_dirty(true);
 
 					if (size_changed)

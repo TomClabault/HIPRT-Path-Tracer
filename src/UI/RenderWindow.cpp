@@ -69,6 +69,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Maybe instead of a visibility reuse pass, we can do something that takes stratified point positions inside the voxel and computes the visibility between the reservoir light sample and these points and the average visibility success can be used as a weight for using that reservoir during shading or not
 //		- Maybe what we can do for the problem a the grid cell center being inside an objects is to always include some canonical samples in the resampling process to cover the cases where the visibility would fail (this would require proper 1/Z mis weights though)
 // - When building a grid around the camera, the size of the voxel can be chosen such that the projected bounding box of a voxel spans a certain amount of pixels on screen ---> maybe this can be done separately for each dimensions
+// - Right now, ReGIR's temporal reuse only softens black pixels (no good sample) because of the MIS weights, something better to do?
+// - For the visibility reuse of ReGIR, maybe we can just trace from the center of the cell and if at shading time, the reservoir is 0, we know that this must be because the reservoir is occluded for that sample so we can just draw a canonical candidate instead there
+//		- Always tracing from the center of the cell may be always broken depending on the geometry of the scene so maybe we want to trace from the center of the cell as a default but as path tracing progresses, we want to save one point on the surface of geometry in that cell and use that point to trace shadow rays from onwards, that way we're always tracing from a valid surface in the grid cell
+// - Can we do temporal reuse without storing past grid (VRAM please)? Same as in ReSTIR DI?
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?

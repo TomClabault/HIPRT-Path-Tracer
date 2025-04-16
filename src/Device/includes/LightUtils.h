@@ -14,6 +14,11 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
+HIPRT_HOST_DEVICE ColorRGB32F get_emission_of_triangle_from_index(HIPRTRenderData& render_data, int triangle_index)
+{
+    return render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[triangle_index]);
+}
+
 /**
  * Reference: [A Low-Distortion Map Between Triangle and Square, Heitz, 2019]
  * 
@@ -151,9 +156,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     ReGIRReservoir out_reservoir;
     ColorRGB32F picked_sample_emission;
 
-    for (int i = 0; i < render_data.render_settings.regir_settings.cell_reservoir_resample_per_shading_point; i++)
+    for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
     {
-        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_cell_reservoir(shading_point, shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.do_cell_jittering);
+        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_cell_reservoir_for_shading(shading_point, shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.shading.do_cell_jittering);
         if (shading_point_outside_of_grid)
             continue;
         else if (cell_reservoir.UCW == 0.0f)
@@ -162,7 +167,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
         ColorRGB32F current_emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[cell_reservoir.sample.emissive_triangle_index]);
 
-        float mis_weight = 1.0f / render_data.render_settings.regir_settings.cell_reservoir_resample_per_shading_point;
+        float mis_weight = 1.0f / render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
         float target_function = ReGIR_shading_evaluate_target_function(render_data, 
             shading_point, view_direction, shading_normal, geometric_normal, 
             last_hit_primitive_index, ray_payload,
@@ -175,7 +180,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     if (out_reservoir.weight_sum == 0.0f)
         return LightSampleInformation();
-        
+
     out_reservoir.finalize_resampling();
 
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it

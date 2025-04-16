@@ -48,6 +48,7 @@ public:
 
     void render();
     void pre_render_update(int frame_number);
+    void post_render_update(int frame_number);
     void update_render_data(int sample);
 
     void reset();
@@ -56,9 +57,12 @@ public:
 
     void nee_plus_plus_cache_visibility_pass();
     void camera_rays_pass();
-    void ReGIR_grid_fill_pass();
+    void ReGIR_pass();
     void ReSTIR_DI_pass();
     void ReSTIR_GI_pass();
+
+    void ReGIR_grid_fill_pass();
+    void ReGIR_spatial_reuse_pass();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
@@ -172,6 +176,7 @@ private:
         ReGIRSettings settings;
 
         std::vector<ReGIRReservoir> grid_buffer;
+        std::vector<ReGIRReservoir> spatial_grid_buffer;
     } m_regir_state;
 
     Image32Bit m_sheen_ltc_params;

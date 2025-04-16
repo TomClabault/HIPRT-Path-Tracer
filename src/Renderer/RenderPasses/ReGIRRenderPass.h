@@ -14,7 +14,8 @@ class GPURenderer;
 class ReGIRRenderPass : public RenderPass
 {
 public:
-	static const std::string REGIR_GRID_FILL_KERNEL_ID;
+	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;
+	static const std::string REGIR_SPATIAL_REUSE_KERNEL_ID;
 
 	static const std::string REGIR_RENDER_PASS_NAME;
 
@@ -43,7 +44,15 @@ public:
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
 
 	virtual bool pre_render_update(float delta_time) override;
+
 	virtual bool launch() override;
+	void launch_grid_fill_temporal_reuse();
+	void launch_spatial_reuse();
+	/**
+	 * Positions HIPRTRenderData variables such that the path tracer uses the right buffers during shading
+	 */
+	void onfigure_shading_pass();
+
 	virtual void post_render_update() override;
 	virtual void update_render_data() override;
 
@@ -57,7 +66,11 @@ public:
 	float get_VRAM_usage() const;
 
 private:
+	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,
+	// this buffer will contain one more than one grid worth of space to
+	// accomodate for the grid of the past frames for temporal reuse
 	OrochiBuffer<ReGIRReservoir> m_grid_buffers;
+	OrochiBuffer<ReGIRReservoir> m_spatial_reuse_output_grid_buffer;
 };
 
 #endif

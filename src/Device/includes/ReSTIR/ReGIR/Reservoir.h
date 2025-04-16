@@ -18,7 +18,7 @@ struct ReGIRSample
 	int emissive_triangle_index = -1;
 	float light_area = 0.0f;
 
-	// TODO maybe not needed during shading
+	// TODO maybe not needed during shading? Mayube needed actually for spatial reuse because otherwise we're going to have to re-evaluate it which means reading emission and triangle properties from memory to evaluate the target function 
 	float target_function = 0.0f;
 };
 
