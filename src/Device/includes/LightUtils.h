@@ -165,7 +165,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
             // No valid sample in that reservoir
             continue;
 
-        ColorRGB32F current_emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[cell_reservoir.sample.emissive_triangle_index]);
+        ColorRGB32F current_emission = cell_reservoir.sample.emission;
 
         float mis_weight = 1.0f / render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
         float target_function = ReGIR_shading_evaluate_target_function(render_data, 
@@ -186,7 +186,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
     out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
     out_sample.emission = picked_sample_emission;
-    out_sample.emissive_triangle_index = out_reservoir.sample.emissive_triangle_index;
+    out_sample.emission = out_reservoir.sample.emission;
     out_sample.light_area = out_reservoir.sample.light_area;
     out_sample.light_source_normal = out_reservoir.sample.light_source_normal.unpack();
     out_sample.point_on_light = out_reservoir.sample.point_on_light;
