@@ -17,7 +17,7 @@ struct ReGIRGridSettings
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
 
-	static constexpr int DEFAULT_GRID_SIZE = 8;
+	static constexpr int DEFAULT_GRID_SIZE = 16;
 	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 };
 
@@ -53,8 +53,8 @@ struct ReGIRSpatialReuseSettings
 
 	bool do_spatial_reuse = true;
 
-	int spatial_neighbor_reuse_count = 5;
-	int spatial_reuse_radius = 1;
+	int spatial_neighbor_reuse_count = 1000;
+	int spatial_reuse_radius = 3;
 
 	// Grid that contains the output of the spatial reuse pass
 	ReGIRReservoir* output_grid = nullptr;

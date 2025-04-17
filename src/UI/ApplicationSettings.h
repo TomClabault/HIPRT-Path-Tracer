@@ -84,14 +84,14 @@ struct ApplicationSettings
 	int max_sample_count = 0;
 	// We stop rendering when the render has been running for that long.
 	// In seconds. 0 is no limit
-	float max_render_time = 3.0f;
+	float max_render_time = 0.0f;
 
 	// if true, the number of samples per frame will be adjusted automatically to target 20 FPS. 
 	// This is meant to keep the GPU busy mostly when adaptive sampling is on.
 	// This is because with adaptive sampling on, FPS will keep increasing as the number of
 	// pixels that yet have to converge decreases. And with high FPS count, we get the risk
 	// of being CPU bound since we'll have to display many frames per second.
-	bool auto_sample_per_frame = true;
+	bool auto_sample_per_frame = false;
 
 	// How many samples to render before evaluating the number of pixels that have reached
 	// the noise threshold.

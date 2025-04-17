@@ -201,10 +201,14 @@ void GPURenderer::compute_emissives_power_area_alias_table(const Scene& scene)
 
 void GPURenderer::recompute_emissives_power_area_alias_table()
 {
+	synchronize_all_kernels();
+
 	if (!needs_emissives_power_area_alias_table())
+	{
 		free_emissives_power_area_alias_table();
 
-	synchronize_all_kernels();
+		return;
+	}
 
 	std::vector<int> emissive_triangle_indices = m_hiprt_scene.emissive_triangles_indices.download_data();
 	std::vector<float3> vertices_positions = m_hiprt_scene.geometry.download_vertices_positions();
@@ -236,12 +240,9 @@ void GPURenderer::compute_emissives_power_area_alias_table(
 	OrochiBuffer<int>& alias_table_alias_buffer,
 	DeviceAliasTable& power_area_alias_table)
 {
-	if (!needs_emissives_power_area_alias_table())
-		// Not using power-area sampling, no need to compute the alias table
-		return;
-
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, [ 
+	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, [
+		this,
 		&emissive_triangle_indices, 
 		&vertices_positions,
 		&triangle_indices, 
@@ -252,6 +253,9 @@ void GPURenderer::compute_emissives_power_area_alias_table(
 		&alias_table_probas_buffer,
 		&power_area_alias_table] ()
 	{
+		if (!needs_emissives_power_area_alias_table())
+			return;
+
 		std::vector<float> power_area_list(emissive_triangle_indices.size());
 		float power_area_sum = 0.0f;
 
