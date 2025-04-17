@@ -1144,14 +1144,37 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 					ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
 
-					if (ImGui::Checkbox("Do temporal reuse", &regir_settings.temporal_reuse.do_temporal_reuse))
-						m_render_window->set_render_dirty(true);
+					if (ImGui::CollapsingHeader("Temporal reuse"))
+					{
+						ImGui::TreePush("ReGIR temporal reuse tree");
 
-					if (ImGui::SliderInt("Temporal history length", &regir_settings.temporal_reuse.temporal_history_length, 1, 16))
-						m_render_window->set_render_dirty(true);
+						if (ImGui::Checkbox("Do temporal reuse", &regir_settings.temporal_reuse.do_temporal_reuse))
+							m_render_window->set_render_dirty(true);
 
-					if (ImGui::Checkbox("Do spatial reuse", &regir_settings.spatial_reuse.do_spatial_reuse))
-						m_render_window->set_render_dirty(true);
+						if (ImGui::SliderInt("Temporal history length", &regir_settings.temporal_reuse.temporal_history_length, 1, 16))
+							m_render_window->set_render_dirty(true);
+
+						ImGui::TreePop();
+					}
+
+					if (ImGui::CollapsingHeader("Spatial reuse"))
+					{
+						ImGui::TreePush("ReGIR spatial reuse tree");
+
+						if (ImGui::Checkbox("Do spatial reuse", &regir_settings.spatial_reuse.do_spatial_reuse))
+							m_render_window->set_render_dirty(true);
+
+						if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_reuse_count, 0, 32))
+							m_render_window	->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("How many cells around the center cell to reuse from.");
+
+						if (ImGui::SliderInt("Reuse radius", &regir_settings.spatial_reuse.spatial_reuse_radius, 1, 3))
+							m_render_window	->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("Radius in cell in which to reuse around the center cell.\n"
+							"A radius of 1 means that we're going to reuse in the 3x3 cube around the center cell, givins us 26 neighbors");
+
+						ImGui::TreePop();
+					}
 
 					static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
 					if (ImGui::Checkbox("Use visibility during shading resampling", &use_vis_shading_resampling))
@@ -2142,7 +2165,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				// so that we know whether or not we'll have to keep the
 				// 'partial_visibility_neighbor_count' value updated for the "Partial Neighbor Visibility" slider
 				bool will_need_to_update_partial_visibility = partial_visibility_neighbor_count == max_neighbor_count;
-				if (ImGui::SliderInt("Neighbor Reuse Count", &restir_settings.reuse_neighbor_count, 0, 16))
+				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 0, 16))
 				{
 					// Updating the maximum
 					max_neighbor_count = restir_settings.reuse_neighbor_count;

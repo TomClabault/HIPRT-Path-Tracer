@@ -35,7 +35,7 @@ struct ReGIRGridFillSettings
 struct ReGIRTemporalReuseSettings
 {
 	// Whether or not to reuse the reservoirs from the last frame as well as current frame
-	bool do_temporal_reuse = true;
+	bool do_temporal_reuse = false;
 
 	int m_cap = 50;
 	// How many grids to keep in memory to help with sample quality
@@ -53,7 +53,7 @@ struct ReGIRSpatialReuseSettings
 
 	bool do_spatial_reuse = true;
 
-	int spatial_neighbor_reuse = 5;
+	int spatial_neighbor_reuse_count = 5;
 	int spatial_reuse_radius = 1;
 
 	// Grid that contains the output of the spatial reuse pass
