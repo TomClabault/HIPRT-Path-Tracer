@@ -50,14 +50,19 @@
     int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
 
     float valid_neighbor_count = 0.0f;
-    for (int neighbor_index = 0; neighbor_index < 5; neighbor_index++)
+    for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
     {
         int3 offset;
-        if (neighbor_index == 4)
+        if (neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_reuse_count)
             // The last neighbor reused is the center cell
             offset = make_int3(0, 0, 0);
         else
-            offset = make_int3(roundf(random_number_generator() * 2.0f - 1.0f), roundf(random_number_generator() * 2.0f - 1.0f), roundf(random_number_generator() * 2.0f - 1.0f));
+        {
+            float3 offset_float_radius_1 = make_float3(random_number_generator() * 2.0f - 1.0f, random_number_generator() * 2.0f - 1.0f, random_number_generator() * 2.0f - 1.0f);
+            float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
+            
+            offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
+        }
 
         int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
         int neighbor_cell_linear_index_in_grid = regir_settings.get_cell_linear_index_from_xyz(neighbor_xyz_cell_index);
