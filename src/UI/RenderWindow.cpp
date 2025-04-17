@@ -72,6 +72,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Right now, ReGIR's temporal reuse only softens black pixels (no good sample) because of the MIS weights, something better to do?
 // - For the visibility reuse of ReGIR, maybe we can just trace from the center of the cell and if at shading time, the reservoir is 0, we know that this must be because the reservoir is occluded for that sample so we can just draw a canonical candidate instead there
 //		- Always tracing from the center of the cell may be always broken depending on the geometry of the scene so maybe we want to trace from the center of the cell as a default but as path tracing progresses, we want to save one point on the surface of geometry in that cell and use that point to trace shadow rays from onwards, that way we're always tracing from a valid surface in the grid cell
+//		- And with that new "representative point" for each cell, we can also have the normal to evaluate the cosine term
 // - Can we do temporal reuse without storing past grid (VRAM please)? Same as in ReSTIR DI?
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it

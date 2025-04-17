@@ -19,7 +19,7 @@ static std::mutex ris_log_mutex;
 
 struct RISSample
 {
-    int emissive_triangle_index = -1;
+    ColorRGB32F emission;
     float3 point_on_light_source = { 0, 0, 0 };
 
     float target_function = 0.0f;

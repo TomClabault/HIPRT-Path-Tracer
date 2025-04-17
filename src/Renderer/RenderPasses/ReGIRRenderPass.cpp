@@ -166,5 +166,5 @@ bool ReGIRRenderPass::is_render_pass_used() const
 
 float ReGIRRenderPass::get_VRAM_usage() const
 {
-	return m_grid_buffers.get_byte_size() / 1000000.0f;
+	return (m_grid_buffers.get_byte_size() + m_spatial_reuse_output_grid_buffer.get_byte_size()) / 1000000.0f;
 }

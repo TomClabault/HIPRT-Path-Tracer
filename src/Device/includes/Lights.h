@@ -169,7 +169,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
 
                         float light_pdf_for_mis = light_sample_pdf_for_MIS_solid_angle_measure(render_data,
                             light_sample_solid_angle_pdf,
-                            light_sample.emissive_triangle_index, light_sample.emission, light_sample.light_source_normal, 
+                            light_sample.light_area, light_sample.emission, light_sample.light_source_normal, 
                             distance_to_light, shadow_ray_direction_normalized);
                         float mis_weight = balance_heuristic(light_pdf_for_mis, bsdf_pdf);
 

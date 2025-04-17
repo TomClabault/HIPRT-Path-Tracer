@@ -72,10 +72,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(HIPRTRender
             cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
         }
 
-        int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
-        ColorRGB32F sample_emission = render_data.buffers.materials_buffer.get_emission(material_index);
-
-        final_color = bsdf_color * reservoir.UCW * sample_emission * cosine_at_evaluated_point;
+        final_color = bsdf_color * reservoir.UCW * sample.emission * cosine_at_evaluated_point;
         if (!sample.is_bsdf_sample)
             final_color /= nee_plus_plus_context.unoccluded_probability;
     }
@@ -178,7 +175,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         light_RIS_sample.is_bsdf_sample = false;
         light_RIS_sample.point_on_light_source = light_sample_info.point_on_light;
         light_RIS_sample.target_function = target_function;
-        light_RIS_sample.emissive_triangle_index = light_sample_info.emissive_triangle_index;
+        light_RIS_sample.emission = light_sample_info.emission;
 
         reservoir.add_one_candidate(light_RIS_sample, candidate_weight, random_number_generator);
         reservoir.sanity_check();
@@ -238,7 +235,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
-                bsdf_RIS_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
+                bsdf_RIS_sample.emission = shadow_light_ray_hit_info.hit_emission;
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.is_bsdf_sample = true;
                 bsdf_RIS_sample.bsdf_sample_contribution = bsdf_color;
