@@ -68,8 +68,6 @@ struct ReGIRShadingSettings
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
 	bool do_cell_jittering = true;
-	// At shading time, light samples should be read from this buffer
-	ReGIRReservoir* shading_grid_buffer = nullptr;
 };
 
 struct ReGIRSettings

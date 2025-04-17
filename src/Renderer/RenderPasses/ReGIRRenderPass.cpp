@@ -74,7 +74,7 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			updated = true;
 		}
 
-		if (m_render_data->render_settings.regir_settings.spatial_reuse.do_spatial_reuse && m_spatial_reuse_output_grid_buffer.get_element_count() == 0)
+		if (m_render_data->render_settings.regir_settings.spatial_reuse.do_spatial_reuse && m_spatial_reuse_output_grid_buffer.get_element_count() != m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid())
 		{
 			m_spatial_reuse_output_grid_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid());
 
