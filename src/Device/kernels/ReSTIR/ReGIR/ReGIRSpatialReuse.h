@@ -91,7 +91,7 @@
 
         float3 cell_center = regir_settings.get_cell_center(linear_center_cell_index);
         float mis_weight = 1.0f;
-        float target_function_at_center = ReGIR_grid_fill_evaluate_target_function(cell_center, render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[neighbor_reservoir.sample.emissive_triangle_index]), neighbor_reservoir.sample.point_on_light);
+        float target_function_at_center = ReGIR_grid_fill_evaluate_target_function(cell_center, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light);
 
         output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
     }
