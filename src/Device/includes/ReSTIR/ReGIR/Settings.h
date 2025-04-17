@@ -53,7 +53,7 @@ struct ReGIRSpatialReuseSettings
 
 	bool do_spatial_reuse = true;
 
-	int spatial_neighbor_reuse_count = 1000;
+	int spatial_neighbor_reuse_count = 128;
 	int spatial_reuse_radius = 3;
 
 	// Grid that contains the output of the spatial reuse pass

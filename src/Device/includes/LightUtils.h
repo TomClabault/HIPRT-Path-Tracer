@@ -185,7 +185,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
     out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
-    out_sample.emission = picked_sample_emission;
+    //out_sample.emissive_triangle_index = picked_sample_emission;
     out_sample.emission = out_reservoir.sample.emission;
     out_sample.light_area = out_reservoir.sample.light_area;
     out_sample.light_source_normal = out_reservoir.sample.light_source_normal.unpack();
@@ -305,23 +305,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F 
  * 'hit_distance' is the distance to the intersection point on the hit triangle
  * 'ray_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, int hit_primitive_index, ColorRGB32F light_emission)
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, float light_area, ColorRGB32F light_emission)
 {
 #if DirectLightSamplingBaseStrategy == LSS_BASE_UNIFORM || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_UNIFORM)
     // Surface area PDF of hitting that point on that triangle in the scene
-    float light_area = triangle_area(render_data, hit_primitive_index);
     float area_measure_pdf = 1.0f / light_area;
     area_measure_pdf /= render_data.buffers.emissive_triangles_count;
 #elif DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER_AREA)
     // Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
     // faking it with power-area PDF
 
-    float light_area = triangle_area(render_data, hit_primitive_index);
     float area_measure_pdf = 1.0f / light_area;
     area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissives_power_area_alias_table.sum_elements;
 #endif
      
     return area_measure_pdf;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, int hit_primitive_index, ColorRGB32F light_emission)
+{
+    return pdf_of_emissive_triangle_hit_area_measure(render_data, triangle_area(render_data, hit_primitive_index), light_emission);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info)
