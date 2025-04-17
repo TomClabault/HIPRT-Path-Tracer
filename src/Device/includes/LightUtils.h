@@ -188,7 +188,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     out_sample.emission = picked_sample_emission;
     out_sample.emissive_triangle_index = out_reservoir.sample.emissive_triangle_index;
     out_sample.light_area = out_reservoir.sample.light_area;
-    out_sample.light_source_normal = out_reservoir.sample.light_source_normal;
+    out_sample.light_source_normal = out_reservoir.sample.light_source_normal.unpack();
     out_sample.point_on_light = out_reservoir.sample.point_on_light;
 
     return out_sample;

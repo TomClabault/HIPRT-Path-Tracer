@@ -245,7 +245,7 @@ public:
 
 	HIPRT_HOST_DEVICE void pack(float3 normal)
 	{
-		float2_to_Snorm12_2x_as_3UChar(octahedral_encode(normal), packed_x, packed_y, packed_z);
+		float2_to_Snorm12_2x_as_3UChar(octahedral_encode(normal), m_packed_x, m_packed_y, m_packed_z);
 	}
 
 	/**
@@ -253,9 +253,9 @@ public:
 	 * 
 	 * The returned normal is normalized
 	 */
-	HIPRT_HOST_DEVICE float3 unpack()
+	HIPRT_HOST_DEVICE float3 unpack() const
 	{
-		float2 v = Snorm12_2x_as_UChar_to_float2(packed_x, packed_y, packed_z);
+		float2 v = Snorm12_2x_as_UChar_to_float2(m_packed_x, m_packed_y, m_packed_z);
 		return final_decode(v.x, v.y);
 	}
 
@@ -295,17 +295,17 @@ private:
 		return result;
 	}
 
-	HIPRT_HOST_DEVICE float sign_not_zero(float k)
+	HIPRT_HOST_DEVICE float sign_not_zero(float k) const
 	{
 		return k >= 0.0f ? 1.0f : -1.0f;
 	}
 
-	HIPRT_HOST_DEVICE float2 sign_not_zero(float2 v)
+	HIPRT_HOST_DEVICE float2 sign_not_zero(float2 v) const
 	{
 		return make_float2(sign_not_zero(v.x), sign_not_zero(v.y));
 	}
 
-	HIPRT_HOST_DEVICE float3 final_decode(float x, float y) 
+	HIPRT_HOST_DEVICE float3 final_decode(float x, float y) const
 	{
 		float3 v = make_float3(x, y, 1.0f - abs(x) - abs(y));
 		if (v.z < 0.0f) 
@@ -317,7 +317,7 @@ private:
 		return hippt::normalize(v);
 	}
 
-	HIPRT_HOST_DEVICE float2 Snorm12_2x_as_Uchar_to_packed_float2(unsigned char x, unsigned char y, unsigned char z)
+	HIPRT_HOST_DEVICE float2 Snorm12_2x_as_Uchar_to_packed_float2(unsigned char x, unsigned char y, unsigned char z) const
 	{
 		float2 s;
 
@@ -328,20 +328,20 @@ private:
 		return s;
 	}
 
-	HIPRT_HOST_DEVICE float unpack_Snorm12(float f)
+	HIPRT_HOST_DEVICE float unpack_Snorm12(float f) const
 	{
 		return hippt::clamp(-1.0f, 1.0f, (f / 2047.0f) - 1.0f);
 	}
 
-	HIPRT_HOST_DEVICE float2 Snorm12_2x_as_UChar_to_float2(unsigned char x, unsigned char y, unsigned char z)
+	HIPRT_HOST_DEVICE float2 Snorm12_2x_as_UChar_to_float2(unsigned char x, unsigned char y, unsigned char z) const
 	{
 		float2 s = Snorm12_2x_as_Uchar_to_packed_float2(x, y, z);
 		return make_float2(unpack_Snorm12(s.x), unpack_Snorm12(s.y));
 	}
 
-	unsigned char packed_x;
-	unsigned char packed_y;
-	unsigned char packed_z;
+	unsigned char m_packed_x;
+	unsigned char m_packed_y;
+	unsigned char m_packed_z;
 };
 
 /**

@@ -8,11 +8,12 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 #include "HostDeviceCommon/LightSampleInformation.h"
+#include "HostDeviceCommon/Packing.h"
 
 struct ReGIRSample
 {
 	// TODO Octahedral
-	float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
+	Octahedral24BitNormal light_source_normal;
 	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
 
 	int emissive_triangle_index = -1;
@@ -33,7 +34,7 @@ struct ReGIRReservoir
 
 		if (rng() < resampling_weight / weight_sum)
 		{
-			sample.light_source_normal = light_sample.light_source_normal;
+			sample.light_source_normal = Octahedral24BitNormal::pack_static(light_sample.light_source_normal);
 			sample.point_on_light = light_sample.point_on_light;
 			sample.emissive_triangle_index = light_sample.emissive_triangle_index;
 			sample.light_area = light_sample.light_area;
