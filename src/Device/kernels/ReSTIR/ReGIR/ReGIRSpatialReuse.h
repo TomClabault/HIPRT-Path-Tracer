@@ -43,7 +43,11 @@
         seed = wang_hash((reservoir_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
     Xorshift32Generator random_number_generator(seed);
-     
+
+    // Everyone is going to use the same RNG such that memory accesses on the spatial neighbors are coalesced
+    // This is ~2x performance on a 7900XTX
+    Xorshift32Generator spatial_neighbor_rng(wang_hash((render_data.render_settings.sample_number + 1) * render_data.random_number));
+
     ReGIRReservoir output_reservoir;
 
     int linear_center_cell_index = reservoir_index / regir_settings.grid_fill.reservoirs_count_per_grid_cell;
@@ -58,7 +62,7 @@
             offset = make_int3(0, 0, 0);
         else
         {
-            float3 offset_float_radius_1 = make_float3(random_number_generator() * 2.0f - 1.0f, random_number_generator() * 2.0f - 1.0f, random_number_generator() * 2.0f - 1.0f);
+            float3 offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
             float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
             
             offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
@@ -84,16 +88,6 @@
 
         if (neighbor_reservoir.UCW == 0.0f)
             continue;
-        else if (neighbor_reservoir.sample.emissive_triangle_index < 0)
-        {
-            static int counter = 0;
-            if (counter++ % 32 == 0)
-            {
-                printf("reservoir fetch index: %d [max=%d]\ncurrent grid index: %d\nindex: %d\nUCW: %f\n\n", regir_settings.temporal_reuse.current_grid_index * regir_settings.get_number_of_reservoirs_per_grid() + neighbor_reservoir_linear_index_in_grid, regir_settings.get_total_number_of_reservoirs_ReGIR(), regir_settings.temporal_reuse.current_grid_index, neighbor_reservoir.sample.emissive_triangle_index, neighbor_reservoir.UCW);
-            }
-
-            continue;
-        }
 
         float3 cell_center = regir_settings.get_cell_center(linear_center_cell_index);
         float mis_weight = 1.0f;
