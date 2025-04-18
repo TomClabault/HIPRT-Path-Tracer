@@ -1631,7 +1631,22 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
-				ImGuiRenderer::show_help_marker("");
+				ImGuiRenderer::show_help_marker("Whether or not to shoot a BSDF ray when sampling the envmap.\n\n"
+					""
+					"Useful on specular/glossy surfaces.");
+
+				bool do_envmap_bilinear_filtering = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING);
+				if (ImGui::Checkbox("Do bilinear filtering", &do_envmap_bilinear_filtering))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING, do_envmap_bilinear_filtering ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Whether or not to do bilinear filtering when sampling the envmap.\n\n"
+					""
+					"This is mostly useful when the camera is looking straigth at the envmap and we don't "
+					"have camera ray jittering on: in this case, bilinear filtering will hide the "
+					"pixelated look of the envmap.");
 			}
 			ImGui::EndDisabled();
 
