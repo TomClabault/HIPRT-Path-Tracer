@@ -14,7 +14,7 @@
 #define LSS_RESTIR_DI 5
 
 #define LSS_BASE_UNIFORM 0
-#define LSS_BASE_POWER_AREA 1
+#define LSS_BASE_POWER 1
 #define LSS_BASE_REGIR 2
 
  /**
@@ -61,8 +61,8 @@
 *	- LSS_BASE_UNIFORM
 *		Lights are sampled uniformly
 *
-*	- LSS_BASE_POWER_AREA
-*		Lights are sampled proportionally to their 'power * area'
+*	- LSS_BASE_POWER
+*		Lights are sampled proportionally to their power
 *
 *	- LSS_BASE_REGIR
 *		Uses ReGIR to sample lights

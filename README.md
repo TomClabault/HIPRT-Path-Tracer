@@ -40,7 +40,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 ### Sampling
 - Base light sampling techniques:
 	- Uniform light sampling for direct lighting estimation + MIS
-	- Power-area proportional light sampling
+	- Power-proportional light sampling
 	- ReGIR [\[Boksansky et al., 2021\]](https://cwyman.org/papers/rtg2-manyLightReGIR.pdf)
 - Next-event estimation strategies (built on-top of base techniques):
 	- ReSTIR DI

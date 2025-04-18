@@ -38,7 +38,7 @@ public:
     void gmon_check_for_sets_accumulation();
 
     void set_scene(Scene& parsed_scene);
-    void compute_emissives_power_area_alias_table(const Scene& scene);
+    void compute_emissives_power_alias_table(const Scene& scene);
     void set_envmap(Image32Bit& envmap_image);
     void set_camera(Camera& camera);
 
@@ -121,8 +121,8 @@ private:
     std::vector<float> m_envmap_alias_table_probas;
     std::vector<int> m_envmap_alias_table_alias;
 
-    std::vector<float> m_power_area_alias_table_probas;
-    std::vector<int> m_power_area_alias_table_alias;
+    std::vector<float> m_power_alias_table_probas;
+    std::vector<int> m_power_alias_table_alias;
 
     NEEPlusPlusCPUData m_nee_plus_plus;
 

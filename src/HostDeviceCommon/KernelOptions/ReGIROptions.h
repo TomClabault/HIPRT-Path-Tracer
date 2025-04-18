@@ -27,8 +27,8 @@
 *	- LSS_BASE_UNIFORM
 *		Lights are sampled uniformly
 *
-*	- LSS_BASE_POWER_AREA
-*		Lights are sampled proportionally to their 'power * area'
+*	- LSS_BASE_POWER
+*		Lights are sampled proportionally to their power
 */
 #define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_UNIFORM
 
@@ -43,7 +43,7 @@
  * 
  * All LSS_BASE_XXX strategies are allowed except LSS_BASE_REGIR
  */
-#define ReGIR_FallbackLightSamplingStrategy LSS_BASE_POWER_AREA
+#define ReGIR_FallbackLightSamplingStrategy LSS_BASE_POWER
 
 /**
  * Debug option to color the scene with the grid cells

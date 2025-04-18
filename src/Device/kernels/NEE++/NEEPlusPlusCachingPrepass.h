@@ -88,7 +88,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
     // Now sampling random lights from the camera ray first hit and caching the visibility
     for (int i = 0; i < caching_sample_count; i++)
     {
-        LightSampleInformation light_info = sample_one_emissive_triangle<LSS_BASE_POWER_AREA>(render_data, random_number_generator);
+        LightSampleInformation light_info = sample_one_emissive_triangle<LSS_BASE_POWER>(render_data, random_number_generator);
         float3 direction = light_info.point_on_light - intersection_position;
         float distance_to_point = hippt::length(direction);
         direction /= distance_to_point;

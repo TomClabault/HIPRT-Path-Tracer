@@ -1081,11 +1081,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				(disabled ? std::string("\n\nDisabled because not supported by ReSTIR DI") : ""));
 			ImGui::EndDisabled();
 
-			const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling", "- ReGIR"};
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- ReGIR"};
 			const char* tooltips_base_strategy[] = {
 				"All lights are sampled uniformly.",
 
-				"Lights are sampled proportionally to their 'power * area'.",
+				"Lights are sampled proportionally to their power.",
 
 				"Uses ReGIR to sample lights.\n\n"
 				"Implementation of[Rendering many lights with grid - based reservoirs, Boksansky, 2021]"
@@ -1094,7 +1094,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 			{
 				// Will recompute the alias table if necessary
-				m_renderer->recompute_emissives_power_area_alias_table();
+				m_renderer->recompute_emissives_power_alias_table();
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1225,16 +1225,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							{
 								ImGui::TreePush("Light presampling strategy tree");
 
-								const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
+								const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling" };
 								const char* tooltips_base_strategy[] = {
 									"All lights are sampled uniformly.",
 
-									"Lights are sampled proportionally to their 'power * area'."
+									"Lights are sampled proportionally to their power."
 								};
 								if (ImGuiRenderer::ComboWithTooltips("Presampling light strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 								{
 									// Will recompute the alias table if necessary
-									m_renderer->recompute_emissives_power_area_alias_table();
+									m_renderer->recompute_emissives_power_alias_table();
 
 									m_renderer->recompile_kernels();
 									m_render_window->set_render_dirty(true);
@@ -1778,16 +1778,16 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReGIR_render_pass()->get_VRAM_usage());
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
+		const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling" };
 		const char* tooltips_base_strategy[] = {
 			"All lights are sampled uniformly",
 
-			"Lights are sampled proportionally to their 'power * area'",
+			"Lights are sampled proportionally to their power",
 		};
 		if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 		{
 			// Will recompute the alias table if necessary
-			m_renderer->recompute_emissives_power_area_alias_table();
+			m_renderer->recompute_emissives_power_alias_table();
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);

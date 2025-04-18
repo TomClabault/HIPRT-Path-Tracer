@@ -113,8 +113,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     return light_sample;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_power_area(
-    const DeviceAliasTable& power_area_alias_table,
+HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_power(
+    const DeviceAliasTable& power_alias_table,
     const int* triangles_indices, const int* emissive_triangles_indices,
     const float3* vertices_positions,
     const int* material_indices, const DevicePackedTexturedMaterialSoA& materials_buffer,
@@ -122,7 +122,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 {
     LightSampleInformation out_sample;
 
-    int random_index = power_area_alias_table.sample(random_number_generator);
+    int random_index = power_alias_table.sample(random_number_generator);
     int triangle_index = emissive_triangles_indices[random_index];
 
     float sampled_triangle_area;
@@ -140,7 +140,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     // PDF of that point on that triangle
     out_sample.area_measure_pdf = 1.0f / sampled_triangle_area;
     // PDF of sampling that triangle according to its luminance-area
-    out_sample.area_measure_pdf *= (out_sample.emission.luminance() * sampled_triangle_area) / power_area_alias_table.sum_elements;
+    out_sample.area_measure_pdf *= (out_sample.emission.luminance() * sampled_triangle_area) / power_alias_table.sum_elements;
 
     return out_sample;
 }
@@ -207,9 +207,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
             render_data.buffers.material_indices, render_data.buffers.materials_buffer,
             random_number_generator);
     }
-    else if constexpr (samplingStrategy == LSS_BASE_POWER_AREA)
+    else if constexpr (samplingStrategy == LSS_BASE_POWER)
     {
-        return sample_one_emissive_triangle_power_area(render_data.buffers.emissives_power_area_alias_table, render_data.buffers.triangles_indices, render_data.buffers.emissive_triangles_indices,
+        return sample_one_emissive_triangle_power(render_data.buffers.emissives_power_alias_table, render_data.buffers.triangles_indices, render_data.buffers.emissive_triangles_indices,
             render_data.buffers.vertices_positions,
             render_data.buffers.material_indices, render_data.buffers.materials_buffer,
             random_number_generator);
@@ -316,13 +316,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(c
         area_measure_pdf = 1.0f / light_area;
         area_measure_pdf /= render_data.buffers.emissive_triangles_count;
     }
-    else if (lightSamplingStrategy == LSS_BASE_POWER_AREA)
+    else if (lightSamplingStrategy == LSS_BASE_POWER)
     {
         // Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
-        // faking it with power-area PDF
+        // faking it with power sampling PDF
 
         area_measure_pdf = 1.0f / light_area;
-        area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissives_power_area_alias_table.sum_elements;
+        area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissives_power_alias_table.sum_elements;
     }
      
     return area_measure_pdf;

@@ -348,21 +348,21 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
     m_render_data.cpu_only.bvh = m_bvh.get();
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER_AREA)
-    std::cout << "Building scene's power-area alias table" << std::endl;
-    compute_emissives_power_area_alias_table(parsed_scene);
+#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER)
+    std::cout << "Building scene's power alias table" << std::endl;
+    compute_emissives_power_alias_table(parsed_scene);
 #endif
 }
 
-void CPURenderer::compute_emissives_power_area_alias_table(const Scene& scene)
+void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 {
-    ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-    ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, [this, &scene]()
+    ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+    ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, [this, &scene]()
     {
         auto start = std::chrono::high_resolution_clock::now();
 
-        std::vector<float> power_area_list(scene.emissive_triangle_indices.size());
-        float power_area_sum = 0.0f;
+        std::vector<float> power_list(scene.emissive_triangle_indices.size());
+        float power_sum = 0.0f;
 
         for (int i = 0; i < scene.emissive_triangle_indices.size(); i++)
         {
@@ -385,19 +385,19 @@ void CPURenderer::compute_emissives_power_area_alias_table(const Scene& scene)
 
             float area_power = emission_luminance * triangle_area;
 
-            power_area_list[i] = area_power;
-            power_area_sum += area_power;
+            power_list[i] = area_power;
+            power_sum += area_power;
         }
 
-        Utils::compute_alias_table(power_area_list, power_area_sum, m_power_area_alias_table_probas, m_power_area_alias_table_alias);
+        Utils::compute_alias_table(power_list, power_sum, m_power_alias_table_probas, m_power_alias_table_alias);
 
-        m_render_data.buffers.emissives_power_area_alias_table.alias_table_alias = m_power_area_alias_table_alias.data();
-        m_render_data.buffers.emissives_power_area_alias_table.alias_table_probas = m_power_area_alias_table_probas.data();
-        m_render_data.buffers.emissives_power_area_alias_table.sum_elements = power_area_sum;
-        m_render_data.buffers.emissives_power_area_alias_table.size = scene.emissive_triangle_indices.size();
+        m_render_data.buffers.emissives_power_alias_table.alias_table_alias = m_power_alias_table_alias.data();
+        m_render_data.buffers.emissives_power_alias_table.alias_table_probas = m_power_alias_table_probas.data();
+        m_render_data.buffers.emissives_power_alias_table.sum_elements = power_sum;
+        m_render_data.buffers.emissives_power_alias_table.size = scene.emissive_triangle_indices.size();
 
         auto stop = std::chrono::high_resolution_clock::now();
-        std::cout << "Power-area alias table construction time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+        std::cout << "Power alias table construction time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
     });
 }
 
