@@ -1115,143 +1115,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
-			{
-				// Adding options for ReGIR
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::CollapsingHeader("ReGIR Settings"))
-				{
-					ImGui::TreePush("ReGIR settings tree");
-
-					ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReGIR_render_pass()->get_VRAM_usage());
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-					const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
-					const char* tooltips_base_strategy[] = {
-						"All lights are sampled uniformly",
-
-						"Lights are sampled proportionally to their 'power * area'",
-					};
-					if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
-					{
-						// Will recompute the alias table if necessary
-						m_renderer->recompute_emissives_power_area_alias_table();
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-					ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
-
-					if (ImGui::CollapsingHeader("Temporal reuse"))
-					{
-						ImGui::TreePush("ReGIR temporal reuse tree");
-
-						if (ImGui::Checkbox("Do temporal reuse", &regir_settings.temporal_reuse.do_temporal_reuse))
-							m_render_window->set_render_dirty(true);
-
-						if (ImGui::SliderInt("Temporal history length", &regir_settings.temporal_reuse.temporal_history_length, 1, 16))
-							m_render_window->set_render_dirty(true);
-
-						ImGui::TreePop();
-					}
-
-					if (ImGui::CollapsingHeader("Spatial reuse"))
-					{
-						ImGui::TreePush("ReGIR spatial reuse tree");
-
-						if (ImGui::Checkbox("Do spatial reuse", &regir_settings.spatial_reuse.do_spatial_reuse))
-							m_render_window->set_render_dirty(true);
-
-						if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_reuse_count, 0, 32))
-							m_render_window	->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("How many cells around the center cell to reuse from.");
-
-						if (ImGui::SliderInt("Reuse radius", &regir_settings.spatial_reuse.spatial_reuse_radius, 1, 3))
-							m_render_window	->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("Radius in cell in which to reuse around the center cell.\n"
-							"A radius of 1 means that we're going to reuse in the 3x3 cube around the center cell, givins us 26 neighbors");
-
-						ImGui::TreePop();
-					}
-
-					static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
-					if (ImGui::Checkbox("Use visibility during shading resampling", &use_vis_shading_resampling))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY, use_vis_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-					ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
-						"shading a point at path tracing time. This reduces visibility noise.");
-						
-					if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
-						m_render_window->set_render_dirty(true);
-
-					bool size_changed = false;
-					static bool use_cube_grid = true;
-					ImGui::Checkbox("Use cubic grid", &use_cube_grid);
-					if (use_cube_grid)
-					{
-						static int grid_size = regir_settings.grid.grid_resolution.x;
-						if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
-						{
-							regir_settings.grid.grid_resolution.x = grid_size;
-							regir_settings.grid.grid_resolution.y = grid_size;
-							regir_settings.grid.grid_resolution.z = grid_size;
-
-							size_changed = true;
-						}
-					}
-					else
-					{
-						ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-						size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
-						ImGui::SameLine();
-						size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
-						ImGui::SameLine();
-						size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
-
-						// Back to default size
-						ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-					}
-
-					if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 256))
-						m_render_window->set_render_dirty(true);
-					if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.grid_fill.reservoirs_count_per_grid_cell, 1, 128))
-						m_render_window->set_render_dirty(true);
-					if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.shading.cell_reservoir_resample_per_shading_point, 1, 32))
-						m_render_window->set_render_dirty(true);
-
-					if (size_changed)
-						m_render_window->set_render_dirty(true);
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					if (ImGui::CollapsingHeader("Debug"))
-					{
-						ImGui::TreePush("ReGIR Settings debug tree");
-
-						static int regir_debug_mode = ReGIR_DebugMode;
-						const char* items[] = { "- No debug", "- Grid cells", "- Average cell-reservoirs contribution" };
-						if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
-						{
-							m_renderer->recompile_kernels();
-							m_render_window->set_render_dirty(true);
-						}
-						if (regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION)
-							if (ImGui::SliderFloat("Debug view scale factor", &regir_settings.debug_view_scale_factor, 0.0f, 5.0f))
-								m_render_window->set_render_dirty(true);
-
-						ImGui::TreePop();
-					}
-
-					ImGui::TreePop();
-				}
-			}
-
-			
+				draw_ReGIR_settings_panel();
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)
@@ -1372,6 +1239,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 									m_render_window->set_render_dirty(true);
 								}
 
+								ImGui::Dummy(ImVec2(0.0f, 20.0f));
 								ImGui::TreePop();
 							}
 
@@ -1892,6 +1760,144 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("ReGIR Settings"))
+	{
+		ImGui::TreePush("ReGIR settings tree");
+
+		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReGIR_render_pass()->get_VRAM_usage());
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
+		const char* tooltips_base_strategy[] = {
+			"All lights are sampled uniformly",
+
+			"Lights are sampled proportionally to their 'power * area'",
+		};
+		if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
+		{
+			// Will recompute the alias table if necessary
+			m_renderer->recompute_emissives_power_area_alias_table();
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
+
+		if (ImGui::CollapsingHeader("Temporal reuse"))
+		{
+			ImGui::TreePush("ReGIR temporal reuse tree");
+
+			if (ImGui::Checkbox("Do temporal reuse", &regir_settings.temporal_reuse.do_temporal_reuse))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::SliderInt("Temporal history length", &regir_settings.temporal_reuse.temporal_history_length, 1, 16))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Spatial reuse"))
+		{
+			ImGui::TreePush("ReGIR spatial reuse tree");
+
+			if (ImGui::Checkbox("Do spatial reuse", &regir_settings.spatial_reuse.do_spatial_reuse))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_reuse_count, 0, 32))
+				m_render_window	->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("How many cells around the center cell to reuse from.");
+
+			if (ImGui::SliderInt("Reuse radius", &regir_settings.spatial_reuse.spatial_reuse_radius, 1, 3))
+				m_render_window	->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("Radius in cell in which to reuse around the center cell.\n"
+				"A radius of 1 means that we're going to reuse in the 3x3 cube around the center cell, givins us 26 neighbors");
+
+			ImGui::TreePop();
+		}
+
+		static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
+		if (ImGui::Checkbox("Use visibility during shading resampling", &use_vis_shading_resampling))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY, use_vis_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
+			"shading a point at path tracing time. This reduces visibility noise.");
+			
+		if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
+			m_render_window->set_render_dirty(true);
+
+		bool size_changed = false;
+		static bool use_cube_grid = true;
+		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+		if (use_cube_grid)
+		{
+			static int grid_size = regir_settings.grid.grid_resolution.x;
+			if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
+			{
+				regir_settings.grid.grid_resolution.x = grid_size;
+				regir_settings.grid.grid_resolution.y = grid_size;
+				regir_settings.grid.grid_resolution.z = grid_size;
+
+				size_changed = true;
+			}
+		}
+		else
+		{
+			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
+			ImGui::SameLine();
+			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
+			ImGui::SameLine();
+			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
+
+			// Back to default size
+			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+		}
+
+		if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 256))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.grid_fill.reservoirs_count_per_grid_cell, 1, 128))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.shading.cell_reservoir_resample_per_shading_point, 1, 32))
+			m_render_window->set_render_dirty(true);
+
+		if (size_changed)
+			m_render_window->set_render_dirty(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::CollapsingHeader("Debug"))
+		{
+			ImGui::TreePush("ReGIR Settings debug tree");
+
+			static int regir_debug_mode = ReGIR_DebugMode;
+			const char* items[] = { "- No debug", "- Grid cells", "- Average cell-reservoirs contribution" };
+			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
+			{
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			if (regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION)
+				if (ImGui::SliderFloat("Debug view scale factor", &regir_settings.debug_view_scale_factor, 0.0f, 5.0f))
+					m_render_window->set_render_dirty(true);
+
+			ImGui::TreePop();
+		}
+
 		ImGui::TreePop();
 	}
 }

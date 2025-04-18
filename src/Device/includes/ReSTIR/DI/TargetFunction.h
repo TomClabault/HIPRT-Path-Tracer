@@ -13,17 +13,16 @@
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, 
 	float3 surface_shading_point, float& out_distance_to_light)
 {
-	float distance_to_light;
 	float3 sample_direction;
 	if (sample.is_envmap_sample())
 	{
 		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
-		distance_to_light = 1.0e35f;
+		out_distance_to_light = 1.0e35f;
 	}
 	else
 	{
 		sample_direction = sample.point_on_light_source - surface_shading_point;
-		sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
+		sample_direction = sample_direction / (out_distance_to_light = hippt::length(sample_direction));
 	}
 
 	return sample_direction;
