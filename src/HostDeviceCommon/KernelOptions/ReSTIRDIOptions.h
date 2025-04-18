@@ -138,7 +138,7 @@
 * lights by avoiding cache trashing because of the memory random walk that
 * light sampling becomes with that many lights
 */
-#define ReSTIR_DI_DoLightPresampling KERNEL_OPTION_FALSE
+#define ReSTIR_DI_DoLightPresampling KERNEL_OPTION_TRUE
 
 /**
  * What light sampling strategy to use to presample lights
@@ -149,7 +149,7 @@
  *	- LSS_BASE_POWER_AREA
  *		Lights are sampled proportionally to their 'power * area'
  */
-#define ReSTIR_DI_LightPresamplingStrategy LSS_BASE_POWER_AREA
+#define ReSTIR_DI_LightPresamplingStrategy LSS_BASE_UNIFORM
 
 /**
  * How many bits to use for the directional reuse masks

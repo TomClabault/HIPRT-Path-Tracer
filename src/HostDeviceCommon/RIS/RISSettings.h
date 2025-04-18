@@ -12,7 +12,7 @@ struct RISSettings
 	int number_of_light_candidates = 4;
 	// How many candidates samples from the BSDF to use in combination
 	// with the light candidates for RIS
-	int number_of_bsdf_candidates = 0;
+	int number_of_bsdf_candidates = 1;
 };
 
 #endif
