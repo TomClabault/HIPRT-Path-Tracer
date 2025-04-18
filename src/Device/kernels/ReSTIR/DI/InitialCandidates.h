@@ -250,7 +250,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
 
                     // Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
                     // (same measure for the BSDF PDF and the light PDF)
-                    float light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure, distance_to_light, hippt::abs(hippt::dot(to_light_direction, light_normal)));
+                    //
+                    // Removing the envmap proba to avoid double counting it below in
+                    // 'light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability)'
+                    float light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure / (1.0f - envmap_candidate_probability), distance_to_light, hippt::abs(hippt::dot(to_light_direction, light_normal)));
 
                     ColorRGB32F light_emission = ReSTIR_DI_get_light_sample_emission(render_data, light_sample, to_light_direction);
                     // Computing the approximate light sampler PDF for use in MIS in case the light sampler's PDF cannot be
@@ -258,9 +261,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
 #if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
                     light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure<ReSTIR_DI_LightPresamplingStrategy>(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction);
 #else
-                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction);
-                    light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability);
+                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure<DirectLightSamplingBaseStrategy>(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction);
 #endif
+
+                    light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability);
                 }
 
                 float mis_weight = balance_heuristic(light_pdf_solid_angle_for_MIS, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);

@@ -26,7 +26,7 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
-
+// TODO still some config with envmap sampling that doesn't quite match the reference when playing with all the ReGIR / ReSTIR DI settings
 
 
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse

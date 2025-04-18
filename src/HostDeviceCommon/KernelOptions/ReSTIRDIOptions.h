@@ -37,7 +37,7 @@
 *
 *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
 */
-#define ReSTIR_DI_InitialTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_DI_InitialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
 * Whether or not to use a visibility term in the target function when resampling
@@ -138,7 +138,7 @@
 * lights by avoiding cache trashing because of the memory random walk that
 * light sampling becomes with that many lights
 */
-#define ReSTIR_DI_DoLightPresampling KERNEL_OPTION_FALSE
+#define ReSTIR_DI_DoLightPresampling KERNEL_OPTION_TRUE
 
 /**
  * What light sampling strategy to use to presample lights
