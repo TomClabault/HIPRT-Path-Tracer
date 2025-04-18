@@ -703,7 +703,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
@@ -736,7 +736,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
@@ -787,7 +787,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 
@@ -1301,277 +1301,301 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			case LSS_RESTIR_DI:
 			{
-				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_DI_render_pass()->get_VRAM_usage());
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				display_ReSTIR_DI_bias_status(global_kernel_options);
-
-				if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
-					m_render_window->set_render_dirty(true);
-
-				if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
+				if (ImGui::CollapsingHeader("ReSTIR DI Settings"))
 				{
-					render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
-					if (render_settings.accumulate)
-						m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("0 disables the M-cap");
+					ImGui::TreePush("ReSTIR DI Settings tree");
 
-				if (ImGui::CollapsingHeader("Rejection Heuristics"))
-				{
-					ImGui::TreePush("ReSTIR DI - Rejection Heuristics Tree");
+					ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_DI_render_pass()->get_VRAM_usage());
 
-					draw_ReSTIR_neighbor_heuristics_panel<false>();
-
-					ImGui::TreePop();
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				}
+					display_ReSTIR_DI_bias_status(global_kernel_options);
 
-
-
-
-
-				if (ImGui::CollapsingHeader("Initial Candidates Pass"))
-				{
-					ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
-
-					{
-						bool do_light_presampling = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING);
-						if (ImGui::Checkbox("Do Light Presampling", &do_light_presampling))
-						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, do_light_presampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-							m_renderer->recompile_kernels();
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("If checked, lights are presampled in a pre-process pass as proposed in"
-							" [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]\n\n"
-							"This improves performance in scenes with dozens of thousands / millions of"
-							" lights by avoiding cache trashing because of the memory random walk that"
-							" light sampling becomes with that many lights");
-						if (do_light_presampling && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
-							ImGuiRenderer::add_warning("Light presampling cannot benefit from ReGIR as light presampling is done in screen-space.\n"
-								"It is advised to disable light presampling when using ReGIR.\n"
-								"The benefits of the light presampling are pretty much covered in the same way by ReGIR.");
-
-						bool use_initial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY);
-						if (ImGui::Checkbox("Use visibility in target function", &use_initial_target_function_visibility))
-						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, use_initial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-							m_renderer->recompile_kernels();
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
-							"resampling initial candidates");
-
-						if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
-						{
-							// Clamping to 0
-							render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates);
-
-							m_render_window->set_render_dirty(true);
-						}
-
-						if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates, 0, 32))
-						{
-							// Clamping to 0
-							render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates);
-
-							m_render_window->set_render_dirty(true);
-						}
-
-						ImGui::BeginDisabled(!m_renderer->has_envmap());
-						if (ImGui::SliderFloat("Envmap candidate probability", &render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability, 0.0f, 1.0f))
-						{
-							render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability = hippt::clamp(0.0f, 1.0f, render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability);
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("The probability to sample the envmap per each \"initial light candidates\"");
-						ImGui::EndDisabled();
-					}
-
-					ImGui::TreePop();
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				}
-
-
-
-
-
-				if (ImGui::CollapsingHeader("Visibility Reuse Pass"))
-				{
-					ImGui::TreePush("ReSTIR DI - Visibility Reuse Pass Tree");
-
-					{
-						bool do_visibility_reuse = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE);
-						if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
-						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-							m_renderer->recompile_kernels();
-
-							m_render_window->set_render_dirty(true);
-						}
-					}
-
-					ImGui::TreePop();
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				}
-
-
-
-
-
-				draw_ReSTIR_temporal_reuse_panel(render_settings.restir_di_settings, [this, &render_settings]() {
-					if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-					{
-						if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
-						{
-							render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-							"This avoids a synchronization barrier between the temporal pass and the spatial pass "
-							"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
-							"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
-							"(which is the output of the temporal pass). This is usually imperceptible.");
-					}
-
-					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
-					{
+					if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
 						m_render_window->set_render_dirty(true);
 
-						if (!render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-							// Disabling fused spatiotemporal if we just disabled the temporal reuse
-							render_settings.restir_di_settings.do_fused_spatiotemporal = false;
-					}
-				});
-
-				ImGui::PushItemWidth(12 * ImGui::GetFontSize());
-				draw_ReSTIR_spatial_reuse_panel<false>([&render_settings, this] () {
-					if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 					{
-						if (ImGui::Checkbox("Do fused spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
-						{
-							render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
-
+						render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+						if (render_settings.accumulate)
 							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-							"This avois a synchronization barrier between the temporal pass and the spatial pass "
-							"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
-							"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
-							"(which is the output of the temporal pass). This is usually imperceptible.");
 					}
+					ImGuiRenderer::show_help_marker("0 disables the M-cap");
 
-					if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
+					if (ImGui::CollapsingHeader("Rejection Heuristics"))
 					{
-						m_render_window->set_render_dirty(true);
+						ImGui::TreePush("ReSTIR DI - Rejection Heuristics Tree");
 
-						if (!render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-							// Disabling fused spatiotemporal if we just disabled the spatial reuse
-							render_settings.restir_di_settings.do_fused_spatiotemporal = false;
-					}
-				});
-				ImGui::PopItemWidth();
-
-
-
-
-				draw_ReSTIR_bias_correction_panel<false>();
-				if (ImGui::CollapsingHeader("Debug"))
-				{
-					ImGui::TreePush("ReSTIR DI debug options tree");
-
-					if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
-						"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
-					if (render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location)
-					{
-						ImGui::TreePush("Debug neighbor location vertical tree");
-
-						ImGui::Text("Debug reuse direction");
-						bool reuse_direction_changed = false;
-						reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 0); ImGui::SameLine();
-						reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 1); ImGui::SameLine();
-						reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
-
-						if (reuse_direction_changed)
-							m_render_window->set_render_dirty(true);
+						draw_ReSTIR_neighbor_heuristics_panel<false>();
 
 						ImGui::TreePop();
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					}
 
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::TreePop();
-				}
 
 
 
 
-				if (ImGui::CollapsingHeader("Later Bounces Sampling Strategy"))
-				{
-					ImGui::TreePush("Later Bounces tree");
-
+					if (ImGui::CollapsingHeader("Initial Candidates Pass"))
 					{
-						const char* second_bounce_items[] = { "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
-						if (ImGui::Combo("Direct Lighting Strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY), second_bounce_items, IM_ARRAYSIZE(second_bounce_items)))
-						{
-							m_renderer->recompile_kernels();
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("What direct lighting strategy to use for bounces that come after the first one (camera ray hit) since ReSTIR DI only applies on the first bounce.");
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+						ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
 
-						switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY))
 						{
-						case RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT:
-							break;
-
-						case RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF:
-							break;
-
-						case RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT:
-						{
-							bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
-							if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+							bool do_light_presampling = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING);
+							if (ImGui::Checkbox("Do light presampling", &do_light_presampling))
 							{
-								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, do_light_presampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+								m_renderer->recompile_kernels();
+								m_render_window->set_render_dirty(true);
+							}
+							ImGuiRenderer::show_help_marker("If checked, lights are presampled in a pre-process pass as proposed in"
+								" [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]\n\n"
+								"This improves performance in scenes with dozens of thousands / millions of"
+								" lights by avoiding cache trashing because of the memory random walk that"
+								" light sampling becomes with that many lights");
+							if (do_light_presampling)
+							{
+								ImGui::TreePush("Light presampling strategy tree");
+
+								const char* items_base_strategy[] = { "- Uniform sampling", "- Power-area sampling" };
+								const char* tooltips_base_strategy[] = {
+									"All lights are sampled uniformly.",
+
+									"Lights are sampled proportionally to their 'power * area'."
+								};
+								if (ImGuiRenderer::ComboWithTooltips("Presampling light strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
+								{
+									// Will recompute the alias table if necessary
+									m_renderer->recompute_emissives_power_area_alias_table();
+
+									m_renderer->recompile_kernels();
+									m_render_window->set_render_dirty(true);
+								}
+
+								ImGui::TreePop();
+							}
+
+							bool use_initial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY);
+							if (ImGui::Checkbox("Use visibility in target function", &use_initial_target_function_visibility))
+							{
+								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, use_initial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 								m_renderer->recompile_kernels();
 
 								m_render_window->set_render_dirty(true);
 							}
+							ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
+								"resampling initial candidates");
 
-							if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+							if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
 							{
 								// Clamping to 0
-								render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+								render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates);
 
 								m_render_window->set_render_dirty(true);
 							}
 
-							if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
+							if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates, 0, 32))
 							{
 								// Clamping to 0
-								render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
+								render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates);
 
 								m_render_window->set_render_dirty(true);
 							}
 
-							break;
+							ImGui::BeginDisabled(!m_renderer->has_envmap());
+							if (ImGui::SliderFloat("Envmap candidate probability", &render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability, 0.0f, 1.0f))
+							{
+								render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability = hippt::clamp(0.0f, 1.0f, render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability);
+
+								m_render_window->set_render_dirty(true);
+							}
+							ImGuiRenderer::show_help_marker("The probability to sample the envmap per each \"initial light candidates\"");
+							ImGui::EndDisabled();
 						}
 
-						default:
-							break;
-						}
+						ImGui::TreePop();
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					}
 
-					ImGui::TreePop();
 
-					break;
+
+
+
+					if (ImGui::CollapsingHeader("Visibility Reuse Pass"))
+					{
+						ImGui::TreePush("ReSTIR DI - Visibility Reuse Pass Tree");
+
+						{
+							bool do_visibility_reuse = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE);
+							if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
+							{
+								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+								m_renderer->recompile_kernels();
+
+								m_render_window->set_render_dirty(true);
+							}
+						}
+
+						ImGui::TreePop();
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					}
+
+
+
+
+
+					draw_ReSTIR_temporal_reuse_panel(render_settings.restir_di_settings, [this, &render_settings]() {
+						if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+						{
+							if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+							{
+								render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
+
+								m_render_window->set_render_dirty(true);
+							}
+							ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+								"This avoids a synchronization barrier between the temporal pass and the spatial pass "
+								"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
+								"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
+								"(which is the output of the temporal pass). This is usually imperceptible.");
+						}
+
+						if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
+						{
+							m_render_window->set_render_dirty(true);
+
+							if (!render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+								// Disabling fused spatiotemporal if we just disabled the temporal reuse
+								render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+						}
+					});
+
+					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
+					draw_ReSTIR_spatial_reuse_panel<false>([&render_settings, this] () {
+						if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+						{
+							if (ImGui::Checkbox("Do fused spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+							{
+								render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
+
+								m_render_window->set_render_dirty(true);
+							}
+							ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+								"This avois a synchronization barrier between the temporal pass and the spatial pass "
+								"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
+								"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
+								"(which is the output of the temporal pass). This is usually imperceptible.");
+						}
+
+						if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
+						{
+							m_render_window->set_render_dirty(true);
+
+							if (!render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
+								// Disabling fused spatiotemporal if we just disabled the spatial reuse
+								render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+						}
+					});
+					ImGui::PopItemWidth();
+
+
+
+
+					draw_ReSTIR_bias_correction_panel<false>();
+					if (ImGui::CollapsingHeader("Debug"))
+					{
+						ImGui::TreePush("ReSTIR DI debug options tree");
+
+						if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
+							"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+						if (render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location)
+						{
+							ImGui::TreePush("Debug neighbor location vertical tree");
+
+							ImGui::Text("Debug reuse direction");
+							bool reuse_direction_changed = false;
+							reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 0); ImGui::SameLine();
+							reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 1); ImGui::SameLine();
+							reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
+
+							if (reuse_direction_changed)
+								m_render_window->set_render_dirty(true);
+
+							ImGui::TreePop();
+						}
+
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+						ImGui::TreePop();
+					}
+
+
+
+
+					if (ImGui::CollapsingHeader("Later Bounces Sampling Strategy"))
+					{
+						ImGui::TreePush("Later Bounces tree");
+
+						{
+							const char* second_bounce_items[] = { "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
+							if (ImGui::Combo("Direct Lighting Strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY), second_bounce_items, IM_ARRAYSIZE(second_bounce_items)))
+							{
+								m_renderer->recompile_kernels();
+								m_render_window->set_render_dirty(true);
+							}
+							ImGuiRenderer::show_help_marker("What direct lighting strategy to use for bounces that come after the first one (camera ray hit) since ReSTIR DI only applies on the first bounce.");
+							ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+							switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY))
+							{
+							case RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT:
+								break;
+
+							case RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF:
+								break;
+
+							case RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT:
+							{
+								bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
+								if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+								{
+									global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+									m_renderer->recompile_kernels();
+
+									m_render_window->set_render_dirty(true);
+								}
+
+								if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+								{
+									// Clamping to 0
+									render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+
+									m_render_window->set_render_dirty(true);
+								}
+
+								if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
+								{
+									// Clamping to 0
+									render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
+
+									m_render_window->set_render_dirty(true);
+								}
+
+								break;
+							}
+
+							default:
+								break;
+							}
+						}
+
+						ImGui::TreePop();
+
+						break;
+					}
+
+					ImGui::TreePop(); // ReSTIR DI Settings tree
 				}
 			}
 

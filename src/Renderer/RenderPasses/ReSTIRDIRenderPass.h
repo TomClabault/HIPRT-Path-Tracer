@@ -114,7 +114,7 @@ private:
 	OrochiBuffer<ReSTIRDIReservoir> m_spatial_output_reservoirs_2;
 
 	// Buffer that holds the presampled lights if light presampling is enabled 
-	// (GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING)
+	// (GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING)
 	//
 	// Implementation from the paper
 	// [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production

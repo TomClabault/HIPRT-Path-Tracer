@@ -192,7 +192,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
 
         float distance_to_light = 0.0f;
         float3 to_light_direction{ 0.0f, 0.0f, 0.0f };
-#if ReSTIR_DI_DoLightsPresampling == KERNEL_OPTION_TRUE
+#if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
         ReSTIRDISample light_sample = use_presampled_light_candidate(render_data, pixel_coords, 
             closest_hit_info.inter_point, closest_hit_info.shading_normal, 
             sample_radiance, sample_cosine_term, light_pdf_area_measure, distance_to_light, to_light_direction, 

@@ -30,7 +30,7 @@
 *	- LSS_BASE_POWER_AREA
 *		Lights are sampled proportionally to their 'power * area'
 */
-#define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_POWER_AREA
+#define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_UNIFORM
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

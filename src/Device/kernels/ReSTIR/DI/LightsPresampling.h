@@ -41,7 +41,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
     // We're passing 0.0f as the position here because we do not have a position when presampling lights in screen space
     // The position is only used for "spatial sampling" schemes such as ReGIR or light trees for example and such schemes are not
     // compatible with ReSTIR light presampling anyways
-    LightSampleInformation light_sample = sample_one_emissive_triangle<DirectLightSamplingBaseStrategy>(render_data, random_number_generator);
+    LightSampleInformation light_sample = sample_one_emissive_triangle<ReSTIR_DI_LightPresamplingStrategy>(render_data, random_number_generator);
 
     if (light_sample.area_measure_pdf > 0.0f)
     {
