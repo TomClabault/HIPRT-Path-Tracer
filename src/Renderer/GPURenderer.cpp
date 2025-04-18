@@ -321,8 +321,11 @@ bool GPURenderer::needs_emissives_power_area_alias_table()
 	bool using_regir_power_area =
 		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR &&
 		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER_AREA;
+	bool restir_di_presampling_using_power_sampling = 
+		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI &&
+		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY) == LSS_BASE_POWER_AREA;
 
-	return directly_using_power_area || using_regir_power_area;
+	return directly_using_power_area || using_regir_power_area || restir_di_presampling_using_power_sampling;
 }
 
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
@@ -1111,7 +1114,7 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse);
 							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, visibility_bias_correction);
 							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, bias_correction_weight);
-							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, do_light_presampling);
+							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, do_light_presampling);
 							partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
 
 							// Recompiling all the kernels with the new options

@@ -158,7 +158,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 
 
 		// Also allocating / deallocating the presampled lights buffer
-		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
 		{
 			ReSTIRDISettings& restir_di_settings = m_renderer->get_render_settings().restir_di_settings;
 			int presampled_light_count = restir_di_settings.light_presampling.number_of_subsets * restir_di_settings.light_presampling.subset_size;
@@ -308,7 +308,7 @@ bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 		// Spatial needed
 		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	bool need_presampling = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE && !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->has_been_compiled();
+	bool need_presampling = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE && !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->has_been_compiled();
 	recompiled |= need_presampling;
 	if (need_presampling)
 		// Light pre sampling needed
@@ -341,7 +341,7 @@ bool ReSTIRDIRenderPass::launch()
 
 	// If ReSTIR DI is enabled
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
 		launch_presampling_lights_pass();
 
 	compute_optimal_spatial_reuse_radii();
@@ -629,7 +629,7 @@ void ReSTIRDIRenderPass::compute_render_times()
 	std::unordered_map<std::string, float>& ms_time_per_pass = m_renderer->get_render_pass_times();
 	ReSTIRDISettings& restir_di_settings = m_render_data->render_settings.restir_di_settings;
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
 		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_last_execution_time();
 
 	ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->get_last_execution_time();
@@ -672,7 +672,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_ke
 		// Not using fused spatiotemporal
 		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID);
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_FALSE)
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_FALSE)
 		// Not using light presampling
 		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID);
 

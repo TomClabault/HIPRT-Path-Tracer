@@ -758,7 +758,7 @@ void CPURenderer::compute_ReSTIR_DI_optimal_spatial_reuse_radii()
 
 void CPURenderer::launch_ReSTIR_DI_presampling_lights_pass()
 {
-    if (ReSTIR_DI_DoLightsPresampling == KERNEL_OPTION_TRUE)
+    if (ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE)
     {
         LightPresamplingParameters launch_parameters = configure_ReSTIR_DI_light_presampling_pass();
 
