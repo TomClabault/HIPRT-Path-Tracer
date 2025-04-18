@@ -52,7 +52,7 @@
 *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
 *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
 */
-#define DirectLightSamplingStrategy LSS_ONE_LIGHT
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
 
 /**
 * How to sample lights in the scene.
@@ -68,7 +68,7 @@
 *		Uses ReGIR to sample lights
 *		Implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021]
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_REGIR
+#define DirectLightSamplingBaseStrategy LSS_BASE_POWER_AREA
 
 /**
 * Whether or not to use NEE++ features at all
