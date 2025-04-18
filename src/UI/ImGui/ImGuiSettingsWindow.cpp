@@ -1596,7 +1596,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			bool envmap_sampling_disabled = m_renderer->get_envmap().get_width() == 0;
 
 			ImGui::BeginDisabled(envmap_sampling_disabled);
-			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search", "- Importance Sampling - Alias Table " };
+			const char* items[] = { "- No envmap sampling", "- Importance Sampling - Binary Search", "- Importance Sampling - Alias Table " };
 			const char* tooltips[] = {
 				"The envmap will not be importance sampled. Should behave okay for low frequency envmaps but this is going to be extremely inefficient for high frequency envmaps.",
 				"Importance samples a texel of the environment map proportionally to its luminance using a binary search on the CDF distributions of the envmap luminance. Good convergence.",
