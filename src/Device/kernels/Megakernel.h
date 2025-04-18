@@ -161,16 +161,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
         int cell_index = render_data.render_settings.regir_settings.get_cell_linear_index_from_world_pos(primary_hit);
 
         float average_contribution = 0.0f;
-        for (int i = 0; i < render_data.render_settings.regir_settings.reservoirs_count_per_grid_cell; i++)
+        for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.reservoirs_count_per_grid_cell; i++)
         {
-            int reservoir_index = cell_index * render_data.render_settings.regir_settings.reservoirs_count_per_grid_cell + i;
+            int reservoir_index = cell_index * render_data.render_settings.regir_settings.grid_fill.reservoirs_count_per_grid_cell + i;
 
-            ReGIRReservoir reservoir = render_data.render_settings.regir_settings.get_reservoir(reservoir_index);
+            ReGIRReservoir reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_linear_index(reservoir_index);
             average_contribution += reservoir.sample.target_function * reservoir.UCW;
         }
 
         // Averaging
-        average_contribution /= render_data.render_settings.regir_settings.reservoirs_count_per_grid_cell;
+        average_contribution /= render_data.render_settings.regir_settings.grid_fill.reservoirs_count_per_grid_cell;
         // Scaling by the debug factor for visualization purposes
         average_contribution *= render_data.render_settings.regir_settings.debug_view_scale_factor;
         // Scaling by SPP

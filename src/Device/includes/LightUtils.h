@@ -158,7 +158,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
     {
-        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_cell_reservoir_for_shading(shading_point, shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.shading.do_cell_jittering);
         if (shading_point_outside_of_grid)
             continue;
         else if (cell_reservoir.UCW == 0.0f)
@@ -167,6 +167,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
         ColorRGB32F current_emission = cell_reservoir.sample.emission;
 
+        // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
         float mis_weight = 1.0f / render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
         float target_function = ReGIR_shading_evaluate_target_function(render_data, 
             shading_point, view_direction, shading_normal, geometric_normal, 
@@ -185,7 +186,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
     out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
-    //out_sample.emissive_triangle_index = picked_sample_emission;
+    out_sample.emissive_triangle_index = out_reservoir.sample.emissive_triangle_index;
     out_sample.emission = out_reservoir.sample.emission;
     out_sample.light_area = out_reservoir.sample.light_area;
     out_sample.light_source_normal = out_reservoir.sample.light_source_normal.unpack();
@@ -312,11 +313,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(c
 
     if constexpr(lightSamplingStrategy == LSS_BASE_UNIFORM)
     {
+        static int counter = 0;
         // Surface area PDF of hitting that point on that triangle in the scene
         area_measure_pdf = 1.0f / light_area;
         area_measure_pdf /= render_data.buffers.emissive_triangles_count;
     }
-    else if (lightSamplingStrategy == LSS_BASE_POWER)
+    else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
     {
         // Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
         // faking it with power sampling PDF
@@ -382,7 +384,7 @@ template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy == LSS_BAS
 HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info, float3 to_light_direction)
 {
     return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(render_data, 
-        light_hit_info.hit_prim_index, light_hit_info.hit_emission, light_hit_info.hit_shading_normal, 
+        light_hit_info.hit_prim_index, light_hit_info.hit_emission, light_hit_info.hit_geometric_normal, 
         light_hit_info.hit_distance, to_light_direction);
 }
 
@@ -415,17 +417,34 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(co
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
 HIPRT_HOST_DEVICE HIPRT_INLINE float light_sample_pdf_for_MIS_solid_angle_measure(const HIPRTRenderData& render_data,
     float original_pdf,
-    int hit_primitive_index,
+    float light_area,
     ColorRGB32F light_emission, float3 light_surface_normal,
     float hit_distance, float3 to_light_direction)
 {
     if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
         // Approximating the ReGIR light PDF for the given BSDF sample with the basic NEE PDF
-        return pdf_of_emissive_triangle_hit_solid_angle(render_data, hit_primitive_index, light_emission, light_surface_normal, hit_distance, to_light_direction);
+        return pdf_of_emissive_triangle_hit_solid_angle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, light_area, light_emission, light_surface_normal, hit_distance, to_light_direction);
     else
         // If the light sampler does support the evaluation of the PDF, just returning the PDF unchanged
         // because this is the exact PDF
         return original_pdf;
+}
+
+/**
+ * Overload of the function when we don't have the light area but only the index of the light triangle
+ */
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
+HIPRT_HOST_DEVICE HIPRT_INLINE float light_sample_pdf_for_MIS_solid_angle_measure(const HIPRTRenderData& render_data,
+    float original_pdf,
+    int hit_primitive_index,
+    ColorRGB32F light_emission, float3 light_surface_normal,
+    float hit_distance, float3 to_light_direction)
+{
+    return light_sample_pdf_for_MIS_solid_angle_measure<lightSamplingStrategy>(render_data, 
+        original_pdf, 
+        triangle_area(render_data, hit_primitive_index),
+        light_emission, light_surface_normal,
+        hit_distance, to_light_direction);
 }
 
 /**

@@ -1885,7 +1885,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR Settings debug tree");
 
-			static int regir_debug_mode = ReGIR_DebugMode;
+			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
 			const char* items[] = { "- No debug", "- Grid cells", "- Average cell-reservoirs contribution" };
 			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 			{
@@ -1901,6 +1901,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		ImGui::TreePop();
 	}
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 template <bool IsReSTIRGI>
