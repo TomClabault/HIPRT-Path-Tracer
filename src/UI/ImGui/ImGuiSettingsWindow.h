@@ -42,6 +42,7 @@ private:
 	void draw_environment_panel();
 
 	void draw_sampling_panel();
+	void draw_ReGIR_settings_panel();
 	template <bool IsReSTIRGI>
 	void draw_ReSTIR_neighbor_heuristics_panel();
 	template<typename CommonReSTIRSettings>
