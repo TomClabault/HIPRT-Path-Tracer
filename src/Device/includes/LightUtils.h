@@ -332,7 +332,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(c
     return pdf_of_emissive_triangle_hit_area_measure(render_data, light_hit_info.hit_prim_index, light_hit_info.hit_emission);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, int hit_primitive_index, 
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, 
+    float light_area,
     ColorRGB32F light_emission, float3 light_surface_normal,
     float hit_distance, float3 to_light_direction)
 {
@@ -343,9 +344,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(co
     //  --> cos_angle negative
     float cosine_light_source = hippt::abs(hippt::dot(light_surface_normal, to_light_direction));
 
-    float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure(render_data, hit_primitive_index, light_emission);
+    float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure(render_data, light_area, light_emission);
 
     return area_to_solid_angle_pdf(pdf_area_measure, hit_distance, cosine_light_source);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, int hit_primitive_index, 
+    ColorRGB32F light_emission, float3 light_surface_normal,
+    float hit_distance, float3 to_light_direction)
+{
+    return pdf_of_emissive_triangle_hit_solid_angle(render_data, triangle_area(render_data, hit_primitive_index),
+        light_emission, light_surface_normal, hit_distance, to_light_direction);
 }
 
 /**
