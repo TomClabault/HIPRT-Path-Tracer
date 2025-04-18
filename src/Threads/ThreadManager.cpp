@@ -25,7 +25,7 @@ std::string ThreadManager::RENDERER_BUILD_BVH = "RendererBuildBVH";
 std::string ThreadManager::RENDERER_UPLOAD_MATERIALS = "RendererUploadMaterials";
 std::string ThreadManager::RENDERER_UPLOAD_TEXTURES = "RendererUploadTextures";
 std::string ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES = "RendererUploadEmissiveTriangles";
-std::string ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE = "RendererComputeEmissivesPowerAreaAliasTable";
+std::string ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE = "RendererComputeEmissivesPowerAreaAliasTable";
 
 std::string ThreadManager::RENDERER_PRECOMPILE_KERNELS = "RendererPrecompileKernel";
 std::string ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS = "ReSTIRDIPrecompileKernel";

@@ -875,7 +875,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			}
 
 			m_renderer->update_all_materials(materials);
-			m_renderer->recompute_emissives_power_area_alias_table();
+			m_renderer->recompute_emissives_power_alias_table();
 			m_render_window->set_render_dirty(true);
 		}
 

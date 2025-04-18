@@ -146,10 +146,10 @@
  * 	- LSS_BASE_UNIFORM
  *		Lights are sampled uniformly
  *
- *	- LSS_BASE_POWER_AREA
- *		Lights are sampled proportionally to their 'power * area'
+ *	- LSS_BASE_POWER
+ *		Lights are sampled proportionally to their power
  */
-#define ReSTIR_DI_LightPresamplingStrategy LSS_BASE_UNIFORM
+#define ReSTIR_DI_LightPresamplingStrategy LSS_BASE_POWER
 
 /**
  * How many bits to use for the directional reuse masks

@@ -150,8 +150,8 @@ struct HIPRTScene
 
 	int emissive_triangles_count = 0;
 	OrochiBuffer<int> emissive_triangles_indices;
-	OrochiBuffer<float> emissive_power_area_alias_table_probas;
-	OrochiBuffer<int> emissive_power_area_alias_table_alias;
+	OrochiBuffer<float> emissive_power_alias_table_probas;
+	OrochiBuffer<int> emissive_power_alias_table_alias;
 
 	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
 	// be destroyed which means that the underlying textures would be destroyed

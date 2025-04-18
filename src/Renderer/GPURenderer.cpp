@@ -181,31 +181,31 @@ void GPURenderer::reset_nee_plus_plus()
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
 
-void GPURenderer::compute_emissives_power_area_alias_table(const Scene& scene)
+void GPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 {
-	compute_emissives_power_area_alias_table(
+	compute_emissives_power_alias_table(
 		scene.emissive_triangle_indices, 
 		scene.vertices_positions, 
 		scene.triangle_indices, 
 		scene.material_indices,
 		scene.materials,
 		
-		m_hiprt_scene.emissive_power_area_alias_table_probas, 
-		m_hiprt_scene.emissive_power_area_alias_table_alias,
-		m_render_data.buffers.emissives_power_area_alias_table);
+		m_hiprt_scene.emissive_power_alias_table_probas, 
+		m_hiprt_scene.emissive_power_alias_table_alias,
+		m_render_data.buffers.emissives_power_alias_table);
 
 	// Not joining the thread that does the computation here because it will
 	// be joined before starting the render since this method is called during
 	// the initialization of the renderer
 }
 
-void GPURenderer::recompute_emissives_power_area_alias_table()
+void GPURenderer::recompute_emissives_power_alias_table()
 {
 	synchronize_all_kernels();
 
-	if (!needs_emissives_power_area_alias_table())
+	if (!needs_emissives_power_alias_table())
 	{
-		free_emissives_power_area_alias_table();
+		free_emissives_power_alias_table();
 
 		return;
 	}
@@ -215,21 +215,21 @@ void GPURenderer::recompute_emissives_power_area_alias_table()
 	std::vector<int> triangle_indices = m_hiprt_scene.geometry.download_triangle_indices();
 	std::vector<int> material_indices = m_hiprt_scene.material_indices.download_data();
 
-	compute_emissives_power_area_alias_table(
+	compute_emissives_power_alias_table(
 		emissive_triangle_indices,
 		vertices_positions,
 		triangle_indices,
 		material_indices,
 		m_current_materials,
 
-		m_hiprt_scene.emissive_power_area_alias_table_probas,
-		m_hiprt_scene.emissive_power_area_alias_table_alias,
-		m_render_data.buffers.emissives_power_area_alias_table);
+		m_hiprt_scene.emissive_power_alias_table_probas,
+		m_hiprt_scene.emissive_power_alias_table_alias,
+		m_render_data.buffers.emissives_power_alias_table);
 
-	ThreadManager::join_threads(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE);
+	ThreadManager::join_threads(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE);
 }
 
-void GPURenderer::compute_emissives_power_area_alias_table(
+void GPURenderer::compute_emissives_power_alias_table(
 	const std::vector<int>& emissive_triangle_indices,
 	const std::vector<float3>& vertices_positions,
 	const std::vector<int>& triangle_indices,
@@ -238,10 +238,10 @@ void GPURenderer::compute_emissives_power_area_alias_table(
 
 	OrochiBuffer<float>& alias_table_probas_buffer,
 	OrochiBuffer<int>& alias_table_alias_buffer,
-	DeviceAliasTable& power_area_alias_table)
+	DeviceAliasTable& power_alias_table)
 {
-	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_AREA_ALIAS_TABLE, [
+	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, [
 		this,
 		&emissive_triangle_indices, 
 		&vertices_positions,
@@ -251,13 +251,13 @@ void GPURenderer::compute_emissives_power_area_alias_table(
 
 		&alias_table_alias_buffer,
 		&alias_table_probas_buffer,
-		&power_area_alias_table] ()
+		&power_alias_table] ()
 	{
-		if (!needs_emissives_power_area_alias_table())
+		if (!needs_emissives_power_alias_table())
 			return;
 
-		std::vector<float> power_area_list(emissive_triangle_indices.size());
-		float power_area_sum = 0.0f;
+		std::vector<float> power_list(emissive_triangle_indices.size());
+		float power_sum = 0.0f;
 
 		for (int i = 0; i < emissive_triangle_indices.size(); i++)
 		{
@@ -280,13 +280,13 @@ void GPURenderer::compute_emissives_power_area_alias_table(
 
 			float area_power = emission_luminance * triangle_area;
 
-			power_area_list[i] = area_power;
-			power_area_sum += area_power;
+			power_list[i] = area_power;
+			power_sum += area_power;
 		}
 
 		std::vector<float> alias_probas;
 		std::vector<int> alias_aliases;
-		Utils::compute_alias_table(power_area_list, power_area_sum, alias_probas, alias_aliases);
+		Utils::compute_alias_table(power_list, power_sum, alias_probas, alias_aliases);
 
 		alias_table_probas_buffer.resize(emissive_triangle_indices.size());
 		alias_table_alias_buffer.resize(emissive_triangle_indices.size());
@@ -294,38 +294,38 @@ void GPURenderer::compute_emissives_power_area_alias_table(
 		alias_table_probas_buffer.upload_data(alias_probas);
 		alias_table_alias_buffer.upload_data(alias_aliases);
 
-		power_area_alias_table.alias_table_probas = alias_table_probas_buffer.get_device_pointer();
-		power_area_alias_table.alias_table_alias = alias_table_alias_buffer.get_device_pointer();
-		power_area_alias_table.size = emissive_triangle_indices.size();
-		power_area_alias_table.sum_elements = power_area_sum;
+		power_alias_table.alias_table_probas = alias_table_probas_buffer.get_device_pointer();
+		power_alias_table.alias_table_alias = alias_table_alias_buffer.get_device_pointer();
+		power_alias_table.size = emissive_triangle_indices.size();
+		power_alias_table.sum_elements = power_sum;
 	});
 }
 
-void GPURenderer::free_emissives_power_area_alias_table()
+void GPURenderer::free_emissives_power_alias_table()
 {
-	if (m_hiprt_scene.emissive_power_area_alias_table_alias.get_element_count() > 0)
-		m_hiprt_scene.emissive_power_area_alias_table_alias.free();
+	if (m_hiprt_scene.emissive_power_alias_table_alias.get_element_count() > 0)
+		m_hiprt_scene.emissive_power_alias_table_alias.free();
 
-	if (m_hiprt_scene.emissive_power_area_alias_table_probas.get_element_count() > 0)
-		m_hiprt_scene.emissive_power_area_alias_table_probas.free();
+	if (m_hiprt_scene.emissive_power_alias_table_probas.get_element_count() > 0)
+		m_hiprt_scene.emissive_power_alias_table_probas.free();
 
-	m_render_data.buffers.emissives_power_area_alias_table.alias_table_alias = nullptr;
-	m_render_data.buffers.emissives_power_area_alias_table.alias_table_probas = nullptr;
-	m_render_data.buffers.emissives_power_area_alias_table.size = 0;
-	m_render_data.buffers.emissives_power_area_alias_table.sum_elements = 0;
+	m_render_data.buffers.emissives_power_alias_table.alias_table_alias = nullptr;
+	m_render_data.buffers.emissives_power_alias_table.alias_table_probas = nullptr;
+	m_render_data.buffers.emissives_power_alias_table.size = 0;
+	m_render_data.buffers.emissives_power_alias_table.sum_elements = 0;
 }
 
-bool GPURenderer::needs_emissives_power_area_alias_table()
+bool GPURenderer::needs_emissives_power_alias_table()
 {
-	bool directly_using_power_area = m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER_AREA;
-	bool using_regir_power_area =
+	bool directly_using_power = m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER;
+	bool using_regir_power =
 		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR &&
-		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER_AREA;
+		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER;
 	bool restir_di_presampling_using_power_sampling = 
 		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI &&
-		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY) == LSS_BASE_POWER_AREA;
+		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY) == LSS_BASE_POWER;
 
-	return directly_using_power_area || using_regir_power_area || restir_di_presampling_using_power_sampling;
+	return directly_using_power || using_regir_power || restir_di_presampling_using_power_sampling;
 }
 
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
@@ -1439,7 +1439,7 @@ void GPURenderer::set_scene(const Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
 	setup_nee_plus_plus_from_scene(scene);
-	compute_emissives_power_area_alias_table(scene);
+	compute_emissives_power_alias_table(scene);
 
 	m_original_materials = scene.materials;
 	m_current_materials = scene.materials;
