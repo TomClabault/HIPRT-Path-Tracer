@@ -259,6 +259,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
                     light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure<ReSTIR_DI_LightPresamplingStrategy>(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction);
 #else
                     light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction);
+                    light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability);
 #endif
                 }
 
@@ -312,12 +313,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
 
         BSDFIncidentLightInfo sampled_lobe_info;
         BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), sampled_lobe_info, ray_payload.volume_state, false, ray_payload.material, /* bounce */ 0, ray_payload.accumulated_roughness);
-        
-
-        //bsdf_sampled_direction = hippt::normalize(make_float3(0.684585392, 0.00494069746, 0.728915989));
-        //BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_direction, sampled_lobe_info, ray_payload.volume_state, false, ray_payload.material, /* bounce */ 0, ray_payload.accumulated_roughness);
         ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_direction, bsdf_sample_pdf_solid_angle, random_number_generator);
-        //ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_sample_pdf_solid_angle, random_number_generator);
 
         if (bsdf_sample_pdf_solid_angle > 0.0f)
         {
