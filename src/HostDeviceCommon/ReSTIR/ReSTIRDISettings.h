@@ -14,9 +14,9 @@ struct ReSTIRDIPresampledLight;
 struct ReSTIRDIInitialCandidatesSettings
 {
 	// How many light candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_light_candidates = 1;
+	int number_of_initial_light_candidates = 4;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_bsdf_candidates = 0;
+	int number_of_initial_bsdf_candidates = 1;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
 	// will sample the envmap instead of a light in the scene
 	float envmap_candidate_probability = 0.0f;

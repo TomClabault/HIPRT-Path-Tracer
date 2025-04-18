@@ -18,6 +18,7 @@
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 
 #define LIGHT_DOESNT_CONTRIBUTE_ENOUGH -42.0f
 
@@ -101,7 +102,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
     {
         // Light sample
 
-        // random_number_generator.m_state.seed = 1853586651;
         LightSampleInformation light_sample_info = sample_one_emissive_triangle(render_data, 
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
             closest_hit_info.primitive_index, ray_payload,
@@ -343,6 +343,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 float light_pdf_solid_angle = 0.0f;
                 bool refraction_sampled = hippt::dot(bsdf_sampled_direction, closest_hit_info.shading_normal) < 0.0f;
                 if (!refraction_sampled)
+                {
+                    // TODO we should just allow refraction light samples instead of this
+
                     // Only computing the light PDF if we're not refracting
                     // 
                     // Why?
@@ -357,7 +360,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     // (because the BSDF sample, that should have weight 1 [or to be precise: 1 / nb_bsdf_samples]
                     // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
                     // and this is going to cause darkening as the number of light samples grows)
-                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+#if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
+                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle<ReSTIR_DI_LightPresamplingStrategy>(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+#else
+                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle<DirectLightSamplingBaseStrategy>(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+#endif
+                }
 
                 float target_function = bsdf_RIS_sample.target_function;
                 if (bsdf_sample_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / light_pdf_solid_angle / bsdf_sample_pdf_solid_angle))

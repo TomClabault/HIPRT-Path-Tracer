@@ -305,56 +305,39 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F 
  * 'hit_distance' is the distance to the intersection point on the hit triangle
  * 'ray_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
  */
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategy : DirectLightSamplingBaseStrategy>
 HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, float light_area, ColorRGB32F light_emission)
 {
-#if DirectLightSamplingBaseStrategy == LSS_BASE_UNIFORM || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_UNIFORM)
-    // Surface area PDF of hitting that point on that triangle in the scene
-    float area_measure_pdf = 1.0f / light_area;
-    area_measure_pdf /= render_data.buffers.emissive_triangles_count;
-#elif DirectLightSamplingBaseStrategy == LSS_BASE_POWER_AREA || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER_AREA)
-    // Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
-    // faking it with power-area PDF
+    float area_measure_pdf;
 
-    float area_measure_pdf = 1.0f / light_area;
-    area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissives_power_area_alias_table.sum_elements;
-#endif
+    if constexpr(lightSamplingStrategy == LSS_BASE_UNIFORM)
+    {
+        // Surface area PDF of hitting that point on that triangle in the scene
+        area_measure_pdf = 1.0f / light_area;
+        area_measure_pdf /= render_data.buffers.emissive_triangles_count;
+    }
+    else if (lightSamplingStrategy == LSS_BASE_POWER_AREA)
+    {
+        // Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
+        // faking it with power-area PDF
+
+        area_measure_pdf = 1.0f / light_area;
+        area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissives_power_area_alias_table.sum_elements;
+    }
      
     return area_measure_pdf;
 }
 
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategy : DirectLightSamplingBaseStrategy>
 HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, int hit_primitive_index, ColorRGB32F light_emission)
 {
-    return pdf_of_emissive_triangle_hit_area_measure(render_data, triangle_area(render_data, hit_primitive_index), light_emission);
+    return pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, triangle_area(render_data, hit_primitive_index), light_emission);
 }
 
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategy : DirectLightSamplingBaseStrategy>
 HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info)
 {
-    return pdf_of_emissive_triangle_hit_area_measure(render_data, light_hit_info.hit_prim_index, light_hit_info.hit_emission);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, 
-    float light_area,
-    ColorRGB32F light_emission, float3 light_surface_normal,
-    float hit_distance, float3 to_light_direction)
-{
-    // abs() here to allow backfacing lights
-    // Without abs() here:
-    //  - We could be hitting the back of an emissive triangle (think of quad light hanging in the air)
-    //  --> triangle normal not facing the same way 
-    //  --> cos_angle negative
-    float cosine_light_source = hippt::abs(hippt::dot(light_surface_normal, to_light_direction));
-
-    float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure(render_data, light_area, light_emission);
-
-    return area_to_solid_angle_pdf(pdf_area_measure, hit_distance, cosine_light_source);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, int hit_primitive_index, 
-    ColorRGB32F light_emission, float3 light_surface_normal,
-    float hit_distance, float3 to_light_direction)
-{
-    return pdf_of_emissive_triangle_hit_solid_angle(render_data, triangle_area(render_data, hit_primitive_index),
-        light_emission, light_surface_normal, hit_distance, to_light_direction);
+    return pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, light_hit_info.hit_prim_index, light_hit_info.hit_emission);
 }
 
 /**
@@ -368,9 +351,37 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(co
  * 'hit_distance' is the distance to the intersection point on the hit triangle
  * 'to_light_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
  */
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategy : DirectLightSamplingBaseStrategy>
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, 
+    float light_area,
+    ColorRGB32F light_emission, float3 light_surface_normal,
+    float hit_distance, float3 to_light_direction)
+{
+    // abs() here to allow backfacing lights
+    // Without abs() here:
+    //  - We could be hitting the back of an emissive triangle (think of quad light hanging in the air)
+    //  --> triangle normal not facing the same way 
+    //  --> cos_angle negative
+    float cosine_light_source = hippt::abs(hippt::dot(light_surface_normal, to_light_direction));
+
+    float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, light_area, light_emission);
+
+    return area_to_solid_angle_pdf(pdf_area_measure, hit_distance, cosine_light_source);
+}
+
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategy : DirectLightSamplingBaseStrategy>
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, int hit_primitive_index, 
+    ColorRGB32F light_emission, float3 light_surface_normal,
+    float hit_distance, float3 to_light_direction)
+{
+    return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(render_data, triangle_area(render_data, hit_primitive_index),
+        light_emission, light_surface_normal, hit_distance, to_light_direction);
+}
+
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategy : DirectLightSamplingBaseStrategy>
 HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, const ShadowLightRayHitInfo& light_hit_info, float3 to_light_direction)
 {
-    return pdf_of_emissive_triangle_hit_solid_angle(render_data, 
+    return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(render_data, 
         light_hit_info.hit_prim_index, light_hit_info.hit_emission, light_hit_info.hit_shading_normal, 
         light_hit_info.hit_distance, to_light_direction);
 }

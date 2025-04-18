@@ -1090,6 +1090,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"Uses ReGIR to sample lights.\n\n"
 				"Implementation of[Rendering many lights with grid - based reservoirs, Boksansky, 2021]"
 			};
+
 			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 			{
 				// Will recompute the alias table if necessary
