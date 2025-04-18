@@ -412,20 +412,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(co
  * This function will do some computations for the approximated PDF only if the light sampler's PDF cannot be
  * evaluated for any given sample (case of ReGIR for example)
  */
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
 HIPRT_HOST_DEVICE HIPRT_INLINE float light_sample_pdf_for_MIS_solid_angle_measure(const HIPRTRenderData& render_data,
     float original_pdf,
     int hit_primitive_index,
     ColorRGB32F light_emission, float3 light_surface_normal,
     float hit_distance, float3 to_light_direction)
 {
-#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-    // Approximating the ReGIR light PDF for the given BSDF sample with the basic NEE PDF
-    return pdf_of_emissive_triangle_hit_solid_angle(render_data, hit_primitive_index, light_emission, light_surface_normal, hit_distance, to_light_direction);
-#else
-    // If the light sampler does support the evaluation of the PDF, just returning the PDF unchanged
-    // because this is the exact PDF
-    return original_pdf;
-#endif
+    if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
+        // Approximating the ReGIR light PDF for the given BSDF sample with the basic NEE PDF
+        return pdf_of_emissive_triangle_hit_solid_angle(render_data, hit_primitive_index, light_emission, light_surface_normal, hit_distance, to_light_direction);
+    else
+        // If the light sampler does support the evaluation of the PDF, just returning the PDF unchanged
+        // because this is the exact PDF
+        return original_pdf;
 }
 
 /**

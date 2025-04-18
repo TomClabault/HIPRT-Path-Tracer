@@ -253,7 +253,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
                     ColorRGB32F light_emission = ReSTIR_DI_get_light_sample_emission(render_data, light_sample, to_light_direction);
                     // Computing the approximate light sampler PDF for use in MIS in case the light sampler's PDF cannot be
                     // evaluated for an arbitrary input sample (as will be needed when computing the MIS weight for the BSDF sample)
+#if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
+                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure<ReSTIR_DI_LightPresamplingStrategy>(render_data, light_pdf_solid_angle, surface.primitive_index, light_emission, light_normal, distance_to_light, to_light_direction);
+#else
                     light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, surface.primitive_index, light_emission, light_normal, distance_to_light, to_light_direction);
+#endif
                 }
 
                 float mis_weight = balance_heuristic(light_pdf_solid_angle_for_MIS, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
