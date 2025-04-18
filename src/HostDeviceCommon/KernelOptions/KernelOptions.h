@@ -180,6 +180,15 @@
 #define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_TRUE
 
 /**
+ * Whether or not to do bilinear filtering when sampling the envmap.
+ * 
+ * This is mostly useful when the camera is looking straigth at the envmap and we don't 
+ * have camera ray jittering on: in this case, bilinear filtering will hide the 
+ * pixelated look of the envmap.
+ */
+#define EnvmapSamplingDoBilinearFiltering KERNEL_OPTION_FALSE
+
+/**
  * What sampling strategy to use for sampling the bounces during path tracing.
  * 
  *	- PSS_BSDF

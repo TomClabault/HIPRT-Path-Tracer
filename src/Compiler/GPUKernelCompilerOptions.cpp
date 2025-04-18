@@ -57,6 +57,7 @@ const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DIS
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "EnvmapSamplingDoBSDFMIS";
+const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING = "EnvmapSamplingDoBilinearFiltering";
 
 const std::string GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY = "PathSamplingStrategy";
 
@@ -121,6 +122,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS,
+	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING,
 
 	GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY,
 
@@ -187,8 +189,10 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE] = std::make_shared<int>(DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION] = std::make_shared<int>(DirectLightSamplingDeltaDistributionOptimization);
 	m_options_macro_map[GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION] = std::make_shared<int>(RISUseVisiblityTargetFunction);
+
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS] = std::make_shared<int>(EnvmapSamplingDoBSDFMIS);
+	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING] = std::make_shared<int>(EnvmapSamplingDoBilinearFiltering);
 
 	m_options_macro_map[GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY] = std::make_shared<int>(PathSamplingStrategy);
 
