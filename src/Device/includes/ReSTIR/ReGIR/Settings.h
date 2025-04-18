@@ -132,7 +132,24 @@ struct ReGIRSettings
 	 * If 'out_point_outside_of_grid' is set to true, then the given shading point (+ the jittering) was outside of the grid
 	 * and no reservoir has been gathered
 	 */
-	HIPRT_HOST_DEVICE ReGIRReservoir get_cell_reservoir_for_shading(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false) const
+	HIPRT_HOST_DEVICE ReGIRReservoir get_reservoir_for_shading_from_linear_index(int reservoir_index_in_grid) const
+	{
+		if (spatial_reuse.do_spatial_reuse)
+			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
+			return spatial_reuse.output_grid[reservoir_index_in_grid];
+		else if (temporal_reuse.do_temporal_reuse)
+			// If only doing temporal reuse, reading from the output of the spatial reuse pass
+			return get_temporal_reservoir(reservoir_index_in_grid);
+		else
+			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
+			return grid_fill.grid_buffers[reservoir_index_in_grid];
+	}
+
+	/**
+	 * If 'out_point_outside_of_grid' is set to true, then the given shading point (+ the jittering) was outside of the grid
+	 * and no reservoir has been gathered
+	 */
+	HIPRT_HOST_DEVICE ReGIRReservoir get_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false) const
 	{
 		int cell_linear_index = get_cell_linear_index_from_world_pos(shading_point, &rng, jitter);
 		if (cell_linear_index < 0 || cell_linear_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
@@ -148,15 +165,7 @@ struct ReGIRSettings
 		if (grid_fill.reservoirs_count_per_grid_cell > 1)
 			random_reservoir_index_in_cell = rng.random_index(grid_fill.reservoirs_count_per_grid_cell);
 
-		if (spatial_reuse.do_spatial_reuse)
-			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return spatial_reuse.output_grid[cell_linear_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell];
-		else if (temporal_reuse.do_temporal_reuse)
-			// If only doing temporal reuse, reading from the output of the spatial reuse pass
-			return get_temporal_reservoir(cell_linear_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
-		else
-			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return grid_fill.grid_buffers[cell_linear_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell];
+		return get_reservoir_for_shading_from_linear_index(cell_linear_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
 	}
 
 	/**

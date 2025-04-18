@@ -13,15 +13,13 @@
 struct ReGIRSample
 {
 	ColorRGB32F emission;
+	int emissive_triangle_index; // Only needed for ReSTIR DI
 
 	float light_area = 0.0f;
-
-	// TODO maybe not needed during shading? Mayube needed actually for spatial reuse because otherwise we're going to have to re-evaluate it which means reading emission and triangle properties from memory to evaluate the target function 
+	// TODO maybe not needed during shading?
 	float target_function = 0.0f;
-
 	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
 
-	//float3 light_source_normal;
 	Octahedral24BitNormal light_source_normal;
 };
 
@@ -40,6 +38,7 @@ struct ReGIRReservoir
 			sample.point_on_light = light_sample.point_on_light;
 			sample.emission = light_sample.emission;
 			sample.light_area = light_sample.light_area;
+			sample.emissive_triangle_index = light_sample.emissive_triangle_index;
 
 			sample.target_function = target_function;
 		}
