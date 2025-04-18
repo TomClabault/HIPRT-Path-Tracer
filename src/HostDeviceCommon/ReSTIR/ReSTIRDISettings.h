@@ -16,10 +16,10 @@ struct ReSTIRDIInitialCandidatesSettings
 	// How many light candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_light_candidates = 4;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_bsdf_candidates = 1;
+	int number_of_initial_bsdf_candidates = 0;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
 	// will sample the envmap instead of a light in the scene
-	float envmap_candidate_probability = 0.25f;
+	float envmap_candidate_probability = 1.0f;
 
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
@@ -74,7 +74,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 
 
-		common_spatial_pass.do_spatial_reuse_pass = true;
+		common_spatial_pass.do_spatial_reuse_pass = false;
 
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 2;

@@ -77,6 +77,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& world_settings, float3& sampled_direction, float& envmap_pdf, Xorshift32Generator& random_number_generator)
 {
+#if EnvmapSamplingStrategy == ESS_NO_SAMPLING
+    envmap_pdf = 0.0f;
+
+    return ColorRGB32F();
+#endif
+
     int x, y;
     float env_map_total_sum = world_settings.envmap_total_sum;
 
@@ -85,12 +91,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
     envmap_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
 #elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
     int random_index = world_settings.envmap_alias_table.sample(random_number_generator);
-
-    y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
-    x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
-#else
-    // Default to uniform sampling
-    int random_index = random_number_generator.random_index(world_settings.envmap_height * world_settings.envmap_width);
 
     y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
     x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
@@ -123,11 +123,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
     // The texel was sampled according to its luminance
     envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
 
+    // Account for the fact that the envmap texels have some area in the world
     envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
-#else
-    // Uniform probability of sampling the texel
-    envmap_pdf = 1.0f / (world_settings.envmap_width * world_settings.envmap_height);
 #endif
+
     // Converting the PDF from area measure on the envmap to solid angle measure
     envmap_pdf /= (M_TWO_PI_SQUARED * sin_theta);
 
@@ -140,6 +139,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const float3& direction, float& pdf)
 {
+#if EnvmapSamplingStrategy == ESS_NO_SAMPLING
+    pdf = 0.0f;
+
+    return ColorRGB32F();
+#endif
+
     const WorldSettings& world_settings = render_data.world_settings;
 
     ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction);
@@ -153,11 +158,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     // The texel was sampled according to its luminance
     pdf = envmap_radiance.luminance() / (envmap_total_sum * render_data.world_settings.envmap_intensity);
 
-    // TODO why do we have that here?
+    // Account for the fact that the envmap texels have some area in the world
     pdf *= world_settings.envmap_width * world_settings.envmap_height;
-#else
-    // Uniform probability of sampling the texel
-    pdf = 1.0f / (world_settings.envmap_width * world_settings.envmap_height);
 #endif
 
     // Converting from "texel on envmap measure" to solid angle
