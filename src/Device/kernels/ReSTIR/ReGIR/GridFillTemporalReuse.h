@@ -77,7 +77,7 @@ HIPRT_HOST_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_
         shadow_ray.direction = to_light_direction;
 
         if (evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, -1, 0, rng))
-            out_reservoir.UCW = 0.0f;
+            out_reservoir.UCW = -1.0f;
     }
 #endif
 

@@ -60,23 +60,20 @@ HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRender
 	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	const ReGIRReservoir& reservoir,
-	const ColorRGB32F& light_emission,
 	Xorshift32Generator& rng)
 {
 	return ReGIR_shading_evaluate_target_function(render_data, 
 		shading_point, view_direction, shading_normal, geometric_normal,
 		last_hit_primitive_index, ray_payload,
 		reservoir.sample.point_on_light, reservoir.sample.light_source_normal.unpack(),
-		light_emission, rng);
+		reservoir.sample.emission, rng);
 }
 
-HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, float3 shading_point,
-	Xorshift32Generator& rng)
+HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by_internal(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, 
+	float3 cell_center, Xorshift32Generator& rng)
 {
-	float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_world_pos(shading_point);
-
 	bool target_function_ok = true;
-	
+
 	target_function_ok &= ReGIR_grid_fill_evaluate_target_function(cell_center, light_sample.emission, light_sample.point_on_light) > 0.0f;
 
 #if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
@@ -92,6 +89,20 @@ HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRender
 #endif
 
 	return target_function_ok;
+}
+
+HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, float3 shading_point,
+	Xorshift32Generator& rng)
+{
+	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, light_sample,
+		render_data.render_settings.regir_settings.get_cell_center_from_world_pos(shading_point), rng);
+}
+
+HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, int linear_cell_index,
+	Xorshift32Generator& rng)
+{
+	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, light_sample,
+		render_data.render_settings.regir_settings.get_cell_center(linear_cell_index), rng);
 }
 
 #endif

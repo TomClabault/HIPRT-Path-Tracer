@@ -161,33 +161,35 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 {
     LightSampleInformation out_sample;
     ReGIRReservoir out_reservoir;
-    ColorRGB32F picked_sample_emission;
+
+    unsigned neighbor_rng_seed = random_number_generator.xorshift32();
+    Xorshift32Generator neighbor_rng(neighbor_rng_seed);
 
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
     {
-        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, random_number_generator, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+        int DEBUG_OUT;
+        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering, &DEBUG_OUT);
+
         if (shading_point_outside_of_grid)
             continue;
-        else if (cell_reservoir.UCW == 0.0f)
+        else if (cell_reservoir.UCW <= 0.0f)
             // No valid sample in that reservoir
             continue;
 
-        ColorRGB32F current_emission = cell_reservoir.sample.emission;
-
         // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
-        float mis_weight = 0.5f;// 1.0f / render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
+        float mis_weight_denom = render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE);
+        float mis_weight = 1.0f / mis_weight_denom;
         float target_function = ReGIR_shading_evaluate_target_function(render_data, 
             shading_point, view_direction, shading_normal, geometric_normal, 
-            last_hit_primitive_index, ray_payload,
-            cell_reservoir, current_emission,
+            last_hit_primitive_index, ray_payload, cell_reservoir,
             random_number_generator);
 
-        if (out_reservoir.stream_reservoir(mis_weight, target_function, cell_reservoir, random_number_generator))
-            picked_sample_emission = current_emission;
+        out_reservoir.stream_reservoir(mis_weight, target_function, cell_reservoir, random_number_generator);
     }
 
     // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
-    // may cause the grid cell to produce no valid reservoir at all
+    // may cause the grid cell to produce no valid reservoir at all so we need canonical samples to
+    // cover those cases for unbiased results
 #if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
     {
         LightSampleInformation canonical_light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
@@ -198,13 +200,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
         if (canonical_light_sample.area_measure_pdf > 0.0f)
         {
+            // Setting the RNG seed so that we can replay the neighbors in the same order
+            neighbor_rng.m_state.seed = neighbor_rng_seed;
+
+            float mis_weight_denom = 1.0f;
+            for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
+            {
+                int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_cell_linear_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+
+                if (neighbor_cell_index == -1)
+                    continue;
+
+                if (ReGIR_shading_can_sample_be_produced_by(render_data, canonical_light_sample, neighbor_cell_index, random_number_generator))
+                    mis_weight_denom += 1.0f;
+            }
+        
+            float mis_weight = 1.0f / mis_weight_denom;
             float target_function = ReGIR_shading_evaluate_target_function(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
                 canonical_light_sample.point_on_light, canonical_light_sample.light_source_normal, canonical_light_sample.emission,
                 random_number_generator);
             float source_pdf = canonical_light_sample.area_measure_pdf;
-            float mis_weight = 1.0f / (1.0f + ReGIR_shading_can_sample_be_produced_by(render_data, canonical_light_sample, shading_point, random_number_generator));
 
             out_reservoir.stream_sample(mis_weight, target_function, source_pdf, canonical_light_sample, random_number_generator);
         }
