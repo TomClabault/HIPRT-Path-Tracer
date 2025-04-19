@@ -1138,6 +1138,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			{
 				if (ImGui::CollapsingHeader("RIS Settings"))
 				{
+					ImGui::TreePush("RIS Settings tree");
+
 					bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
 					if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 					{
@@ -1162,6 +1164,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 						m_render_window->set_render_dirty(true);
 					}
+
+					ImGui::TreePop();
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				}
 					
 				break;
@@ -1796,6 +1801,31 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
 
+		if (ImGui::CollapsingHeader("Grid build"))
+		{
+			ImGui::TreePush("ReGIR grid build tree");
+
+			if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 128))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.grid_fill.reservoirs_count_per_grid_cell, 1, 128))
+				m_render_window->set_render_dirty(true);
+
+			static bool do_visibility_reuse = ReGIR_DoVisibilityReuse;
+			if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Discards reservoirs whose light samples are occluded at grid fill time.\n\n"
+				""
+				"This is  expensive but can also lead to substantial gains in quality.");
+
+			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
 		if (ImGui::CollapsingHeader("Temporal reuse"))
 		{
 			ImGui::TreePush("ReGIR temporal reuse tree");
@@ -1807,6 +1837,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
 		if (ImGui::CollapsingHeader("Spatial reuse"))
@@ -1826,21 +1857,46 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"A radius of 1 means that we're going to reuse in the 3x3 cube around the center cell, givins us 26 neighbors");
 
 			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
-		static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
-		if (ImGui::Checkbox("Use visibility during shading resampling", &use_vis_shading_resampling))
+		if (ImGui::CollapsingHeader("Shading"))
 		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY, use_vis_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			ImGui::TreePush("ReGIR shading tree");
 
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
+			static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
+			if (ImGui::Checkbox("Use visibility in target function", &use_vis_shading_resampling))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY, use_vis_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
+				"shading a point at path tracing time. This reduces visibility noise.");
+
+			static bool include_bsdf_shading_resampling = ReGIR_ShadingResamplingIncludeBSDF;
+			if (ImGui::Checkbox("Include BSDF in target function", &include_bsdf_shading_resampling))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF, include_bsdf_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to include the BSDF at the shading point in the resampling target function when "
+				"shading a point at path tracing time. This reduces shading noise at an increased computational cost.");
+
+			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.shading.cell_reservoir_resample_per_shading_point, 1, 32))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
-		ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
-			"shading a point at path tracing time. This reduces visibility noise.");
+
 			
-		if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
-			m_render_window->set_render_dirty(true);
 
 		bool size_changed = false;
 		static bool use_cube_grid = true;
@@ -1870,13 +1926,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 		}
 
-		if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 256))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.grid_fill.reservoirs_count_per_grid_cell, 1, 128))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.shading.cell_reservoir_resample_per_shading_point, 1, 32))
-			m_render_window->set_render_dirty(true);
-
 		if (size_changed)
 			m_render_window->set_render_dirty(true);
 
@@ -1900,9 +1949,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		}
 
 		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
-
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 template <bool IsReSTIRGI>

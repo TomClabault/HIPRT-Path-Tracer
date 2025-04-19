@@ -9,8 +9,8 @@
 #include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
-#include "Device/kernels/ReSTIR/ReGIR/ReGIRGridFillTemporalReuse.h"
-#include "Device/kernels/ReSTIR/ReGIR/ReGIRSpatialReuse.h"
+#include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
+#include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
 
 #include "Device/kernels/ReSTIR/DirectionalReuseCompute.h"
 

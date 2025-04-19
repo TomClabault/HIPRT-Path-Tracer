@@ -45,6 +45,8 @@ public:
 
 	static const std::string REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY;
 	static const std::string REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY;
+	static const std::string REGIR_SHADING_RESAMPLING_INCLUDE_BSDF;
+	static const std::string REGIR_DO_VISIBILITY_REUSE;
 	static const std::string REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY;
 	static const std::string REGIR_DEBUG_MODE;
 

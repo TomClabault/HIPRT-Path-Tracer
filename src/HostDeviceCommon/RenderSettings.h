@@ -157,12 +157,12 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = true;
+	bool enable_adaptive_sampling = false;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 1024;
+	int adaptive_sampling_min_samples = 256;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.075f;
 
