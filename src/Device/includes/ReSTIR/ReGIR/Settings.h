@@ -53,8 +53,8 @@ struct ReGIRSpatialReuseSettings
 
 	bool do_spatial_reuse = false;
 
-	int spatial_neighbor_reuse_count = 128;
-	int spatial_reuse_radius = 3;
+	int spatial_neighbor_reuse_count = 5;
+	int spatial_reuse_radius = 1;
 
 	// Grid that contains the output of the spatial reuse pass
 	ReGIRReservoir* output_grid = nullptr;
@@ -67,7 +67,7 @@ struct ReGIRShadingSettings
 	int cell_reservoir_resample_per_shading_point = 1;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_cell_jittering = false;
+	bool do_cell_jittering = true;
 };
 
 struct ReGIRSettings
@@ -154,16 +154,21 @@ struct ReGIRSettings
 	 * If 'out_point_outside_of_grid' is set to true, then the given shading point (+ the jittering) was outside of the grid
 	 * and no reservoir has been gathered
 	 */
-	HIPRT_HOST_DEVICE ReGIRReservoir get_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false) const
+	HIPRT_HOST_DEVICE ReGIRReservoir get_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false, int* OUT_DEBUG_CELL_INDEX = nullptr) const
 	{
 		int cell_linear_index = get_cell_linear_index_from_world_pos(shading_point, &rng, jitter);
 		if (cell_linear_index < 0 || cell_linear_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
 		{
 			out_point_outside_of_grid = true;
+			if (OUT_DEBUG_CELL_INDEX)
+				*OUT_DEBUG_CELL_INDEX = -1;
 
 			return ReGIRReservoir();
 		}
 
+
+		if (OUT_DEBUG_CELL_INDEX)
+			*OUT_DEBUG_CELL_INDEX = cell_linear_index;
 		out_point_outside_of_grid = false;
 
 		int random_reservoir_index_in_cell = 0;
@@ -171,6 +176,19 @@ struct ReGIRSettings
 			random_reservoir_index_in_cell = rng.random_index(grid_fill.reservoirs_count_per_grid_cell);
 
 		return get_reservoir_for_shading_from_linear_index(cell_linear_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
+	}
+
+	HIPRT_HOST_DEVICE int get_neighbor_replay_cell_linear_index_for_shading(float3 shading_point, Xorshift32Generator& rng, bool jitter = false) const
+	{
+		int cell_linear_index = get_cell_linear_index_from_world_pos(shading_point, &rng, jitter);
+		if (cell_linear_index < 0 || cell_linear_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
+			return -1;
+
+		// Advancing the RNG to mimic 'get_reservoir_for_shading_from_world_pos'
+		if (grid_fill.reservoirs_count_per_grid_cell > 1)
+			rng.random_index(grid_fill.reservoirs_count_per_grid_cell);
+
+		return cell_linear_index;
 	}
 
 	/**
