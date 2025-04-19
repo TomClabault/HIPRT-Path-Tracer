@@ -28,6 +28,8 @@ struct ReGIRGridFillSettings
 	// How many reservoirs are going to be produced per each cell of the grid
 	int reservoirs_count_per_grid_cell = 48;
 
+	bool include_cosine_term_target_function = true;
+
 	// This is a linear buffer that contains enough space for 'get_total_number_of_reservoirs_ReGIR()' reservoirs
 	ReGIRReservoir* grid_buffers = nullptr;
 	// A buffer that contains a point for each grid cell.
@@ -38,7 +40,8 @@ struct ReGIRGridFillSettings
 	// 
 	// That point is guaranteed to be on a valid surface of the scene and can be used as the origin
 	// of shadow rays during visibility reuse
-	AtomicType<int>* representative_points_pixel_index = nullptr;
+	//AtomicType<int>* representative_points_pixel_index = nullptr;
+	int* representative_points_pixel_index = nullptr;
 };
 
 struct ReGIRTemporalReuseSettings
@@ -76,7 +79,7 @@ struct ReGIRShadingSettings
 	int cell_reservoir_resample_per_shading_point = 1;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_cell_jittering = true;
+	bool do_cell_jittering = false;
 };
 
 struct ReGIRSettings
@@ -100,7 +103,7 @@ struct ReGIRSettings
 
 	HIPRT_HOST_DEVICE float3 get_cell_center_from_world_pos(float3 world_point) const
 	{
-		return get_cell_center_from_linear(get_cell_linear_index_from_world_pos(world_point));
+		return get_cell_center_from_linear(get_linear_cell_index_from_world_pos(world_point));
 	}
 
 	HIPRT_HOST_DEVICE float3 get_cell_center_from_linear(unsigned int linear_cell_index) const
@@ -113,7 +116,7 @@ struct ReGIRSettings
 		return grid.grid_origin + cell_size * cell_index_xyz_float + cell_size / 2.0f;
 	}
 
-	HIPRT_HOST_DEVICE int get_cell_linear_index_from_world_pos(float3 world_position, Xorshift32Generator* rng = nullptr, bool jitter = false) const
+	HIPRT_HOST_DEVICE int get_linear_cell_index_from_world_pos(float3 world_position, Xorshift32Generator* rng = nullptr, bool jitter = false) const
 	{
 		if (jitter)
 			world_position += (make_float3(rng->operator()(), rng->operator()(), rng->operator()()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f)) * get_cell_size() / 2.0f;
@@ -131,7 +134,7 @@ struct ReGIRSettings
 		return cell_xyz.x + cell_xyz.y * grid.grid_resolution.x + cell_xyz.z * grid.grid_resolution.x * grid.grid_resolution.y;
 	}
 
-	HIPRT_HOST_DEVICE int get_cell_linear_index_from_xyz(int3 xyz_cell_index) const
+	HIPRT_HOST_DEVICE int get_linear_cell_index_from_xyz(int3 xyz_cell_index) const
 	{
 		if (xyz_cell_index.x < 0 || xyz_cell_index.x >= grid.grid_resolution.x 
 			|| xyz_cell_index.y < 0 || xyz_cell_index.y >= grid.grid_resolution.y
@@ -165,8 +168,8 @@ struct ReGIRSettings
 	 */
 	HIPRT_HOST_DEVICE ReGIRReservoir get_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false, int* OUT_DEBUG_CELL_INDEX = nullptr) const
 	{
-		int cell_linear_index = get_cell_linear_index_from_world_pos(shading_point, &rng, jitter);
-		if (cell_linear_index < 0 || cell_linear_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
+		int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point, &rng, jitter);
+		if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
 		{
 			out_point_outside_of_grid = true;
 			if (OUT_DEBUG_CELL_INDEX)
@@ -177,27 +180,27 @@ struct ReGIRSettings
 
 
 		if (OUT_DEBUG_CELL_INDEX)
-			*OUT_DEBUG_CELL_INDEX = cell_linear_index;
+			*OUT_DEBUG_CELL_INDEX = linear_cell_index;
 		out_point_outside_of_grid = false;
 
 		int random_reservoir_index_in_cell = 0;
 		if (grid_fill.reservoirs_count_per_grid_cell > 1)
 			random_reservoir_index_in_cell = rng.random_index(grid_fill.reservoirs_count_per_grid_cell);
 
-		return get_reservoir_for_shading_from_linear_index(cell_linear_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
+		return get_reservoir_for_shading_from_linear_index(linear_cell_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
 	}
 
-	HIPRT_HOST_DEVICE int get_neighbor_replay_cell_linear_index_for_shading(float3 shading_point, Xorshift32Generator& rng, bool jitter = false) const
+	HIPRT_HOST_DEVICE int get_neighbor_replay_linear_cell_index_for_shading(float3 shading_point, Xorshift32Generator& rng, bool jitter = false) const
 	{
-		int cell_linear_index = get_cell_linear_index_from_world_pos(shading_point, &rng, jitter);
-		if (cell_linear_index < 0 || cell_linear_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
+		int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point, &rng, jitter);
+		if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
 			return -1;
 
 		// Advancing the RNG to mimic 'get_reservoir_for_shading_from_world_pos'
 		if (grid_fill.reservoirs_count_per_grid_cell > 1)
 			rng.random_index(grid_fill.reservoirs_count_per_grid_cell);
 
-		return cell_linear_index;
+		return linear_cell_index;
 	}
 
 	/**
@@ -234,27 +237,24 @@ struct ReGIRSettings
 			grid_fill.grid_buffers[temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid] = reservoir;
 	}
 
-	HIPRT_HOST_DEVICE int get_representative_point_index(int cell_linear_index) const
+	HIPRT_HOST_DEVICE int get_cell_representative_pixel_index(int linear_cell_index) const
 	{
-		return grid_fill.representative_points_pixel_index[cell_linear_index];
+	    return grid_fill.representative_points_pixel_index[linear_cell_index];
 	}
 
 	HIPRT_HOST_DEVICE void store_representative_point_index(float3 shading_point, int pixel_index)
 	{
-		int cell_linear_index = get_cell_linear_index_from_world_pos(shading_point);
-		if (cell_linear_index < 0 || cell_linear_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
+		int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point);
+		if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
 			// Outside of the grid
 			return;
 
-			// #ifdef __KERNELCC__
-			// hippt::atomic_compare_exchange(&grid_fill.representative_points_pixel_index[cell_linear_index], -1, pixel_index);
-			// #endif
-		grid_fill.representative_points_pixel_index[cell_linear_index] = pixel_index;
-	}
+		grid_fill.representative_points_pixel_index[linear_cell_index] = pixel_index;
+}
 
 	HIPRT_HOST_DEVICE ColorRGB32F get_random_cell_color(float3 position) const
 	{
-		int cell_index = get_cell_linear_index_from_world_pos(position);
+		int cell_index = get_linear_cell_index_from_world_pos(position);
 
 		return ColorRGB32F::random_color(cell_index);
 	}
@@ -291,13 +291,15 @@ struct ReGIRSettings
 			spatial_reuse.output_grid[reservoir_index] = ReGIRReservoir();
 	}
 
-	bool DEBUG_INCLUDE_CANONICAL = false;
+	bool DEBUG_INCLUDE_CANONICAL = true;
 
 	ReGIRGridSettings grid;
 	ReGIRGridFillSettings grid_fill;
 	ReGIRTemporalReuseSettings temporal_reuse;
 	ReGIRSpatialReuseSettings spatial_reuse;
 	ReGIRShadingSettings shading;
+
+	bool use_representative_points = true;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.1f;

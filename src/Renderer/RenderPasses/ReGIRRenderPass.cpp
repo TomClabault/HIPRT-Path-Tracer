@@ -166,7 +166,8 @@ void ReGIRRenderPass::update_render_data()
 		m_render_data->render_settings.regir_settings.grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 
 		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = m_spatial_reuse_output_grid_buffer.get_device_pointer();
-		m_render_data->render_settings.regir_settings.grid_fill.representative_points_pixel_index = reinterpret_cast<AtomicType<int>*>(m_representative_points_g_buffer_index.get_device_pointer());
+		// m_render_data->render_settings.regir_settings.grid_fill.representative_points_pixel_index = reinterpret_cast<AtomicType<int>*>(m_representative_points_g_buffer_index.get_device_pointer());
+		m_render_data->render_settings.regir_settings.grid_fill.representative_points_pixel_index = m_representative_points_g_buffer_index.get_device_pointer();
 	}
 	else
 	{
@@ -179,6 +180,12 @@ void ReGIRRenderPass::update_render_data()
 void ReGIRRenderPass::reset()
 {
 	m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
+}
+
+void ReGIRRenderPass::reset_representative_points()
+{
+	if (m_representative_points_g_buffer_index.get_element_count() > 0)
+		m_representative_points_g_buffer_index.memset_whole_buffer(-1);	
 }
 
 bool ReGIRRenderPass::is_render_pass_used() const

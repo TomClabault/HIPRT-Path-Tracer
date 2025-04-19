@@ -13,9 +13,28 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE float ReGIR_grid_fill_evaluate_target_function(float3 cell_center, ColorRGB32F sample_emission, float3 sample_position)
+template <bool includeVisibility>
+HIPRT_HOST_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderData& render_data, int linear_cell_index, ColorRGB32F sample_emission, float3 sample_position, Xorshift32Generator& rng)
 {
-	return sample_emission.luminance() / hippt::length2(cell_center - sample_position);
+	int pixel_index = render_data.render_settings.regir_settings.get_cell_representative_pixel_index(linear_cell_index);
+
+    int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, linear_cell_index, pixel_index);
+    float3 representative_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index, pixel_index);
+	float3 representative_normal = ReGIR_get_cell_representative_shading_normal(render_data, linear_cell_index, pixel_index);
+
+	float3 to_light_direction = sample_position - representative_point;
+	float distance_to_light = hippt::length(to_light_direction);
+	to_light_direction /= distance_to_light;
+
+	float target_function = sample_emission.luminance() / hippt::square(distance_to_light);
+	if (representative_primitive_index != -1 && render_data.render_settings.regir_settings.grid_fill.include_cosine_term_target_function)
+		// We do have a representative normal, taking the cosine term into account
+		target_function *= hippt::max(0.0f, hippt::dot(representative_normal, to_light_direction));
+
+	if constexpr (includeVisibility)
+		target_function *= ReGIR_grid_cell_visibility_test(render_data, representative_point, representative_primitive_index, sample_position, rng);
+
+	return target_function;
 }
 
 HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
@@ -71,25 +90,15 @@ HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRender
 }
 
 HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by_internal(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample,
-	int linear_cell_index, float3 cell_center, Xorshift32Generator& rng)
+	int linear_cell_index, Xorshift32Generator& rng)
 {
-	bool target_function_ok = true;
-
-	target_function_ok &= ReGIR_grid_fill_evaluate_target_function(cell_center, light_sample.emission, light_sample.point_on_light) > 0.0f;
-
-#if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
-	target_function_ok &= ReGIR_grid_cell_visibility_test(render_data, linear_cell_index, light_sample.point_on_light, rng);
-#endif
-
-	return target_function_ok;
+	return ReGIR_grid_fill_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility>(render_data, linear_cell_index, light_sample.emission, light_sample.point_on_light, rng) > 0.0f;
 }
 
 HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, int linear_cell_index,
 	Xorshift32Generator& rng)
 {
-	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, light_sample,
-		linear_cell_index, render_data.render_settings.regir_settings.get_cell_center_from_linear(linear_cell_index), 
-		rng);
+	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, light_sample, linear_cell_index, rng);
 }
 
 #endif

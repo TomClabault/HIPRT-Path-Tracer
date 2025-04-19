@@ -43,6 +43,7 @@ const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION
 const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY = "TrianglePointSamplingStrategy";
 
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY = "ReGIR_GridFillLightSamplingBaseStrategy";
+const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY = "ReGIR_GridFillTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF = "ReGIR_ShadingResamplingIncludeBSDF";
 const std::string GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE = "ReGIR_DoVisibilityReuse";
@@ -111,6 +112,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY,
 
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY,
+	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF,
 	GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE,
@@ -183,6 +185,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY] = std::make_shared<int>(TrianglePointSamplingStrategy);
 
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY] = std::make_shared<int>(ReGIR_GridFillLightSamplingBaseStrategy);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReGIR_GridFillTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF] = std::make_shared<int>(ReGIR_ShadingResamplingIncludeBSDF);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE] = std::make_shared<int>(ReGIR_DoVisibilityReuse);

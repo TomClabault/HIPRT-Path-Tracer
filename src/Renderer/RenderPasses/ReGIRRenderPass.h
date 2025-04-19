@@ -53,6 +53,7 @@ public:
 	virtual void update_render_data() override;
 
 	virtual void reset() override;
+	void reset_representative_points();
 
 	virtual bool is_render_pass_used() const override;
 

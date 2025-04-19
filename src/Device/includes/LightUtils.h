@@ -154,7 +154,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
 HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_regir(
     const HIPRTRenderData& render_data,
-    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, 
+    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
     bool& shading_point_outside_of_grid,
     Xorshift32Generator& random_number_generator)
@@ -193,7 +193,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
     // may cause the grid cell to produce no valid reservoir at all so we need canonical samples to
     // cover those cases for unbiased results
-#if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
+    if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE || render_data.render_settings.regir_settings.grid_fill.include_cosine_term_target_function)
     {
         if (render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL)
         {
@@ -212,7 +212,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
                 float mis_weight = 1.0f;// / mis_weight_denom;
                 for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
                 {
-                    int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_cell_linear_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+                    int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_linear_cell_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
                     if (neighbor_cell_index == -1)
                         continue;
@@ -233,7 +233,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
             }
         }
     }
-#endif
 
     if (out_reservoir.weight_sum == 0.0f)
         return LightSampleInformation();

@@ -7,6 +7,7 @@
 #define DEVICE_KERNELS_REGIR_VISIBILITY_REUSE_H
 
 #include "Device/includes/Intersect.h"
+#include "Device/includes/ReSTIR/ReGIR/Representative.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -16,42 +17,27 @@
  * 
  * Returns true if unoccluded
  */
-HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, int linear_cell_index, float3 point_on_light, Xorshift32Generator& rng)
+HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, float3 representative_point, int representative_primitive_index, float3 point_on_light, Xorshift32Generator& rng)
 {
-    int pixel_index_for_representative_point = render_data.render_settings.regir_settings.get_representative_point_index(linear_cell_index);
-    if (pixel_index_for_representative_point < 0 || pixel_index_for_representative_point   >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
-    {
-        static int counter = 0;
-        
-        if (counter++ % 4096 == 0)
-            printf("Nope: %d\n", pixel_index_for_representative_point );
-
-        return false;
-    }
-
-    int representative_primitive_index;
-    float3 shadow_ray_origin;
-    if (pixel_index_for_representative_point == -1)
-    {
-        // No representative point yet, using the center of the cell
-        shadow_ray_origin = render_data.render_settings.regir_settings.get_cell_center_from_linear(linear_cell_index);
-        representative_primitive_index = -1;
-    }
-    else
-    {
-        shadow_ray_origin = render_data.g_buffer.primary_hit_position[pixel_index_for_representative_point];
-        representative_primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index_for_representative_point];
-    }
-
-    float3 to_light_direction = point_on_light - shadow_ray_origin;
+    float3 to_light_direction = point_on_light - representative_point;
     float distance_to_light = hippt::length(to_light_direction);
     to_light_direction /= distance_to_light;
 
     hiprtRay shadow_ray;
-    shadow_ray.origin = shadow_ray_origin;
+    shadow_ray.origin = representative_point;
     shadow_ray.direction = to_light_direction;
 
     return !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, representative_primitive_index, 0, rng);
+}
+
+HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, int linear_cell_index, float3 point_on_light, Xorshift32Generator& rng)
+{
+    int pixel_index = render_data.render_settings.regir_settings.get_cell_representative_pixel_index(linear_cell_index);
+
+    int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, linear_cell_index, pixel_index);
+    float3 representative_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index, pixel_index);
+
+    return ReGIR_grid_cell_visibility_test(render_data, representative_point, representative_primitive_index, point_on_light, rng);
 }
 
 HIPRT_HOST_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_data, const ReGIRReservoir& current_reservoir,
