@@ -74,6 +74,14 @@ extern ImGuiLogger g_imgui_logger;
 //		- Always tracing from the center of the cell may be always broken depending on the geometry of the scene so maybe we want to trace from the center of the cell as a default but as path tracing progresses, we want to save one point on the surface of geometry in that cell and use that point to trace shadow rays from onwards, that way we're always tracing from a valid surface in the grid cell
 //		- And with that new "representative point" for each cell, we can also have the normal to evaluate the cosine term
 // - Can we do temporal reuse without storing past grid (VRAM please)? Same as in ReSTIR DI?
+// - For performance, at shading time when resampling the reservoirs, there may be only a few materials that benefit from the BSDF in the resampling target function because lambertian doesn't care, mirrors don't care, specular don't care, really it's only materials at like 0.3 roughness ish
+// - Looking at the average contribution of cells seems to be giving some good metric on the performance of the sampling per cell no? What can we do with that info? Adaptive sampling somehow?
+// - We can include the cosine term of the geometry term in the target function
+// - Are we really chaining spatial and temporal reuse?
+// - Try to find a case where temporal reuse erellay helps and then try the approach of having only one temporal grid instead of 8 and see if that still works well
+// - Cull lights that have too low a contribution during grid fill. Maybe some power function or something to keep things unbiased, not just plain reject
+// - We can cull back facing lights during grid fill
+// - For tracing rays in grid fill / spatial reuse, there's massive performance to gain from using a shared mem stack for the BVH traversal but we're going to need to split those kernels into multiple calls to avoid overloading the BVH global stack buffer already allocated (or we're going to need to allocate more but VRAM please)
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?
