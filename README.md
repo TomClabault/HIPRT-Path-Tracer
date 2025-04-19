@@ -86,7 +86,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Nested dielectrics support 
 	- Handling with priorities as proposed in [\[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]](https://www.researchgate.net/publication/247523037_Simple_Nested_Dielectrics_in_Ray_Traced_Images)
 - A Low-Distortion Map Between Triangle and Square [\[Heitz, 2019\]](https://hal.science/hal-02073696v2/document)
-- Per-pixel adaptive sampling
+- Per-pixel variance based adaptive sampling
 - Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
 ### UI
 - Interactive ImGui interface

@@ -51,7 +51,6 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - The cells that weren't touched in the last frame shouldn't be rebuilt in the grid fill
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
-// - Maybe we can have something that say that if after 16 frames, a cell of regir has only produced 0 contributions samples, then it's an occluded cell and we shouldn't update it anymore during grid fill
 // - Only rebuild the ReGIR grid every N frames?
 // - Can we have some kind of visibility percentage grid that we can use during the resampling to help with visibility noise? 
 //		- We would have a voxel grid on top of the ReGIR grid. 
@@ -70,6 +69,8 @@ extern ImGuiLogger g_imgui_logger;
 //		- Maybe what we can do for the problem a the grid cell center being inside an objects is to always include some canonical samples in the resampling process to cover the cases where the visibility would fail (this would require proper 1/Z mis weights though)
 // - When building a grid around the camera, the size of the voxel can be chosen such that the projected bounding box of a voxel spans a certain amount of pixels on screen ---> maybe this can be done separately for each dimensions
 // - Right now, ReGIR's temporal reuse only softens black pixels (no good sample) because of the MIS weights, something better to do?
+//		- This may actually be because all samples are pretty good from the point of view of the target function --> all samples are equal ---> same weights --> 1/M --> averaging.
+//		- But in the case where the sampling is poor and neighbors help a lot, the story may be different
 // - For the visibility reuse of ReGIR, maybe we can just trace from the center of the cell and if at shading time, the reservoir is 0, we know that this must be because the reservoir is occluded for that sample so we can just draw a canonical candidate instead there
 //		- Always tracing from the center of the cell may be always broken depending on the geometry of the scene so maybe we want to trace from the center of the cell as a default but as path tracing progresses, we want to save one point on the surface of geometry in that cell and use that point to trace shadow rays from onwards, that way we're always tracing from a valid surface in the grid cell
 //		- And with that new "representative point" for each cell, we can also have the normal to evaluate the cosine term

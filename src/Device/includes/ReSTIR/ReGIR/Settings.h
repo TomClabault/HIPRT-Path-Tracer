@@ -51,7 +51,7 @@ struct ReGIRSpatialReuseSettings
 		output_grid[linear_reservoir_index_in_grid] = reservoir;
 	}
 
-	bool do_spatial_reuse = true;
+	bool do_spatial_reuse = false;
 
 	int spatial_neighbor_reuse_count = 128;
 	int spatial_reuse_radius = 3;
@@ -67,7 +67,7 @@ struct ReGIRShadingSettings
 	int cell_reservoir_resample_per_shading_point = 1;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_cell_jittering = true;
+	bool do_cell_jittering = false;
 };
 
 struct ReGIRSettings
@@ -87,6 +87,11 @@ struct ReGIRSettings
 		int index_z = linear_cell_index / (grid.grid_resolution.x * grid.grid_resolution.y);
 		
 		return make_int3(index_x, index_y, index_z);
+	}
+
+	HIPRT_HOST_DEVICE float3 get_cell_center_from_world_pos(float3 world_point) const
+	{
+		return get_cell_center(get_cell_linear_index_from_world_pos(world_point));
 	}
 
 	HIPRT_HOST_DEVICE float3 get_cell_center(unsigned int linear_cell_index) const
@@ -202,9 +207,9 @@ struct ReGIRSettings
 			grid_fill.grid_buffers[temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid] = reservoir;
 	}
 
-	HIPRT_HOST_DEVICE ColorRGB32F get_random_cell_color(float3 position, Xorshift32Generator* rng = nullptr, bool jitter = true) const
+	HIPRT_HOST_DEVICE ColorRGB32F get_random_cell_color(float3 position) const
 	{
-		int cell_index = get_cell_linear_index_from_world_pos(position, rng, jitter);
+		int cell_index = get_cell_linear_index_from_world_pos(position);
 
 		return ColorRGB32F::random_color(cell_index);
 	}

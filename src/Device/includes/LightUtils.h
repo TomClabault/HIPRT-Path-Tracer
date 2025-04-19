@@ -145,6 +145,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     return out_sample;
 }
 
+// Forward declaration for use in 'sample_one_emissive_triangle_regir' below
+template <int samplingStrategy>
+HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data,
+    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
+    int last_hit_primitive_index, RayPayload& ray_payload,
+    Xorshift32Generator& random_number_generator);
+
 HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_regir(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, 
@@ -168,7 +175,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
         ColorRGB32F current_emission = cell_reservoir.sample.emission;
 
         // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
-        float mis_weight = 1.0f / render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
+        float mis_weight = 0.5f;// 1.0f / render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
         float target_function = ReGIR_shading_evaluate_target_function(render_data, 
             shading_point, view_direction, shading_normal, geometric_normal, 
             last_hit_primitive_index, ray_payload,
@@ -178,6 +185,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
         if (out_reservoir.stream_reservoir(mis_weight, target_function, cell_reservoir, random_number_generator))
             picked_sample_emission = current_emission;
     }
+
+    // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
+    // may cause the grid cell to produce no valid reservoir at all
+#if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
+    {
+        LightSampleInformation canonical_light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
+            render_data,
+            shading_point, view_direction, shading_normal, geometric_normal,
+            last_hit_primitive_index, ray_payload,
+            random_number_generator);
+
+        if (canonical_light_sample.area_measure_pdf > 0.0f)
+        {
+            float target_function = ReGIR_shading_evaluate_target_function(render_data,
+                shading_point, view_direction, shading_normal, geometric_normal,
+                last_hit_primitive_index, ray_payload,
+                canonical_light_sample.point_on_light, canonical_light_sample.light_source_normal, canonical_light_sample.emission,
+                random_number_generator);
+            float source_pdf = canonical_light_sample.area_measure_pdf;
+            float mis_weight = 1.0f / (1.0f + ReGIR_shading_can_sample_be_produced_by(render_data, canonical_light_sample, shading_point, random_number_generator));
+
+            out_reservoir.stream_sample(mis_weight, target_function, source_pdf, canonical_light_sample, random_number_generator);
+        }
+    }
+#endif
 
     if (out_reservoir.weight_sum == 0.0f)
         return LightSampleInformation();
