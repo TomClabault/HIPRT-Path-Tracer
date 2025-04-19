@@ -83,6 +83,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Cull lights that have too low a contribution during grid fill. Maybe some power function or something to keep things unbiased, not just plain reject
 // - We can cull back facing lights during grid fill
 // - For tracing rays in grid fill / spatial reuse, there's massive performance to gain from using a shared mem stack for the BVH traversal but we're going to need to split those kernels into multiple calls to avoid overloading the BVH global stack buffer already allocated (or we're going to need to allocate more but VRAM please)
+// - For visibility reuse canonical candidates, produce them from non-visibility-checked-ReGIR instead of vanilla power sampling
+// - Many retries if the reservoir that was picked for shading was visibility-reuse-killed
+// - Maybe we can fix the jittering PER FRAME such that a given shading point only reuses from a single random neighboring cells instead of multiple neighboring cells when resampling multiple reservoirs. This may simplify MIS weights quite a bit at the cost of artifacts (but yet to try if the artifacts are actually bad or not)
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - hardcode the reused neighbor to be us and see what that does?

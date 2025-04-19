@@ -84,6 +84,13 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 
 			updated = true;
 		}
+
+		if (m_representative_points_g_buffer_index.get_element_count() != m_render_data->render_settings.regir_settings.get_number_of_cells())
+		{
+			m_representative_points_g_buffer_index.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+
+			updated = true;
+		}
 	}
 	else
 	{
@@ -97,6 +104,13 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		if (m_spatial_reuse_output_grid_buffer.get_element_count() > 0)
 		{
 			m_spatial_reuse_output_grid_buffer.free();
+
+			updated = true;
+		}
+
+		if (m_representative_points_g_buffer_index.get_element_count() > 0)
+		{
+			m_representative_points_g_buffer_index.free();
 
 			updated = true;
 		}
@@ -151,10 +165,13 @@ void ReGIRRenderPass::update_render_data()
 		m_render_data->render_settings.regir_settings.grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 
 		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = m_spatial_reuse_output_grid_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.grid_fill.representative_points_pixel_index = m_representative_points_g_buffer_index.get_device_pointer();
 	}
 	else
 	{
 		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = nullptr;
+		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = nullptr;
+		m_render_data->render_settings.regir_settings.grid_fill.representative_points_pixel_index = nullptr;
 	}
 }
 
@@ -170,5 +187,5 @@ bool ReGIRRenderPass::is_render_pass_used() const
 
 float ReGIRRenderPass::get_VRAM_usage() const
 {
-	return (m_grid_buffers.get_byte_size() + m_spatial_reuse_output_grid_buffer.get_byte_size()) / 1000000.0f;
+	return (m_grid_buffers.get_byte_size() + m_spatial_reuse_output_grid_buffer.get_byte_size() + m_representative_points_g_buffer_index.get_byte_size()) / 1000000.0f;
 }

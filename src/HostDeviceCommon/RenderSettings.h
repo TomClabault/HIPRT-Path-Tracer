@@ -43,9 +43,6 @@ struct HIPRTRenderSettings
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 
-	ColorRGB32F DEBUG_COLOR;
-	int DEBUG_BOUNCE = 1;
-
 	bool enable_direct = true;
 	bool DEBUG_DO_BSDF_RATIO = false;
 	bool DEBUG_DOUBLE_BSDF_SHADING = false;

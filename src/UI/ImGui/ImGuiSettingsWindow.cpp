@@ -172,8 +172,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
 		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
-	if (ImGui::SliderInt("Debug bounce", &render_settings.DEBUG_BOUNCE, 0, 10))
-		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug Y", &render_settings.debug_y, 0, m_renderer->m_render_resolution.y - 1))
@@ -181,6 +179,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	if (ImGui::SliderInt("Debug X 2", &render_settings.debug_x2, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug Y 2", &render_settings.debug_y2, 0, m_renderer->m_render_resolution.y - 1))
+		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
 		m_render_window->set_render_dirty(true);
 	ImGui::PopItemWidth();
 	if (!ImGui::CollapsingHeader("Render Settings"))

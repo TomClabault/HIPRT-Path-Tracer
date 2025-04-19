@@ -218,8 +218,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer.primary_hit_position[pixel_index] = ray.origin + ray.direction;
         
     render_data.g_buffer.first_hit_prim_index[pixel_index] = intersection_found ? closest_hit_info.primitive_index : -1;
-
     render_data.aux_buffers.pixel_active[pixel_index] = true;
+
+    if (render_data.render_settings.regir_settings.grid_fill.representative_points_pixel_index != nullptr)
+    {
+        // If we have ReGIR enabled, we're going to store in each cell the current intersection point (actually the pixel index)
+        render_data.render_settings.regir_settings.store_representative_point_index(closest_hit_info.inter_point, pixel_index);
+    }
 
     // If we got here, this means that we still have at least one ray active
     if (render_data.render_settings.do_update_status_buffers)

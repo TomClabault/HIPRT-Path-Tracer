@@ -48,10 +48,6 @@ public:
 	virtual bool launch() override;
 	void launch_grid_fill_temporal_reuse();
 	void launch_spatial_reuse();
-	/**
-	 * Positions HIPRTRenderData variables such that the path tracer uses the right buffers during shading
-	 */
-	void onfigure_shading_pass();
 
 	virtual void post_render_update() override;
 	virtual void update_render_data() override;
@@ -71,6 +67,16 @@ private:
 	// accomodate for the grid of the past frames for temporal reuse
 	OrochiBuffer<ReGIRReservoir> m_grid_buffers;
 	OrochiBuffer<ReGIRReservoir> m_spatial_reuse_output_grid_buffer;
+
+	// A buffer that contains a point for each grid cell.
+	// 
+	// The points are not directly contained but rather this contains
+	// the index of the pixel whose point needs to be used. So this pixel
+	// index should be used to read into the G-Buffer.
+	// 
+	// That point is guaranteed to be on a valid surface of the scene and can be used as the origin
+	// of shadow rays during visibility reuse
+	OrochiBuffer<int> m_representative_points_g_buffer_index;
 };
 
 #endif
