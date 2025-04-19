@@ -30,6 +30,15 @@ struct ReGIRGridFillSettings
 
 	// This is a linear buffer that contains enough space for 'get_total_number_of_reservoirs_ReGIR()' reservoirs
 	ReGIRReservoir* grid_buffers = nullptr;
+	// A buffer that contains a point for each grid cell.
+	// 
+	// The points are not directly contained but rather this contains
+	// the index of the pixel whose point needs to be used. So this pixel
+	// index should be used to read into the G-Buffer.
+	// 
+	// That point is guaranteed to be on a valid surface of the scene and can be used as the origin
+	// of shadow rays during visibility reuse
+	int* representative_points_pixel_index = nullptr;
 };
 
 struct ReGIRTemporalReuseSettings
@@ -91,10 +100,10 @@ struct ReGIRSettings
 
 	HIPRT_HOST_DEVICE float3 get_cell_center_from_world_pos(float3 world_point) const
 	{
-		return get_cell_center(get_cell_linear_index_from_world_pos(world_point));
+		return get_cell_center_from_linear(get_cell_linear_index_from_world_pos(world_point));
 	}
 
-	HIPRT_HOST_DEVICE float3 get_cell_center(unsigned int linear_cell_index) const
+	HIPRT_HOST_DEVICE float3 get_cell_center_from_linear(unsigned int linear_cell_index) const
 	{
 		float3 cell_size = get_cell_size();
 
@@ -225,6 +234,21 @@ struct ReGIRSettings
 			grid_fill.grid_buffers[temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid] = reservoir;
 	}
 
+	HIPRT_HOST_DEVICE int get_representative_point_index(int cell_linear_index) const
+	{
+		return grid_fill.representative_points_pixel_index[cell_linear_index];
+	}
+
+	HIPRT_HOST_DEVICE void store_representative_point_index(float3 shading_point, int pixel_index)
+	{
+		int cell_linear_index = get_cell_linear_index_from_world_pos(shading_point);
+		if (cell_linear_index < 0 || cell_linear_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
+			// Outside of the grid
+			return;
+
+		grid_fill.representative_points_pixel_index[cell_linear_index] = pixel_index;
+	}
+
 	HIPRT_HOST_DEVICE ColorRGB32F get_random_cell_color(float3 position) const
 	{
 		int cell_index = get_cell_linear_index_from_world_pos(position);
@@ -232,11 +256,14 @@ struct ReGIRSettings
 		return ColorRGB32F::random_color(cell_index);
 	}
 
+	HIPRT_HOST_DEVICE int get_number_of_cells() const
+	{
+		return grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z;;
+	}
+
 	HIPRT_HOST_DEVICE int get_number_of_reservoirs_per_grid() const
 	{
-		int number_of_cells = grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z;
-
-		return number_of_cells * grid_fill.reservoirs_count_per_grid_cell;
+		return get_number_of_cells() * grid_fill.reservoirs_count_per_grid_cell;
 	}
 
 	HIPRT_HOST_DEVICE int get_total_number_of_reservoirs_ReGIR() const
@@ -260,6 +287,8 @@ struct ReGIRSettings
 		if (spatial_reuse.do_spatial_reuse)
 			spatial_reuse.output_grid[reservoir_index] = ReGIRReservoir();
 	}
+
+	bool DEBUG_INCLUDE_CANONICAL = false;
 
 	ReGIRGridSettings grid;
 	ReGIRGridFillSettings grid_fill;

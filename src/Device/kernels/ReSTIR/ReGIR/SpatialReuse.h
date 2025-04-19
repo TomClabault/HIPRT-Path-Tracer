@@ -89,7 +89,7 @@
         if (neighbor_reservoir.UCW == 0.0f)
             continue;
 
-        float3 cell_center = regir_settings.get_cell_center(linear_center_cell_index);
+        float3 cell_center = regir_settings.get_cell_center_from_linear(linear_center_cell_index);
         float mis_weight = 1.0f;
         float target_function_at_center = ReGIR_grid_fill_evaluate_target_function(cell_center, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light);
 

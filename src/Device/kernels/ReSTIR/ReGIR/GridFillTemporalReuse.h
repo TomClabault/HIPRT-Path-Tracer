@@ -11,6 +11,7 @@
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
+#include "Device/includes/ReSTIR/ReGIR/VisibilityReuse.h"
 
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -60,30 +61,6 @@ HIPRT_HOST_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_da
     return output_reservoir;
 }
 
-HIPRT_HOST_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_data, float3 shadow_ray_origin, const ReGIRReservoir& current_reservoir, 
-    Xorshift32Generator& rng)
-{
-    ReGIRReservoir out_reservoir = current_reservoir;
-
-#if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
-    if (current_reservoir.UCW > 0.0f)
-    {
-        float3 to_light_direction = current_reservoir.sample.point_on_light - shadow_ray_origin;
-        float distance_to_light = hippt::length(to_light_direction);
-        to_light_direction /= distance_to_light;
-
-        hiprtRay shadow_ray;
-        shadow_ray.origin = shadow_ray_origin;
-        shadow_ray.direction = to_light_direction;
-
-        if (evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, -1, 0, rng))
-            out_reservoir.UCW = -1.0f;
-    }
-#endif
-
-    return out_reservoir;
-}
-
 /** 
  * This kernel is in charge of resetting (when necessary) and filling the ReGIR grid.
  * 
@@ -124,7 +101,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     ReGIRReservoir output_reservoir;
     float normalization_weight = regir_settings.grid_fill.sample_count_per_cell_reservoir;
     int linear_cell_index = reservoir_index / regir_settings.grid_fill.reservoirs_count_per_grid_cell;
-    float3 cell_center = regir_settings.get_cell_center(linear_cell_index);
+    float3 cell_center = regir_settings.get_cell_center_from_linear(linear_cell_index);
 
     // Grid fill
     output_reservoir = grid_fill(render_data, regir_settings, reservoir_index, cell_center, random_number_generator);
@@ -137,7 +114,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     output_reservoir.finalize_resampling(normalization_weight);
 
     // Discarding occluded reservoirs with visibility reuse
-    output_reservoir = visibility_reuse(render_data, cell_center, output_reservoir, random_number_generator);
+    output_reservoir = visibility_reuse(render_data, output_reservoir, linear_cell_index, random_number_generator);
 
     regir_settings.store_reservoir(output_reservoir, reservoir_index);
 }
