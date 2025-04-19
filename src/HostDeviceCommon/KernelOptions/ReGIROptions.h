@@ -11,6 +11,7 @@
 #define REGIR_DEBUG_MODE_NO_DEBUG 0
 #define REGIR_DEBUG_MODE_GRID_CELLS 1
 #define REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION 2
+#define REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS 3
 
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -61,7 +62,7 @@
 /**
  * Debug option to color the scene with the grid cells
  */
-#define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
+#define ReGIR_DebugMode REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS
 
 #endif // #ifndef __KERNELCC__
 

@@ -1935,15 +1935,26 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePush("ReGIR Settings debug tree");
 
 			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
-			const char* items[] = { "- No debug", "- Grid cells", "- Average cell-reservoirs contribution" };
+			const char* items[] = { "- No debug", "- Grid cells", "- Average cell-reservoirs contribution", "- Cell representative points" };
 			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 			{
+				if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
+					// Auto settings this to arbitrary 0.1f to help with visualization
+					regir_settings.debug_view_scale_factor = 0.1f;
+
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 			if (regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION)
+			{
 				if (ImGui::SliderFloat("Debug view scale factor", &regir_settings.debug_view_scale_factor, 0.0f, 5.0f))
 					m_render_window->set_render_dirty(true);
+			}
+			else if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
+			{
+				if (ImGui::SliderFloat("Distance to point", &regir_settings.debug_view_scale_factor, 0.0f, 1.0f))
+					m_render_window->set_render_dirty(true);
+			}
 
 			ImGui::TreePop();
 		}

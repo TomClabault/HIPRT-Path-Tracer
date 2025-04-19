@@ -38,7 +38,7 @@ struct ReGIRGridFillSettings
 	// 
 	// That point is guaranteed to be on a valid surface of the scene and can be used as the origin
 	// of shadow rays during visibility reuse
-	int* representative_points_pixel_index = nullptr;
+	AtomicType<int>* representative_points_pixel_index = nullptr;
 };
 
 struct ReGIRTemporalReuseSettings
@@ -125,7 +125,7 @@ struct ReGIRSettings
 		// If a point is on the very edge of the grid, we're going to have one of the coordinates be 'grid_resolution.XXX'
 		// exactly, 16 for a grid resolution of 16 for example. 
 		// 
-		// But that's out of bounds because our grid cells are in [0, 15] so we're sub
+		// But that's out of bounds because our grid cells are in [0, 15] so we're subing 
 		cell_xyz = hippt::min(cell_xyz, grid.grid_resolution - make_int3(1, 1, 1));
 
 		return cell_xyz.x + cell_xyz.y * grid.grid_resolution.x + cell_xyz.z * grid.grid_resolution.x * grid.grid_resolution.y;
@@ -246,6 +246,9 @@ struct ReGIRSettings
 			// Outside of the grid
 			return;
 
+			// #ifdef __KERNELCC__
+			// hippt::atomic_compare_exchange(&grid_fill.representative_points_pixel_index[cell_linear_index], -1, pixel_index);
+			// #endif
 		grid_fill.representative_points_pixel_index[cell_linear_index] = pixel_index;
 	}
 
@@ -297,7 +300,7 @@ struct ReGIRSettings
 	ReGIRShadingSettings shading;
 
 	// Multiplicative factor to multiply the output of some debug views
-	float debug_view_scale_factor = 1.0f;
+	float debug_view_scale_factor = 0.1f;
 };
 
 #endif

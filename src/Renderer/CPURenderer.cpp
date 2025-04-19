@@ -98,6 +98,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     m_regir_state.grid_buffer.resize(m_regir_state.settings.get_total_number_of_reservoirs_ReGIR());
     m_regir_state.spatial_grid_buffer.resize(m_regir_state.settings.get_number_of_reservoirs_per_grid());
+    m_regir_state.representative_pixel_indices = std::vector<AtomicType<int>>(m_regir_state.settings.get_number_of_cells());
 
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
@@ -305,6 +306,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
     m_render_data.render_settings.regir_settings.grid_fill.grid_buffers = m_regir_state.grid_buffer.data();
     m_render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_regir_state.spatial_grid_buffer.data();
+    m_render_data.render_settings.regir_settings.grid_fill.representative_points_pixel_index = m_regir_state.representative_pixel_indices.data();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();

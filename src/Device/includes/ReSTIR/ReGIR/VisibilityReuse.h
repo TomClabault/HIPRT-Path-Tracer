@@ -19,13 +19,29 @@
 HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, int linear_cell_index, float3 point_on_light, Xorshift32Generator& rng)
 {
     int pixel_index_for_representative_point = render_data.render_settings.regir_settings.get_representative_point_index(linear_cell_index);
+    if (pixel_index_for_representative_point < 0 || pixel_index_for_representative_point   >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
+    {
+        static int counter = 0;
+        
+        if (counter++ % 4096 == 0)
+            printf("Nope: %d\n", pixel_index_for_representative_point );
 
+        return false;
+    }
+
+    int representative_primitive_index;
     float3 shadow_ray_origin;
     if (pixel_index_for_representative_point == -1)
+    {
         // No representative point yet, using the center of the cell
         shadow_ray_origin = render_data.render_settings.regir_settings.get_cell_center_from_linear(linear_cell_index);
+        representative_primitive_index = -1;
+    }
     else
+    {
         shadow_ray_origin = render_data.g_buffer.primary_hit_position[pixel_index_for_representative_point];
+        representative_primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index_for_representative_point];
+    }
 
     float3 to_light_direction = point_on_light - shadow_ray_origin;
     float distance_to_light = hippt::length(to_light_direction);
@@ -35,7 +51,7 @@ HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& re
     shadow_ray.origin = shadow_ray_origin;
     shadow_ray.direction = to_light_direction;
 
-    return !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, -1, 0, rng);
+    return !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, representative_primitive_index, 0, rng);
 }
 
 HIPRT_HOST_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_data, const ReGIRReservoir& current_reservoir,
