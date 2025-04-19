@@ -177,6 +177,7 @@ private:
 
         std::vector<ReGIRReservoir> grid_buffer;
         std::vector<ReGIRReservoir> spatial_grid_buffer;
+        std::vector<AtomicType<int>> representative_pixel_indices;
     } m_regir_state;
 
     Image32Bit m_sheen_ltc_params;

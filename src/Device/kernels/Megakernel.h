@@ -178,6 +178,37 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
         ray_payload.ray_color = ColorRGB32F(average_contribution);
     }
+#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS
+    if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+    {
+        float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+        int cell_index = render_data.render_settings.regir_settings.get_cell_linear_index_from_world_pos(primary_hit);
+
+        ColorRGB32F color;
+        int rep_point_index = render_data.render_settings.regir_settings.get_representative_point_index(cell_index);
+        if (rep_point_index != -1)
+        {
+            if (rep_point_index < 0 || rep_point_index   >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
+    {
+        static int counter = 0;
+        // if (counter++ % 1024 == 0)
+        //     printf("Nope mega: %d\n", rep_point_index );
+
+        return;
+    }
+
+            float3 rep_point = render_data.g_buffer.primary_hit_position[rep_point_index];
+
+            // Interpreting debug_view_scale_factor as a distance
+            if (hippt::length(rep_point - primary_hit) < render_data.render_settings.regir_settings.debug_view_scale_factor)
+                color = ColorRGB32F::random_color(rep_point_index + 1);
+        }
+
+        // Scaling by SPP so that the visualization doesn't get darker and darker with increasing number of SPP
+        color *= render_data.render_settings.sample_number + 1;
+
+        ray_payload.ray_color = ColorRGB32F(color);
+    }
 #endif
 #endif
 #endif
