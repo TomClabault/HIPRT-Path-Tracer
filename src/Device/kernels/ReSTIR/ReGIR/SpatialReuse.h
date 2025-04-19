@@ -69,14 +69,14 @@
         }
 
         int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
-        int neighbor_cell_linear_index_in_grid = regir_settings.get_cell_linear_index_from_xyz(neighbor_xyz_cell_index);
-        if (neighbor_cell_linear_index_in_grid == -1)
+        int neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
+        if (neighbor_linear_cell_index_in_grid == -1)
             // Neighbor is outside of the grid
             continue;
         else
             valid_neighbor_count += 1.0f;
 
-        int neighbor_reservoir_linear_index_in_grid = neighbor_cell_linear_index_in_grid * regir_settings.grid_fill.reservoirs_count_per_grid_cell + reservoir_index_in_cell;
+        int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.reservoirs_count_per_grid_cell + reservoir_index_in_cell;
 
         ReGIRReservoir neighbor_reservoir;
         if (regir_settings.temporal_reuse.do_temporal_reuse)
@@ -91,7 +91,7 @@
 
         float3 cell_center = regir_settings.get_cell_center_from_linear(linear_center_cell_index);
         float mis_weight = 1.0f;
-        float target_function_at_center = ReGIR_grid_fill_evaluate_target_function(cell_center, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light);
+        float target_function_at_center = ReGIR_grid_fill_evaluate_target_function<false>(render_data, neighbor_linear_cell_index_in_grid, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
 
         output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
     }

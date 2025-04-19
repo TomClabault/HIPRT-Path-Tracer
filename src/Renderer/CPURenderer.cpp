@@ -52,8 +52,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 598
-#define DEBUG_PIXEL_Y 147
+#define DEBUG_PIXEL_X 500
+#define DEBUG_PIXEL_Y 51
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -98,7 +98,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     m_regir_state.grid_buffer.resize(m_regir_state.settings.get_total_number_of_reservoirs_ReGIR());
     m_regir_state.spatial_grid_buffer.resize(m_regir_state.settings.get_number_of_reservoirs_per_grid());
-    m_regir_state.representative_pixel_indices = std::vector<AtomicType<int>>(m_regir_state.settings.get_number_of_cells());
+    // m_regir_state.representative_pixel_indices = std::vector<AtomicType<int>>(m_regir_state.settings.get_number_of_cells());
+    m_regir_state.representative_pixel_indices = std::vector<int>(m_regir_state.settings.get_number_of_cells());
 
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);

@@ -34,6 +34,13 @@
 #define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_POWER
 
 /**
+ * Whether or not to use a visibility term in the target function used to resample the reservoirs of the grid cells.
+ * 
+ * Probably too expensive to be efficient.
+ */
+#define ReGIR_GridFillTargetFunctionVisibility KERNEL_OPTION_TRUE
+
+/**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */
@@ -50,7 +57,7 @@
  * 
  * This can be expensive but can also lead to substantial gains in quality
  */
-#define ReGIR_DoVisibilityReuse KERNEL_OPTION_TRUE
+#define ReGIR_DoVisibilityReuse KERNEL_OPTION_FALSE
 
 /**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
@@ -62,7 +69,7 @@
 /**
  * Debug option to color the scene with the grid cells
  */
-#define ReGIR_DebugMode REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS
+#define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
 
 #endif // #ifndef __KERNELCC__
 

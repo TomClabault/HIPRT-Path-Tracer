@@ -158,7 +158,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 
-        int cell_index = render_data.render_settings.regir_settings.get_cell_linear_index_from_world_pos(primary_hit);
+        int cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(primary_hit);
 
         float average_contribution = 0.0f;
         for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.reservoirs_count_per_grid_cell; i++)
@@ -182,20 +182,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
-        int cell_index = render_data.render_settings.regir_settings.get_cell_linear_index_from_world_pos(primary_hit);
+        int cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(primary_hit);
 
         ColorRGB32F color;
-        int rep_point_index = render_data.render_settings.regir_settings.get_representative_point_index(cell_index);
+        int rep_point_index = render_data.render_settings.regir_settings.get_cell_representative_pixel_index(cell_index);
         if (rep_point_index != -1)
         {
             if (rep_point_index < 0 || rep_point_index   >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
-    {
-        static int counter = 0;
-        // if (counter++ % 1024 == 0)
-        //     printf("Nope mega: %d\n", rep_point_index );
+            {
+                static int counter = 0;
+                if (counter++ % 50000 == 0)
+                    printf("Nope mega: %d / %d\n", rep_point_index, render_data.random_number);
 
-        return;
-    }
+                return;
+            }
 
             float3 rep_point = render_data.g_buffer.primary_hit_position[rep_point_index];
 

@@ -16,7 +16,7 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index, float3 cell_center,
+HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index, int linear_cell_index,
     Xorshift32Generator& rng)
 {
     ReGIRReservoir grid_fill_reservoir;
@@ -27,7 +27,7 @@ HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, c
         if (light_sample.area_measure_pdf <= 0.0f)
             continue;
 
-        float target_function = ReGIR_grid_fill_evaluate_target_function(cell_center, light_sample.emission, light_sample.point_on_light);
+        float target_function = ReGIR_grid_fill_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility>(render_data, linear_cell_index, light_sample.emission, light_sample.point_on_light, rng);
         float source_pdf = light_sample.area_measure_pdf;
         float mis_weight = 1.0f;
 
@@ -104,7 +104,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     float3 cell_center = regir_settings.get_cell_center_from_linear(linear_cell_index);
 
     // Grid fill
-    output_reservoir = grid_fill(render_data, regir_settings, reservoir_index, cell_center, random_number_generator);
+    output_reservoir = grid_fill(render_data, regir_settings, reservoir_index, linear_cell_index, random_number_generator);
 
     // Temporal reuse
     output_reservoir = temporal_reuse(render_data, regir_settings, reservoir_index, output_reservoir, normalization_weight, random_number_generator);

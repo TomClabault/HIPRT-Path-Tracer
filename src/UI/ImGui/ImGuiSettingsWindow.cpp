@@ -1810,6 +1810,21 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.grid_fill.reservoirs_count_per_grid_cell, 1, 128))
 				m_render_window->set_render_dirty(true);
 
+			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;
+			if (ImGui::Checkbox("Use visibility in target function", &visibility_grid_fill_target_function))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY, visibility_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to use a visibility term in the target function used to resample the reservoirs of the grid cells.\n\n"
+				""
+				"Probably too expensive to be efficient.");
+
+			if (ImGui::Checkbox("Use cosine term in target function", &regir_settings.grid_fill.include_cosine_term_target_function))
+				m_render_window->set_render_dirty(true);
+
 			static bool do_visibility_reuse = ReGIR_DoVisibilityReuse;
 			if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 			{
@@ -1896,40 +1911,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
-			
-
-		bool size_changed = false;
-		static bool use_cube_grid = true;
-		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
-		if (use_cube_grid)
-		{
-			static int grid_size = regir_settings.grid.grid_resolution.x;
-			if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
-			{
-				regir_settings.grid.grid_resolution.x = grid_size;
-				regir_settings.grid.grid_resolution.y = grid_size;
-				regir_settings.grid.grid_resolution.z = grid_size;
-
-				size_changed = true;
-			}
-		}
-		else
-		{
-			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
-			ImGui::SameLine();
-			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
-			ImGui::SameLine();
-			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
-
-			// Back to default size
-			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-		}
-
-		if (size_changed)
-			m_render_window->set_render_dirty(true);
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::CollapsingHeader("Debug"))
 		{
 			ImGui::TreePush("ReGIR Settings debug tree");
@@ -1957,6 +1938,45 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 
 			ImGui::TreePop();
+		}
+			
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		bool size_changed = false;
+		static bool use_cube_grid = true;
+		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+		if (use_cube_grid)
+		{
+			static int grid_size = regir_settings.grid.grid_resolution.x;
+			if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
+			{
+				regir_settings.grid.grid_resolution.x = grid_size;
+				regir_settings.grid.grid_resolution.y = grid_size;
+				regir_settings.grid.grid_resolution.z = grid_size;
+
+				size_changed = true;
+			}
+		}
+		else
+		{
+			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
+			ImGui::SameLine();
+			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
+			ImGui::SameLine();
+			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
+
+			// Back to default size
+			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+		}
+		if (size_changed)
+			m_render_window->set_render_dirty(true);
+
+		if (ImGui::Checkbox("Use representative points", &regir_settings.use_representative_points))
+		{
+			m_renderer->get_ReGIR_render_pass()->reset_representative_points();
+
+			m_render_window->set_render_dirty(true);
 		}
 
 		ImGui::TreePop();
