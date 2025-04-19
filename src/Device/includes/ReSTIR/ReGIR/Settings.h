@@ -26,7 +26,7 @@ struct ReGIRGridFillSettings
 	// How many light samples are resampled into each reservoir of the grid cell
 	int sample_count_per_cell_reservoir = 32;
 	// How many reservoirs are going to be produced per each cell of the grid
-	int reservoirs_count_per_grid_cell = 32;
+	int reservoirs_count_per_grid_cell = 48;
 
 	// This is a linear buffer that contains enough space for 'get_total_number_of_reservoirs_ReGIR()' reservoirs
 	ReGIRReservoir* grid_buffers = nullptr;
