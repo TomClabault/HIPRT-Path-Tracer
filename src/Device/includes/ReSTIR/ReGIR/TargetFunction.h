@@ -37,6 +37,7 @@ HIPRT_HOST_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRend
 	return target_function;
 }
 
+template <bool withVisibility>
 HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
 	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
@@ -61,28 +62,31 @@ HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRender
 	float geometry_term = hippt::abs(hippt::dot(light_source_normal, to_light_direction)) / hippt::square(distance_to_light);
 
 	float target_function = (bsdf_color * light_emission * cosine_term * geometry_term).luminance();
-#if ReGIR_ShadingResamplingTargetFunctionVisibility == KERNEL_OPTION_TRUE
-	if (target_function > 0.0f)
+
+	if constexpr (withVisibility)
 	{
-		hiprtRay shadow_ray;
-		shadow_ray.origin = shading_point;
-		shadow_ray.direction = to_light_direction;
+		if (target_function > 0.0f)
+		{
+			hiprtRay shadow_ray;
+			shadow_ray.origin = shading_point;
+			shadow_ray.direction = to_light_direction;
 
-		if (evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, rng))
-			target_function = 0.0f;
+			if (evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, rng))
+				target_function = 0.0f;
+		}
 	}
-#endif
-
+	
 	return target_function;
 }
 
+template <bool withVisibility>
 HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
 	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	const ReGIRReservoir& reservoir,
 	Xorshift32Generator& rng)
 {
-	return ReGIR_shading_evaluate_target_function(render_data, 
+	return ReGIR_shading_evaluate_target_function<withVisibility>(render_data, 
 		shading_point, view_direction, shading_normal, geometric_normal,
 		last_hit_primitive_index, ray_payload,
 		reservoir.sample.point_on_light, reservoir.sample.light_source_normal.unpack(),

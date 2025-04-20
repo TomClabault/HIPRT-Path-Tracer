@@ -190,6 +190,41 @@ struct ReGIRSettings
 		return get_reservoir_for_shading_from_linear_index(linear_cell_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
 	}
 
+	/**
+	 * If 'out_point_outside_of_grid' is set to true, then the given shading point (+ the jittering) was outside of the grid
+	 * and no reservoir has been gathered
+	 * 
+	 * The try count parameter is for trying to get another random reservoir if the one we picked
+	 * was visibility reuse killed during grid build
+	 */
+	HIPRT_HOST_DEVICE ReGIRReservoir get_reservoir_for_shading_from_world_pos_with_retries(float3 shading_point, bool& out_point_outside_of_grid, int retry_count, Xorshift32Generator& rng, bool jitter = false) const
+	{
+		for (int i = 0; i < retry_count; i++)
+		{
+			int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point, &rng, jitter);
+			if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
+			{
+				out_point_outside_of_grid = true;
+
+				continue;
+			}
+			else
+				out_point_outside_of_grid = false;
+
+			int random_reservoir_index_in_cell = 0;
+			if (grid_fill.reservoirs_count_per_grid_cell > 1)
+				random_reservoir_index_in_cell = rng.random_index(grid_fill.reservoirs_count_per_grid_cell);
+
+			ReGIRReservoir out_reservoir = get_reservoir_for_shading_from_linear_index(linear_cell_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
+			if (out_reservoir.UCW == ReGIRReservoir::VISIBILITY_REUSE_KILLED_UCW)
+				continue;
+			else
+				return out_reservoir;
+		}
+
+		return ReGIRReservoir();
+	}
+
 	HIPRT_HOST_DEVICE int get_neighbor_replay_linear_cell_index_for_shading(float3 shading_point, Xorshift32Generator& rng, bool jitter = false) const
 	{
 		int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point, &rng, jitter);

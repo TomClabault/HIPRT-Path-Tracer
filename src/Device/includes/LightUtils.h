@@ -170,8 +170,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
     {
-        int DEBUG_OUT;
-        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering, &DEBUG_OUT);
+        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_world_pos_with_retries(shading_point, shading_point_outside_of_grid, 8, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
         if (shading_point_outside_of_grid)
             continue;
@@ -181,8 +180,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
         // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
         float mis_weight_denom = render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE);
-        float mis_weight = 1.0f;// / mis_weight_denom;
-        float target_function = ReGIR_shading_evaluate_target_function(render_data, 
+        float mis_weight = 1.0f;
+        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data, 
             shading_point, view_direction, shading_normal, geometric_normal, 
             last_hit_primitive_index, ray_payload, cell_reservoir,
             random_number_generator);
@@ -209,7 +208,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
                 neighbor_rng.m_state.seed = neighbor_rng_seed;
 
                 float mis_weight_denom = 1.0f;
-                float mis_weight = 1.0f;// / mis_weight_denom;
                 for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
                 {
                     int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_linear_cell_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
@@ -218,17 +216,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
                         continue;
 
                     if (ReGIR_shading_can_sample_be_produced_by(render_data, canonical_light_sample, neighbor_cell_index, random_number_generator))
-                        mis_weight = 0.0f;
-                    //mis_weight_denom += 1.0f;
+                        mis_weight_denom += 1.0e30f;
                 }
 
-                float target_function = ReGIR_shading_evaluate_target_function(render_data,
+                float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data,
                     shading_point, view_direction, shading_normal, geometric_normal,
                     last_hit_primitive_index, ray_payload,
                     canonical_light_sample.point_on_light, canonical_light_sample.light_source_normal, canonical_light_sample.emission,
                     random_number_generator);
                 float source_pdf = canonical_light_sample.area_measure_pdf;
-
+                float mis_weight = 1.0f / mis_weight_denom;
                 out_reservoir.stream_sample(mis_weight, target_function, source_pdf, canonical_light_sample, random_number_generator);
             }
         }
