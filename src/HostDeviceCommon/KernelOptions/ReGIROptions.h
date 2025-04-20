@@ -38,13 +38,13 @@
  * 
  * Probably too expensive to be efficient.
  */
-#define ReGIR_GridFillTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */
-#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to include the BSDF at the shading point in the resampling target function when
@@ -57,7 +57,7 @@
  * 
  * This can be expensive but can also lead to substantial gains in quality
  */
-#define ReGIR_DoVisibilityReuse KERNEL_OPTION_FALSE
+#define ReGIR_DoVisibilityReuse KERNEL_OPTION_TRUE
 
 /**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid

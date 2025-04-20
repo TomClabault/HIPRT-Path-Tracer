@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_
 #if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
     if (current_reservoir.UCW > 0.0f)
         if (!ReGIR_grid_cell_visibility_test(render_data, linear_cell_index, current_reservoir.sample.point_on_light, rng))
-            out_reservoir.UCW = -1.0f;
+            out_reservoir.UCW = ReGIRReservoir::VISIBILITY_REUSE_KILLED_UCW;
 #endif
 
     return out_reservoir;
