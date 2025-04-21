@@ -10,8 +10,9 @@
 
 #define REGIR_DEBUG_MODE_NO_DEBUG 0
 #define REGIR_DEBUG_MODE_GRID_CELLS 1
-#define REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION 2
-#define REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS 3
+#define REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION 2
+#define REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION 3
+#define REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS 4
 
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -39,6 +40,14 @@
  * Probably too expensive to be efficient.
  */
 #define ReGIR_GridFillTargetFunctionVisibility KERNEL_OPTION_FALSE
+
+/**
+ * Whether or not to use a the cosine term between the direction to the light sample and the
+ * representative normal of the grid cell in the target function used to resample the reservoirs of the grid cells.
+ *
+ * This has no effect is representative points are not being used
+ */
+#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

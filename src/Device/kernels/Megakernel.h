@@ -153,7 +153,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
         ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit) * (render_data.render_settings.sample_number + 1);
         ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
     }
-#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION
+#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
@@ -161,16 +161,37 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
         int cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(primary_hit);
 
         float average_contribution = 0.0f;
-        for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.reservoirs_count_per_grid_cell; i++)
+        for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell(); i++)
         {
-            int reservoir_index = cell_index * render_data.render_settings.regir_settings.grid_fill.reservoirs_count_per_grid_cell + i;
-
-            ReGIRReservoir reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_linear_index(reservoir_index);
+            ReGIRReservoir reservoir = render_data.render_settings.regir_settings.get_cell_non_canonical_reservoir_from_cell_reservoir_index(cell_index, i);
             average_contribution += reservoir.sample.target_function * reservoir.UCW;
         }
 
         // Averaging
-        average_contribution /= render_data.render_settings.regir_settings.grid_fill.reservoirs_count_per_grid_cell;
+        average_contribution /= render_data.render_settings.regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
+        // Scaling by the debug factor for visualization purposes
+        average_contribution *= render_data.render_settings.regir_settings.debug_view_scale_factor;
+        // Scaling by SPP
+        average_contribution *= (render_data.render_settings.sample_number + 1);
+
+        ray_payload.ray_color = ColorRGB32F(average_contribution);
+    }
+#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION
+    if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+    {
+        float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+
+        int cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(primary_hit);
+
+        float average_contribution = 0.0f;
+        for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.get_canonical_reservoir_count_per_cell(); i++)
+        {
+            ReGIRReservoir reservoir = render_data.render_settings.regir_settings.get_cell_canonical_reservoir_from_cell_reservoir_index(cell_index, i);
+            average_contribution += reservoir.sample.target_function * reservoir.UCW;
+        }
+
+        // Averaging
+        average_contribution /= render_data.render_settings.regir_settings.grid_fill.get_canonical_reservoir_count_per_cell();
         // Scaling by the debug factor for visualization purposes
         average_contribution *= render_data.render_settings.regir_settings.debug_view_scale_factor;
         // Scaling by SPP

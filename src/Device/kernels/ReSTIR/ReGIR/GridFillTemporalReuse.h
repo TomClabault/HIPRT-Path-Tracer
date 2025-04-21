@@ -16,7 +16,7 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index, int linear_cell_index,
+HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index_in_cell, int linear_cell_index,
     Xorshift32Generator& rng)
 {
     ReGIRReservoir grid_fill_reservoir;
@@ -27,7 +27,13 @@ HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, c
         if (light_sample.area_measure_pdf <= 0.0f)
             continue;
 
-        float target_function = ReGIR_grid_fill_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility>(render_data, linear_cell_index, light_sample.emission, light_sample.point_on_light, rng);
+        float target_function;
+        if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
+            target_function = ReGIR_non_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, linear_cell_index, light_sample.emission, light_sample.point_on_light, rng);
+        else
+            // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
+            target_function = ReGIR_non_shading_evaluate_target_function<false, false>(render_data, linear_cell_index, light_sample.emission, light_sample.point_on_light, rng);
+
         float source_pdf = light_sample.area_measure_pdf;
         float mis_weight = 1.0f;
 
@@ -81,7 +87,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
 #ifdef __KERNELCC__
     const uint32_t reservoir_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-    int reservoir_index_in_cell = reservoir_index % regir_settings.grid_fill.reservoirs_count_per_grid_cell;
 
     if (reservoir_index >= regir_settings.get_number_of_reservoirs_per_grid())
         return;
@@ -100,11 +105,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     
     ReGIRReservoir output_reservoir;
     float normalization_weight = regir_settings.grid_fill.sample_count_per_cell_reservoir;
-    int linear_cell_index = reservoir_index / regir_settings.grid_fill.reservoirs_count_per_grid_cell;
+    int reservoir_index_in_cell = reservoir_index % regir_settings.grid_fill.get_total_reservoir_count_per_cell();
+    int linear_cell_index = reservoir_index / regir_settings.grid_fill.get_total_reservoir_count_per_cell();
     float3 cell_center = regir_settings.get_cell_center_from_linear(linear_cell_index);
 
     // Grid fill
-    output_reservoir = grid_fill(render_data, regir_settings, reservoir_index, linear_cell_index, random_number_generator);
+    output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, linear_cell_index, random_number_generator);
 
     // Temporal reuse
     output_reservoir = temporal_reuse(render_data, regir_settings, reservoir_index, output_reservoir, normalization_weight, random_number_generator);
@@ -114,7 +120,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     output_reservoir.finalize_resampling(normalization_weight);
 
     // Discarding occluded reservoirs with visibility reuse
-    output_reservoir = visibility_reuse(render_data, output_reservoir, linear_cell_index, random_number_generator);
+    if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
+        // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
+        output_reservoir = visibility_reuse(render_data, output_reservoir, linear_cell_index, random_number_generator);
 
     regir_settings.store_reservoir(output_reservoir, reservoir_index);
 }

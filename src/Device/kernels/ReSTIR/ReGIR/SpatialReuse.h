@@ -32,8 +32,6 @@
 #ifdef __KERNELCC__
     const uint32_t reservoir_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-    int reservoir_index_in_cell = reservoir_index % regir_settings.grid_fill.reservoirs_count_per_grid_cell;
-
     if (reservoir_index >= regir_settings.get_number_of_reservoirs_per_grid())
         return;
 
@@ -52,7 +50,8 @@
 
     ReGIRReservoir output_reservoir;
 
-    int linear_center_cell_index = reservoir_index / regir_settings.grid_fill.reservoirs_count_per_grid_cell;
+    int reservoir_index_in_cell = reservoir_index % regir_settings.grid_fill.get_total_reservoir_count_per_cell();
+    int linear_center_cell_index = reservoir_index / regir_settings.grid_fill.get_total_reservoir_count_per_cell();
     int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
 
     int selected = 0;
@@ -66,7 +65,7 @@
         {
             float3 offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
             float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
-            
+
             offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
         }
 
@@ -76,7 +75,8 @@
             // Neighbor is outside of the grid
             continue;
 
-        int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.reservoirs_count_per_grid_cell + reservoir_index_in_cell;
+        // Picking the same reservoir cell-index in the a neighbor cell
+        int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
 
         ReGIRReservoir neighbor_reservoir;
         if (regir_settings.temporal_reuse.do_temporal_reuse)
@@ -90,7 +90,12 @@
             continue;
 
         float mis_weight = 1.0f;
-        float target_function_at_center = ReGIR_grid_fill_evaluate_target_function<false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
+        float target_function_at_center;
+        if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
+            target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
+        else
+            // Never using the template visibility/consine terms arguments for canonical reservoirs
+            target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
 
         output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
     }
@@ -100,7 +105,6 @@
     // Now counting the number of neighbors that could have produced this sample for the MIS weight
     // This is 1/Z MIS weights
     float valid_neighbor_count = 0.0f;
-
     if (output_reservoir.weight_sum > 0.0f)
     {
         for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
@@ -123,9 +127,15 @@
                 // Neighbor is outside of the grid
                 continue;
 
-            int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.reservoirs_count_per_grid_cell + reservoir_index_in_cell;
+            int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
 
-            if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
+            if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
+            {
+                if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
+                    valid_neighbor_count += 1.0f;
+            }
+            else
+                // A canonical reservoir can always be produced by anyone
                 valid_neighbor_count += 1.0f;
         }
     }
@@ -133,7 +143,10 @@
     // Normalizing the reservoirs to 1
     output_reservoir.M = 1;
     output_reservoir.finalize_resampling(valid_neighbor_count);
-    output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
+
+    if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
+        // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
+        output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
 
     regir_settings.spatial_reuse.store_reservoir(output_reservoir, reservoir_index);
 }
