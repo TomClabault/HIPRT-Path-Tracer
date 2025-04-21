@@ -170,7 +170,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
     {
-        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_world_pos_with_retries(shading_point, shading_point_outside_of_grid, 8, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+        ReGIRReservoir cell_reservoir = render_data.render_settings.regir_settings.get_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
         if (shading_point_outside_of_grid)
             continue;
@@ -192,7 +192,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
     // may cause the grid cell to produce no valid reservoir at all so we need canonical samples to
     // cover those cases for unbiased results
-    if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE || render_data.render_settings.regir_settings.grid_fill.include_cosine_term_target_function)
+    if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE || ReGIR_GridFillTargetFunctionVisibility == KERNEL_OPTION_TRUE || render_data.render_settings.regir_settings.grid_fill.include_cosine_term_target_function)
     {
         if (render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL)
         {

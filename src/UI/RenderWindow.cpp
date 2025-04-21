@@ -86,15 +86,11 @@ extern ImGuiLogger g_imgui_logger;
 // - For visibility reuse canonical candidates, produce them from non-visibility-checked-ReGIR instead of vanilla power sampling
 // - Many retries if the reservoir that was picked for shading was visibility-reuse-killed
 // - Maybe we can fix the jittering PER FRAME such that a given shading point only reuses from a single random neighboring cells instead of multiple neighboring cells when resampling multiple reservoirs. This may simplify MIS weights quite a bit at the cost of artifacts (but yet to try if the artifacts are actually bad or not)
-// - Pack emission to length + 16 bits per channel
+// - Pack emission to length + 16 bits (maybe even 10? Try also length + RGBE9995 in terms of precision) per channel
+// - Sparse grid somehow? hash table? perfect spatial hasing?
+// - We can do neighbor normal similarity during spatial reuse
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
-// - hardcode the reused neighbor to be us and see what that does?
-// - mismatch in the target function used during the resamplming and in shading.h ?
-// - replace performance presets by thigns like "brute force path tracer", "simple MIS path tracer", ...
-// - add tooltips to Imgui combo box items
-// - add the jacobian rejection threshold in ImGui
-// - investigate why so much noise in the cornell box: probably because of the distance to the light? numerical issues?
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
 // - ReSTIR only load the rest of the reservoir if its UCW isn't 0
 

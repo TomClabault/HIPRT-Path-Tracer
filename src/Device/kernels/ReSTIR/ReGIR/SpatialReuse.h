@@ -46,14 +46,15 @@
 
     // Everyone is going to use the same RNG such that memory accesses on the spatial neighbors are coalesced
     // This is ~2x performance on a 7900XTX
-    Xorshift32Generator spatial_neighbor_rng(wang_hash((render_data.render_settings.sample_number + 1) * render_data.random_number));
+    unsigned int spatial_neighbor_rng_seed = wang_hash((render_data.render_settings.sample_number + 1) * render_data.random_number);
+    Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
 
     ReGIRReservoir output_reservoir;
 
     int linear_center_cell_index = reservoir_index / regir_settings.grid_fill.reservoirs_count_per_grid_cell;
     int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
 
-    float valid_neighbor_count = 0.0f;
+    int selected = 0;
     for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
     {
         int3 offset;
@@ -73,8 +74,6 @@
         if (neighbor_linear_cell_index_in_grid == -1)
             // Neighbor is outside of the grid
             continue;
-        else
-            valid_neighbor_count += 1.0f;
 
         int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.reservoirs_count_per_grid_cell + reservoir_index_in_cell;
 
@@ -86,19 +85,57 @@
             // No temporal reuse, reading from the output of the grid fill buffer
             neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir(neighbor_reservoir_linear_index_in_grid);
 
-        if (neighbor_reservoir.UCW == 0.0f)
+        if (neighbor_reservoir.UCW <= 0.0f)
             continue;
 
-        float3 cell_center = regir_settings.get_cell_center_from_linear(linear_center_cell_index);
         float mis_weight = 1.0f;
-        float target_function_at_center = ReGIR_grid_fill_evaluate_target_function<false>(render_data, neighbor_linear_cell_index_in_grid, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
+        float target_function_at_center = ReGIR_grid_fill_evaluate_target_function<false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
 
+        float tg_before = output_reservoir.sample.target_function;
         output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
+        if (output_reservoir.sample.target_function != tg_before)
+            selected = neighbor_index;
+    }
+
+    spatial_neighbor_rng.m_state.seed = spatial_neighbor_rng_seed;
+
+    // Now counting the number of neighbors that could have produced this sample for the MIS weight
+    // This is 1/Z MIS weights
+    float valid_neighbor_count = 0.0f;
+
+    if (output_reservoir.weight_sum > 0.0f)
+    {
+        for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
+        {
+            int3 offset;
+            if (neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_reuse_count)
+                // The last neighbor reused is the center cell
+                offset = make_int3(0, 0, 0);
+            else
+            {
+                float3 offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
+                float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
+
+                offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
+            }
+
+            int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
+            int neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
+            if (neighbor_linear_cell_index_in_grid == -1)
+                // Neighbor is outside of the grid
+                continue;
+
+            int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.reservoirs_count_per_grid_cell + reservoir_index_in_cell;
+
+            if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
+                valid_neighbor_count += 1.0f;
+        }
     }
 
     // Normalizing the reservoirs to 1
     output_reservoir.M = 1;
     output_reservoir.finalize_resampling(valid_neighbor_count);
+    // output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
 
     regir_settings.spatial_reuse.store_reservoir(output_reservoir, reservoir_index);
 }

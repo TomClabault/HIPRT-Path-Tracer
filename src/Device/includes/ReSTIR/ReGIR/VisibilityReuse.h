@@ -7,38 +7,10 @@
 #define DEVICE_KERNELS_REGIR_VISIBILITY_REUSE_H
 
 #include "Device/includes/Intersect.h"
-#include "Device/includes/ReSTIR/ReGIR/Representative.h"
+#include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
+#include "Device/includes/ReSTIR/ReGIR/VisibilityTest.h"
 
 #include "HostDeviceCommon/RenderData.h"
-
-/**
- * Returns false if the given 'point_on_light' is occluded from the point of view of the
- * representative point of the grid cell given by 'linear_cell_index'
- * 
- * Returns true if unoccluded
- */
-HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, float3 representative_point, int representative_primitive_index, float3 point_on_light, Xorshift32Generator& rng)
-{
-    float3 to_light_direction = point_on_light - representative_point;
-    float distance_to_light = hippt::length(to_light_direction);
-    to_light_direction /= distance_to_light;
-
-    hiprtRay shadow_ray;
-    shadow_ray.origin = representative_point;
-    shadow_ray.direction = to_light_direction;
-
-    return !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, representative_primitive_index, 0, rng);
-}
-
-HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, int linear_cell_index, float3 point_on_light, Xorshift32Generator& rng)
-{
-    int pixel_index = render_data.render_settings.regir_settings.get_cell_representative_pixel_index(linear_cell_index);
-
-    int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, linear_cell_index, pixel_index);
-    float3 representative_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index, pixel_index);
-
-    return ReGIR_grid_cell_visibility_test(render_data, representative_point, representative_primitive_index, point_on_light, rng);
-}
 
 HIPRT_HOST_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_data, const ReGIRReservoir& current_reservoir,
     int linear_cell_index, Xorshift32Generator& rng)
@@ -47,6 +19,7 @@ HIPRT_HOST_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_
 
 #if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
     if (current_reservoir.UCW > 0.0f)
+        //if (!ReGIR_grid_fill_evaluate_target_function<true>(render_data, linear_cell_index, current_reservoir.sample.emission, current_reservoir.sample.point_on_light, rng))
         if (!ReGIR_grid_cell_visibility_test(render_data, linear_cell_index, current_reservoir.sample.point_on_light, rng))
             out_reservoir.UCW = ReGIRReservoir::VISIBILITY_REUSE_KILLED_UCW;
 #endif
