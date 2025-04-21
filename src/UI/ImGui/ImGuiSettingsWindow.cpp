@@ -1807,7 +1807,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 128))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Reservoirs per grid cell", &regir_settings.grid_fill.reservoirs_count_per_grid_cell, 1, 128))
+			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 128))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill.get_canonical_reservoir_count_per_cell_ptr(), 1, 8))
 				m_render_window->set_render_dirty(true);
 
 			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;
@@ -1822,8 +1824,18 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"Probably too expensive to be efficient.");
 
-			if (ImGui::Checkbox("Use cosine term in target function", &regir_settings.grid_fill.include_cosine_term_target_function))
+			static bool cosine_term_grid_fill_target_function = ReGIR_GridFillTargetFunctionCosineTerm;
+			if (ImGui::Checkbox("Use cosine term in target function", &cosine_term_grid_fill_target_function))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM, cosine_term_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to use a the cosine term between the direction to the light sample and the "
+				"representative normal of the grid cell in the target function used to resample the reservoirs of the grid cells.\n\n"
+				""
+				"This has no effect is representative points are not being used.");
 
 			static bool do_visibility_reuse = ReGIR_DoVisibilityReuse;
 			if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
@@ -1916,7 +1928,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePush("ReGIR Settings debug tree");
 
 			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
-			const char* items[] = { "- No debug", "- Grid cells", "- Average cell-reservoirs contribution", "- Cell representative points" };
+			const char* items[] = { "- No debug", "- Grid cells", "- Average non-canonical cell-reservoirs contrib", "- Average canonical cell-reservoirs contrib", "- Cell representative points" };
 			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 			{
 				if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
@@ -1926,7 +1938,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			if (regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_RESERVOIR_CONTRIBUTION)
+			if (regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION || regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION)
 			{
 				if (ImGui::SliderFloat("Debug view scale factor", &regir_settings.debug_view_scale_factor, 0.0f, 5.0f))
 					m_render_window->set_render_dirty(true);
