@@ -171,6 +171,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
 		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
+		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);
@@ -179,8 +181,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	if (ImGui::SliderInt("Debug X 2", &render_settings.debug_x2, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug Y 2", &render_settings.debug_y2, 0, m_renderer->m_render_resolution.y - 1))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
 		m_render_window->set_render_dirty(true);
 	ImGui::PopItemWidth();
 	if (!ImGui::CollapsingHeader("Render Settings"))
@@ -1977,6 +1977,19 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			m_renderer->get_ReGIR_render_pass()->reset_representative_points();
 
 			m_render_window->set_render_dirty(true);
+		}
+		if (regir_settings.use_representative_points)
+		{
+			ImGui::TreePush("Representative points settings tree");
+
+			if (ImGui::Checkbox("Optimize representative points to cell centers", &regir_settings.optimize_representative_points_at_center_of_cell))
+			{
+				m_renderer->get_ReGIR_render_pass()->reset_representative_points();
+
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
 		}
 
 		ImGui::TreePop();

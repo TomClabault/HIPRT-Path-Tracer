@@ -237,21 +237,6 @@ struct ReGIRSettings
 			grid_fill.grid_buffers[temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid] = reservoir;
 	}
 
-	HIPRT_HOST_DEVICE int get_cell_representative_pixel_index(int linear_cell_index) const
-	{
-	    return grid_fill.representative_points_pixel_index[linear_cell_index];
-	}
-
-	HIPRT_HOST_DEVICE void store_representative_point_index(float3 shading_point, int pixel_index)
-	{
-		int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point);
-		if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
-			// Outside of the grid
-			return;
-
-		grid_fill.representative_points_pixel_index[linear_cell_index] = pixel_index;
-}
-
 	HIPRT_HOST_DEVICE ColorRGB32F get_random_cell_color(float3 position) const
 	{
 		int cell_index = get_linear_cell_index_from_world_pos(position);
@@ -300,6 +285,12 @@ struct ReGIRSettings
 	ReGIRShadingSettings shading;
 
 	bool use_representative_points = true;
+	// If true, representative points will be updated at each frame such that representative points that are the closer
+	// to the cell center will be kept.
+	//
+	// If false, representative points are stored at random without preference and this usually yields some weird
+	// distribution of representative points that tends to be closer to the edge of grid cells
+	bool optimize_representative_points_at_center_of_cell = true;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.1f;

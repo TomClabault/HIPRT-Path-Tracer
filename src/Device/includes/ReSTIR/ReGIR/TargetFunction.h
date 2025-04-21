@@ -16,7 +16,7 @@
 template <bool includeVisibility>
 HIPRT_HOST_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderData& render_data, int linear_cell_index, ColorRGB32F sample_emission, float3 sample_position, Xorshift32Generator& rng)
 {
-	int pixel_index = render_data.render_settings.regir_settings.get_cell_representative_pixel_index(linear_cell_index);
+	int pixel_index = ReGIR_get_cell_representative_pixel_index(render_data, linear_cell_index);
 
     int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, linear_cell_index, pixel_index);
     float3 representative_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index, pixel_index);

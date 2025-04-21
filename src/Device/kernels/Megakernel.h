@@ -185,7 +185,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
         int cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(primary_hit);
 
         ColorRGB32F color;
-        int rep_point_index = render_data.render_settings.regir_settings.get_cell_representative_pixel_index(cell_index);
+        int rep_point_index = ReGIR_get_cell_representative_pixel_index(render_data, cell_index);
         if (rep_point_index != -1)
         {
             if (rep_point_index < 0 || rep_point_index   >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
