@@ -27,7 +27,7 @@ struct ReGIRReservoir
 {
 	static constexpr float VISIBILITY_REUSE_KILLED_UCW = -42.0f;
 	
-	HIPRT_HOST_DEVICE void stream_sample(float mis_weight, float target_function, float source_pdf, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
+	HIPRT_HOST_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
 	{
 		float resampling_weight = mis_weight * target_function / source_pdf;
 
@@ -43,10 +43,14 @@ struct ReGIRReservoir
 			sample.emissive_triangle_index = light_sample.emissive_triangle_index;
 
 			sample.target_function = target_function;
+
+			return true;
 		}
+
+		return false;
 	}
 
-	HIPRT_HOST_DEVICE void stream_reservoir(float mis_weight, float target_function, const ReGIRReservoir& other_reservoir, Xorshift32Generator& rng)
+	HIPRT_HOST_DEVICE bool stream_reservoir(float mis_weight, float target_function, const ReGIRReservoir& other_reservoir, Xorshift32Generator& rng)
 	{
 		float resampling_weight = mis_weight * target_function * other_reservoir.UCW;
 
@@ -57,7 +61,11 @@ struct ReGIRReservoir
 		{
 			sample = other_reservoir.sample;
 			sample.target_function = target_function;
+
+			return true;
 		}
+
+		return false;
 	}
 
 	HIPRT_HOST_DEVICE void finalize_resampling(float normalization_weight = 1.0f)

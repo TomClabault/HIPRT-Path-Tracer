@@ -167,6 +167,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     // not sure how that works but more randomness here seems to be getting rid of those correlations issues
     unsigned neighbor_rng_seed = random_number_generator.xorshift32() ^ random_number_generator.xorshift32();
     Xorshift32Generator neighbor_rng(neighbor_rng_seed);
+    int selected_neighbor = -1;
 
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
     {
@@ -179,62 +180,67 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
             continue;
 
         // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
-        float mis_weight_denom = render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE);
         float mis_weight = 1.0f;
         float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data, 
             shading_point, view_direction, shading_normal, geometric_normal, 
             last_hit_primitive_index, ray_payload, cell_reservoir,
             random_number_generator);
 
-        out_reservoir.stream_reservoir(mis_weight, target_function, cell_reservoir, random_number_generator);
+        if (out_reservoir.stream_reservoir(mis_weight, target_function, cell_reservoir, random_number_generator))
+            selected_neighbor = i;
     }
 
     // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
     // may cause the grid cell to produce no valid reservoir at all so we need canonical samples to
     // cover those cases for unbiased results
-    if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE || ReGIR_GridFillTargetFunctionVisibility == KERNEL_OPTION_TRUE || render_data.render_settings.regir_settings.grid_fill.include_cosine_term_target_function)
+    bool do_canonical = (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE || ReGIR_GridFillTargetFunctionVisibility == KERNEL_OPTION_TRUE || render_data.render_settings.regir_settings.grid_fill.include_cosine_term_target_function) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
+    if (do_canonical)
     {
-        if (render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL)
+        LightSampleInformation canonical_light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
+            render_data,
+            shading_point, view_direction, shading_normal, geometric_normal,
+            last_hit_primitive_index, ray_payload,
+            random_number_generator);
+
+        if (canonical_light_sample.area_measure_pdf > 0.0f)
         {
-            LightSampleInformation canonical_light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
-                render_data,
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
+                canonical_light_sample.point_on_light, canonical_light_sample.light_source_normal, canonical_light_sample.emission,
                 random_number_generator);
-
-            if (canonical_light_sample.area_measure_pdf > 0.0f)
-            {
-                // Setting the RNG seed so that we can replay the neighbors in the same order
-                neighbor_rng.m_state.seed = neighbor_rng_seed;
-
-                float mis_weight_denom = 1.0f;
-                for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
-                {
-                    int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_linear_cell_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
-
-                    if (neighbor_cell_index == -1)
-                        continue;
-
-                    if (ReGIR_shading_can_sample_be_produced_by(render_data, canonical_light_sample, neighbor_cell_index, random_number_generator))
-                        mis_weight_denom += 1.0e30f;
-                }
-
-                float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data,
-                    shading_point, view_direction, shading_normal, geometric_normal,
-                    last_hit_primitive_index, ray_payload,
-                    canonical_light_sample.point_on_light, canonical_light_sample.light_source_normal, canonical_light_sample.emission,
-                    random_number_generator);
-                float source_pdf = canonical_light_sample.area_measure_pdf;
-                float mis_weight = 1.0f / mis_weight_denom;
-                out_reservoir.stream_sample(mis_weight, target_function, source_pdf, canonical_light_sample, random_number_generator);
-            }
+            float source_pdf = canonical_light_sample.area_measure_pdf;
+            float mis_weight = 1.0f;
+         
+            if (out_reservoir.stream_sample(mis_weight, target_function, source_pdf, canonical_light_sample, random_number_generator))
+                selected_neighbor = render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
         }
+    }
+
+    float normalization_weight = 0.0f;
+    neighbor_rng.m_state.seed = neighbor_rng_seed;
+    for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + do_canonical; i++)
+    {
+        if (i == selected_neighbor)
+        {
+            normalization_weight += 1.0f;
+
+            continue;
+        }
+
+        int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_linear_cell_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+
+        if (neighbor_cell_index == -1)
+            continue;
+
+        if (ReGIR_shading_can_sample_be_produced_by(render_data, out_reservoir.sample, neighbor_cell_index, random_number_generator))
+            normalization_weight += 1.0f;
     }
 
     if (out_reservoir.weight_sum == 0.0f)
         return LightSampleInformation();
 
-    out_reservoir.finalize_resampling();
+    out_reservoir.finalize_resampling(normalization_weight);
 
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
     out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
