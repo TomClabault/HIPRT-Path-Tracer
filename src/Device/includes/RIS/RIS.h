@@ -8,7 +8,7 @@
 
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/RIS/RIS_Reservoir.h"
 
 #include "HostDeviceCommon/Color.h"

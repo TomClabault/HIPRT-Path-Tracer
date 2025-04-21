@@ -8,7 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 #include "Device/includes/ReSTIR/ReGIR/VisibilityReuse.h"

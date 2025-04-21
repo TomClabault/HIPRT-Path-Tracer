@@ -6,7 +6,7 @@
 #ifndef DEVICE_RESTIR_DI_FINAL_SHADING_H
 #define DEVICE_RESTIR_DI_FINAL_SHADING_H
 
-#include "Device/includes/Envmap.h"
+#include "Device/includes/LightSampling/Envmap.h"
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"

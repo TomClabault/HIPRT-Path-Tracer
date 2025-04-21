@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_LIGHT_SAMPLE_INFORMATION_H
 #define HOST_DEVICE_COMMON_LIGHT_SAMPLE_INFORMATION_H
 
-#include "Device/includes/PDFConversion.h"
+#include "Device/includes/LightSampling/PDFConversion.h"
 
 #include "HostDeviceCommon/Color.h"
 

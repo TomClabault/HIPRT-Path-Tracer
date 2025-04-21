@@ -8,7 +8,7 @@
 
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 
 #include "HostDeviceCommon/RenderData.h"
 

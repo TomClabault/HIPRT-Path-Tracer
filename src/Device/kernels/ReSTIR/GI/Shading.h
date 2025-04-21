@@ -6,11 +6,11 @@
 #ifndef KERNELS_RESTIR_GI_SHADING_H
 #define KERNELS_RESTIR_GI_SHADING_H
 
-#include "Device/includes/Envmap.h"
+#include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/Lights.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/Lights.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"

@@ -6,10 +6,10 @@
 #ifndef KERNELS_RESTIR_DI_LIGHTS_PRESAMPLING_H
 #define KERNELS_RESTIR_DI_LIGHTS_PRESAMPLING_H
 
-#include "Device/includes/Envmap.h"
+#include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
 
 #include "HostDeviceCommon/RenderData.h"

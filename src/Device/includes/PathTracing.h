@@ -6,10 +6,10 @@
 #ifndef DEVICE_INCLUDES_PATH_TRACING_H
 #define DEVICE_INCLUDES_PATH_TRACING_H
 
-#include "Device/includes/Envmap.h"
+#include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/MISBSDFRayReuse.h"
 #include "Device/includes/RussianRoulette.h"
 #include "Device/includes/WarpDirectionReuse.h"
