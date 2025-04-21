@@ -17,7 +17,7 @@ struct ReGIRGridSettings
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
 
-	static constexpr int DEFAULT_GRID_SIZE = 16;
+	static constexpr int DEFAULT_GRID_SIZE = 32;
 	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 };
 
@@ -26,7 +26,7 @@ struct ReGIRGridFillSettings
 	// How many light samples are resampled into each reservoir of the grid cell
 	int sample_count_per_cell_reservoir = 32;
 	// How many reservoirs are going to be produced per each cell of the grid
-	int reservoirs_count_per_grid_cell = 48;
+	int reservoirs_count_per_grid_cell = 16;
 
 	bool include_cosine_term_target_function = true;
 
@@ -63,9 +63,9 @@ struct ReGIRSpatialReuseSettings
 		output_grid[linear_reservoir_index_in_grid] = reservoir;
 	}
 
-	bool do_spatial_reuse = false;
+	bool do_spatial_reuse = true;
 
-	int spatial_neighbor_reuse_count = 5;
+	int spatial_neighbor_reuse_count = 32;
 	int spatial_reuse_radius = 1;
 
 	// Grid that contains the output of the spatial reuse pass
@@ -79,7 +79,7 @@ struct ReGIRShadingSettings
 	int cell_reservoir_resample_per_shading_point = 1;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_cell_jittering = false;
+	bool do_cell_jittering = true;
 };
 
 struct ReGIRSettings
@@ -188,41 +188,6 @@ struct ReGIRSettings
 			random_reservoir_index_in_cell = rng.random_index(grid_fill.reservoirs_count_per_grid_cell);
 
 		return get_reservoir_for_shading_from_linear_index(linear_cell_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
-	}
-
-	/**
-	 * If 'out_point_outside_of_grid' is set to true, then the given shading point (+ the jittering) was outside of the grid
-	 * and no reservoir has been gathered
-	 * 
-	 * The try count parameter is for trying to get another random reservoir if the one we picked
-	 * was visibility reuse killed during grid build
-	 */
-	HIPRT_HOST_DEVICE ReGIRReservoir get_reservoir_for_shading_from_world_pos_with_retries(float3 shading_point, bool& out_point_outside_of_grid, int retry_count, Xorshift32Generator& rng, bool jitter = false) const
-	{
-		for (int i = 0; i < retry_count; i++)
-		{
-			int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point, &rng, jitter);
-			if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
-			{
-				out_point_outside_of_grid = true;
-
-				continue;
-			}
-			else
-				out_point_outside_of_grid = false;
-
-			int random_reservoir_index_in_cell = 0;
-			if (grid_fill.reservoirs_count_per_grid_cell > 1)
-				random_reservoir_index_in_cell = rng.random_index(grid_fill.reservoirs_count_per_grid_cell);
-
-			ReGIRReservoir out_reservoir = get_reservoir_for_shading_from_linear_index(linear_cell_index * grid_fill.reservoirs_count_per_grid_cell + random_reservoir_index_in_cell);
-			if (out_reservoir.UCW == ReGIRReservoir::VISIBILITY_REUSE_KILLED_UCW)
-				continue;
-			else
-				return out_reservoir;
-		}
-
-		return ReGIRReservoir();
 	}
 
 	HIPRT_HOST_DEVICE int get_neighbor_replay_linear_cell_index_for_shading(float3 shading_point, Xorshift32Generator& rng, bool jitter = false) const
