@@ -8,6 +8,7 @@
  
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
+#include "Device/includes/ReSTIR/ReGIR/VisibilityReuse.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -91,10 +92,7 @@
         float mis_weight = 1.0f;
         float target_function_at_center = ReGIR_grid_fill_evaluate_target_function<false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
 
-        float tg_before = output_reservoir.sample.target_function;
         output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
-        if (output_reservoir.sample.target_function != tg_before)
-            selected = neighbor_index;
     }
 
     spatial_neighbor_rng.m_state.seed = spatial_neighbor_rng_seed;
@@ -135,7 +133,7 @@
     // Normalizing the reservoirs to 1
     output_reservoir.M = 1;
     output_reservoir.finalize_resampling(valid_neighbor_count);
-    // output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
+    output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
 
     regir_settings.spatial_reuse.store_reservoir(output_reservoir, reservoir_index);
 }

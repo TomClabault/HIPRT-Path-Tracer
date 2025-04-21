@@ -179,6 +179,8 @@ void ReGIRRenderPass::update_render_data()
 
 void ReGIRRenderPass::reset()
 {
+	reset_representative_points();
+
 	m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
 }
 
