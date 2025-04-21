@@ -10,7 +10,7 @@
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/MISBSDFRayReuse.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/DI/FinalShading.h"

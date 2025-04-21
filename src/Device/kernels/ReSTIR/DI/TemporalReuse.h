@@ -10,7 +10,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/ReSTIR/TemporalMISWeight.h"
 #include "Device/includes/ReSTIR/TemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/Surface.h"

@@ -6,7 +6,7 @@
 #ifndef DEVICE_RESTIR_GI_TARGET_FUNCTION_H
 #define DEVICE_RESTIR_GI_TARGET_FUNCTION_H
 
-#include "Device/includes/Lights.h"
+#include "Device/includes/LightSampling/Lights.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"

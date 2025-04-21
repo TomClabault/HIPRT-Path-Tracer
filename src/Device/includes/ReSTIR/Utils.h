@@ -7,9 +7,9 @@
 #define DEVICE_RESTIR_DI_UTILS_H 
 
 #include "Device/includes/Dispatcher.h"
-#include "Device/includes/Envmap.h"
+#include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightUtils.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 

@@ -6,7 +6,7 @@
 #ifndef DEVICE_LIGHT_UTILS_H
 #define DEVICE_LIGHT_UTILS_H
 
-#include "Device/includes/PDFConversion.h"
+#include "Device/includes/LightSampling/PDFConversion.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 
