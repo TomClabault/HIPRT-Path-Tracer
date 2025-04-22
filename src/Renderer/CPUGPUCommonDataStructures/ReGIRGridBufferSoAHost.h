@@ -14,7 +14,7 @@ template <template <typename> typename DataContainer>
 using ReGIRSampleSoAHost = GenericSoA<DataContainer, FP32x3LengthUint10Packed, int, float, float3, Octahedral24BitNormal>;
 
 template <template <typename> typename DataContainer>
-using ReGIRReservoirSoAHost = GenericSoA<DataContainer, float, float, unsigned char>;
+using ReGIRReservoirSoAHost = GenericSoA<DataContainer, float, unsigned char>;
 
 enum ReGIRSampleSoAHostBuffers
 {
@@ -27,7 +27,6 @@ enum ReGIRSampleSoAHostBuffers
 
 enum ReGIRReservoirSoAHostBuffers
 {
-	REGIR_RESERVOIR_WEIGHT_SUM,
 	REGIR_RESERVOIR_UCW,
 	REGIR_RESERVOIR_M
 };
@@ -67,7 +66,6 @@ struct ReGIRGridBufferSoAHost
 		grid_buffer_soa.samples.point_on_light = samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_POINT_ON_LIGHT>().data();
 		grid_buffer_soa.samples.light_source_normal = samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_SOURCE_NORMAL>().data();
 
-		grid_buffer_soa.reservoirs.weight_sum = reservoirs.template get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_WEIGHT_SUM>().data();
 		grid_buffer_soa.reservoirs.UCW = reservoirs.template get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().data();
 		grid_buffer_soa.reservoirs.M = reservoirs.template get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_M>().data();
 

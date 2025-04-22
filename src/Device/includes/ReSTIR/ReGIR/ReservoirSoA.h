@@ -46,7 +46,6 @@ struct ReGIRReservoirSoADevice
 {
 	HIPRT_HOST_DEVICE void store_reservoir(int linear_reservoir_index, const ReGIRReservoir& reservoir)
 	{
-		weight_sum[linear_reservoir_index] = reservoir.weight_sum;
 		UCW[linear_reservoir_index] = reservoir.UCW;
 		M[linear_reservoir_index] = reservoir.M;
 	}
@@ -55,14 +54,12 @@ struct ReGIRReservoirSoADevice
 	{
 		ReGIRReservoir reservoir;
 
-		reservoir.weight_sum = weight_sum[linear_reservoir_index];
 		reservoir.UCW = UCW[linear_reservoir_index];
 		reservoir.M = M[linear_reservoir_index];
 
 		return reservoir;
 	}
 
-	float* weight_sum = nullptr;
 	float* UCW = nullptr;
 
 	unsigned char* M = nullptr;
