@@ -57,7 +57,7 @@ HIPRT_HOST_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_da
 
             ReGIRReservoir past_frame_reservoir = regir_settings.get_temporal_reservoir(reservoir_index, grid_index);
             // M-capping
-            past_frame_reservoir.M = hippt::min(past_frame_reservoir.M, regir_settings.temporal_reuse.m_cap);
+            past_frame_reservoir.M = hippt::min(past_frame_reservoir.M, (unsigned char)regir_settings.temporal_reuse.m_cap);
 
             output_reservoir.stream_reservoir(past_frame_reservoir.M, past_frame_reservoir.sample.target_function, past_frame_reservoir, rng);
             in_out_normalization_weight += past_frame_reservoir.M;

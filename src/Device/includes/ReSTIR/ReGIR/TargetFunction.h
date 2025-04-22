@@ -87,8 +87,8 @@ HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRender
 	return ReGIR_shading_evaluate_target_function<withVisibility>(render_data, 
 		shading_point, view_direction, shading_normal, geometric_normal,
 		last_hit_primitive_index, ray_payload,
-		reservoir.sample.point_on_light, reservoir.sample.light_source_normal.unpack(),
-		reservoir.sample.emission, rng);
+		reservoir.sample.point_on_light, reservoir.light_source_normal.unpack(),
+		reservoir.sample.emission.unpack(), rng);
 }
 
 HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by_internal(const HIPRTRenderData& render_data, ColorRGB32F sample_emission, float3 point_on_light,
@@ -106,7 +106,7 @@ HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRender
 HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const ReGIRSample& light_sample, int linear_cell_index,
 	Xorshift32Generator& rng)
 {
-	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, light_sample.emission, light_sample.point_on_light, linear_cell_index, rng);
+	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, light_sample.emission.unpack(), light_sample.point_on_light, linear_cell_index, rng);
 }
 
 #endif

@@ -12,15 +12,13 @@
 
 struct ReGIRSample
 {
-	ColorRGB32F emission;
+	FP32x3LengthUint10Packed emission;
 	int emissive_triangle_index; // Only needed for ReSTIR DI
 
 	float light_area = 0.0f;
 	// TODO maybe not needed during shading?
 	float target_function = 0.0f;
 	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
-
-	Octahedral24BitNormal light_source_normal;
 };
 
 struct ReGIRReservoir
@@ -36,9 +34,9 @@ struct ReGIRReservoir
 
 		if (rng() < resampling_weight / weight_sum)
 		{
-			sample.light_source_normal = Octahedral24BitNormal::pack_static(light_sample.light_source_normal);
+			light_source_normal = Octahedral24BitNormal::pack_static(light_sample.light_source_normal);
 			sample.point_on_light = light_sample.point_on_light;
-			sample.emission = light_sample.emission;
+			sample.emission.pack(light_sample.emission);
 			sample.light_area = light_sample.light_area;
 			sample.emissive_triangle_index = light_sample.emissive_triangle_index;
 
@@ -78,12 +76,14 @@ struct ReGIRReservoir
 
 	ReGIRSample sample;
 
-	// TODO unsigned char ?
-	int M = 0;
 	// TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
 	float weight_sum = 0.0f;
 	// If the UCW is set to -1, this is because the reservoir was killed by visibility reuse
 	float UCW = 0.0f;
+
+	unsigned char M = 0;
+	// The light source normal is here for padding reasons :(
+	Octahedral24BitNormal light_source_normal;
 };
 
 #endif

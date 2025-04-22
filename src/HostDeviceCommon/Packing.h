@@ -345,6 +345,81 @@ private:
 };
 
 /**
+ * Packs a float3 into 8 bytes (saves 4 bytes) with very good precision
+ * 
+ * This stores the length of the float3 and then normalizes it and then stores
+ * a 10 bit quantized version of each normalized component of the float3
+ */
+struct FP32x3LengthUint10Packed
+{
+	HIPRT_HOST_DEVICE void pack(float3 data)
+	{
+		length = hippt::length(data);
+
+		float3 normalized = data / length;
+
+		// Bringing in [0, 1] from [-1, 1]
+		normalized += make_float3(1.0f, 1.0f, 1.0f);
+		normalized *= 0.5f;
+
+		unsigned int quantized_x = roundf(normalized.x * 1023);
+		unsigned int quantized_y = roundf(normalized.y * 1023);
+		unsigned int quantized_z = roundf(normalized.z * 1023);
+
+		quantized = 0;
+		quantized |= quantized_x;
+		quantized |= quantized_y << 10;
+		quantized |= quantized_z << 20;
+	}
+
+	HIPRT_HOST_DEVICE void pack(ColorRGB32F data)
+	{
+		pack(make_float3(data.r, data.g, data.b));
+	}
+
+	HIPRT_HOST_DEVICE static FP32x3LengthUint10Packed pack_static(float3 data)
+	{
+		FP32x3LengthUint10Packed packed;
+		packed.pack(data);
+
+		return packed;
+	}
+
+	HIPRT_HOST_DEVICE static FP32x3LengthUint10Packed pack_static(ColorRGB32F data)
+	{
+		FP32x3LengthUint10Packed packed;
+		packed.pack(data);
+
+		return packed;
+	}
+
+	HIPRT_HOST_DEVICE ColorRGB32F unpack() const
+	{
+		float3 unpacked = unpack_float3();
+
+		return ColorRGB32F(unpacked.x, unpacked.y, unpacked.z);
+	}
+
+	HIPRT_HOST_DEVICE float3 unpack_float3() const
+	{
+		unsigned int quantized_x = (quantized >> 00) & 0b1111111111;
+		unsigned int quantized_y = (quantized >> 10) & 0b1111111111;
+		unsigned int quantized_z = (quantized >> 20) & 0b1111111111;
+
+		float3 normalized = make_float3(quantized_x / 1023.0f, quantized_y / 1023.0f, quantized_z / 1023.0f);
+		// Back in [-1, 1] from [0, 1]
+		float3 rescaled = normalized * 2.0f - 1.0f;
+		float3 with_length = rescaled * length;
+
+		return with_length;
+	}
+
+private:
+	float length;
+	unsigned quantized;
+};
+
+/**
  * Reference: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
  */
 struct RGBE9995Packed

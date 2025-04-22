@@ -92,10 +92,10 @@
         float mis_weight = 1.0f;
         float target_function_at_center;
         if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
-            target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
+            target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
         else
             // Never using the template visibility/consine terms arguments for canonical reservoirs
-            target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission, neighbor_reservoir.sample.point_on_light, random_number_generator);
+            target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
 
         output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
     }
