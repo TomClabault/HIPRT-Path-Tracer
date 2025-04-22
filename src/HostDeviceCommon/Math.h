@@ -218,6 +218,9 @@ namespace hippt
 	template <typename T>
 	__device__ T atomic_compare_exchange(T* address, T expected, T new_value) { return atomicCAS(address, expected, new_value); }
 
+	template <>
+	__device__ float atomic_compare_exchange(float* p, float cmp, float val) { return __int_as_float(atomicCAS((int*)p, __float_as_int(cmp), __float_as_int(val))); }
+
 	/**
 	 * For t=0, returns a
 	 */
