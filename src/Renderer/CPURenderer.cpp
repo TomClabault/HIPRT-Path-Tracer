@@ -98,12 +98,14 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     m_regir_state.grid_buffer.resize(m_regir_state.settings.get_total_number_of_reservoirs_ReGIR());
     m_regir_state.spatial_grid_buffer.resize(m_regir_state.settings.get_number_of_reservoirs_per_grid());
-    m_regir_state.distance_to_center.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_DISTANCE);
+    m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_regir_state.settings.get_number_of_cells());
+    for (AtomicType<float>& distance : m_regir_state.distance_to_center)
+        distance.store(ReGIRRepresentative::UNDEFINED_DISTANCE);
     m_regir_state.representative_points.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_POINT);
     m_regir_state.representative_normals.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_NORMAL);
     m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_regir_state.settings.get_number_of_cells());
     for (AtomicType<int>& rep_prim : m_regir_state.representative_primitives)
-        rep_prim.store(-1);
+        rep_prim.store(ReGIRRepresentative::UNDEFINED_PRIMITIVE);
 
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);

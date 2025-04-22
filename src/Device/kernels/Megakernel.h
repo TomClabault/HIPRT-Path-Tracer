@@ -105,6 +105,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
             {
                 if (bounce == 0)
                     store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
+                else if (bounce > 0)
+                    // Storing data for ReGIR representative points
+                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, closest_hit_info.primitive_index);
 
                 // TODO REMOVE THE DEBUG IF
                 if (bounce > 0 || render_data.render_settings.enable_direct)

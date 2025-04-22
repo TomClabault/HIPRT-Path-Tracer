@@ -73,14 +73,6 @@ HIPRT_HOST_DEVICE void ReGIR_store_representative_primitive(const HIPRTRenderDat
 	ReGIR_store_representative_primitive(render_data, primitive_index, linear_cell_index);
 }
 
-HIPRT_HOST_DEVICE void ReGIR_store_representative_data(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int primitive_index)
-{
-	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
-	if (linear_cell_index < 0 || linear_cell_index >= render_data.render_settings.regir_settings.grid.grid_resolution.x * render_data.render_settings.regir_settings.grid.grid_resolution.y * render_data.render_settings.regir_settings.grid.grid_resolution.z)
-		// Outside of the grid
-		return;
-}
-
 HIPRT_HOST_DEVICE float3 ReGIR_get_cell_representative_shading_normal(const HIPRTRenderData& render_data, int linear_cell_index)
 {
 	return render_data.render_settings.regir_settings.representative.representative_normals[linear_cell_index];
@@ -110,44 +102,46 @@ HIPRT_HOST_DEVICE int ReGIR_get_cell_representative_primitive(const HIPRTRenderD
  */
 HIPRT_HOST_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int primitive_index)
 {
-	//if (!render_data.render_settings.regir_settings.optimize_representative_points_at_center_of_cell)
-	//{
-	//	// If we are not aiming at optimizing representative points to be at the center of the grid cells
-	//	// just storing no matter what
-	//	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
-
-	//	ReGIR_store_representative_point(render_data, shading_point, linear_cell_index);
-	//	ReGIR_store_representative_normal(render_data, shading_normal, linear_cell_index);
-	//	ReGIR_store_representative_primitive(render_data, linear_cell_index, primitive_index);
-
-	//	return;
-	//}
+	if (render_data.render_settings.regir_settings.representative.distance_to_center == nullptr || !render_data.render_settings.regir_settings.use_representative_points)
+		return;
 
 	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
 	float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
+	float previous_distance_to_center = render_data.render_settings.regir_settings.representative.distance_to_center[linear_cell_index];
 	float current_distance_to_center = hippt::length(cell_center - shading_point);
-	if (hippt::atomic_compare_exchange(&render_data.render_settings.regir_settings.representative.representative_primitive[linear_cell_index], ReGIRRepresentative::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRRepresentative::UNDEFINED_PRIMITIVE)
+	if (previous_distance_to_center != ReGIRRepresentative::UNDEFINED_DISTANCE && current_distance_to_center < previous_distance_to_center)
 	{
-		ReGIR_store_representative_point(render_data, shading_point, linear_cell_index);
-		ReGIR_store_representative_normal(render_data, shading_normal, linear_cell_index);
+		// We have some representative data already, we're going to update it if we're closer to the
+		// center of the cell than the previous representative data
+		
+		if (previous_distance_to_center < render_data.render_settings.regir_settings.get_cell_diagonal_length() * ReGIRRepresentative::OK_DISTANCE_TO_CENTER_FACTOR)
+			// We're also only updating if we're not already close enough to the center.
+			// 
+			// Here, we're close enough to the center so our representative data is good and we don't need to update
+			// anymore
+			return;
 
-		render_data.render_settings.regir_settings.representative.distance_to_center[linear_cell_index] = current_distance_to_center;
+		if (hippt::atomic_compare_exchange(&render_data.render_settings.regir_settings.representative.distance_to_center[linear_cell_index], previous_distance_to_center, ReGIRRepresentative::UNDEFINED_DISTANCE) == previous_distance_to_center)
+		{
+			ReGIR_store_representative_point(render_data, shading_point, linear_cell_index);
+			ReGIR_store_representative_normal(render_data, shading_normal, linear_cell_index);
+			ReGIR_store_representative_primitive(render_data, primitive_index, linear_cell_index);
+			render_data.render_settings.regir_settings.representative.distance_to_center[linear_cell_index] = current_distance_to_center;
+
+			return;
+		}
 	}
-	//if (ReGIR_get_cell_representative_pixel_index(render_data, linear_cell_index) != -1)
-	//{
-	//	// If we already have a representative point for that grid cell, we're going to replace it with our new point
-	//	// if our new point is closer to the center of the grid cell than the point that is currently stored as
-	//	// representative point
-	//	float3 current_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index);
-	//	float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
 
-	//	if (hippt::length2(cell_center - shading_point) < hippt::length2(cell_center - current_point))
-	//		// If the new point is closer to the cell center, storing it
-	//		ReGIR_store_representative_point_pixel_index(render_data, linear_cell_index, pixel_index);
-	//}
-	//else
-	//	// If we do not have a representative point already, just storing the current point
-	//	ReGIR_store_representative_point_pixel_index(render_data, linear_cell_index, pixel_index);
+	if (render_data.render_settings.regir_settings.representative.representative_primitive[linear_cell_index] == ReGIRRepresentative::UNDEFINED_PRIMITIVE)
+	{
+		if (hippt::atomic_compare_exchange(&render_data.render_settings.regir_settings.representative.representative_primitive[linear_cell_index], ReGIRRepresentative::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRRepresentative::UNDEFINED_PRIMITIVE)
+		{
+			ReGIR_store_representative_point(render_data, shading_point, linear_cell_index);
+			ReGIR_store_representative_normal(render_data, shading_normal, linear_cell_index);
+
+			render_data.render_settings.regir_settings.representative.distance_to_center[linear_cell_index] = current_distance_to_center;
+		}
+	}
 }
 
 #endif

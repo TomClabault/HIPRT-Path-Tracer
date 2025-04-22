@@ -178,7 +178,7 @@ private:
         std::vector<ReGIRReservoir> grid_buffer;
         std::vector<ReGIRReservoir> spatial_grid_buffer;
 
-        std::vector<float> distance_to_center;
+        std::vector<AtomicType<float>> distance_to_center;
         std::vector<float3> representative_points;
         std::vector<float3> representative_normals;
         std::vector<AtomicType<int>> representative_primitives;

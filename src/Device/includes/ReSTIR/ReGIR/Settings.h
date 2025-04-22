@@ -17,7 +17,7 @@ struct ReGIRGridSettings
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
 
-	static constexpr int DEFAULT_GRID_SIZE = 32;
+	static constexpr int DEFAULT_GRID_SIZE = 2;
 	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 };
 
@@ -101,8 +101,9 @@ struct ReGIRShadingSettings
 
 struct ReGIRRepresentative
 {
-	// Buffers that contain a point/normal/prim index/... on the surface of the scene for each grid cell.
-	//int* representative_points_pixel_index = nullptr;
+	// If the current representative data of a cell is at a distance 'OK_DISTANCE_TO_CENTER_FACTOR * get_cell_diagonal_length()' or lower,
+	// then we assume that the representative data is good enough and we do not update it anymore
+	static constexpr float OK_DISTANCE_TO_CENTER_FACTOR = 0.4f;
 
 	static constexpr float UNDEFINED_DISTANCE = -42.0f;
 	static constexpr float3 UNDEFINED_POINT = { -42.4242e25f, -42.4242e25f, -42.4242e25f };
@@ -110,7 +111,7 @@ struct ReGIRRepresentative
 	static constexpr int UNDEFINED_PRIMITIVE = -1;
 
 	// TODO Pack distance to unsigned char?
-	float* distance_to_center = nullptr;
+	AtomicType<float>* distance_to_center = nullptr;
 	AtomicType<int>* representative_primitive = nullptr;
 	// TODO test quantize these guys but we may end up with the point below the
 	// actual surface because of the quantization and this may be an issue for shadow rays
@@ -128,6 +129,11 @@ struct ReGIRSettings
 		float3 cell_size = grid.extents / grid_resolution_float;
 
 		return cell_size;
+	}
+
+	HIPRT_HOST_DEVICE float get_cell_diagonal_length() const
+	{
+		return hippt::length(get_cell_size() / 2.0f);
 	}
 
 	HIPRT_HOST_DEVICE int3 get_xyz_cell_index_from_linear(int linear_cell_index) const
@@ -372,7 +378,7 @@ struct ReGIRSettings
 	// bool optimize_representative_points_at_center_of_cell = true;
 
 	// Multiplicative factor to multiply the output of some debug views
-	float debug_view_scale_factor = 0.1f;
+	float debug_view_scale_factor = 0.05f;
 };
 
 #endif
