@@ -32,7 +32,7 @@ struct ReGIRSampleSoADevice
 		return sample;
 	}
 
-	FP32x3LengthUint10Packed* emission = nullptr;
+	Float3xLengthUint10bPacked* emission = nullptr;
 	// Only needed for ReSTIR DI
 	int* emissive_triangle_index = nullptr;
 

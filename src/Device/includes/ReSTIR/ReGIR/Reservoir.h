@@ -12,7 +12,7 @@
 
 struct ReGIRSample
 {
-	FP32x3LengthUint10Packed emission;
+	Float3xLengthUint10bPacked emission;
 	int emissive_triangle_index; // Only needed for ReSTIR DI
 
 	float light_area = 0.0f;

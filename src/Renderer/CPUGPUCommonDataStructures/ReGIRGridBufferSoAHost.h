@@ -11,7 +11,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
-using ReGIRSampleSoAHost = GenericSoA<DataContainer, FP32x3LengthUint10Packed, int, float, float3, Octahedral24BitNormal>;
+using ReGIRSampleSoAHost = GenericSoA<DataContainer, Float3xLengthUint10bPacked, int, float, float3, Octahedral24BitNormal>;
 
 template <template <typename> typename DataContainer>
 using ReGIRReservoirSoAHost = GenericSoA<DataContainer, float, unsigned char>;

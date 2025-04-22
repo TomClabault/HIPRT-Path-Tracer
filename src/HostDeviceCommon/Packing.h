@@ -350,7 +350,7 @@ private:
  * This stores the length of the float3 and then normalizes it and then stores
  * a 10 bit quantized version of each normalized component of the float3
  */
-struct FP32x3LengthUint10Packed
+struct Float3xLengthUint10bPacked
 {
 	HIPRT_HOST_DEVICE void pack(float3 data)
 	{
@@ -377,17 +377,17 @@ struct FP32x3LengthUint10Packed
 		pack(make_float3(data.r, data.g, data.b));
 	}
 
-	HIPRT_HOST_DEVICE static FP32x3LengthUint10Packed pack_static(float3 data)
+	HIPRT_HOST_DEVICE static Float3xLengthUint10bPacked pack_static(float3 data)
 	{
-		FP32x3LengthUint10Packed packed;
+		Float3xLengthUint10bPacked packed;
 		packed.pack(data);
 
 		return packed;
 	}
 
-	HIPRT_HOST_DEVICE static FP32x3LengthUint10Packed pack_static(ColorRGB32F data)
+	HIPRT_HOST_DEVICE static Float3xLengthUint10bPacked pack_static(ColorRGB32F data)
 	{
-		FP32x3LengthUint10Packed packed;
+		Float3xLengthUint10bPacked packed;
 		packed.pack(data);
 
 		return packed;
