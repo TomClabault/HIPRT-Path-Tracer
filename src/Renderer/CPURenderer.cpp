@@ -102,7 +102,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     for (AtomicType<float>& distance : m_regir_state.distance_to_center)
         distance.store(ReGIRRepresentative::UNDEFINED_DISTANCE);
     m_regir_state.representative_points.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_POINT);
-    m_regir_state.representative_normals.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_NORMAL);
+    m_regir_state.representative_normals.resize(m_regir_state.settings.get_number_of_cells(), Octahedral24BitNormal::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
     m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_regir_state.settings.get_number_of_cells());
     for (AtomicType<int>& rep_prim : m_regir_state.representative_primitives)
         rep_prim.store(ReGIRRepresentative::UNDEFINED_PRIMITIVE);

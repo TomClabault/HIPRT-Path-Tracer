@@ -71,8 +71,8 @@ private:
 
 	OrochiBuffer<float> m_distance_to_center_buffer;
 	OrochiBuffer<int> m_representative_primitive_buffer;
-	OrochiBuffer<float3> m_representative_points_buffer;
-	OrochiBuffer<float3> m_representative_normals_buffer;
+	OrochiBuffer<unsigned int> m_representative_points_buffer;
+	OrochiBuffer<Octahedral24BitNormal> m_representative_normals_buffer;
 };
 
 #endif

@@ -46,7 +46,7 @@ struct ApplicationSettings
 	// For example, if == 2, and the viewport currently is 1280*720, 
 	// the path tracer will compute a 2560*1440 image and display it
 	// in the 1280*720 viewport
-	float render_resolution_scale = 1.5f;
+	float render_resolution_scale = 0.5f;
 	// This variable is meant to keep the GPU busy when using "automatic number of samples"
 	// per frame. The idea is to adjust the number of samples per frame such that the GPU
 	// always has a bunch of work to do.
