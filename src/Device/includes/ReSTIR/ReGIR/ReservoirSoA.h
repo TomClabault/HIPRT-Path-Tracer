@@ -16,7 +16,6 @@ struct ReGIRSampleSoADevice
 		emissive_triangle_index[linear_reservoir_index] = sample.emissive_triangle_index;
 		light_area[linear_reservoir_index] = sample.light_area;
 		point_on_light[linear_reservoir_index] = sample.point_on_light;
-		target_function[linear_reservoir_index] = sample.target_function;
 		light_source_normal[linear_reservoir_index] = sample.light_source_normal;
 	}
 
@@ -28,7 +27,6 @@ struct ReGIRSampleSoADevice
 		sample.emissive_triangle_index = emissive_triangle_index[linear_reservoir_index];
 		sample.light_area = light_area[linear_reservoir_index];
 		sample.point_on_light = point_on_light[linear_reservoir_index];
-		sample.target_function = target_function[linear_reservoir_index];
 		sample.light_source_normal = light_source_normal[linear_reservoir_index];
 
 		return sample;
@@ -40,9 +38,6 @@ struct ReGIRSampleSoADevice
 
 	float* light_area = nullptr;
 	float3* point_on_light = nullptr;
-
-	// TODO maybe not needed in the SoA?
-	float* target_function = nullptr;
 
 	Octahedral24BitNormal* light_source_normal = nullptr;
 };

@@ -11,7 +11,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
-using ReGIRSampleSoAHost = GenericSoA<DataContainer, FP32x3LengthUint10Packed, int, float, float3, float, Octahedral24BitNormal>;
+using ReGIRSampleSoAHost = GenericSoA<DataContainer, FP32x3LengthUint10Packed, int, float, float3, Octahedral24BitNormal>;
 
 template <template <typename> typename DataContainer>
 using ReGIRReservoirSoAHost = GenericSoA<DataContainer, float, float, unsigned char>;
@@ -22,7 +22,6 @@ enum ReGIRSampleSoAHostBuffers
 	REGIR_SAMPLE_EMISSIVE_TRIANGLE_INDEX,
 	REGIR_SAMPLE_LIGHT_AREA,
 	REGIR_SAMPLE_POINT_ON_LIGHT,
-	REGIR_SAMPLE_TARGET_FUNCTION,
 	REGIR_SAMPLE_LIGHT_SOURCE_NORMAL
 };
 
@@ -66,7 +65,6 @@ struct ReGIRGridBufferSoAHost
 		grid_buffer_soa.samples.emissive_triangle_index = samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSIVE_TRIANGLE_INDEX>().data();
 		grid_buffer_soa.samples.light_area = samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_AREA>().data();
 		grid_buffer_soa.samples.point_on_light = samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_POINT_ON_LIGHT>().data();
-		grid_buffer_soa.samples.target_function = samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_TARGET_FUNCTION>().data();
 		grid_buffer_soa.samples.light_source_normal = samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_SOURCE_NORMAL>().data();
 
 		grid_buffer_soa.reservoirs.weight_sum = reservoirs.template get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_WEIGHT_SUM>().data();
