@@ -237,7 +237,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
             continue;
 
         if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index, 
-            out_reservoir.sample.emission, out_reservoir.sample.point_on_light, 
+            out_reservoir.sample.emission.unpack(), out_reservoir.sample.point_on_light,
             random_number_generator) > 0.0f)
             normalization_weight += 1.0f;
     }
@@ -250,9 +250,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
     out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
     out_sample.emissive_triangle_index = out_reservoir.sample.emissive_triangle_index;
-    out_sample.emission = out_reservoir.sample.emission;
+    out_sample.emission = out_reservoir.sample.emission.unpack();
     out_sample.light_area = out_reservoir.sample.light_area;
-    out_sample.light_source_normal = out_reservoir.sample.light_source_normal.unpack();
+    out_sample.light_source_normal = out_reservoir.light_source_normal.unpack();
     out_sample.point_on_light = out_reservoir.sample.point_on_light;
 
     return out_sample;

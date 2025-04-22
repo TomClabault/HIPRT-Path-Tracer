@@ -127,18 +127,10 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	return updated;
 }
 
-#include "Device/includes/ReSTIR/ReGIR/Representative.h"
-
 bool ReGIRRenderPass::launch()
 {
 	if (!is_render_pass_used())
 		return false;
-
-	//float3 point = m_render_data->render_settings.regir_settings.get_cell_center_from_linear_cell_index(1024);
-	////point += render_data.render_settings.regir_settings.get_cell_size() / 4.0f;
-	//std::cout << "Before: " << point << std::endl;
-	//std::cout << "After: " << ReGIR_unpack_representative_point(m_render_data->render_settings.regir_settings, ReGIR_pack_representative_point(m_render_data->render_settings.regir_settings, point, 1024), 1024) << std::endl;
-	//std::exit(0);
 
 	launch_grid_fill_temporal_reuse();
 	launch_spatial_reuse();
