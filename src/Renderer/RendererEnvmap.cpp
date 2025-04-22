@@ -31,28 +31,28 @@ void RendererEnvmap::recompute_sampling_data_structure(GPURenderer* renderer, co
 {
 	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
 	{
-		if (m_cdf.get_element_count() > 0)
+		if (m_cdf.size() > 0)
 			m_cdf.free();
 
-		if (m_alias_table_alias.get_element_count() > 0)
+		if (m_alias_table_alias.size() > 0)
 			m_alias_table_alias.free();
 
-		if (m_alias_table_probas.get_element_count() > 0)
+		if (m_alias_table_probas.size() > 0)
 			m_alias_table_probas.free();
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
 	{
-		if (m_alias_table_alias.get_element_count() > 0)
+		if (m_alias_table_alias.size() > 0)
 			m_alias_table_alias.free();
 
-		if (m_alias_table_probas.get_element_count() > 0)
+		if (m_alias_table_probas.size() > 0)
 			m_alias_table_probas.free();
 
 		recompute_CDF(image);
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
 	{
-		if (m_cdf.get_element_count() > 0)
+		if (m_cdf.size() > 0)
 			m_cdf.free();
 
 		recompute_alias_table(image);
@@ -205,7 +205,7 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 
 		world_settings.envmap_alias_table.alias_table_probas = m_alias_table_probas.get_device_pointer();
 		world_settings.envmap_alias_table.alias_table_alias = m_alias_table_alias.get_device_pointer();
-		world_settings.envmap_alias_table.size = m_alias_table_alias.get_element_count();
+		world_settings.envmap_alias_table.size = m_alias_table_alias.size();
 		world_settings.envmap_alias_table.sum_elements = m_luminance_total_sum;
 	}
 }

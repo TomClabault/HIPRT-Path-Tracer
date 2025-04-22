@@ -61,7 +61,7 @@ bool FillGBufferRenderPass::pre_render_update(float delta_time)
 	{
 		// If at least one buffer has a size of 0, we assume that this means that the whole G-buffer is deallocated
 		// and so we're going to have to reallocate it
-		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.first_hit_prim_index.get_element_count() == 0;
+		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.first_hit_prim_index.size() == 0;
 
 		if (prev_frame_g_buffer_needs_resize)
 		{
@@ -74,7 +74,7 @@ bool FillGBufferRenderPass::pre_render_update(float delta_time)
 		// If we're not using the G-buffer, indicating that in use_last_frame_g_buffer so that the shader doesn't
 		// try to use it
 
-		if (m_g_buffer_prev_frame.first_hit_prim_index.get_element_count() > 0)
+		if (m_g_buffer_prev_frame.first_hit_prim_index.size() > 0)
 		{
 			// If the buffers aren't freed already
 			m_g_buffer_prev_frame.free();

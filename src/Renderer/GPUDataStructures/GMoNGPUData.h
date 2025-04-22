@@ -51,7 +51,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 
 	bool is_freed() const
 	{
-		return sets.get_element_count() == 0 && result_framebuffer->get_element_count() == 0;
+		return sets.size() == 0 && result_framebuffer->size() == 0;
 	}
 
 	ColorRGB32F* map_result_framebuffer()

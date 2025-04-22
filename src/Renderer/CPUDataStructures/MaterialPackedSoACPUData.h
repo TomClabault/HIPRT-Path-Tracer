@@ -164,11 +164,6 @@ struct DevicePackedTexturedMaterialSoACPUData : public DevicePackedEffectiveMate
         alpha_thin_film_hue_dielectric_priority = expand_from_gpu_packed_materials<Float2xUChar2xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, alpha_thin_film_hue_dielectric_priority), element_count);
     }
 
-    void upload_data_partial(unsigned int start_index, const DevicePackedTexturedMaterial* data, size_t element_count)
-    {
-        
-    }
-
     DevicePackedTexturedMaterialSoA get_device_SoA_struct()
     {
         DevicePackedTexturedMaterialSoA out;

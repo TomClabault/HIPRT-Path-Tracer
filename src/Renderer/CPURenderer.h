@@ -19,6 +19,7 @@
 #include "Renderer/CPUDataStructures/GMoNCPUData.h"
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -175,8 +176,8 @@ private:
     {
         ReGIRSettings settings;
 
-        std::vector<ReGIRReservoir> grid_buffer;
-        std::vector<ReGIRReservoir> spatial_grid_buffer;
+        ReGIRGridBufferSoAHost<std::vector> grid_buffer;
+        ReGIRGridBufferSoAHost<std::vector> spatial_grid_buffer;
 
         std::vector<AtomicType<float>> distance_to_center;
         std::vector<unsigned int> representative_points;

@@ -21,6 +21,8 @@ template <typename T>
 class OrochiBuffer
 {
 public:
+	using value_type = T;
+
 	OrochiBuffer() : m_data_pointer(nullptr) {}
 	OrochiBuffer(int element_count);
 	OrochiBuffer(OrochiBuffer<T>&& other);
@@ -31,12 +33,17 @@ public:
 	void memset_whole_buffer(int value);
 
 	void resize(int new_element_count, size_t type_size_override = 0);
-	size_t get_element_count() const;
+	size_t size() const;
 	size_t get_byte_size() const;
 
 	const T* get_device_pointer() const;
 	T* get_device_pointer();
-	T** get_device_pointer_address();
+
+	/**
+	 * data() is just an alias for get_device_pointer()
+	 */
+	const T* data() const;
+	T* data();
 
 	/** 
 	 * Static function for downloading from a device buffer when we
@@ -54,12 +61,12 @@ public:
 	static void upload_data(T* device_data_pointer, const std::vector<T>& data_to_upload, size_t element_count);
 	static void upload_data(T* device_data_pointer, const T* data_to_upload, size_t element_count);
 	/**
-	 * Uploads as many elements as returned by get_element_count from the data std::vector into the buffer.
-	 * The given std::vector must therefore contain at least get_element_count() elements.
+	 * Uploads as many elements as returned by size from the data std::vector into the buffer.
+	 * The given std::vector must therefore contain at least size() elements.
 	 * 
-	 * The overload using a void pointer reads sizeof(T) * get_element_count() bytes starting at
+	 * The overload using a void pointer reads sizeof(T) * size() bytes starting at
 	 * the given pointer address. The given pointer must therefore provide a contiguous access
-	 * to sizeof(T) * get_element_count() bytes of data
+	 * to sizeof(T) * size() bytes of data
 	 */
 	void upload_data(const std::vector<T>& data);
 	void upload_data(const T* data);
@@ -147,7 +154,7 @@ void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 }
 
 template <typename T>
-size_t OrochiBuffer<T>::get_element_count() const
+size_t OrochiBuffer<T>::size() const
 {
 	return m_element_count;
 }
@@ -171,9 +178,15 @@ T* OrochiBuffer<T>::get_device_pointer()
 }
 
 template <typename T>
-T** OrochiBuffer<T>::get_device_pointer_address()
+const T* OrochiBuffer<T>::data() const
 {
-	return &m_data_pointer;
+	return m_data_pointer;
+}
+
+template <typename T>
+T* OrochiBuffer<T>::data()
+{
+	return m_data_pointer;
 }
 
 template <typename T>
