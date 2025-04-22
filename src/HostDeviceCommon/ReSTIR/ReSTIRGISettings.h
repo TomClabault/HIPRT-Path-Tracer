@@ -146,9 +146,9 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	/**
 	 * This function is used by ImGui to get a pointer to the private member
 	 */
-	HIPRT_HOST float* get_jacobian_heuristic_threshold_pointer() { return &jacobian_rejection_threshold;}
+	HIPRT_HOST_DEVICE float* get_jacobian_heuristic_threshold_pointer() { return &jacobian_rejection_threshold; }
 
-	HIPRT_HOST void set_jacobian_heuristic_threshold(float new_threshold) { jacobian_rejection_threshold = new_threshold;}
+	HIPRT_HOST_DEVICE void set_jacobian_heuristic_threshold(float new_threshold) { jacobian_rejection_threshold = new_threshold; }
 
 private:
 	float jacobian_rejection_threshold;

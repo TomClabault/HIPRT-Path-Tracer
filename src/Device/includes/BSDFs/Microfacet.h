@@ -173,21 +173,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
     {
         float lambda_L = G1_Smith_lambda(alpha_x, alpha_y, local_to_light_direction);
 
-        static int counter = 0;
-
         if (render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightUncorrelated)
         {
             float G1L = 1.0f / (1.0f + lambda_L);
             float G2 = G1V * G1L;
-
-            /*float threshold_NoV = 0.999998;
-            float threshold_NoL = 0.850222;
-            if (hippt::abs(NoV - threshold_NoV) < 0.001f && hippt::abs(NoL - threshold_NoL) < 0.001f && counter++ % 100 == 0)
-            {
-                float final_value = F.r * D * G2 / (4.0f * NoL * NoV);
-
-                printf("[F, D, G2] = [%f, %e, %e] @ [NoV, NoL] = [%f, %f] ----> %f\n", F.r, D, G2, NoV, NoL, final_value);
-            }*/
 
             return F * D * G2 / (4.0f * NoL * NoV);
         }

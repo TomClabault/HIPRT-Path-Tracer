@@ -253,6 +253,8 @@ void GPURenderer::compute_emissives_power_alias_table(
 		&alias_table_probas_buffer,
 		&power_alias_table] ()
 	{
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
 		if (!needs_emissives_power_alias_table())
 			return;
 
