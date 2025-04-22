@@ -87,7 +87,7 @@ HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRender
 	return ReGIR_shading_evaluate_target_function<withVisibility>(render_data, 
 		shading_point, view_direction, shading_normal, geometric_normal,
 		last_hit_primitive_index, ray_payload,
-		reservoir.sample.point_on_light, reservoir.light_source_normal.unpack(),
+		reservoir.sample.point_on_light, reservoir.sample.light_source_normal.unpack(),
 		reservoir.sample.emission.unpack(), rng);
 }
 

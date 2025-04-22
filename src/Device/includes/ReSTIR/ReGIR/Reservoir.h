@@ -19,6 +19,9 @@ struct ReGIRSample
 	// TODO maybe not needed during shading?
 	float target_function = 0.0f;
 	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
+
+	// The light source normal is here for padding reasons :(
+	Octahedral24BitNormal light_source_normal;
 };
 
 struct ReGIRReservoir
@@ -34,7 +37,7 @@ struct ReGIRReservoir
 
 		if (rng() < resampling_weight / weight_sum)
 		{
-			light_source_normal = Octahedral24BitNormal::pack_static(light_sample.light_source_normal);
+			sample.light_source_normal = Octahedral24BitNormal::pack_static(light_sample.light_source_normal);
 			sample.point_on_light = light_sample.point_on_light;
 			sample.emission.pack(light_sample.emission);
 			sample.light_area = light_sample.light_area;
@@ -82,8 +85,6 @@ struct ReGIRReservoir
 	float UCW = 0.0f;
 
 	unsigned char M = 0;
-	// The light source normal is here for padding reasons :(
-	Octahedral24BitNormal light_source_normal;
 };
 
 #endif
