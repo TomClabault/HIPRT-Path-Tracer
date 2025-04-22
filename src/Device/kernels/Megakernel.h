@@ -210,13 +210,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
         ColorRGB32F color;
         float3 rep_point = ReGIR_get_cell_representative_point(render_data, cell_index);
-
-        if (rep_point.x != ReGIRRepresentative::UNDEFINED_POINT.x)
-        {
-            // Interpreting debug_view_scale_factor as a distance
-            if (hippt::length(rep_point - primary_hit) < render_data.render_settings.regir_settings.debug_view_scale_factor)
-                color = ColorRGB32F::random_color(cell_index + 1);
-        }
+        // Interpreting debug_view_scale_factor as a distance
+        if (hippt::length(rep_point - primary_hit) < render_data.render_settings.regir_settings.debug_view_scale_factor)
+            color = ColorRGB32F::random_color(cell_index + 1);
 
         // Scaling by SPP so that the visualization doesn't get darker and darker with increasing number of SPP
         color *= render_data.render_settings.sample_number + 1;

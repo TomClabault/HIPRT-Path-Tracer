@@ -179,8 +179,8 @@ private:
         std::vector<ReGIRReservoir> spatial_grid_buffer;
 
         std::vector<AtomicType<float>> distance_to_center;
-        std::vector<float3> representative_points;
-        std::vector<float3> representative_normals;
+        std::vector<unsigned int> representative_points;
+        std::vector<Octahedral24BitNormal> representative_normals;
         std::vector<AtomicType<int>> representative_primitives;
     } m_regir_state;
 

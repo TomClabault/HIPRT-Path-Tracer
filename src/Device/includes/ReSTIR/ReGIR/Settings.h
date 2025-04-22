@@ -17,7 +17,7 @@ struct ReGIRGridSettings
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
 
-	static constexpr int DEFAULT_GRID_SIZE = 2;
+	static constexpr int DEFAULT_GRID_SIZE = 32;
 	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 };
 
@@ -106,7 +106,7 @@ struct ReGIRRepresentative
 	static constexpr float OK_DISTANCE_TO_CENTER_FACTOR = 0.4f;
 
 	static constexpr float UNDEFINED_DISTANCE = -42.0f;
-	static constexpr float3 UNDEFINED_POINT = { -42.4242e25f, -42.4242e25f, -42.4242e25f };
+	static constexpr unsigned int UNDEFINED_POINT = 0xFFFFFFFF;
 	static constexpr float3 UNDEFINED_NORMAL = { 0.0f, 0.0f, 0.0f };
 	static constexpr int UNDEFINED_PRIMITIVE = -1;
 
@@ -116,9 +116,9 @@ struct ReGIRRepresentative
 	// TODO test quantize these guys but we may end up with the point below the
 	// actual surface because of the quantization and this may be an issue for shadow rays
 	// on very finely tesselated geometry because the shadow rays may end up hitting another primitive
-	float3* representative_points = nullptr;
+	unsigned int* representative_points = nullptr;
 	// TODO Pack to octahedral
-	float3* representative_normals = nullptr;
+	Octahedral24BitNormal* representative_normals = nullptr;
 };
 
 struct ReGIRSettings
@@ -145,6 +145,16 @@ struct ReGIRSettings
 		return make_int3(index_x, index_y, index_z);
 	}
 
+	HIPRT_HOST_DEVICE float3 get_cell_origin_from_linear_cell_index(int linear_cell_index) const
+	{
+		float3 cell_size = get_cell_size();
+
+		int3 cell_index_xyz = get_xyz_cell_index_from_linear(linear_cell_index);
+		float3 cell_index_xyz_float = make_float3(static_cast<float>(cell_index_xyz.x), static_cast<float>(cell_index_xyz.y), static_cast<float>(cell_index_xyz.z));
+
+		return grid.grid_origin + cell_size * cell_index_xyz_float;
+	}
+
 	HIPRT_HOST_DEVICE float3 get_cell_center_from_world_pos(float3 world_point) const
 	{
 		return get_cell_center_from_linear_cell_index(get_linear_cell_index_from_world_pos(world_point));
@@ -154,10 +164,7 @@ struct ReGIRSettings
 	{
 		float3 cell_size = get_cell_size();
 
-		int3 cell_index_xyz = get_xyz_cell_index_from_linear(linear_cell_index);
-		float3 cell_index_xyz_float = make_float3(static_cast<float>(cell_index_xyz.x), static_cast<float>(cell_index_xyz.y), static_cast<float>(cell_index_xyz.z));
-
-		return grid.grid_origin + cell_size * cell_index_xyz_float + cell_size / 2.0f;
+		return get_cell_origin_from_linear_cell_index(linear_cell_index) + cell_size / 2.0f;
 	}
 
 	HIPRT_HOST_DEVICE int get_linear_cell_index_from_world_pos(float3 world_position, Xorshift32Generator* rng = nullptr, bool jitter = false) const
