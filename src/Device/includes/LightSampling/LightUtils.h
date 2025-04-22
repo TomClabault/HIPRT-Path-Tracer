@@ -198,7 +198,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     {
         ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_canonical_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
-        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data,
+        // Adding visibility in the canonical sample target function's if we have visibility reuse
+        // (or visibility in the grid fill target function) because otherwise this canonical sample
+        // will kill all the benefits of the visibility reuse
+        //
+        // This is pretty much necessary for good visibility reuse quality
+        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility>(render_data,
             shading_point, view_direction, shading_normal, geometric_normal,
             last_hit_primitive_index, ray_payload, canonical_reservoir,
             random_number_generator);
@@ -231,7 +236,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
         if (neighbor_cell_index == -1)
             continue;
 
-        if (ReGIR_shading_can_sample_be_produced_by(render_data, out_reservoir.sample, neighbor_cell_index, random_number_generator))
+        if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index, 
+            out_reservoir.sample.emission, out_reservoir.sample.point_on_light, 
+            random_number_generator) > 0.0f)
             normalization_weight += 1.0f;
     }
 
