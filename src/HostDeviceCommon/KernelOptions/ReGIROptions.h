@@ -78,7 +78,7 @@
 /**
  * Debug option to color the scene with the grid cells
  */
-#define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
+#define ReGIR_DebugMode REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS
 
 #endif // #ifndef __KERNELCC__
 

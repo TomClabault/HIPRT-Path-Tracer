@@ -1986,7 +1986,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		if (ImGui::Checkbox("Use representative points", &regir_settings.use_representative_points))
 		{
-			m_renderer->get_ReGIR_render_pass()->reset_representative_points();
+			m_renderer->get_ReGIR_render_pass()->reset_representative_data();
 
 			m_render_window->set_render_dirty(true);
 		}
@@ -1994,12 +1994,12 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("Representative points settings tree");
 
-			if (ImGui::Checkbox("Optimize representative points to cell centers", &regir_settings.optimize_representative_points_at_center_of_cell))
+			/*if (ImGui::Checkbox("Optimize representative points to cell centers", &regir_settings.optimize_representative_points_at_center_of_cell))
 			{
-				m_renderer->get_ReGIR_render_pass()->reset_representative_points();
+				m_renderer->get_ReGIR_render_pass()->reset_representative_data();
 
 				m_render_window->set_render_dirty(true);
-			}
+			}*/
 
 			ImGui::TreePop();
 		}

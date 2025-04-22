@@ -85,10 +85,14 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			updated = true;
 		}
 
-		if (m_representative_points_g_buffer_index.get_element_count() != m_render_data->render_settings.regir_settings.get_number_of_cells())
+		if (m_distance_to_center_buffer.get_element_count() != m_render_data->render_settings.regir_settings.get_number_of_cells())
 		{
-			m_representative_points_g_buffer_index.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
-			m_representative_points_g_buffer_index.memset_whole_buffer(-1);
+			m_distance_to_center_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+			m_representative_points_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+			m_representative_normals_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+			m_representative_primitive_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+			
+			reset_representative_data();
 
 			updated = true;
 		}
@@ -109,9 +113,12 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			updated = true;
 		}
 
-		if (m_representative_points_g_buffer_index.get_element_count() > 0)
+		if (m_distance_to_center_buffer.get_element_count() > 0)
 		{
-			m_representative_points_g_buffer_index.free();
+			m_distance_to_center_buffer.free();
+			m_representative_points_buffer.free();
+			m_representative_normals_buffer.free();
+			m_representative_primitive_buffer.free();
 
 			updated = true;
 		}
@@ -167,27 +174,55 @@ void ReGIRRenderPass::update_render_data()
 
 		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = m_spatial_reuse_output_grid_buffer.get_device_pointer();
 		// m_render_data->render_settings.regir_settings.grid_fill.representative_points_pixel_index = reinterpret_cast<AtomicType<int>*>(m_representative_points_g_buffer_index.get_device_pointer());
-		m_render_data->render_settings.regir_settings.grid_fill.representative_points_pixel_index = m_representative_points_g_buffer_index.get_device_pointer();
+		m_render_data->render_settings.regir_settings.representative.distance_to_center = m_distance_to_center_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.representative.representative_normals = m_representative_normals_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.representative.representative_points = m_representative_points_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.representative.representative_primitive = reinterpret_cast<AtomicType<int>*>(m_representative_primitive_buffer.get_device_pointer());
 	}
 	else
 	{
 		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = nullptr;
 		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = nullptr;
-		m_render_data->render_settings.regir_settings.grid_fill.representative_points_pixel_index = nullptr;
+		m_render_data->render_settings.regir_settings.representative.distance_to_center = nullptr;
+		m_render_data->render_settings.regir_settings.representative.representative_normals = nullptr;
+		m_render_data->render_settings.regir_settings.representative.representative_points = nullptr;
+		m_render_data->render_settings.regir_settings.representative.representative_primitive = nullptr;
 	}
 }
 
 void ReGIRRenderPass::reset()
 {
-	reset_representative_points();
+	reset_representative_data();
 
 	m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
 }
 
-void ReGIRRenderPass::reset_representative_points()
+void ReGIRRenderPass::reset_representative_data()
 {
-	if (m_representative_points_g_buffer_index.get_element_count() > 0)
-		m_representative_points_g_buffer_index.memset_whole_buffer(-1);	
+	if (m_distance_to_center_buffer.get_element_count() > 0)
+	{
+		{
+			std::vector<float> distance_reset(m_distance_to_center_buffer.get_element_count(), ReGIRRepresentative::UNDEFINED_DISTANCE);
+			m_distance_to_center_buffer.upload_data(distance_reset);
+		}
+
+		{
+			std::vector<float3> points_reset(m_representative_points_buffer.get_element_count(), ReGIRRepresentative::UNDEFINED_POINT);
+			m_representative_points_buffer.upload_data(points_reset);
+		}
+		
+		{
+			std::vector<float3> normals_reset(m_representative_normals_buffer.get_element_count(), ReGIRRepresentative::UNDEFINED_NORMAL);
+			m_representative_normals_buffer.upload_data(normals_reset);
+		}
+
+		{
+			std::vector<int> primitive_reset(m_representative_primitive_buffer.get_element_count(), ReGIRRepresentative::UNDEFINED_PRIMITIVE);
+			m_representative_primitive_buffer.upload_data(primitive_reset);
+		}
+
+
+	}
 }
 
 bool ReGIRRenderPass::is_render_pass_used() const
@@ -197,5 +232,10 @@ bool ReGIRRenderPass::is_render_pass_used() const
 
 float ReGIRRenderPass::get_VRAM_usage() const
 {
-	return (m_grid_buffers.get_byte_size() + m_spatial_reuse_output_grid_buffer.get_byte_size() + m_representative_points_g_buffer_index.get_byte_size()) / 1000000.0f;
+	return (m_grid_buffers.get_byte_size() + 
+		m_spatial_reuse_output_grid_buffer.get_byte_size() + 
+		m_distance_to_center_buffer.get_byte_size() + 
+		m_representative_points_buffer.get_byte_size() + 
+		m_representative_normals_buffer.get_byte_size() + 
+		m_representative_primitive_buffer.get_byte_size()) / 1000000.0f;
 }

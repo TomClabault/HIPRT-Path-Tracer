@@ -38,7 +38,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -77,7 +77,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 250
+#define DEBUG_NEIGHBORHOOD_SIZE 50
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -98,8 +98,12 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     m_regir_state.grid_buffer.resize(m_regir_state.settings.get_total_number_of_reservoirs_ReGIR());
     m_regir_state.spatial_grid_buffer.resize(m_regir_state.settings.get_number_of_reservoirs_per_grid());
-    // m_regir_state.representative_pixel_indices = std::vector<AtomicType<int>>(m_regir_state.settings.get_number_of_cells());
-    m_regir_state.representative_pixel_indices = std::vector<int>(m_regir_state.settings.get_number_of_cells());
+    m_regir_state.distance_to_center.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_DISTANCE);
+    m_regir_state.representative_points.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_POINT);
+    m_regir_state.representative_normals.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_NORMAL);
+    m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_regir_state.settings.get_number_of_cells());
+    for (AtomicType<int>& rep_prim : m_regir_state.representative_primitives)
+        rep_prim.store(-1);
 
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
@@ -307,7 +311,10 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
     m_render_data.render_settings.regir_settings.grid_fill.grid_buffers = m_regir_state.grid_buffer.data();
     m_render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_regir_state.spatial_grid_buffer.data();
-    m_render_data.render_settings.regir_settings.grid_fill.representative_points_pixel_index = m_regir_state.representative_pixel_indices.data();
+    m_render_data.render_settings.regir_settings.representative.distance_to_center = m_regir_state.distance_to_center.data();
+    m_render_data.render_settings.regir_settings.representative.representative_points= m_regir_state.representative_points.data();
+    m_render_data.render_settings.regir_settings.representative.representative_normals = m_regir_state.representative_normals.data();
+    m_render_data.render_settings.regir_settings.representative.representative_primitive = m_regir_state.representative_primitives.data();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -662,7 +669,7 @@ void CPURenderer::ReGIR_grid_fill_pass()
 {
     m_render_data.random_number = m_rng.xorshift32();
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int index = 0; index < m_regir_state.settings.get_number_of_reservoirs_per_grid(); index++)
     {
         ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index);
@@ -674,7 +681,7 @@ void CPURenderer::ReGIR_spatial_reuse_pass()
     if (!m_regir_state.settings.spatial_reuse.do_spatial_reuse)
         return;
 
-    #pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
     for (int index = 0; index < m_regir_state.settings.get_number_of_reservoirs_per_grid(); index++)
     {
         ReGIR_Spatial_Reuse(m_render_data, index);

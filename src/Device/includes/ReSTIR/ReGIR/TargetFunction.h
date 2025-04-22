@@ -16,11 +16,9 @@
 template <bool includeVisibility, bool withCosineTerm>
 HIPRT_HOST_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderData& render_data, int linear_cell_index, ColorRGB32F sample_emission, float3 sample_position, Xorshift32Generator& rng)
 {
-	int pixel_index = ReGIR_get_cell_representative_pixel_index(render_data, linear_cell_index);
-
-    int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, linear_cell_index, pixel_index);
-    float3 representative_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index, pixel_index);
-	float3 representative_normal = ReGIR_get_cell_representative_shading_normal(render_data, linear_cell_index, pixel_index);
+    int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, linear_cell_index);
+    float3 representative_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index);
+	float3 representative_normal = ReGIR_get_cell_representative_shading_normal(render_data, linear_cell_index);
 
 	float3 to_light_direction = sample_position - representative_point;
 	float distance_to_light = hippt::length(to_light_direction);

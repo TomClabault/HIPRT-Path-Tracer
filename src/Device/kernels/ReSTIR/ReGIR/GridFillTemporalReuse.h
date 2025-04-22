@@ -107,7 +107,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     float normalization_weight = regir_settings.grid_fill.sample_count_per_cell_reservoir;
     int reservoir_index_in_cell = reservoir_index % regir_settings.grid_fill.get_total_reservoir_count_per_cell();
     int linear_cell_index = reservoir_index / regir_settings.grid_fill.get_total_reservoir_count_per_cell();
-    float3 cell_center = regir_settings.get_cell_center_from_linear(linear_cell_index);
+    float3 cell_center = regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
 
     // Grid fill
     output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, linear_cell_index, random_number_generator);

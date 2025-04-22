@@ -8,78 +8,96 @@
  
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE int ReGIR_get_cell_representative_pixel_index(const HIPRTRenderData& render_data, int linear_cell_index)
+//HIPRT_HOST_DEVICE int ReGIR_get_cell_representative_pixel_index(const HIPRTRenderData& render_data, int linear_cell_index)
+//{
+//	return render_data.render_settings.regir_settings.grid_fill.representative_points_pixel_index[linear_cell_index];
+//}
+
+//HIPRT_HOST_DEVICE void ReGIR_store_representative_point_pixel_index(const HIPRTRenderData& render_data, int linear_cell_index, int pixel_index)
+//{
+//	render_data.render_settings.regir_settings.grid_fill.representative_points_pixel_index[linear_cell_index] = pixel_index;
+//}
+//
+//HIPRT_HOST_DEVICE void ReGIR_store_representative_point_pixel_index(const HIPRTRenderData& render_data, float3 shading_point, int pixel_index)
+//{
+//	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
+//	if (linear_cell_index < 0 || linear_cell_index >= render_data.render_settings.regir_settings.grid.grid_resolution.x * render_data.render_settings.regir_settings.grid.grid_resolution.y * render_data.render_settings.regir_settings.grid.grid_resolution.z)
+//		// Outside of the grid
+//		return;
+//
+//	ReGIR_store_representative_point_pixel_index(render_data, linear_cell_index, pixel_index);
+//}
+
+HIPRT_HOST_DEVICE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point, int linear_cell_index)
 {
-	return render_data.render_settings.regir_settings.grid_fill.representative_points_pixel_index[linear_cell_index];
+	render_data.render_settings.regir_settings.representative.representative_points[linear_cell_index] = rep_point;
 }
 
-HIPRT_HOST_DEVICE void ReGIR_store_representative_point_pixel_index(const HIPRTRenderData& render_data, int linear_cell_index, int pixel_index)
+HIPRT_HOST_DEVICE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point)
 {
-	render_data.render_settings.regir_settings.grid_fill.representative_points_pixel_index[linear_cell_index] = pixel_index;
+	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(rep_point);
+	if (linear_cell_index < 0 || linear_cell_index >= render_data.render_settings.regir_settings.grid.grid_resolution.x * render_data.render_settings.regir_settings.grid.grid_resolution.y * render_data.render_settings.regir_settings.grid.grid_resolution.z)
+		// Outside of the grid
+		return;
+
+	ReGIR_store_representative_point(render_data, rep_point, linear_cell_index);
 }
 
-HIPRT_HOST_DEVICE void ReGIR_store_representative_point_pixel_index(const HIPRTRenderData& render_data, float3 shading_point, int pixel_index)
+HIPRT_HOST_DEVICE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_normal, int linear_cell_index)
+{
+	render_data.render_settings.regir_settings.representative.representative_normals[linear_cell_index] = shading_normal;
+}
+
+HIPRT_HOST_DEVICE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal)
 {
 	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
 	if (linear_cell_index < 0 || linear_cell_index >= render_data.render_settings.regir_settings.grid.grid_resolution.x * render_data.render_settings.regir_settings.grid.grid_resolution.y * render_data.render_settings.regir_settings.grid.grid_resolution.z)
 		// Outside of the grid
 		return;
 
-	ReGIR_store_representative_point_pixel_index(render_data, linear_cell_index, pixel_index);
+	ReGIR_store_representative_normal(render_data, shading_normal, linear_cell_index);
 }
 
-/**
- * Use this function overload if you already have the 'pixel_index_for_representative_point' value.
- */
-HIPRT_HOST_DEVICE float3 ReGIR_get_cell_representative_shading_normal(const HIPRTRenderData& render_data, int linear_cell_index, int pixel_index_for_representative_point)
+HIPRT_HOST_DEVICE void ReGIR_store_representative_primitive(const HIPRTRenderData& render_data, int primitive_index, int linear_cell_index)
 {
-	if (pixel_index_for_representative_point < 0 || pixel_index_for_representative_point >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
-		// No representative point yet, using the center of the cell
-		return make_float3(0.0f, 0.0f, 0.0f);
-	else
-		return render_data.g_buffer.shading_normals[pixel_index_for_representative_point].unpack();
+	render_data.render_settings.regir_settings.representative.representative_primitive[linear_cell_index] = primitive_index;
+}
+
+HIPRT_HOST_DEVICE void ReGIR_store_representative_primitive(const HIPRTRenderData& render_data, float3 shading_point, int primitive_index)
+{
+	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
+	if (linear_cell_index < 0 || linear_cell_index >= render_data.render_settings.regir_settings.grid.grid_resolution.x * render_data.render_settings.regir_settings.grid.grid_resolution.y * render_data.render_settings.regir_settings.grid.grid_resolution.z)
+		// Outside of the grid
+		return;
+
+	ReGIR_store_representative_primitive(render_data, primitive_index, linear_cell_index);
+}
+
+HIPRT_HOST_DEVICE void ReGIR_store_representative_data(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int primitive_index)
+{
+	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
+	if (linear_cell_index < 0 || linear_cell_index >= render_data.render_settings.regir_settings.grid.grid_resolution.x * render_data.render_settings.regir_settings.grid.grid_resolution.y * render_data.render_settings.regir_settings.grid.grid_resolution.z)
+		// Outside of the grid
+		return;
 }
 
 HIPRT_HOST_DEVICE float3 ReGIR_get_cell_representative_shading_normal(const HIPRTRenderData& render_data, int linear_cell_index)
 {
-	int pixel_index_for_representative_point = ReGIR_get_cell_representative_pixel_index(render_data, linear_cell_index);
-	return ReGIR_get_cell_representative_shading_normal(render_data, linear_cell_index, pixel_index_for_representative_point);
-}
-
-/**
- * Use this function overload if you already have the 'pixel_index_for_representative_point' value.
- */
-HIPRT_HOST_DEVICE float3 ReGIR_get_cell_representative_point(const HIPRTRenderData& render_data, int linear_cell_index, int pixel_index_for_representative_point)
-{
-	if (pixel_index_for_representative_point < 0 || pixel_index_for_representative_point >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
-		// No representative point yet, using the center of the cell
-		return render_data.render_settings.regir_settings.get_cell_center_from_linear(linear_cell_index);
-	else
-		return render_data.g_buffer.primary_hit_position[pixel_index_for_representative_point];
+	return render_data.render_settings.regir_settings.representative.representative_normals[linear_cell_index];
 }
 
 HIPRT_HOST_DEVICE float3 ReGIR_get_cell_representative_point(const HIPRTRenderData& render_data, int linear_cell_index)
 {
-	int pixel_index_for_representative_point = ReGIR_get_cell_representative_pixel_index(render_data, linear_cell_index);
-	return ReGIR_get_cell_representative_point(render_data, linear_cell_index, pixel_index_for_representative_point);
-}
-
-/**
- * Use this function overload if you already have the 'pixel_index_for_representative_point' value.
- */
-HIPRT_HOST_DEVICE int ReGIR_get_cell_representative_primitive(const HIPRTRenderData& render_data, int linear_cell_index, int pixel_index_for_representative_point)
-{
-	if (pixel_index_for_representative_point < 0 || pixel_index_for_representative_point >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
-		// No representative point yet, using the center of the cell
-		return -1;
+	float3 rep_point = render_data.render_settings.regir_settings.representative.representative_points[linear_cell_index];
+	if (rep_point.x == ReGIRRepresentative::UNDEFINED_POINT.x)
+		return render_data.render_settings.regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
 	else
-		return render_data.g_buffer.first_hit_prim_index[pixel_index_for_representative_point];
+		return rep_point;
 }
 
 HIPRT_HOST_DEVICE int ReGIR_get_cell_representative_primitive(const HIPRTRenderData& render_data, int linear_cell_index)
 {
-	int pixel_index_for_representative_point = ReGIR_get_cell_representative_pixel_index(render_data, linear_cell_index);
-	return ReGIR_get_cell_representative_primitive(render_data, linear_cell_index, pixel_index_for_representative_point);
+	return render_data.render_settings.regir_settings.representative.representative_primitive[linear_cell_index];
 }
 
 /**
@@ -90,33 +108,46 @@ HIPRT_HOST_DEVICE int ReGIR_get_cell_representative_primitive(const HIPRTRenderD
  * Otherwise:
  *		- this function always stores the given pixel index in the grid cell corresponding to the given shading point
  */
-HIPRT_HOST_DEVICE void ReGIR_update_representative_point_pixel_index(HIPRTRenderData& render_data, float3 shading_point, int pixel_index)
+HIPRT_HOST_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int primitive_index)
 {
-	if (!render_data.render_settings.regir_settings.optimize_representative_points_at_center_of_cell)
-	{
-		// If we are not aiming at optimizing reprensetative points to be at the center of the grid cells
-		// just storing no matter what
+	//if (!render_data.render_settings.regir_settings.optimize_representative_points_at_center_of_cell)
+	//{
+	//	// If we are not aiming at optimizing representative points to be at the center of the grid cells
+	//	// just storing no matter what
+	//	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
 
-		ReGIR_store_representative_point_pixel_index(render_data, shading_point, pixel_index);
-		return;
-	}
+	//	ReGIR_store_representative_point(render_data, shading_point, linear_cell_index);
+	//	ReGIR_store_representative_normal(render_data, shading_normal, linear_cell_index);
+	//	ReGIR_store_representative_primitive(render_data, linear_cell_index, primitive_index);
+
+	//	return;
+	//}
 
 	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
-	if (ReGIR_get_cell_representative_pixel_index(render_data, linear_cell_index) != -1)
+	float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
+	float current_distance_to_center = hippt::length(cell_center - shading_point);
+	if (hippt::atomic_compare_exchange(&render_data.render_settings.regir_settings.representative.representative_primitive[linear_cell_index], ReGIRRepresentative::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRRepresentative::UNDEFINED_PRIMITIVE)
 	{
-		// If we already have a representative point for that grid cell, we're going to replace it with our new point
-		// if our new point is closer to the center of the grid cell than the point that is currently stored as
-		// representative point
-		float3 current_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index);
-		float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_linear(linear_cell_index);
+		ReGIR_store_representative_point(render_data, shading_point, linear_cell_index);
+		ReGIR_store_representative_normal(render_data, shading_normal, linear_cell_index);
 
-		if (hippt::length2(cell_center - shading_point) < hippt::length2(cell_center - current_point))
-			// If the new point is closer to the cell center, storing it
-			ReGIR_store_representative_point_pixel_index(render_data, linear_cell_index, pixel_index);
+		render_data.render_settings.regir_settings.representative.distance_to_center[linear_cell_index] = current_distance_to_center;
 	}
-	else
-		// If we do not have a representative point already, just storing the current point
-		ReGIR_store_representative_point_pixel_index(render_data, linear_cell_index, pixel_index);
+	//if (ReGIR_get_cell_representative_pixel_index(render_data, linear_cell_index) != -1)
+	//{
+	//	// If we already have a representative point for that grid cell, we're going to replace it with our new point
+	//	// if our new point is closer to the center of the grid cell than the point that is currently stored as
+	//	// representative point
+	//	float3 current_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index);
+	//	float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
+
+	//	if (hippt::length2(cell_center - shading_point) < hippt::length2(cell_center - current_point))
+	//		// If the new point is closer to the cell center, storing it
+	//		ReGIR_store_representative_point_pixel_index(render_data, linear_cell_index, pixel_index);
+	//}
+	//else
+	//	// If we do not have a representative point already, just storing the current point
+	//	ReGIR_store_representative_point_pixel_index(render_data, linear_cell_index, pixel_index);
 }
 
 #endif
