@@ -459,10 +459,21 @@ namespace hippt
 	 * back to memory at the same address.
 	 *
 	 * These three operations are performed in one atomic transaction.
+	 * 
 	 * The function returns old (Compare And Swap).
 	 */
 	template <typename T>
-	T atomic_compare_exchange(std::atomic<T>* atomic_address, T expected, T new_value) { return atomic_address->compare_exchange_strong(expected, new_value); }
+	T atomic_compare_exchange(std::atomic<T>* atomic_address, T expected, T new_value)
+	{
+		// Overriding the semantic here so that it behaves the same as in CUDA i.e. returns the old value
+		// instead of returning true or false (stdlib default behavior)
+
+		T old = *atomic_address;
+		
+		atomic_address->compare_exchange_strong(expected, new_value);
+			
+		return old;
+	}
 
 	/**
 	 * For t=0, returns a

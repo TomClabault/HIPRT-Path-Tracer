@@ -28,17 +28,6 @@ struct ReGIRGridFillSettings
 
 	// This is a linear buffer that contains enough space for 'get_total_number_of_reservoirs_ReGIR()' reservoirs
 	ReGIRReservoir* grid_buffers = nullptr;
-	// A buffer that contains a point for each grid cell.
-	// 
-	// The points are not directly contained but rather this contains
-	// the index of the pixel whose point needs to be used. So this pixel
-	// index should be used to read into the G-Buffer.
-	// 
-	// That point is guaranteed to be on a valid surface of the scene and can be used as the origin
-	// of shadow rays during visibility reuse
-	int* representative_points_pixel_index = nullptr;
-	//float3* representative_points = nullptr;
-	//float3* representative_normals = nullptr;
 
 	HIPRT_HOST_DEVICE int get_non_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_HOST_DEVICE int get_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_canonical; }
@@ -110,6 +99,27 @@ struct ReGIRShadingSettings
 	bool do_cell_jittering = true;
 };
 
+struct ReGIRRepresentative
+{
+	// Buffers that contain a point/normal/prim index/... on the surface of the scene for each grid cell.
+	//int* representative_points_pixel_index = nullptr;
+
+	static constexpr float UNDEFINED_DISTANCE = -42.0f;
+	static constexpr float3 UNDEFINED_POINT = { -42.4242e25f, -42.4242e25f, -42.4242e25f };
+	static constexpr float3 UNDEFINED_NORMAL = { 0.0f, 0.0f, 0.0f };
+	static constexpr int UNDEFINED_PRIMITIVE = -1;
+
+	// TODO Pack distance to unsigned char?
+	float* distance_to_center = nullptr;
+	AtomicType<int>* representative_primitive = nullptr;
+	// TODO test quantize these guys but we may end up with the point below the
+	// actual surface because of the quantization and this may be an issue for shadow rays
+	// on very finely tesselated geometry because the shadow rays may end up hitting another primitive
+	float3* representative_points = nullptr;
+	// TODO Pack to octahedral
+	float3* representative_normals = nullptr;
+};
+
 struct ReGIRSettings
 {
 	HIPRT_HOST_DEVICE float3 get_cell_size() const
@@ -131,10 +141,10 @@ struct ReGIRSettings
 
 	HIPRT_HOST_DEVICE float3 get_cell_center_from_world_pos(float3 world_point) const
 	{
-		return get_cell_center_from_linear(get_linear_cell_index_from_world_pos(world_point));
+		return get_cell_center_from_linear_cell_index(get_linear_cell_index_from_world_pos(world_point));
 	}
 
-	HIPRT_HOST_DEVICE float3 get_cell_center_from_linear(unsigned int linear_cell_index) const
+	HIPRT_HOST_DEVICE float3 get_cell_center_from_linear_cell_index(unsigned int linear_cell_index) const
 	{
 		float3 cell_size = get_cell_size();
 
@@ -351,6 +361,7 @@ struct ReGIRSettings
 	ReGIRTemporalReuseSettings temporal_reuse;
 	ReGIRSpatialReuseSettings spatial_reuse;
 	ReGIRShadingSettings shading;
+	ReGIRRepresentative representative;
 
 	bool use_representative_points = true;
 	// If true, representative points will be updated at each frame such that representative points that are the closer
@@ -358,7 +369,7 @@ struct ReGIRSettings
 	//
 	// If false, representative points are stored at random without preference and this usually yields some weird
 	// distribution of representative points that tends to be closer to the edge of grid cells
-	bool optimize_representative_points_at_center_of_cell = true;
+	// bool optimize_representative_points_at_center_of_cell = true;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.1f;
