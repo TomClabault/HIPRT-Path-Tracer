@@ -36,8 +36,9 @@ struct ReGIRGridFillSettings
 	// 
 	// That point is guaranteed to be on a valid surface of the scene and can be used as the origin
 	// of shadow rays during visibility reuse
-	//AtomicType<int>* representative_points_pixel_index = nullptr;
 	int* representative_points_pixel_index = nullptr;
+	//float3* representative_points = nullptr;
+	//float3* representative_normals = nullptr;
 
 	HIPRT_HOST_DEVICE int get_non_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_HOST_DEVICE int get_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_canonical; }
@@ -68,7 +69,7 @@ private:
 	// and 1 canonical reservoir:
 	// 
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_canonical = 1;
+	int reservoirs_count_per_grid_cell_canonical = 8;
 };
 
 struct ReGIRTemporalReuseSettings

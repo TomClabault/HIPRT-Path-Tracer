@@ -53,7 +53,7 @@
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */
-#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to include the BSDF at the shading point in the resampling target function when

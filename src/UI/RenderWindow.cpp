@@ -84,14 +84,16 @@ extern ImGuiLogger g_imgui_logger;
 // - Cull lights that have too low a contribution during grid fill. Maybe some power function or something to keep things unbiased, not just plain reject
 // - We can cull back facing lights during grid fill
 // - For tracing rays in grid fill / spatial reuse, there's massive performance to gain from using a shared mem stack for the BVH traversal but we're going to need to split those kernels into multiple calls to avoid overloading the BVH global stack buffer already allocated (or we're going to need to allocate more but VRAM please)
-// - For visibility reuse canonical candidates, produce them from non-visibility-checked-ReGIR instead of vanilla power sampling
 // - Many retries if the reservoir that was picked for shading was visibility-reuse-killed
 // - Maybe we can fix the jittering PER FRAME such that a given shading point only reuses from a single random neighboring cells instead of multiple neighboring cells when resampling multiple reservoirs. This may simplify MIS weights quite a bit at the cost of artifacts (but yet to try if the artifacts are actually bad or not)
 // - Pack emission to length + 16 bits (maybe even 10? Try also length + RGBE9995 in terms of precision) per channel
 // - Sparse grid somehow? hash table? perfect spatial hasing?
 // - We can do neighbor normal similarity during spatial reuse
-// - The shading pass expects that all the reservoirs used for shading already accounts for visibility. This has us shoot visibility rays at the end of the spatial reuse pass to validate the reservoir (unless we use the target function in the spatial resampling target function). Also, this has us verify all reservoirs in the shading pass with shadow rays, which is expensive. Maybe assuming that reservoirs in the shading pass don't take visibility is a good thing? So we would just do the spatial reuse and that's it
-//		May be biased actually because 
+// - For atomic writes of representative points use this:
+//		    if(undefined == atomicCAS(buffer[loc], undefined, not_undefined)
+//			{
+//				buffer[loc].xyz = result.xyz; // does not need to be atomic since only 1 thread will be here
+//			}
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction

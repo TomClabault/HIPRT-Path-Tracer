@@ -146,6 +146,9 @@
 
     if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
         // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
+        //
+        // This visibility check of the reservoirs is needed such that the shading at path tracing time
+        // can properly assess whether a given cell could have produced a given sample or not
         output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
 
     regir_settings.spatial_reuse.store_reservoir(output_reservoir, reservoir_index);
