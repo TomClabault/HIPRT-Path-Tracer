@@ -71,21 +71,21 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	if (is_render_pass_used())
 	{
 		// Resizing the grid if it is not the right size
-		if (m_grid_buffers.get_element_count() != m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR())
+		if (m_grid_buffers.size() != m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR())
 		{
 			m_grid_buffers.resize(m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR());
 
 			updated = true;
 		}
 
-		if (m_render_data->render_settings.regir_settings.spatial_reuse.do_spatial_reuse && m_spatial_reuse_output_grid_buffer.get_element_count() != m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid())
+		if (m_render_data->render_settings.regir_settings.spatial_reuse.do_spatial_reuse && m_spatial_reuse_output_grid_buffer.size() != m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid())
 		{
 			m_spatial_reuse_output_grid_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid());
 
 			updated = true;
 		}
 
-		if (m_distance_to_center_buffer.get_element_count() != m_render_data->render_settings.regir_settings.get_number_of_cells())
+		if (m_distance_to_center_buffer.size() != m_render_data->render_settings.regir_settings.get_number_of_cells())
 		{
 			m_distance_to_center_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
 			m_representative_points_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
@@ -99,21 +99,21 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	}
 	else
 	{
-		if (m_grid_buffers.get_element_count() > 0)
+		if (m_grid_buffers.size() > 0)
 		{
 			m_grid_buffers.free();
 
 			updated = true;
 		}
 
-		if (m_spatial_reuse_output_grid_buffer.get_element_count() > 0)
+		if (m_spatial_reuse_output_grid_buffer.size() > 0)
 		{
 			m_spatial_reuse_output_grid_buffer.free();
 
 			updated = true;
 		}
 
-		if (m_distance_to_center_buffer.get_element_count() > 0)
+		if (m_distance_to_center_buffer.size() > 0)
 		{
 			m_distance_to_center_buffer.free();
 			m_representative_points_buffer.free();
@@ -168,11 +168,11 @@ void ReGIRRenderPass::update_render_data()
 {
 	if (is_render_pass_used())
 	{
-		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = m_grid_buffers.get_device_pointer();
+		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = m_grid_buffers.to_device();
 		m_render_data->render_settings.regir_settings.grid.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 		m_render_data->render_settings.regir_settings.grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 
-		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = m_spatial_reuse_output_grid_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = m_spatial_reuse_output_grid_buffer.to_device();
 		m_render_data->render_settings.regir_settings.representative.distance_to_center = reinterpret_cast<AtomicType<float>*>(m_distance_to_center_buffer.get_device_pointer());
 		m_render_data->render_settings.regir_settings.representative.representative_normals = m_representative_normals_buffer.get_device_pointer();
 		m_render_data->render_settings.regir_settings.representative.representative_points = m_representative_points_buffer.get_device_pointer();
@@ -180,8 +180,8 @@ void ReGIRRenderPass::update_render_data()
 	}
 	else
 	{
-		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = nullptr;
-		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = nullptr;
+		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = ReGIRGridBufferSoADevice();
+		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = ReGIRGridBufferSoADevice();
 		m_render_data->render_settings.regir_settings.representative.distance_to_center = nullptr;
 		m_render_data->render_settings.regir_settings.representative.representative_normals = nullptr;
 		m_render_data->render_settings.regir_settings.representative.representative_points = nullptr;
@@ -196,25 +196,25 @@ void ReGIRRenderPass::reset()
 
 void ReGIRRenderPass::reset_representative_data()
 {
-	if (m_distance_to_center_buffer.get_element_count() > 0)
+	if (m_distance_to_center_buffer.size() > 0)
 	{
 		{
-			std::vector<float> distance_reset(m_distance_to_center_buffer.get_element_count(), ReGIRRepresentative::UNDEFINED_DISTANCE);
+			std::vector<float> distance_reset(m_distance_to_center_buffer.size(), ReGIRRepresentative::UNDEFINED_DISTANCE);
 			m_distance_to_center_buffer.upload_data(distance_reset);
 		}
 
 		{
-			std::vector<unsigned int> points_reset(m_representative_points_buffer.get_element_count(), ReGIRRepresentative::UNDEFINED_POINT);
+			std::vector<unsigned int> points_reset(m_representative_points_buffer.size(), ReGIRRepresentative::UNDEFINED_POINT);
 			m_representative_points_buffer.upload_data(points_reset);
 		}
 		
 		{
-			std::vector<Octahedral24BitNormal> normals_reset(m_representative_normals_buffer.get_element_count(), Octahedral24BitNormal::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
+			std::vector<Octahedral24BitNormal> normals_reset(m_representative_normals_buffer.size(), Octahedral24BitNormal::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
 			m_representative_normals_buffer.upload_data(normals_reset);
 		}
 
 		{
-			std::vector<int> primitive_reset(m_representative_primitive_buffer.get_element_count(), ReGIRRepresentative::UNDEFINED_PRIMITIVE);
+			std::vector<int> primitive_reset(m_representative_primitive_buffer.size(), ReGIRRepresentative::UNDEFINED_PRIMITIVE);
 			m_representative_primitive_buffer.upload_data(primitive_reset);
 		}
 

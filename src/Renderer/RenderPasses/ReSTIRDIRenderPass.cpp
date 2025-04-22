@@ -138,9 +138,9 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 	if (is_render_pass_used())
 	{
 		// ReSTIR DI enabled
-		bool initial_candidates_reservoir_needs_resize = m_initial_candidates_reservoirs.get_element_count() == 0;
-		bool spatial_output_1_needs_resize = m_spatial_output_reservoirs_1.get_element_count() == 0;
-		bool spatial_output_2_needs_resize = m_spatial_output_reservoirs_2.get_element_count() == 0;
+		bool initial_candidates_reservoir_needs_resize = m_initial_candidates_reservoirs.size() == 0;
+		bool spatial_output_1_needs_resize = m_spatial_output_reservoirs_1.size() == 0;
+		bool spatial_output_2_needs_resize = m_spatial_output_reservoirs_2.size() == 0;
 
 		if (initial_candidates_reservoir_needs_resize || spatial_output_1_needs_resize || spatial_output_2_needs_resize)
 			// At least on buffer is going to be resized so buffers are invalidated
@@ -162,7 +162,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		{
 			ReSTIRDISettings& restir_di_settings = m_renderer->get_render_settings().restir_di_settings;
 			int presampled_light_count = restir_di_settings.light_presampling.number_of_subsets * restir_di_settings.light_presampling.subset_size;
-			bool presampled_lights_needs_allocation = m_presampled_lights_buffer.get_element_count() != presampled_light_count;
+			bool presampled_lights_needs_allocation = m_presampled_lights_buffer.size() != presampled_light_count;
 
 			if (presampled_lights_needs_allocation)
 			{
@@ -174,7 +174,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		}
 		else
 		{
-			if (m_presampled_lights_buffer.get_element_count() > 0)
+			if (m_presampled_lights_buffer.size() > 0)
 				m_presampled_lights_buffer.free();
 		}
 
@@ -188,28 +188,28 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 	else
 	{
 		// ReSTIR DI disabled, we're going to free the buffers if that's not already done
-		if (m_initial_candidates_reservoirs.get_element_count() > 0)
+		if (m_initial_candidates_reservoirs.size() > 0)
 		{
 			m_initial_candidates_reservoirs.free();
 
 			render_data_invalidated = true;
 		}
 
-		if (m_spatial_output_reservoirs_1.get_element_count() > 0)
+		if (m_spatial_output_reservoirs_1.size() > 0)
 		{
 			m_spatial_output_reservoirs_1.free();
 
 			render_data_invalidated = true;
 		}
 
-		if (m_spatial_output_reservoirs_2.get_element_count() > 0)
+		if (m_spatial_output_reservoirs_2.size() > 0)
 		{
 			m_spatial_output_reservoirs_2.free();
 
 			render_data_invalidated = true;
 		}
 
-		if (m_presampled_lights_buffer.get_element_count() > 0)
+		if (m_presampled_lights_buffer.size() > 0)
 		{
 			m_presampled_lights_buffer.free();
 
@@ -393,7 +393,10 @@ void ReSTIRDIRenderPass::compute_optimal_spatial_reuse_radii()
 		//
 		// Also, we're only doing this as a "prepass" at sample 0: we only need this once for the whole rendering
 
-		void* launch_args[] = { m_render_data, m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer_address(), m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer_address(), m_per_pixel_spatial_reuse_radius.get_device_pointer_address() };
+		unsigned int* per_pixel_spatial_reuse_direction_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.data();
+		unsigned long long int* per_pixel_spatial_reuse_direction_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.data();
+		unsigned char* per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.data();
+		void* launch_args[] = { m_render_data, &per_pixel_spatial_reuse_direction_mask_u, &per_pixel_spatial_reuse_direction_mask_ull, &m_per_pixel_spatial_reuse_radius };
 
 		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 	}

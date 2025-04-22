@@ -415,8 +415,8 @@ struct FP32x3LengthUint10Packed
 	}
 
 private:
-	float length;
-	unsigned quantized;
+	float length = 0.0f;
+	unsigned quantized = 0;
 };
 
 /**

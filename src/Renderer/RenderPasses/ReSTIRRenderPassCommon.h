@@ -87,20 +87,20 @@ public:
 		if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 		{
 			// Allocating the proper buffer whether or not we're using less than 32 bits per mask or more 
-			if (renderer->get_global_compiler_options()->get_macro_value(mask_bit_count_macro_name) <= 32 && per_pixel_spatial_reuse_direction_mask_u.get_element_count() == 0)
+			if (renderer->get_global_compiler_options()->get_macro_value(mask_bit_count_macro_name) <= 32 && per_pixel_spatial_reuse_direction_mask_u.size() == 0)
 			{
 				per_pixel_spatial_reuse_direction_mask_u.resize(renderer->m_render_resolution.x * renderer->m_render_resolution.y);
 				per_pixel_spatial_reuse_radius.resize(renderer->m_render_resolution.x * renderer->m_render_resolution.y);
-				if (per_pixel_spatial_reuse_direction_mask_ull.get_element_count() > 0)
+				if (per_pixel_spatial_reuse_direction_mask_ull.size() > 0)
 					per_pixel_spatial_reuse_direction_mask_ull.free();
 
 				render_data_invalidated = true;
 			}
-			else if (renderer->get_global_compiler_options()->get_macro_value(mask_bit_count_macro_name) > 32 && per_pixel_spatial_reuse_direction_mask_ull.get_element_count() == 0)
+			else if (renderer->get_global_compiler_options()->get_macro_value(mask_bit_count_macro_name) > 32 && per_pixel_spatial_reuse_direction_mask_ull.size() == 0)
 			{
 				per_pixel_spatial_reuse_direction_mask_ull.resize(renderer->m_render_resolution.x * renderer->m_render_resolution.y);
 				per_pixel_spatial_reuse_radius.resize(renderer->m_render_resolution.x * renderer->m_render_resolution.y);
-				if (per_pixel_spatial_reuse_direction_mask_u.get_element_count() > 0)
+				if (per_pixel_spatial_reuse_direction_mask_u.size() > 0)
 					per_pixel_spatial_reuse_direction_mask_u.free();
 
 				render_data_invalidated = true;
@@ -111,14 +111,14 @@ public:
 			// We're not using the feature so we can free the buffers
 
 			// Freeing the proper buffer depending on whether we use the 64 bits buffer or not
-			if (per_pixel_spatial_reuse_direction_mask_u.get_element_count() > 0)
+			if (per_pixel_spatial_reuse_direction_mask_u.size() > 0)
 			{
 				per_pixel_spatial_reuse_direction_mask_u.free();
 				per_pixel_spatial_reuse_radius.free();
 
 				render_data_invalidated = true;
 			}
-			else if (per_pixel_spatial_reuse_direction_mask_ull.get_element_count() > 0)
+			else if (per_pixel_spatial_reuse_direction_mask_ull.size() > 0)
 			{
 				per_pixel_spatial_reuse_direction_mask_ull.free();
 				per_pixel_spatial_reuse_radius.free();
@@ -130,7 +130,7 @@ public:
 		// Also allocating / deallocating the buffers for the statistics
 		if (spatial_pass_settings.compute_spatial_reuse_hit_rate)
 		{
-			if (spatial_reuse_statistics_hit_total.get_element_count() == 0)
+			if (spatial_reuse_statistics_hit_total.size() == 0)
 			{
 				spatial_reuse_statistics_hit_total.resize(1);
 				spatial_reuse_statistics_hit_hits.resize(1);
@@ -141,7 +141,7 @@ public:
 		else
 		{
 			// Freeing the buffers if the feature isn't used
-			if (spatial_reuse_statistics_hit_total.get_element_count() > 0)
+			if (spatial_reuse_statistics_hit_total.size() > 0)
 			{
 				spatial_reuse_statistics_hit_total.free();
 				spatial_reuse_statistics_hit_hits.free();
@@ -184,7 +184,7 @@ public:
 	{
 		bool render_data_invalidated = false;
 
-		if (per_pixel_spatial_reuse_direction_mask_u.get_element_count() > 0)
+		if (per_pixel_spatial_reuse_direction_mask_u.size() > 0)
 		{
 			per_pixel_spatial_reuse_direction_mask_u.free();
 			per_pixel_spatial_reuse_radius.free();
@@ -192,7 +192,7 @@ public:
 			render_data_invalidated = true;
 		}
 
-		if (per_pixel_spatial_reuse_direction_mask_ull.get_element_count() > 0)
+		if (per_pixel_spatial_reuse_direction_mask_ull.size() > 0)
 		{
 			per_pixel_spatial_reuse_direction_mask_ull.free();
 			per_pixel_spatial_reuse_radius.free();
@@ -200,7 +200,7 @@ public:
 			render_data_invalidated = true;
 		}
 
-		if (spatial_reuse_statistics_hit_total.get_element_count() > 0)
+		if (spatial_reuse_statistics_hit_total.size() > 0)
 		{
 			spatial_reuse_statistics_hit_total.free();
 			spatial_reuse_statistics_hit_hits.free();

@@ -7,9 +7,32 @@
 #define DEVICE_KERNELS_REGIR_SETTINGS_H
 
 #include "Device/includes/Hash.h"
-#include "Device/includes/ReSTIR/ReGIR/Reservoir.h"
+#include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
 
 #include "HostDeviceCommon/Xorshift.h"
+
+struct ReGIRGridBufferSoADevice
+{
+	// TODO pack this to 4 bytes
+	ReGIRReservoirSoADevice reservoirs;
+	ReGIRSampleSoADevice samples;
+
+	HIPRT_HOST_DEVICE void store_reservoir_and_sample(int linear_reservoir_index, const ReGIRReservoir& reservoir)
+	{
+		reservoirs.store_reservoir(linear_reservoir_index, reservoir);
+		samples.store_sample(linear_reservoir_index, reservoir.sample);
+	}
+
+	HIPRT_HOST_DEVICE ReGIRReservoir read_full_reservoir(int linear_reservoir_index) const
+	{
+		ReGIRReservoir reservoir;
+		
+		reservoir = reservoirs.read_reservoir(linear_reservoir_index);
+		reservoir.sample = samples.read_sample(linear_reservoir_index);
+
+		return reservoir;
+	}
+};
 
 struct ReGIRGridSettings
 {
@@ -26,8 +49,7 @@ struct ReGIRGridFillSettings
 	// How many light samples are resampled into each reservoir of the grid cell
 	int sample_count_per_cell_reservoir = 32;
 
-	// This is a linear buffer that contains enough space for 'get_total_number_of_reservoirs_ReGIR()' reservoirs
-	ReGIRReservoir* grid_buffers = nullptr;
+	ReGIRGridBufferSoADevice grid_buffers;
 
 	HIPRT_HOST_DEVICE int get_non_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_HOST_DEVICE int get_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_canonical; }
@@ -77,7 +99,7 @@ struct ReGIRSpatialReuseSettings
 {
 	HIPRT_HOST_DEVICE void store_reservoir(const ReGIRReservoir& reservoir, int linear_reservoir_index_in_grid)
 	{
-		output_grid[linear_reservoir_index_in_grid] = reservoir;
+		output_grid.store_reservoir_and_sample(linear_reservoir_index_in_grid, reservoir);
 	}
 
 	bool do_spatial_reuse = true;
@@ -86,7 +108,7 @@ struct ReGIRSpatialReuseSettings
 	int spatial_reuse_radius = 1;
 
 	// Grid that contains the output of the spatial reuse pass
-	ReGIRReservoir* output_grid = nullptr;
+	ReGIRGridBufferSoADevice output_grid;
 };
 
 struct ReGIRShadingSettings
@@ -238,13 +260,13 @@ struct ReGIRSettings
 	{
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return spatial_reuse.output_grid[reservoir_index_in_grid];
+			return spatial_reuse.output_grid.read_full_reservoir(reservoir_index_in_grid);
 		else if (temporal_reuse.do_temporal_reuse)
 			// If only doing temporal reuse, reading from the output of the spatial reuse pass
 			return get_temporal_reservoir(reservoir_index_in_grid);
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return grid_fill.grid_buffers[reservoir_index_in_grid];
+			return grid_fill.grid_buffers.read_full_reservoir(reservoir_index_in_grid);
 	}
 
 	/**
@@ -308,9 +330,9 @@ struct ReGIRSettings
 	HIPRT_HOST_DEVICE ReGIRReservoir get_temporal_reservoir(int linear_reservoir_index_in_grid, int grid_index = -1) const
 	{
 		if (grid_index != -1)
-			return grid_fill.grid_buffers[grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid];
+			return grid_fill.grid_buffers.read_full_reservoir(grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid);
 		else
-			return grid_fill.grid_buffers[temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid];
+			return grid_fill.grid_buffers.read_full_reservoir(temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid);
 	}
 
 	HIPRT_HOST_DEVICE ReGIRReservoir get_grid_fill_output_reservoir(int linear_reservoir_index_in_grid) const
@@ -323,9 +345,9 @@ struct ReGIRSettings
 	HIPRT_HOST_DEVICE void store_reservoir(ReGIRReservoir reservoir, int linear_reservoir_index_in_grid, int grid_index = -1)
 	{
 		if (grid_index != -1)
-			grid_fill.grid_buffers[grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid] = reservoir;
+			grid_fill.grid_buffers.store_reservoir_and_sample(grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid, reservoir);
 		else
-			grid_fill.grid_buffers[temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid] = reservoir;
+			grid_fill.grid_buffers.store_reservoir_and_sample(temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid, reservoir);
 	}
 
 	HIPRT_HOST_DEVICE ColorRGB32F get_random_cell_color(float3 position) const
@@ -364,7 +386,7 @@ struct ReGIRSettings
 
 		// Also clearing the spatial reuse output buffers (grid) if spatial reuse is enabled
 		if (spatial_reuse.do_spatial_reuse)
-			spatial_reuse.output_grid[reservoir_index] = ReGIRReservoir();
+			spatial_reuse.output_grid.store_reservoir_and_sample(reservoir_index, ReGIRReservoir());
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;

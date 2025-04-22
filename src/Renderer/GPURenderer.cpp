@@ -303,10 +303,10 @@ void GPURenderer::compute_emissives_power_alias_table(
 
 void GPURenderer::free_emissives_power_alias_table()
 {
-	if (m_hiprt_scene.emissive_power_alias_table_alias.get_element_count() > 0)
+	if (m_hiprt_scene.emissive_power_alias_table_alias.size() > 0)
 		m_hiprt_scene.emissive_power_alias_table_alias.free();
 
-	if (m_hiprt_scene.emissive_power_alias_table_probas.get_element_count() > 0)
+	if (m_hiprt_scene.emissive_power_alias_table_probas.size() > 0)
 		m_hiprt_scene.emissive_power_alias_table_probas.free();
 
 	m_render_data.buffers.emissives_power_alias_table.alias_table_alias = nullptr;
@@ -495,9 +495,9 @@ void GPURenderer::internal_pre_render_update_adaptive_sampling_buffers()
 
 	if (buffers_needed)
 	{
-		bool pixels_squared_luminance_needs_resize = m_pixels_squared_luminance_buffer.get_element_count() == 0;
-		bool pixels_sample_count_needs_resize = m_pixels_sample_count_buffer.get_element_count() == 0;
-		bool pixels_converged_sample_count_needs_resize = m_pixels_converged_sample_count_buffer->get_element_count() == 0;
+		bool pixels_squared_luminance_needs_resize = m_pixels_squared_luminance_buffer.size() == 0;
+		bool pixels_sample_count_needs_resize = m_pixels_sample_count_buffer.size() == 0;
+		bool pixels_converged_sample_count_needs_resize = m_pixels_converged_sample_count_buffer->size() == 0;
 
 		if (pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize || pixels_converged_sample_count_needs_resize)
 			// At least on buffer is going to be resized so buffers are invalidated
@@ -517,7 +517,7 @@ void GPURenderer::internal_pre_render_update_adaptive_sampling_buffers()
 	}
 	else
 	{
-		if (m_pixels_squared_luminance_buffer.get_element_count() > 0 || m_pixels_sample_count_buffer.get_element_count() > 0 || m_pixels_converged_sample_count_buffer->get_element_count() > 0)
+		if (m_pixels_squared_luminance_buffer.size() > 0 || m_pixels_sample_count_buffer.size() > 0 || m_pixels_converged_sample_count_buffer->size() > 0)
 		{
 			m_pixels_squared_luminance_buffer.free();
 			m_pixels_sample_count_buffer.free();
@@ -534,7 +534,7 @@ void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
 	{
 		// Not using NEE++, we just need to free the buffers if they weren't already
 
-		if (m_nee_plus_plus.packed_buffer.get_element_count() != 0)
+		if (m_nee_plus_plus.packed_buffer.size() != 0)
 		{
 			m_nee_plus_plus.packed_buffer.free();
 			m_nee_plus_plus.total_shadow_ray_queries.free();
@@ -556,7 +556,7 @@ void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
 
 	// Allocating / deallocating buffers
 	unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions);
-	if (m_nee_plus_plus.packed_buffer.get_element_count() != matrix_element_count)
+	if (m_nee_plus_plus.packed_buffer.size() != matrix_element_count)
 	{
 		m_nee_plus_plus.packed_buffer.resize(matrix_element_count);
 		m_nee_plus_plus.shadow_rays_actually_traced.resize(1);

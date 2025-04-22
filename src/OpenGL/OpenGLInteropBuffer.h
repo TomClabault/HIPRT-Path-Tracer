@@ -28,7 +28,7 @@ public:
 	GLuint get_opengl_buffer();
 
 	void resize(int new_element_count);
-	size_t get_element_count() const;
+	size_t size() const;
 	size_t get_byte_size() const;
 
 	/**
@@ -130,7 +130,7 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 }
 
 template <typename T>
-size_t OpenGLInteropBuffer<T>::get_element_count() const
+size_t OpenGLInteropBuffer<T>::size() const
 {
 	return m_element_count;
 }

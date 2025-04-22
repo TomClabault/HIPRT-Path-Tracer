@@ -128,8 +128,8 @@ float GMoNRenderPass::compute_gmon_darkening()
 	if (!m_render_data->render_settings.DEBUG_gmon_auto_blending_weights || !HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
 		return 0.0f;
 
-	std::vector<ColorRGB32F> result = OrochiBuffer<ColorRGB32F>::download_data(m_gmon.result_framebuffer->map(), m_gmon.result_framebuffer->get_element_count());
-	std::vector<ColorRGB32F> reference = OrochiBuffer<ColorRGB32F>::download_data(m_renderer->get_default_interop_framebuffer()->map(), m_gmon.result_framebuffer->get_element_count());
+	std::vector<ColorRGB32F> result = OrochiBuffer<ColorRGB32F>::download_data(m_gmon.result_framebuffer->map(), m_gmon.result_framebuffer->size());
+	std::vector<ColorRGB32F> reference = OrochiBuffer<ColorRGB32F>::download_data(m_renderer->get_default_interop_framebuffer()->map(), m_gmon.result_framebuffer->size());
 	std::vector<float> blend_weights_framebuffer(reference.size());
 
 	int debug_x_1 = 589; //51
@@ -277,7 +277,7 @@ float GMoNRenderPass::compute_gmon_darkening()
 
 	for (int i = 0; i < result.size(); i++)
 		result[i] = hippt::lerp(reference[i], result[i], blend_weights_framebuffer[i]);
-	OrochiBuffer<ColorRGB32F>::upload_data(m_gmon.result_framebuffer->map(), result, m_gmon.result_framebuffer->get_element_count());
+	OrochiBuffer<ColorRGB32F>::upload_data(m_gmon.result_framebuffer->map(), result, m_gmon.result_framebuffer->size());
 
 	return 0.0f;// 1.0f - result_luminance_sum / ref_luminance_sum;
 }

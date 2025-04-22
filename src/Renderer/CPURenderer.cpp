@@ -311,8 +311,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
     m_render_data.render_settings.regir_settings.grid.grid_resolution = m_regir_state.settings.grid.grid_resolution;
     m_render_data.render_settings.regir_settings.grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
-    m_render_data.render_settings.regir_settings.grid_fill.grid_buffers = m_regir_state.grid_buffer.data();
-    m_render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_regir_state.spatial_grid_buffer.data();
+    m_render_data.render_settings.regir_settings.grid_fill.grid_buffers = m_regir_state.grid_buffer.to_device();
+    m_render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_regir_state.spatial_grid_buffer.to_device();
     m_render_data.render_settings.regir_settings.representative.distance_to_center = m_regir_state.distance_to_center.data();
     m_render_data.render_settings.regir_settings.representative.representative_points= m_regir_state.representative_points.data();
     m_render_data.render_settings.regir_settings.representative.representative_normals = m_regir_state.representative_normals.data();

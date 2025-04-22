@@ -62,16 +62,16 @@ void DenoiserBuffersGPUData::set_use_interop_AOV_buffers(GPURenderer* renderer, 
 
 	if (use_interop_AOVs)
 	{
-		m_normals_AOV_interop_buffer->resize(m_normals_AOV_no_interop_buffer->get_element_count());
-		m_albedo_AOV_interop_buffer->resize(m_albedo_AOV_no_interop_buffer->get_element_count());
+		m_normals_AOV_interop_buffer->resize(m_normals_AOV_no_interop_buffer->size());
+		m_albedo_AOV_interop_buffer->resize(m_albedo_AOV_no_interop_buffer->size());
 
 		m_normals_AOV_no_interop_buffer->free();
 		m_albedo_AOV_no_interop_buffer->free();
 	}
 	else
 	{
-		m_normals_AOV_no_interop_buffer->resize(m_normals_AOV_interop_buffer->get_element_count());
-		m_albedo_AOV_no_interop_buffer->resize(m_albedo_AOV_interop_buffer->get_element_count());
+		m_normals_AOV_no_interop_buffer->resize(m_normals_AOV_interop_buffer->size());
+		m_albedo_AOV_no_interop_buffer->resize(m_albedo_AOV_interop_buffer->size());
 
 		m_normals_AOV_interop_buffer->free();
 		m_albedo_AOV_interop_buffer->free();

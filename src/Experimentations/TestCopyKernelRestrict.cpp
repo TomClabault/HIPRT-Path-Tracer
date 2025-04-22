@@ -31,7 +31,13 @@ void TestCopyKernelRestrict()
     buffer_d.memset_whole_buffer(1);
 
     size_t buffer_size = BUFFER_SIZE;
-    void* launch_args[] = { buffer_a.get_device_pointer_address(), buffer_b.get_device_pointer_address(), buffer_c.get_device_pointer_address(), buffer_d.get_device_pointer_address(), &buffer_size };
+
+	float* buffer_a_ptr = buffer_a.get_device_pointer();
+	float* buffer_b_ptr = buffer_b.get_device_pointer();
+	float* buffer_c_ptr = buffer_c.get_device_pointer();
+	float* buffer_d_ptr = buffer_d.get_device_pointer();
+
+    void* launch_args[] = { &buffer_a_ptr, &buffer_b_ptr, &buffer_c_ptr, &buffer_c_ptr, &buffer_size };
 
     float min_exec_time = 1000000.0f;
     float max_exec_time = 0.0f;
