@@ -686,7 +686,35 @@ void CPURenderer::ReGIR_spatial_reuse_pass()
 #pragma omp parallel for schedule(dynamic)
     for (int index = 0; index < m_regir_state.settings.get_number_of_reservoirs_per_grid(); index++)
     {
-        ReGIR_Spatial_Reuse(m_render_data, index);
+        std::vector<int> rep_prim(m_regir_state.representative_primitives.size());
+		for (int i = 0; i < m_regir_state.representative_primitives.size(); i++)
+			rep_prim[i] = m_regir_state.representative_primitives[i];
+
+        ReGIR_Spatial_Reuse(m_render_data,
+
+            m_regir_state.grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSION>().data(),
+            m_regir_state.grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSIVE_TRIANGLE_INDEX>().data(),
+            m_regir_state.grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_AREA>().data(),
+            m_regir_state.grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_POINT_ON_LIGHT>().data(),
+            m_regir_state.grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_SOURCE_NORMAL>().data(),
+
+            m_regir_state.grid_buffer.reservoirs.template get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().data(),
+            m_regir_state.grid_buffer.reservoirs.template get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_M>().data(),
+
+            m_regir_state.spatial_grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSION>().data(),
+            m_regir_state.spatial_grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSIVE_TRIANGLE_INDEX>().data(),
+            m_regir_state.spatial_grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_AREA>().data(),
+            m_regir_state.spatial_grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_POINT_ON_LIGHT>().data(),
+            m_regir_state.spatial_grid_buffer.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_SOURCE_NORMAL>().data(),
+
+            m_regir_state.spatial_grid_buffer.reservoirs.template get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().data(),
+            m_regir_state.spatial_grid_buffer.reservoirs.template get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_M>().data(),
+
+            rep_prim.data(),
+			m_regir_state.representative_points.data(),
+			m_regir_state.representative_normals.data(),
+            
+        index);
     }
 }
 

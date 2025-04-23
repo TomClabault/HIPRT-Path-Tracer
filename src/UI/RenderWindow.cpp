@@ -89,11 +89,13 @@ extern ImGuiLogger g_imgui_logger;
 // - Pack emission to length + 16 bits (maybe even 10? Try also length + RGBE9995 in terms of precision) per channel
 // - Sparse grid somehow? hash table? perfect spatial hasing?
 // - We can do neighbor normal similarity during spatial reuse
-// - For atomic writes of representative points use this:
-//		    if(undefined == atomicCAS(buffer[loc], undefined, not_undefined)
-//			{
-//				buffer[loc].xyz = result.xyz; // does not need to be atomic since only 1 thread will be here
-//			}
+// - Maybe for the spatial reuse we can reuse multiple times from the same neighbor to reduce the number of shadow rays needed
+//		- So have like a number of neighbor to reuse from and how many samples per neighbor: that's 2 parameters for the spatial reuse
+// - During shading and spatial reuse and everything, don't load the rest of the reservoir if it's UCW is 0
+// - What can we do with the SoA layout? There may be a lot of data **not** to load now that we have the possibility not to load the whole reservoir / sample at the same time
+//     - Are there places where we can load only the sample and not the reservoir or vice-versa?
+
+
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction

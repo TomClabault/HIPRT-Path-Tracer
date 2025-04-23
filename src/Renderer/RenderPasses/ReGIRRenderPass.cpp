@@ -150,7 +150,22 @@ void ReGIRRenderPass::launch_spatial_reuse()
 	if (!m_render_data->render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		return;
 
-	void* launch_args[] = { m_render_data };
+	//Float3xLengthUint10bPacked* emission, int* emissive_triangle_index,
+//		float* light_area, float3* point_on_light, Octahedral24BitNormal* light_source_normal,
+		//float* UCW, unsigned char* M, int* representative_primitive, unsigned int* representative_points, Octahedral24BitNormal* representative_normals
+
+	int* rep_prim_ptr = m_representative_primitive_buffer.get_device_pointer();
+	unsigned int* rep_points_ptr = m_representative_points_buffer.get_device_pointer();
+	Octahedral24BitNormal* rep_normals_ptr = m_representative_normals_buffer.get_device_pointer();
+
+	ReGIRGridBufferSoADevice grid_buffer = m_grid_buffers.to_device();
+	ReGIRGridBufferSoADevice spatial_grid_buffer = m_spatial_reuse_output_grid_buffer.to_device();
+
+	void* launch_args[] = { m_render_data, 
+		&grid_buffer.samples.emission, &grid_buffer.samples.emissive_triangle_index, &grid_buffer.samples.light_area, &grid_buffer.samples.point_on_light, &grid_buffer.samples.light_source_normal, &grid_buffer.reservoirs.UCW, &grid_buffer.reservoirs.M,
+		&spatial_grid_buffer.samples.emission, &spatial_grid_buffer.samples.emissive_triangle_index, &spatial_grid_buffer.samples.light_area, &spatial_grid_buffer.samples.point_on_light, &spatial_grid_buffer.samples.light_source_normal, &spatial_grid_buffer.reservoirs.UCW, &spatial_grid_buffer.reservoirs.M,
+
+		&rep_prim_ptr, &rep_points_ptr, &rep_normals_ptr};
 
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid(), 1, launch_args, m_renderer->get_main_stream());
 }

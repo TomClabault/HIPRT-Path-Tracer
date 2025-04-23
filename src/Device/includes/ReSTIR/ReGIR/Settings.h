@@ -13,7 +13,6 @@
 
 struct ReGIRGridBufferSoADevice
 {
-	// TODO pack this to 4 bytes
 	ReGIRReservoirSoADevice reservoirs;
 	ReGIRSampleSoADevice samples;
 
