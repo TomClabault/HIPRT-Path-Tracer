@@ -63,7 +63,7 @@ void Camera::set_aspect(float new_aspect)
     projection_matrix = glm::perspective(vertical_fov, new_aspect, near_plane, far_plane);
 }
 
-void Camera::set_FOV(float new_fov)
+void Camera::set_FOV_radians(float new_fov)
 {
     vertical_fov = new_fov;
 

@@ -89,11 +89,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Pack emission to length + 16 bits (maybe even 10? Try also length + RGBE9995 in terms of precision) per channel
 // - Sparse grid somehow? hash table? perfect spatial hasing?
 // - We can do neighbor normal similarity during spatial reuse
-// - For atomic writes of representative points use this:
-//		    if(undefined == atomicCAS(buffer[loc], undefined, not_undefined)
-//			{
-//				buffer[loc].xyz = result.xyz; // does not need to be atomic since only 1 thread will be here
-//			}
+// ----------------------------------
+// - Add a MIS scaling based on roughness. below 0.15 roughness, we should rely on BSDF more and more (and also check that ReSTIR DI is working in all of its configurations)
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
