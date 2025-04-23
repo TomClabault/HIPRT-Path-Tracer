@@ -94,6 +94,7 @@ extern ImGuiLogger g_imgui_logger;
 // - During shading and spatial reuse and everything, don't load the rest of the reservoir if it's UCW is 0
 // - What can we do with the SoA layout? There may be a lot of data **not** to load now that we have the possibility not to load the whole reservoir / sample at the same time
 //     - Are there places where we can load only the sample and not the reservoir or vice-versa?
+// - Directional spatial reuse too in ReGIR
 
 
 

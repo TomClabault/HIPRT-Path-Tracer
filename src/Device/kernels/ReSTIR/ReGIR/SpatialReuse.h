@@ -12,48 +12,48 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE ReGIRReservoir read_full_reservoir(int reservoir_index, 
-    Float3xLengthUint10bPacked* emission, int* emissive_triangle_index, float* light_area,
-	float3* point_on_light, Octahedral24BitNormal* light_source_normal,
-	float* UCW, unsigned char* M)
-{
-	ReGIRReservoir reservoir;
+//HIPRT_HOST_DEVICE ReGIRReservoir read_full_reservoir(int reservoir_index, 
+//    Float3xLengthUint10bPacked* __restrict__ emission, int* __restrict__ emissive_triangle_index, float* __restrict__ light_area,
+//	float3* __restrict__ point_on_light, Octahedral24BitNormal* __restrict__ light_source_normal,
+//	float* __restrict__ UCW, unsigned char* __restrict__ M)
+//{
+//	ReGIRReservoir reservoir;
+//
+//	reservoir.UCW = UCW[reservoir_index];
+//	reservoir.M = M[reservoir_index];
+//
+//	reservoir.sample.emission = emission[reservoir_index];
+//	reservoir.sample.emissive_triangle_index = emissive_triangle_index[reservoir_index];
+//	reservoir.sample.light_area = light_area[reservoir_index];
+//	reservoir.sample.point_on_light = point_on_light[reservoir_index];
+//	reservoir.sample.light_source_normal = light_source_normal[reservoir_index];
+//
+//    return reservoir;
+//}
 
-	reservoir.UCW = UCW[reservoir_index];
-	reservoir.M = M[reservoir_index];
-
-	reservoir.sample.emission = emission[reservoir_index];
-	reservoir.sample.emissive_triangle_index = emissive_triangle_index[reservoir_index];
-	reservoir.sample.light_area = light_area[reservoir_index];
-	reservoir.sample.point_on_light = point_on_light[reservoir_index];
-	reservoir.sample.light_source_normal = light_source_normal[reservoir_index];
-
-    return reservoir;
-}
-
-template <bool includeVisibility, bool withCosineTerm>
-HIPRT_HOST_DEVICE float ReGIR_non_shading_evaluate_target_function_local(const HIPRTRenderData& render_data, int linear_cell_index, ColorRGB32F sample_emission, float3 sample_position,
-    int representative_prim_index, float3 rep_point, float3 rep_normal, Xorshift32Generator& rng)
-{
-    float3 to_light_direction = sample_position - rep_point;
-    float distance_to_light = hippt::length(to_light_direction);
-    to_light_direction /= distance_to_light;
-
-    float target_function = sample_emission.luminance() / hippt::square(distance_to_light);
-    if (representative_prim_index != -1 && withCosineTerm)
-        // We do have a representative normal, taking the cosine term into account
-        target_function *= hippt::max(0.0f, hippt::dot(rep_normal, to_light_direction));
-
-    if constexpr (includeVisibility)
-        target_function *= ReGIR_grid_cell_visibility_test(render_data, rep_point, representative_prim_index, sample_position, rng);
-
-    return target_function;
-}
+//template <bool includeVisibility, bool withCosineTerm>
+//HIPRT_HOST_DEVICE float ReGIR_non_shading_evaluate_target_function_local(const HIPRTRenderData& render_data, int linear_cell_index, ColorRGB32F sample_emission, float3 sample_position,
+//    int representative_prim_index, float3 rep_point, float3 rep_normal, Xorshift32Generator& rng)
+//{
+//    float3 to_light_direction = sample_position - rep_point;
+//    float distance_to_light = hippt::length(to_light_direction);
+//    to_light_direction /= distance_to_light;
+//
+//    float target_function = sample_emission.luminance() / hippt::square(distance_to_light);
+//    if (representative_prim_index != -1 && withCosineTerm)
+//        // We do have a representative normal, taking the cosine term into account
+//        target_function *= hippt::max(0.0f, hippt::dot(rep_normal, to_light_direction));
+//
+//    if constexpr (includeVisibility)
+//        target_function *= ReGIR_grid_cell_visibility_test(render_data, rep_point, representative_prim_index, sample_position, rng);
+//
+//    return target_function;
+//}
 
 HIPRT_HOST_DEVICE void store_reservoir_local(ReGIRReservoir& reservoir, int reservoir_index,
-    Float3xLengthUint10bPacked* emission, int* emissive_triangle_index, float* light_area,
-    float3* point_on_light, Octahedral24BitNormal* light_source_normal,
-    float* UCW, unsigned char* M)
+    Float3xLengthUint10bPacked* __restrict__ emission, int* __restrict__ emissive_triangle_index, float* __restrict__ light_area,
+    float3* __restrict__ point_on_light, Octahedral24BitNormal* __restrict__ light_source_normal,
+    float* __restrict__ UCW, unsigned char* __restrict__ M)
 {
 	UCW[reservoir_index] = reservoir.UCW;
 	M[reservoir_index] = reservoir.M;
@@ -72,26 +72,26 @@ HIPRT_HOST_DEVICE void store_reservoir_local(ReGIRReservoir& reservoir, int rese
   */
  #ifdef __KERNELCC__
  GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Spatial_Reuse(HIPRTRenderData render_data,
-     Float3xLengthUint10bPacked* emission, int* emissive_triangle_index,
-     float* light_area, float3* point_on_light, Octahedral24BitNormal* light_source_normal,
-     float* UCW, unsigned char* M,
+     Float3xLengthUint10bPacked* __restrict__ emission, int* __restrict__ emissive_triangle_index,
+     float* __restrict__ light_area, float3* __restrict__ point_on_light, Octahedral24BitNormal* __restrict__ light_source_normal,
+     float* __restrict__ UCW, unsigned char* __restrict__ M,
 
-     Float3xLengthUint10bPacked* spatial_emission, int* spatial_emissive_triangle_index,
-     float* spatial_light_area, float3* spatial_point_on_light, Octahedral24BitNormal* spatial_light_source_normal,
-     float* spatial_UCW, unsigned char* spatial_M,
+     Float3xLengthUint10bPacked* __restrict__ spatial_emission, int* __restrict__ spatial_emissive_triangle_index,
+     float* __restrict__ spatial_light_area, float3* __restrict__ spatial_point_on_light, Octahedral24BitNormal* __restrict__ spatial_light_source_normal,
+     float* __restrict__ spatial_UCW, unsigned char* __restrict__ spatial_M,
 
-     int* representative_primitive, unsigned int* representative_points, Octahedral24BitNormal* representative_normals)
+     int* __restrict__ representative_primitive, unsigned int* __restrict__ representative_points, Octahedral24BitNormal* __restrict__ representative_normals)
  #else
  GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data, 
-     Float3xLengthUint10bPacked* emission, int* emissive_triangle_index,
-     float* light_area, float3* point_on_light, Octahedral24BitNormal* light_source_normal,
-     float* UCW, unsigned char* M, 
+     Float3xLengthUint10bPacked* __restrict__ emission, int* __restrict__ emissive_triangle_index,
+     float* __restrict__ light_area, float3* __restrict__ point_on_light, Octahedral24BitNormal* __restrict__ light_source_normal,
+     float* __restrict__ UCW, unsigned char* __restrict__ M, 
 
-     Float3xLengthUint10bPacked* spatial_emission, int* spatial_emissive_triangle_index,
-     float* spatial_light_area, float3* spatial_point_on_light, Octahedral24BitNormal* spatial_light_source_normal,
-     float* spatial_UCW, unsigned char* spatial_M,
+     Float3xLengthUint10bPacked* __restrict__ spatial_emission, int* __restrict__ spatial_emissive_triangle_index,
+     float* __restrict__ spatial_light_area, float3* __restrict__ spatial_point_on_light, Octahedral24BitNormal* __restrict__ spatial_light_source_normal,
+     float* __restrict__ spatial_UCW, unsigned char* __restrict__ spatial_M,
      
-     int* representative_primitive, unsigned int* representative_points, Octahedral24BitNormal* representative_normals, int reservoir_index)
+     int* __restrict__ representative_primitive, unsigned int* __restrict__ representative_points, Octahedral24BitNormal* __restrict__ representative_normals, int reservoir_index)
  #endif
  {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -156,7 +156,16 @@ HIPRT_HOST_DEVICE void store_reservoir_local(ReGIRReservoir& reservoir, int rese
         //else
             // No temporal reuse, reading from the output of the grid fill buffer
             // regir_settings.get_grid_fill_output_reservoir(neighbor_reservoir_linear_index_in_grid);
-        neighbor_reservoir = read_full_reservoir(neighbor_reservoir_linear_index_in_grid, emission, emissive_triangle_index, light_area, point_on_light, light_source_normal, UCW, M);
+        // neighbor_reservoir = read_full_reservoir(neighbor_reservoir_linear_index_in_grid, emission, emissive_triangle_index, light_area, point_on_light, light_source_normal, UCW, M);
+
+        neighbor_reservoir.UCW = UCW[neighbor_reservoir_linear_index_in_grid];
+        neighbor_reservoir.M = M[neighbor_reservoir_linear_index_in_grid];
+
+        neighbor_reservoir.sample.emission = emission[neighbor_reservoir_linear_index_in_grid];
+        neighbor_reservoir.sample.emissive_triangle_index = emissive_triangle_index[neighbor_reservoir_linear_index_in_grid];
+        neighbor_reservoir.sample.light_area = light_area[neighbor_reservoir_linear_index_in_grid];
+        neighbor_reservoir.sample.point_on_light = point_on_light[neighbor_reservoir_linear_index_in_grid];
+        neighbor_reservoir.sample.light_source_normal = light_source_normal[neighbor_reservoir_linear_index_in_grid];
 
         if (neighbor_reservoir.UCW <= 0.0f)
             continue;
@@ -183,10 +192,32 @@ HIPRT_HOST_DEVICE void store_reservoir_local(ReGIRReservoir& reservoir, int rese
             float3 representative_normal = representative_normals[linear_center_cell_index].unpack();
 
             if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function_local<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, representative_primitive_index, representative_normal, representative_point, random_number_generator);
+            {
+                float3 to_light_direction = neighbor_reservoir.sample.point_on_light - representative_point;
+                float distance_to_light = hippt::length(to_light_direction);
+                to_light_direction /= distance_to_light;
+
+                target_function_at_center = neighbor_reservoir.sample.emission.unpack().luminance() / hippt::square(distance_to_light);
+                if (representative_primitive_index != -1)
+                    // We do have a representative normal, taking the cosine term into account
+                    target_function_at_center *= hippt::max(0.0f, hippt::dot(representative_normal, to_light_direction));
+
+                //target_function_at_center = ReGIR_non_shading_evaluate_target_function_local<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, representative_primitive_index, representative_point, representative_normal, random_number_generator);
+            }
             else
+            {
                 // Never using the template visibility/consine terms arguments for canonical reservoirs
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function_local<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, representative_primitive_index, representative_normal, representative_point, random_number_generator);
+                float3 to_light_direction = neighbor_reservoir.sample.point_on_light - representative_point;
+                float distance_to_light = hippt::length(to_light_direction);
+                to_light_direction /= distance_to_light;
+
+                target_function_at_center = neighbor_reservoir.sample.emission.unpack().luminance() / hippt::square(distance_to_light);
+                //if (representative_primitive_index != -1)
+                //    // We do have a representative normal, taking the cosine term into account
+                //    target_function_at_center *= hippt::max(0.0f, hippt::dot(representative_normal, to_light_direction));
+
+                // target_function_at_center = ReGIR_non_shading_evaluate_target_function_local<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, representative_primitive_index, representative_point, representative_normal, random_number_generator);
+            }
         }
 
         output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
@@ -234,8 +265,25 @@ HIPRT_HOST_DEVICE void store_reservoir_local(ReGIRReservoir& reservoir, int rese
 
                 float3 representative_normal = representative_normals[neighbor_linear_cell_index_in_grid].unpack();
 
-                if (ReGIR_non_shading_evaluate_target_function_local<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_linear_cell_index_in_grid, output_reservoir.sample.emission.unpack(), output_reservoir.sample.point_on_light, representative_primitive_index, representative_point, representative_normal, random_number_generator) > 0.0f)
+                float target_function;
+                {
+                        float3 to_light_direction = output_reservoir.sample.point_on_light - representative_point;
+                        float distance_to_light = hippt::length(to_light_direction);
+                        to_light_direction /= distance_to_light;
+                    
+                        target_function = output_reservoir.sample.emission.unpack().luminance() / hippt::square(distance_to_light);
+                        if (representative_primitive_index != -1)
+                            // We do have a representative normal, taking the cosine term into account
+                            target_function *= hippt::max(0.0f, hippt::dot(representative_normal, to_light_direction));
+                    
+                        target_function *= ReGIR_grid_cell_visibility_test(render_data, representative_point, representative_primitive_index, output_reservoir.sample.point_on_light, random_number_generator);
+                }
+
+                if (target_function > 0.0f)
                     valid_neighbor_count += 1.0f;
+
+                /*if (ReGIR_non_shading_evaluate_target_function_local<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_linear_cell_index_in_grid, output_reservoir.sample.emission.unpack(), output_reservoir.sample.point_on_light, representative_primitive_index, representative_point, representative_normal, random_number_generator) > 0.0f)
+                    valid_neighbor_count += 1.0f;*/
 
                 /*if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
                     valid_neighbor_count += 1.0f;*/
@@ -257,7 +305,17 @@ HIPRT_HOST_DEVICE void store_reservoir_local(ReGIRReservoir& reservoir, int rese
         // can properly assess whether a given cell could have produced a given sample or not
         output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
 
-    store_reservoir_local(output_reservoir, reservoir_index, spatial_emission, spatial_emissive_triangle_index, spatial_light_area, spatial_point_on_light, spatial_light_source_normal, spatial_UCW, spatial_M);
+
+    // store_reservoir_local(output_reservoir, reservoir_index, spatial_emission, spatial_emissive_triangle_index, spatial_light_area, spatial_point_on_light, spatial_light_source_normal, spatial_UCW, spatial_M);
+    spatial_UCW[reservoir_index] = output_reservoir.UCW;
+    spatial_M[reservoir_index] = output_reservoir.M;
+
+    spatial_emission[reservoir_index] = output_reservoir.sample.emission;
+    spatial_emissive_triangle_index[reservoir_index] = output_reservoir.sample.emissive_triangle_index;
+    spatial_light_area[reservoir_index] = output_reservoir.sample.light_area;
+    spatial_point_on_light[reservoir_index] = output_reservoir.sample.point_on_light;
+    spatial_light_source_normal[reservoir_index] = output_reservoir.sample.light_source_normal;
+
     // regir_settings.spatial_reuse.store_reservoir(output_reservoir, reservoir_index);
 }
 
