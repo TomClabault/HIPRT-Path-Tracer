@@ -17,17 +17,31 @@ struct ReGIRGridBufferSoADevice
 	ReGIRReservoirSoADevice reservoirs;
 	ReGIRSampleSoADevice samples;
 
-	HIPRT_HOST_DEVICE void store_reservoir_and_sample(int linear_reservoir_index, const ReGIRReservoir& reservoir)
+	HIPRT_HOST_DEVICE void store_reservoir_and_sample_opt(int linear_reservoir_index, const ReGIRReservoir& reservoir)
 	{
-		reservoirs.store_reservoir(linear_reservoir_index, reservoir);
+		if (reservoir.UCW <= 0.0f)
+		{
+			// No need to store the rest if the UCW is invalid
+			reservoirs.UCW[linear_reservoir_index] = reservoir.UCW;
+
+			return;
+		}
+
+		reservoirs.store_reservoir_opt(linear_reservoir_index, reservoir);
 		samples.store_sample(linear_reservoir_index, reservoir.sample);
 	}
 
-	HIPRT_HOST_DEVICE ReGIRReservoir read_full_reservoir(int linear_reservoir_index) const
+	HIPRT_HOST_DEVICE ReGIRReservoir read_full_reservoir_opt(int linear_reservoir_index) const
 	{
 		ReGIRReservoir reservoir;
 		
-		reservoir = reservoirs.read_reservoir(linear_reservoir_index);
+		float UCW = reservoirs.UCW[linear_reservoir_index];
+		if (UCW <= 0.0f)
+			// If the reservoir doesn't have a valid sample, not even reading the rest of it
+			return ReGIRReservoir();
+
+		reservoir = reservoirs.read_reservoir<false>(linear_reservoir_index);
+		reservoir.UCW = UCW;
 		reservoir.sample = samples.read_sample(linear_reservoir_index);
 
 		return reservoir;
@@ -97,9 +111,9 @@ struct ReGIRTemporalReuseSettings
 
 struct ReGIRSpatialReuseSettings
 {
-	HIPRT_HOST_DEVICE void store_reservoir(const ReGIRReservoir& reservoir, int linear_reservoir_index_in_grid)
+	HIPRT_HOST_DEVICE void store_reservoir_opt(const ReGIRReservoir& reservoir, int linear_reservoir_index_in_grid)
 	{
-		output_grid.store_reservoir_and_sample(linear_reservoir_index_in_grid, reservoir);
+		output_grid.store_reservoir_and_sample_opt(linear_reservoir_index_in_grid, reservoir);
 	}
 
 	bool do_spatial_reuse = true;
@@ -260,13 +274,13 @@ struct ReGIRSettings
 	{
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return spatial_reuse.output_grid.read_full_reservoir(reservoir_index_in_grid);
+			return spatial_reuse.output_grid.read_full_reservoir_opt(reservoir_index_in_grid);
 		else if (temporal_reuse.do_temporal_reuse)
 			// If only doing temporal reuse, reading from the output of the spatial reuse pass
-			return get_temporal_reservoir(reservoir_index_in_grid);
+			return get_temporal_reservoir_opt(reservoir_index_in_grid);
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return grid_fill.grid_buffers.read_full_reservoir(reservoir_index_in_grid);
+			return grid_fill.grid_buffers.read_full_reservoir_opt(reservoir_index_in_grid);
 	}
 
 	/**
@@ -326,28 +340,32 @@ struct ReGIRSettings
 	 * This is index should be in [0, temporal_reuse.temporal_history_length - 1].
 	 * 
 	 * If not specified, this function reads from the grid of the current frame
+	 * 
+	 * The 'opt' suffix of the function means that the UCW of the reservoir will be read first and the rest of the reservoir
+	 * will only be read if the UCW is > 0.0f.
+	 * If the UCW is <= 0.0f, the returned reservoir will have uninitialized values in all of its fields
 	 */
-	HIPRT_HOST_DEVICE ReGIRReservoir get_temporal_reservoir(int linear_reservoir_index_in_grid, int grid_index = -1) const
+	HIPRT_HOST_DEVICE ReGIRReservoir get_temporal_reservoir_opt(int linear_reservoir_index_in_grid, int grid_index = -1) const
 	{
 		if (grid_index != -1)
-			return grid_fill.grid_buffers.read_full_reservoir(grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid);
+			return grid_fill.grid_buffers.read_full_reservoir_opt(grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid);
 		else
-			return grid_fill.grid_buffers.read_full_reservoir(temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid);
+			return grid_fill.grid_buffers.read_full_reservoir_opt(temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid);
 	}
 
-	HIPRT_HOST_DEVICE ReGIRReservoir get_grid_fill_output_reservoir(int linear_reservoir_index_in_grid) const
+	HIPRT_HOST_DEVICE ReGIRReservoir get_grid_fill_output_reservoir_opt(int linear_reservoir_index_in_grid) const
 	{
 		// The output of the grid fill pass is in the current frame grid so we can call the temporal method with
 		// index -1
-		return get_temporal_reservoir(linear_reservoir_index_in_grid, -1);
+		return get_temporal_reservoir_opt(linear_reservoir_index_in_grid, -1);
 	}
 
-	HIPRT_HOST_DEVICE void store_reservoir(ReGIRReservoir reservoir, int linear_reservoir_index_in_grid, int grid_index = -1)
+	HIPRT_HOST_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, int linear_reservoir_index_in_grid, int grid_index = -1)
 	{
 		if (grid_index != -1)
-			grid_fill.grid_buffers.store_reservoir_and_sample(grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid, reservoir);
+			grid_fill.grid_buffers.store_reservoir_and_sample_opt(grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid, reservoir);
 		else
-			grid_fill.grid_buffers.store_reservoir_and_sample(temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid, reservoir);
+			grid_fill.grid_buffers.store_reservoir_and_sample_opt(temporal_reuse.current_grid_index * get_number_of_reservoirs_per_grid() + linear_reservoir_index_in_grid, reservoir);
 	}
 
 	HIPRT_HOST_DEVICE ColorRGB32F get_random_cell_color(float3 position) const
@@ -382,11 +400,11 @@ struct ReGIRSettings
 		int temporal_grid_count = temporal_reuse.do_temporal_reuse ? temporal_reuse.temporal_history_length : 1;
 
 		for (int grid_index = 0; grid_index < temporal_grid_count; grid_index++)
-            store_reservoir(ReGIRReservoir(), reservoir_index, grid_index);
+            store_reservoir_opt(ReGIRReservoir(), reservoir_index, grid_index);
 
 		// Also clearing the spatial reuse output buffers (grid) if spatial reuse is enabled
 		if (spatial_reuse.do_spatial_reuse)
-			spatial_reuse.output_grid.store_reservoir_and_sample(reservoir_index, ReGIRReservoir());
+			spatial_reuse.output_grid.store_reservoir_and_sample_opt(reservoir_index, ReGIRReservoir());
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;

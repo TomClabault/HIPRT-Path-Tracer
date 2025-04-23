@@ -56,6 +56,9 @@ struct ReGIRReservoir
 		float resampling_weight = mis_weight * target_function * other_reservoir.UCW;
 
 		M += other_reservoir.M;
+		if (resampling_weight <= 0.0f)
+			return false;
+
 		weight_sum += resampling_weight;
 
 		if (rng() < resampling_weight / weight_sum)

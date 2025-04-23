@@ -55,7 +55,7 @@ HIPRT_HOST_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_da
             if (grid_index == regir_settings.temporal_reuse.current_grid_index)
                 continue;
 
-            ReGIRReservoir past_frame_reservoir = regir_settings.get_temporal_reservoir(reservoir_index, grid_index);
+            ReGIRReservoir past_frame_reservoir = regir_settings.get_temporal_reservoir_opt(reservoir_index, grid_index);
             // M-capping
             past_frame_reservoir.M = hippt::min(past_frame_reservoir.M, (unsigned char)regir_settings.temporal_reuse.m_cap);
 
@@ -124,7 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
         output_reservoir = visibility_reuse(render_data, output_reservoir, linear_cell_index, random_number_generator);
 
-    regir_settings.store_reservoir(output_reservoir, reservoir_index);
+    regir_settings.store_reservoir_opt(output_reservoir, reservoir_index);
 }
 
 #endif
