@@ -41,7 +41,7 @@ struct Camera
     /**
      * The given FOV must be in radians
      */
-    void set_FOV(float new_fov);
+    void set_FOV_radians(float new_fov);
 
     /**
      * Adjusts the speed attributes of this camera so that the camera

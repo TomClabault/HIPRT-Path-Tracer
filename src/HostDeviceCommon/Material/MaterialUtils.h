@@ -102,6 +102,20 @@ struct MaterialUtils
         return can_do_light_sampling(material.get_roughness(), material.get_metallic(), material.get_specular_transmission(), material.get_coat(), material.get_coat_roughness(), material.get_second_roughness(), material.get_second_roughness_weight(), roughness_threshold);
     }
 
+    /**
+	 * Returns the minimum roughness of the material looking at all the active lobes
+     */
+    HIPRT_HOST_DEVICE static float minimum_roughness(const DeviceUnpackedEffectiveMaterial& material)
+    {
+		float coat_roughness = material.coat > 0.0f ? material.coat_roughness : 1.0f;
+		float specular_roughness = material.specular > 0.0f ? material.roughness : 1.0f;
+		float glass_roughness = material.specular_transmission > 0.0f ? material.roughness : 1.0f;
+		float metallic_roughness = (material.metallic > 0.0f && material.second_roughness_weight < 1.0f) ? material.roughness : 1.0f;
+		float metallic_2_roughness = (material.metallic > 0.0f && material.second_roughness_weight > 0.0f) ? material.second_roughness : 1.0f;
+     
+		return hippt::min(coat_roughness, hippt::min(specular_roughness, hippt::min(glass_roughness, hippt::min(metallic_roughness, metallic_2_roughness))));
+    }
+
     enum SpecularDeltaReflectionSampled : int
     {
         NOT_SPECULAR = -1,

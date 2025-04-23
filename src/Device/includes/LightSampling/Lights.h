@@ -169,7 +169,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
 
                         float light_pdf_for_mis = light_sample_pdf_for_MIS_solid_angle_measure(render_data,
                             light_sample_solid_angle_pdf,
-                            light_sample.light_area, light_sample.emission, light_sample.light_source_normal, 
+                            light_sample.light_area, light_sample.emission, light_sample.light_source_normal,
                             distance_to_light, shadow_ray_direction_normalized);
                         float mis_weight = balance_heuristic(light_pdf_for_mis, bsdf_pdf);
 
@@ -210,8 +210,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
         // it needs to be emissive
         if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black())
         {
-            float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
-            float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf);
+            float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
+            float light_pdf_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, triangle_area(render_data, shadow_light_ray_hit_info.hit_prim_index), 
+                shadow_light_ray_hit_info.hit_emission, shadow_light_ray_hit_info.hit_geometric_normal, shadow_light_ray_hit_info.hit_distance, 
+                sampled_bsdf_direction);
+            float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf_for_MIS);
 
             // Using abs here because we want the dot product to be positive.
             // You may be thinking that if we're doing this, then we're not going to discard BSDF

@@ -121,7 +121,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_LAMBERTIAN
+#define BSDFOverride BSDF_NONE
 
 /**
  * The stack size for handling nested dielectrics
@@ -171,7 +171,7 @@
  *		luminance using an alias table for constant time sampling
  *		Good convergence and faster than ESS_BINARY_SEARCH
  */
-#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
+#define EnvmapSamplingStrategy ESS_NO_SAMPLING
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF

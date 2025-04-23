@@ -235,7 +235,13 @@ namespace hippt
 	 * For 'value' == 'b', returns 1.0f
 	 */
 	template <typename T>
-	__device__ float inverse_lerp(T value, T a, T b) { return (value - a) / (b - a); }
+	__device__ float inverse_lerp(T value, T a, T b)
+	{
+		// Clamping
+		value = hippt::max(a, hippt::min(value, b));
+
+		return (value - a) / (b - a);
+	}
 
 	/**
 	 * Reference: https://registry.khronos.org/OpenGL-Refpages/gl4/html/smoothstep.xhtml
@@ -491,7 +497,13 @@ namespace hippt
 	 * For 'value' == 'b', returns 1.0f
 	 */
 	template <typename T>
-	inline float inverse_lerp(T value, T a, T b) { return (value - a) / (b - a); }
+	inline float inverse_lerp(T value, T a, T b) 
+	{ 
+		// Clamping
+		value = hippt::max(a, hippt::min(value, b)); 
+		
+		return (value - a) / (b - a); 
+	}
 	
 	/**
 	 * Reference: https://registry.khronos.org/OpenGL-Refpages/gl4/html/smoothstep.xhtml

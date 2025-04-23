@@ -649,7 +649,6 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_NO_DIRECT_LIGHT_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_NO_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, KERNEL_OPTION_FALSE);
 		m_renderer->recompile_kernels();
 
@@ -868,7 +867,7 @@ void ImGuiSettingsWindow::draw_camera_panel_static(const std::string& panel_titl
 		static float camera_fov = camera.vertical_fov * M_INV_PI * 180.0f;
 		if (ImGui::SliderFloat("FOV", &camera_fov, 0.0f, 180.0f, "%.3fdeg", ImGuiSliderFlags_AlwaysClamp))
 		{
-			camera.set_FOV(camera_fov / 180.0f * M_PI);
+			camera.set_FOV_radians(camera_fov / 180.0f * M_PI);
 
 			render_window->set_render_dirty(true);
 		}

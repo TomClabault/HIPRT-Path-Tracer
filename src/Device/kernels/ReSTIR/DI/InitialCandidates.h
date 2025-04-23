@@ -259,9 +259,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
                     // Computing the approximate light sampler PDF for use in MIS in case the light sampler's PDF cannot be
                     // evaluated for an arbitrary input sample (as will be needed when computing the MIS weight for the BSDF sample)
 #if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
-                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure<ReSTIR_DI_LightPresamplingStrategy>(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction);
+                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure<ReSTIR_DI_LightPresamplingStrategy>(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction, ray_payload.material);
 #else
-                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure<DirectLightSamplingBaseStrategy>(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction);
+                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, light_area, light_emission, light_normal, distance_to_light, to_light_direction);
 #endif
 
                     light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability);
@@ -349,7 +349,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
                 bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample, surface, random_number_generator);
 
-                float light_pdf_solid_angle = 0.0f;
+                float light_pdf_solid_angle_for_MIS = 0.0f;
                 bool refraction_sampled = hippt::dot(bsdf_sampled_direction, closest_hit_info.shading_normal) < 0.0f;
                 if (!refraction_sampled)
                 {
@@ -369,22 +369,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     // (because the BSDF sample, that should have weight 1 [or to be precise: 1 / nb_bsdf_samples]
                     // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
                     // and this is going to cause darkening as the number of light samples grows)
+
 #if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
-                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle<ReSTIR_DI_LightPresamplingStrategy>(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+                    float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle<ReSTIR_DI_LightPresamplingStrategy>(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure<ReSTIR_DI_LightPresamplingStrategy>(render_data, light_pdf_solid_angle, triangle_area(render_data, shadow_light_ray_hit_info.hit_prim_index), 
+                        shadow_light_ray_hit_info.hit_emission, shadow_light_ray_hit_info.hit_geometric_normal, shadow_light_ray_hit_info.hit_distance, 
+                        bsdf_sampled_direction, ray_payload.material);
 #else
-                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+                    float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+                    light_pdf_solid_angle_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, triangle_area(render_data,
+                        shadow_light_ray_hit_info.hit_prim_index), shadow_light_ray_hit_info.hit_emission, shadow_light_ray_hit_info.hit_geometric_normal, shadow_light_ray_hit_info.hit_distance, 
+                        bsdf_sampled_direction);
 #endif
                 }
 
                 float target_function = bsdf_RIS_sample.target_function;
-                if (bsdf_sample_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / light_pdf_solid_angle / bsdf_sample_pdf_solid_angle))
+                if (bsdf_sample_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / light_pdf_solid_angle_for_MIS / bsdf_sample_pdf_solid_angle))
                     continue;
 
                 // Our light sampler is only chosen with probability '1.0f - envmap_candidate_probability'
                 // so we multiply that here to take that into account
-                light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
+                light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability);
 
-                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, nb_light_candidates);
+                // float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, nb_light_candidates);
+                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle_for_MIS, nb_light_candidates);
 
                 float bsdf_sample_pdf_area_measure = bsdf_sample_pdf_solid_angle;
                 bsdf_sample_pdf_area_measure /= (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance);
