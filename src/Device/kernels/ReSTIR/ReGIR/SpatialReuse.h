@@ -81,10 +81,10 @@
         ReGIRReservoir neighbor_reservoir;
         if (regir_settings.temporal_reuse.do_temporal_reuse)
             // Reading from the output of the temporal reuse
-            neighbor_reservoir = regir_settings.get_temporal_reservoir(neighbor_reservoir_linear_index_in_grid);
+            neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
         else
             // No temporal reuse, reading from the output of the grid fill buffer
-            neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir(neighbor_reservoir_linear_index_in_grid);
+            neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
 
         if (neighbor_reservoir.UCW <= 0.0f)
             continue;
@@ -151,7 +151,7 @@
         // can properly assess whether a given cell could have produced a given sample or not
         output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
 
-    regir_settings.spatial_reuse.store_reservoir(output_reservoir, reservoir_index);
+    regir_settings.spatial_reuse.store_reservoir_opt(output_reservoir, reservoir_index);
 }
 
 #endif
