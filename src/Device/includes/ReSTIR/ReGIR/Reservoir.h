@@ -72,12 +72,12 @@ struct ReGIRReservoir
 		return false;
 	}
 
-	HIPRT_HOST_DEVICE void finalize_resampling(float normalization_weight = 1.0f)
+	HIPRT_HOST_DEVICE void finalize_resampling(float normalization_denom = 1.0f)
 	{
-		if (weight_sum == 0.0f || normalization_weight == 0.0f)
+		if (weight_sum == 0.0f || normalization_denom == 0.0f)
 			UCW = 0.0f;
 		else
-			UCW = 1.0f / sample.target_function * weight_sum / normalization_weight;
+			UCW = 1.0f / sample.target_function * weight_sum / normalization_denom;
 	}
 
 	ReGIRSample sample;

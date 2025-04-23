@@ -213,17 +213,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
             selected_neighbor = render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
     }
 
-    float normalization_weight = 0.0f;
-    neighbor_rng.m_state.seed = neighbor_rng_seed;
-    for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + need_canonical; i++)
-    {
-        if (i == selected_neighbor)
-        {
-            normalization_weight += 1.0f;
+    if (out_reservoir.weight_sum == 0.0f)
+        return LightSampleInformation();
 
-            continue;
-        }
-        else if (i == render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point)
+    // Reseting the seed for replaying the neighbors in the same order
+    neighbor_rng.m_state.seed = neighbor_rng_seed;
+    float normalization_weight = 0.0f;
+
+    bool selected_neighbor_is_canonical = selected_neighbor == render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
+    for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + (need_canonical && selected_neighbor_is_canonical); i++)
+    {
+		bool evaluating_canonical = (i == render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point);
+        if (evaluating_canonical)
         {
             // Canonical reservoir.
             // This one can always produce any sample so this is always a valid neighbor
@@ -236,14 +237,49 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
         if (neighbor_cell_index == -1)
             continue;
 
-        if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index, 
+        if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index,
             out_reservoir.sample.emission.unpack(), out_reservoir.sample.point_on_light,
             random_number_generator) > 0.0f)
-            normalization_weight += 1.0f;
+        {
+            if (!evaluating_canonical && selected_neighbor_is_canonical)
+            {
+				// The canonical sample was chosen but non-canonical neighbors are able to generate this sample so let's give it 0 weight
+                // such that only canonical neighbors produce this sample
+                normalization_weight = 0.0f;
+
+                break;
+            }
+            else
+                normalization_weight += 1.0f;
+        }
     }
 
-    if (out_reservoir.weight_sum == 0.0f)
-        return LightSampleInformation();
+    //for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + need_canonical; i++)
+    //{
+    //    if (i == selected_neighbor)
+    //    {
+    //        normalization_weight += 1.0f;
+
+    //        continue;
+    //    }
+    //    else if (i == render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point)
+    //    {
+    //        // Canonical reservoir.
+    //        // This one can always produce any sample so this is always a valid neighbor
+    //        normalization_weight += 1.0f;
+
+    //        continue;
+    //    }
+
+    //    int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_linear_cell_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+    //    if (neighbor_cell_index == -1)
+    //        continue;
+
+    //    if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index, 
+    //        out_reservoir.sample.emission.unpack(), out_reservoir.sample.point_on_light,
+    //        random_number_generator) > 0.0f)
+    //        normalization_weight += 1.0f;
+    //}
 
     out_reservoir.finalize_resampling(normalization_weight);
 
