@@ -109,6 +109,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     int linear_cell_index = reservoir_index / regir_settings.grid_fill.get_total_reservoir_count_per_cell();
     float3 cell_center = regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
 
+    // Using this kernel to reset the cell liveness staging buffer
+    regir_settings.shading.grid_cells_alive_staging[linear_cell_index] = 0;
+
+    if (regir_settings.shading.grid_cells_alive[linear_cell_index] == 0)
+    {
+        // Grid cell wasn't used during shading in the last frame, let's not refill it
+
+        // Storing an empty reservoir to clear the cell
+        regir_settings.store_reservoir_opt(ReGIRReservoir(), reservoir_index);
+
+        return;
+    }
+
     // Grid fill
     output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, linear_cell_index, random_number_generator);
 

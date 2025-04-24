@@ -8,6 +8,7 @@
 
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID = "ReGIR Grid fill & temporal reuse";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID = "ReGIR Spatial reuse";
+const std::string ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID = "ReGIR Cell liveness copy";
 
 const std::string ReGIRRenderPass::REGIR_RENDER_PASS_NAME = "ReGIR Render Pass";
 
@@ -15,12 +16,14 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 {
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, "ReGIR_Spatial_Reuse" },
+	{ REGIR_CELL_LIVENESS_COPY_KERNEL_ID, "ReGIR_CellLivenessCopy" },
 };
 
 const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES =
 {
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
+	{ REGIR_CELL_LIVENESS_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/CellLivenessCopy.h" },
 };
 
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
@@ -44,6 +47,10 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	// which means that the global stack traversal BVH buffer may be too small to manage the traversal of all the rays that will be launched
 	// in parallel by the ReGIR kernels
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_FALSE);
+
+	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID));
+	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID));
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -53,15 +60,17 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 
 	bool grid_fill_compiled = m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
 	if (!grid_fill_compiled)
-		// Spatiotemporal is needed but hasn't been compiled yet
 		m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 	bool spatial_reuse_compiled = m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->has_been_compiled();
 	if (!spatial_reuse_compiled)
-		// Spatiotemporal is needed but hasn't been compiled yet
 		m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	return !grid_fill_compiled || !spatial_reuse_compiled;
+	bool cell_liveness_copy_compiled = m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->has_been_compiled();
+	if (!cell_liveness_copy_compiled)
+		m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	return !grid_fill_compiled || !spatial_reuse_compiled || !cell_liveness_copy_compiled;
 }
 
 bool ReGIRRenderPass::pre_render_update(float delta_time)
@@ -81,6 +90,22 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		if (m_render_data->render_settings.regir_settings.spatial_reuse.do_spatial_reuse && m_spatial_reuse_output_grid_buffer.size() != m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid())
 		{
 			m_spatial_reuse_output_grid_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid());
+
+			updated = true;
+		}
+
+		if (m_grid_cells_alive_buffer.size() != m_render_data->render_settings.regir_settings.get_number_of_cells())
+		{
+			m_grid_cells_alive_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+			m_grid_cells_alive_staging_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+
+			// Initializaing all the cells to alive
+			std::vector<unsigned char> init_data_alive(m_render_data->render_settings.regir_settings.get_number_of_cells(), 1);
+			m_grid_cells_alive_buffer.upload_data(init_data_alive);
+
+			// The staging buffer starts with every cell being inactive
+			std::vector<unsigned char> init_data_inactive(m_render_data->render_settings.regir_settings.get_number_of_cells(), 0);
+			m_grid_cells_alive_staging_buffer.upload_data(init_data_inactive);
 
 			updated = true;
 		}
@@ -109,6 +134,14 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		if (m_spatial_reuse_output_grid_buffer.size() > 0)
 		{
 			m_spatial_reuse_output_grid_buffer.free();
+
+			updated = true;
+		}
+
+		if (m_grid_cells_alive_buffer.size() > 0)
+		{
+			m_grid_cells_alive_buffer.free();
+			m_grid_cells_alive_staging_buffer.free();
 
 			updated = true;
 		}
@@ -155,13 +188,31 @@ void ReGIRRenderPass::launch_spatial_reuse()
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid(), 1, launch_args, m_renderer->get_main_stream());
 }
 
+void ReGIRRenderPass::launch_cell_liveness_copy_pass()
+{
+	if (m_render_data->buffers.emissive_triangles_count == 0 && m_render_data->world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+		return;
+
+	unsigned char* staging_ptr = m_grid_cells_alive_staging_buffer.get_device_pointer();
+	unsigned char* non_staging_ptr = m_grid_cells_alive_buffer.get_device_pointer();
+
+	void* launch_args[] = { &staging_ptr, &non_staging_ptr, &m_render_data->render_settings.regir_settings };
+
+	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
+}
+
 void ReGIRRenderPass::post_render_update()
 {
+	if (!is_render_pass_used())
+		return;
+		
 	if (m_render_data->render_settings.regir_settings.temporal_reuse.do_temporal_reuse)
 	{
 		m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index++;
 		m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index %= m_render_data->render_settings.regir_settings.temporal_reuse.temporal_history_length;
 	}
+
+	launch_cell_liveness_copy_pass();
 }
 
 void ReGIRRenderPass::update_render_data()
@@ -177,6 +228,8 @@ void ReGIRRenderPass::update_render_data()
 		m_render_data->render_settings.regir_settings.representative.representative_normals = m_representative_normals_buffer.get_device_pointer();
 		m_render_data->render_settings.regir_settings.representative.representative_points = m_representative_points_buffer.get_device_pointer();
 		m_render_data->render_settings.regir_settings.representative.representative_primitive = reinterpret_cast<AtomicType<int>*>(m_representative_primitive_buffer.get_device_pointer());
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive = m_grid_cells_alive_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_staging = m_grid_cells_alive_staging_buffer.get_device_pointer();
 	}
 	else
 	{
@@ -192,6 +245,18 @@ void ReGIRRenderPass::update_render_data()
 void ReGIRRenderPass::reset()
 {
 	m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
+
+	{
+		// Resetting the 'cell alive' buffers
+		std::vector<unsigned char> init_data_alive(m_render_data->render_settings.regir_settings.get_number_of_cells(), 1);
+		m_grid_cells_alive_buffer.upload_data(init_data_alive);
+	}
+
+	{
+		// The staging buffer starts with every cell being inactive
+		std::vector<unsigned char> init_data_inactive(m_render_data->render_settings.regir_settings.get_number_of_cells(), 0);
+		m_grid_cells_alive_staging_buffer.upload_data(init_data_inactive);
+	}
 }
 
 void ReGIRRenderPass::reset_representative_data()
@@ -217,8 +282,6 @@ void ReGIRRenderPass::reset_representative_data()
 			std::vector<int> primitive_reset(m_representative_primitive_buffer.size(), ReGIRRepresentative::UNDEFINED_PRIMITIVE);
 			m_representative_primitive_buffer.upload_data(primitive_reset);
 		}
-
-
 	}
 }
 
@@ -234,5 +297,7 @@ float ReGIRRenderPass::get_VRAM_usage() const
 		m_distance_to_center_buffer.get_byte_size() + 
 		m_representative_points_buffer.get_byte_size() + 
 		m_representative_normals_buffer.get_byte_size() + 
-		m_representative_primitive_buffer.get_byte_size()) / 1000000.0f;
+		m_representative_primitive_buffer.get_byte_size() +
+		m_grid_cells_alive_buffer.get_byte_size() + 
+		m_grid_cells_alive_staging_buffer.get_byte_size()) / 1000000.0f;
 }

@@ -52,6 +52,9 @@ extern ImGuiLogger g_imgui_logger;
 // - The cells that weren't touched in the last frame shouldn't be rebuilt in the grid fill
 //		Should we still keep some cells around the geometry of the scene such that the spatial reuse can do its job or not? More variance without them?
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
+// - Use some shjortcut in the BSDF in the target function during shading: rough material only use a constant BSDF, nothing more
+// - De-duplicate BSDF computations during shading: we evaluate the BRDF during the reservoir resampling and again during the light sampling
+//		May be exclusive with the BSDF simplifications that can be done in the target function because then we wouldn't be evaluating the proper full BSDF in the target function
 // - Only rebuild the ReGIR grid every N frames?
 // - Can we have some kind of visibility percentage grid that we can use during the resampling to help with visibility noise? 
 //		- We would have a voxel grid on top of the ReGIR grid. 
@@ -63,11 +66,7 @@ extern ImGuiLogger g_imgui_logger;
 //		
 //			- We would need a prepass at lower resolution, same as for radiance caching?
 //			- Maybe we can keep the grids of past frames to help with that?
-// - Spatial reuse pass on neighbors grid cells
 // - Temporal reuse
-// - Can we do some kind of visibility reuse pass at the end of the grid cell population? Such that all occluded reservoirs are discarded and not used during shading
-// - Maybe instead of a visibility reuse pass, we can do something that takes stratified point positions inside the voxel and computes the visibility between the reservoir light sample and these points and the average visibility success can be used as a weight for using that reservoir during shading or not
-//		- Maybe what we can do for the problem a the grid cell center being inside an objects is to always include some canonical samples in the resampling process to cover the cases where the visibility would fail (this would require proper 1/Z mis weights though)
 // - When building a grid around the camera, the size of the voxel can be chosen such that the projected bounding box of a voxel spans a certain amount of pixels on screen ---> maybe this can be done separately for each dimensions
 // - Right now, ReGIR's temporal reuse only softens black pixels (no good sample) because of the MIS weights, something better to do?
 //		- This may actually be because all samples are pretty good from the point of view of the target function --> all samples are equal ---> same weights --> 1/M --> averaging.
@@ -78,6 +77,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we do temporal reuse without storing past grid (VRAM please)? Same as in ReSTIR DI?
 // - For performance, at shading time when resampling the reservoirs, there may be only a few materials that benefit from the BSDF in the resampling target function because lambertian doesn't care, mirrors don't care, specular don't care, really it's only materials at like 0.3 roughness ish
 // - Looking at the average contribution of cells seems to be giving some good metric on the performance of the sampling per cell no? What can we do with that info? Adaptive sampling somehow?
+//		Maybe we can adaptively adapt the number of samples per grid cell during grid fill with that
 // - We can include the cosine term of the geometry term in the target function
 // - Are we really chaining spatial and temporal reuse?
 // - Try to find a case where temporal reuse erellay helps and then try the approach of having only one temporal grid instead of 8 and see if that still works well
@@ -88,9 +88,18 @@ extern ImGuiLogger g_imgui_logger;
 // - Maybe we can fix the jittering PER FRAME such that a given shading point only reuses from a single random neighboring cells instead of multiple neighboring cells when resampling multiple reservoirs. This may simplify MIS weights quite a bit at the cost of artifacts (but yet to try if the artifacts are actually bad or not)
 // - Pack emission to length + 16 bits (maybe even 10? Try also length + RGBE9995 in terms of precision) per channel
 // - Sparse grid somehow? hash table? perfect spatial hasing?
+//		Sparse voxel octrees? https://research.nvidia.com/sites/default/files/pubs/2010-02_Efficient-Sparse-Voxel/laine2010tr1_paper.pdf?utm_source=chatgpt.com
+//		Voxel hasing? https://niessnerlab.org/papers/2013/4hashing/niessner2013hashing.pdf?utm_source=chatgpt.com
 // - We can do neighbor normal similarity during spatial reuse
-// ----------------------------------
-// - Add a MIS scaling based on roughness. below 0.15 roughness, we should rely on BSDF more and more (and also check that ReSTIR DI is working in all of its configurations)
+// - NEE++ mix up to help with visibility sampling?
+// - To profile the spatial reuse / grid fill pass and find which assembly instruction corresponds to code, maybe place some texture fetch instruction that we can then find back in the assembly
+// - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
+// - Is the grid fill bottleneck by random light sampling? Try on the class white room to see if perf improves
+//		A little bit yeah. Maybe we can do something with light presampling
+// - Shared mem ray tracing helps a ton for ReGIR grid fill & spatial reuse ----> maybe have them in a separate kernel to be able to use max shared mem without destroying the L1?
+// - Can we add the canonical sample at the end of the spatial pass instead of in the shading pass?
+// - The idea to fix the bad ReGIR target function that may prioritze occluded samples is to use NEE with a visibility weight
+// - Compact grid fill and spatial reuse and see if the profiler graph looks better
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
@@ -178,6 +187,8 @@ extern ImGuiLogger g_imgui_logger;
 //		We would trace rays recursuvely for the indirect very very simply and could be fast
 //		Or, for the indirect, we could distribute random points in the bounding boxes of the objects of the scene, same as in Disney cache points
 // - NEE++ some kind of hashmap that's centered on the camera + gets wider the further away from the camera + maybe try the importance sampling, may be good, especially for ReGIR grid fill
+// - NEE++ sparse voxel grid somehow? sparse something something
+//		Sparse voxel octrees? https://research.nvidia.com/sites/default/files/pubs/2010-02_Efficient-Sparse-Voxel/laine2010tr1_paper.pdf?utm_source=chatgpt.com
 // - RIS for sampling the BSDF? (maybe just for the specular+diffuse? or coat, since those are common options)
 // - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
 // - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf

@@ -16,6 +16,7 @@ class ReGIRRenderPass : public RenderPass
 public:
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_KERNEL_ID;
+	static const std::string REGIR_CELL_LIVENESS_COPY_KERNEL_ID;
 
 	static const std::string REGIR_RENDER_PASS_NAME;
 
@@ -48,6 +49,7 @@ public:
 	virtual bool launch() override;
 	void launch_grid_fill_temporal_reuse();
 	void launch_spatial_reuse();
+	void launch_cell_liveness_copy_pass();
 
 	virtual void post_render_update() override;
 	virtual void update_render_data() override;
@@ -73,6 +75,8 @@ private:
 	OrochiBuffer<int> m_representative_primitive_buffer;
 	OrochiBuffer<unsigned int> m_representative_points_buffer;
 	OrochiBuffer<Octahedral24BitNormal> m_representative_normals_buffer;
+	OrochiBuffer<unsigned char> m_grid_cells_alive_buffer;
+	OrochiBuffer<unsigned char> m_grid_cells_alive_staging_buffer;
 };
 
 #endif
