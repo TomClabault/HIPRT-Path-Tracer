@@ -217,6 +217,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
     neighbor_rng.m_state.seed = neighbor_rng_seed;
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + need_canonical; i++)
     {
+        int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_linear_cell_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+        if (neighbor_cell_index == -1)
+            continue;
+
         if (i == selected_neighbor)
         {
             normalization_weight += 1.0f;
@@ -231,10 +235,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
             continue;
         }
-
-        int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_linear_cell_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
-        if (neighbor_cell_index == -1)
-            continue;
 
         if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index, 
             out_reservoir.sample.emission.unpack(), out_reservoir.sample.point_on_light,

@@ -54,6 +54,16 @@
     int linear_center_cell_index = reservoir_index / regir_settings.grid_fill.get_total_reservoir_count_per_cell();
     int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
 
+    if (regir_settings.shading.grid_cells_alive[linear_center_cell_index] == 0)
+    {
+        // Grid cell wasn't used during shading in the last frame, let's not refill it
+
+        // Storing an empty reservoir to clear the cell
+        regir_settings.spatial_reuse.store_reservoir_opt(ReGIRReservoir(), reservoir_index);
+
+        return;
+    }
+
     int selected = 0;
     for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
     {
@@ -74,6 +84,9 @@
         if (neighbor_linear_cell_index_in_grid == -1)
             // Neighbor is outside of the grid
             continue;
+		else if (regir_settings.shading.grid_cells_alive[neighbor_linear_cell_index_in_grid] == 0)
+			// Neighbor cell isn't alive, let's not reuse it
+			continue;
 
         // Picking the same reservoir cell-index in the a neighbor cell
         int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
@@ -125,6 +138,9 @@
             int neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
             if (neighbor_linear_cell_index_in_grid == -1)
                 // Neighbor is outside of the grid
+                continue;
+            else if (regir_settings.shading.grid_cells_alive[neighbor_linear_cell_index_in_grid] == 0)
+                // Neighbor cell isn't alive, let's not reuse it
                 continue;
 
             int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;

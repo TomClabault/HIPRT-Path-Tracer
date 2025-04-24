@@ -14,6 +14,8 @@ struct NEEPlusPlusCPUGPUCommonData
 	unsigned int get_vram_usage_bytes() const
 	{
 		// Number of elements per matrix * sizeof(unsigned int) bytes
+		//
+		// make_int3(2, 2, 2) is to take the size of the envmap layer into account
 		return get_visibility_matrix_element_count(grid_dimensions_no_envmap + make_int3(2, 2, 2)) * sizeof(unsigned int);
 	}
 
