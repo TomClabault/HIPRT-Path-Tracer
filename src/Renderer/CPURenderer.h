@@ -37,6 +37,7 @@ public:
     void setup_gmon();
     void nee_plus_plus_memcpy_accumulation(int frame_number);
     void gmon_check_for_sets_accumulation();
+    void ReGIR_post_render_update();
 
     void set_scene(Scene& parsed_scene);
     void compute_emissives_power_alias_table(const Scene& scene);
@@ -174,7 +175,7 @@ private:
 
     struct ReGIRState
     {
-        ReGIRSettings settings;
+        // ReGIRSettings settings;
 
         ReGIRGridBufferSoAHost<std::vector> grid_buffer;
         ReGIRGridBufferSoAHost<std::vector> spatial_grid_buffer;
@@ -183,6 +184,11 @@ private:
         std::vector<unsigned int> representative_points;
         std::vector<Octahedral24BitNormal> representative_normals;
         std::vector<AtomicType<int>> representative_primitives;
+
+        std::vector<unsigned char> grid_cells_alive;
+	    std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
+        std::vector<unsigned int> grid_cells_alive_list;
+        AtomicType<unsigned int> grid_cells_alive_count_staging;
     } m_regir_state;
 
     Image32Bit m_sheen_ltc_params;

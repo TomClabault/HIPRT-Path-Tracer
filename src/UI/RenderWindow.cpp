@@ -95,11 +95,17 @@ extern ImGuiLogger g_imgui_logger;
 // - To profile the spatial reuse / grid fill pass and find which assembly instruction corresponds to code, maybe place some texture fetch instruction that we can then find back in the assembly
 // - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
 // - Is the grid fill bottleneck by random light sampling? Try on the class white room to see if perf improves
-//		A little bit yeah. Maybe we can do something with light presampling
+//		A little bit yeah. Maybe we can do something with light presampling per cell
 // - Shared mem ray tracing helps a ton for ReGIR grid fill & spatial reuse ----> maybe have them in a separate kernel to be able to use max shared mem without destroying the L1?
 // - Can we add the canonical sample at the end of the spatial pass instead of in the shading pass?
 // - The idea to fix the bad ReGIR target function that may prioritze occluded samples is to use NEE with a visibility weight
 // - Compact grid fill and spatial reuse and see if the profiler graph looks better
+// - Maybe we can just swap the buffers for ReGIR staging buffers instead of copying
+// - Can we use ReSTIR DI and fill the ReGIR grid with the ReSTIR DI samples? ---> Doesn't work at later bounces though
+// - Try per-warp light sampling to reduce divergence as HouseOfCards did
+// - Introduce envmap sampling into ReGIR to avoid having to integrate the envmap in a separate domain: big perf boost
+// - When shading, maybe pick random reservoirs from a single neighboring cell to reduce shadow rays count but do that on a per warp basis to reduce the size of artifacts (which would be grid cell size otherwise)
+// - Is there something to do with a wavefront architecture when tracing shadow rays at the end of the spatial reuse or something? Do we want maybe to dispatch kernels together for tracing from a given cell?
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
@@ -152,13 +158,11 @@ extern ImGuiLogger g_imgui_logger;
 // - Emissive chminey texture broken in scandinavian-studio
 // - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
-// - Bistro-full, normal mapping is still going through the floor inside
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
 // - do not pass so many arguments to kernels everytime: make a "KernelArguments" folder in the source files with one file that contains the arguments needed for a kernel: ReSTIR_DI_InitialCandidatesArguments, ReSTIR_DI_SpatialReuseArguments, ...
 // - denoiser albedo and normals still useful now that we have the GBuffer?
-// - make a function get_camera_ray that handles pixel jittering
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
 // - use a proper GLTF loader because ASSIMP isn't good, poor support of the GLTF spec
 
@@ -168,6 +172,7 @@ extern ImGuiLogger g_imgui_logger;
 // Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
 //		- And maybe we can spatial reuse on that
 // For the greedy neighbor search of restir spatial reuse, maybe reduce progressively the radius ?
+// - Stochastic light culling: https://jcgt.org/published/0005/01/02/paper-lowres.pdf
 // - flush to zero denormal float numbers compiler option?
 //		
  /*

@@ -344,7 +344,10 @@ void GMoNRenderPass::reset()
 
 void GMoNRenderPass::update_render_data()
 {
-	m_renderer->get_render_data().buffers.gmon_estimator.sets = m_gmon.sets.get_device_pointer();
+	if (m_gmon.sets.is_allocated())
+		m_renderer->get_render_data().buffers.gmon_estimator.sets = m_gmon.sets.get_device_pointer();
+	else
+		m_renderer->get_render_data().buffers.gmon_estimator.sets = nullptr;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GMoNRenderPass::get_result_framebuffer()

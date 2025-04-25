@@ -40,10 +40,18 @@ public:
 	T* get_device_pointer();
 
 	/**
+	 * Returns a pointer to the device buffer but cast into an AtomicType
+	 */
+	const AtomicType<T>* get_atomic_device_pointer() const;
+	AtomicType<T>* get_atomic_device_pointer();
+
+	/**
 	 * data() is just an alias for get_device_pointer()
 	 */
 	const T* data() const;
 	T* data();
+
+	bool is_allocated() const;
 
 	/** 
 	 * Static function for downloading from a device buffer when we
@@ -168,25 +176,57 @@ size_t OrochiBuffer<T>::get_byte_size() const
 template <typename T>
 const T* OrochiBuffer<T>::get_device_pointer() const
 {
+	if (m_data_pointer == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the device_pointer of an OrochiBuffer that hasn't been allocated!");
+
+		return nullptr;
+	}
+
 	return m_data_pointer;
 }
 
 template <typename T>
 T* OrochiBuffer<T>::get_device_pointer()
 {
+	if (m_data_pointer == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the device_pointer of an OrochiBuffer that hasn't been allocated!");
+
+		return nullptr;
+	}
+
 	return m_data_pointer;
+}
+
+template <typename T>
+const AtomicType<T>* OrochiBuffer<T>::get_atomic_device_pointer() const
+{
+	return reinterpret_cast<AtomicType<T>*>(get_device_pointer());
+}
+
+template <typename T>
+AtomicType<T>* OrochiBuffer<T>::get_atomic_device_pointer()
+{
+	return reinterpret_cast<AtomicType<T>*>(get_device_pointer());
 }
 
 template <typename T>
 const T* OrochiBuffer<T>::data() const
 {
-	return m_data_pointer;
+	return get_device_pointer();
 }
 
 template <typename T>
 T* OrochiBuffer<T>::data()
 {
-	return m_data_pointer;
+	return get_device_pointer();
+}
+
+template <typename T>
+bool OrochiBuffer<T>::is_allocated() const
+{
+	return m_data_pointer != nullptr;
 }
 
 template <typename T>
@@ -264,7 +304,9 @@ template <typename T>
 void OrochiBuffer<T>::upload_data(const std::vector<T>& data)
 {
 	if (m_data_pointer)
-		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data.data(), sizeof(T) * m_element_count, oroMemcpyHostToDevice));
+		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data.data(), sizeof(T) * hippt::min(data.size(), m_element_count), oroMemcpyHostToDevice));
+	else
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
 }
 
 template <typename T>
@@ -289,7 +331,7 @@ inline void OrochiBuffer<T>::upload_data_partial(int start_index, const T* data,
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer + start_index), data, sizeof(T) * element_count, oroMemcpyHostToDevice));
 	else
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload partial data to an OrochiBuffer that hasn't been allocated yet!");
 }
 
 template <typename T>

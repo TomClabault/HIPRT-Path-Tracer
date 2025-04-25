@@ -202,6 +202,9 @@ namespace hippt
 	template <typename T> 
 	__device__ T atomic_min(T* address, T value) { return atomicMin(address, value); }
 
+	/**
+	 * The function returns the value at 'address' because the increment
+	 */
 	template <typename T>
 	__device__ T atomic_fetch_add(T* address, T increment) { return atomicAdd(address, increment); }
 
@@ -455,6 +458,9 @@ namespace hippt
 		return prev_value;
 	}
 
+	/**
+	 * The function returns the value at 'address' because the increment
+	 */
 	template <typename T>
 	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
 

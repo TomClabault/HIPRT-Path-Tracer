@@ -18,18 +18,21 @@
   * Each cell reuses from random cells adjacent to it
   */
  #ifdef __KERNELCC__
- GLOBAL_KERNEL_SIGNATURE(void) ReGIR_CellLivenessCopy(unsigned char* __restrict__ staging_buffer, unsigned char* __restrict__ non_staging_buffer, ReGIRSettings regir_settings)
+ GLOBAL_KERNEL_SIGNATURE(void) ReGIR_CellLivenessCopy(unsigned int* __restrict__ grid_cells_alive_staging_buffer, unsigned char* __restrict__ grid_cells_alive_buffer, ReGIRSettings regir_settings)
  #else
- GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_CellLivenessCopy(unsigned char* staging_buffer, unsigned char* non_staging_buffer, ReGIRSettings regir_settings, int cell_index)
+ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_CellLivenessCopy(unsigned int* grid_cells_alive_staging_buffer, unsigned char* grid_cells_alive_buffer, ReGIRSettings regir_settings, int cell_index)
  #endif
  {
 #ifdef __KERNELCC__
     const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-    if (cell_index >= regir_settings.get_number_of_cells())
+    if (cell_index >= regir_settings.get_total_number_of_cells())
         return;
 
-	non_staging_buffer[cell_index] = staging_buffer[cell_index];
+    grid_cells_alive_buffer[cell_index] = grid_cells_alive_staging_buffer[cell_index] > 0 ? 1 : 0;
+
+    // And resetting the staging buffer
+    grid_cells_alive_staging_buffer[cell_index] = 0;
 }
 
 #endif

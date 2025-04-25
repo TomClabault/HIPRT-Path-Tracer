@@ -1948,6 +1948,19 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 					m_render_window->set_render_dirty(true);
 			}
 
+			static bool query_cell_alive_percentage = false;
+			ImGui::Checkbox("Query alive cell percentage", &query_cell_alive_percentage);
+			if (query_cell_alive_percentage)
+			{
+				float ratio = m_renderer->get_ReGIR_render_pass()->get_alive_cells_ratio();
+					
+				ImGui::TreePush("Alive ReGIR cells tree");
+
+				ImGui::Text("Alive cells: %f%%", ratio * 100.0f);
+
+				ImGui::TreePop();
+			}
+
 			ImGui::TreePop();
 		}
 			
@@ -3564,7 +3577,7 @@ void ImGuiSettingsWindow::draw_microfacet_model_regularization_tree()
 		ImGuiRenderer::show_help_marker("Whether or not to take the path's roughness into account when regularizing the BSDFs.\n"
 			"This feature is essential to keep highlights sharp on directly visible surfaces.");
 
-		std::string tau_text = "Tau" + do_consistent_tau ? "_0" : "";
+		std::string tau_text = std::string("Tau") + (do_consistent_tau ? "_0" : "");
 		if (ImGui::SliderFloat(tau_text.c_str(), &render_data.bsdfs_data.microfacet_regularization.tau_0, 10.0f, 1000.0f))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Main parameter to control the regularization. The lower this parameter, the stronger the regularization.\n\n"

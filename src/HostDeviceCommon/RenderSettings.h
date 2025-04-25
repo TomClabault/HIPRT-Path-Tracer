@@ -95,9 +95,9 @@ struct HIPRTRenderSettings
 	// and get that "accumulated" normals value.
 	int denoiser_AOV_accumulation_counter = 0;
 
-	// Number of samples rendered so far before the kernel call
-	// This is the sum of samples_per_frame for all frames
-	// that have been rendered.
+	// Number of samples rendered so far before (before means that this counter starts at 0) the kernel call
+	// 
+	// This is the sum of samples_per_frame for all frames that have been rendered.
 	unsigned int sample_number = 0;
 
 	// How many samples to compute per pixel per frame
