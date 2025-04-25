@@ -121,7 +121,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_NONE
+#define BSDFOverride BSDF_LAMBERTIAN
 
 /**
  * The stack size for handling nested dielectrics

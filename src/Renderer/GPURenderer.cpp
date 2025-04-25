@@ -170,7 +170,7 @@ void GPURenderer::reset_nee_plus_plus()
 	m_render_data.nee_plus_plus.update_visibility_map = true;
 
 	// Resetting the counters
-	if (m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer() != nullptr)
+	if (m_nee_plus_plus.total_shadow_ray_queries.is_allocated())
 	{
 		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
 		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
@@ -1312,8 +1312,10 @@ void GPURenderer::update_render_data()
 		m_render_data.bsdfs_data.GGX_glass_directional_albedo_inverse = m_GGX_glass_inverse_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo = m_GGX_thin_glass_directional_albedo.get_device_texture();
 
-		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
-		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
+		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
+			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
+		if (m_hiprt_scene.texcoords_buffer.size() > 0)
+			m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		{
@@ -1325,9 +1327,18 @@ void GPURenderer::update_render_data()
 		m_render_data.aux_buffers.still_one_ray_active = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
 		m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_status_buffers.pixels_converged_count_buffer.get_device_pointer());
 
-		m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
-		m_render_data.nee_plus_plus.shadow_rays_actually_traced = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer());
-		m_render_data.nee_plus_plus.total_shadow_ray_queries = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer());
+		if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+		{
+			m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
+			m_render_data.nee_plus_plus.shadow_rays_actually_traced = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer());
+			m_render_data.nee_plus_plus.total_shadow_ray_queries = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer());
+		}
+		else
+		{
+			m_render_data.nee_plus_plus.packed_buffers = nullptr;
+			m_render_data.nee_plus_plus.shadow_rays_actually_traced = nullptr;
+			m_render_data.nee_plus_plus.total_shadow_ray_queries = nullptr;
+		}
 
 		m_render_graph.update_render_data();
 

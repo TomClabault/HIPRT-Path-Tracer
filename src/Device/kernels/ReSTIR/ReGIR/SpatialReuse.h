@@ -32,7 +32,7 @@
 #ifdef __KERNELCC__
     const uint32_t reservoir_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-    if (reservoir_index >= regir_settings.get_number_of_reservoirs_per_grid())
+    if (reservoir_index >= regir_settings.get_number_of_reservoirs_per_cell() * regir_settings.shading.grid_cells_alive_count)
         return;
 
     unsigned int seed;
@@ -51,18 +51,29 @@
     ReGIRReservoir output_reservoir;
 
     int reservoir_index_in_cell = reservoir_index % regir_settings.grid_fill.get_total_reservoir_count_per_cell();
-    int linear_center_cell_index = reservoir_index / regir_settings.grid_fill.get_total_reservoir_count_per_cell();
-    int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
+    int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell();
+    // int linear_center_cell_index;
+    int linear_center_cell_index = cell_alive_index;
+    if (regir_settings.shading.grid_cells_alive_count == regir_settings.get_total_number_of_cells())
+        // If all cells are alive, the cell index is straightforward
+        linear_center_cell_index = cell_alive_index;
+    else
+        // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
+        // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
+        linear_center_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
+    int reservoir_index_in_grid = linear_center_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
 
     if (regir_settings.shading.grid_cells_alive[linear_center_cell_index] == 0)
     {
         // Grid cell wasn't used during shading in the last frame, let's not refill it
 
         // Storing an empty reservoir to clear the cell
-        regir_settings.spatial_reuse.store_reservoir_opt(ReGIRReservoir(), reservoir_index);
+        regir_settings.spatial_reuse.store_reservoir_opt(ReGIRReservoir(), reservoir_index_in_grid);
 
         return;
     }
+
+    int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
 
     int selected = 0;
     for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
@@ -167,7 +178,7 @@
         // can properly assess whether a given cell could have produced a given sample or not
         output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
 
-    regir_settings.spatial_reuse.store_reservoir_opt(output_reservoir, reservoir_index);
+    regir_settings.spatial_reuse.store_reservoir_opt(output_reservoir, reservoir_index_in_grid);
 }
 
 #endif

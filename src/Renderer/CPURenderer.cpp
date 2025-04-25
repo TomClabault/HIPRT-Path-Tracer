@@ -52,8 +52,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 218
-#define DEBUG_PIXEL_Y 163
+#define DEBUG_PIXEL_X 317
+#define DEBUG_PIXEL_Y 265
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -77,7 +77,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 5000
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -96,16 +96,25 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_pixel_converged_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
 
-    m_regir_state.grid_buffer.resize(m_regir_state.settings.get_total_number_of_reservoirs_ReGIR());
-    m_regir_state.spatial_grid_buffer.resize(m_regir_state.settings.get_number_of_reservoirs_per_grid());
-    m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_regir_state.settings.get_number_of_cells());
+
+
+    m_regir_state.grid_buffer.resize(m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR());
+    m_regir_state.spatial_grid_buffer.resize(m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid());
+    m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells());
     for (AtomicType<float>& distance : m_regir_state.distance_to_center)
         distance.store(ReGIRRepresentative::UNDEFINED_DISTANCE);
-    m_regir_state.representative_points.resize(m_regir_state.settings.get_number_of_cells(), ReGIRRepresentative::UNDEFINED_POINT);
-    m_regir_state.representative_normals.resize(m_regir_state.settings.get_number_of_cells(), Octahedral24BitNormal::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
-    m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_regir_state.settings.get_number_of_cells());
+    m_regir_state.representative_points.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells(), ReGIRRepresentative::UNDEFINED_POINT);
+    m_regir_state.representative_normals.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells(), Octahedral24BitNormal::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
+    m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells());
     for (AtomicType<int>& rep_prim : m_regir_state.representative_primitives)
         rep_prim.store(ReGIRRepresentative::UNDEFINED_PRIMITIVE);
+    m_regir_state.grid_cells_alive.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells(), 1u);
+    m_regir_state.grid_cells_alive_staging = std::vector<AtomicType<unsigned int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells());
+    m_regir_state.grid_cells_alive_list.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells());
+    m_regir_state.grid_cells_alive_count_staging.store(0);
+    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_render_data.render_settings.regir_settings.get_total_number_of_cells();
+
+
 
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
@@ -243,6 +252,24 @@ void CPURenderer::gmon_check_for_sets_accumulation()
     }
 }
 
+void CPURenderer::ReGIR_post_render_update()
+{
+#if DirectLightSamplingBaseStrategy != LSS_BASE_REGIR
+    return;
+#endif
+
+    // Incrementing the index of the current grid for ReGIR temporal reuse
+    if (m_render_data.render_settings.regir_settings.temporal_reuse.do_temporal_reuse)
+    {
+        m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index++;
+        m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index %= m_render_data.render_settings.regir_settings.temporal_reuse.temporal_history_length;
+    }
+
+    std::copy(m_regir_state.grid_cells_alive_staging.begin(), m_regir_state.grid_cells_alive_staging.end(), m_regir_state.grid_cells_alive.begin());
+    // m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_render_data.render_settings.regir_settings.get_total_number_of_cells();// m_regir_state.grid_cells_alive_count_staging.load();
+    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_regir_state.grid_cells_alive_count_staging.load();
+}
+
 void CPURenderer::set_scene(Scene& parsed_scene)
 {
     m_render_data.GPU_BVH = nullptr;
@@ -309,7 +336,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
     m_render_data.render_settings.regir_settings.grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
-    m_render_data.render_settings.regir_settings.grid.grid_resolution = m_regir_state.settings.grid.grid_resolution;
+    // m_render_data.render_settings.regir_settings.grid.grid_resolution = m_regir_state.settings.grid.grid_resolution;
     m_render_data.render_settings.regir_settings.grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
     m_render_data.render_settings.regir_settings.grid_fill.grid_buffers = m_regir_state.grid_buffer.to_device();
     m_render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_regir_state.spatial_grid_buffer.to_device();
@@ -317,6 +344,10 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.representative.representative_points= m_regir_state.representative_points.data();
     m_render_data.render_settings.regir_settings.representative.representative_normals = m_regir_state.representative_normals.data();
     m_render_data.render_settings.regir_settings.representative.representative_primitive = m_regir_state.representative_primitives.data();
+    m_render_data.render_settings.regir_settings.shading.grid_cells_alive = m_regir_state.grid_cells_alive.data();
+    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_regir_state.grid_cells_alive_staging.data();
+    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_regir_state.grid_cells_alive_list.data();
+    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = &m_regir_state.grid_cells_alive_count_staging;
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -543,15 +574,7 @@ void CPURenderer::post_render_update(int frame_number)
 
     nee_plus_plus_memcpy_accumulation(frame_number);
     gmon_check_for_sets_accumulation();
-
-#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-    // Incrementing the index of the current grid for ReGIR temporal reuse
-    if (m_render_data.render_settings.regir_settings.temporal_reuse.do_temporal_reuse)
-    {
-        m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index++;
-        m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index %= m_render_data.render_settings.regir_settings.temporal_reuse.temporal_history_length;
-    }
-#endif
+    ReGIR_post_render_update();
 }
 
 void CPURenderer::update_render_data(int sample)
@@ -672,7 +695,7 @@ void CPURenderer::ReGIR_grid_fill_pass()
     m_render_data.random_number = m_rng.xorshift32();
 
     #pragma omp parallel for schedule(dynamic)
-    for (int index = 0; index < m_regir_state.settings.get_number_of_reservoirs_per_grid(); index++)
+    for (int index = 0; index < m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
     {
         ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index);
     }
@@ -680,11 +703,11 @@ void CPURenderer::ReGIR_grid_fill_pass()
 
 void CPURenderer::ReGIR_spatial_reuse_pass()
 {
-    if (!m_regir_state.settings.spatial_reuse.do_spatial_reuse)
+    if (!m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
         return;
 
 #pragma omp parallel for schedule(dynamic)
-    for (int index = 0; index < m_regir_state.settings.get_number_of_reservoirs_per_grid(); index++)
+    for (int index = 0; index < m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
     {
         ReGIR_Spatial_Reuse(m_render_data, index);
     }

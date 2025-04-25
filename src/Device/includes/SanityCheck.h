@@ -32,6 +32,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData&
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB32F ray_color, int x, int y, int sample)
 {
+    // To remove 'unused variable' warnings of the GPU compiler because these variables are only used
+    // in the std::cout of the CPU
     (void)x;
     (void)y;
     (void)sample;

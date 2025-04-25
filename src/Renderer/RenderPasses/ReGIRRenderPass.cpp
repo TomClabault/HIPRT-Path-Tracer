@@ -94,28 +94,35 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			updated = true;
 		}
 
-		if (m_grid_cells_alive_buffer.size() != m_render_data->render_settings.regir_settings.get_number_of_cells())
+		if (m_grid_cells_alive_buffer.size() != m_render_data->render_settings.regir_settings.get_total_number_of_cells())
 		{
-			m_grid_cells_alive_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
-			m_grid_cells_alive_staging_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+			m_grid_cells_alive_staging_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
+			m_grid_cells_alive_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
+			m_grid_cells_alive_list_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
+			m_grid_cells_alive_count_staging_buffer.resize(1);
 
-			// Initializaing all the cells to alive
-			std::vector<unsigned char> init_data_alive(m_render_data->render_settings.regir_settings.get_number_of_cells(), 1);
+			std::vector<unsigned int> init_data_inactive(m_render_data->render_settings.regir_settings.get_total_number_of_cells(), 0u);
+			m_grid_cells_alive_staging_buffer.upload_data(init_data_inactive);
+
+			// Initializing all the cells to alive
+			std::vector<unsigned char> init_data_alive(m_render_data->render_settings.regir_settings.get_total_number_of_cells(), 1u);
 			m_grid_cells_alive_buffer.upload_data(init_data_alive);
 
-			// The staging buffer starts with every cell being inactive
-			std::vector<unsigned char> init_data_inactive(m_render_data->render_settings.regir_settings.get_number_of_cells(), 0);
-			m_grid_cells_alive_staging_buffer.upload_data(init_data_inactive);
+			// All cells are alive at the beginning of the render
+			unsigned int all_cells = m_render_data->render_settings.regir_settings.get_total_number_of_cells();
+			m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count = all_cells;
+			m_grid_cells_alive_count_staging_buffer.upload_data(&all_cells);
 
 			updated = true;
 		}
 
-		if (m_distance_to_center_buffer.size() != m_render_data->render_settings.regir_settings.get_number_of_cells())
+		// Representative cells data
+		if (m_distance_to_center_buffer.size() != m_render_data->render_settings.regir_settings.get_total_number_of_cells())
 		{
-			m_distance_to_center_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
-			m_representative_points_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
-			m_representative_normals_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
-			m_representative_primitive_buffer.resize(m_render_data->render_settings.regir_settings.get_number_of_cells());
+			m_distance_to_center_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
+			m_representative_points_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
+			m_representative_normals_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
+			m_representative_primitive_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
 			
 			reset_representative_data();
 
@@ -142,6 +149,8 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		{
 			m_grid_cells_alive_buffer.free();
 			m_grid_cells_alive_staging_buffer.free();
+			m_grid_cells_alive_count_staging_buffer.free();
+			m_grid_cells_alive_list_buffer.free();
 
 			updated = true;
 		}
@@ -165,6 +174,8 @@ bool ReGIRRenderPass::launch()
 	if (!is_render_pass_used())
 		return false;
 
+	m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_buffer.download_data()[0];
+
 	launch_grid_fill_temporal_reuse();
 	launch_spatial_reuse();
 
@@ -175,7 +186,9 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse()
 {
 	void* launch_args[] = { m_render_data };
 
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid(), 1, launch_args, m_renderer->get_main_stream());
+	unsigned int reservoirs_per_cell = m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReGIRRenderPass::launch_spatial_reuse()
@@ -185,7 +198,9 @@ void ReGIRRenderPass::launch_spatial_reuse()
 
 	void* launch_args[] = { m_render_data };
 
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid(), 1, launch_args, m_renderer->get_main_stream());
+	unsigned int reservoirs_per_cell = m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReGIRRenderPass::launch_cell_liveness_copy_pass()
@@ -193,19 +208,19 @@ void ReGIRRenderPass::launch_cell_liveness_copy_pass()
 	if (m_render_data->buffers.emissive_triangles_count == 0 && m_render_data->world_settings.ambient_light_type != AmbientLightType::ENVMAP)
 		return;
 
-	unsigned char* staging_ptr = m_grid_cells_alive_staging_buffer.get_device_pointer();
+	unsigned int* staging_ptr = m_grid_cells_alive_staging_buffer.get_device_pointer();
 	unsigned char* non_staging_ptr = m_grid_cells_alive_buffer.get_device_pointer();
 
 	void* launch_args[] = { &staging_ptr, &non_staging_ptr, &m_render_data->render_settings.regir_settings };
 
-	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_total_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReGIRRenderPass::post_render_update()
 {
 	if (!is_render_pass_used())
 		return;
-		
+	
 	if (m_render_data->render_settings.regir_settings.temporal_reuse.do_temporal_reuse)
 	{
 		m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index++;
@@ -219,26 +234,35 @@ void ReGIRRenderPass::update_render_data()
 {
 	if (is_render_pass_used())
 	{
-		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = m_grid_buffers.to_device();
 		m_render_data->render_settings.regir_settings.grid.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 		m_render_data->render_settings.regir_settings.grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 
+		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = m_grid_buffers.to_device();
 		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = m_spatial_reuse_output_grid_buffer.to_device();
-		m_render_data->render_settings.regir_settings.representative.distance_to_center = reinterpret_cast<AtomicType<float>*>(m_distance_to_center_buffer.get_device_pointer());
+		m_render_data->render_settings.regir_settings.representative.distance_to_center = m_distance_to_center_buffer.get_atomic_device_pointer();
 		m_render_data->render_settings.regir_settings.representative.representative_normals = m_representative_normals_buffer.get_device_pointer();
 		m_render_data->render_settings.regir_settings.representative.representative_points = m_representative_points_buffer.get_device_pointer();
-		m_render_data->render_settings.regir_settings.representative.representative_primitive = reinterpret_cast<AtomicType<int>*>(m_representative_primitive_buffer.get_device_pointer());
+		m_render_data->render_settings.regir_settings.representative.representative_primitive = m_representative_primitive_buffer.get_atomic_device_pointer();
+
 		m_render_data->render_settings.regir_settings.shading.grid_cells_alive = m_grid_cells_alive_buffer.get_device_pointer();
-		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_staging = m_grid_cells_alive_staging_buffer.get_device_pointer();
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_staging = m_grid_cells_alive_staging_buffer.get_atomic_device_pointer();
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count_staging = m_grid_cells_alive_count_staging_buffer.get_atomic_device_pointer();
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_list = m_grid_cells_alive_list_buffer.get_device_pointer();
 	}
 	else
 	{
 		m_render_data->render_settings.regir_settings.grid_fill.grid_buffers = ReGIRGridBufferSoADevice();
 		m_render_data->render_settings.regir_settings.spatial_reuse.output_grid = ReGIRGridBufferSoADevice();
+
 		m_render_data->render_settings.regir_settings.representative.distance_to_center = nullptr;
 		m_render_data->render_settings.regir_settings.representative.representative_normals = nullptr;
 		m_render_data->render_settings.regir_settings.representative.representative_points = nullptr;
 		m_render_data->render_settings.regir_settings.representative.representative_primitive = nullptr;
+
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive = nullptr;
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_staging = nullptr;
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count_staging = nullptr;
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_list = nullptr;
 	}
 }
 
@@ -246,16 +270,16 @@ void ReGIRRenderPass::reset()
 {
 	m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
 
+	if (m_grid_cells_alive_buffer.size() > 0)
 	{
 		// Resetting the 'cell alive' buffers
-		std::vector<unsigned char> init_data_alive(m_render_data->render_settings.regir_settings.get_number_of_cells(), 1);
+		std::vector<unsigned char> init_data_alive(m_render_data->render_settings.regir_settings.get_total_number_of_cells(), 1);
 		m_grid_cells_alive_buffer.upload_data(init_data_alive);
-	}
 
-	{
-		// The staging buffer starts with every cell being inactive
-		std::vector<unsigned char> init_data_inactive(m_render_data->render_settings.regir_settings.get_number_of_cells(), 0);
-		m_grid_cells_alive_staging_buffer.upload_data(init_data_inactive);
+		// Resetting the count buffers
+		unsigned int all_cells = m_render_data->render_settings.regir_settings.get_total_number_of_cells();
+		m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count = all_cells;
+		m_grid_cells_alive_count_staging_buffer.upload_data(&all_cells);
 	}
 }
 
@@ -292,12 +316,28 @@ bool ReGIRRenderPass::is_render_pass_used() const
 
 float ReGIRRenderPass::get_VRAM_usage() const
 {
-	return (m_grid_buffers.get_byte_size() + 
+	return (
+		m_grid_buffers.get_byte_size() + 
 		m_spatial_reuse_output_grid_buffer.get_byte_size() + 
+
 		m_distance_to_center_buffer.get_byte_size() + 
 		m_representative_points_buffer.get_byte_size() + 
 		m_representative_normals_buffer.get_byte_size() + 
 		m_representative_primitive_buffer.get_byte_size() +
+
 		m_grid_cells_alive_buffer.get_byte_size() + 
-		m_grid_cells_alive_staging_buffer.get_byte_size()) / 1000000.0f;
+		m_grid_cells_alive_staging_buffer.get_byte_size() +
+		m_grid_cells_alive_count_staging_buffer.get_byte_size() +
+		m_grid_cells_alive_list_buffer.get_byte_size()) / 1000000.0f;
+}
+
+float ReGIRRenderPass::get_alive_cells_ratio() const
+{
+	std::vector<unsigned char> alive = m_grid_cells_alive_buffer.download_data();
+	std::size_t count = 0;
+	for (unsigned char cell : alive)
+		if (cell == 1)
+			count++;
+
+	return count / static_cast<float>(m_grid_cells_alive_buffer.size());;
 }

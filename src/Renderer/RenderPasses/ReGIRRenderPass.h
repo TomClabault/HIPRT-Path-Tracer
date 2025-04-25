@@ -64,19 +64,26 @@ public:
 	 */
 	float get_VRAM_usage() const;
 
-private:
+	float get_alive_cells_ratio() const;
+
+// private:
 	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,
 	// this buffer will contain one more than one grid worth of space to
 	// accomodate for the grid of the past frames for temporal reuse
 	ReGIRGridBufferSoAHost<OrochiBuffer> m_grid_buffers;
 	ReGIRGridBufferSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
 
+	// Representative data buffers
 	OrochiBuffer<float> m_distance_to_center_buffer;
 	OrochiBuffer<int> m_representative_primitive_buffer;
 	OrochiBuffer<unsigned int> m_representative_points_buffer;
 	OrochiBuffer<Octahedral24BitNormal> m_representative_normals_buffer;
+
+	// Cells alive buffers
 	OrochiBuffer<unsigned char> m_grid_cells_alive_buffer;
-	OrochiBuffer<unsigned char> m_grid_cells_alive_staging_buffer;
+	OrochiBuffer<unsigned int> m_grid_cells_alive_staging_buffer;
+	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_buffer;
+	OrochiBuffer<unsigned int> m_grid_cells_alive_list_buffer;
 };
 
 #endif

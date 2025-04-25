@@ -132,7 +132,7 @@ struct ReGIRShadingSettings
 	int cell_reservoir_resample_per_shading_point = 4;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_cell_jittering = true;
+	bool do_cell_jittering = false;
 
 	// For each grid cell, indicates whether that grid cell has been used at least once during shading in the last frame
 	// 
@@ -150,7 +150,10 @@ struct ReGIRShadingSettings
 	// may be reading from that buffer at the same time to see if a cell is alive or not
 	//
 	// That staging buffer is then copied to the 'grid_cells_alive' buffer at the end of the frame
-	unsigned char* grid_cells_alive_staging = nullptr;
+	AtomicType<unsigned int>* grid_cells_alive_staging = nullptr;
+	unsigned int* grid_cells_alive_list = nullptr;
+	unsigned int grid_cells_alive_count;
+	AtomicType<unsigned int>* grid_cells_alive_count_staging = nullptr;
 };
 
 struct ReGIRRepresentative
@@ -306,7 +309,7 @@ struct ReGIRSettings
 	 * and no reservoir has been gathered
 	 */
 	HIPRT_HOST_DEVICE ReGIRReservoir get_non_canonical_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false) const
-	{
+	{	
 		int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point, &rng, jitter);
 		if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
 		{
@@ -317,17 +320,23 @@ struct ReGIRSettings
 			return ReGIRReservoir();
 		}
 
+		// TODO try an if (shading.grid_cells_alive_staging[linear_cell_index] == 0) to avoid the atomic operation and see if perf is better
 		// Someone just wanted to use that grid cell so it's going to be alive in the next frame so we're indicating that in the staging buffer
-		shading.grid_cells_alive_staging[linear_cell_index] = 1;
-
-		if (shading.grid_cells_alive[linear_cell_index] == 0)
+		if (hippt::atomic_compare_exchange(&shading.grid_cells_alive_staging[linear_cell_index], 0u, 1u) == 0u)
 		{
-			// The grid cell is inside the grid but not alive
-			// We're indicating that this cell should not be used by setting the 'out_point_outside_of_grid' to true
-			out_point_outside_of_grid = true;
+			unsigned int cell_alive_index = hippt::atomic_fetch_add(shading.grid_cells_alive_count_staging, 1u);
 
-			return ReGIRReservoir();
+			shading.grid_cells_alive_list[cell_alive_index] = linear_cell_index;
 		}
+
+		 if (shading.grid_cells_alive[linear_cell_index] == 0)
+		 {
+		 	// The grid cell is inside the grid but not alive
+		 	// We're indicating that this cell should not be used by setting the 'out_point_outside_of_grid' to true
+		 	out_point_outside_of_grid = true;
+
+		 	return ReGIRReservoir();
+		 }
 
 		out_point_outside_of_grid = false;
 
@@ -347,7 +356,12 @@ struct ReGIRSettings
 		}
 
 		// Someone just wanted to use that grid cell so it's going to be alive in the next frame so we're indicating that in the staging buffer
-		shading.grid_cells_alive_staging[linear_cell_index] = 1;
+		if (hippt::atomic_compare_exchange(&shading.grid_cells_alive_staging[linear_cell_index], 0u, 1u) == 0u)
+		{
+			unsigned int cell_alive_index = hippt::atomic_fetch_add(shading.grid_cells_alive_count_staging, 1u);
+
+			shading.grid_cells_alive_list[cell_alive_index] = linear_cell_index;
+		}
 
 		if (shading.grid_cells_alive[linear_cell_index] == 0)
 		{
@@ -425,17 +439,22 @@ struct ReGIRSettings
 		return ColorRGB32F::random_color(cell_index);
 	}
 
-	HIPRT_HOST_DEVICE int get_number_of_cells() const
+	HIPRT_HOST_DEVICE unsigned int get_total_number_of_cells() const
 	{
 		return grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z;
 	}
 
-	HIPRT_HOST_DEVICE int get_number_of_reservoirs_per_grid() const
+	HIPRT_HOST_DEVICE unsigned int get_number_of_reservoirs_per_grid() const
 	{
-		return get_number_of_cells() * grid_fill.get_total_reservoir_count_per_cell();
+		return get_total_number_of_cells() * grid_fill.get_total_reservoir_count_per_cell();
 	}
 
-	HIPRT_HOST_DEVICE int get_total_number_of_reservoirs_ReGIR() const
+	HIPRT_HOST_DEVICE unsigned int get_number_of_reservoirs_per_cell() const
+	{
+		return grid_fill.get_total_reservoir_count_per_cell();
+	}
+
+	HIPRT_HOST_DEVICE unsigned int get_total_number_of_reservoirs_ReGIR() const
 	{
 		int temporal_grid_count = temporal_reuse.do_temporal_reuse ? temporal_reuse.temporal_history_length : 1;
 
