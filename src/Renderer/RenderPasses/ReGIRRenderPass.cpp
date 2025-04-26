@@ -100,6 +100,7 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			m_grid_cells_alive_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
 			m_grid_cells_alive_list_buffer.resize(m_render_data->render_settings.regir_settings.get_total_number_of_cells());
 			m_grid_cells_alive_count_staging_buffer.resize(1);
+			m_grid_cells_alive_count_staging_host_pinned_buffer.resize_host_pinned_mem(1);
 
 			std::vector<unsigned int> init_data_inactive(m_render_data->render_settings.regir_settings.get_total_number_of_cells(), 0u);
 			m_grid_cells_alive_staging_buffer.upload_data(init_data_inactive);
@@ -174,7 +175,10 @@ bool ReGIRRenderPass::launch()
 	if (!is_render_pass_used())
 		return false;
 
-	m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_buffer.download_data()[0];
+	m_renderer->synchronize_all_kernels();
+
+	m_grid_cells_alive_count_staging_buffer.download_data(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+	m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 
 	launch_grid_fill_temporal_reuse();
 	launch_spatial_reuse();
