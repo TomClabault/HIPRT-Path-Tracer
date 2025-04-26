@@ -15,6 +15,8 @@
   */
 struct DevicePackedEffectiveMaterial
 {
+    __device__ DevicePackedEffectiveMaterial() {}
+    
     enum PackedFlagsIndices : unsigned char
     {
         PACKED_THIN_WALLED = 0,

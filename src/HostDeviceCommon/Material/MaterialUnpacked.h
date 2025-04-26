@@ -94,6 +94,8 @@
   */
 struct DeviceUnpackedEffectiveMaterial
 {
+    __device__ DeviceUnpackedEffectiveMaterial() {}
+    
     HIPRT_HOST_DEVICE bool is_emissive() const
     {
         return !hippt::is_zero(emission.r)

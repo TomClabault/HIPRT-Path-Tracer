@@ -25,6 +25,8 @@ class GPURenderer;
 
 struct HIPRTRenderSettings
 {
+	HIPRTRenderSettings() {}
+
 	int2 render_resolution = make_int2(1280, 720);
 
 	// If true, the camera ray kernel will reset all buffers to their default values.
@@ -193,6 +195,7 @@ struct HIPRTRenderSettings
 	// point less than this 'minimum_light_contribution' value then the light sample is discarded
 	// 0.0f to disable
 	float minimum_light_contribution = 0.0f;
+
 
 	// How many light samples to take and shade per each vertex of the
 	// ray's path.

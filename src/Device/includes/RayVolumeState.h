@@ -13,6 +13,7 @@
 
 struct RayVolumeState
 {
+	__host__ RayVolumeState() {}
 	/**
 	 * On the GPU, it is necessary that the RayVolumeState is initialized manually as opposed to in a default constructor for example.
 	 * That's because the nested dielectrics stack is in shared memory and is thus a "global variable". 

@@ -46,6 +46,8 @@ enum ReSTIRGIDebugView
 
 struct ReSTIRGISettings : public ReSTIRCommonSettings
 {
+	__host__ ReSTIRGISettings() {}
+	
 	HIPRT_HOST_DEVICE ReSTIRGISettings() 
 	{
 		common_temporal_pass.do_temporal_reuse_pass = false;

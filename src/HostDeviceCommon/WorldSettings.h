@@ -20,6 +20,8 @@ enum AmbientLightType
 
 struct WorldSettings
 {
+	WorldSettings() {}
+
 	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
 	ColorRGB32F uniform_light_color = ColorRGB32F(0.0f);
 
@@ -35,7 +37,7 @@ struct WorldSettings
 	int envmap_scale_background_intensity = false;
 
 	// Packed RGBE 9/9/9/5 envmap texels
-	RGBE9995Packed* envmap;
+	RGBE9995Packed* envmap = nullptr;
 
 	// Luminance sum of all the texels of the envmap
 	float envmap_total_sum = 0.0f;

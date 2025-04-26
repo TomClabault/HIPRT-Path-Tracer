@@ -83,6 +83,8 @@ public:
 	OrochiBuffer<unsigned char> m_grid_cells_alive_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_staging_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_buffer;
+	// This 'host pinned' buffer is only used for copying the number of cells
+	// from the device to the host. Using pinned memory is 2x faster here
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_list_buffer;
 };

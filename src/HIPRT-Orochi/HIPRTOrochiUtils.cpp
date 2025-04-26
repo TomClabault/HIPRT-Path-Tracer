@@ -142,6 +142,12 @@ namespace HIPPTOrochiUtils
 			compiler_options_cstr.push_back(additional_include_directories_options.back().c_str());
 		}
 
+		for (const char* option: compiler_options_cstr)
+		{
+			std::cout << option << " ";
+		}
+		std::cout << std::endl << std::endl << std::endl;
+
 		const char* func_name_cstr = function_name.c_str();
 		return hiprtBuildTraceKernels(
 			ctxt,

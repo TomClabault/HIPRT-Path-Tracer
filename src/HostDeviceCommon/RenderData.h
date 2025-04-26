@@ -99,6 +99,8 @@ struct CPUData
  */
 struct HIPRTRenderData
 {
+	HIPRTRenderData() {};
+
 	// Random number that is updated by the CPU and that can help generate a
 	// random seed on the GPU for the random number generator to get started
 	unsigned int random_number = 42;
