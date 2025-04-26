@@ -25,7 +25,7 @@ class GPURenderer;
 
 struct HIPRTRenderSettings
 {
-	HIPRTRenderSettings() {}
+	__host__ HIPRTRenderSettings() {}
 
 	int2 render_resolution = make_int2(1280, 720);
 

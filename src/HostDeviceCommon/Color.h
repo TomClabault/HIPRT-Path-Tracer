@@ -75,14 +75,14 @@ struct ColorRGB32F
     //// This constructor drops the alpha channel
     //HIPRT_HOST_DEVICE explicit ColorRGB32F(const ColorRGBA32F& rgba) { r = rgba.r; g = rgba.g; b = rgba.b; }
 
-    //__host__ ColorRGB32F() { r = 0.0f; g = 0.0f; b = 0.0f; }
-    //__host__ explicit ColorRGB32F(float value) { r = value; g = value; b = value; }
-    //__host__ ColorRGB32F(float _r, float _g, float _b) { r = _r; g = _g; b = _b; }
-    //__host__ explicit ColorRGB32F(float3 vec) { r = vec.x; g = vec.y; b = vec.z; }
-    //// W component of float4 is dropped
-    //__host__ explicit ColorRGB32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; }
-    //// This constructor drops the alpha channel
-    //__host__ explicit ColorRGB32F(const ColorRGBA32F& rgba) { r = rgba.r; g = rgba.g; b = rgba.b; }
+    __host__ ColorRGB32F() { r = 0.0f; g = 0.0f; b = 0.0f; }
+    __host__ explicit ColorRGB32F(float value) { r = value; g = value; b = value; }
+    __host__ ColorRGB32F(float _r, float _g, float _b) { r = _r; g = _g; b = _b; }
+    __host__ explicit ColorRGB32F(float3 vec) { r = vec.x; g = vec.y; b = vec.z; }
+    // W component of float4 is dropped
+    __host__ explicit ColorRGB32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; }
+    // This constructor drops the alpha channel
+    __host__ explicit ColorRGB32F(const ColorRGBA32F& rgba) { r = rgba.r; g = rgba.g; b = rgba.b; }
 
     __device__ ColorRGB32F() { r = 0.0f; g = 0.0f; b = 0.0f; }
     __device__ explicit ColorRGB32F(float value) { r = value; g = value; b = value; }

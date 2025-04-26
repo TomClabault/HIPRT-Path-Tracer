@@ -506,6 +506,9 @@ private:
 
 struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 {
+    __host__ DevicePackedTexturedMaterial() {}
+	__device__ DevicePackedTexturedMaterial() {}
+
     enum NormalMapEmissionIndices : unsigned char
     {
         NORMAL_MAP_INDEX = 0,

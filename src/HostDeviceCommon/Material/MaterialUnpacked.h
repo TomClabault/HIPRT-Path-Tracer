@@ -238,6 +238,9 @@ private:
 
 struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial
 {
+    __host__ DeviceUnpackedTexturedMaterial() {}
+	__device__ DeviceUnpackedTexturedMaterial() {}
+
     int normal_map_texture_index = 65535;
 
     int emission_texture_index = 65535;

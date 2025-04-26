@@ -58,9 +58,7 @@ struct ReSTIRDILightPresamplingSettings
 
 struct ReSTIRDISettings : public ReSTIRCommonSettings
 {
-	__host__ ReSTIRDISettings() {}
-	
-	HIPRT_HOST_DEVICE ReSTIRDISettings() 
+	__host__ ReSTIRDISettings() 
 	{
 		common_temporal_pass.do_temporal_reuse_pass = false;
 
