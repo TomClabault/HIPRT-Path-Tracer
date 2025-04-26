@@ -12,8 +12,7 @@
 
 struct LightSampleInformation
 {
-    __host__ LightSampleInformation() {}
-    __device__ LightSampleInformation() {}
+    HIPRT_HOST_DEVICE LightSampleInformation() {}
 
     int emissive_triangle_index = -1;
     float3 light_source_normal = { 0.0f, 1.0f, 0.0f };

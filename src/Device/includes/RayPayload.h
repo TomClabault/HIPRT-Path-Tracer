@@ -20,7 +20,7 @@ enum RayState
 
 struct RayPayload
 {
-	__device__ RayPayload() {}
+	HIPRT_HOST_DEVICE RayPayload() {}
 
 	// Energy left in the ray after it bounces around the scene
 	ColorRGB32F throughput = ColorRGB32F(1.0f);

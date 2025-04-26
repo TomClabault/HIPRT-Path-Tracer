@@ -15,6 +15,7 @@
   */
 struct DevicePackedEffectiveMaterial
 {
+    __host__ DevicePackedEffectiveMaterial() {}
     __device__ DevicePackedEffectiveMaterial() {}
     
     enum PackedFlagsIndices : unsigned char
