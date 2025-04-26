@@ -83,6 +83,7 @@ public:
 	OrochiBuffer<unsigned char> m_grid_cells_alive_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_staging_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_buffer;
+	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_list_buffer;
 };
 
