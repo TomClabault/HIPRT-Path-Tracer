@@ -40,6 +40,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReSTIR
 // - There is bias in ReSTIR DI
 // - Greedy spatial reuse to retry neighbors if we didn't get a good one
+//			For the greedy neighbor search of restir spatial reuse, maybe reduce progressively the radius ?
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - BSDF MIS Reuse for ReSTIR DI
@@ -171,8 +172,8 @@ extern ImGuiLogger g_imgui_logger;
 // TODO Features:
 // Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
 //		- And maybe we can spatial reuse on that
-// For the greedy neighbor search of restir spatial reuse, maybe reduce progressively the radius ?
 // - Stochastic light culling: https://jcgt.org/published/0005/01/02/paper-lowres.pdf
+// - Disney adaptive sampling: https://la.disneyresearch.com/wp-content/uploads/Adaptive-Rendering-with-Linear-Predictions-Paper.pdf?utm_source=chatgpt.com
 // - flush to zero denormal float numbers compiler option?
 //		
  /*

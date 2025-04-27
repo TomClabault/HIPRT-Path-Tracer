@@ -175,7 +175,7 @@ bool ReGIRRenderPass::launch()
 	if (!is_render_pass_used())
 		return false;
 
-	m_renderer->synchronize_all_kernels();
+	//m_renderer->synchronize_all_kernels();
 
 	m_grid_cells_alive_count_staging_buffer.download_data(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 	m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
