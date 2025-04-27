@@ -9,8 +9,7 @@
 #include "Renderer/Baker/GPUBaker.h"
 #include "Renderer/Baker/GPUBakerConstants.h"
 #include "Renderer/GPURenderer.h"
-#include "Renderer/RenderPasses/FillGBufferRenderPass.h"
-#include "Renderer/RenderPasses/MegaKernelRenderPass.h"
+#include "RenderPasses/FillGBufferRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
@@ -44,18 +43,22 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	m_denoiser_buffers.m_albedo_AOV_interop_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<ColorRGB32F>>();
 	m_pixels_converged_sample_count_buffer = std::make_shared<OrochiBuffer<int>>();
-	//m_gmon.result_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 
 	m_DEBUG_SUMS.resize(1024);
 	m_DEBUG_SUM_COUNT.resize(1024);
 
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
+	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
+	// Adding hardware acceleration by default if supported
+	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
+
+	m_render_thread = GPURendererThread(this);
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 	m_application_settings = application_settings;
 
 	setup_brdfs_data();
 	setup_filter_functions();
-	setup_render_passes();
+	m_render_thread.setup_render_passes();
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_async_stream_1));
@@ -329,27 +332,22 @@ bool GPURenderer::needs_emissives_power_alias_table()
 
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 {
-	return std::dynamic_pointer_cast<GMoNRenderPass>(m_render_graph.get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+	return m_render_thread.get_gmon_render_pass();
 }
 
 std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass()
 {
-	return std::dynamic_pointer_cast<ReGIRRenderPass>(m_render_graph.get_render_pass(ReGIRRenderPass::REGIR_RENDER_PASS_NAME));
+	return m_render_thread.get_ReGIR_render_pass();
 }
 
 std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
 {
-	return std::dynamic_pointer_cast<ReSTIRDIRenderPass>(m_render_graph.get_render_pass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME));
+	return m_render_thread.get_ReSTIR_DI_render_pass();
 }
 
 std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
 {
-	return std::dynamic_pointer_cast<ReSTIRGIRenderPass>(m_render_graph.get_render_pass(ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME));
-}
-
-RenderGraph& GPURenderer::get_render_graph()
-{
-	return m_render_graph;
+	return m_render_thread.get_ReSTIR_GI_render_pass();
 }
 
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
@@ -371,95 +369,6 @@ void GPURenderer::setup_filter_functions()
 	m_render_data.hiprt_function_table = func_table;
 }
 
-void GPURenderer::setup_render_passes()
-{
-	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
-	// Adding hardware acceleration by default if supported
-	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
-
-	// Some default values are set for USE_SHARED_STACK_BVH_TRAVERSAL and SHARED_STACK_BVH_TRAVERSAL_SIZE
-	// which I found work approximately well in terms of performance on various scenes (not perfect though and, on top of not 
-	// being perfect, this was measured on a 7900XTX with hardware accelerated ray tracing so... your mileage in terms of what 
-	// numbers are the best may vary.)
-	
-	// Configuring the render passes
-	m_render_graph = RenderGraph(this);
-
-	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = std::make_shared<FillGBufferRenderPass>(this);
-
-	std::shared_ptr<ReGIRRenderPass> regir_render_pass = std::make_shared<ReGIRRenderPass>(this);
-	regir_render_pass->add_dependency(camera_rays_render_pass);
-
-	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = std::make_shared<ReSTIRDIRenderPass>(this);
-	restir_di_render_pass->add_dependency(camera_rays_render_pass);
-	restir_di_render_pass->add_dependency(regir_render_pass);
-
-	// Note that the megakernel pass will only be used if ReSTIR GI is not used.
-	// But we're still adding the render pass to the render graph in case the user
-	// switches from ReSTIR GI to classical path tracing at runtime
-	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass = std::make_shared<MegaKernelRenderPass>(this);
-	megakernel_render_pass->add_dependency(camera_rays_render_pass);
-	megakernel_render_pass->add_dependency(restir_di_render_pass);
-
-	std::shared_ptr<ReSTIRGIRenderPass> restir_gi_render_pass = std::make_shared<ReSTIRGIRenderPass>(this);
-	restir_gi_render_pass->add_dependency(camera_rays_render_pass);
-	restir_gi_render_pass->add_dependency(restir_di_render_pass);
-
-	std::shared_ptr<GMoNRenderPass> gmon_render_pass  = std::make_shared<GMoNRenderPass>(this);
-	// GMoN depends on the main path tracing pass which is the megakernel pass or ReSTIR GI, whichever is
-	// active
-	gmon_render_pass->add_dependency(megakernel_render_pass);
-	gmon_render_pass->add_dependency(restir_gi_render_pass);
-
-	m_render_graph.add_render_pass(camera_rays_render_pass);
-	m_render_graph.add_render_pass(regir_render_pass);
-	m_render_graph.add_render_pass(restir_di_render_pass);
-	m_render_graph.add_render_pass(megakernel_render_pass);
-	m_render_graph.add_render_pass(restir_gi_render_pass);
-	m_render_graph.add_render_pass(gmon_render_pass);
-
-	m_render_graph.compile(m_hiprt_orochi_ctx, m_func_name_sets);
-
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
-		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx, m_func_name_sets);
-}
-
-void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window)
-{
-	step_animations(delta_time);
-
-	if (m_render_graph.pre_render_compilation_check(m_hiprt_orochi_ctx, m_func_name_sets, true, true))
-		// Some kernels have been recompiled, renderer is now dirty
-		render_window->set_render_dirty(true);
-	m_render_data_buffers_invalidated |= m_render_graph.pre_render_update(delta_time);
-
-	internal_pre_render_update_clear_device_status_buffers();
-	internal_pre_render_update_global_stack_buffer();
-	internal_pre_render_update_adaptive_sampling_buffers();
-	internal_pre_render_update_nee_plus_plus(delta_time);
-
-	update_render_data();
-
-	m_updated = true;
-}
-
-void GPURenderer::post_render_update()
-{
-	m_render_graph.post_render_update();
-
-	m_render_data.render_settings.sample_number++;
-	m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
-
-	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
-	// so we're setting the flag to false (it will be set to true again if we need to reset the render
-	// again)
-	m_render_data.render_settings.need_to_reset = false;
-	m_render_data.nee_plus_plus.reset_visibility_map = false;
-
-	// Saving the current frame camera to be the previous camera of the next frame
-	m_previous_frame_camera = m_camera;
-}
-
 void GPURenderer::step_animations(float delta_time)
 {
 	m_envmap.update(this, delta_time);
@@ -472,161 +381,15 @@ void GPURenderer::download_status_buffers()
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_status_buffers.pixels_converged_count_buffer.get_device_pointer(), sizeof(unsigned int), oroMemcpyDeviceToHost));
 }
 
-void GPURenderer::internal_pre_render_update_clear_device_status_buffers()
-{
-	unsigned char false_data = false;
-	unsigned int zero_data = 0;
-	// Uploading false to reset the flag
-	m_status_buffers.still_one_ray_active_buffer.upload_data(&false_data);
-	// Resetting the counter of pixels converged to 0
-	m_status_buffers.pixels_converged_count_buffer.upload_data(&zero_data);
-}
-
 void GPURenderer::internal_clear_m_status_buffers()
 {
 	m_status_buffers_values.one_ray_active = true;
 	m_status_buffers_values.pixel_converged_count = 0;
 }
 
-void GPURenderer::internal_pre_render_update_adaptive_sampling_buffers()
-{
-	bool buffers_needed = m_render_data.render_settings.has_access_to_adaptive_sampling_buffers();
-
-	if (buffers_needed)
-	{
-		bool pixels_squared_luminance_needs_resize = m_pixels_squared_luminance_buffer.size() == 0;
-		bool pixels_sample_count_needs_resize = m_pixels_sample_count_buffer.size() == 0;
-		bool pixels_converged_sample_count_needs_resize = m_pixels_converged_sample_count_buffer->size() == 0;
-
-		if (pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize || pixels_converged_sample_count_needs_resize)
-			// At least on buffer is going to be resized so buffers are invalidated
-			m_render_data_buffers_invalidated = true;
-
-		if (pixels_squared_luminance_needs_resize)
-			// Only allocating if it isn't already
-			m_pixels_squared_luminance_buffer.resize(m_render_resolution.x * m_render_resolution.y);
-
-		if (pixels_sample_count_needs_resize)
-			// Only allocating if it isn't already
-			m_pixels_sample_count_buffer.resize(m_render_resolution.x * m_render_resolution.y);
-
-		if (pixels_converged_sample_count_needs_resize)
-			m_pixels_converged_sample_count_buffer->resize(m_render_resolution.x * m_render_resolution.y);
-
-	}
-	else
-	{
-		if (m_pixels_squared_luminance_buffer.size() > 0 || m_pixels_sample_count_buffer.size() > 0 || m_pixels_converged_sample_count_buffer->size() > 0)
-		{
-			m_pixels_squared_luminance_buffer.free();
-			m_pixels_sample_count_buffer.free();
-			m_pixels_converged_sample_count_buffer->free();
-
-			m_render_data_buffers_invalidated = true;
-		}
-	}
-}
-
-void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
-{
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE)
-	{
-		// Not using NEE++, we just need to free the buffers if they weren't already
-
-		if (m_nee_plus_plus.packed_buffer.size() != 0)
-		{
-			m_nee_plus_plus.packed_buffer.free();
-			m_nee_plus_plus.total_shadow_ray_queries.free();
-			m_nee_plus_plus.shadow_rays_actually_traced.free();
-
-			m_render_data_buffers_invalidated = true;
-		}
-
-		return;
-	}
-
-	float3 min_grid_extent_with_envmap, max_grid_extent_with_envmap;
-	m_nee_plus_plus.get_grid_extents(m_nee_plus_plus.grid_dimensions_no_envmap, min_grid_extent_with_envmap, max_grid_extent_with_envmap);
-
-	// Adding (2, 2, 2) for envmap NEE++
-	m_render_data.nee_plus_plus.grid_dimensions = m_nee_plus_plus.grid_dimensions_no_envmap + make_int3(2, 2, 2);
-	m_render_data.nee_plus_plus.grid_min_point = min_grid_extent_with_envmap;
-	m_render_data.nee_plus_plus.grid_max_point = max_grid_extent_with_envmap;
-
-	// Allocating / deallocating buffers
-	unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions);
-	if (m_nee_plus_plus.packed_buffer.size() != matrix_element_count)
-	{
-		m_nee_plus_plus.packed_buffer.resize(matrix_element_count);
-		m_nee_plus_plus.shadow_rays_actually_traced.resize(1);
-		m_nee_plus_plus.total_shadow_ray_queries.resize(1);
-
-		m_render_data_buffers_invalidated = true;
-	}
-
-	// Clearing the visibility map if this has been asked by the user
-	if (m_render_data.nee_plus_plus.reset_visibility_map)
-	{
-		// Clearing the visibility map by memseting everything to 0
-		m_nee_plus_plus.packed_buffer.memset_whole_buffer(0);
-		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
-		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
-	}
-
-	if (m_render_data.render_settings.sample_number > m_nee_plus_plus.stop_update_samples)
-		// Past a certain number of samples, there isn't really a point to keep updating, the visibility map
-		// is probably converged enough that it doesn't make a difference anymore
-		m_render_data.nee_plus_plus.update_visibility_map = false;
-
-	m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;
-	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = hippt::max(0.0f, m_nee_plus_plus.milliseconds_before_finalizing_accumulation); // Clamping for nice display in ImGui (0.0f instead of negative values)
-	if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f && m_render_data.nee_plus_plus.packed_buffers != nullptr)
-	{
-		m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
-
-		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
-		// buffers to the visibilit map, we have to use a kernel that the does unpacking-copy
-		void* launch_args[] = { &m_render_data.nee_plus_plus };
-		m_nee_plus_plus.finalize_accumulation_kernel->launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_main_stream);
-	}
-	
-	m_nee_plus_plus.statistics_refresh_timer -= delta_time;
-	if (m_nee_plus_plus.statistics_refresh_timer <= 0.0f && m_render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
-	{
-		m_nee_plus_plus.statistics_refresh_timer = NEEPlusPlusGPUData::STATISTICS_REFRESH_TIMER;
-
-		OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.total_shadow_ray_queries_cpu, m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
-		OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
-	}
-}
-
-void GPURenderer::internal_pre_render_update_global_stack_buffer()
-{
-	if (needs_global_bvh_stack_buffer())
-	{
-		bool buffer_needs_update = false;
-		// Buffer isn't allocated
-		buffer_needs_update |= m_render_data.global_traversal_stack_buffer.stackData == nullptr;
-		// Buffer is allocated but the stack size has been changed (through ImGui probably)
-		buffer_needs_update |= m_render_data.global_traversal_stack_buffer_size != m_render_data.global_traversal_stack_buffer.stackSize;
-
-		if (buffer_needs_update)
-			recreate_global_bvh_stack_buffer();
-	}
-	else
-	{
-		if (m_render_data.global_traversal_stack_buffer.stackData != nullptr)
-		{
-			// Freeing if the buffer already exists
-			HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, m_render_data.global_traversal_stack_buffer));
-			m_render_data.global_traversal_stack_buffer.stackData = nullptr;
-		}
-	}
-}
-
 bool GPURenderer::needs_global_bvh_stack_buffer()
 {
-	for (const auto& name_to_kernel : m_render_graph.get_tracing_kernels())
+	for (const auto& name_to_kernel : m_render_thread.get_render_graph().get_tracing_kernels())
 	{
 		bool global_stack_buffer_needed = false;
 		global_stack_buffer_needed |= name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) == KERNEL_OPTION_TRUE;
@@ -659,87 +422,6 @@ void GPURenderer::recreate_global_bvh_stack_buffer()
 	HIPRT_CHECK_ERROR(hiprtCreateGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, stackBufferInput, m_render_data.global_traversal_stack_buffer));
 }
 
-void GPURenderer::render()
-{
-	if (!m_updated)
-	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "render() was called on the GPURenderer without update() being called.");
-		Utils::debugbreak();
-
-		return;
-	}
-
-	// Resetting the update state since we're now rendering a new frame
-	m_updated = false;
-
-	// Making sure kernels are compiled
-	ThreadManager::join_threads(ThreadManager::COMPILE_KERNELS_THREAD_KEY);
-
-	map_buffers_for_render();
-	
-	if (m_debug_trace_kernel.has_been_compiled())
-		render_debug_kernel();
-	else
-		render_path_tracing();
-}
-
-void GPURenderer::render_debug_kernel()
-{
-	m_frame_rendered = false;
-
-	// Updating the previous and current camera
-	m_render_data.current_camera = m_camera.to_hiprt();
-	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
-
-	launch_debug_kernel();
-
-	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, [](void* payload) {
-		*reinterpret_cast<bool*>(payload) = true;
-	}, &m_frame_rendered));
-
-	post_render_update();
-}
-
-void GPURenderer::render_path_tracing()
-{
-	m_frame_rendered = false;
-
-	if (m_render_data.render_settings.sample_number == 0)
-		// If this is the very first sample, launching the prepass
-		// of all the render passes
-		m_render_graph.prepass();
-
-	for (int i = 1; i <= m_render_data.render_settings.samples_per_frame; i++)
-	{
-		// Updating the previous and current camera
-		m_render_data.current_camera = m_camera.to_hiprt();
-		m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
-
-		if (i == m_render_data.render_settings.samples_per_frame)
-			// Last sample of the frame so we are going to enable the update 
-			// of the status buffers (number of pixels converged, how many rays still
-			// active, ...)
-			m_render_data.render_settings.do_update_status_buffers = true;
-		
-		m_render_graph.launch();
-
-		post_render_update();
-	}
-
-	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, [](void* payload){
-		*reinterpret_cast<bool*>(payload) = true;
-	}, &m_frame_rendered));
-
-	m_was_last_frame_low_resolution = m_render_data.render_settings.do_render_low_resolution();
-	// We just rendered a new frame so we're setting this flag to true
-	// such that the animated components of the scene are not allowed to step
-	// their animations until the render window signals the renderer the the
-	// frame has been fully rendered and thus that the animations can step forward
-	m_animation_state.can_step_animation = false;
-}
-
 void GPURenderer::launch_nee_plus_plus_caching_prepass()
 {
 	unsigned int caching_sample_count = 1024;
@@ -747,14 +429,6 @@ void GPURenderer::launch_nee_plus_plus_caching_prepass()
 
 	m_render_data.random_number = m_rng.xorshift32();
 	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
-}
-
-void GPURenderer::launch_debug_kernel()
-{
-	void* launch_args[] = { &m_render_data, &m_render_resolution };
-
-	m_render_data.random_number = m_rng.xorshift32();
-	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::synchronize_all_kernels()
@@ -766,14 +440,14 @@ void GPURenderer::synchronize_all_kernels()
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_async_stream_1));
 }
 
-bool GPURenderer::frame_render_done()
-{
-	return m_frame_rendered;
-}
-
 bool GPURenderer::was_last_frame_low_resolution()
 {
 	return m_was_last_frame_low_resolution;
+}
+
+bool GPURenderer::frame_render_done() const
+{
+	return m_render_thread.frame_render_done();
 }
 
 void GPURenderer::resize(int new_width, int new_height)
@@ -800,7 +474,7 @@ void GPURenderer::resize(int new_width, int new_height)
 		m_pixels_sample_count_buffer.resize(new_width * new_height);
 	}
 
-	m_render_graph.resize(new_width, new_height);
+	m_render_thread.get_render_graph().resize(new_width, new_height);
 
 	m_pixel_active.resize(new_width * new_height);
 
@@ -815,6 +489,16 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_render_data.render_settings.render_resolution = m_render_resolution;
 	m_render_data_buffers_invalidated = true;
 	m_render_data.render_settings.need_to_reset = true;
+}
+
+void GPURenderer::render()
+{
+	m_render_thread.render();
+}
+
+void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window)
+{
+	m_render_thread.pre_render_update(delta_time, render_window);
 }
 
 void GPURenderer::map_buffers_for_render()
@@ -967,7 +651,7 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	for (auto& name_to_kenel : m_kernels)
 		name_to_kenel.second->compile(m_hiprt_orochi_ctx, m_func_name_sets, use_cache, false);
 
-	m_render_graph.recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
+	m_render_thread.get_render_graph().recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		m_nee_plus_plus.recompile(m_hiprt_orochi_ctx, false, use_cache);
@@ -1145,7 +829,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 	for (auto& pair : m_kernels)
 		kernels[pair.first] = pair.second;
 
-	for (auto& name_to_kernel : m_render_graph.get_all_kernels())
+	for (auto& name_to_kernel : m_render_thread.get_render_graph().get_all_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
 
 	return kernels;
@@ -1158,7 +842,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kerne
 	for (auto& pair : m_kernels)
 		kernels[pair.first] = pair.second;
 
-	for (auto& name_to_kernel : m_render_graph.get_tracing_kernels())
+	for (auto& name_to_kernel : m_render_thread.get_render_graph().get_tracing_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
 
 	return kernels;
@@ -1168,20 +852,20 @@ void GPURenderer::set_debug_trace_kernel(const std::string& kernel_name, GPUKern
 {
 	if (kernel_name == "")
 		// Clearing the debug kernel
-		m_debug_trace_kernel = GPUKernel();
+		m_render_thread.get_debug_trace_kernel() = GPUKernel();
 	else
 	{
-		m_debug_trace_kernel = GPUKernel(DEVICE_KERNELS_DIRECTORY "/" + kernel_name + ".h", kernel_name);
+		m_render_thread.get_debug_trace_kernel() = GPUKernel(DEVICE_KERNELS_DIRECTORY "/" + kernel_name + ".h", kernel_name);
 
 		// Setting all the custom options
-		m_debug_trace_kernel.get_kernel_options() = options;
-		m_debug_trace_kernel.compile(m_hiprt_orochi_ctx);
+		m_render_thread.get_debug_trace_kernel().get_kernel_options() = options;
+		m_render_thread.get_debug_trace_kernel().compile(m_hiprt_orochi_ctx);
 	}
 }
 
 bool GPURenderer::is_using_debug_kernel()
 {
-	return m_debug_trace_kernel.has_been_compiled();
+	return m_render_thread.get_debug_trace_kernel().has_been_compiled();
 }
 
 oroStream_t GPURenderer::get_main_stream()
@@ -1197,14 +881,14 @@ oroStream_t GPURenderer::get_async_stream_1()
 void GPURenderer::compute_render_pass_times()
 {
 	// Registering the render times of all the kernels by iterating over all the kernels
-	m_render_graph.compute_render_times();
+	m_render_thread.get_render_graph().compute_render_times();
 
-	if (m_debug_trace_kernel.has_been_compiled())
+	if (m_render_thread.get_debug_trace_kernel().has_been_compiled())
 		// If the debug kernel is being used... read its execution time
 		// Note that we check for 'has_been_compiled()' because if the debug kernel isn't in use,
-		// then the kernel (m_debug_trace_kernel) is empty, and if it's empty, then it hasn't
+		// then the kernel (m_render_thread.get_debug_trace_kernel()) is empty, and if it's empty, then it hasn't
 		// been compiled yet
-		m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY] = m_debug_trace_kernel.get_last_execution_time();
+		m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY] = m_render_thread.get_debug_trace_kernel().get_last_execution_time();
 
 	// The total frame time is the sum of every passes
 	float sum = 0.0f;
@@ -1237,11 +921,11 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 	/*for (const std::string& kernel_id : get_all_kernel_ids())
 		perf_metrics->add_value(kernel_id, m_render_pass_times[kernel_id]);*/
 
-	m_render_graph.update_perf_metrics(perf_metrics);
+	m_render_thread.get_render_graph().update_perf_metrics(perf_metrics);
 
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
 
-	if (m_debug_trace_kernel.has_been_compiled())
+	if (m_render_thread.get_debug_trace_kernel().has_been_compiled())
 		// Adding the time for the debug kernel if it is in use
 		perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 }
@@ -1251,7 +935,7 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 	m_DEBUG_SUMS.memset_whole_buffer(0);
 	m_DEBUG_SUM_COUNT.memset_whole_buffer(0);
 
-	m_render_graph.reset();
+	m_render_thread.get_render_graph().reset();
 
 	if (m_render_data.render_settings.accumulate)
 	{
@@ -1331,7 +1015,7 @@ void GPURenderer::update_render_data()
 			m_render_data.nee_plus_plus.total_shadow_ray_queries = nullptr;
 		}
 
-		m_render_graph.update_render_data();
+		m_render_thread.get_render_graph().update_render_data();
 
 		m_render_data_buffers_invalidated = false;
 		m_render_data.render_settings.need_to_reset = true;
@@ -1585,6 +1269,11 @@ SceneMetadata& GPURenderer::get_scene_metadata()
 	return m_parsed_scene_metadata;
 }
 
+RenderGraph& GPURenderer::get_render_graph()
+{
+	return m_render_thread.get_render_graph();
+}
+
 void GPURenderer::set_camera(const Camera& camera)
 {
 	m_camera = camera;
@@ -1593,7 +1282,7 @@ void GPURenderer::set_camera(const Camera& camera)
 
 void GPURenderer::resize_g_buffer_ray_volume_states()
 {
-	std::dynamic_pointer_cast<FillGBufferRenderPass>(m_render_graph.get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME))->resize_g_buffer_ray_volume_states();
+	std::dynamic_pointer_cast<FillGBufferRenderPass>(m_render_thread.get_render_graph().get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME))->resize_g_buffer_ray_volume_states();
 }
 
 void GPURenderer::translate_camera_view(glm::vec3 translation)

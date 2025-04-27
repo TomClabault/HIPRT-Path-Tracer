@@ -10,6 +10,8 @@
 #include "Renderer/GPUDataStructures/GBufferGPUData.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
+class GPURenderer;
+
 class FillGBufferRenderPass : public RenderPass
 {
 public:
