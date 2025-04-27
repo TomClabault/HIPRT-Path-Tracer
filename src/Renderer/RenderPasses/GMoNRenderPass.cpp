@@ -298,10 +298,10 @@ void GMoNRenderPass::post_render_update()
 	{
 		HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-		// Else, if we didn't resize the buffers meaning that GMoN isn't in a fresh state, we're going to increment the
-		// counter that indicates in which sets of GMoN to accumulate
+		// We're going to increment the counter that indicates in which sets of GMoN to accumulate
 		render_data.buffers.gmon_estimator.next_set_to_accumulate++;
 		if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
+			// Going back to 0 if we've reached the end of the sets, round robin style
 			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 	}
 }
@@ -326,7 +326,7 @@ unsigned int GMoNRenderPass::get_last_recomputed_sample_count()
 	return m_gmon.last_recomputed_sample_count;
 }
 
-void GMoNRenderPass::reset()
+void GMoNRenderPass::reset(bool reset_by_camera_movement)
 {
 	if (is_render_pass_used())
 	{

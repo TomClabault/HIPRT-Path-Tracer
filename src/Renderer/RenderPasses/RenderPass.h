@@ -144,8 +144,14 @@ public:
 
 	/**
 	 * Called when the user resets the render (an option was changed in ImGui, the camera moved, ...)
+	 * 
+	 * If 'reset_by_camera_movement' is true, this means that the user moved the camera.
+	 * This parameter can be used by the render pass to decide whether or not to reset the render pass. 
+	 * 
+	 * Some render passes may not want to reset depending on the state of the renderer
+	 * (we do not want to reset temporal buffers when moving the camera for temporal render passes (ReSTIR) for example)
 	 */
-	virtual void reset() = 0;
+	virtual void reset(bool reset_by_camera_movement) = 0;
 
 	/**
 	 * This function is called once per frame, after all render passes have executed.
@@ -262,6 +268,7 @@ protected:
 
 	// Access to the renderer that holds the render pass
 	GPURenderer* m_renderer = nullptr;
+	// The render data that all kernels should use
 	HIPRTRenderData* m_render_data = nullptr;
 
 	// Other render passes which this render pass depends on.

@@ -57,13 +57,7 @@ bool MegaKernelRenderPass::launch()
 	return true;
 }
 
-void MegaKernelRenderPass::post_render_update()
-{
-	if (!is_render_pass_used())
-		return;
-}
-
-void MegaKernelRenderPass::reset()
+void MegaKernelRenderPass::reset(bool reset_by_camera_movement)
 {
 	if (!is_render_pass_used())
 		return;

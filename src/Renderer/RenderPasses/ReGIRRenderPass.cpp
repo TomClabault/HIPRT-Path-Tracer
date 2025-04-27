@@ -280,7 +280,7 @@ void ReGIRRenderPass::update_render_data()
 	}
 }
 
-void ReGIRRenderPass::reset()
+void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 {
 	m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
 

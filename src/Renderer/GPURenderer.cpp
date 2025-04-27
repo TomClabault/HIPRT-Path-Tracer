@@ -492,10 +492,23 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_render_data.render_settings.need_to_reset = true;
 }
 
-void GPURenderer::render()
+void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
+	std::cout << "Pre render updating" << std::endl;
+	pre_render_update(delta_time_gpu, render_window);
+
+	// Mapping the render buffers on the main thread so that we can use them in the render thread.
+	// 
+	// This is done on the main thread because using OpenGL (required when mapping the buffers from OpenGL to CUDA/HIP)
+	// on a non-main thread is a bit sketchy
 	map_buffers_for_render();
 
+	if (m_render_data.render_settings.sample_number == 0)
+		// If this is the very first sample, launching the prepass
+		// of all the render passes
+		m_render_thread.get_render_graph().prepass();
+
+	// m_render_pass_render_data = m_render_data;
 	m_render_thread.request_frame();
 }
 
@@ -938,7 +951,7 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 	m_DEBUG_SUMS.memset_whole_buffer(0);
 	m_DEBUG_SUM_COUNT.memset_whole_buffer(0);
 
-	m_render_thread.get_render_graph().reset();
+	m_render_thread.get_render_graph().reset(reset_by_camera_movement);
 
 	if (m_render_data.render_settings.accumulate)
 	{

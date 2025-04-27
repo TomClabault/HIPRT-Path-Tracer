@@ -15,6 +15,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
+#include <condition_variable>
 #include <memory>
 
 class GPURenderer;

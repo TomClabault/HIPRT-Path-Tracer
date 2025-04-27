@@ -240,12 +240,22 @@ void ReSTIRDIRenderPass::update_render_data()
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_2 = m_spatial_output_reservoirs_1.get_device_pointer();
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_3 = m_spatial_output_reservoirs_2.get_device_pointer();
 
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer();
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.get_device_pointer();
+		if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.do_adaptive_directional_spatial_reuse(m_render_data->render_settings.accumulate))
+		{
+			if (m_per_pixel_spatial_reuse_direction_mask_u.size() > 0)
+				m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();
 
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_total = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_total.get_device_pointer());
-		m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = reinterpret_cast<AtomicType<unsigned long long int>*>(m_spatial_reuse_statistics_hit_hits.get_device_pointer());
+			if (m_per_pixel_spatial_reuse_direction_mask_ull.size() > 0)
+				m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer();
+
+			m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.get_device_pointer();
+		}
+
+		if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.compute_spatial_reuse_hit_rate)
+		{
+			m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_total = m_spatial_reuse_statistics_hit_total.get_atomic_device_pointer();
+			m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = m_spatial_reuse_statistics_hit_hits.get_atomic_device_pointer();
+		}
 
 		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
 		m_render_data->render_settings.restir_di_settings.restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
@@ -323,7 +333,7 @@ bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	return recompiled;
 }
 
-void ReSTIRDIRenderPass::reset()
+void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 {
 	odd_frame = false;
 }
@@ -393,10 +403,10 @@ void ReSTIRDIRenderPass::compute_optimal_spatial_reuse_radii()
 		//
 		// Also, we're only doing this as a "prepass" at sample 0: we only need this once for the whole rendering
 
-		unsigned int* per_pixel_spatial_reuse_direction_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.data();
-		unsigned long long int* per_pixel_spatial_reuse_direction_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.data();
+		unsigned int* per_pixel_spatial_reuse_direction_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.size() > 0 ? m_per_pixel_spatial_reuse_direction_mask_u.data() : nullptr;
+		unsigned long long int* per_pixel_spatial_reuse_direction_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.size() > 0 ? m_per_pixel_spatial_reuse_direction_mask_ull.data() : nullptr;
 		unsigned char* per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.data();
-		void* launch_args[] = { m_render_data, &per_pixel_spatial_reuse_direction_mask_u, &per_pixel_spatial_reuse_direction_mask_ull, &m_per_pixel_spatial_reuse_radius };
+		void* launch_args[] = { m_render_data, &per_pixel_spatial_reuse_direction_mask_u, &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
 
 		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 	}
@@ -435,7 +445,10 @@ void ReSTIRDIRenderPass::launch_presampling_lights_pass()
 void ReSTIRDIRenderPass::configure_initial_pass()
 {
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
-	m_render_data->render_settings.restir_di_settings.light_presampling.light_samples = m_presampled_lights_buffer.get_device_pointer();
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
+		m_render_data->render_settings.restir_di_settings.light_presampling.light_samples = m_presampled_lights_buffer.get_device_pointer();
+	else
+		m_render_data->render_settings.restir_di_settings.light_presampling.light_samples = nullptr;
 	m_render_data->render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_initial_candidates_reservoirs.get_device_pointer();
 }
 

@@ -29,7 +29,7 @@ public:
 	virtual void post_render_update() override {}
 
 	virtual void update_render_data() override;
-	virtual void reset() override {};
+	virtual void reset(bool reset_by_camera_movement) override {};
 
 	size_t get_ray_volume_state_byte_size();
 	void resize_g_buffer_ray_volume_states();
