@@ -119,10 +119,10 @@ void RenderGraph::update_render_data()
 		render_pass.second->update_render_data();
 }
 
-void RenderGraph::reset()
+void RenderGraph::reset(bool reset_by_camera_movement)
 {
 	for (auto& render_pass : m_render_passes)
-		render_pass.second->reset();
+		render_pass.second->reset(reset_by_camera_movement);
 }
 
 void RenderGraph::compute_render_times()

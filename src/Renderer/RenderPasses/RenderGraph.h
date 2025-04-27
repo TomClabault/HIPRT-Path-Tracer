@@ -32,7 +32,7 @@ public:
 	virtual void post_render_update() override;
 
 	virtual void update_render_data() override;
-	virtual void reset() override;
+	virtual void reset(bool reset_by_camera_movement) override;
 	
 	virtual void compute_render_times() override;
 	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;

@@ -214,7 +214,7 @@ void ReSTIRGIRenderPass::compute_optimal_spatial_reuse_radii()
 		unsigned int* per_pixel_spatial_reuse_direction_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.data();
 		unsigned long long int* per_pixel_spatial_reuse_direction_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.data();
 		unsigned char* per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.data();
-		void* launch_args[] = { m_render_data, &per_pixel_spatial_reuse_direction_mask_u, &per_pixel_spatial_reuse_direction_mask_ull, &m_per_pixel_spatial_reuse_radius };
+		void* launch_args[] = { m_render_data, &per_pixel_spatial_reuse_direction_mask_u, &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
 
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 	}
@@ -343,31 +343,13 @@ bool ReSTIRGIRenderPass::launch()
 	configure_initial_candidates_pass();
 	launch_initial_candidates_pass();
 
-	/*m_renderer->synchronize_all_kernels();
-	std::vector<ReSTIRGIReservoir> initial_cand = m_initial_candidates_buffer.download_data();
-	for (ReSTIRGIReservoir& res : initial_cand)
-		if (hippt::is_nan(res.UCW) || hippt::is_inf(res.UCW))
-			Utils::debugbreak();*/
-
 	configure_temporal_reuse_pass();
 	launch_temporal_reuse_pass();
 
-	/*m_renderer->synchronize_all_kernels();
-	initial_cand = OrochiBuffer<ReSTIRGIReservoir>::download_data(m_render_data->render_settings.restir_gi_settings.temporal_pass.output_reservoirs, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
-	for (ReSTIRGIReservoir& res : initial_cand)
-		if (hippt::is_nan(res.UCW) || hippt::is_inf(res.UCW))
-			Utils::debugbreak();*/
-	
 	for (int i = 0; i < m_render_data->render_settings.restir_gi_settings.common_spatial_pass.number_of_passes; i++)
 	{
 		configure_spatial_reuse_pass(i);
 		launch_spatial_reuse_pass();
-
-		/*m_renderer->synchronize_all_kernels();
-		initial_cand = OrochiBuffer<ReSTIRGIReservoir>::download_data(m_render_data->render_settings.restir_gi_settings.spatial_pass.output_reservoirs, m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
-		for (ReSTIRGIReservoir& res : initial_cand)
-			if (hippt::is_nan(res.UCW) || hippt::is_inf(res.UCW))
-				Utils::debugbreak();*/
 	}
 
 	configure_shading_pass();
@@ -417,7 +399,7 @@ void ReSTIRGIRenderPass::update_render_data()
 	}
 }
 
-void ReSTIRGIRenderPass::reset()
+void ReSTIRGIRenderPass::reset(bool reset_by_camera_movement)
 {
 	if (m_spatial_reuse_statistics_hit_hits.size() > 0)
 	{
@@ -425,7 +407,7 @@ void ReSTIRGIRenderPass::reset()
 		m_spatial_reuse_statistics_hit_total.memset_whole_buffer(0);
 	}
 
-	MegaKernelRenderPass::reset();
+	MegaKernelRenderPass::reset(reset_by_camera_movement);
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracing_kernels()

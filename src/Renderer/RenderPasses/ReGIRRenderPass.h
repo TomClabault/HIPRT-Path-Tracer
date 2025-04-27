@@ -54,7 +54,7 @@ public:
 	virtual void post_render_update() override;
 	virtual void update_render_data() override;
 
-	virtual void reset() override;
+	virtual void reset(bool reset_by_camera_movement) override;
 	void reset_representative_data();
 
 	virtual bool is_render_pass_used() const override;

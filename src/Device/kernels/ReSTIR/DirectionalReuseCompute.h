@@ -56,14 +56,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
     Xorshift32Generator random_number_generator(seed);
 
     // Clearing previous data
-#if NB_SAMPLES_PER_RADIUS > 32
-    out_directional_reuse_masks_buffer_ull[center_pixel_index] = 0;
-#else
-    out_directional_reuse_masks_buffer_u[center_pixel_index] = 0;
-#endif
+ #if NB_SAMPLES_PER_RADIUS > 32
+     out_directional_reuse_masks_buffer_ull[center_pixel_index] = 0;
+ #else
+     out_directional_reuse_masks_buffer_u[center_pixel_index] = 0;
+ #endif
     out_adaptive_radius_buffer[center_pixel_index] = 0;
 
-
+//     #if NB_SAMPLES_PER_RADIUS > 32
+//     out_directional_reuse_masks_buffer_ull[center_pixel_index] = center_pixel_index;// valid_samples_per_radius[best_radius_index];
+// #else
+//     // Extracting the low 32 bits
+//     out_directional_reuse_masks_buffer_u[center_pixel_index] = (unsigned int)(valid_samples_per_radius[best_radius_index] & 0x00000000FFFFFFFFF);
+// #endif
+// return;
 
 
 
@@ -153,21 +159,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
     // Extracting the low 32 bits
     out_directional_reuse_masks_buffer_u[center_pixel_index] = (unsigned int)(valid_samples_per_radius[best_radius_index] & 0x00000000FFFFFFFFF);
 #endif
-
-    /*if (render_data.render_settings.debug_x == x && render_data.render_settings.debug_y == y)
-    {
-        for (int i = 0; i < 128; i++)
-        {
-            int neighbor_index = get_spatial_neighbor_pixel_index<true>(render_data, i, make_int2(x, y), make_float2(1.0f, 0.0f), random_number_generator);
-            if (neighbor_index == -1)
-                continue;
-
-            path_tracing_accumulate_color(render_data, ColorRGB32F(0.0f, 1000.0f, 0.0f), neighbor_index);
-        }
-    }
-
-    if (render_data.render_settings.debug_x == x && render_data.render_settings.debug_y == y)
-        path_tracing_accumulate_color(render_data, ColorRGB32F(10000000.0f, 0.0, 0.0f), center_pixel_index);*/
 }
 
 #endif

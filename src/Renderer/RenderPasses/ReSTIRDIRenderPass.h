@@ -72,7 +72,7 @@ public:
 	virtual void post_render_update() override;
 	virtual void update_render_data() override;
 
-	virtual void reset() override;
+	virtual void reset(bool reset_by_camera_movement) override;
 
 	virtual void compute_render_times() override;
 
@@ -127,9 +127,6 @@ private:
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
 
-	// Whether or not we're currently rendering an odd frame.
-	// This is used to adjust which buffers are used as input/outputs
-	// and ping-pong between them
 	bool odd_frame = false;
 
 	// Events for timing the cumulated render time of all the spatial reuses passes

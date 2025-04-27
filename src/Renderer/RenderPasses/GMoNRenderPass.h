@@ -48,7 +48,7 @@ public:
 	virtual void post_render_update() override;
 
 	virtual void update_render_data() override;
-	virtual void reset() override;
+	virtual void reset(bool reset_by_camera_movement) override;
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 

@@ -22,10 +22,10 @@ public:
 	
 	virtual bool pre_render_update(float delta_time);
 	virtual bool launch();
-	virtual void post_render_update();
+	virtual void post_render_update() override {};
 
 	virtual void update_render_data() {};
-	virtual void reset();
+	virtual void reset(bool reset_by_camera_movement);
 
 	virtual bool is_render_pass_used() const override;
 

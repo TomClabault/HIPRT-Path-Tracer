@@ -107,6 +107,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Introduce envmap sampling into ReGIR to avoid having to integrate the envmap in a separate domain: big perf boost
 // - When shading, maybe pick random reservoirs from a single neighboring cell to reduce shadow rays count but do that on a per warp basis to reduce the size of artifacts (which would be grid cell size otherwise)
 // - Is there something to do with a wavefront architecture when tracing shadow rays at the end of the spatial reuse or something? Do we want maybe to dispatch kernels together for tracing from a given cell?
+// - Maybe we can do some double buffering on the grid to be able to spatially reuse WHILE generating the gri fill: we would run the grid fill and fill grid 1 while spatially reusing on grid 2 which was filled last frame
+//		The hope being that the computations can overlap a bit with the ray traversal
+//		We can just test that tehroretically and see if that helps performance at all
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
@@ -958,9 +961,10 @@ void RenderWindow::render()
 
 	if (m_renderer->frame_render_done())
 	{
-		// ------
+		// ------------------------------------------------------------
 		// Everything that is in there is synchronous with the renderer
-		// ------
+		// ------------------------------------------------------------
+
 		m_renderer->download_status_buffers();
 
 		if (m_application_state->GPU_stall_duration_left > 0 && !is_rendering_done())
@@ -1051,9 +1055,8 @@ void RenderWindow::render()
 
 			m_application_state->frame_number++;
 			m_application_state->last_GPU_submit_time = current_timestamp;
-			std::cout << "Pre render updating" << std::endl;
-			m_renderer->pre_render_update(delta_time_gpu, this);
-			m_renderer->render();
+
+			m_renderer->render(delta_time_gpu, this);
 
 			buffer_upload_necessary = true;
 		}
@@ -1103,7 +1106,7 @@ void RenderWindow::render()
 
 			}
 
-			// Sleeping so that we don't burn the CPU and GPU
+			// Sleeping so that we don't burn the CPU and GPU with the UI drawing
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		}
 	}
