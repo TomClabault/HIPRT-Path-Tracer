@@ -11,7 +11,7 @@
 
 class GPURenderer;
 
-class ReGIRRenderPass : public RenderPass
+class ReGIRRenderPass: public RenderPass
 {
 public:
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;

@@ -52,7 +52,8 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	// Adding hardware acceleration by default if supported
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
 
-	m_render_thread = GPURendererThread(this);
+	m_render_thread.init(this);
+	m_render_thread.start();
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 	m_application_settings = application_settings;
 
@@ -445,7 +446,7 @@ bool GPURenderer::was_last_frame_low_resolution()
 	return m_was_last_frame_low_resolution;
 }
 
-bool GPURenderer::frame_render_done() const
+bool GPURenderer::frame_render_done()
 {
 	return m_render_thread.frame_render_done();
 }
@@ -493,7 +494,9 @@ void GPURenderer::resize(int new_width, int new_height)
 
 void GPURenderer::render()
 {
-	m_render_thread.render();
+	map_buffers_for_render();
+
+	m_render_thread.request_frame();
 }
 
 void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window)
