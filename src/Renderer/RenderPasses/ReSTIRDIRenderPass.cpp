@@ -335,6 +335,23 @@ bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 
 void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 {
+	if(!is_render_pass_used())
+		return;
+
+	if (reset_by_camera_movement && m_render_data->render_settings.accumulate)
+	{
+		std::vector<ReSTIRDIReservoir> empty_reservoirs(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
+
+		if (m_initial_candidates_reservoirs.size() > 0)
+			m_initial_candidates_reservoirs.upload_data(empty_reservoirs);
+
+		if (m_spatial_output_reservoirs_1.size() > 0)
+			m_spatial_output_reservoirs_1.upload_data(empty_reservoirs);
+
+		if (m_spatial_output_reservoirs_2.size() > 0)
+			m_spatial_output_reservoirs_2.upload_data(empty_reservoirs);
+	}
+
 	odd_frame = false;
 }
 

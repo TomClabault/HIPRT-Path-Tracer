@@ -494,7 +494,6 @@ void GPURenderer::resize(int new_width, int new_height)
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
-	std::cout << "Pre render updating" << std::endl;
 	pre_render_update(delta_time_gpu, render_window);
 
 	// Mapping the render buffers on the main thread so that we can use them in the render thread.

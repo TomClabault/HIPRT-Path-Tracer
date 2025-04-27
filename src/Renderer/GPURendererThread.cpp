@@ -85,7 +85,6 @@ void GPURendererThread::setup_render_passes()
 void GPURendererThread::request_frame()
 {
 	std::lock_guard<std::mutex> lock(m_render_mutex);
-	std::cout << "Requesting frame" << std::endl;
 
 	m_frame_rendered = false;
 	m_frame_requested = true;
@@ -289,8 +288,6 @@ void GPURendererThread::render()
 
 	// Making sure kernels are compiled
 	ThreadManager::join_threads(ThreadManager::COMPILE_KERNELS_THREAD_KEY);
-
-	std::cout << "Rendering frame" << std::endl;
 
 	if (m_debug_trace_kernel.has_been_compiled())
 		render_debug_kernel();

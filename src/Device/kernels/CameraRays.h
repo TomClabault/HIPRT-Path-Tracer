@@ -19,26 +19,6 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
 {
-    if (render_data.aux_buffers.restir_di_reservoir_buffer_1 != nullptr)
-    {
-        // Only resetting if we're accumulating for offline rendering. Otherwise, we want the
-        // temporal side of ReSTIR and so we're not resetting to at least keep the temporal
-        // buffer alive
-        //
-        // Also, we're only resetting if the buffers aren't nullptr (they are nullptr 
-        // if ReSTIR DI is currently disabled (using another direct lighting strategy).
-        // We only need to check 1 buffer for that.
-
-        if (render_data.aux_buffers.restir_di_reservoir_buffer_1)
-            render_data.aux_buffers.restir_di_reservoir_buffer_1[pixel_index] = ReSTIRDIReservoir();
-
-        if (render_data.aux_buffers.restir_di_reservoir_buffer_2)
-            render_data.aux_buffers.restir_di_reservoir_buffer_2[pixel_index] = ReSTIRDIReservoir();
-
-        if (render_data.aux_buffers.restir_di_reservoir_buffer_3)
-            render_data.aux_buffers.restir_di_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();
-    }
-
     if (render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
     {
         // Same for ReSTIR GI
