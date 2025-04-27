@@ -73,7 +73,7 @@ public:
 	 * Returns true if the renderer is not sampling the image anymore. 
 	 * This can be the case if all pixels have converged according to
 	 * adaptive sampling or if the maximum number of samples specified by
-	 * the user has been reached, etc...
+	 * the user has been reached or if the maximum render time has been reached, etc...
 	 */
 	bool is_rendering_done();
 	bool needs_viewport_refresh();

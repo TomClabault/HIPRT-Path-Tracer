@@ -150,7 +150,7 @@ public:
 	/**
 	 * Whether or not the current frame has finished rendering
 	 */
-	bool frame_render_done() const;
+	bool frame_render_done();
 
 	/**
 	 * Resizes all the buffers of the renderer to the given new width and height

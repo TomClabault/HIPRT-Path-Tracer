@@ -82,6 +82,8 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		// Resizing the grid if it is not the right size
 		if (m_grid_buffers.size() != m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR())
 		{
+			std::cout << "Resizing ReGIR to: " << m_render_data->render_settings.regir_settings.grid.grid_resolution.x << std::endl;
+
 			m_grid_buffers.resize(m_render_data->render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR());
 
 			updated = true;
@@ -179,6 +181,14 @@ bool ReGIRRenderPass::launch()
 
 	m_grid_cells_alive_count_staging_buffer.download_data(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 	m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
+
+	std::cout << "Launching ReGIR with size: " << m_render_data->render_settings.regir_settings.grid.grid_resolution.x << std::endl;
+	if (m_spatial_reuse_output_grid_buffer.size() != m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid())
+	{
+		std::cout << "Spatial reuse output grid buffer size is not correct: " << std::endl;
+
+		std::exit(0);
+	}
 
 	launch_grid_fill_temporal_reuse();
 	launch_spatial_reuse();

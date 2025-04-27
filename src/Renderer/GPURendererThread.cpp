@@ -9,12 +9,36 @@
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 
-GPURendererThread::GPURendererThread(GPURenderer* renderer)
+void GPURendererThread::init(GPURenderer* renderer)
 {
 	// Configuring the render passes
 	m_renderer = renderer;
 	m_render_graph = RenderGraph(renderer);
 	m_render_data = &renderer->m_render_data;
+}
+
+void GPURendererThread::start()
+{
+	m_render_std_thread = std::thread(&GPURendererThread::render_thread_function, this);
+	m_render_std_thread.detach();
+}
+
+void GPURendererThread::render_thread_function()
+{
+	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->m_hiprt_orochi_ctx->orochi_ctx));
+
+	while (true)
+	{
+		// Wait for the signal to start rendering
+		std::unique_lock<std::mutex> lock(m_render_mutex);
+		m_render_condition_variable.wait(lock, [this] { return m_frame_requested; });
+
+		// Reset the render requested flag
+		m_frame_requested = false;
+
+		// Perform rendering operations here
+		render();
+	}
 }
 
 void GPURendererThread::setup_render_passes()
@@ -56,6 +80,16 @@ void GPURendererThread::setup_render_passes()
 
 	if (m_renderer->m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		m_renderer->m_nee_plus_plus.compile_finalize_accumulation_kernel(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);
+}
+
+void GPURendererThread::request_frame()
+{
+	std::lock_guard<std::mutex> lock(m_render_mutex);
+	std::cout << "Requesting frame" << std::endl;
+
+	m_frame_rendered = false;
+	m_frame_requested = true;
+	m_render_condition_variable.notify_one();
 }
 
 void GPURendererThread::pre_render_update(float delta_time, RenderWindow* render_window)
@@ -256,7 +290,7 @@ void GPURendererThread::render()
 	// Making sure kernels are compiled
 	ThreadManager::join_threads(ThreadManager::COMPILE_KERNELS_THREAD_KEY);
 
-	m_renderer->map_buffers_for_render();
+	std::cout << "Rendering frame" << std::endl;
 
 	if (m_debug_trace_kernel.has_been_compiled())
 		render_debug_kernel();
@@ -276,8 +310,10 @@ void GPURendererThread::render_debug_kernel()
 
 	// Recording GPU frame time stop timestamp and computing the frame time
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->m_main_stream, [](void* payload) {
+		std::cout << "Frame rendered!" << std::endl;
+
 		*reinterpret_cast<bool*>(payload) = true;
-		}, &m_frame_rendered));
+	}, &m_frame_rendered));
 
 	post_render_update();
 }
@@ -359,7 +395,12 @@ std::shared_ptr<ReSTIRGIRenderPass> GPURendererThread::get_ReSTIR_GI_render_pass
 	return std::dynamic_pointer_cast<ReSTIRGIRenderPass>(m_render_graph.get_render_pass(ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME));
 }
 
-bool GPURendererThread::frame_render_done() const
+bool GPURendererThread::frame_render_done()
 {
-	return m_frame_rendered;
+	{
+		// Locking here because 'm_frame_rendered' can be modified by the asynchronous render thread
+		std::lock_guard<std::mutex> lock(m_frame_rendered_variable_mutex);
+	
+		return m_frame_rendered;
+	}
 }

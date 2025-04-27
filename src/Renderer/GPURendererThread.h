@@ -24,12 +24,18 @@ class GPURendererThread
 {
 public:
 	GPURendererThread() {}
-	GPURendererThread(GPURenderer* renderer);
+
+	void init(GPURenderer* renderer);
+
+	void start();
+	void render_thread_function();
 
 	/**
 	 * Initializes and compiles the kernels
 	 */
 	void setup_render_passes();
+
+	void request_frame();
 
 	/**
 	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
@@ -88,7 +94,7 @@ public:
 	 * isn't finished yet.
 	 * Returns true if the frame is completed
 	 */
-	bool frame_render_done() const;
+	bool frame_render_done();
 
 private:
 	/**
@@ -136,6 +142,12 @@ private:
 	// that just trace camera rays and set this kernel as the debug kernel and you'll be able to
 	// see the raw ray tracing performance without any scuff
 	GPUKernel m_debug_trace_kernel;
+
+	std::thread m_render_std_thread;
+	std::condition_variable m_render_condition_variable;
+	std::mutex m_render_mutex;
+	std::mutex m_frame_rendered_variable_mutex;
+	bool m_frame_requested = false;
 };
 
 #endif

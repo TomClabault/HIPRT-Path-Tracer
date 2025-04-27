@@ -1051,6 +1051,7 @@ void RenderWindow::render()
 
 			m_application_state->frame_number++;
 			m_application_state->last_GPU_submit_time = current_timestamp;
+			std::cout << "Pre render updating" << std::endl;
 			m_renderer->pre_render_update(delta_time_gpu, this);
 			m_renderer->render();
 
