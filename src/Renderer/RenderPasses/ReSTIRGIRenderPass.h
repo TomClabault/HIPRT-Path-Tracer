@@ -58,6 +58,7 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
 	virtual bool is_render_pass_used() const override;
+	void request_temporal_bufffers_clear();
 
 	/**
 	 * Returns the VRAM used by ReSTIR GI in MB
@@ -79,6 +80,8 @@ private:
 
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
+
+	bool m_temporal_buffer_clear_requested;
 };
 
 #endif

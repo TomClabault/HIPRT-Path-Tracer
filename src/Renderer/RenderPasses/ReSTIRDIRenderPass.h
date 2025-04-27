@@ -80,6 +80,7 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 	
 	virtual bool is_render_pass_used() const override;
+	void request_temporal_bufffers_clear();
 
 	/**
 	 * Returns the VRAM used by ReSTIR DI in MB
@@ -120,6 +121,8 @@ private:
 	// [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
 	OrochiBuffer<ReSTIRDIPresampledLight> m_presampled_lights_buffer;
 
+	ReSTIRDIReservoir* m_last_restir_output_reservoirs = nullptr;
+
 	OrochiBuffer<unsigned char> m_per_pixel_spatial_reuse_radius;
 	OrochiBuffer<unsigned int> m_per_pixel_spatial_reuse_direction_mask_u;
 	OrochiBuffer<unsigned long long int> m_per_pixel_spatial_reuse_direction_mask_ull;
@@ -127,6 +130,8 @@ private:
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_total;
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
 
+	// If true, the temporal buffers are going to be reset by the temporal pass
+	bool m_temporal_buffer_clear_requested = false;
 	bool odd_frame = false;
 
 	// Events for timing the cumulated render time of all the spatial reuses passes
