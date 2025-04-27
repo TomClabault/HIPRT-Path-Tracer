@@ -63,13 +63,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
  #endif
     out_adaptive_radius_buffer[center_pixel_index] = 0;
 
-//     #if NB_SAMPLES_PER_RADIUS > 32
-//     out_directional_reuse_masks_buffer_ull[center_pixel_index] = center_pixel_index;// valid_samples_per_radius[best_radius_index];
-// #else
-//     // Extracting the low 32 bits
-//     out_directional_reuse_masks_buffer_u[center_pixel_index] = (unsigned int)(valid_samples_per_radius[best_radius_index] & 0x00000000FFFFFFFFF);
-// #endif
-// return;
 
 
 
