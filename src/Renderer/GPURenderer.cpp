@@ -64,9 +64,6 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	m_status_buffers.still_one_ray_active_buffer.resize(1);
 	m_status_buffers.still_one_ray_active_buffer.memset_whole_buffer(1);
 	m_status_buffers.pixels_converged_count_buffer.resize(1);
-
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
 }
 
 void GPURenderer::setup_brdfs_data()
@@ -690,8 +687,6 @@ void GPURenderer::render_debug_kernel()
 {
 	m_frame_rendered = false;
 
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
-
 	// Updating the previous and current camera
 	m_render_data.current_camera = m_camera.to_hiprt();
 	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
@@ -699,7 +694,6 @@ void GPURenderer::render_debug_kernel()
 	launch_debug_kernel();
 
 	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, [](void* payload) {
 		*reinterpret_cast<bool*>(payload) = true;
 	}, &m_frame_rendered));
@@ -710,8 +704,6 @@ void GPURenderer::render_debug_kernel()
 void GPURenderer::render_path_tracing()
 {
 	m_frame_rendered = false;
-
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
 
 	if (m_render_data.render_settings.sample_number == 0)
 		// If this is the very first sample, launching the prepass
@@ -736,7 +728,6 @@ void GPURenderer::render_path_tracing()
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, [](void* payload){
 		*reinterpret_cast<bool*>(payload) = true;
 	}, &m_frame_rendered));

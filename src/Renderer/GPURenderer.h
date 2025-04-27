@@ -489,8 +489,8 @@ private:
 	oroDeviceProp m_device_properties = { .gcnArchName = "" };
 
 	// GPU events to time the frame
-	oroEvent_t m_frame_start_event = nullptr;
-	oroEvent_t m_frame_stop_event = nullptr;
+	/*oroEvent_t m_frame_start_event = nullptr;
+	oroEvent_t m_frame_stop_event = nullptr;*/
 	// If true, the last call to render() rendered a frame where render_settings.render_low_resoltion was true.
 	// False otherwise
 	bool m_was_last_frame_low_resolution = false;
