@@ -115,6 +115,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - also reuse BSDF mis ray of envmap MIS
+// - We do not need the nested dielecttrics stack management in the camera rays kernel
 // - In the material packing, pack major material properties together: coat, metallic, specular_transmission, diffuse_transmission, ... so that we can, in a single memory access, determine whether or not we need to read the rest of the coat, specular transmission ,...
 // - If hitting the same material as before, don't load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - When doing MIS, if we sampled a BSDF sample on a delta distribution, we shouldn't bother sampling lights because we know that the BSDF sample is going to overweight everything else and the light sample is going to have a MIS weight of 0 anyways
