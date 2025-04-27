@@ -16,6 +16,7 @@
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
 #include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
+#include "Renderer/GPURendererThread.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/RendererAnimationState.h"
@@ -119,37 +120,12 @@ public:
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
 
-	RenderGraph& get_render_graph();
-
 	NEEPlusPlusGPUData& get_nee_plus_plus_data();
 
 	/**
 	 * Initializes the filter function used by the kernels
 	 */
 	void setup_filter_functions();
-
-	/**
-	 * Initializes and compiles the kernels
-	 */
-	void setup_render_passes();
-
-	/**
-	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
-	 * 
-	 * These "dynamic attributes/properties/buffers" can be the adaptive sampling buffers for example.
-	 * 
-	 * It will be checked each whether or not the adaptive sampling buffers need to be
-	 * allocated or freed and action will be taken accordingly. This function basically enables a
-	 * nice behavior of the application in which the renderer "automatically" reacts to changes
-	 * that could be made (through the ImGui interface for example) so that it is always in the
-	 * correct state. Said othrewise, this function can be seen as a centralized place for updating
-	 * various stuff of the renderer instead of having to scatter these update calls everywhere
-	 * in the code.
-	 * 
-	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to pre_render_update()
-	 */
-	void pre_render_update(float delta_time, RenderWindow* render_window);
 
 	/**
 	 * Steps all the animations of the renderer one step forward
@@ -160,23 +136,11 @@ public:
 	void step_animations(float delta_time);
 
 	/**
-	 * Renders a frame asynchronously. 
-	 * Querry frame_render_done() to know whether or not the frame has completed or not.
-	 */
-	void render();
-
-	/**
 	 * Blocking that waits for all the operations queued on
 	 * the main stream to complete
 	 */
 	void synchronize_all_kernels();
 
-	/**
-	 * Returns false if the frame queued asynchronously by a previous call to render()
-	 * isn't finished yet. 
-	 * Returns true if the frame is completed
-	 */
-	bool frame_render_done();
 	/**
 	 * Returns true if the last frame was rendered with render_settings.wants_render_low_resolution = true.
 	 * False otherwise
@@ -184,9 +148,34 @@ public:
 	bool was_last_frame_low_resolution();
 
 	/**
+	 * Whether or not the current frame has finished rendering
+	 */
+	bool frame_render_done() const;
+
+	/**
 	 * Resizes all the buffers of the renderer to the given new width and height
 	 */
 	void resize(int new_width, int new_height);
+
+	void render();
+
+	/**
+	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
+	 *
+	 * These "dynamic attributes/properties/buffers" can be the adaptive sampling buffers for example.
+	 *
+	 * It will be checked each whether or not the adaptive sampling buffers need to be
+	 * allocated or freed and action will be taken accordingly. This function basically enables a
+	 * nice behavior of the application in which the renderer "automatically" reacts to changes
+	 * that could be made (through the ImGui interface for example) so that it is always in the
+	 * correct state. Said othrewise, this function can be seen as a centralized place for updating
+	 * various stuff of the renderer instead of having to scatter these update calls everywhere
+	 * in the code.
+	 *
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to pre_render_update()
+	 */
+	void pre_render_update(float delta_time, RenderWindow* render_window);
 
 	/**
 	 * Maps the buffers shared with OpenGL that are needed for rendering the frame and sets
@@ -247,6 +236,7 @@ public:
 	CameraAnimation& get_camera_animation();
 	RendererEnvmap& get_envmap();
 	SceneMetadata& get_scene_metadata();
+	RenderGraph& get_render_graph();
 
 	void set_scene(const Scene& scene);
 	void rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction);
@@ -290,7 +280,7 @@ public:
 	 * the new size. This function thus launches a kernel on the GPU to querry
 	 * the size of the structure.
 	 */
-	size_t get_ray_volume_state_byte_size();
+	// size_t get_ray_volume_state_byte_size();
 
 	/**
 	 * Resizes the ray_volume_states array of the GBuffers
@@ -376,6 +366,10 @@ public:
 	CameraAnimation m_camera_animation;
 
 private:
+	// So that GPURendererThread can access the private members of GPURenderer without
+	// having to write a thousand getters that would expose many members to everyone else
+	friend class GPURendererThread;
+
 	void set_hiprt_scene_from_scene(const Scene& scene);
 	void update_render_data();
 
@@ -394,14 +388,6 @@ private:
 		DeviceAliasTable& power_alias_table);
 
 	/**
-	 * This function increments some counters (such as the number of samples rendered so far) after a
-	 * sample has been rendered
-	 * 
-	 * This function is private because it is used internally by the render() function
-	 */
-	void post_render_update();
-
-	/**
 	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
 	 */
 	bool needs_global_bvh_stack_buffer();
@@ -416,21 +402,7 @@ private:
 	 */
 	void compute_render_pass_times();
 
-	/**
-	 * This just renders a frame by calling all the path tracing kernels.
-	 * Nothing special.
-	 *
-	 * This function is basically the "opposite" of 'render_debug_kernel'
-	 */
-	void render_path_tracing();
-	/**
-	 * This function launches the 'm_debug_trace_kernel' and saves its execution time
-	 * in 'm_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]'
-	 */
-	void render_debug_kernel();
-
 	void launch_nee_plus_plus_caching_prepass();
-	void launch_debug_kernel();
 
 	/**
 	 * Precompiles direct lighting strategy kernels
@@ -449,38 +421,12 @@ private:
 	// ---- Functions called by the pre_render_update() method ----
 	//
 
-	/**
-	 * Resets the value of the status buffers on the device
-	 */
-	void internal_pre_render_update_clear_device_status_buffers();
-
-	/**
-	 * This function evaluates whether the renderer needs the adaptive
-	 * sampling buffers or not. If the buffers are needed (because the
-	 * adaptive sampling or the stop noise pixel threshold is enabled for example),
-	 * then the buffer will be allocated so that they can be used by the shader.
-	 * If they are not needed, they will be freed to save some VRAM.
-	 */
-	void internal_pre_render_update_adaptive_sampling_buffers();
-
-	/**
-	 * Allocates/deallocates the data structure for NEE++ depending on whether or not
-	 * NEE++ is being used
-	 * 
-	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to internal_pre_render_update_nee_plus_plus()
-	 */
-	void internal_pre_render_update_nee_plus_plus(float delta_time);
-
-	/**
-	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
-	 */
-	void internal_pre_render_update_global_stack_buffer();
-
 	//
 	// -------- Functions called by the pre_render_update() method ---------
 
 	void internal_clear_m_status_buffers();
+
+	GPURendererThread m_render_thread;
 
 	// Some render passes want the application settings of the render window so it's there
 	std::shared_ptr<ApplicationSettings> m_application_settings;
@@ -537,8 +483,6 @@ private:
 	// These values are updated when the pre_render_update() is called
 	StatusBuffersValues m_status_buffers_values;
 
-	RenderGraph m_render_graph;
-
 	// Some additional info about the parsed scene such as materials names, mesh names, ...
 	SceneMetadata m_parsed_scene_metadata;
 	// The original materials of the scene. Those are the materials that have directly been read from the hard drive scene file.
@@ -567,14 +511,6 @@ private:
 	// of this map is a "name"
 	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 
-	// If this kernel isn't empty, then it will be used instead of all the regular path tracing
-	// kernels.
-	// 
-	// This can be useful for debugging performance for example: write a very simple trace kernel
-	// that just trace camera rays and set this kernel as the debug kernel and you'll be able to
-	// see the raw ray tracing performance without any scuff
-	GPUKernel m_debug_trace_kernel;
-
 	// Additional functions called on hits when tracing rays (alpha testing for example)
 	std::vector<hiprtFuncNameSet> m_func_name_sets;
 
@@ -585,10 +521,6 @@ private:
 	oroStream_t m_main_stream = nullptr;
 	// Custom stream onto which kernels can be dispatched asynchronously from the 'main_stream'
 	oroStream_t m_async_stream_1 = nullptr;
-
-	// Whether or not the frame queued on the GPU by the last call to render() 
-	// is done rendering or not
-	bool m_frame_rendered = true;
 
 	// Buffers and settings for NEE++
 	NEEPlusPlusGPUData m_nee_plus_plus;

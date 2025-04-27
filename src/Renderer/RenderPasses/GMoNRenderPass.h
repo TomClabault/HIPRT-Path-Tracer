@@ -13,6 +13,8 @@
 #include "Renderer/RenderPasses/RenderPass.h"
 #include "UI/ApplicationSettings.h"
 
+class GPURenderer;
+
 class GMoNRenderPass : public RenderPass
 {
 public:
