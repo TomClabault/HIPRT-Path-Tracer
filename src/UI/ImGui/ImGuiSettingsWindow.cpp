@@ -1317,12 +1317,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 
 
-					draw_ReSTIR_temporal_reuse_panel(render_settings.restir_di_settings, [this, &render_settings]() {
+					draw_ReSTIR_temporal_reuse_panel<false>([this, &render_settings]() 
+					{
 						if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 						{
 							if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
 							{
-								render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
+								m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
 
 								m_render_window->set_render_dirty(true);
 							}
@@ -1349,7 +1350,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						{
 							if (ImGui::Checkbox("Do fused spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
 							{
-								render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
+								m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
 
 								m_render_window->set_render_dirty(true);
 							}
@@ -1614,7 +1615,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 
 				ImGui::PushItemWidth(12 * ImGui::GetFontSize());
-				draw_ReSTIR_temporal_reuse_panel(render_settings.restir_gi_settings, [&render_settings, this]() {
+				draw_ReSTIR_temporal_reuse_panel<true>([&render_settings, this]() {
 					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
 						m_render_window->set_render_dirty(true);
 				});
@@ -2177,57 +2178,63 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 	}
 }
 
-template <typename CommonReSTIRSettings>
-void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(CommonReSTIRSettings& restir_settings, std::function<void(void)> draw_before_panel)
+template <bool IsReSTIRGI>
+void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(std::function<void(void)> draw_before_panel)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	ReSTIRCommonTemporalPassSettings& restir_common_temporal_settings = IsReSTIRGI ? m_renderer->get_render_settings().restir_gi_settings.common_temporal_pass : m_renderer->get_render_settings().restir_di_settings.common_temporal_pass;
 
 	if (ImGui::CollapsingHeader("Temporal Reuse Pass"))
 	{
-		ImGui::PushID(&restir_settings);
+		ImGui::PushID(&restir_common_temporal_settings);
 		ImGui::TreePush("ReSTIR - Temporal Reuse Pass Tree");
 		{
 			draw_before_panel();
 
-			if (restir_settings.common_temporal_pass.do_temporal_reuse_pass)
+			if (restir_common_temporal_settings.do_temporal_reuse_pass)
 			{
 				// Same line as "Do Temporal Reuse"
 				ImGui::SameLine();
 				if (ImGui::Button("Reset Temporal Reservoirs"))
 				{
-					restir_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
+					if constexpr (IsReSTIRGI)
+						m_renderer->get_ReSTIR_GI_render_pass()->request_temporal_bufffers_clear();
+					else
+						m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
+
 					m_render_window->set_render_dirty(true);
 				}
 
 				bool last_frame_g_buffer_needed = true;
 				last_frame_g_buffer_needed &= !render_settings.accumulate;
-				last_frame_g_buffer_needed &= restir_settings.common_temporal_pass.do_temporal_reuse_pass;
+				last_frame_g_buffer_needed &= restir_common_temporal_settings.do_temporal_reuse_pass;
 
-				if (ImGui::SliderInt("Max temporal neighbor search count", &restir_settings.common_temporal_pass.max_neighbor_search_count, 0, 16))
+				if (ImGui::SliderInt("Max temporal neighbor search count", &restir_common_temporal_settings.max_neighbor_search_count, 0, 16))
 				{
 					// Clamping
-					restir_settings.common_temporal_pass.max_neighbor_search_count = std::max(0, restir_settings.common_temporal_pass.max_neighbor_search_count);
+					restir_common_temporal_settings.max_neighbor_search_count = std::max(0, restir_common_temporal_settings.max_neighbor_search_count);
 
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("Temporal neighbor search radius", &restir_settings.common_temporal_pass.neighbor_search_radius, 0, 16))
+				if (ImGui::SliderInt("Temporal neighbor search radius", &restir_common_temporal_settings.neighbor_search_radius, 0, 16))
 				{
 					// Clamping
-					restir_settings.common_temporal_pass.neighbor_search_radius = std::max(0, restir_settings.common_temporal_pass.neighbor_search_radius);
+					restir_common_temporal_settings.neighbor_search_radius = std::max(0, restir_common_temporal_settings.neighbor_search_radius);
 
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::Checkbox("Use Permutation Sampling", &restir_settings.common_temporal_pass.use_permutation_sampling))
+				if (ImGui::Checkbox("Use Permutation Sampling", &restir_common_temporal_settings.use_permutation_sampling))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If true, the back-projected position of the current pixel (temporal neighbor position) will be shuffled"
 					" to add temporal variations.");
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				if (ImGui::SliderInt("M-cap", &restir_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
+				int& m_cap = IsReSTIRGI ? m_renderer->get_render_settings().restir_gi_settings.m_cap : m_renderer->get_render_settings().restir_di_settings.m_cap;
+				if (ImGui::SliderInt("M-cap", &m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
 				{
-					restir_settings.m_cap = std::max(0, restir_settings.m_cap);
+					m_cap = std::max(0, m_cap);
 					if (render_settings.accumulate)
 						m_render_window->set_render_dirty(true);
 				}

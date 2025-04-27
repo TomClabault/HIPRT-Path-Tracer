@@ -242,6 +242,8 @@ void ReSTIRGIRenderPass::launch_initial_candidates_pass()
 
 void ReSTIRGIRenderPass::configure_temporal_reuse_pass()
 {
+	m_render_data->render_settings.restir_gi_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
+	
 	if ((m_render_data->render_settings.sample_number == 0 && m_render_data->render_settings.accumulate) || m_render_data->render_settings.need_to_reset)
 		// First frame, using the initial candidates as the input
 		m_render_data->render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_render_data->render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
@@ -418,6 +420,11 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracin
 bool ReSTIRGIRenderPass::is_render_pass_used() const
 {
 	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI;
+}
+
+void ReSTIRGIRenderPass::request_temporal_bufffers_clear()
+{
+	m_temporal_buffer_clear_requested = true;
 }
 
 float ReSTIRGIRenderPass::get_VRAM_usage() const

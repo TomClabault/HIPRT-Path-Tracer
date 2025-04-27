@@ -258,9 +258,8 @@ void ReSTIRDIRenderPass::update_render_data()
 		}
 
 		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
-		m_render_data->render_settings.restir_di_settings.restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
-		std::vector<ReSTIRDIReservoir> empty_reservoirs(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, ReSTIRDIReservoir());
-		m_spatial_output_reservoirs_1.upload_data(empty_reservoirs);
+		m_last_restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
+		m_spatial_output_reservoirs_1.upload_data(std::vector<ReSTIRDIReservoir>(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, ReSTIRDIReservoir()));
 	}
 	else
 	{
@@ -400,7 +399,7 @@ void ReSTIRDIRenderPass::post_render_update()
 {
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag
-	m_render_data->render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = false;
+	m_temporal_buffer_clear_requested = false;
 }
 
 void ReSTIRDIRenderPass::compute_optimal_spatial_reuse_radii()
@@ -462,6 +461,7 @@ void ReSTIRDIRenderPass::launch_presampling_lights_pass()
 void ReSTIRDIRenderPass::configure_initial_pass()
 {
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
 		m_render_data->render_settings.restir_di_settings.light_presampling.light_samples = m_presampled_lights_buffer.get_device_pointer();
 	else
@@ -481,12 +481,14 @@ void ReSTIRDIRenderPass::configure_temporal_pass()
 {
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_render_data->render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
+	m_render_data->render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
 
 	// The input of the temporal pass is the output of last frame's
 	// ReSTIR (and also the initial candidates but this is implicit
 	// and hardcoded in the shader)
-	m_render_data->render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data->render_settings.restir_di_settings.restir_output_reservoirs;
+	m_render_data->render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_last_restir_output_reservoirs;
 
+	ReSTIRDIReservoir* temporal_output_reservoirs;
 	if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
 		// If we're going to do spatial reuse, reuse the initial
 		// candidate reservoirs to store the output of the temporal pass.
@@ -499,17 +501,19 @@ void ReSTIRDIRenderPass::configure_temporal_pass()
 		// We're not risking another pixel reading in someone else's
 		// pixel in the initial candidates buffer while we write into
 		// it (that would be a race condition)
-		m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_initial_candidates_reservoirs.get_device_pointer();
+		temporal_output_reservoirs = m_initial_candidates_reservoirs.get_device_pointer();
 	else
 	{
 		// Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer (because otherwise, 
 		// if we output in the initial candidates buffer, then it's going to be overriden by the initial candidates pass of the next frame).
 		// Alternatively using m_spatial_output_reservoirs_1 and m_spatial_output_reservoirs_2 to avoid race conditions
 		if (odd_frame)
-			m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
+			temporal_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
 		else
-			m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
+			temporal_output_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
 	}
+
+	m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = temporal_output_reservoirs;
 }
 
 void ReSTIRDIRenderPass::launch_temporal_reuse_pass()
@@ -524,11 +528,12 @@ void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal()
 {
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_render_data->render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
+	m_render_data->render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
 
 	// The input of the temporal pass is the output of last frame's
 	// ReSTIR (and also the initial candidates but this is implicit
 	// and hardcoded in the shader)
-	m_render_data->render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data->render_settings.restir_di_settings.restir_output_reservoirs;
+	m_render_data->render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_last_restir_output_reservoirs;
 
 	// Not needed. In the fused spatiotemporal pass, everything is output by the spatial pass
 	m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = nullptr;
@@ -539,16 +544,19 @@ void ReSTIRDIRenderPass::configure_spatial_pass(int spatial_pass_index)
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
 
+	ReSTIRDIReservoir* spatial_pass_input_reservoirs = nullptr;
+	ReSTIRDIReservoir* spatial_pass_output_reservoirs = nullptr;
+
 	if (spatial_pass_index == 0)
 	{
 		if (m_render_data->render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 			// For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'm_spatial_output_reservoirs_1'
-			m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+			spatial_pass_input_reservoirs = m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs;
 		else
 			// If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
-			m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data->render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+			spatial_pass_input_reservoirs = m_render_data->render_settings.restir_di_settings.initial_candidates.output_reservoirs;
 
-		m_render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
+		spatial_pass_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
 	}
 	else
 	{
@@ -559,16 +567,19 @@ void ReSTIRDIRenderPass::configure_spatial_pass(int spatial_pass_index)
 
 		if ((spatial_pass_index & 1) == 0)
 		{
-			m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
-			m_render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
+			spatial_pass_input_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
+			spatial_pass_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
 		}
 		else
 		{
-			m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
-			m_render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
+			spatial_pass_input_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
+			spatial_pass_output_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
 
 		}
 	}
+
+	m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = spatial_pass_input_reservoirs;
+	m_render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = spatial_pass_output_reservoirs;
 }
 
 void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index)
@@ -578,8 +589,10 @@ void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(int spa
 
 	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 
+	ReSTIRDIReservoir* spatial_pass_input_reservoirs = nullptr;
+	ReSTIRDIReservoir* spatial_pass_output_reservoirs = nullptr;
+
 	if (spatial_pass_index == 0)
-	{
 		// The input of the spatial resampling in the fused spatiotemporal pass is the
 		// temporal buffer of the last frame i.e. the input to the temporal pass
 		//
@@ -587,19 +600,19 @@ void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(int spa
 		// prior to calling this function such that
 		// 'restir_settings.temporal_pass.input_reservoirs'
 		// is the proper pointer
-		restir_settings.spatial_pass.input_reservoirs = restir_settings.temporal_pass.input_reservoirs;
-	}
+		spatial_pass_input_reservoirs = restir_settings.temporal_pass.input_reservoirs;
 	else
-	{
 		// If this is not the first spatial reuse pass, the input is the output of the previous pass
-		restir_settings.spatial_pass.input_reservoirs = restir_settings.spatial_pass.output_reservoirs;
-	}
+		spatial_pass_input_reservoirs = restir_settings.spatial_pass.output_reservoirs;
 
 	// Outputting in whichever isn't the input
-	if (restir_settings.spatial_pass.input_reservoirs == m_spatial_output_reservoirs_1.get_device_pointer())
-		restir_settings.spatial_pass.output_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
+	if (spatial_pass_input_reservoirs == m_spatial_output_reservoirs_1.get_device_pointer())
+		spatial_pass_output_reservoirs = m_spatial_output_reservoirs_2.get_device_pointer();
 	else
-		restir_settings.spatial_pass.output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
+		spatial_pass_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
+
+	restir_settings.spatial_pass.input_reservoirs = spatial_pass_input_reservoirs;
+	restir_settings.spatial_pass.output_reservoirs = spatial_pass_output_reservoirs;
 }
 
 void ReSTIRDIRenderPass::launch_spatial_reuse_passes()
@@ -732,18 +745,25 @@ void ReSTIRDIRenderPass::configure_output_buffer()
 	if (restir_di_settings.common_spatial_pass.do_spatial_reuse_pass || restir_di_settings.do_fused_spatiotemporal)
 		// If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
 		// pass of next frame
-		restir_di_settings.restir_output_reservoirs = restir_di_settings.spatial_pass.output_reservoirs;
+		m_last_restir_output_reservoirs = restir_di_settings.spatial_pass.output_reservoirs;
 	else if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 		// If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
-		restir_di_settings.restir_output_reservoirs = restir_di_settings.temporal_pass.output_reservoirs;
+		m_last_restir_output_reservoirs = restir_di_settings.temporal_pass.output_reservoirs;
 	else
 		// No spatial or temporal, the output of ReSTIR is just the output of the initial candidates pass
-		restir_di_settings.restir_output_reservoirs = restir_di_settings.initial_candidates.output_reservoirs;
+		m_last_restir_output_reservoirs = restir_di_settings.initial_candidates.output_reservoirs;
+
+	restir_di_settings.restir_output_reservoirs = m_last_restir_output_reservoirs;
 }
 
 bool ReSTIRDIRenderPass::is_render_pass_used() const
 {
 	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI;
+}
+
+void ReSTIRDIRenderPass::request_temporal_bufffers_clear()
+{
+	m_temporal_buffer_clear_requested = true;
 }
 
 float ReSTIRDIRenderPass::get_VRAM_usage() const
