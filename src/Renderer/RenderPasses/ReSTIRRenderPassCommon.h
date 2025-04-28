@@ -221,12 +221,26 @@ public:
 	{
 		ReSTIRCommonSpatialPassSettings& common_spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 
-		common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_u = per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();
-		common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer();
-		common_spatial_pass_settings.per_pixel_spatial_reuse_radius = per_pixel_spatial_reuse_radius.get_device_pointer();
+		if (per_pixel_spatial_reuse_direction_mask_u.size() > 0)
+			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_u = per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();
+		else
+			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_u = nullptr;
+			
+		if (per_pixel_spatial_reuse_direction_mask_ull.size() > 0)
+			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer();
+		else
+			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
 
-		common_spatial_pass_settings.spatial_reuse_hit_rate_total = reinterpret_cast<AtomicType<unsigned long long int>*>(spatial_reuse_statistics_hit_total.get_device_pointer());
-		common_spatial_pass_settings.spatial_reuse_hit_rate_hits = reinterpret_cast<AtomicType<unsigned long long int>*>(spatial_reuse_statistics_hit_hits.get_device_pointer());
+		if (per_pixel_spatial_reuse_radius.size() > 0)
+			common_spatial_pass_settings.per_pixel_spatial_reuse_radius = per_pixel_spatial_reuse_radius.get_device_pointer();
+		else
+			common_spatial_pass_settings.per_pixel_spatial_reuse_radius = nullptr;
+
+		if (common_spatial_pass_settings.compute_spatial_reuse_hit_rate)
+		{
+			common_spatial_pass_settings.spatial_reuse_hit_rate_total = spatial_reuse_statistics_hit_total.get_atomic_device_pointer();
+			common_spatial_pass_settings.spatial_reuse_hit_rate_hits = spatial_reuse_statistics_hit_hits.get_atomic_device_pointer();
+		}
 	}
 };
 

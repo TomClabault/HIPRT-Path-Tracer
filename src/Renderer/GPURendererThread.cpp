@@ -256,9 +256,9 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 	}
 }
 
-void GPURendererThread::post_render_update()
+void GPURendererThread::post_sample_update()
 {
-	m_render_graph.post_render_update();
+	m_render_graph.post_sample_update();
 
 	m_render_data->render_settings.sample_number++;
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter++;
@@ -312,7 +312,7 @@ void GPURendererThread::render_debug_kernel()
 		*reinterpret_cast<bool*>(payload) = true;
 	}, &m_frame_rendered));
 
-	post_render_update();
+	post_sample_update();
 }
 
 GPUKernel& GPURendererThread::get_debug_trace_kernel()
@@ -346,7 +346,7 @@ void GPURendererThread::render_path_tracing()
 
 		m_render_graph.launch();
 
-		post_render_update();
+		post_sample_update();
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time

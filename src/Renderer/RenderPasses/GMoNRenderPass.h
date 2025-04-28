@@ -45,7 +45,7 @@ public:
 	 * Returns true a buffer was allocated or deallocated
 	 * Returns false if buffer were left untouched
 	 */
-	virtual void post_render_update() override;
+	virtual void post_sample_update() override;
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;
@@ -80,6 +80,8 @@ private:
 
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
+
+	int m_next_set_to_accumulate = 0;
 };
 
 #endif

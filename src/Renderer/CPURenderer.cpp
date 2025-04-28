@@ -542,7 +542,7 @@ void CPURenderer::render()
         ReSTIR_GI_pass();
 #endif
 
-        post_render_update(frame_number);
+        post_sample_update(frame_number);
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
@@ -563,7 +563,7 @@ void CPURenderer::pre_render_update(int frame_number)
         m_render_data.nee_plus_plus.update_visibility_map = false;
 }
 
-void CPURenderer::post_render_update(int frame_number)
+void CPURenderer::post_sample_update(int frame_number)
 {
     if (m_render_data.render_settings.accumulate)
             m_render_data.render_settings.sample_number++;

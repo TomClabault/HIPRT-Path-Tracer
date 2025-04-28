@@ -240,7 +240,13 @@ void ReSTIRDIRenderPass::update_render_data()
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_2 = m_spatial_output_reservoirs_1.get_device_pointer();
 		m_render_data->aux_buffers.restir_di_reservoir_buffer_3 = m_spatial_output_reservoirs_2.get_device_pointer();
 
-		if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.do_adaptive_directional_spatial_reuse(m_render_data->render_settings.accumulate))
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<false>(*m_render_data, 
+			m_per_pixel_spatial_reuse_radius,
+			m_per_pixel_spatial_reuse_direction_mask_u, 
+			m_per_pixel_spatial_reuse_direction_mask_ull,
+			m_spatial_reuse_statistics_hit_hits,
+			m_spatial_reuse_statistics_hit_total);
+		/*if (m_render_data->render_settings.restir_di_settings.common_spatial_pass.do_adaptive_directional_spatial_reuse(m_render_data->render_settings.accumulate))
 		{
 			if (m_per_pixel_spatial_reuse_direction_mask_u.size() > 0)
 				m_render_data->render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();
@@ -255,7 +261,7 @@ void ReSTIRDIRenderPass::update_render_data()
 		{
 			m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_total = m_spatial_reuse_statistics_hit_total.get_atomic_device_pointer();
 			m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = m_spatial_reuse_statistics_hit_hits.get_atomic_device_pointer();
-		}
+		}*/
 
 		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
 		m_last_restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
@@ -395,7 +401,7 @@ bool ReSTIRDIRenderPass::launch()
 	return true;
 }
 
-void ReSTIRDIRenderPass::post_render_update()
+void ReSTIRDIRenderPass::post_sample_update()
 {
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag

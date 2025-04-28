@@ -26,7 +26,7 @@ public:
 
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch() override;
-	virtual void post_render_update() override {}
+	virtual void post_sample_update() override {}
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override {};

@@ -107,10 +107,10 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 		m_render_pass_effectively_launched_this_frame[render_pass.get()] = true;
 }
 
-void RenderGraph::post_render_update()
+void RenderGraph::post_sample_update()
 {
 	for (auto& name_to_render_pass : m_render_passes)
-		name_to_render_pass.second->post_render_update();
+		name_to_render_pass.second->post_sample_update();
 }
 
 void RenderGraph::update_render_data()

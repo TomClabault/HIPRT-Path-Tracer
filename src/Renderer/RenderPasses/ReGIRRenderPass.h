@@ -51,7 +51,7 @@ public:
 	void launch_spatial_reuse();
 	void launch_cell_liveness_copy_pass();
 
-	virtual void post_render_update() override;
+	virtual void post_sample_update() override;
 	virtual void update_render_data() override;
 
 	virtual void reset(bool reset_by_camera_movement) override;
@@ -66,7 +66,8 @@ public:
 
 	float get_alive_cells_ratio() const;
 
-// private:
+private:
+	int m_current_grid_index = 0;
 	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,
 	// this buffer will contain one more than one grid worth of space to
 	// accomodate for the grid of the past frames for temporal reuse

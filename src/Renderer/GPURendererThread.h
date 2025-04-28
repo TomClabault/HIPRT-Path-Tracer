@@ -62,7 +62,7 @@ public:
 	 *
 	 * This function is private because it is used internally by the render() function
 	 */
-	void post_render_update();
+	void post_sample_update();
 
 	/**
 	 * Renders a frame asynchronously.
