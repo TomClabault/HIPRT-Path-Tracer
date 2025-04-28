@@ -435,12 +435,12 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	m_renderer->resize(renderer_width, renderer_height);
 
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, renderer_width, renderer_height]() {
-		m_denoiser = std::make_shared<OpenImageDenoiser>();
-		m_denoiser->initialize();
-		m_denoiser->resize(renderer_width, renderer_height);
-		m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
-		m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
-		m_denoiser->finalize();
+		// m_denoiser->initialize();
+		// m_denoiser = std::make_shared<OpenImageDenoiser>();
+		// m_denoiser->resize(renderer_width, renderer_height);
+		// m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
+		// m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
+		// m_denoiser->finalize();
 
 		m_perf_metrics = std::make_shared<PerformanceMetricsComputer>();
 

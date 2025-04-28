@@ -39,15 +39,15 @@ public:
 	 *
 	 * This is a no-op if not accumulating i.e. this is only available for offline rendering
 	 */
-	void compute_optimal_spatial_reuse_radii();
-	void configure_initial_candidates_pass();
-	void launch_initial_candidates_pass();
-	void configure_temporal_reuse_pass();
-	void launch_temporal_reuse_pass();
-	void configure_spatial_reuse_pass(int spatial_pass_index);
-	void launch_spatial_reuse_pass();
-	void configure_shading_pass();
-	void launch_shading_pass();
+	void compute_optimal_spatial_reuse_radii(HIPRTRenderData& render_data);
+	void configure_initial_candidates_pass(HIPRTRenderData& render_data);
+	void launch_initial_candidates_pass(HIPRTRenderData& render_data);
+	void configure_temporal_reuse_pass(HIPRTRenderData& render_data);
+	void launch_temporal_reuse_pass(HIPRTRenderData& render_data);
+	void configure_spatial_reuse_pass(HIPRTRenderData& render_data, int spatial_pass_index);
+	void launch_spatial_reuse_pass(HIPRTRenderData& render_data);
+	void configure_shading_pass(HIPRTRenderData& render_data);
+	void launch_shading_pass(HIPRTRenderData& render_data);
 	virtual bool launch(HIPRTRenderData& render_data) override;
 
 	virtual void post_sample_update(HIPRTRenderData& render_data) override;
@@ -82,6 +82,7 @@ private:
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
 
 	ReSTIRGIReservoir* m_last_temporal_output_reservoirs = nullptr;
+	ReSTIRGIReservoir* m_last_restir_output_reservoirs = nullptr;
 
 	int m_initial_candidates_generation_seed;
 	bool m_temporal_buffer_clear_requested;

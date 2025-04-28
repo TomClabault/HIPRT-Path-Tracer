@@ -48,7 +48,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 {
 	HIPRT_HOST_DEVICE ReSTIRGISettings() 
 	{
-		common_temporal_pass.do_temporal_reuse_pass = false;
+		common_temporal_pass.do_temporal_reuse_pass = true;
 		
 		common_temporal_pass.use_permutation_sampling = false;
 		common_temporal_pass.permutation_sampling_random_bits = 42;
@@ -62,7 +62,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 
 
-		common_spatial_pass.do_spatial_reuse_pass = true;
+		common_spatial_pass.do_spatial_reuse_pass = false;
 
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 2;
