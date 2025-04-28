@@ -30,7 +30,7 @@ void enable_compilation_warnings(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ct
 {
 	if (std::string(hiprt_orochi_ctx->device_properties.name).find("NVIDIA") == std::string::npos)
 	{
-		// AMD compiler options
+		// AMD compiler warning suppressors
 
 		compiler_options.push_back("-Wall");
 		compiler_options.push_back("-Weverything");
