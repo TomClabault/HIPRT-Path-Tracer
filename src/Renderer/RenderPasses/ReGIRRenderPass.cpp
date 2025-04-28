@@ -181,6 +181,7 @@ bool ReGIRRenderPass::launch()
 
 	m_grid_cells_alive_count_staging_buffer.download_data(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 	m_render_data->render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
+	m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
 	std::cout << "Launching ReGIR with size: " << m_render_data->render_settings.regir_settings.grid.grid_resolution.x << std::endl;
 	if (m_spatial_reuse_output_grid_buffer.size() != m_render_data->render_settings.regir_settings.get_number_of_reservoirs_per_grid())
@@ -230,15 +231,15 @@ void ReGIRRenderPass::launch_cell_liveness_copy_pass()
 	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, m_render_data->render_settings.regir_settings.get_total_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::post_render_update()
+void ReGIRRenderPass::post_sample_update()
 {
 	if (!is_render_pass_used())
 		return;
 	
 	if (m_render_data->render_settings.regir_settings.temporal_reuse.do_temporal_reuse)
 	{
-		m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index++;
-		m_render_data->render_settings.regir_settings.temporal_reuse.current_grid_index %= m_render_data->render_settings.regir_settings.temporal_reuse.temporal_history_length;
+		m_current_grid_index++;
+		m_current_grid_index %= m_render_data->render_settings.regir_settings.temporal_reuse.temporal_history_length;
 	}
 
 	launch_cell_liveness_copy_pass();

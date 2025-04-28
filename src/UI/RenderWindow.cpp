@@ -149,6 +149,7 @@ extern ImGuiLogger g_imgui_logger;
 // - launch bounds optimization?
 // - thread group size optimization?
 // - double buffering of frames in general to better keep the GPU occupied?
+// - can we gain in performance by having the trace rays functions in completely separate passes so that we can have the maximum amount of L1 cache in the passes that now don't trace rays? (and use max amount of shared mem in the rays only passes)
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 

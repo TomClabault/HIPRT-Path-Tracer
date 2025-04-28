@@ -120,15 +120,39 @@ public:
 	 * 
 	 * Returns true if the render pass was indeed launched
 	 * Returns false otherwise (if the render pass isn't being used or if the render pass is only launched every frames or ...)
+	 * 
+	 * !!!!!!!!!
+	 * Warning: Any changes made to m_render_data from this function will not be reflected between each *frame*.
+	 * 
+	 * This means that a change a made to m_render_data at *frame* 0 will not be seen at *frame* 1 by the render pass.
+	 * The changes can be seen between samples of the same frame but not between frames.
+	 * You can still modify m_render_data in this function to facilitate passing arguments to kernels but changes will not
+	 * be reflected in the next frame.
+	 * 
+	 * The difference between frame and sample being that a frame can be composed of multiple samples, according to HIPRTRenderSettings::samples_per_frame
+	 * 
+	 * If you need some persistent state accross frames, you'll have to keep member variables in your render pass
+	 * !!!!!!!!!
 	 */
 	virtual bool launch() = 0;
 
 	/**
-	 * Called at each frame, after launch()
+	 * Called once per sample, after launch()
 	 * 
-	 * Some counter incrementation can be done in here
+	 * !!!!!!!!!
+	 * Warning: Any changes made to m_render_data from this function will not be reflected between each *frame*.
+	 * 
+	 * This means that a change a made to m_render_data at *frame* 0 will not be seen at *frame* 1 by the render pass.
+	 * The changes can be seen between samples of the same frame but not between frames.
+	 * You can still modify m_render_data in this function to facilitate passing arguments to kernels but changes will not
+	 * be reflected in the next frame.
+	 * 
+	 * The difference between frame and sample being that a frame can be composed of multiple samples, according to HIPRTRenderSettings::samples_per_frame
+	 * 
+	 * If you need some persistent state accross frames, you'll have to keep member variables in your render pass
+	 * !!!!!!!!!
 	 */
-	virtual void post_render_update() = 0;
+	virtual void post_sample_update() = 0;
 
 	/**
 	 * This function is called when the renderer that holds this render pass needs to 

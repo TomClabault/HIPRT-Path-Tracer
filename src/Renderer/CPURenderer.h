@@ -50,7 +50,7 @@ public:
 
     void render();
     void pre_render_update(int frame_number);
-    void post_render_update(int frame_number);
+    void post_sample_update(int frame_number);
     void update_render_data(int sample);
 
     void reset();
