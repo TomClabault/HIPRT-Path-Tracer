@@ -10,7 +10,7 @@
 
 RenderPass::RenderPass() {}
 RenderPass::RenderPass(GPURenderer* renderer) : RenderPass(renderer, "Unnamed render pass") {}
-RenderPass::RenderPass(GPURenderer* renderer, const std::string& name) : m_renderer(renderer), m_render_data(&m_renderer->get_render_data()), m_name(name) {}
+RenderPass::RenderPass(GPURenderer* renderer, const std::string& name) : m_renderer(renderer), m_name(name) {}
 
 void RenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {

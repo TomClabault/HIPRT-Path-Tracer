@@ -17,7 +17,6 @@ FillGBufferRenderPass::FillGBufferRenderPass() : FillGBufferRenderPass(nullptr) 
 FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer) : RenderPass(renderer, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
 {
 	m_render_resolution = m_renderer->m_render_resolution;
-	m_render_data = &m_renderer->get_render_data();
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/CameraRays.h");
@@ -57,7 +56,9 @@ void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_heig
 
 bool FillGBufferRenderPass::pre_render_update(float delta_time)
 {
-	if (m_render_data->render_settings.use_prev_frame_g_buffer(m_renderer))
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	if (render_data.render_settings.use_prev_frame_g_buffer(m_renderer))
 	{
 		// If at least one buffer has a size of 0, we assume that this means that the whole G-buffer is deallocated
 		// and so we're going to have to reallocate it
@@ -85,11 +86,11 @@ bool FillGBufferRenderPass::pre_render_update(float delta_time)
 	return false;
 }
 
-bool FillGBufferRenderPass::launch()
+bool FillGBufferRenderPass::launch(HIPRTRenderData& render_data)
 {
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 
-	void* launch_args[] = { m_render_data };
+	void* launch_args[] = { &render_data };
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
@@ -98,17 +99,19 @@ bool FillGBufferRenderPass::launch()
 
 void FillGBufferRenderPass::update_render_data()
 {
-	m_render_data->g_buffer = m_g_buffer.get_device_g_buffer();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (m_render_data->render_settings.use_prev_frame_g_buffer(m_renderer))
+	render_data.g_buffer = m_g_buffer.get_device_g_buffer();
+
+	if (render_data.render_settings.use_prev_frame_g_buffer(m_renderer))
 		// Only setting the pointers of the buffers if we're actually using the g-buffer of the previous frame
-		m_render_data->g_buffer_prev_frame = m_g_buffer_prev_frame.get_device_g_buffer();
+		render_data.g_buffer_prev_frame = m_g_buffer_prev_frame.get_device_g_buffer();
 	else
 	{
-		m_render_data->g_buffer_prev_frame.materials = nullptr;
-		m_render_data->g_buffer_prev_frame.geometric_normals = nullptr;
-		m_render_data->g_buffer_prev_frame.shading_normals = nullptr;
-		m_render_data->g_buffer_prev_frame.primary_hit_position = nullptr;
+		render_data.g_buffer_prev_frame.materials = nullptr;
+		render_data.g_buffer_prev_frame.geometric_normals = nullptr;
+		render_data.g_buffer_prev_frame.shading_normals = nullptr;
+		render_data.g_buffer_prev_frame.primary_hit_position = nullptr;
 	}
 }
 

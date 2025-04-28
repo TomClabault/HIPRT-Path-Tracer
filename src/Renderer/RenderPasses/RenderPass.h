@@ -122,37 +122,47 @@ public:
 	 * Returns false otherwise (if the render pass isn't being used or if the render pass is only launched every frames or ...)
 	 * 
 	 * !!!!!!!!!
-	 * Warning: Any changes made to m_render_data from this function will not be reflected between each *frame*.
+	 * Warning: The render_data parameter is a *copy* of the renderer's render data
 	 * 
-	 * This means that a change a made to m_render_data at *frame* 0 will not be seen at *frame* 1 by the render pass.
+	 * Any changes made to render_data from this function will not be reflected between each *frame*.
+	 * 
+	 * This means that a change a made to render_data at *frame* 0 will not be seen at *frame* 1 by the render pass (even by the same render pass).
 	 * The changes can be seen between samples of the same frame but not between frames.
-	 * You can still modify m_render_data in this function to facilitate passing arguments to kernels but changes will not
+	 * You can still modify render_data in this function to facilitate passing arguments to kernels but changes will not
 	 * be reflected in the next frame.
 	 * 
 	 * The difference between frame and sample being that a frame can be composed of multiple samples, according to HIPRTRenderSettings::samples_per_frame
 	 * 
 	 * If you need some persistent state accross frames, you'll have to keep member variables in your render pass
+	 * 
+	 * Modifying m_renderer->get_render_data() from this function is a race concurrency with the asynchronous ImGui UI so care must be taken
+	 * with that.
 	 * !!!!!!!!!
 	 */
-	virtual bool launch() = 0;
+	virtual bool launch(HIPRTRenderData& render_data) = 0;
 
 	/**
 	 * Called once per sample, after launch()
 	 * 
 	 * !!!!!!!!!
-	 * Warning: Any changes made to m_render_data from this function will not be reflected between each *frame*.
+	 * Warning: The render_data parameter is a *copy* of the renderer's render data
 	 * 
-	 * This means that a change a made to m_render_data at *frame* 0 will not be seen at *frame* 1 by the render pass.
+	 * Any changes made to render_data from this function will not be reflected between each *frame*.
+	 * 
+	 * This means that a change a made to render_data at *frame* 0 will not be seen at *frame* 1 by the render pass (even by the same render pass).
 	 * The changes can be seen between samples of the same frame but not between frames.
-	 * You can still modify m_render_data in this function to facilitate passing arguments to kernels but changes will not
+	 * You can still modify render_data in this function to facilitate passing arguments to kernels but changes will not
 	 * be reflected in the next frame.
 	 * 
 	 * The difference between frame and sample being that a frame can be composed of multiple samples, according to HIPRTRenderSettings::samples_per_frame
 	 * 
 	 * If you need some persistent state accross frames, you'll have to keep member variables in your render pass
+	 * 
+	 * Modifying m_renderer->get_render_data() from this function is a race concurrency with the asynchronous ImGui UI so care must be taken
+	 * with that.
 	 * !!!!!!!!!
 	 */
-	virtual void post_sample_update() = 0;
+	virtual void post_sample_update(HIPRTRenderData& render_data) = 0;
 
 	/**
 	 * This function is called when the renderer that holds this render pass needs to 
@@ -292,8 +302,6 @@ protected:
 
 	// Access to the renderer that holds the render pass
 	GPURenderer* m_renderer = nullptr;
-	// The render data that all kernels should use
-	HIPRTRenderData* m_render_data = nullptr;
 
 	// Other render passes which this render pass depends on.
 	// They will be launched before this render pass

@@ -94,24 +94,26 @@ void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 
 bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
 {
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	if (!is_render_pass_used())
 		return false;
 
 	bool recompiled = false;
 
-	bool need_temporal = m_render_data->render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass && !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
+	bool need_temporal = render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass && !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
 	recompiled |= need_temporal;
 	if (need_temporal)
 		// Temporal needed
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	bool need_spatial = m_render_data->render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass && !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->has_been_compiled();
+	bool need_spatial = render_data.render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass && !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->has_been_compiled();
 	recompiled |= need_spatial;
 	if (need_spatial)
 		// Spatial needed
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	bool need_directional_spatial_reuse = !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->has_been_compiled() && m_render_data->render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse;
+	bool need_directional_spatial_reuse = !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->has_been_compiled() && render_data.render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse;
 	recompiled |= need_directional_spatial_reuse;
 	if (need_directional_spatial_reuse)
 		// Spatial needed
@@ -122,6 +124,8 @@ bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 
 bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 {
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	MegaKernelRenderPass::pre_render_update(delta_time);
 
 	bool render_data_invalidated = false;
@@ -148,7 +152,7 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 		if (spatial_candidates_reservoir_needs_resize)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_directional_reuse_buffers<true>(*m_render_data, m_renderer,
+		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_directional_reuse_buffers<true>(render_data, m_renderer,
 			m_per_pixel_spatial_reuse_radius, 
 			m_per_pixel_spatial_reuse_direction_mask_u,
 			m_per_pixel_spatial_reuse_direction_mask_ull,
@@ -187,19 +191,21 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 			m_spatial_reuse_statistics_hit_total);
 	}
 
-	if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.auto_reuse_radius)
+	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.auto_reuse_radius)
 		// A percentage of the maximum render resolution extent for automatic spatial reuse radius
-		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * ReSTIRRenderPassCommon::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
+		render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius = hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * ReSTIRRenderPassCommon::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
 
 	return render_data_invalidated;
 }
 
 void ReSTIRGIRenderPass::compute_optimal_spatial_reuse_radii()
 {
-	bool accumulating = m_render_data->render_settings.accumulate;
-	bool first_frame = m_render_data->render_settings.sample_number == 0;
-	bool not_interacting = m_render_data->render_settings.wants_render_low_resolution == false;
-	bool using_adaptive_directional_spatial_reuse = m_render_data->render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse;
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	bool accumulating = render_data.render_settings.accumulate;
+	bool first_frame = render_data.render_settings.sample_number == 0;
+	bool not_interacting = render_data.render_settings.wants_render_low_resolution == false;
+	bool using_adaptive_directional_spatial_reuse = render_data.render_settings.restir_gi_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse;
 
 	if (accumulating && first_frame && not_interacting && using_adaptive_directional_spatial_reuse)
 	{
@@ -214,7 +220,7 @@ void ReSTIRGIRenderPass::compute_optimal_spatial_reuse_radii()
 		unsigned int* per_pixel_spatial_reuse_direction_mask_u = m_per_pixel_spatial_reuse_direction_mask_u.size() > 0 ? m_per_pixel_spatial_reuse_direction_mask_u.get_device_pointer() : nullptr;
 		unsigned long long int* per_pixel_spatial_reuse_direction_mask_ull = m_per_pixel_spatial_reuse_direction_mask_ull.size() > 0 ? m_per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer() : nullptr;
 		unsigned char* per_pixel_spatial_reuse_radius = m_per_pixel_spatial_reuse_radius.get_device_pointer();
-		void* launch_args[] = { m_render_data, &per_pixel_spatial_reuse_direction_mask_u, &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
+		void* launch_args[] = { &render_data, &per_pixel_spatial_reuse_direction_mask_u, &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
 
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 	}
@@ -222,17 +228,21 @@ void ReSTIRGIRenderPass::compute_optimal_spatial_reuse_radii()
 
 void ReSTIRGIRenderPass::configure_initial_candidates_pass()
 {
-	m_render_data->render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_initial_candidates_buffer.get_device_pointer();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_initial_candidates_buffer.get_device_pointer();
+
+	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 }
 
 void ReSTIRGIRenderPass::launch_initial_candidates_pass()
 {
-	void* launch_args[] = { m_render_data };
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	m_initial_candidates_generation_seed = m_render_data->random_number;
-	if (m_render_data->render_settings.nb_bounces > 0)
+	void* launch_args[] = { &render_data };
+
+	m_initial_candidates_generation_seed = render_data.random_number;
+	if (render_data.render_settings.nb_bounces > 0)
 		// We only need to trace paths for the initial candidates if we have
 		// more than 1 bounce
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
@@ -240,18 +250,20 @@ void ReSTIRGIRenderPass::launch_initial_candidates_pass()
 
 void ReSTIRGIRenderPass::configure_temporal_reuse_pass()
 {
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
-	m_render_data->render_settings.restir_gi_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
+	render_data.render_settings.restir_gi_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
 	
 	ReSTIRGIReservoir* temporal_input_reservoirs;
 	ReSTIRGIReservoir* temporal_output_reservoirs;
 
-	if ((m_render_data->render_settings.sample_number == 0 && m_render_data->render_settings.accumulate) || m_render_data->render_settings.need_to_reset)
+	if ((render_data.render_settings.sample_number == 0 && render_data.render_settings.accumulate) || render_data.render_settings.need_to_reset)
 		// First frame, using the initial candidates as the input
-		temporal_input_reservoirs = m_render_data->render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
+		temporal_input_reservoirs = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
 	else
 		// Not the first frame, the input to the temporal pass is the output of the last frame ReSTIR
-		temporal_input_reservoirs = m_render_data->render_settings.restir_gi_settings.restir_output_reservoirs;
+		temporal_input_reservoirs = render_data.render_settings.restir_gi_settings.restir_output_reservoirs;
 
 	// For the output, using whatever buffer isn't the one we're reading from (the input buffer)
 	if (temporal_input_reservoirs == m_spatial_buffer.get_device_pointer())
@@ -259,14 +271,16 @@ void ReSTIRGIRenderPass::configure_temporal_reuse_pass()
 	else
 		temporal_output_reservoirs = m_spatial_buffer.get_device_pointer();
 
-	m_render_data->render_settings.restir_gi_settings.temporal_pass.input_reservoirs = temporal_input_reservoirs;
-	m_render_data->render_settings.restir_gi_settings.temporal_pass.output_reservoirs = temporal_output_reservoirs;
+	render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs = temporal_input_reservoirs;
+	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = temporal_output_reservoirs;
 	m_last_temporal_output_reservoirs = temporal_output_reservoirs;
 }
 
 void ReSTIRGIRenderPass::launch_temporal_reuse_pass()
 {
-	void* launch_args[] = { m_render_data };
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	void* launch_args[] = { &render_data };
 
 	if (m_renderer->get_render_settings().restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, 0);// m_renderer->get_main_stream());
@@ -274,8 +288,10 @@ void ReSTIRGIRenderPass::launch_temporal_reuse_pass()
 
 void ReSTIRGIRenderPass::configure_spatial_reuse_pass(int spatial_pass_index)
 {
-	m_render_data->render_settings.restir_gi_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
+	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 
 	// The spatial reuse pass spatially reuse on the output of the temporal pass in the 'temporal buffer' and
 	// stores in the 'spatial buffer'
@@ -285,13 +301,13 @@ void ReSTIRGIRenderPass::configure_spatial_reuse_pass(int spatial_pass_index)
 
 	if (spatial_pass_index > 0)
 		// If this is the second spatial reuse pass or more, reading from the output of the previous pass
-		input_reservoirs = m_render_data->render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
+		input_reservoirs = render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
 	else
 	{
 		// This is the first spatial reuse pass, reading from the output of the temporal pass
 		// or the initial candidates depending on whether or not we have a temporal reuse pass at all
 
-		if (m_render_data->render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
+		if (render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
 			// and we have a temporal reuse pass so we're going to read from the temporal reservoirs
 			input_reservoirs = m_last_temporal_output_reservoirs;
 		else
@@ -305,13 +321,15 @@ void ReSTIRGIRenderPass::configure_spatial_reuse_pass(int spatial_pass_index)
 	else
 		output_reservoirs = m_temporal_buffer.get_device_pointer();
 
-	m_render_data->render_settings.restir_gi_settings.spatial_pass.input_reservoirs = input_reservoirs;
-	m_render_data->render_settings.restir_gi_settings.spatial_pass.output_reservoirs = output_reservoirs;
+	render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs = input_reservoirs;
+	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs = output_reservoirs;
 }
 
 void ReSTIRGIRenderPass::launch_spatial_reuse_pass()
 {
-	void* launch_args[] = { m_render_data };
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	void* launch_args[] = { &render_data };
 
 	if (m_renderer->get_render_settings().restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
@@ -319,24 +337,28 @@ void ReSTIRGIRenderPass::launch_spatial_reuse_pass()
 
 void ReSTIRGIRenderPass::configure_shading_pass()
 {
-	if (m_render_data->render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
-		m_render_data->render_settings.restir_gi_settings.restir_output_reservoirs = m_render_data->render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
-	else if (m_render_data->render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
-		m_render_data->render_settings.restir_gi_settings.restir_output_reservoirs = m_render_data->render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
-	else
-		m_render_data->render_settings.restir_gi_settings.restir_output_reservoirs = m_render_data->render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	m_render_data->random_number = m_initial_candidates_generation_seed;
+	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
+		render_data.render_settings.restir_gi_settings.restir_output_reservoirs = render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
+	else if (render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
+		render_data.render_settings.restir_gi_settings.restir_output_reservoirs = render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
+	else
+		render_data.render_settings.restir_gi_settings.restir_output_reservoirs = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
+
+	render_data.random_number = m_initial_candidates_generation_seed;
 }
 
 void ReSTIRGIRenderPass::launch_shading_pass()
 {
-	void* launch_args[] = { m_render_data };
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	void* launch_args[] = { &render_data };
 
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
-bool ReSTIRGIRenderPass::launch()
+bool ReSTIRGIRenderPass::launch(HIPRTRenderData& render_data)
 {
 	if (!is_render_pass_used())
 		return false;
@@ -349,7 +371,7 @@ bool ReSTIRGIRenderPass::launch()
 	configure_temporal_reuse_pass();
 	launch_temporal_reuse_pass();
 
-	for (int i = 0; i < m_render_data->render_settings.restir_gi_settings.common_spatial_pass.number_of_passes; i++)
+	for (int i = 0; i < render_data.render_settings.restir_gi_settings.common_spatial_pass.number_of_passes; i++)
 	{
 		configure_spatial_reuse_pass(i);
 		launch_spatial_reuse_pass();
@@ -361,25 +383,27 @@ bool ReSTIRGIRenderPass::launch()
 	return true;
 }
 
-void ReSTIRGIRenderPass::post_sample_update()
+void ReSTIRGIRenderPass::post_sample_update(HIPRTRenderData& render_data)
 {
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag
 	m_temporal_buffer_clear_requested = false;
 
-	MegaKernelRenderPass::post_sample_update();
+	MegaKernelRenderPass::post_sample_update(render_data);
 }
 
 void ReSTIRGIRenderPass::update_render_data()
 {
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	// Setting the pointers for use in reset_render() in the camera rays kernel
 	if (is_render_pass_used())
 	{
-		m_render_data->aux_buffers.restir_gi_reservoir_buffer_1 = m_initial_candidates_buffer.get_device_pointer();
-		m_render_data->aux_buffers.restir_gi_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
-		m_render_data->aux_buffers.restir_gi_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
+		render_data.aux_buffers.restir_gi_reservoir_buffer_1 = m_initial_candidates_buffer.get_device_pointer();
+		render_data.aux_buffers.restir_gi_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
+		render_data.aux_buffers.restir_gi_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<true>(*m_render_data,
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<true>(render_data,
 			m_per_pixel_spatial_reuse_radius,
 			m_per_pixel_spatial_reuse_direction_mask_u,
 			m_per_pixel_spatial_reuse_direction_mask_ull,
@@ -392,13 +416,13 @@ void ReSTIRGIRenderPass::update_render_data()
 		// for example can detect that the buffers are freed and doesn't try to reset them or do
 		// anything with them (which would be invalid since we would be accessing nullptr buffers)
 
-		m_render_data->aux_buffers.restir_gi_reservoir_buffer_1 = nullptr;
-		m_render_data->aux_buffers.restir_gi_reservoir_buffer_2 = nullptr;
-		m_render_data->aux_buffers.restir_gi_reservoir_buffer_3 = nullptr;
+		render_data.aux_buffers.restir_gi_reservoir_buffer_1 = nullptr;
+		render_data.aux_buffers.restir_gi_reservoir_buffer_2 = nullptr;
+		render_data.aux_buffers.restir_gi_reservoir_buffer_3 = nullptr;
 
-		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = nullptr;
-		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
-		m_render_data->render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = nullptr;
+		render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = nullptr;
+		render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
+		render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = nullptr;
 	}
 }
 

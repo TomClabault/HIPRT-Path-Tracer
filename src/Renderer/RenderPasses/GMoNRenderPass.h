@@ -32,7 +32,7 @@ public:
 	 * Returns true or false depending on whether or not the render buffer data have been invalidated
 	 */
 	virtual bool pre_render_update(float delta_time) override;
-	virtual bool launch() override;
+	virtual bool launch(HIPRTRenderData& render_data) override;
 
 	float compute_gmon_darkening();
 	float get_gmon_darkening();
@@ -45,7 +45,7 @@ public:
 	 * Returns true a buffer was allocated or deallocated
 	 * Returns false if buffer were left untouched
 	 */
-	virtual void post_sample_update() override;
+	virtual void post_sample_update(HIPRTRenderData& render_data) override;
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;

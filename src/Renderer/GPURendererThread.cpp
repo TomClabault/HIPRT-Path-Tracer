@@ -40,6 +40,7 @@ void GPURendererThread::render_thread_function()
 
 		// Perform rendering operations here
 		render();
+		post_frame_update();
 	}
 }
 
@@ -266,9 +267,9 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 	}
 }
 
-void GPURendererThread::post_sample_update()
+void GPURendererThread::post_sample_update(HIPRTRenderData& render_data)
 {
-	m_render_graph.post_sample_update();
+	m_render_graph.post_sample_update(render_data);
 
 	m_render_data->render_settings.sample_number++;
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter++;
@@ -278,7 +279,10 @@ void GPURendererThread::post_sample_update()
 	// again)
 	m_render_data->render_settings.need_to_reset = false;
 	m_render_data->nee_plus_plus.reset_visibility_map = false;
+}
 
+void GPURendererThread::post_frame_update()
+{
 	// Saving the current frame camera to be the previous camera of the next frame
 	m_renderer->m_previous_frame_camera = m_renderer->m_camera;
 }
@@ -309,11 +313,15 @@ void GPURendererThread::render_debug_kernel()
 {
 	m_frame_rendered = false;
 
-	// Updating the previous and current camera
-	m_render_data->current_camera = m_renderer->m_camera.to_hiprt();
-	m_render_data->prev_camera = m_renderer->m_previous_frame_camera.to_hiprt();
+	// Copying the render data here to avoid race concurrency issues with
+	// the asynchronous ImGui UI which may also modifiy the render data
+	HIPRTRenderData render_data_copy = m_renderer->get_render_data();
 
-	launch_debug_kernel();
+	// Updating the previous and current camera
+	render_data_copy.current_camera = m_renderer->m_camera.to_hiprt();
+	render_data_copy.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt();
+
+	launch_debug_kernel(render_data_copy);
 
 	// Recording GPU frame time stop timestamp and computing the frame time
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->m_main_stream, [](void* payload) {
@@ -322,7 +330,7 @@ void GPURendererThread::render_debug_kernel()
 		*reinterpret_cast<bool*>(payload) = true;
 	}, &m_frame_rendered));
 
-	post_sample_update();
+	post_sample_update(render_data_copy);
 }
 
 GPUKernel& GPURendererThread::get_debug_trace_kernel()
@@ -330,9 +338,9 @@ GPUKernel& GPURendererThread::get_debug_trace_kernel()
 	return m_debug_trace_kernel;
 }
 
-void GPURendererThread::launch_debug_kernel()
+void GPURendererThread::launch_debug_kernel(HIPRTRenderData& render_data)
 {
-	void* launch_args[] = { &m_render_data, &m_renderer->m_render_resolution };
+	void* launch_args[] = { &render_data, &m_renderer->m_render_resolution };
 
 	m_render_data->random_number = m_renderer->m_rng.xorshift32();
 	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->m_main_stream);
@@ -342,21 +350,24 @@ void GPURendererThread::render_path_tracing()
 {
 	m_frame_rendered = false;
 
+	// Copying the render data here to avoid race concurrency issues with
+	// the asynchronous ImGui UI which may also modifiy the render data
+	HIPRTRenderData render_data_copy = m_renderer->get_render_data();
+	// Updating the previous and current camera
+	render_data_copy.current_camera = m_renderer->m_camera.to_hiprt();
+	render_data_copy.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt();
+
 	for (int i = 1; i <= m_render_data->render_settings.samples_per_frame; i++)
 	{
-		// Updating the previous and current camera
-		m_render_data->current_camera = m_renderer->m_camera.to_hiprt();
-		m_render_data->prev_camera = m_renderer->m_previous_frame_camera.to_hiprt();
-
 		if (i == m_render_data->render_settings.samples_per_frame)
 			// Last sample of the frame so we are going to enable the update 
 			// of the status buffers (number of pixels converged, how many rays still
 			// active, ...)
-			m_render_data->render_settings.do_update_status_buffers = true;
+			render_data_copy.render_settings.do_update_status_buffers = true;
 
-		m_render_graph.launch();
+		m_render_graph.launch(render_data_copy);
 
-		post_sample_update();
+		post_sample_update(render_data_copy);
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time

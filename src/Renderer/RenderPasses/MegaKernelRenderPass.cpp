@@ -31,27 +31,29 @@ void MegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_heigh
 
 bool MegaKernelRenderPass::pre_render_update(float delta_time)
 {
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	if (!is_render_pass_used())
 		return false;
 
 	// Resetting this flag as this is a new frame
-	m_render_data->render_settings.do_update_status_buffers = false;
+	render_data.render_settings.do_update_status_buffers = false;
 
-	if (!m_render_data->render_settings.accumulate)
-		m_render_data->render_settings.sample_number = 0;
+	if (!render_data.render_settings.accumulate)
+		render_data.render_settings.sample_number = 0;
 
 	return false;
 }
 
-bool MegaKernelRenderPass::launch()
+bool MegaKernelRenderPass::launch(HIPRTRenderData& render_data)
 {
 	if (!is_render_pass_used())
 		return false;
-
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
-
-	void* launch_args[] = { m_render_data };
-
+		
+	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
+		
+	void* launch_args[] = { &render_data };
+		
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	return true;
@@ -59,16 +61,18 @@ bool MegaKernelRenderPass::launch()
 
 void MegaKernelRenderPass::reset(bool reset_by_camera_movement)
 {
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	if (!is_render_pass_used())
 		return;
 
-	if (m_render_data->render_settings.accumulate)
+	if (render_data.render_settings.accumulate)
 		if (m_renderer->get_application_settings()->auto_sample_per_frame)
-			m_render_data->render_settings.samples_per_frame = 1;
+			render_data.render_settings.samples_per_frame = 1;
 
-	m_render_data->render_settings.denoiser_AOV_accumulation_counter = 0;
+	render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
 
-	m_render_data->render_settings.sample_number = 0;
+	render_data.render_settings.sample_number = 0;
 }
 
 bool MegaKernelRenderPass::is_render_pass_used() const

@@ -64,17 +64,6 @@ struct AuxiliaryBuffers
 	// noise threshold.
 	AtomicType<unsigned int>* stop_noise_threshold_converged_count = nullptr;
 
-	// Pointers to the buffers allocated on the GPU. These pointers
-	// exist basically only to be reset in reset_render(). They should not
-	// be manipulated directly in the ReSTIR passes. 
-	// 
-	// The buffers that should be used by the ReSTIR passes kernels are the 
-	// 'input_reservoirs' / 'output_reservoirs' buffers of the 'initial_candidates',
-	// 'temporal_pass' and 'spatial_pass' settings
-	ReSTIRDIReservoir* restir_di_reservoir_buffer_1 = nullptr;
-	ReSTIRDIReservoir* restir_di_reservoir_buffer_2 = nullptr;
-	ReSTIRDIReservoir* restir_di_reservoir_buffer_3 = nullptr;
-
 	// Same for ReSTIR GI
 	ReSTIRGIReservoir* restir_gi_reservoir_buffer_1 = nullptr;
 	ReSTIRGIReservoir* restir_gi_reservoir_buffer_2 = nullptr;

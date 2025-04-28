@@ -48,9 +48,9 @@ public:
 	void launch_spatial_reuse_pass();
 	void configure_shading_pass();
 	void launch_shading_pass();
-	virtual bool launch() override;
+	virtual bool launch(HIPRTRenderData& render_data) override;
 
-	virtual void post_sample_update() override;
+	virtual void post_sample_update(HIPRTRenderData& render_data) override;
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;

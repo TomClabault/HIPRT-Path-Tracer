@@ -92,14 +92,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// We're also 'disabling' temporal accumulation if the random is frozen otherwise
 		// very strong correlations will creep up, corrupt the render and potentially invalidate
 		// performance measurements (which we're probably trying to measure since we froze the random)
-
+		
 		// The output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-
+		
 		return;
 	}
-
-
+	
+	
 	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
 	if (temporal_neighbor_reservoir.M == 0)
 	{
