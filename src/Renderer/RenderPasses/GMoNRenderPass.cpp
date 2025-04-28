@@ -83,7 +83,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 
 bool GMoNRenderPass::launch(HIPRTRenderData& render_data)
 {
-	if (!is_render_pass_used())
+	if (!m_render_pass_used_this_frame)
 		return false;
 
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
@@ -300,7 +300,7 @@ float GMoNRenderPass::get_lumi()
 
 void GMoNRenderPass::post_sample_update(HIPRTRenderData& render_data)
 {
-	if (is_render_pass_used())
+	if (m_render_pass_used_this_frame)
 	{
 		// We're going to increment the counter that indicates in which sets of GMoN to accumulate
 		m_next_set_to_accumulate++;

@@ -47,6 +47,12 @@ void RenderGraph::prepass()
 		name_to_render_pass.second->prepass();
 }
 
+void RenderGraph::is_render_pass_used_pass()
+{
+	for (auto& name_to_render_pass : m_render_passes)
+		name_to_render_pass.second->set_is_render_pass_used(name_to_render_pass.second->is_render_pass_used());
+}
+
 bool RenderGraph::pre_render_update(float delta_time)
 {
 	bool render_data_invalidated = false;

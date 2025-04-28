@@ -21,7 +21,7 @@ class GPURenderer;
 struct HIPRTRenderData;
 
 /**
- * Interface for a GPU Renderer render pass
+ * Interface for a GPURenderer render pass
  */
 class RenderPass
 {
@@ -114,6 +114,23 @@ public:
 	 * Returns false otherwise
 	 */
 	virtual bool pre_render_update(float delta_time) = 0;
+
+	/**
+	 * This function may be overriden by render passes that can be enabled/disabled at runtime.
+	 * 
+	 * This is the case of ReSTIR render passes for example: the ReSTIR render passes are not always used for rendering.
+	 * 
+	 * This function is called just before pre_render_update() and should return true if the render pass is going to be active
+	 * for the current frame.
+	 * Should return false if the render pass is not going to be active this frame.
+	 * 
+	 * If the render pass is not active, launch() and post_render_update() will not be called after is_render_pass_used() is called.
+	 */
+	virtual bool is_render_pass_used() const;
+	/**
+	 * Sets the 'm_render_pass_used_this_frame' boolean
+	 */
+	void set_is_render_pass_used(bool is_render_pass_used);
 
 	/**
 	 * This should launch the render pass kernels on the GPU
@@ -274,16 +291,6 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels();
 
 	/**
-	 * This function may be overriden by render passes that can be enabled/disabled at runtime.
-	 * 
-	 * This is the case of ReSTIR render passes for example: the ReSTIR render passes are not always used for rendering.
-	 * 
-	 * This function is then called in the default implementation of recompile() for example such that the kernels 
-	 * of the render pass will not be recompiled if the render pass is not being used
-	 */
-	virtual bool is_render_pass_used() const;
-
-	/**
 	 * Adds another render pass as a dependency of this render pass.
 	 * The dependency render pass will then always be executed before this render pass is executed
 	 */
@@ -298,6 +305,26 @@ public:
 	void set_name(const std::string& new_name);
 
 protected:
+	// This boolean is automatically set with the return of the function is_render_pass_used()
+	// at the beginning of each frame
+	//
+	// This boolean should be used in launch() and post_sample_update() functions
+	// in place of is_render_pass_used(). 
+	//
+	// This is because 
+	//		- launch() and post_sample_function() are asynchronous with the UI
+	//		- is_render_pass_used() tends to check for the renderer's global_kernel_options
+	//			to determine if a render pass should be active or not
+	//		- but that's a race concurrency issue because the global_kernel_options can be modified
+	//			by the ImGui UI while the render pass is running and so checking for the renderer kernel options
+	//			asynchronously can lead to undefined behavior with unintialized buffers
+	//
+	//		----> this boolean should be used instead as it defines whether the render pass is active or
+	//			not for the whole frame
+	//
+	// is_render_pass_used() can be used safely at any time outside of the launch() and post_sample_update() functions
+	bool m_render_pass_used_this_frame = true;
+	
 	std::string m_name;
 
 	// Access to the renderer that holds the render pass

@@ -348,7 +348,7 @@ void ReSTIRGIRenderPass::launch_shading_pass(HIPRTRenderData& render_data)
 
 bool ReSTIRGIRenderPass::launch(HIPRTRenderData& render_data)
 {
-	if (!is_render_pass_used())
+	if (!m_render_pass_used_this_frame)
 		return false;
 
 	compute_optimal_spatial_reuse_radii(render_data);

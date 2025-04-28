@@ -47,7 +47,7 @@ bool MegaKernelRenderPass::pre_render_update(float delta_time)
 
 bool MegaKernelRenderPass::launch(HIPRTRenderData& render_data)
 {
-	if (!is_render_pass_used())
+	if (!m_render_pass_used_this_frame)
 		return false;
 		
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
