@@ -247,7 +247,8 @@ void ReGIRRenderPass::update_render_data()
 		render_data.render_settings.regir_settings.grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 
 		render_data.render_settings.regir_settings.grid_fill.grid_buffers = m_grid_buffers.to_device();
-		render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_spatial_reuse_output_grid_buffer.to_device();
+		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
+			render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_spatial_reuse_output_grid_buffer.to_device();
 		render_data.render_settings.regir_settings.representative.distance_to_center = m_distance_to_center_buffer.get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.representative.representative_normals = m_representative_normals_buffer.get_device_pointer();
 		render_data.render_settings.regir_settings.representative.representative_points = m_representative_points_buffer.get_device_pointer();

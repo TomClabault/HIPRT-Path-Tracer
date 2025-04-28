@@ -196,8 +196,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 			regir_settings.grid.grid_resolution.y = grid_size;
 			regir_settings.grid.grid_resolution.z = grid_size;
 
-			std::cout << "ReGIR ImGui resized to: " << regir_settings.grid.grid_resolution.x << std::endl;
-
 			size_changed = true;
 		}
 	}
