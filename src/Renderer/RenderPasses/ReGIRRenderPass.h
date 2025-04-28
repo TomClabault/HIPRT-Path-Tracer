@@ -46,12 +46,12 @@ public:
 
 	virtual bool pre_render_update(float delta_time) override;
 
-	virtual bool launch() override;
+	virtual bool launch(HIPRTRenderData& render_data) override;
 	void launch_grid_fill_temporal_reuse();
 	void launch_spatial_reuse();
 	void launch_cell_liveness_copy_pass();
 
-	virtual void post_sample_update() override;
+	virtual void post_sample_update(HIPRTRenderData& render_data) override;
 	virtual void update_render_data() override;
 
 	virtual void reset(bool reset_by_camera_movement) override;

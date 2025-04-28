@@ -60,10 +60,13 @@ public:
 	/**
 	 * This function increments some counters (such as the number of samples rendered so far) after a
 	 * sample has been rendered
-	 *
-	 * This function is private because it is used internally by the render() function
 	 */
-	void post_sample_update();
+	void post_sample_update(HIPRTRenderData& render_data);
+
+	/**
+	 * Updates stuff after a whole frame has been rendered
+	 */
+	void post_frame_update();
 
 	/**
 	 * Renders a frame asynchronously.
@@ -127,7 +130,7 @@ private:
 	 */
 	void internal_pre_render_update_global_stack_buffer();
 
-	void launch_debug_kernel();	
+	void launch_debug_kernel(HIPRTRenderData& render_data);	
 
 	GPURenderer* m_renderer = nullptr;
 	HIPRTRenderData* m_render_data = nullptr;

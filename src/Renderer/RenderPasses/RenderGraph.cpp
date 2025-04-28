@@ -59,7 +59,7 @@ bool RenderGraph::pre_render_update(float delta_time)
 	return render_data_invalidated;
 }
 
-bool RenderGraph::launch()
+bool RenderGraph::launch(HIPRTRenderData& render_data)
 {
 		// Resetting the state of whether or not the render passes have been launched this frame or not
 	for (auto& name_to_render_pass : m_render_passes)
@@ -72,7 +72,7 @@ bool RenderGraph::launch()
 
 	// Launching all the render passes
 	for (auto& name_to_render_pass : m_render_passes)
-		launch_render_pass_with_dependencies(name_to_render_pass.second);
+		launch_render_pass_with_dependencies(name_to_render_pass.second, render_data);
 
 	// This is not a fresh frame anymore
 	m_new_frame = false;
@@ -80,7 +80,7 @@ bool RenderGraph::launch()
 	return true;
 }
 
-void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass)
+void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass, HIPRTRenderData& render_data)
 {
 	if (render_pass == nullptr)
 	{
@@ -95,10 +95,10 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 
 	// Launching all the dependencies first
 	for (std::shared_ptr<RenderPass> dependency : render_pass->get_dependencies())
-		launch_render_pass_with_dependencies(dependency);
+		launch_render_pass_with_dependencies(dependency, render_data);
 
 	// Now launching the render pass itself since all dependencies have been launched
-	bool effectively_launched = render_pass->launch();
+	bool effectively_launched = render_pass->launch(render_data);
 	m_render_pass_launched_this_frame_yet[render_pass.get()] = true;
 
 	if (effectively_launched)
@@ -107,10 +107,10 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 		m_render_pass_effectively_launched_this_frame[render_pass.get()] = true;
 }
 
-void RenderGraph::post_sample_update()
+void RenderGraph::post_sample_update(HIPRTRenderData& render_data)
 {
 	for (auto& name_to_render_pass : m_render_passes)
-		name_to_render_pass.second->post_sample_update();
+		name_to_render_pass.second->post_sample_update(render_data);
 }
 
 void RenderGraph::update_render_data()

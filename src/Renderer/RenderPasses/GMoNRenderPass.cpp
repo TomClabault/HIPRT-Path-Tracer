@@ -14,8 +14,6 @@ GMoNRenderPass::GMoNRenderPass() : GMoNRenderPass(nullptr) {}
 
 GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : RenderPass(renderer, GMoNRenderPass::GMON_RENDER_PASS_NAME)
 {
-	m_render_data = &m_renderer->get_render_data();
-
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/GMoN/GMoNComputeMedianOfMeans.h");
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->set_kernel_function_name("GMoNComputeMedianOfMeans");
@@ -24,7 +22,9 @@ GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : RenderPass(renderer, GMo
 
 bool GMoNRenderPass::pre_render_update(float delta_time)
 {
-	int2 render_resolution = m_render_data->render_settings.render_resolution;
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	int2 render_resolution = render_data.render_settings.render_resolution;
 
 	if (is_render_pass_used())
 	{
@@ -35,7 +35,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
 			m_gmon.resize_interop(render_resolution.x, render_resolution.y);
 
-			m_render_data->buffers.gmon_estimator.next_set_to_accumulate = 0;
+			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 
 			// Returning true to indicate that the render data buffers have been invalidated
 			return true;
@@ -45,7 +45,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 			// If the number of sets changed...
 
 			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
-			m_render_data->buffers.gmon_estimator.next_set_to_accumulate = 0;
+			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 
 			return true;
 		}
@@ -62,7 +62,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 			if (HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
 				m_gmon.gmon_blend_factor = 1.0f;// -m_darkening_factor;
 			else
-				m_gmon.gmon_blend_factor = hippt::clamp(0.0f, 1.0f, m_render_data->render_settings.sample_number / (2.0f * hippt::square(number_of_sets)));
+				m_gmon.gmon_blend_factor = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (2.0f * hippt::square(number_of_sets)));
 
 		// Resetting the flag because we're now rendering a new frame
 		m_gmon.m_gmon_recomputed = false;
@@ -81,7 +81,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 	return false;
 }
 
-bool GMoNRenderPass::launch()
+bool GMoNRenderPass::launch(HIPRTRenderData& render_data)
 {
 	if (!is_render_pass_used())
 		return false;
@@ -106,9 +106,9 @@ bool GMoNRenderPass::launch()
 		// GMoN sets
 		int2 render_resolution = m_renderer->m_render_resolution;
 
-		m_render_data->buffers.gmon_estimator.next_set_to_accumulate = m_next_set_to_accumulate;
+		render_data.buffers.gmon_estimator.next_set_to_accumulate = m_next_set_to_accumulate;
 
-		void* launch_args[] = { m_render_data };
+		void* launch_args[] = { &render_data };
 
 		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->launch_asynchronous(
 			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,
@@ -129,7 +129,9 @@ bool GMoNRenderPass::launch()
 
 float GMoNRenderPass::compute_gmon_darkening()
 {
-	if (!m_render_data->render_settings.DEBUG_gmon_auto_blending_weights || !HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	if (!render_data.render_settings.DEBUG_gmon_auto_blending_weights || !HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
 		return 0.0f;
 
 	std::vector<ColorRGB32F> result = OrochiBuffer<ColorRGB32F>::download_data(m_gmon.result_framebuffer->map(), m_gmon.result_framebuffer->size());
@@ -147,8 +149,8 @@ float GMoNRenderPass::compute_gmon_darkening()
 		{
 			int index = x + y * m_renderer->m_render_resolution.x;
 
-			ColorRGB32F ref_color = reference[index] / m_render_data->render_settings.sample_number;
-			ColorRGB32F result_color = result[index] / m_render_data->render_settings.sample_number;
+			ColorRGB32F ref_color = reference[index] / render_data.render_settings.sample_number;
+			ColorRGB32F result_color = result[index] / render_data.render_settings.sample_number;
 
 			ref_color = ColorRGB32F(1.0f) - exp(-ref_color * 1.8f);
 			ref_color = pow(ref_color, 1.0f / 2.2f);
@@ -166,7 +168,7 @@ float GMoNRenderPass::compute_gmon_darkening()
 			{
 				// If the pixel has lost a lot of luminance i.e. darkening, determining if this is a firefly or not
 
-				int window_size = m_render_data->render_settings.DEBUG_GMON_WINDOW_SIZE;
+				int window_size = render_data.render_settings.DEBUG_GMON_WINDOW_SIZE;
 				int valid_neighbors = 0;
 				float neighbor_luminance_sum = 0.0f;
 				float neighbor_luminance_average = 0.0f;
@@ -186,7 +188,7 @@ float GMoNRenderPass::compute_gmon_darkening()
 
 						int neighbor_index = neighbor_index_x + neighbor_index_y * m_renderer->m_render_resolution.x;
 
-						ColorRGB32F current_color = reference[neighbor_index] / m_render_data->render_settings.sample_number;
+						ColorRGB32F current_color = reference[neighbor_index] / render_data.render_settings.sample_number;
 						current_color = ColorRGB32F(1.0f) - exp(-current_color * 1.8f);
 						current_color = pow(current_color, 1.0f / 2.2f);
 
@@ -239,7 +241,7 @@ float GMoNRenderPass::compute_gmon_darkening()
 
 			//		int neighbor_index = neighbor_index_x + neighbor_index_y * m_renderer->m_render_resolution.x;
 
-			//		float current_luminance = reference[neighbor_index].luminance() / m_render_data->render_settings.sample_number;
+			//		float current_luminance = reference[neighbor_index].luminance() / render_data.render_settings.sample_number;
 			//		valid_neighbors++;
 			//		neighbor_luminance_sum += current_luminance;
 			//		neighbors_luminance.push_back(current_luminance);
@@ -260,7 +262,7 @@ float GMoNRenderPass::compute_gmon_darkening()
 
 			//		int neighbor_index = neighbor_index_x + neighbor_index_y * m_renderer->m_render_resolution.x;
 
-			//		float current_luminance = reference[neighbor_index].luminance() / m_render_data->render_settings.sample_number;
+			//		float current_luminance = reference[neighbor_index].luminance() / render_data.render_settings.sample_number;
 			//		neighbor_luminance_variance += hippt::square(current_luminance - neighbor_luminance_average) / valid_neighbors;
 			//	}
 			//}
@@ -296,7 +298,7 @@ float GMoNRenderPass::get_lumi()
 	return m_DEBUG_LUMINANCE_VARIANCE1;
 }
 
-void GMoNRenderPass::post_sample_update()
+void GMoNRenderPass::post_sample_update(HIPRTRenderData& render_data)
 {
 	if (is_render_pass_used())
 	{
@@ -346,10 +348,12 @@ void GMoNRenderPass::reset(bool reset_by_camera_movement)
 
 void GMoNRenderPass::update_render_data()
 {
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	if (m_gmon.sets.is_allocated())
-		m_render_data->buffers.gmon_estimator.sets = m_gmon.sets.get_device_pointer();
+		render_data.buffers.gmon_estimator.sets = m_gmon.sets.get_device_pointer();
 	else
-		m_render_data->buffers.gmon_estimator.sets = nullptr;
+		render_data.buffers.gmon_estimator.sets = nullptr;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GMoNRenderPass::get_result_framebuffer()

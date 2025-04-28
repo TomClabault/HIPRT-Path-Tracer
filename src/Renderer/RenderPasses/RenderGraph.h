@@ -28,8 +28,8 @@ public:
 
 	virtual void prepass() override;
 	virtual bool pre_render_update(float delta_time) override;
-	virtual bool launch() override;
-	virtual void post_sample_update() override;
+	virtual bool launch(HIPRTRenderData& render_data) override;
+	virtual void post_sample_update(HIPRTRenderData& render_data) override;
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;
@@ -47,7 +47,7 @@ public:
 private:
 	// Launches all the dependencies (recursively) of the given render pass and
 	// then launches the given render pass.
-	void launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass);
+	void launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass, HIPRTRenderData& render_data);
 
 	// Whether or not launch() has been called on a given render pass this frame.
 	// This is used to know whether a render pass has already been launched this frame

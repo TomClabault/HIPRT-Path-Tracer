@@ -68,8 +68,8 @@ public:
 	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
 	 */
 	virtual bool pre_render_update(float delta_time) override;
-	virtual bool launch() override;
-	virtual void post_sample_update() override;
+	virtual bool launch(HIPRTRenderData& render_data) override;
+	virtual void post_sample_update(HIPRTRenderData& render_data) override;
 	virtual void update_render_data() override;
 
 	virtual void reset(bool reset_by_camera_movement) override;
@@ -88,21 +88,21 @@ public:
 	float get_VRAM_usage() const;
 
 private:
-	LightPresamplingParameters configure_light_presampling_pass();
-	void configure_initial_pass();
-	void configure_temporal_pass();
-	void configure_temporal_pass_for_fused_spatiotemporal();
-	void configure_spatial_pass(int spatial_pass_index);
-	void configure_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index);
-	void configure_spatiotemporal_pass();
-	void configure_output_buffer();
+	LightPresamplingParameters configure_light_presampling_pass(HIPRTRenderData& render_data);
+	void configure_initial_pass(HIPRTRenderData& render_data);
+	void configure_temporal_pass(HIPRTRenderData& render_data);
+	void configure_temporal_pass_for_fused_spatiotemporal(HIPRTRenderData& render_data);
+	void configure_spatial_pass(HIPRTRenderData& render_data, int spatial_pass_index);
+	void configure_spatial_pass_for_fused_spatiotemporal(HIPRTRenderData& render_data, int spatial_pass_index);
+	void configure_spatiotemporal_pass(HIPRTRenderData& render_data);
+	void configure_output_buffer(HIPRTRenderData& render_data);
 
-	void compute_optimal_spatial_reuse_radii();
-	void launch_presampling_lights_pass();
-	void launch_initial_candidates_pass();
-	void launch_temporal_reuse_pass();
-	void launch_spatial_reuse_passes();
-	void launch_spatiotemporal_pass();
+	void compute_optimal_spatial_reuse_radii(HIPRTRenderData& render_data);
+	void launch_presampling_lights_pass(HIPRTRenderData& render_data);
+	void launch_initial_candidates_pass(HIPRTRenderData& render_data);
+	void launch_temporal_reuse_pass(HIPRTRenderData& render_data);
+	void launch_spatial_reuse_passes(HIPRTRenderData& render_data);
+	void launch_spatiotemporal_pass(HIPRTRenderData& render_data);
 
 	// ReSTIR reservoirs for the initial candidates
 	OrochiBuffer<ReSTIRDIReservoir> m_initial_candidates_reservoirs;

@@ -25,8 +25,8 @@ public:
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
 	virtual bool pre_render_update(float delta_time) override;
-	virtual bool launch() override;
-	virtual void post_sample_update() override {}
+	virtual bool launch(HIPRTRenderData& render_data) override;
+	virtual void post_sample_update(HIPRTRenderData& render_data) override {}
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override {};

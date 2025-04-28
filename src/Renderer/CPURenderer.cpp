@@ -352,9 +352,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
-    m_render_data.aux_buffers.restir_di_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
-    m_render_data.aux_buffers.restir_di_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
-    m_render_data.aux_buffers.restir_di_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
     m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = m_restir_di_state.per_pixel_spatial_reuse_directions_mask_u.data();
     m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = m_restir_di_state.per_pixel_spatial_reuse_directions_mask_ull.data();
     m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_restir_di_state.per_pixel_spatial_reuse_radius.data();

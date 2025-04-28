@@ -23,15 +23,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     {
         // Same for ReSTIR GI
         if (render_data.aux_buffers.restir_gi_reservoir_buffer_1)
-            render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
-
+        render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
+        
         if (render_data.aux_buffers.restir_gi_reservoir_buffer_2)
-            render_data.aux_buffers.restir_gi_reservoir_buffer_2[pixel_index] = ReSTIRGIReservoir();
-
+        render_data.aux_buffers.restir_gi_reservoir_buffer_2[pixel_index] = ReSTIRGIReservoir();
+        
         if (render_data.aux_buffers.restir_gi_reservoir_buffer_3)
-            render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
+        render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
     }
-
+    
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
     {
         // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
@@ -39,14 +39,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
         render_data.aux_buffers.pixel_converged_sample_count[pixel_index] = -1;
     }
-
+    
     // Resetting the G-Buffer
     render_data.g_buffer.first_hit_prim_index[pixel_index] = -1;
     render_data.g_buffer.geometric_normals[pixel_index] = Octahedral24BitNormal::pack_static(make_float3(0.0f, 0.0f, 0.0f));
     render_data.g_buffer.shading_normals[pixel_index] = Octahedral24BitNormal::pack_static(make_float3(0.0f, 0.0f, 0.0f));
     render_data.g_buffer.primary_hit_position[pixel_index] = make_float3(0.0f, 0.0f, 0.0f);
     render_data.g_buffer.materials[pixel_index] = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
-
+    
     // Resetting the previous frame G-Buffer if we have it
     if (render_data.render_settings.use_prev_frame_g_buffer())
     {
