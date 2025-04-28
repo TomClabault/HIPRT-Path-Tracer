@@ -12,38 +12,6 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data, hiprtRay ray, int last_primitive_index, Xorshift32Generator& random_number_generator)
-{
-    hiprtHit hit;
-
-#ifdef __KERNELCC__
-    // Payload for the alpha testing filter function
-    FilterFunctionPayload payload;
-    payload.render_data = &render_data;
-    payload.random_number_generator = &random_number_generator;
-    payload.last_hit_primitive_index = last_primitive_index;
-
-#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
-#if SharedStackBVHTraversalSize > 0
-    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
-#else
-    hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
-#endif
-    hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
-
-    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#else
-    hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#endif
-
-    hit = traversal.getNextHit();
-#else
-hit = intersect_scene_cpu(render_data, ray, last_primitive_index, random_number_generator);
-#endif
-
-    return hit;
-}
-
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) NEEPlusPlusCachingPrepass(HIPRTRenderData render_data, unsigned int caching_sample_count)
 #else
