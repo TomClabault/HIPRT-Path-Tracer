@@ -37,6 +37,7 @@ public:
 	void setup_render_passes();
 
 	void request_frame();
+	void request_exit();
 
 	/**
 	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
@@ -148,7 +149,9 @@ private:
 	std::condition_variable m_render_condition_variable;
 	std::mutex m_render_mutex;
 	std::mutex m_frame_rendered_variable_mutex;
+
 	bool m_frame_requested = false;
+	bool m_exit_requested = false;
 };
 
 #endif

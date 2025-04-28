@@ -70,6 +70,11 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	m_status_buffers.pixels_converged_count_buffer.resize(1);
 }
 
+GPURenderer::~GPURenderer()
+{
+	m_render_thread.request_exit();
+}
+
 void GPURenderer::setup_brdfs_data()
 {
 	init_sheen_ltc_texture();
@@ -488,8 +493,8 @@ void GPURenderer::resize(int new_width, int new_height)
 		recreate_global_bvh_stack_buffer();
 
 	m_render_data.render_settings.render_resolution = m_render_resolution;
-	m_render_data_buffers_invalidated = true;
 	m_render_data.render_settings.need_to_reset = true;
+	m_render_data_buffers_invalidated = true;
 }
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
@@ -950,8 +955,6 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 	m_DEBUG_SUMS.memset_whole_buffer(0);
 	m_DEBUG_SUM_COUNT.memset_whole_buffer(0);
 
-	m_render_thread.get_render_graph().reset(reset_by_camera_movement);
-
 	if (m_render_data.render_settings.accumulate)
 	{
 		// Only resetting the seed for deterministic rendering if we're accumulating.
@@ -969,6 +972,8 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 	bool moving_camera_while_not_accumulating = reset_by_camera_movement && !m_render_data.render_settings.accumulate;
 	if (!moving_camera_while_not_accumulating)
 		m_render_data.render_settings.need_to_reset = true;
+
+	m_render_thread.get_render_graph().reset(reset_by_camera_movement);
 }
 
 Xorshift32Generator& GPURenderer::get_rng_generator()
