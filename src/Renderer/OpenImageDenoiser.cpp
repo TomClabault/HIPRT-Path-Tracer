@@ -36,6 +36,7 @@ void OpenImageDenoiser::set_denoise_albedo(bool denoise_albedo_or_not)
 
 void OpenImageDenoiser::resize(int new_width, int new_height)
 {
+    return;
     if (!check_valid_state())
         return;
 
@@ -53,6 +54,7 @@ void OpenImageDenoiser::initialize()
 
 void OpenImageDenoiser::finalize()
 {
+    return;
     if (!check_valid_state())
         return;
 

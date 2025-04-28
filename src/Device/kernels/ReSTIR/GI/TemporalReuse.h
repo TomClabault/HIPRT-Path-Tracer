@@ -85,13 +85,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		return;
 	}
 
+	if (temporal_neighbor_pixel_index < 0 || temporal_neighbor_pixel_index >= render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y)
+		return;
 
 	ReSTIRGIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
 	if (temporal_neighbor_reservoir.M == 0)
 	{
 		// No temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
-
+		
 		return;
 	}
 
