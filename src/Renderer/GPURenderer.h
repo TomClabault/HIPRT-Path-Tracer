@@ -66,6 +66,8 @@ public:
 	 * context for handling GPU acceleration structures, buffers, textures, etc...
 	 */
 	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings);
+	~GPURenderer();
+
 	void setup_brdfs_data();
 
 	/**

@@ -31,7 +31,9 @@ void GPURendererThread::render_thread_function()
 	{
 		// Wait for the signal to start rendering
 		std::unique_lock<std::mutex> lock(m_render_mutex);
-		m_render_condition_variable.wait(lock, [this] { return m_frame_requested; });
+		m_render_condition_variable.wait(lock, [this] { return m_frame_requested || m_exit_requested; });
+		if (m_exit_requested)
+			return;
 
 		// Reset the render requested flag
 		m_frame_requested = false;
@@ -88,6 +90,14 @@ void GPURendererThread::request_frame()
 
 	m_frame_rendered = false;
 	m_frame_requested = true;
+	m_render_condition_variable.notify_one();
+}
+
+void GPURendererThread::request_exit()
+{
+	std::lock_guard<std::mutex> lock(m_render_mutex);
+
+	m_exit_requested = true;
 	m_render_condition_variable.notify_one();
 }
 
