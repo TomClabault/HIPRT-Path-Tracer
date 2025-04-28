@@ -183,8 +183,11 @@ bool ReGIRRenderPass::launch(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
-	launch_grid_fill_temporal_reuse(render_data);
-	launch_spatial_reuse(render_data);
+	if (render_data.render_settings.regir_settings.shading.grid_cells_alive_count > 0)
+	{
+		launch_grid_fill_temporal_reuse(render_data);
+		launch_spatial_reuse(render_data);
+	}
 
 	return true;
 }
