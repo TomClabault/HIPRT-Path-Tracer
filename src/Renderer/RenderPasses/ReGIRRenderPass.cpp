@@ -183,16 +183,14 @@ bool ReGIRRenderPass::launch(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
-	launch_grid_fill_temporal_reuse();
-	launch_spatial_reuse();
+	launch_grid_fill_temporal_reuse(render_data);
+	launch_spatial_reuse(render_data);
 
 	return true;
 }
 
-void ReGIRRenderPass::launch_grid_fill_temporal_reuse()
+void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data)
 {
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
 	void* launch_args[] = { &render_data };
 
 	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
@@ -200,10 +198,8 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse()
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, 1, launch_args, m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::launch_spatial_reuse()
+void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 {
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		return;
 
@@ -214,10 +210,8 @@ void ReGIRRenderPass::launch_spatial_reuse()
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, 1, launch_args, m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::launch_cell_liveness_copy_pass()
+void ReGIRRenderPass::launch_cell_liveness_copy_pass(HIPRTRenderData& render_data)
 {
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
 	if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
 		return;
 
@@ -240,7 +234,7 @@ void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data)
 		m_current_grid_index %= render_data.render_settings.regir_settings.temporal_reuse.temporal_history_length;
 	}
 
-	launch_cell_liveness_copy_pass();
+	launch_cell_liveness_copy_pass(render_data);
 }
 
 void ReGIRRenderPass::update_render_data()

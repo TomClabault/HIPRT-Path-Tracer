@@ -199,7 +199,9 @@
  * 
  *		The implementation is based on 
  *		[ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
- *		but is adapted for full unbiasedness.
+ *		but is adapted almost full unbiasedness (full unbiasedness while resampling full path trees as in ReSTIR GI paper isn't supported
+ *    by the GRIS theory. Fully unbiased path resampling with the current RIS theory can only be achieved by resampling "paths" and not full "path trees" as proposed
+ *    in the ReSTIR GI paper and as implemented here)
  * 
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */

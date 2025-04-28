@@ -181,7 +181,43 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	if (ImGui::SliderInt("Debug X 2", &render_settings.debug_x2, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Debug Y 2", &render_settings.debug_y2, 0, m_renderer->m_render_resolution.y - 1))
+
+	m_render_window->set_render_dirty(true);
+	bool size_changed = false;
+	static bool use_cube_grid = true;
+	ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
+	ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+	if (use_cube_grid)
+	{
+		static int grid_size = regir_settings.grid.grid_resolution.x;
+		if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
+		{
+			regir_settings.grid.grid_resolution.x = grid_size;
+			regir_settings.grid.grid_resolution.y = grid_size;
+			regir_settings.grid.grid_resolution.z = grid_size;
+
+			std::cout << "ReGIR ImGui resized to: " << regir_settings.grid.grid_resolution.x << std::endl;
+
+			size_changed = true;
+		}
+	}
+	else
+	{
+		ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+		size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
+		ImGui::SameLine();
+		size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
+		ImGui::SameLine();
+		size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
+
+		// Back to default size
+		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+	}
+	if (size_changed)
+	{		
 		m_render_window->set_render_dirty(true);
+	}
+
 	ImGui::PopItemWidth();
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
