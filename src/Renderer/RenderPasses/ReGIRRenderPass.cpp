@@ -174,7 +174,7 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 
 bool ReGIRRenderPass::launch(HIPRTRenderData& render_data)
 {
-	if (!is_render_pass_used())
+	if (!m_render_pass_used_this_frame)
 		return false;
 
 	//m_renderer->synchronize_all_kernels();
@@ -225,7 +225,7 @@ void ReGIRRenderPass::launch_cell_liveness_copy_pass(HIPRTRenderData& render_dat
 
 void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data)
 {
-	if (!is_render_pass_used())
+	if (!m_render_pass_used_this_frame)
 		return;
 	
 	if (render_data.render_settings.regir_settings.temporal_reuse.do_temporal_reuse)

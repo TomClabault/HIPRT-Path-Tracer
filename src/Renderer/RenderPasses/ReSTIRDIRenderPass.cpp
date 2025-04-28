@@ -342,7 +342,7 @@ void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 
 bool ReSTIRDIRenderPass::launch(HIPRTRenderData& render_data)
 {
-	if (!is_render_pass_used())
+	if (!m_render_pass_used_this_frame)
 		return false;
 
 	ReSTIRDISettings& restir_di_settings = m_renderer->get_render_data().render_settings.restir_di_settings;

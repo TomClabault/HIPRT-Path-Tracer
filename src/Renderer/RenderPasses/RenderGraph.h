@@ -27,6 +27,7 @@ public:
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
 
 	virtual void prepass() override;
+	virtual void is_render_pass_used_pass();
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch(HIPRTRenderData& render_data) override;
 	virtual void post_sample_update(HIPRTRenderData& render_data) override;

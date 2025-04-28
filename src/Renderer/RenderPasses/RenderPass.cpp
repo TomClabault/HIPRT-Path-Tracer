@@ -80,6 +80,11 @@ bool RenderPass::is_render_pass_used() const
 	return true;
 }
 
+void RenderPass::set_is_render_pass_used(bool is_render_pass_used)
+{
+	m_render_pass_used_this_frame = is_render_pass_used;
+}
+
 void RenderPass::add_dependency(std::shared_ptr<RenderPass> dependency)
 {
 	m_dependencies.push_back(dependency);
