@@ -34,7 +34,7 @@ public:
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch(HIPRTRenderData& render_data) override;
 
-	float compute_gmon_darkening();
+	float compute_gmon_darkening(HIPRTRenderData& render_data);
 	float get_gmon_darkening();
 
 	float get_lumi();

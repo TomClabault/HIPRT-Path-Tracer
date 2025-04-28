@@ -78,6 +78,8 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 		}
 	}
 
+	render_data.buffers.gmon_estimator.next_set_to_accumulate = m_next_set_to_accumulate;
+
 	return false;
 }
 
@@ -96,9 +98,9 @@ bool GMoNRenderPass::launch(HIPRTRenderData& render_data)
 	// We also want to update the viewport at sample 0 just so that we don't get a black viewport
 	// (that update at sample 0 isn't going to be a full GMoN computation, it's just going to be
 	// a copy of the current pixel color (which is only 1 sample accumuluated) to the framebuffer)
-	bool enough_samples_accumulated = (m_renderer->get_render_settings().sample_number + 1) % number_of_sets == 0;
-	bool sample_0 = m_renderer->get_render_settings().sample_number == 0;
-	bool last_sample_of_render = m_renderer->get_render_settings().sample_number == (application_settings->max_sample_count - 1);
+	bool enough_samples_accumulated = (render_data.render_settings.sample_number + 1) % number_of_sets == 0;
+	bool sample_0 = render_data.render_settings.sample_number == 0;
+	bool last_sample_of_render = render_data.render_settings.sample_number == (application_settings->max_sample_count - 1);
 	bool recomputation_necessary = m_gmon.m_gmon_recomputation_requested || last_sample_of_render;
 	if ((enough_samples_accumulated || sample_0) && recomputation_necessary)
 	{
@@ -117,9 +119,9 @@ bool GMoNRenderPass::launch(HIPRTRenderData& render_data)
 
 		m_gmon.m_gmon_recomputed = true;
 		m_gmon.m_gmon_recomputation_requested = false;
-		m_gmon.last_recomputed_sample_count = m_renderer->get_render_settings().sample_number + 1;
+		m_gmon.last_recomputed_sample_count = render_data.render_settings.sample_number + 1;
 
-		m_darkening_factor = compute_gmon_darkening();
+		m_darkening_factor = compute_gmon_darkening(render_data);
 
 		return true;
 	}
@@ -127,10 +129,8 @@ bool GMoNRenderPass::launch(HIPRTRenderData& render_data)
 	return false;
 }
 
-float GMoNRenderPass::compute_gmon_darkening()
+float GMoNRenderPass::compute_gmon_darkening(HIPRTRenderData& render_data)
 {
-	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
 	if (!render_data.render_settings.DEBUG_gmon_auto_blending_weights || !HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
 		return 0.0f;
 
@@ -308,6 +308,8 @@ void GMoNRenderPass::post_sample_update(HIPRTRenderData& render_data)
 			// Going back to 0 if we've reached the end of the sets, round robin style
 			m_next_set_to_accumulate = 0;
 	}
+
+	render_data.buffers.gmon_estimator.next_set_to_accumulate = m_next_set_to_accumulate;
 }
 
 void GMoNRenderPass::request_recomputation()
@@ -392,7 +394,7 @@ void GMoNRenderPass::unmap_result_framebuffer()
 
 bool GMoNRenderPass::buffers_allocated()
 {
-	return m_gmon.sets.get_device_pointer() != nullptr;
+	return m_gmon.sets.size() > 0;
 }
 
 bool GMoNRenderPass::is_render_pass_used() const

@@ -91,7 +91,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Sparse grid somehow? hash table? perfect spatial hasing?
 //		Sparse voxel octrees? https://research.nvidia.com/sites/default/files/pubs/2010-02_Efficient-Sparse-Voxel/laine2010tr1_paper.pdf?utm_source=chatgpt.com
 //		Voxel hasing? https://niessnerlab.org/papers/2013/4hashing/niessner2013hashing.pdf?utm_source=chatgpt.com
-// - We can do neighbor normal similarity during spatial reuse
+//		Perfect spatial hashing looks like a good candidate: maybe do that in a limited space around the camera instead of on the whole scene to gain in precision, and maybe incorporate some distance falloff in the hash function to have larger cells the further away from the camera
+// - We can do neighbor normal similarity during spatial reuse with representation points
 // - NEE++ mix up to help with visibility sampling?
 // - To profile the spatial reuse / grid fill pass and find which assembly instruction corresponds to code, maybe place some texture fetch instruction that we can then find back in the assembly
 // - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
@@ -111,7 +112,7 @@ extern ImGuiLogger g_imgui_logger;
 //		The hope being that the computations can overlap a bit with the ray traversal
 //		We can just test that tehroretically and see if that helps performance at all
 
-// TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
+// TODO restir gi render pass inheriting from megakernel render pass seems to compile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
 // - ReSTIR only load the rest of the reservoir if its UCW isn't 0
 
