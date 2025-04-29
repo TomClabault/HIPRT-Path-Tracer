@@ -53,7 +53,6 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
 
 	m_render_thread.init(this);
-	m_render_thread.start();
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 	m_application_settings = application_settings;
 
@@ -62,7 +61,6 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	m_render_thread.setup_render_passes();
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
-	OROCHI_CHECK_ERROR(oroStreamCreate(&m_async_stream_1));
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
 	m_status_buffers.still_one_ray_active_buffer.resize(1);
@@ -73,6 +71,11 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 GPURenderer::~GPURenderer()
 {
 	m_render_thread.request_exit();
+}
+
+void GPURenderer::start_render_thread()
+{
+	m_render_thread.start();
 }
 
 void GPURenderer::setup_brdfs_data()
@@ -443,7 +446,7 @@ void GPURenderer::synchronize_all_kernels()
 		return;
 
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_async_stream_1));
+	m_render_thread.wait_on_render_completion();
 }
 
 bool GPURenderer::was_last_frame_low_resolution()
@@ -894,11 +897,6 @@ oroStream_t GPURenderer::get_main_stream()
 	return m_main_stream;
 }
 
-oroStream_t GPURenderer::get_async_stream_1()
-{
-	return m_async_stream_1;
-}
-
 void GPURenderer::compute_render_pass_times()
 {
 	// Registering the render times of all the kernels by iterating over all the kernels
@@ -1092,6 +1090,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	});
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS);
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "---------------------- Joining on SCENE_LOADING_COMPUTE_TRIANGLE_AREAS ----------------------");
 	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, [this, &scene]()
 	{
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
