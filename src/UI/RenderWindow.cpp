@@ -49,6 +49,8 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
+// Profiler CPU with new render thread
+
 // TODO ReGIR
 // - The cells that weren't touched in the last frame shouldn't be rebuilt in the grid fill
 //		Should we still keep some cells around the geometry of the scene such that the spatial reuse can do its job or not? More variance without them?

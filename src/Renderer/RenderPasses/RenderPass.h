@@ -154,9 +154,17 @@ public:
 	 * 
 	 * Modifying m_renderer->get_render_data() from this function is a race concurrency with the asynchronous ImGui UI so care must be taken
 	 * with that.
+	 * 
+	 * Same with the compiler_options. 
+	 * You can use the 'compiler_options' parameter passed here to check for
+	 * options and decide what to launch / what not to launch but any changes made to the options
+	 * (not that you would ever need to change the compiler options from inside a RenderPass)
+	 * 
+	 * Reading from m_renderer->get_global_compiler_options() instead of the 'compiler_options' parameter
+	 * is a race condition with the asynchronous ImGui UI.
 	 * !!!!!!!!!
 	 */
-	virtual bool launch(HIPRTRenderData& render_data) = 0;
+	virtual bool launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) = 0;
 
 	/**
 	 * Called once per sample, after launch()
@@ -177,9 +185,17 @@ public:
 	 * 
 	 * Modifying m_renderer->get_render_data() from this function is a race concurrency with the asynchronous ImGui UI so care must be taken
 	 * with that.
+	 * 
+	 * Same with the compiler_options. 
+	 * You can use the 'compiler_options' parameter passed here to check for
+	 * options and decide what to launch / what not to launch but any changes made to the options
+	 * (not that you would ever need to change the compiler options from inside a RenderPass)
+	 * 
+	 * Reading from m_renderer->get_global_compiler_options() instead of the 'compiler_options' parameter
+	 * is a race condition with the asynchronous ImGui UI.
 	 * !!!!!!!!!
 	 */
-	virtual void post_sample_update(HIPRTRenderData& render_data) = 0;
+	virtual void post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) = 0;
 
 	/**
 	 * This function is called when the renderer that holds this render pass needs to 

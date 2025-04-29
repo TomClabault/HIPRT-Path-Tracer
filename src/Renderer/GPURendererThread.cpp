@@ -267,9 +267,9 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 	}
 }
 
-void GPURendererThread::post_sample_update(HIPRTRenderData& render_data)
+void GPURendererThread::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	m_render_graph.post_sample_update(render_data);
+	m_render_graph.post_sample_update(render_data, compiler_options);
 
 	m_render_data->render_settings.sample_number++;
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter++;
@@ -313,6 +313,7 @@ void GPURendererThread::render_debug_kernel()
 {
 	m_frame_rendered = false;
 
+	GPUKernelCompilerOptions compiler_options_copy = m_renderer->m_global_compiler_options->deep_copy();
 	// Copying the render data here to avoid race concurrency issues with
 	// the asynchronous ImGui UI which may also modifiy the render data
 	HIPRTRenderData render_data_copy = m_renderer->get_render_data();
@@ -330,7 +331,7 @@ void GPURendererThread::render_debug_kernel()
 		*reinterpret_cast<bool*>(payload) = true;
 	}, &m_frame_rendered));
 
-	post_sample_update(render_data_copy);
+	post_sample_update(render_data_copy, compiler_options_copy);
 }
 
 GPUKernel& GPURendererThread::get_debug_trace_kernel()
@@ -350,6 +351,7 @@ void GPURendererThread::render_path_tracing()
 {
 	m_frame_rendered = false;
 
+	GPUKernelCompilerOptions compiler_options_copy = m_renderer->m_global_compiler_options->deep_copy();
 	// Copying the render data here to avoid race concurrency issues with
 	// the asynchronous ImGui UI which may also modifiy the render data
 	HIPRTRenderData render_data_copy = m_renderer->get_render_data();
@@ -365,9 +367,9 @@ void GPURendererThread::render_path_tracing()
 			// active, ...)
 			render_data_copy.render_settings.do_update_status_buffers = true;
 
-		m_render_graph.launch(render_data_copy);
+		m_render_graph.launch(render_data_copy, compiler_options_copy);
 
-		post_sample_update(render_data_copy);
+		post_sample_update(render_data_copy, compiler_options_copy);
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time

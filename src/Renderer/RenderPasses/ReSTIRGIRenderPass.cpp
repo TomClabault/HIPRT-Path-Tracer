@@ -346,7 +346,7 @@ void ReSTIRGIRenderPass::launch_shading_pass(HIPRTRenderData& render_data)
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
-bool ReSTIRGIRenderPass::launch(HIPRTRenderData& render_data)
+bool ReSTIRGIRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
@@ -374,13 +374,13 @@ bool ReSTIRGIRenderPass::launch(HIPRTRenderData& render_data)
 	return true;
 }
 
-void ReSTIRGIRenderPass::post_sample_update(HIPRTRenderData& render_data)
+void ReSTIRGIRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag
 	m_temporal_buffer_clear_requested = false;
 
-	MegaKernelRenderPass::post_sample_update(render_data);
+	MegaKernelRenderPass::post_sample_update(render_data, compiler_options);
 }
 
 void ReSTIRGIRenderPass::update_render_data()

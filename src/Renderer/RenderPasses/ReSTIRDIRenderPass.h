@@ -68,8 +68,8 @@ public:
 	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
 	 */
 	virtual bool pre_render_update(float delta_time) override;
-	virtual bool launch(HIPRTRenderData& render_data) override;
-	virtual void post_sample_update(HIPRTRenderData& render_data) override;
+	virtual bool launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+	virtual void post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void update_render_data() override;
 
 	virtual void reset(bool reset_by_camera_movement) override;

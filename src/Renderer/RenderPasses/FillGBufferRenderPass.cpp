@@ -86,7 +86,7 @@ bool FillGBufferRenderPass::pre_render_update(float delta_time)
 	return false;
 }
 
-bool FillGBufferRenderPass::launch(HIPRTRenderData& render_data)
+bool FillGBufferRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 

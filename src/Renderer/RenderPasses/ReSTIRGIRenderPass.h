@@ -48,9 +48,9 @@ public:
 	void launch_spatial_reuse_pass(HIPRTRenderData& render_data);
 	void configure_shading_pass(HIPRTRenderData& render_data);
 	void launch_shading_pass(HIPRTRenderData& render_data);
-	virtual bool launch(HIPRTRenderData& render_data) override;
+	virtual bool launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
-	virtual void post_sample_update(HIPRTRenderData& render_data) override;
+	virtual void post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;

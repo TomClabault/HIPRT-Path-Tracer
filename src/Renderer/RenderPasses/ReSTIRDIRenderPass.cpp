@@ -340,7 +340,7 @@ void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 	odd_frame = false;
 }
 
-bool ReSTIRDIRenderPass::launch(HIPRTRenderData& render_data)
+bool ReSTIRDIRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
@@ -381,7 +381,7 @@ bool ReSTIRDIRenderPass::launch(HIPRTRenderData& render_data)
 	return true;
 }
 
-void ReSTIRDIRenderPass::post_sample_update(HIPRTRenderData& render_data)
+void ReSTIRDIRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag

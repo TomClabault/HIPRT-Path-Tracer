@@ -187,17 +187,19 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	return updated;
 }
 
-bool ReGIRRenderPass::launch(HIPRTRenderData& render_data)
+bool ReGIRRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-#if REGIR_DO_DISPATCH_COMPACTION == 1
-	m_grid_cells_alive_count_staging_buffer.download_data(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
-	render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
-#else
-	render_data.render_settings.regir_settings.shading.grid_cells_alive_count = render_data.render_settings.regir_settings.get_total_number_of_cells();
-#endif
+	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::REGIR_DO_DISPATCH_COMPACTION) == KERNEL_OPTION_TRUE)
+	{
+		m_grid_cells_alive_count_staging_buffer.download_data(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+		render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
+	}
+	else
+		render_data.render_settings.regir_settings.shading.grid_cells_alive_count = render_data.render_settings.regir_settings.get_total_number_of_cells();
+
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
 	if (render_data.render_settings.regir_settings.shading.grid_cells_alive_count > 0)
@@ -243,7 +245,7 @@ void ReGIRRenderPass::launch_cell_liveness_copy_pass(HIPRTRenderData& render_dat
 	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.get_total_number_of_cells(), 1, launch_args, m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data)
+void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return;
