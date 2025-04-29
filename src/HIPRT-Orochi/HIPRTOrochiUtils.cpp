@@ -19,6 +19,7 @@ void orochi_check_error(oroError res, const char* file, uint32_t line)
 		const char* msg;
 		oroGetErrorString(res, &msg);
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Orochi error: '%s' on line %d in '%s'.", msg, line, file);
+		std::cout << std::endl;
 
 		Utils::debugbreak();
 		exit(EXIT_FAILURE);
