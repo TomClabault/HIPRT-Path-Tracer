@@ -106,7 +106,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 2;
+	int nb_bounces = 0;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -143,7 +143,7 @@ struct HIPRTRenderSettings
 	//	 but if rendering at low resolution is not allowed (this boolean), then we will still
 	//	 not render at low resolution
 	// This boolean is controlled by the user in Imgui
-	bool allow_render_low_resolution = true;
+	bool allow_render_low_resolution = false;
 	// If true, this means that the user is moving the camera and we want to
 	// render the image at a much lower resolution to allow for smoother
 	// interaction. Having this flag at true isn't sufficient for rendering at low
