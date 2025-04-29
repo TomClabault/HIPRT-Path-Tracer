@@ -36,6 +36,8 @@ struct RenderBuffers
 	float3* vertex_normals = nullptr;
 	// Texture coordinates at each vertices
 	float2* texcoords = nullptr;
+	// Precomputed triangle areas
+	float* triangles_areas = nullptr;
 
 	// Index of the material used by each triangle of the scene
 	int* material_indices = nullptr;

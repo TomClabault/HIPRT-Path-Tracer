@@ -38,7 +38,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -291,10 +291,11 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.material_opaque = m_material_opaque.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
     m_render_data.buffers.accumulated_ray_colors = m_framebuffer.get_data_as_ColorRGB32F();
-    m_render_data.buffers.triangles_indices = parsed_scene.triangle_indices.data();
+    m_render_data.buffers.triangles_indices = parsed_scene.triangles_indices.data();
     m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
+    m_render_data.buffers.triangles_areas = parsed_scene.triangle_areas.data();
 
     m_render_data.bsdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
     m_render_data.bsdfs_data.GGX_conductor_directional_albedo = &m_GGX_conductor_directional_albedo;
@@ -409,9 +410,9 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
             int emissive_triangle_index = scene.emissive_triangle_indices[i];
 
             // Computing the area of the triangle
-            float3 vertex_A = scene.vertices_positions[scene.triangle_indices[emissive_triangle_index * 3 + 0]];
-            float3 vertex_B = scene.vertices_positions[scene.triangle_indices[emissive_triangle_index * 3 + 1]];
-            float3 vertex_C = scene.vertices_positions[scene.triangle_indices[emissive_triangle_index * 3 + 2]];
+            float3 vertex_A = scene.vertices_positions[scene.triangles_indices[emissive_triangle_index * 3 + 0]];
+            float3 vertex_B = scene.vertices_positions[scene.triangles_indices[emissive_triangle_index * 3 + 1]];
+            float3 vertex_C = scene.vertices_positions[scene.triangles_indices[emissive_triangle_index * 3 + 2]];
 
             float3 AB = vertex_B - vertex_A;
             float3 AC = vertex_C - vertex_A;

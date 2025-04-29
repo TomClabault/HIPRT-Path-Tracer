@@ -384,7 +384,7 @@ private:
 	void compute_emissives_power_alias_table(
 		const std::vector<int>& emissive_triangle_indices,
 		const std::vector<float3>& vertices_positions,
-		const std::vector<int>& triangle_indices,
+		const std::vector<int>& triangles_indices,
 		const std::vector<int>& material_indices,
 		const std::vector<CPUMaterial>& materials,
 

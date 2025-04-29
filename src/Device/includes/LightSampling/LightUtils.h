@@ -337,6 +337,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const H
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
 {
+	return render_data.buffers.triangles_areas[triangle_index];
     float3 normal = get_triangle_normal_not_normalized(render_data, triangle_index);
     return hippt::length(normal) * 0.5f;
 }

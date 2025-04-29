@@ -135,6 +135,7 @@ struct HIPRTScene
 
 	HIPRTGeometry geometry;
 
+	OrochiBuffer<float> triangle_areas;
 	OrochiBuffer<unsigned char> has_vertex_normals;
 	OrochiBuffer<float3> vertex_normals;
 	OrochiBuffer<int> material_indices;

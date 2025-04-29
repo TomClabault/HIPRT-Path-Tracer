@@ -192,7 +192,7 @@ void GPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 	compute_emissives_power_alias_table(
 		scene.emissive_triangle_indices, 
 		scene.vertices_positions, 
-		scene.triangle_indices, 
+		scene.triangles_indices, 
 		scene.material_indices,
 		scene.materials,
 		
@@ -218,13 +218,13 @@ void GPURenderer::recompute_emissives_power_alias_table()
 
 	std::vector<int> emissive_triangle_indices = m_hiprt_scene.emissive_triangles_indices.download_data();
 	std::vector<float3> vertices_positions = m_hiprt_scene.geometry.download_vertices_positions();
-	std::vector<int> triangle_indices = m_hiprt_scene.geometry.download_triangle_indices();
+	std::vector<int> triangles_indices = m_hiprt_scene.geometry.download_triangle_indices();
 	std::vector<int> material_indices = m_hiprt_scene.material_indices.download_data();
 
 	compute_emissives_power_alias_table(
 		emissive_triangle_indices,
 		vertices_positions,
-		triangle_indices,
+		triangles_indices,
 		material_indices,
 		m_current_materials,
 
@@ -238,7 +238,7 @@ void GPURenderer::recompute_emissives_power_alias_table()
 void GPURenderer::compute_emissives_power_alias_table(
 	const std::vector<int>& emissive_triangle_indices,
 	const std::vector<float3>& vertices_positions,
-	const std::vector<int>& triangle_indices,
+	const std::vector<int>& triangles_indices,
 	const std::vector<int>& material_indices,
 	const std::vector<CPUMaterial>& materials,
 
@@ -251,7 +251,7 @@ void GPURenderer::compute_emissives_power_alias_table(
 		this,
 		&emissive_triangle_indices, 
 		&vertices_positions,
-		&triangle_indices, 
+		&triangles_indices, 
 		&material_indices,
 		&materials,
 
@@ -272,9 +272,9 @@ void GPURenderer::compute_emissives_power_alias_table(
 			int emissive_triangle_index = emissive_triangle_indices[i];
 
 			// Computing the area of the triangle
-			float3 vertex_A = vertices_positions[triangle_indices[emissive_triangle_index * 3 + 0]];
-			float3 vertex_B = vertices_positions[triangle_indices[emissive_triangle_index * 3 + 1]];
-			float3 vertex_C = vertices_positions[triangle_indices[emissive_triangle_index * 3 + 2]];
+			float3 vertex_A = vertices_positions[triangles_indices[emissive_triangle_index * 3 + 0]];
+			float3 vertex_B = vertices_positions[triangles_indices[emissive_triangle_index * 3 + 1]];
+			float3 vertex_C = vertices_positions[triangles_indices[emissive_triangle_index * 3 + 2]];
 
 			float3 AB = vertex_B - vertex_A;
 			float3 AC = vertex_C - vertex_A;
@@ -993,13 +993,18 @@ void GPURenderer::update_render_data()
 
 		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
-		m_render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
-		m_render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
-		m_render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
+		m_render_data.buffers.has_vertex_normals = m_hiprt_scene.has_vertex_normals.get_device_pointer();
+		m_render_data.buffers.vertex_normals = m_hiprt_scene.vertex_normals.get_device_pointer();
+		m_render_data.buffers.material_indices = m_hiprt_scene.material_indices.get_device_pointer();
 		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
 		m_render_data.buffers.material_opaque = m_hiprt_scene.material_opaque.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
+		m_render_data.buffers.triangles_areas = m_hiprt_scene.triangle_areas.get_device_pointer();
+		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
+			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
+		if (m_hiprt_scene.texcoords_buffer.size() > 0)
+			m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
 		m_render_data.bsdfs_data.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
 		m_render_data.bsdfs_data.GGX_conductor_directional_albedo = m_GGX_conductor_directional_albedo.get_device_texture();
@@ -1007,11 +1012,6 @@ void GPURenderer::update_render_data()
 		m_render_data.bsdfs_data.GGX_glass_directional_albedo = m_GGX_glass_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.GGX_glass_directional_albedo_inverse = m_GGX_glass_inverse_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo = m_GGX_thin_glass_directional_albedo.get_device_texture();
-
-		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
-			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
-		if (m_hiprt_scene.texcoords_buffer.size() > 0)
-			m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		{
@@ -1045,11 +1045,11 @@ void GPURenderer::update_render_data()
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
-	if (scene.triangle_indices.size() == 0)
+	if (scene.triangles_indices.size() == 0)
 		// Empty scene, nothing todo
 		return;
 
-	m_hiprt_scene.geometry.upload_triangle_indices(scene.triangle_indices);
+	m_hiprt_scene.geometry.upload_triangle_indices(scene.triangles_indices);
 	m_hiprt_scene.geometry.upload_vertices_positions(scene.vertices_positions);
 	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
 	rebuild_renderer_bvh(hiprtBuildFlagBitPreferHighQualityBuild, true);
@@ -1068,7 +1068,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	// material directly for example) so we need to wait for the end of texture parsing
 	// to upload the materials
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_MATERIALS, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]() 
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]()
 	{
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
@@ -1091,8 +1091,18 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 		m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
 	});
 
+	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS);
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, [this, &scene]()
+	{
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
+		m_hiprt_scene.triangle_areas.resize(scene.triangle_areas.size());
+		m_hiprt_scene.triangle_areas.upload_data(scene.triangle_areas.data());
+	});
+
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TEXTURES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TEXTURES, [this, &scene]() {
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TEXTURES, [this, &scene]() 
+	{
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
 		if (scene.textures.size() > 0)
@@ -1127,7 +1137,8 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	});
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, [this, &scene]() {
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, [this, &scene]() 
+	{
 		m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
 		if (m_hiprt_scene.emissive_triangles_count > 0)
 		{
