@@ -38,6 +38,10 @@ public:
 
 	void request_frame();
 	void request_exit();
+	/**
+	 * If a frame is currently being computed, this function blocks until the frame has been rendered
+	 */
+	void wait_on_render_completion();
 
 	/**
 	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
@@ -149,10 +153,14 @@ private:
 	GPUKernel m_debug_trace_kernel;
 
 	std::thread m_render_std_thread;
+
 	std::condition_variable m_render_condition_variable;
 	std::mutex m_render_mutex;
-	std::mutex m_frame_rendered_variable_mutex;
 
+	std::condition_variable m_render_completed_condition_variable;
+	std::mutex m_render_completex_mutex;
+
+	bool m_currently_rendering = false;
 	bool m_frame_requested = false;
 	bool m_exit_requested = false;
 };

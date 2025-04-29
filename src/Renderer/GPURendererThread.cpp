@@ -89,6 +89,7 @@ void GPURendererThread::request_frame()
 {
 	std::lock_guard<std::mutex> lock(m_render_mutex);
 
+	m_currently_rendering = true;
 	m_frame_rendered = false;
 	m_frame_requested = true;
 	m_render_condition_variable.notify_one();
@@ -97,9 +98,16 @@ void GPURendererThread::request_frame()
 void GPURendererThread::request_exit()
 {
 	std::lock_guard<std::mutex> lock(m_render_mutex);
-
+	
 	m_exit_requested = true;
 	m_render_condition_variable.notify_one();
+}
+
+void GPURendererThread::wait_on_render_completion()
+{
+	std::unique_lock<std::mutex> lock(m_render_completex_mutex);
+
+	m_render_completed_condition_variable.wait(lock, [this] { return !m_currently_rendering; });
 }
 
 void GPURendererThread::pre_render_update(float delta_time, RenderWindow* render_window)
@@ -230,7 +238,7 @@ void GPURendererThread::internal_pre_render_update_nee_plus_plus(float delta_tim
 		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
 		// buffers to the visibilit map, we have to use a kernel that the does unpacking-copy
 		void* launch_args[] = { &m_render_data->nee_plus_plus };
-		m_renderer->m_nee_plus_plus.finalize_accumulation_kernel->launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_renderer->m_main_stream);
+		m_renderer->m_nee_plus_plus.finalize_accumulation_kernel->launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_renderer->get_main_stream());
 	}
 
 	m_renderer->m_nee_plus_plus.statistics_refresh_timer -= delta_time;
@@ -325,11 +333,27 @@ void GPURendererThread::render_debug_kernel()
 	launch_debug_kernel(render_data_copy);
 
 	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->m_main_stream, [](void* payload) {
-		std::cout << "Frame rendered!" << std::endl;
+	struct CallbackPayload
+	{
+		bool* frame_rendered;
+		bool* currently_rendering;
+		std::condition_variable* render_completed_condition_variable;
+	};
 
-		*reinterpret_cast<bool*>(payload) = true;
-	}, &m_frame_rendered));
+	CallbackPayload* payload = new CallbackPayload;
+	payload->currently_rendering = &m_currently_rendering;
+	payload->frame_rendered = &m_frame_rendered;
+	payload->render_completed_condition_variable = &m_render_completed_condition_variable;
+
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), [](void* payload) 
+	{
+		CallbackPayload* payload_struct = reinterpret_cast<CallbackPayload*>(payload);
+		*payload_struct->frame_rendered = true;
+		*payload_struct->currently_rendering = false;
+		payload_struct->render_completed_condition_variable->notify_all();
+
+		delete payload_struct;
+	}, payload));
 
 	post_sample_update(render_data_copy, compiler_options_copy);
 }
@@ -344,7 +368,7 @@ void GPURendererThread::launch_debug_kernel(HIPRTRenderData& render_data)
 	void* launch_args[] = { &render_data, &m_renderer->m_render_resolution };
 
 	m_render_data->random_number = m_renderer->m_rng.xorshift32();
-	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->m_main_stream);
+	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
 void GPURendererThread::render_path_tracing()
@@ -373,9 +397,27 @@ void GPURendererThread::render_path_tracing()
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->m_main_stream, [](void* payload) {
-		*reinterpret_cast<bool*>(payload) = true;
-		}, &m_frame_rendered));
+	struct CallbackPayload
+	{
+		bool* frame_rendered;
+		bool* currently_rendering;
+		std::condition_variable* render_completed_condition_variable;
+	};
+
+	CallbackPayload* payload = new CallbackPayload;
+	payload->currently_rendering = &m_currently_rendering;
+	payload->frame_rendered = &m_frame_rendered;
+	payload->render_completed_condition_variable = &m_render_completed_condition_variable;
+
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), [](void* payload) 
+	{
+		CallbackPayload* payload_struct = reinterpret_cast<CallbackPayload*>(payload);
+		*payload_struct->frame_rendered = true;
+		*payload_struct->currently_rendering = false;
+		payload_struct->render_completed_condition_variable->notify_all();
+
+		delete payload_struct;
+	}, payload));
 
 	m_renderer->m_was_last_frame_low_resolution = m_render_data->render_settings.do_render_low_resolution();
 	// We just rendered a new frame so we're setting this flag to true
@@ -412,10 +454,5 @@ std::shared_ptr<ReSTIRGIRenderPass> GPURendererThread::get_ReSTIR_GI_render_pass
 
 bool GPURendererThread::frame_render_done()
 {
-	{
-		// Locking here because 'm_frame_rendered' can be modified by the asynchronous render thread
-		std::lock_guard<std::mutex> lock(m_frame_rendered_variable_mutex);
-	
-		return m_frame_rendered;
-	}
+	return m_frame_rendered;
 }

@@ -68,6 +68,8 @@ public:
 	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings);
 	~GPURenderer();
 
+	void start_render_thread();
+
 	void setup_brdfs_data();
 
 	/**
@@ -524,8 +526,6 @@ private:
 
 	// Custom stream onto which kernels are dispatched
 	oroStream_t m_main_stream = nullptr;
-	// Custom stream onto which kernels can be dispatched asynchronously from the 'main_stream'
-	oroStream_t m_async_stream_1 = nullptr;
 
 	// Buffers and settings for NEE++
 	NEEPlusPlusGPUData m_nee_plus_plus;

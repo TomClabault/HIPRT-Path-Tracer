@@ -135,6 +135,8 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 
 void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene)
 {
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, " -------------------- Parsing emissive triangles -------------------");
+
     // Looping over all the meshes
     int current_triangle_index = 0;
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
@@ -164,6 +166,8 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
 void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)
 {
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, " -------------------- Compute triangle areas is running -------------------");
+
 	int number_of_triangles = parsed_scene.triangles_indices.size() / 3;
 
 	parsed_scene.triangle_areas.resize(number_of_triangles);

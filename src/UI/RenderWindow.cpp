@@ -50,6 +50,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // Profiler CPU with new render thread
+// Do BVH traversal adjustments
 
 // TODO ReGIR
 // - The cells that weren't touched in the last frame shouldn't be rebuilt in the grid fill
@@ -903,6 +904,9 @@ void RenderWindow::run()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	uint64_t timer_frequency = glfwGetTimerFrequency();
+
+	m_renderer->start_render_thread();
+
 	while (!glfwWindowShouldClose(m_glfw_window))
 	{
 		uint64_t frame_start_time = glfwGetTimerValue();
