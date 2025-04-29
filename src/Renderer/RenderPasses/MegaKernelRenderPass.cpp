@@ -45,7 +45,7 @@ bool MegaKernelRenderPass::pre_render_update(float delta_time)
 	return false;
 }
 
-bool MegaKernelRenderPass::launch(HIPRTRenderData& render_data)
+bool MegaKernelRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;

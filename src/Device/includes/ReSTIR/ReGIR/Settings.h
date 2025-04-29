@@ -11,8 +11,6 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-#define REGIR_DO_DISPATCH_COMPACTION 1
-
 struct ReGIRGridBufferSoADevice
 {
 	// TODO pack this to 4 bytes
@@ -321,7 +319,8 @@ struct ReGIRSettings
 
 		// TODO try an if (shading.grid_cells_alive_staging[linear_cell_index] == 0) to avoid the atomic operation and see if perf is better
 		// Someone just wanted to use that grid cell so it's going to be alive in the next frame so we're indicating that in the staging buffer
-#if REGIR_DO_DISPATCH_COMPACTION == 1
+#if ReGIR_DoDispatchCompaction == KERNEL_OPTION_TRUE
+		// Only go through all that atomic stuff if the cell hasn't been staged already
 		if (shading.grid_cells_alive_staging[linear_cell_index] == 0)
 		{
 			if (hippt::atomic_compare_exchange(&shading.grid_cells_alive_staging[linear_cell_index], 0u, 1u) == 0u)
@@ -362,7 +361,8 @@ struct ReGIRSettings
 		}
 
 		// Someone just wanted to use that grid cell so it's going to be alive in the next frame so we're indicating that in the staging buffer
-#if REGIR_DO_DISPATCH_COMPACTION == 1
+#if ReGIR_DoDispatchCompaction == KERNEL_OPTION_TRUE
+		// Only go through all that atomic stuff if the cell hasn't been staged already
 		if (shading.grid_cells_alive_staging[linear_cell_index] == 0)
 		{
 			if (hippt::atomic_compare_exchange(&shading.grid_cells_alive_staging[linear_cell_index], 0u, 1u) == 0u)

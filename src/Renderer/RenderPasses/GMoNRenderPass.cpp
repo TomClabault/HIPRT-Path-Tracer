@@ -83,7 +83,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 	return false;
 }
 
-bool GMoNRenderPass::launch(HIPRTRenderData& render_data)
+bool GMoNRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
@@ -298,7 +298,7 @@ float GMoNRenderPass::get_lumi()
 	return m_DEBUG_LUMINANCE_VARIANCE1;
 }
 
-void GMoNRenderPass::post_sample_update(HIPRTRenderData& render_data)
+void GMoNRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (m_render_pass_used_this_frame)
 	{

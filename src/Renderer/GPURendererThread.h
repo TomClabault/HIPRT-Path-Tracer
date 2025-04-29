@@ -61,7 +61,7 @@ public:
 	 * This function increments some counters (such as the number of samples rendered so far) after a
 	 * sample has been rendered
 	 */
-	void post_sample_update(HIPRTRenderData& render_data);
+	void post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 
 	/**
 	 * Updates stuff after a whole frame has been rendered
