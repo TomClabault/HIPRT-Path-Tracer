@@ -116,7 +116,7 @@ struct ReGIRSpatialReuseSettings
 		output_grid.store_reservoir_and_sample_opt(linear_reservoir_index_in_grid, reservoir);
 	}
 
-	bool do_spatial_reuse = false;
+	bool do_spatial_reuse = true;
 
 	int spatial_neighbor_reuse_count = 16;
 	int spatial_reuse_radius = 1;
