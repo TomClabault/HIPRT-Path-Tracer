@@ -187,7 +187,7 @@ struct ReGIRSettings
 
 	HIPRT_HOST_DEVICE float get_cell_diagonal_length() const
 	{
-		return hippt::length(get_cell_size() * 0.5f);
+		return m_cell_diagonal_length;
 	}
 
 	HIPRT_HOST_DEVICE int3 get_xyz_cell_index_from_linear(int linear_cell_index) const
@@ -438,24 +438,44 @@ struct ReGIRSettings
 
 	HIPRT_HOST_DEVICE unsigned int get_total_number_of_cells() const
 	{
+#ifdef __KERNELCC__
+		return m_total_number_of_cells;
+#else
+		// We need to keep this dynamic on the CPU so not using the precomputed variable
 		return grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z;
+#endif
 	}
 
 	HIPRT_HOST_DEVICE unsigned int get_number_of_reservoirs_per_grid() const
 	{
+#ifdef __KERNELCC__
+		return m_number_of_reservoirs_per_grid;
+#else
+		// We need to keep this dynamic on the CPU so not using the precomputed variable
 		return get_total_number_of_cells() * grid_fill.get_total_reservoir_count_per_cell();
+#endif
 	}
 
 	HIPRT_HOST_DEVICE unsigned int get_number_of_reservoirs_per_cell() const
 	{
+#ifdef __KERNELCC__
+		return m_number_of_reservoirs_per_cell;
+#else
+		// We need to keep this dynamic on the CPU so not using the precomputed variable
 		return grid_fill.get_total_reservoir_count_per_cell();
+#endif
 	}
 
 	HIPRT_HOST_DEVICE unsigned int get_total_number_of_reservoirs_ReGIR() const
 	{
+#ifdef __KERNELCC__
+		return m_total_number_of_reservoirs;
+#else
+		// We need to keep this dynamic on the CPU so not using the precomputed variable
 		int temporal_grid_count = temporal_reuse.do_temporal_reuse ? temporal_reuse.temporal_history_length : 1;
 
 		return get_number_of_reservoirs_per_grid() * temporal_grid_count;
+#endif
 	}
 
 	/**
@@ -493,7 +513,12 @@ struct ReGIRSettings
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;
 
-	float3 m_cell_size;
+	unsigned int m_total_number_of_cells = 0;
+	unsigned int m_total_number_of_reservoirs = 0;
+	unsigned int m_number_of_reservoirs_per_cell = 0;
+	unsigned int m_number_of_reservoirs_per_grid = 0;
+	float3 m_cell_size = make_float3(0.0f, 0.0f, 0.0f);
+	float m_cell_diagonal_length = 0.0f;
 };
 
 #endif
