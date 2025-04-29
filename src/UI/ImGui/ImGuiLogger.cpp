@@ -236,9 +236,10 @@ void ImGuiLogger::add_line_internal(ImGuiLoggerSeverity severity, const char* li
     std::lock_guard<std::mutex> lock(m_mutex);
 
     std::string prefix = ImGuiLogger::get_severity_prefix(severity);
-    std::string formatted_string = prefix + compute_formatted_string(fmt, args) + "\n";
-    std::cout << formatted_string; // Also printing to the console
+    std::string formatted_string_no_endl = prefix + compute_formatted_string(fmt, args);
+    std::cout << formatted_string_no_endl << std::endl; // Also printing to the console with std::endl to flush the output
 
+    std::string formatted_string = formatted_string_no_endl + "\n";
     int line_index = m_log_lines.size();
 
     std::shared_ptr<ImGuiLoggerLine> logger_line = std::make_shared<ImGuiLoggerLine>(formatted_string, severity);
