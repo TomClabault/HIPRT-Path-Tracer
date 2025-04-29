@@ -25,6 +25,7 @@ std::string ThreadManager::RENDERER_BUILD_BVH = "RendererBuildBVH";
 std::string ThreadManager::RENDERER_UPLOAD_MATERIALS = "RendererUploadMaterials";
 std::string ThreadManager::RENDERER_UPLOAD_TEXTURES = "RendererUploadTextures";
 std::string ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES = "RendererUploadEmissiveTriangles";
+std::string ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS = "RendererUploadTriangleAreas";
 std::string ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE = "RendererComputeEmissivesPowerAreaAliasTable";
 
 std::string ThreadManager::RENDERER_PRECOMPILE_KERNELS = "RendererPrecompileKernel";
@@ -32,6 +33,7 @@ std::string ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS = "ReSTIRDIPrecompileKer
 
 std::string ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY = "TextureThreadsKey";
 std::string ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES = "ParseEmissiveTrianglesKey";
+std::string ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS = "ComputeTriangleAreas";
 std::string ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD = "EnvmapLoadThreadsKey";
 
 bool ThreadManager::m_monothread = false;

@@ -162,24 +162,33 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
     }
 }
 
-//void ThreadFunctions::load_scene_parse_full_opaque_materials(const aiScene* scene, Scene& parsed_scene)
-//{
-//    // Looping over all the materials and setting the opaque flags for the materials 
-//    // that don't have a base color texture and that are fully opaque (opacity == 1.0f)
-//    //
-//    // We're only interested in the materials that don't have a base color texture here because
-//    // materials that  do have a base color texture have already their opaque flag set when the base
-//    // color texture was read from disk (function 'load_scene_texture')
-//    for (int i = 0; i < parsed_scene.materials.size(); i++)
-//    {
-//        CPUMaterial& material = parsed_scene.materials[i];
-//
-//        parsed_scene.material_has_opaque_base_color_texture[i] = true;
-//        if (material.base_color_texture_index != MaterialConstants::NO_TEXTURE)
-//            // The material has a texture so checking if it is fully opaque or not
-//            parsed_scene.material_has_opaque_base_color_texture[i] = parsed_scene.textures[material.base_color_texture_index].is_fully_opaque();
-//    }
-//}
+void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)
+{
+	int number_of_triangles = parsed_scene.triangles_indices.size() / 3;
+
+	parsed_scene.triangle_areas.resize(number_of_triangles);
+
+    for (int triangle_index = 0; triangle_index < number_of_triangles; triangle_index++)
+    {
+        float3 vertex_A = parsed_scene.vertices_positions[parsed_scene.triangles_indices[triangle_index * 3 + 0]];
+        float3 vertex_B = parsed_scene.vertices_positions[parsed_scene.triangles_indices[triangle_index * 3 + 1]];
+        float3 vertex_C = parsed_scene.vertices_positions[parsed_scene.triangles_indices[triangle_index * 3 + 2]];
+
+        float3 AB = vertex_B - vertex_A;
+        float3 AC = vertex_C - vertex_A;
+
+        float3 normal = hippt::cross(AB, AC);
+        float length_normal = hippt::length(normal);
+        float area;
+   //     if (length_normal <= 1.0e-6f || hippt::is_nan(length_normal))
+			//// Degenerate triangle, setting area to 0
+   //         area = 0.0f;
+   //     else
+            area = hippt::length(normal) * 0.5f;
+
+        parsed_scene.triangle_areas[triangle_index] = area;
+    }
+}
 
 void ThreadFunctions::read_envmap(Image32Bit& hdr_image_out, const std::string& filepath, int wanted_channel_count, bool flip_Y)
 {

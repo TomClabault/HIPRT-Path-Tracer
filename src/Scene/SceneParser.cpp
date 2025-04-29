@@ -169,9 +169,9 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
             // Accumulating the maximum index of this mesh, this is to know
             max_mesh_index_offset = std::max(max_mesh_index_offset, std::max(index_1, std::max(index_2, index_3)));
 
-            parsed_scene.triangle_indices.push_back(index_1 + global_indices_offset);
-            parsed_scene.triangle_indices.push_back(index_2 + global_indices_offset);
-            parsed_scene.triangle_indices.push_back(index_3 + global_indices_offset);
+            parsed_scene.triangles_indices.push_back(index_1 + global_indices_offset);
+            parsed_scene.triangles_indices.push_back(index_2 + global_indices_offset);
+            parsed_scene.triangles_indices.push_back(index_3 + global_indices_offset);
         }
 
         // We're pushing the same material index for all the faces of this mesh
@@ -227,6 +227,7 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
     // the information of the potential constant-emission textures
     ThreadManager::add_dependency(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     ThreadManager::start_thread(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES, ThreadFunctions::load_scene_parse_emissive_triangles, scene, std::ref(parsed_scene));
+    ThreadManager::start_thread(ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS, ThreadFunctions::load_scene_compute_triangle_areas, std::ref(parsed_scene));
 }
 
 void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override)

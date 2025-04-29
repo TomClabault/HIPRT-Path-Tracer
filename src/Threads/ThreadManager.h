@@ -55,6 +55,7 @@ public:
 	static std::string RENDERER_UPLOAD_MATERIALS;
 	static std::string RENDERER_UPLOAD_TEXTURES;
 	static std::string RENDERER_UPLOAD_EMISSIVE_TRIANGLES;
+	static std::string RENDERER_UPLOAD_TRIANGLE_AREAS;
 	static std::string RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE;
 
 	static std::string RENDERER_PRECOMPILE_KERNELS;
@@ -62,6 +63,7 @@ public:
 
 	static std::string SCENE_TEXTURES_LOADING_THREAD_KEY;
 	static std::string SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES;
+	static std::string SCENE_LOADING_COMPUTE_TRIANGLE_AREAS;
 	static std::string ENVMAP_LOAD_FROM_DISK_THREAD;
 
 	/**
@@ -234,7 +236,7 @@ private:
 		else
 		{
 			// Starting a thread that will wait for the dependencies before calling the given function
-			m_threads_map[thread_key_to_start].push_back(std::thread([dependencies, function, args...]() {
+			m_threads_map[thread_key_to_start].push_back(std::thread([thread_key_to_start, dependencies, function, args...]() {
 				wait_for_dependencies(dependencies);
 
 				std::thread function_thread(function, args...);
