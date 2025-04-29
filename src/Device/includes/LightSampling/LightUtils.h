@@ -65,13 +65,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sample_point_on_triangle(int triangle_index,
 
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;
-    float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
-
     float3 normal = hippt::cross(AB, AC);
+
     float length_normal = hippt::length(normal);
     if (length_normal <= 1.0e-6f)
         return false;
 
+    float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
     out_sample_point = random_point_on_triangle;
     out_sampled_triangle_normal = normal / length_normal;
     out_triangle_area = 0.5f * length_normal;
@@ -325,9 +325,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triang
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)
 {
-    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
-    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
-    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
+    int triangle_index_start = triangle_index * 3;
+
+    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 0]];
+    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 1]];
+    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 2]];
 
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;
@@ -338,8 +340,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const H
 HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
 {
 	return render_data.buffers.triangles_areas[triangle_index];
-    float3 normal = get_triangle_normal_not_normalized(render_data, triangle_index);
-    return hippt::length(normal) * 0.5f;
 }
 
 /**
