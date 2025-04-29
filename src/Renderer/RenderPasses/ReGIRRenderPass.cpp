@@ -192,10 +192,12 @@ bool ReGIRRenderPass::launch(HIPRTRenderData& render_data)
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	//m_renderer->synchronize_all_kernels();
-
+#if REGIR_DO_DISPATCH_COMPACTION == 1
 	m_grid_cells_alive_count_staging_buffer.download_data(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 	render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
+#else
+	render_data.render_settings.regir_settings.shading.grid_cells_alive_count = render_data.render_settings.regir_settings.get_total_number_of_cells();
+#endif
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
 	if (render_data.render_settings.regir_settings.shading.grid_cells_alive_count > 0)

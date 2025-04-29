@@ -11,6 +11,8 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
+#define REGIR_DO_DISPATCH_COMPACTION 1
+
 struct ReGIRGridBufferSoADevice
 {
 	// TODO pack this to 4 bytes
@@ -319,12 +321,19 @@ struct ReGIRSettings
 
 		// TODO try an if (shading.grid_cells_alive_staging[linear_cell_index] == 0) to avoid the atomic operation and see if perf is better
 		// Someone just wanted to use that grid cell so it's going to be alive in the next frame so we're indicating that in the staging buffer
-		if (hippt::atomic_compare_exchange(&shading.grid_cells_alive_staging[linear_cell_index], 0u, 1u) == 0u)
+#if REGIR_DO_DISPATCH_COMPACTION == 1
+		if (shading.grid_cells_alive_staging[linear_cell_index] == 0)
 		{
-			unsigned int cell_alive_index = hippt::atomic_fetch_add(shading.grid_cells_alive_count_staging, 1u);
+			if (hippt::atomic_compare_exchange(&shading.grid_cells_alive_staging[linear_cell_index], 0u, 1u) == 0u)
+			{
+				unsigned int cell_alive_index = hippt::atomic_fetch_add(shading.grid_cells_alive_count_staging, 1u);
 
-			shading.grid_cells_alive_list[cell_alive_index] = linear_cell_index;
+				shading.grid_cells_alive_list[cell_alive_index] = linear_cell_index;
+			}
 		}
+#else
+		shading.grid_cells_alive_staging[linear_cell_index] = 1;
+#endif
 
 		 if (shading.grid_cells_alive[linear_cell_index] == 0)
 		 {
@@ -353,12 +362,19 @@ struct ReGIRSettings
 		}
 
 		// Someone just wanted to use that grid cell so it's going to be alive in the next frame so we're indicating that in the staging buffer
-		if (hippt::atomic_compare_exchange(&shading.grid_cells_alive_staging[linear_cell_index], 0u, 1u) == 0u)
+#if REGIR_DO_DISPATCH_COMPACTION == 1
+		if (shading.grid_cells_alive_staging[linear_cell_index] == 0)
 		{
-			unsigned int cell_alive_index = hippt::atomic_fetch_add(shading.grid_cells_alive_count_staging, 1u);
+			if (hippt::atomic_compare_exchange(&shading.grid_cells_alive_staging[linear_cell_index], 0u, 1u) == 0u)
+			{
+				unsigned int cell_alive_index = hippt::atomic_fetch_add(shading.grid_cells_alive_count_staging, 1u);
 
-			shading.grid_cells_alive_list[cell_alive_index] = linear_cell_index;
+				shading.grid_cells_alive_list[cell_alive_index] = linear_cell_index;
+			}
 		}
+#else
+		shading.grid_cells_alive_staging[linear_cell_index] = 1;
+#endif
 
 		if (shading.grid_cells_alive[linear_cell_index] == 0)
 		{
