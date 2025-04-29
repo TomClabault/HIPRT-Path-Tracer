@@ -190,7 +190,7 @@ struct ReGIRSettings
 
 	HIPRT_HOST_DEVICE float get_cell_diagonal_length() const
 	{
-		return hippt::length(get_cell_size() / 2.0f);
+		return hippt::length(get_cell_size() * 0.5f);
 	}
 
 	HIPRT_HOST_DEVICE int3 get_xyz_cell_index_from_linear(int linear_cell_index) const
@@ -221,13 +221,13 @@ struct ReGIRSettings
 	{
 		float3 cell_size = get_cell_size();
 
-		return get_cell_origin_from_linear_cell_index(linear_cell_index) + cell_size / 2.0f;
+		return get_cell_origin_from_linear_cell_index(linear_cell_index) + cell_size * 0.5f;
 	}
 
 	HIPRT_HOST_DEVICE int get_linear_cell_index_from_world_pos(float3 world_position, Xorshift32Generator* rng = nullptr, bool jitter = false) const
 	{
 		if (jitter)
-			world_position += (make_float3(rng->operator()(), rng->operator()(), rng->operator()()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f)) * get_cell_size() / 2.0f;
+			world_position += (make_float3(rng->operator()(), rng->operator()(), rng->operator()()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f)) * get_cell_size() * 0.5f;
 
 		float3 position_in_grid = world_position - grid.grid_origin;
 		float3 position_in_grid_cell_unit = position_in_grid / get_cell_size();

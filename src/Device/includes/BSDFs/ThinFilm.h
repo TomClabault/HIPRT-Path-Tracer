@@ -37,8 +37,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fresnel_phase(float cos_theta_i,
     float sinThetaSqr = 1.0f - hippt::square(cos_theta_i);
     float A = hippt::square(eta2) * (1.0f - hippt::square(kappa2)) - hippt::square(eta1) * sinThetaSqr;
     float B = sqrt(hippt::square(A) + hippt::square(2 * hippt::square(eta2) * kappa2));
-    float U = sqrt((A + B) / 2.0f);
-    float V = sqrt((B - A) / 2.0f);
+    float U = sqrt((A + B) * 0.5);
+    float V = sqrt((B - A) * 0.5f);
 
     float phi_perp_y = 2.0f * eta1 * V * cos_theta_i;
     float phi_perp_x = hippt::square(U) + hippt::square(V) - hippt::square(eta1 * cos_theta_i);
