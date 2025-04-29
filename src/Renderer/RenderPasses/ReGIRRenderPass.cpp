@@ -131,6 +131,16 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 
 			updated = true;
 		}
+
+		// Some precomputations that can be done here instead of being done on the GPU for each pixel
+		{
+			ReGIRGridSettings& grid = render_data.render_settings.regir_settings.grid;
+
+			float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
+			float3 cell_size = grid.extents / grid_resolution_float;
+
+			render_data.render_settings.regir_settings.m_cell_size = cell_size;
+		}
 	}
 	else
 	{
