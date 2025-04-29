@@ -182,10 +182,7 @@ struct ReGIRSettings
 {
 	HIPRT_HOST_DEVICE float3 get_cell_size() const
 	{
-		float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
-		float3 cell_size = grid.extents / grid_resolution_float;
-
-		return cell_size;
+		return m_cell_size;
 	}
 
 	HIPRT_HOST_DEVICE float get_cell_diagonal_length() const
@@ -495,6 +492,8 @@ struct ReGIRSettings
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;
+
+	float3 m_cell_size;
 };
 
 #endif

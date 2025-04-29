@@ -24,7 +24,7 @@ HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, c
     for (int light_sample_index = 0; light_sample_index < regir_settings.grid_fill.sample_count_per_cell_reservoir; light_sample_index++)
     {
         LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
-        if (light_sample.area_measure_pdf <= 0.0f)
+        if (light_sample.emissive_triangle_index == -1)
             continue;
 
         float target_function;
