@@ -3976,8 +3976,14 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	if (ImGui::Checkbox("Freeze random", (bool*)&render_settings.freeze_random))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame))
+	{
 		// Clamping to 1
 		render_settings.samples_per_frame = std::max(1, render_settings.samples_per_frame);
+
+		// If the user manually changed to number of samples per frame, let's disable auto sample per frame
+		// because the user probably doesn't want it
+		m_application_settings->auto_sample_per_frame = false;
+	}
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
 
