@@ -73,14 +73,13 @@
         
         int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
         
-        // Everyone is going to use the same RNG (the RNG doesn't depend on the pixel index) 
-        // such that memory accesses on the spatial neighbors are coalesced
-        // This is ~2x performance on a 7900XTX
         unsigned int spatial_neighbor_rng_seed;
-        if (regir_settings.DEBUG_COALESCED_SPATIAL_REUSE)
+        if (regir_settings.spatial_reuse.do_coalesced_spatial_reuse)
+            // Everyone is going to use the same RNG (the RNG doesn't depend on the pixel index) 
+            // such that memory accesses on the spatial neighbors are coalesced to improve performance
             spatial_neighbor_rng_seed = (render_data.render_settings.sample_number + 1) * render_data.random_number;
         else
-            spatial_neighbor_rng_seed = wang_hash(seed);//(render_data.render_settings.sample_number + 1) * render_data.random_number);
+            spatial_neighbor_rng_seed = wang_hash(seed);
         Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
         float3 random_neighbor = make_float3(spatial_neighbor_rng(), spatial_neighbor_rng(), spatial_neighbor_rng());
 
@@ -186,9 +185,12 @@
 
                 int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
 
-                if (!regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+                if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+                    // A canonical reservoir can always be produced by anyone
+                    valid_neighbor_count += 1.0f;
+                else
                 {
-                    // Non-canonical sample, we need to test this one
+                    // Non-canonical sample, we need to count how many neighbors could have produced it
                     if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
                     {
                         if (neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count && regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
@@ -201,9 +203,6 @@
                             valid_neighbor_count += 1.0f;
                     }
                 }
-                else
-                    // A canonical reservoir can always be produced by anyone
-                    valid_neighbor_count += 1.0f;
             }
         }
 

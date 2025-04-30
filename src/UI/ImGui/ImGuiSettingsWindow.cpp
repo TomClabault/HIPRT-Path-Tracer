@@ -175,8 +175,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Debug regir fixed spatial reuse", &render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE))
 		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Debug regir coalesced spatial reuse", &render_settings.regir_settings.DEBUG_COALESCED_SPATIAL_REUSE))
-		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);
@@ -1911,6 +1909,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			if (ImGui::Checkbox("Do spatial reuse", &regir_settings.spatial_reuse.do_spatial_reuse))
 				m_render_window->set_render_dirty(true);
+			if (ImGui::Checkbox("Do coalesced spatial reuse", &regir_settings.spatial_reuse.do_coalesced_spatial_reuse))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame\n."
+				"This has the effect of coalescing neighbors memory accesses which improves performance");
 
 			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_reuse_count, 0, 32))
 				m_render_window	->set_render_dirty(true);
