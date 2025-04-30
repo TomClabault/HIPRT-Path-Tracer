@@ -50,6 +50,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 // - Because we now have fixed neighbor spatial reuse, we should check which neighbor to reuse to make sure we're not reusing from an empty cell or something --> similar to retries in ReSTIR
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
 // - Use some shjortcut in the BSDF in the target function during shading: rough material only use a constant BSDF, nothing more

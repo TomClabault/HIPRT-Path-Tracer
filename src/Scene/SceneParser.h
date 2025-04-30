@@ -120,6 +120,10 @@ struct Scene
     std::vector<float3> vertex_normals;
     std::vector<float2> texcoords;
     std::vector<float> triangle_areas;
+    // Vertex A, edges AB and AC of the emissive triangles of the scene
+    /*std::vector<float3> triangle_A;
+    std::vector<float3> triangle_AB;
+    std::vector<float3> triangle_AC;*/
 
     std::vector<int> emissive_triangle_indices;
     std::vector<int> material_indices;

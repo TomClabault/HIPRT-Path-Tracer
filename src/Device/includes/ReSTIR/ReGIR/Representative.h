@@ -113,7 +113,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int ReGIR_get_cell_representative_primitive(const
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int primitive_index)
 {
-	if (render_data.render_settings.regir_settings.representative.distance_to_center == nullptr || !render_data.render_settings.regir_settings.use_representative_points)
+	if (DirectLightSamplingBaseStrategy != LSS_BASE_REGIR || render_data.render_settings.regir_settings.representative.distance_to_center == nullptr || !render_data.render_settings.regir_settings.use_representative_points)
 		return;
 
 	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
