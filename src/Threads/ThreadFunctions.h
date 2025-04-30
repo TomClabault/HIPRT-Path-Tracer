@@ -18,7 +18,10 @@ public:
 	static void load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads);
 
 	/**
-	 * Frees the memory allocated by the aiScene needed when parsing the scene
+	 * Scans through the emissive meshes of the scene and adds the triangle of those emissive meshes
+	 * to the parsed_scene.emissive_triangles_indices field of the scene
+	 * 
+	 * This function all precomputes the AB and AC edges of the triangles of the scenes for light sampling
 	 */
 	static void load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene);
 	/**

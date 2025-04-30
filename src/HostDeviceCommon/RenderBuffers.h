@@ -10,6 +10,7 @@
 #include "Device/includes/GMoN/GMoNDevice.h"
 
 #include "HostDeviceCommon/Material/MaterialPackedSoA.h"
+#include "HostDeviceCommon/PrecomputedEmissiveTrianglesDataSoADevice.h"
 
 struct RenderBuffers
 {
@@ -36,8 +37,21 @@ struct RenderBuffers
 	float3* vertex_normals = nullptr;
 	// Texture coordinates at each vertices
 	float2* texcoords = nullptr;
-	// Precomputed triangle areas
+	// Precomputed areas of all triangles of the scene
 	float* triangles_areas = nullptr;
+	// For each emissive triangle of the scene, this buffer contains the vertex A of the triangle
+	// as well as AB and AC edges. This is usseful for sampling a point on a triangle without having
+	// to go through the usual
+	//
+	// float3 vertex_A = vertices_positions[triangles_indices[triangle_index * 3 + 0]];
+	// float3 vertex_B = vertices_positions[triangles_indices[triangle_index * 3 + 1]];
+	// float3 vertex_C = vertices_positions[triangles_indices[triangle_index * 3 + 2]];
+	//
+	// indirect fetch code which is expensive on the GPU because of the pointer chasing
+	// 
+	// This is a remnant of some tests and it was actually more expensive than the indirect fetch code
+	// above.
+	// PrecomputedEmissiveTrianglesDataSoADevice precomputed_emissive_triangles_data;
 
 	// Index of the material used by each triangle of the scene
 	int* material_indices = nullptr;

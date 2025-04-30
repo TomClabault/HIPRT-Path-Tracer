@@ -142,10 +142,34 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
             for (int face_index = 0; face_index < mesh->mNumFaces; face_index++, current_triangle_index++)
                 // Pushing the index of the current triangle if we're looping on an emissive mesh
                 parsed_scene.emissive_triangle_indices.push_back(current_triangle_index);
+
         }
         else
             current_triangle_index += mesh->mNumFaces;
     }
+
+//    parsed_scene.triangle_A.resize(parsed_scene.emissive_triangle_indices.size());
+//    parsed_scene.triangle_AB.resize(parsed_scene.emissive_triangle_indices.size());
+//    parsed_scene.triangle_AC.resize(parsed_scene.emissive_triangle_indices.size());
+//
+//    // Also pre-computing the edges AB and AC of that triangle for light sampling (for generating a point on the triangle)
+//#pragma omp parallel for
+//    for (int i = 0; i < parsed_scene.emissive_triangle_indices.size(); i++)
+//    {
+//		// Getting the index of the triangle we're currently processing
+//		int current_triangle_index = parsed_scene.emissive_triangle_indices[i];
+//
+//        float3 vertex_A = parsed_scene.vertices_positions[parsed_scene.triangles_indices[current_triangle_index * 3 + 0]];
+//        float3 vertex_B = parsed_scene.vertices_positions[parsed_scene.triangles_indices[current_triangle_index * 3 + 1]];
+//        float3 vertex_C = parsed_scene.vertices_positions[parsed_scene.triangles_indices[current_triangle_index * 3 + 2]];
+//
+//		float3 AB = vertex_B - vertex_A;
+//		float3 AC = vertex_C - vertex_A;
+//
+//        parsed_scene.triangle_A[i] = vertex_A;
+//        parsed_scene.triangle_AB[i] = AB;
+//        parsed_scene.triangle_AC[i] = AC;
+//    }
 }
 
 void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)
@@ -156,6 +180,7 @@ void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)
 
 	parsed_scene.triangle_areas.resize(number_of_triangles);
 
+#pragma omp parallel for
     for (int triangle_index = 0; triangle_index < number_of_triangles; triangle_index++)
     {
         float3 vertex_A = parsed_scene.vertices_positions[parsed_scene.triangles_indices[triangle_index * 3 + 0]];
@@ -167,12 +192,7 @@ void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)
 
         float3 normal = hippt::cross(AB, AC);
         float length_normal = hippt::length(normal);
-        float area;
-   //     if (length_normal <= 1.0e-6f || hippt::is_nan(length_normal))
-			//// Degenerate triangle, setting area to 0
-   //         area = 0.0f;
-   //     else
-            area = hippt::length(normal) * 0.5f;
+        float area = hippt::length(normal) * 0.5f;
 
         parsed_scene.triangle_areas[triangle_index] = area;
     }

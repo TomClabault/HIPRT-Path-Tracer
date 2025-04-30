@@ -27,6 +27,12 @@ template<
     typename... Ts>
 struct GenericSoA
 {
+    template <typename T>
+    using BufferValueType = typename std::decay_t<T>::value_type;
+
+    template <int bufferIndex>
+    using BufferTypeFromIndex = typename std::tuple_element<bufferIndex, std::tuple<Container<Ts>...>>::type::value_type;
+
     std::tuple<Container<Ts>...> buffers;
 
     void resize(std::size_t new_element_count)
@@ -42,7 +48,7 @@ struct GenericSoA
         // For each container, add sizeof(value_type) * size()
         std::apply([&](auto const&... buffer) 
         {
-            ((total += buffer.size() * sizeof(typename std::decay_t<decltype(buffer)>::value_type)), ...);
+            ((total += buffer.size() * sizeof(BufferValueType<decltype(buffer)>)), ...);
         }, buffers);
 
         return total;
@@ -53,10 +59,27 @@ struct GenericSoA
         return std::get<0>(buffers).size();
 	}
 
-    template<int enumIndex>
+    template<int bufferIndex>
     auto& get_buffer()
     {
-        return std::get<enumIndex>(buffers);
+        return std::get<bufferIndex>(buffers);
+    }
+
+    template <int bufferIndex>
+    void upload_to_buffer(const std::vector<BufferTypeFromIndex<bufferIndex>>& data)
+    {
+        if constexpr (std::is_same_v<Container<BufferTypeFromIndex<bufferIndex>>, std::vector<BufferTypeFromIndex<bufferIndex>>>)
+        {
+            // If our main container type for this SoA is std::vector (i.e. this is for the CPU), then we're uploading
+            // to the buffer simply by copying
+            get_buffer<bufferIndex>() = data;
+        }
+        else if constexpr (std::is_same_v<Container<BufferTypeFromIndex<bufferIndex>>, OrochiBuffer<BufferTypeFromIndex<bufferIndex>>>)
+        {
+            // If our main container type for this SoA is OrochiBuffer (i.e. this is for the GPU), then we're uploading
+            // to the buffer by uploading to the GPU
+            get_buffer<bufferIndex>().upload_data(data);
+        }
     }
 
     void free()
