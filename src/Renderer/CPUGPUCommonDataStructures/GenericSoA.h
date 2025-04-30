@@ -35,7 +35,7 @@ struct GenericSoA
         std::apply([new_element_count](auto&... buffer) { (buffer.resize(new_element_count), ...); }, buffers);
     }
 
-    unsigned int get_byte_size() const
+    std::size_t get_byte_size() const
     {
         std::size_t total = 0;
 
