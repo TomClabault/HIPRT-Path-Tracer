@@ -119,6 +119,9 @@ struct ReGIRSpatialReuseSettings
 	}
 
 	bool do_spatial_reuse = true;
+ 	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
+ 	// This has the effect of coalescing neighbors memory accesses which improves performance
+	bool do_coalesced_spatial_reuse = true;
 
 	int spatial_neighbor_reuse_count = 12;
 	int spatial_reuse_radius = 1;
@@ -513,7 +516,6 @@ struct ReGIRSettings
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
 	bool DEBUG_DO_FIXED_SPATIAL_REUSE = true;
-	bool DEBUG_COALESCED_SPATIAL_REUSE = true;
 
 	ReGIRGridSettings grid;
 	ReGIRGridFillSettings grid_fill;
