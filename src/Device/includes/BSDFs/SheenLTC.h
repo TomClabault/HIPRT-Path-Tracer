@@ -21,7 +21,7 @@
  * [3] [Blender's Cycles Implementation] https://github.com/blender/cycles/blob/main/src/kernel/closure/bsdf_sheen.h
  */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float eval_ltc(const float3& to_light_direction_standard, const ColorRGB32F& AiBiRi)
+HIPRT_DEVICE HIPRT_INLINE float eval_ltc(const float3& to_light_direction_standard, const ColorRGB32F& AiBiRi)
 {
 	// AiBiRi are the parameters of the LTC such that
 	//        { Ai 0  Bi }
@@ -46,7 +46,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float eval_ltc(const float3& to_light_direction_s
 	return light_dir_original.z * M_INV_PI * jacobian;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F read_LTC_parameters(const HIPRTRenderData& render_data, float roughness, float cos_theta)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F read_LTC_parameters(const HIPRTRenderData& render_data, float roughness, float cos_theta)
 {
 	const void* ltc_parameters_texture_pointer;
 #ifdef __KERNELCC__
@@ -62,7 +62,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F read_LTC_parameters(const HIPRTRender
 /**
  * Returns the phi angle of a direction given in a canonical frame with Z up
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_phi(const float3& direction) 
+HIPRT_DEVICE HIPRT_INLINE float get_phi(const float3& direction) 
 {
 	float p = atan2(direction.y, direction.x);
 	if (p < 0.0f)
@@ -74,7 +74,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_phi(const float3& direction)
 /**
  * Rotates 'u' by 'angle' radians around 'axis'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 rotate_vector(const float3& vec, const float3& axis, float angle) 
+HIPRT_DEVICE HIPRT_INLINE float3 rotate_vector(const float3& vec, const float3& axis, float angle) 
 {
 	float sin_angle = sin(angle);
 	float cos_angle = cos(angle);
@@ -82,12 +82,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 rotate_vector(const float3& vec, const flo
 	return vec * cos_angle + axis * hippt::dot(vec, axis) * (1.0f - cos_angle) + sin_angle * hippt::cross(axis, vec);
 }
 
-HIPRT_HOST_DEVICE float get_sheen_ltc_reflectance(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction)
+HIPRT_DEVICE float get_sheen_ltc_reflectance(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction)
 {
 	return read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z).b;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction, float& out_pdf, float& out_sheen_reflectance)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction, float& out_pdf, float& out_sheen_reflectance)
 {
 	if (local_view_direction.z <= 0.0f || local_to_light_direction.z <= 0.0f)
 	{
@@ -121,7 +121,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData&
 	return material.sheen_color * AiBiRi.b * Do / local_to_light_direction.z;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 sheen_ltc_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& shading_normal, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE float3 sheen_ltc_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& shading_normal, Xorshift32Generator& random_number_generator)
 {
 	// Sampling a direction in the original space of the LTC
 	float3 cosine_sample = cosine_weighted_sample_z_up_frame(random_number_generator);

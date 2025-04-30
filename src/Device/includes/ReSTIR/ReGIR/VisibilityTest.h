@@ -17,7 +17,7 @@
  *
  * Returns true if unoccluded
  */
-HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, float3 representative_point, int representative_primitive_index, float3 point_on_light, Xorshift32Generator& rng)
+HIPRT_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, float3 representative_point, int representative_primitive_index, float3 point_on_light, Xorshift32Generator& rng)
 {
     float3 to_light_direction = point_on_light - representative_point;
     float distance_to_light = hippt::length(to_light_direction);
@@ -30,7 +30,7 @@ HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& re
     return !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, representative_primitive_index, 0, rng);
 }
 
-HIPRT_HOST_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, int linear_cell_index, float3 point_on_light, Xorshift32Generator& rng)
+HIPRT_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, int linear_cell_index, float3 point_on_light, Xorshift32Generator& rng)
 {
     int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, linear_cell_index);
     float3 representative_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index);
