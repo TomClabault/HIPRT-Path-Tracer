@@ -46,7 +46,7 @@ struct ReGIRGridBufferSoAHost
 		reservoirs.free();
 	}
 
-	unsigned int get_byte_size() const
+	std::size_t get_byte_size() const
 	{
 		return samples.get_byte_size() + reservoirs.get_byte_size();
 	}
