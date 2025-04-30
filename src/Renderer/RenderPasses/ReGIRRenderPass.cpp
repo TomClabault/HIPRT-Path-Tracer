@@ -37,7 +37,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	// Disabling the shared memory stack traversal here because ReGIR kernels are not dispatched with a number of threads equal to the render resolution
 	// which means that the global stack traversal BVH buffer may be too small to manage the traversal of all the rays that will be launched
 	// in parallel by the ReGIR kernels
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_FALSE);
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID));
@@ -46,7 +46,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	// Disabling the shared memory stack traversal here because ReGIR kernels are not dispatched with a number of threads equal to the render resolution
 	// which means that the global stack traversal BVH buffer may be too small to manage the traversal of all the rays that will be launched
 	// in parallel by the ReGIR kernels
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_FALSE);
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID));
@@ -217,7 +217,20 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 
 	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
 
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, 1, launch_args, m_renderer->get_main_stream());
+	// Only launching a maximum of render_resolution.x * render_resolution.y thread at a time.
+	// Why? Because with visibility reuse, we're shooting rays from the kernel.
+	// Shooting rays uses the global stack buffer (and shared mem) for the BVH traversal and the global
+	// stack buffer is limited in size (it is sized by the number of pixels on the screen since
+	// it's usually used for tracing one ray per pixel). So we need to limit the number of rays
+	// that are launched per each kernel here
+	//
+	// So we're launching the kernel with a maximum of render_resolution.x * render_resolution.y threads so that
+	// we don't overrun the global BVH traversal stack buffer
+	//
+	// To make sure one kernel launch still covers all the reservoirs that we have to cover, the kernel code
+	// uses a while loop such that a single thread potentially computes more than 1 reservoir
+	unsigned int nb_threads = hippt::min(render_data.render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
@@ -229,7 +242,9 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 
 	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
 
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, 1, launch_args, m_renderer->get_main_stream());
+	// Same reason for nb_threads here as explained in the GridFill kernel launch
+	unsigned int nb_threads = hippt::min(render_data.render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReGIRRenderPass::launch_cell_liveness_copy_pass(HIPRTRenderData& render_data)
