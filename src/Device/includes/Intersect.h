@@ -73,7 +73,7 @@ __shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * KernelWor
  * 
  * [1] [Foundations of Game Engine Development: Rendering - Tangent/Bitangent calculation] http://foundationsofgameenginedev.com/#fged2
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& render_data, int normal_map_texture_index, TriangleIndices triangle_vertex_indices, TriangleTexcoords& texcoords, const float2& interpolated_texcoords, const float3& surface_normal)
+HIPRT_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& render_data, int normal_map_texture_index, TriangleIndices triangle_vertex_indices, TriangleTexcoords& texcoords, const float2& interpolated_texcoords, const float3& surface_normal)
 {
     // Calculating tangents and bitangents aligned with texture U and V coordinates
     float2 P0_texcoords = texcoords.x;
@@ -110,7 +110,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
     return local_to_world_frame(hippt::normalize(T), hippt::normalize(B), surface_normal, normal_tangent_space);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, TriangleIndices triangle_vertex_indices, TriangleTexcoords triangle_texcoords, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
+HIPRT_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, TriangleIndices triangle_vertex_indices, TriangleTexcoords triangle_texcoords, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
 {
     if (!render_data.render_settings.do_normal_mapping)
         return geometric_normal;
@@ -138,7 +138,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
  * The normals are only flipped if some conditions are met, read the 
  * comment in the function for more details
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray_payload, HitInfo& hit_info, const float3& view_direction)
+HIPRT_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray_payload, HitInfo& hit_info, const float3& view_direction)
 {
     if (hippt::dot(view_direction, hit_info.geometric_normal) < 0.0f)
     {
@@ -176,7 +176,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray
 
 #ifndef __KERNELCC__
 #include "Renderer/BVH.h"
-HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
     FilterFunctionPayload filter_function_payload;
     filter_function_payload.render_data = &render_data;
@@ -195,7 +195,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 /**
  * Returns true if a hit was found, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)
@@ -271,7 +271,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_main_path_ray(const HIPRTRenderData& r
  * Returns true if in shadow (a hit was found before 't_max' distance)
  * Returns false if unoccluded
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)
@@ -332,7 +332,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
  * function can update the visibility map of NEE++ if enabled in 'render_data.nee_plus_plus'
  */
 #include "Device/includes/Hash.h"
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator, int bounce)
+HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator, int bounce)
 {
 #if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     bool shadow_ray_discarded = false;
@@ -422,7 +422,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
  * 
  * Also, if a hit was found, outputs the emission of the material at the hit point in 'out_hit_emission'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)
@@ -526,7 +526,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 #endif // __KERNELCC__
 }
 
-HIPRT_HOST_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data, hiprtRay ray, int last_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data, hiprtRay ray, int last_primitive_index, Xorshift32Generator& random_number_generator)
 {
     hiprtHit hit;
 

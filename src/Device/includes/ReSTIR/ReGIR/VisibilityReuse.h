@@ -12,7 +12,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_data, const ReGIRReservoir& current_reservoir,
+HIPRT_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_data, const ReGIRReservoir& current_reservoir,
     int linear_cell_index, Xorshift32Generator& rng)
 {
     ReGIRReservoir out_reservoir = current_reservoir;

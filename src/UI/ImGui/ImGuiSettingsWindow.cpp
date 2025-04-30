@@ -4176,6 +4176,8 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::CollapsingHeader("Kernels compilation statistics"))
 		{
+			ImGui::TreePush("Kernel compilation statistics tree");
+
 			ImGui::Text("Kernel [Registers, Shared Memory, Local Memory]");
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -4196,6 +4198,19 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 					int nb_shared = kernel->get_kernel_attribute(ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
 					int nb_local = kernel->get_kernel_attribute(ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES);
 
+					ImGui::PushID(kernel_name.c_str());
+					if (ImGui::Button("C"))
+					{
+						std::vector<std::string> options = kernel->get_kernel_options().get_all_macros_as_std_vector_string();
+						std::string options_string;
+						for (std::string& option : options)
+							options_string += option + " ";
+						ImGui::SetClipboardText(options_string.c_str());
+					}
+					ImGuiRenderer::add_tooltip("Copies the compilation options of the kernel to the clipboard.");
+					ImGui::PopID();
+
+					ImGui::SameLine();
 					std::string text = padding_formatter + " [%d, %d, %d]";
 					ImGui::Text(text.c_str(), kernel_name.c_str(), nb_reg, nb_shared, nb_local);
 				}
@@ -4205,6 +4220,8 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 					ImGui::Text(text.c_str(), kernel_name.c_str());
 				}
 			}
+
+			ImGui::TreePop();
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

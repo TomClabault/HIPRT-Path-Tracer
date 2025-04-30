@@ -16,7 +16,7 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index_in_cell, int linear_cell_index,
+HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index_in_cell, int linear_cell_index,
     Xorshift32Generator& rng)
 {
     ReGIRReservoir grid_fill_reservoir;
@@ -43,7 +43,7 @@ HIPRT_HOST_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, c
     return grid_fill_reservoir;
 }
 
-HIPRT_HOST_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index, const ReGIRReservoir& current_reservoir, float& in_out_normalization_weight, Xorshift32Generator& rng)
+HIPRT_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index, const ReGIRReservoir& current_reservoir, float& in_out_normalization_weight, Xorshift32Generator& rng)
 {
     ReGIRReservoir output_reservoir = current_reservoir;
 
