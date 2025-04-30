@@ -66,6 +66,8 @@ public:
 
 	float get_alive_cells_ratio() const;
 
+	OrochiBuffer<long long int> m_DEBUG_TIMES;
+
 private:
 	int m_current_grid_index = 0;
 	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,

@@ -77,7 +77,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 5000
+#define DEBUG_NEIGHBORHOOD_SIZE 50
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {

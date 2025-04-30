@@ -171,12 +171,32 @@
     output_reservoir.M = 1;
     output_reservoir.finalize_resampling(valid_neighbor_count);
 
-    if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
+    bool doit = true;
+#ifdef __KERNELCC__
+    long long int current_time = render_data.DEBUG_TIMES[linear_center_cell_index];
+    if (current_time >= REGIR_CUTOFF || current_time == 4242424242)
+    {
+        render_data.DEBUG_TIMES[linear_center_cell_index] = 4242424242;
+        return;
+    }
+
+    long long int start = wall_clock64();
+#endif
+
+    if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell() && doit)
         // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
         //
         // This visibility check of the reservoirs is needed such that the shading at path tracing time
         // can properly assess whether a given cell could have produced a given sample or not
         output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
+
+#ifdef __KERNELCC__
+    long long int end = wall_clock64();
+
+    long long int current_time_unscaled = current_time * render_data.render_settings.sample_number;
+    long long int new_time = current_time_unscaled += end - start;
+    render_data.DEBUG_TIMES[linear_center_cell_index] = new_time / (render_data.render_settings.sample_number + 1);
+#endif
 
     regir_settings.spatial_reuse.store_reservoir_opt(output_reservoir, reservoir_index_in_grid);
 }

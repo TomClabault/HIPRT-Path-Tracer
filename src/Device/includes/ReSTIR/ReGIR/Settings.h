@@ -54,7 +54,7 @@ struct ReGIRGridSettings
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
 
-	static constexpr int DEFAULT_GRID_SIZE = 32;
+	static constexpr int DEFAULT_GRID_SIZE = 20;
 	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 };
 
@@ -86,7 +86,7 @@ private:
 	// and 1 canonical reservoir:
 	//
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_non_canonical = 16;
+	int reservoirs_count_per_grid_cell_non_canonical = 1;
 
 	// Number of canonical reservoirs per cell
 	// 
@@ -94,7 +94,7 @@ private:
 	// and 1 canonical reservoir:
 	// 
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_canonical = 8;
+	int reservoirs_count_per_grid_cell_canonical = 1;
 };
 
 struct ReGIRTemporalReuseSettings

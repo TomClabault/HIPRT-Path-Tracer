@@ -30,7 +30,6 @@
         return;
 
     grid_cells_alive_buffer[cell_index] = grid_cells_alive_staging_buffer[cell_index] > 0 ? 1 : 0;
-
     // And resetting the staging buffer
     grid_cells_alive_staging_buffer[cell_index] = 0;
 }

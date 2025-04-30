@@ -20,6 +20,8 @@
 #include <hiprt/hiprt_device.h>
 #include <Orochi/Orochi.h>
 
+#define REGIR_CUTOFF 3000
+
 struct AuxiliaryBuffers
 {
 	// Whether or not the pixel at a given index in the buffer is active or not. 
@@ -91,6 +93,9 @@ struct HIPRTRenderData
 	// Random number that is updated by the CPU and that can help generate a
 	// random seed on the GPU for the random number generator to get started
 	unsigned int random_number = 42;
+
+	long long int* DEBUG_TIMES = nullptr;
+	long long int DEBUG_MAX_REGIR_MAX_TIME = 0;
 
 	// HIPRT BVH
 	hiprtGeometry GPU_BVH = nullptr;

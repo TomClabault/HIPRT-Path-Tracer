@@ -85,9 +85,13 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		if (m_grid_buffers.size() != render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR())
 		{
 			m_grid_buffers.resize(render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR());
+			m_DEBUG_TIMES.resize(render_data.render_settings.regir_settings.get_total_number_of_cells());
+			std::vector<long long int> zero_data(render_data.render_settings.regir_settings.get_total_number_of_cells(), 0ll);
+			m_DEBUG_TIMES.upload_data(zero_data);
 
 			updated = true;
 		}
+
 
 		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse && m_spatial_reuse_output_grid_buffer.size() != render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid())
 		{
@@ -208,6 +212,25 @@ bool ReGIRRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOpti
 		launch_spatial_reuse(render_data);
 	}
 
+	std::vector<long long int> times_download = m_DEBUG_TIMES.download_data();
+
+	long long int max = 0;
+	int max_index = -1;
+	for (int i = 0; i < render_data.render_settings.regir_settings.get_total_number_of_cells(); i++)
+	{
+		if (times_download[i] > max)
+		{
+			max_index = i;
+			max = times_download[i];
+		}
+
+		if (times_download[i] > REGIR_CUTOFF)
+			times_download[i] = 4242424242;
+	}
+
+	m_renderer->get_render_data().DEBUG_MAX_REGIR_MAX_TIME = max;
+	m_DEBUG_TIMES.upload_data(times_download);
+
 	return true;
 }
 
@@ -280,6 +303,8 @@ void ReGIRRenderPass::update_render_data()
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_grid_cells_alive_staging_buffer.get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = m_grid_cells_alive_count_staging_buffer.get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_grid_cells_alive_list_buffer.get_device_pointer();
+
+		render_data.DEBUG_TIMES = m_DEBUG_TIMES.get_device_pointer();
 	}
 	else
 	{
@@ -303,6 +328,10 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
+
+	m_DEBUG_TIMES.resize(render_data.render_settings.regir_settings.get_total_number_of_cells());
+	std::vector<long long int> zero_data(render_data.render_settings.regir_settings.get_total_number_of_cells(), 0ll);
+	m_DEBUG_TIMES.upload_data(zero_data);
 
 	if (m_grid_cells_alive_buffer.size() > 0)
 	{

@@ -159,6 +159,19 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
+	if (ImGui::Button("Max print"))
+	{
+		std::ofstream output("Output.txt");
+		auto d = m_renderer->get_ReGIR_render_pass()->m_DEBUG_TIMES.download_data();
+		for (long long int value : d)
+		{
+			if (value != 4242424242)
+				output << value << ",";
+			else
+				output << 0 << ",";
+		}
+	}
+
 	if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Don't reuse specular", &render_settings.DEBUG_DONT_REUSE_SPECULAR))
