@@ -19,7 +19,7 @@ struct UChar8BoolsPacked
 	 * 'index' is in [0, 7]
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE bool get_bool() const
+	HIPRT_DEVICE bool get_bool() const
 	{
 		return m_packed & (1 << index);
 	}
@@ -30,7 +30,7 @@ struct UChar8BoolsPacked
 	 * 'index' is in [0, 7]
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE void set_bool(bool value)
+	HIPRT_DEVICE void set_bool(bool value)
 	{
 		// Clear the bit
 		m_packed &= ~(1 << index);
@@ -56,7 +56,7 @@ struct ColorRGB24bFloat0_1Packed
 	static constexpr float inv_255		 = (1.0f / (255 << 0));
 	static constexpr float inv_255_shl_8 = (1.0f / (255 << 8));
 
-	HIPRT_HOST_DEVICE ColorRGB32F get_color() const
+	HIPRT_DEVICE ColorRGB32F get_color() const
 	{
 		float r = static_cast<float>(m_packed & 0x000000FF) * inv_255;
 		float g = static_cast<float>(m_packed & 0x0000FF00) * inv_255_shl_8;
@@ -65,12 +65,12 @@ struct ColorRGB24bFloat0_1Packed
 		return ColorRGB32F(r, g, b);
 	}
 
-	HIPRT_HOST_DEVICE float get_float() const
+	HIPRT_DEVICE float get_float() const
 	{
 		return static_cast<float>((m_packed & 0xFF000000) >> 24) * inv_255;
 	}
 
-	HIPRT_HOST_DEVICE void set_color(const ColorRGB32F& color)
+	HIPRT_DEVICE void set_color(const ColorRGB32F& color)
 	{
 		// Clear 24 lower bits
 		m_packed &= 0xFF000000;
@@ -81,7 +81,7 @@ struct ColorRGB24bFloat0_1Packed
 		m_packed |= static_cast<unsigned char>(color.b * 255.0f) << 16;
 	}
 
-	HIPRT_HOST_DEVICE void set_float(float float_in_0_1)
+	HIPRT_DEVICE void set_float(float float_in_0_1)
 	{
 		// Clear
 		m_packed &= 0x00FFFFFF;
@@ -109,7 +109,7 @@ struct Float4xPacked
 	 * 'index' must be in [0, 3]
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE float get_float() const
+	HIPRT_DEVICE float get_float() const
 	{ 
 		return static_cast<float>((m_packed & (0xFFu << (index * 8))) >> (index * 8)) * inv_255;
 	}
@@ -120,7 +120,7 @@ struct Float4xPacked
 	 * 'index' must be in [0, 3]
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE void set_float(float value)
+	HIPRT_DEVICE void set_float(float value)
 	{
 		// Clear
 		m_packed &= ~(0xFFu << (index * 8));
@@ -148,7 +148,7 @@ struct Float2xUChar2xPacked
 	 * 'index' must be in [0, 1]
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE float get_float() const
+	HIPRT_DEVICE float get_float() const
 	{
 		return ((m_packed & (0xFF << (index * 8))) >> (index * 8)) * inv_255;
 	}
@@ -159,7 +159,7 @@ struct Float2xUChar2xPacked
 	 * 'index' must be in [0, 1]
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE unsigned char get_uchar() const
+	HIPRT_DEVICE unsigned char get_uchar() const
 	{
 		return (m_packed & (0x00FF0000u << (index * 8))) >> (index * 8 + 16);
 	}
@@ -168,7 +168,7 @@ struct Float2xUChar2xPacked
 	 * 'index' must be in [0, 1]
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE void set_float(float value)
+	HIPRT_DEVICE void set_float(float value)
 	{
 		// Clear
 		m_packed &= ~(0xFFu << (index * 8));
@@ -181,7 +181,7 @@ struct Float2xUChar2xPacked
 	 * 'index' must be in [0, 1]
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE void set_uchar(unsigned char value)
+	HIPRT_DEVICE void set_uchar(unsigned char value)
 	{
 		// Clear
 		m_packed &= ~(0x00FF0000u << (index * 8));
@@ -205,7 +205,7 @@ struct Uint2xPacked
 	 * Index must be 0 or 1
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE unsigned short get_value() const
+	HIPRT_DEVICE unsigned short get_value() const
 	{
 		return (m_packed & (0xFFFFu << (index * 16))) >> (index * 16);
 	}
@@ -214,7 +214,7 @@ struct Uint2xPacked
 	 * Index must be 0 or 1
 	 */
 	template <unsigned char index>
-	HIPRT_HOST_DEVICE void set_value(unsigned short value)
+	HIPRT_DEVICE void set_value(unsigned short value)
 	{
 		// Clear
 		m_packed &= ~(0xFFFFu << (index * 16));
@@ -235,7 +235,7 @@ private:
 struct Octahedral24BitNormal
 {
 public:
-	HIPRT_HOST_DEVICE static Octahedral24BitNormal pack_static(float3 normal)
+	HIPRT_DEVICE static Octahedral24BitNormal pack_static(float3 normal)
 	{
 		Octahedral24BitNormal packed;
 		packed.pack(normal);
@@ -243,7 +243,7 @@ public:
 		return packed;
 	}
 
-	HIPRT_HOST_DEVICE void pack(float3 normal)
+	HIPRT_DEVICE void pack(float3 normal)
 	{
 		float2_to_Snorm12_2x_as_3UChar(octahedral_encode(normal), m_packed_x, m_packed_y, m_packed_z);
 	}
@@ -253,19 +253,19 @@ public:
 	 * 
 	 * The returned normal is normalized
 	 */
-	HIPRT_HOST_DEVICE float3 unpack() const
+	HIPRT_DEVICE float3 unpack() const
 	{
 		float2 v = Snorm12_2x_as_UChar_to_float2(m_packed_x, m_packed_y, m_packed_z);
 		return final_decode(v.x, v.y);
 	}
 
 private:
-	HIPRT_HOST_DEVICE float pack_Snorm12_float(float f)
+	HIPRT_DEVICE float pack_Snorm12_float(float f)
 	{
 		return roundf(hippt::clamp(0.0f, 2.0f, f + 1.0f) * 2047.0f);
 	}
 
-	HIPRT_HOST_DEVICE void Snorm12_2x_as_3Uchar(float2 s, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
+	HIPRT_DEVICE void Snorm12_2x_as_3Uchar(float2 s, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
 	{
 		float3 u;
 		u.x = s.x / 16.0f;
@@ -278,14 +278,14 @@ private:
 		out_z = u.z;
 	}
 
-	HIPRT_HOST_DEVICE void float2_to_Snorm12_2x_as_3UChar(float2 v, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
+	HIPRT_DEVICE void float2_to_Snorm12_2x_as_3UChar(float2 v, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
 	{
 		float2 s = make_float2(pack_Snorm12_float(v.x), pack_Snorm12_float(v.y));
 
 		Snorm12_2x_as_3Uchar(s, out_x, out_y, out_z);
 	}
 
-	HIPRT_HOST_DEVICE float2 octahedral_encode(float3 v)
+	HIPRT_DEVICE float2 octahedral_encode(float3 v)
 	{
 		float l1norm_inv = 1.0f / (abs(v.x) + abs(v.y) + abs(v.z));
 		float2 result = make_float2(v.x * l1norm_inv, v.y * l1norm_inv);
@@ -295,17 +295,17 @@ private:
 		return result;
 	}
 
-	HIPRT_HOST_DEVICE float sign_not_zero(float k) const
+	HIPRT_DEVICE float sign_not_zero(float k) const
 	{
 		return k >= 0.0f ? 1.0f : -1.0f;
 	}
 
-	HIPRT_HOST_DEVICE float2 sign_not_zero(float2 v) const
+	HIPRT_DEVICE float2 sign_not_zero(float2 v) const
 	{
 		return make_float2(sign_not_zero(v.x), sign_not_zero(v.y));
 	}
 
-	HIPRT_HOST_DEVICE float3 final_decode(float x, float y) const
+	HIPRT_DEVICE float3 final_decode(float x, float y) const
 	{
 		float3 v = make_float3(x, y, 1.0f - abs(x) - abs(y));
 		if (v.z < 0.0f) 
@@ -317,7 +317,7 @@ private:
 		return hippt::normalize(v);
 	}
 
-	HIPRT_HOST_DEVICE float2 Snorm12_2x_as_Uchar_to_packed_float2(unsigned char x, unsigned char y, unsigned char z) const
+	HIPRT_DEVICE float2 Snorm12_2x_as_Uchar_to_packed_float2(unsigned char x, unsigned char y, unsigned char z) const
 	{
 		float2 s;
 
@@ -328,12 +328,12 @@ private:
 		return s;
 	}
 
-	HIPRT_HOST_DEVICE float unpack_Snorm12(float f) const
+	HIPRT_DEVICE float unpack_Snorm12(float f) const
 	{
 		return hippt::clamp(-1.0f, 1.0f, (f / 2047.0f) - 1.0f);
 	}
 
-	HIPRT_HOST_DEVICE float2 Snorm12_2x_as_UChar_to_float2(unsigned char x, unsigned char y, unsigned char z) const
+	HIPRT_DEVICE float2 Snorm12_2x_as_UChar_to_float2(unsigned char x, unsigned char y, unsigned char z) const
 	{
 		float2 s = Snorm12_2x_as_Uchar_to_packed_float2(x, y, z);
 		return make_float2(unpack_Snorm12(s.x), unpack_Snorm12(s.y));
@@ -352,7 +352,7 @@ private:
  */
 struct Float3xLengthUint10bPacked
 {
-	HIPRT_HOST_DEVICE void pack(float3 data)
+	HIPRT_DEVICE void pack(float3 data)
 	{
 		length = hippt::length(data);
 
@@ -372,12 +372,12 @@ struct Float3xLengthUint10bPacked
 		quantized |= quantized_z << 20;
 	}
 
-	HIPRT_HOST_DEVICE void pack(ColorRGB32F data)
+	HIPRT_DEVICE void pack(ColorRGB32F data)
 	{
 		pack(make_float3(data.r, data.g, data.b));
 	}
 
-	HIPRT_HOST_DEVICE static Float3xLengthUint10bPacked pack_static(float3 data)
+	HIPRT_DEVICE static Float3xLengthUint10bPacked pack_static(float3 data)
 	{
 		Float3xLengthUint10bPacked packed;
 		packed.pack(data);
@@ -385,7 +385,7 @@ struct Float3xLengthUint10bPacked
 		return packed;
 	}
 
-	HIPRT_HOST_DEVICE static Float3xLengthUint10bPacked pack_static(ColorRGB32F data)
+	HIPRT_DEVICE static Float3xLengthUint10bPacked pack_static(ColorRGB32F data)
 	{
 		Float3xLengthUint10bPacked packed;
 		packed.pack(data);
@@ -393,14 +393,14 @@ struct Float3xLengthUint10bPacked
 		return packed;
 	}
 
-	HIPRT_HOST_DEVICE ColorRGB32F unpack() const
+	HIPRT_DEVICE ColorRGB32F unpack() const
 	{
 		float3 unpacked = unpack_float3();
 
 		return ColorRGB32F(unpacked.x, unpacked.y, unpacked.z);
 	}
 
-	HIPRT_HOST_DEVICE float3 unpack_float3() const
+	HIPRT_DEVICE float3 unpack_float3() const
 	{
 		unsigned int quantized_x = (quantized >> 00) & 0b1111111111;
 		unsigned int quantized_y = (quantized >> 10) & 0b1111111111;
@@ -428,7 +428,7 @@ struct RGBE9995Packed
 	// and blue all share the same exponent.  The color channels store a 9-bit value ranging
 	// from [0/512, 511/512] which multiplies by 2^Exp and Exp ranges from [-15, 16].
 	// Floating point specials are not encoded.
-	HIPRT_HOST_DEVICE void pack(ColorRGB32F rgb)
+	HIPRT_DEVICE void pack(ColorRGB32F rgb)
 	{
 		// To determine the shared exponent, we must clamp the channels to an expressible range
 		const float kMaxVal = hippt::asfloat(0x477F8000); // 1.FF x 2^+15
@@ -458,7 +458,7 @@ struct RGBE9995Packed
 		m_packed = E | B << 18 | G << 9 | (R & 0x1FF);
 	}
 
-	HIPRT_HOST_DEVICE ColorRGB32F unpack() const
+	HIPRT_DEVICE ColorRGB32F unpack() const
 	{
 		float3 rgb = make_float3(m_packed & 0x1FF, (m_packed >> 9) & 0x1FF, (m_packed >> 18) & 0x1FF);
 		return ColorRGB32F(hippt::ldexp(rgb, static_cast<int>(m_packed >> 27) - 24));

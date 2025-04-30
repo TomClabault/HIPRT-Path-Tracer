@@ -14,7 +14,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool includeVisibility, bool withCosineTerm>
-HIPRT_HOST_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderData& render_data, int linear_cell_index, ColorRGB32F sample_emission, float3 sample_position, Xorshift32Generator& rng)
+HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderData& render_data, int linear_cell_index, ColorRGB32F sample_emission, float3 sample_position, Xorshift32Generator& rng)
 {
     int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, linear_cell_index);
     float3 representative_point = ReGIR_get_cell_representative_point(render_data, linear_cell_index);
@@ -36,7 +36,7 @@ HIPRT_HOST_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRe
 }
 
 template <bool withVisibility>
-HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
+HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
 	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	const float3& point_on_light, const float3& light_source_normal,
@@ -78,7 +78,7 @@ HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRender
 }
 
 template <bool withVisibility>
-HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
+HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
 	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	const ReGIRReservoir& reservoir,
@@ -91,19 +91,19 @@ HIPRT_HOST_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRender
 		reservoir.sample.emission.unpack(), rng);
 }
 
-HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by_internal(const HIPRTRenderData& render_data, ColorRGB32F sample_emission, float3 point_on_light,
+HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by_internal(const HIPRTRenderData& render_data, ColorRGB32F sample_emission, float3 point_on_light,
 	int linear_cell_index, Xorshift32Generator& rng)
 {
 	return ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, linear_cell_index, sample_emission, point_on_light, rng) > 0.0f;
 }
 
-HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, int linear_cell_index,
+HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, int linear_cell_index,
 	Xorshift32Generator& rng)
 {
 	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, light_sample.emission, light_sample.point_on_light, linear_cell_index, rng);
 }
 
-HIPRT_HOST_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const ReGIRSample& light_sample, int linear_cell_index,
+HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const ReGIRSample& light_sample, int linear_cell_index,
 	Xorshift32Generator& rng)
 {
 	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, light_sample.emission.unpack(), light_sample.point_on_light, linear_cell_index, rng);
