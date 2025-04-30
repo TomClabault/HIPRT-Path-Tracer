@@ -46,37 +46,43 @@
 
         Xorshift32Generator random_number_generator(seed);
 
-        // Everyone is going to use the same RNG such that memory accesses on the spatial neighbors are coalesced
-        // This is ~2x performance on a 7900XTX
-        unsigned int spatial_neighbor_rng_seed = wang_hash((render_data.render_settings.sample_number + 1) * render_data.random_number);
-        Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
-
+        
         ReGIRReservoir output_reservoir;
-
+        
         int reservoir_index_in_cell = reservoir_index % regir_settings.grid_fill.get_total_reservoir_count_per_cell();
         int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell();
-        // int linear_center_cell_index;
         int linear_center_cell_index = cell_alive_index;
         if (regir_settings.shading.grid_cells_alive_count == regir_settings.get_total_number_of_cells())
-            // If all cells are alive, the cell index is straightforward
-            linear_center_cell_index = cell_alive_index;
+        // If all cells are alive, the cell index is straightforward
+        linear_center_cell_index = cell_alive_index;
         else
-            // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
-            // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
-            linear_center_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
+        // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
+        // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
+        linear_center_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
         int reservoir_index_in_grid = linear_center_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
-
+        
         if (regir_settings.shading.grid_cells_alive[linear_center_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
-
+            
             // Storing an empty reservoir to clear the cell
             regir_settings.spatial_reuse.store_reservoir_opt(ReGIRReservoir(), reservoir_index_in_grid);
-
+            
             return;
         }
-
+        
         int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
+        
+        // Everyone is going to use the same RNG (the RNG doesn't depend on the pixel index) 
+        // such that memory accesses on the spatial neighbors are coalesced
+        // This is ~2x performance on a 7900XTX
+        unsigned int spatial_neighbor_rng_seed;
+        if (regir_settings.DEBUG_COALESCED_SPATIAL_REUSE)
+            spatial_neighbor_rng_seed = (render_data.render_settings.sample_number + 1) * render_data.random_number;
+        else
+            spatial_neighbor_rng_seed = wang_hash(seed);//(render_data.render_settings.sample_number + 1) * render_data.random_number);
+        Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
+        float3 random_neighbor = make_float3(spatial_neighbor_rng(), spatial_neighbor_rng(), spatial_neighbor_rng());
 
         int selected = 0;
         for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
@@ -87,7 +93,12 @@
                 offset = make_int3(0, 0, 0);
             else
             {
-                float3 offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
+                float3 offset_float_radius_1;
+
+                if (regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
+                    offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
+                else
+                    offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
                 float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
 
                 offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
@@ -103,7 +114,17 @@
                 continue;
 
             // Picking the same reservoir cell-index in the a neighbor cell
-            int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
+            int random_reservoir_index_in_cell;
+            if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+                random_reservoir_index_in_cell = random_number_generator() * regir_settings.grid_fill.get_canonical_reservoir_count_per_cell() + regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
+            else
+                random_reservoir_index_in_cell = random_number_generator() * regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
+
+            int neighbor_reservoir_linear_index_in_grid;
+            if (regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
+                neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + random_reservoir_index_in_cell;
+            else
+                neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
 
             ReGIRReservoir neighbor_reservoir;
             if (regir_settings.temporal_reuse.do_temporal_reuse)
@@ -116,13 +137,14 @@
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
 
+            // MIS weight is 1.0f because we're going to normalize at the end
             float mis_weight = 1.0f;
             float target_function_at_center;
-            if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
-            else
-                // Never using the template visibility/consine terms arguments for canonical reservoirs
+            if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+                // Never using the template visibility/cosine terms arguments for canonical reservoirs
                 target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
+            else
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
 
             output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
         }
@@ -142,7 +164,12 @@
                     offset = make_int3(0, 0, 0);
                 else
                 {
-                    float3 offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
+                    float3 offset_float_radius_1;
+
+                    if (regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
+                        offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
+                    else
+                        offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
                     float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
 
                     offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
@@ -159,10 +186,20 @@
 
                 int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
 
-                if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
+                if (!regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
                 {
+                    // Non-canonical sample, we need to test this one
                     if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
-                        valid_neighbor_count += 1.0f;
+                    {
+                        if (neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count && regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
+                        {
+                            valid_neighbor_count += regir_settings.spatial_reuse.spatial_neighbor_reuse_count;
+
+                            neighbor_index = regir_settings.spatial_reuse.spatial_neighbor_reuse_count - 1;
+                        }
+                        else
+                            valid_neighbor_count += 1.0f;
+                    }
                 }
                 else
                     // A canonical reservoir can always be produced by anyone

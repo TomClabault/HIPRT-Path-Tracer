@@ -173,6 +173,10 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
 		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("Debug regir fixed spatial reuse", &render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE))
+		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("Debug regir coalesced spatial reuse", &render_settings.regir_settings.DEBUG_COALESCED_SPATIAL_REUSE))
+		m_render_window->set_render_dirty(true);
 	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
 		m_render_window->set_render_dirty(true);

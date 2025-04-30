@@ -72,6 +72,8 @@ struct ReGIRGridFillSettings
 	HIPRT_HOST_DEVICE int* get_non_canonical_reservoir_count_per_cell_ptr() { return &reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_HOST_DEVICE int* get_canonical_reservoir_count_per_cell_ptr() { return &reservoirs_count_per_grid_cell_canonical; }
 
+	HIPRT_HOST_DEVICE bool reservoir_index_in_cell_is_canonical(int reservoir_index_in_cell) { return reservoir_index_in_cell >= get_non_canonical_reservoir_count_per_cell(); }
+
 private:
 	// How many reservoirs are going to be produced per each cell of the grid.
 	// 
@@ -118,7 +120,7 @@ struct ReGIRSpatialReuseSettings
 
 	bool do_spatial_reuse = true;
 
-	int spatial_neighbor_reuse_count = 16;
+	int spatial_neighbor_reuse_count = 12;
 	int spatial_reuse_radius = 1;
 
 	// Grid that contains the output of the spatial reuse pass
@@ -132,7 +134,7 @@ struct ReGIRShadingSettings
 	int cell_reservoir_resample_per_shading_point = 4;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_cell_jittering = false;
+	bool do_cell_jittering = true;
 
 	// For each grid cell, indicates whether that grid cell has been used at least once during shading in the last frame
 	// 
@@ -510,6 +512,8 @@ struct ReGIRSettings
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
+	bool DEBUG_DO_FIXED_SPATIAL_REUSE = true;
+	bool DEBUG_COALESCED_SPATIAL_REUSE = true;
 
 	ReGIRGridSettings grid;
 	ReGIRGridFillSettings grid_fill;
