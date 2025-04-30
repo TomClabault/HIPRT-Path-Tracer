@@ -77,7 +77,7 @@
         if (regir_settings.spatial_reuse.do_coalesced_spatial_reuse)
             // Everyone is going to use the same RNG (the RNG doesn't depend on the pixel index) 
             // such that memory accesses on the spatial neighbors are coalesced to improve performance
-            spatial_neighbor_rng_seed = (render_data.render_settings.sample_number + 1) * render_data.random_number;
+            spatial_neighbor_rng_seed = render_data.render_settings.freeze_random ? render_data.random_number : (render_data.render_settings.sample_number + 1) * render_data.random_number;
         else
             spatial_neighbor_rng_seed = wang_hash(seed);
         Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
@@ -158,7 +158,8 @@
             for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
             {
                 int3 offset;
-                if (neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_reuse_count)
+                bool is_center_cell = neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_reuse_count;
+                if (is_center_cell)
                     // The last neighbor reused is the center cell
                     offset = make_int3(0, 0, 0);
                 else
@@ -202,6 +203,21 @@
                         else
                             valid_neighbor_count += 1.0f;
                     }
+                    else
+                    {
+                        // The sample cannot be produced
+
+                        if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE && is_center_cell && !regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+                        {
+                            // And it is the center cell that cannot produce it.
+                            //
+                            // This means that the visibility reuse pass (if it is enabled)
+                            // will discard this sample so we can just discard it right now and save us the visibility reuse cost
+                            //
+                            // Also, only doing this on non-canonical reservoirs because we do not want to visibility-kill canonical reservoirs 
+                            output_reservoir.weight_sum = ReGIRReservoir::VISIBILITY_REUSE_KILLED_UCW;
+                        }
+                    }
                 }
             }
         }
@@ -209,13 +225,6 @@
         // Normalizing the reservoirs to 1
         output_reservoir.M = 1;
         output_reservoir.finalize_resampling(valid_neighbor_count);
-
-        if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
-            // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
-            //
-            // This visibility check of the reservoirs is needed such that the shading at path tracing time
-            // can properly assess whether a given cell could have produced a given sample or not
-            output_reservoir = visibility_reuse(render_data, output_reservoir, linear_center_cell_index, random_number_generator);
 
         regir_settings.spatial_reuse.store_reservoir_opt(output_reservoir, reservoir_index_in_grid);
 

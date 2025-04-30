@@ -50,8 +50,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - Do BVH traversal adjustments
-//		Should we still keep some cells around the geometry of the scene such that the spatial reuse can do its job or not? More variance without them?
+// - Because we now have fixed neighbor spatial reuse, we should check which neighbor to reuse to make sure we're not reusing from an empty cell or something --> similar to retries in ReSTIR
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
 // - Use some shjortcut in the BSDF in the target function during shading: rough material only use a constant BSDF, nothing more
 // - De-duplicate BSDF computations during shading: we evaluate the BRDF during the reservoir resampling and again during the light sampling
