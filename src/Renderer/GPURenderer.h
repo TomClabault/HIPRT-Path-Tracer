@@ -538,19 +538,6 @@ private:
 	// of bounces, the number of samples per kernel invocation (samples per frame),
 	// whether or not the adaptive sampling is enabled, ...
 	HIPRTRenderData m_render_data;
-	//// We have a second set of render data that is used for the render passes.
-	//// This render data is used to avoid race conditions between the two asynchronous threads:
-	//// 
-	//// - The render thread that is rendering the frame
-	//// - The main thread that is rendering the UI and doing the ImGui stuff
-	////
-	//// With a single render data, it could happen that ImGui modifies the render data member
-	//// variables and this could interfere with the rendering thread that is dispatching kernels at the same time
-	////
-	//// So this second render data structure is the one that is used by the render passes and this structure is
-	//// not modified by ImGui. It is the other render data above that is modified by ImGui and it is copied to
-	//// the 'm_render_pass_render_data' by the render() function.
-	//HIPRTRenderData m_render_pass_render_data;
 
 	// Structure containing the data specific to a scene:
 	//	- hiprtGeom

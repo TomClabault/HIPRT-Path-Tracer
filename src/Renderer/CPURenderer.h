@@ -19,6 +19,7 @@
 #include "Renderer/CPUDataStructures/GMoNCPUData.h"
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
+#include "Renderer/CPUGPUCommonDataStructures/PrecomputedEmissiveTrianglesDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
@@ -125,6 +126,8 @@ private:
 
     std::vector<float> m_power_alias_table_probas;
     std::vector<int> m_power_alias_table_alias;
+    // This is a remnant of some tests and it was actually not worth it
+	PrecomputedEmissiveTrianglesDataSoAHost<std::vector> m_precomputed_emissive_triangles_data;
 
     NEEPlusPlusCPUData m_nee_plus_plus;
 
