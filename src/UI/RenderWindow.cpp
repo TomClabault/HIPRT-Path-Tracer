@@ -50,7 +50,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - correlate lights but not at the first hit
+// - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
 // - maybe try half correlations because there is quite a bit of loss in quality with the correlations it seems
 // - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 // - Try some more stuff with fixed spatial reuse because it does increase variance

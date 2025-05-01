@@ -41,11 +41,10 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define DEVICE_KERNEL_SIGNATURE(returnType) returnType
 #define __shared__
 #define __restrict__
-// This is a runtime constant on the GPU in CUDA/HIP, it just doesn't exist on the CPU
-#define warpSize 1
 
 // TODO move all of this in Math.h
 inline void __syncthreads() {}
+inline void __syncwarp() {}
 inline unsigned int __activemask() { return 1;  }
 inline unsigned int __ballot() { return 1; }
 
