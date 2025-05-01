@@ -40,6 +40,9 @@ struct HIPRTRenderSettings
 	float DEBUG_GMON_DIVIDER = 3.0f;
 	int DEBUG_GMON_WINDOW_SIZE = 3;
 
+	bool DEBUG_QUICK_ALIAS_TABLE = true;
+	bool DEBUG_CORRELATE_LIGHTS = true;
+
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 
