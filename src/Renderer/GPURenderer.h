@@ -372,6 +372,9 @@ public:
 	// Animator of the camera of the current frame ('m_camera')
 	CameraAnimation m_camera_animation;
 
+	OrochiBuffer<unsigned long long int> m_DEBUG_SUM_COUNT;
+	OrochiBuffer<float> m_DEBUG_SUMS;
+
 private:
 	// So that GPURendererThread can access the private members of GPURenderer without
 	// having to write a thousand getters that would expose many members to everyone else
@@ -572,9 +575,6 @@ private:
 	OrochiTexture3D m_GGX_glass_directional_albedo;
 	OrochiTexture3D m_GGX_glass_inverse_directional_albedo;
 	OrochiTexture3D m_GGX_thin_glass_directional_albedo;
-
-	OrochiBuffer<unsigned long long int> m_DEBUG_SUM_COUNT;
-	OrochiBuffer<float> m_DEBUG_SUMS;
 };
 
 #endif

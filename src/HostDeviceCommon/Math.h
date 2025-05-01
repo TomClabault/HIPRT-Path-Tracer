@@ -8,6 +8,7 @@
 
 #if defined( __KERNELCC__ )
 #include <hiprt/hiprt_device.h>
+#include <hip/hip_runtime.h>
 #else
 #include <hiprt/hiprt_vec.h>
 #endif
@@ -81,8 +82,10 @@ namespace hippt
 #define M_TWO_PI_SQUARED	19.73920880217871723767f
 #define NEAR_ZERO	1.0e-10f
 
+	__device__ int warp_size() { return warpSize; }
 	__device__ int thread_idx_x() { return threadIdx.x + blockIdx.x * blockDim.x; }
 	__device__ int thread_idx_y() { return threadIdx.y + blockIdx.y * blockDim.y; }
+	__device__ int thread_idx_global() { return hippt::thread_idx_x() + hippt::thread_idx_y() * blockDim.x * gridDim.x; }
 	__device__ bool is_pixel_index(int x, int y) { return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
 
 	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
@@ -329,8 +332,10 @@ namespace hippt
 #define M_TWO_PI_SQUARED	19.73920880217871723767f // 2.0f * pi^2
 #define NEAR_ZERO	1.0e-10f
 
+	inline int warp_size() { return 1; }
 	inline int thread_idx_x() { return 0; }
 	inline int thread_idx_y() { return 0; }
+	inline int thread_idx_global() { return 0; }
 	inline bool is_pixel_index(int x, int y) { return false; }
 
 	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }

@@ -51,9 +51,9 @@ bool MegaKernelRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompile
 		return false;
 		
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
-		
+	
 	void* launch_args[] = { &render_data };
-		
+	
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	return true;
