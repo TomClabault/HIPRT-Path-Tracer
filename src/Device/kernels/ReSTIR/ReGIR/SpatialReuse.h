@@ -12,6 +12,310 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
+HIPRT_DEVICE int get_random_neighbor_linear_cell_index_with_retries(HIPRTRenderData& render_data, 
+    int3 xyz_center_cell_index,
+    Xorshift32Generator& spatial_neighbor_rng)
+{
+    ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+    int neighbor_linear_cell_index_in_grid;
+    bool neighbor_invalid = true;
+
+    int retry = 0;
+    while (retry < regir_settings.spatial_reuse.retries_per_neighbor && neighbor_invalid)
+    {
+        float3 random_neighbor = make_float3(spatial_neighbor_rng(), spatial_neighbor_rng(), spatial_neighbor_rng());
+
+        float3 offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
+        float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
+
+        int3 offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
+
+        int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
+        neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
+        if (neighbor_linear_cell_index_in_grid == -1)
+            // Neighbor is outside of the grid
+            neighbor_invalid = true;
+        else if (regir_settings.shading.grid_cells_alive[neighbor_linear_cell_index_in_grid] == 0)
+            // Neighbor cell isn't alive, let's not reuse it
+            neighbor_invalid = true;
+        else
+            neighbor_invalid = false;
+
+        retry++;
+    }
+
+    if (neighbor_invalid)
+        // We couldn't find a good neighbor
+        return -1;
+
+    return neighbor_linear_cell_index_in_grid;
+}
+
+HIPRT_DEVICE ReGIRReservoir fixed_spatial_reuse(HIPRTRenderData& render_data,
+    int reservoir_index_in_cell, int linear_center_cell_index, int3 xyz_center_cell_index,
+    Xorshift32Generator& spatial_neighbor_rng, Xorshift32Generator& random_number_generator)
+{
+    ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+    ReGIRReservoir output_reservoir;
+
+    int selected = 0;
+    for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
+    {
+        bool is_center_cell = neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_count;
+
+        // Getting a random neighbor and retrying a certain amount of times
+        // in case the neighbor that we picked was out of the grid, in a dead cell, ...
+        //
+        // This is to have more chance to get a reusable neighbor --> more reuse --> less variance
+        float3 random_neighbor;
+        int neighbor_linear_cell_index_in_grid;
+
+        if (is_center_cell)
+            neighbor_linear_cell_index_in_grid = linear_center_cell_index;
+        else
+        {
+            neighbor_linear_cell_index_in_grid = get_random_neighbor_linear_cell_index_with_retries(render_data, xyz_center_cell_index, spatial_neighbor_rng);
+            if (neighbor_linear_cell_index_in_grid == -1)
+                // Could not find a valid neighbor
+                continue;
+        }
+
+        // Only reusing 1 reservoir in the center cell, that's why we have ternary here
+        int reuse_count = is_center_cell ? (regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL ? 1 : regir_settings.spatial_reuse.reuse_per_neighbor_count) : regir_settings.spatial_reuse.reuse_per_neighbor_count;
+        for (int neighbor_reuse = 0; neighbor_reuse < reuse_count; neighbor_reuse++)
+        {
+            // Picking a random reservoir in the neighbor cell
+			// If our reservoir is canonical, we pick a random canonical reservoir in the neighbor cell.
+            // Same for non-canonical
+            int random_reservoir_index_in_cell;
+            if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+                random_reservoir_index_in_cell = random_number_generator() * regir_settings.grid_fill.get_canonical_reservoir_count_per_cell() + regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
+            else
+                random_reservoir_index_in_cell = random_number_generator() * regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
+
+            int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + random_reservoir_index_in_cell;
+
+            ReGIRReservoir neighbor_reservoir;
+            if (regir_settings.temporal_reuse.do_temporal_reuse)
+                // Reading from the output of the temporal reuse
+                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
+            else
+                // No temporal reuse, reading from the output of the grid fill buffer
+                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
+
+            if (neighbor_reservoir.UCW <= 0.0f)
+                continue;
+
+            // MIS weight is 1.0f because we're going to normalize at the end instead of during the resampling
+            float mis_weight = 1.0f;
+            float target_function_at_center;
+            if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+                // Never using the template visibility/cosine terms arguments for canonical reservoirs
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
+            else
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
+
+            output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
+        }
+    }
+
+    return output_reservoir;
+}
+
+//HIPRT_DEVICE ReGIRReservoir non_fixed_spatial_reuse(HIPRTRenderData& render_data,
+//    int reservoir_index_in_cell, int linear_center_cell_index, int3 xyz_center_cell_index,
+//    Xorshift32Generator& spatial_neighbor_rng, Xorshift32Generator& random_number_generator)
+//{
+//    ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+//    ReGIRReservoir output_reservoir;
+//
+//    int selected = 0;
+//    for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
+//    {
+//        bool is_center_cell = neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_count;
+//
+//        // Getting a random neighbor and retrying a certain amount of times
+//        // in case the neighbor that we picked was out of the grid, in a dead cell, ...
+//        //
+//        // This is to have more chance to get a reusable neighbor --> more reuse --> less variance
+//        float3 random_neighbor;
+//        int neighbor_linear_cell_index_in_grid;
+//
+//        if (is_center_cell)
+//            neighbor_linear_cell_index_in_grid = linear_center_cell_index;
+//        else
+//        {
+//            neighbor_linear_cell_index_in_grid = get_random_neighbor_linear_cell_index_with_retries(render_data, xyz_center_cell_index, spatial_neighbor_rng);
+//            if (neighbor_linear_cell_index_in_grid == -1)
+//                // Could not find a valid neighbor
+//                continue;
+//        }
+//
+//        // Picking the same reservoir cell-index in the neighbor cell
+//        int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
+//
+//        ReGIRReservoir neighbor_reservoir;
+//        if (regir_settings.temporal_reuse.do_temporal_reuse)
+//            // Reading from the output of the temporal reuse
+//            neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
+//        else
+//            // No temporal reuse, reading from the output of the grid fill buffer
+//            neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
+//
+//        if (neighbor_reservoir.UCW <= 0.0f)
+//            continue;
+//
+//        // MIS weight is 1.0f because we're going to normalize at the end instead of during the resampling
+//        float mis_weight = 1.0f;
+//        float target_function_at_center;
+//        if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+//            // Never using the template visibility/cosine terms arguments for canonical reservoirs
+//            target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
+//        else
+//            target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
+//
+//        output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
+//    }
+//
+//    return output_reservoir;
+//}
+
+HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, const ReGIRReservoir& output_reservoir,
+    int reservoir_index_in_cell, int linear_center_cell_index, int3 xyz_center_cell_index,
+    Xorshift32Generator& spatial_neighbor_rng, Xorshift32Generator& random_number_generator)
+{
+    ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+    // Now counting the number of neighbors that could have produced this sample for the MIS weight
+    // This is 1/Z MIS weights
+    int valid_neighbor_count = 0;
+
+    if (output_reservoir.weight_sum > 0.0f)
+    {
+        for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
+        {
+            bool is_center_cell = neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_count;
+
+            int neighbor_linear_cell_index_in_grid;
+
+            if (is_center_cell)
+                neighbor_linear_cell_index_in_grid = linear_center_cell_index;
+            else
+            {
+                neighbor_linear_cell_index_in_grid = get_random_neighbor_linear_cell_index_with_retries(render_data, xyz_center_cell_index, spatial_neighbor_rng);
+                if (neighbor_linear_cell_index_in_grid == -1)
+                    // Could not find a valid neighbor
+                    continue;
+            }
+
+            if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+            {
+                // A canonical reservoir can always be produced by anyone
+                if (is_center_cell)
+					// Only reusing one reservoir in the center cell
+                    valid_neighbor_count += regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL ? 1.0f : regir_settings.spatial_reuse.reuse_per_neighbor_count;
+                else
+                    valid_neighbor_count += regir_settings.spatial_reuse.reuse_per_neighbor_count;
+            }
+            else
+            {
+                // Non-canonical sample, we need to count how many neighbors could have produced it
+                if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
+                {
+                    if (is_center_cell)
+                        valid_neighbor_count += regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL ? 1.0f : regir_settings.spatial_reuse.reuse_per_neighbor_count;
+                    else
+                        valid_neighbor_count += regir_settings.spatial_reuse.reuse_per_neighbor_count;
+                }
+                else
+                {
+                    // The sample cannot be produced
+
+                    if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE && is_center_cell && !regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+                    {
+                        // And it is the center cell that cannot produce it.
+                        //
+                        // This means that the visibility reuse pass (if it is enabled)
+                        // will discard this sample so we can just discard it right now
+                        // and save us the visibility reuse cost
+                        //
+                        // Also, only doing this on non-canonical reservoirs because we do not want to visibility-kill canonical reservoirs 
+                        //
+                        // We're discarding the reservoir by returning a 0 normalization weight so that
+                        // the 'finalize_resampling()' computes an UCW of 0, effectively discarding the reservoir
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+
+    return valid_neighbor_count;
+}
+
+//HIPRT_DEVICE int non_fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, const ReGIRReservoir& output_reservoir,
+//    int reservoir_index_in_cell, int linear_center_cell_index, int3 xyz_center_cell_index,
+//    Xorshift32Generator& spatial_neighbor_rng, Xorshift32Generator& random_number_generator)
+//{
+//    ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+//
+//    // Now counting the number of neighbors that could have produced this sample for the MIS weight
+//    // This is 1/Z MIS weights
+//    int valid_neighbor_count = 0;
+//
+//    if (output_reservoir.weight_sum > 0.0f)
+//    {
+//        for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
+//        {
+//            bool is_center_cell = neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_count;
+//
+//            int neighbor_linear_cell_index_in_grid;
+//
+//            if (is_center_cell)
+//                neighbor_linear_cell_index_in_grid = linear_center_cell_index;
+//            else
+//            {
+//                neighbor_linear_cell_index_in_grid = get_random_neighbor_linear_cell_index_with_retries(render_data, xyz_center_cell_index, spatial_neighbor_rng);
+//                if (neighbor_linear_cell_index_in_grid == -1)
+//                    // Could not find a valid neighbor
+//                    continue;
+//            }
+//
+//            if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+//                // A canonical reservoir can always be produced by anyone
+//                valid_neighbor_count += 1.0f;
+//            else
+//            {
+//                // Non-canonical sample, we need to count how many neighbors could have produced it
+//                if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
+//                    valid_neighbor_count += 1.0f;
+//                else
+//                {
+//                    // The sample cannot be produced
+//
+//                    if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE && is_center_cell && !regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+//                    {
+//                        // And it is the center cell that cannot produce it.
+//                        //
+//                        // This means that the visibility reuse pass (if it is enabled)
+//                        // will discard this sample so we can just discard it right now
+//                        // and save us the visibility reuse cost
+//                        //
+//                        // Also, only doing this on non-canonical reservoirs because we do not want to visibility-kill canonical reservoirs 
+//                        //
+//                        // We're discarding the reservoir by returning a 0 normalization weight so that
+//                        // the 'finalize_resampling()' computes an UCW of 0, effectively discarding the reservoir
+//                        return 0;
+//                    }
+//                }
+//            }
+//        }
+//    }
+//
+//    return valid_neighbor_count;
+//}
+
  /** 
   * This kernel is in charge of the spatial reuse on the ReGIR grid.
   * 
@@ -79,173 +383,24 @@
             spatial_neighbor_rng_seed = render_data.render_settings.freeze_random ? render_data.random_number : (render_data.render_settings.sample_number + 1) * render_data.random_number;
         else
             spatial_neighbor_rng_seed = wang_hash(seed);
+
         Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
-        float3 random_neighbor;
-
-        int retry = 0;
-        bool neighbor_invalid = true;
-        while (retry < render_data.render_settings.DEBUG_REGIR_SPATIEL_REUSE_RETRIES && neighbor_invalid && render_data.render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
-        {
-            random_neighbor = make_float3(spatial_neighbor_rng(), spatial_neighbor_rng(), spatial_neighbor_rng());
-
-            int3 offset;
-            float3 offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
-            float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
-
-            offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
-
-            int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
-            int neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
-            if (neighbor_linear_cell_index_in_grid == -1)
-                // Neighbor is outside of the grid
-                neighbor_invalid = true;
-            else if (regir_settings.shading.grid_cells_alive[neighbor_linear_cell_index_in_grid] == 0)
-                // Neighbor cell isn't alive, let's not reuse it
-                neighbor_invalid = true;
-            else
-                neighbor_invalid = false;
-
-            retry++;
-        }
-
-        int selected = 0;
-        for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
-        {
-            int3 offset;
-            if (neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_reuse_count)
-                // The last neighbor reused is the center cell
-                offset = make_int3(0, 0, 0);
-            else
-            {
-                float3 offset_float_radius_1;
-
-                if (regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
-                    offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
-                else
-                    offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
-                float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
-
-                offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
-            }
-
-            int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
-            int neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
-            if (neighbor_linear_cell_index_in_grid == -1)
-                // Neighbor is outside of the grid
-                continue;
-            else if (regir_settings.shading.grid_cells_alive[neighbor_linear_cell_index_in_grid] == 0)
-                // Neighbor cell isn't alive, let's not reuse it
-                continue;
-
-            // Picking the same reservoir cell-index in the a neighbor cell
-            int random_reservoir_index_in_cell;
-            if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
-                random_reservoir_index_in_cell = random_number_generator() * regir_settings.grid_fill.get_canonical_reservoir_count_per_cell() + regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
-            else
-                random_reservoir_index_in_cell = random_number_generator() * regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
-
-            int neighbor_reservoir_linear_index_in_grid;
-            if (regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
-                neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + random_reservoir_index_in_cell;
-            else
-                neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
-
-            ReGIRReservoir neighbor_reservoir;
-            if (regir_settings.temporal_reuse.do_temporal_reuse)
-                // Reading from the output of the temporal reuse
-                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
-            else
-                // No temporal reuse, reading from the output of the grid fill buffer
-                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
-
-            if (neighbor_reservoir.UCW <= 0.0f)
-                continue;
-
-            // MIS weight is 1.0f because we're going to normalize at the end
-            float mis_weight = 1.0f;
-            float target_function_at_center;
-            if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
-                // Never using the template visibility/cosine terms arguments for canonical reservoirs
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
-            else
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true>(render_data, linear_center_cell_index, neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.point_on_light, random_number_generator);
-
-            output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
-        }
+        // if (render_data.render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
+            output_reservoir = fixed_spatial_reuse(render_data, reservoir_index_in_cell, linear_center_cell_index, xyz_center_cell_index, spatial_neighbor_rng, random_number_generator);
+        /*else
+            output_reservoir = non_fixed_spatial_reuse(render_data, reservoir_index_in_cell, linear_center_cell_index, xyz_center_cell_index, spatial_neighbor_rng, random_number_generator);*/
 
         spatial_neighbor_rng.m_state.seed = spatial_neighbor_rng_seed;
 
-        // Now counting the number of neighbors that could have produced this sample for the MIS weight
-        // This is 1/Z MIS weights
-        float valid_neighbor_count = 0.0f;
-        if (output_reservoir.weight_sum > 0.0f)
-        {
-            for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
-            {
-                int3 offset;
-                bool is_center_cell = neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_reuse_count;
-                if (is_center_cell)
-                    // The last neighbor reused is the center cell
-                    offset = make_int3(0, 0, 0);
-                else
-                {
-                    float3 offset_float_radius_1;
-
-                    if (regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
-                        offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
-                    else
-                        offset_float_radius_1 = make_float3(spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f, spatial_neighbor_rng() * 2.0f - 1.0f);
-                    float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
-
-                    offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
-                }
-
-                int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
-                int neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
-                if (neighbor_linear_cell_index_in_grid == -1)
-                    // Neighbor is outside of the grid
-                    continue;
-                else if (regir_settings.shading.grid_cells_alive[neighbor_linear_cell_index_in_grid] == 0)
-                    // Neighbor cell isn't alive, let's not reuse it
-                    continue;
-
-                int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
-
-                if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
-                    // A canonical reservoir can always be produced by anyone
-                    valid_neighbor_count += 1.0f;
-                else
-                {
-                    // Non-canonical sample, we need to count how many neighbors could have produced it
-                    if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
-                    {
-                        if (!is_center_cell && regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
-                        {
-                            valid_neighbor_count += regir_settings.spatial_reuse.spatial_neighbor_reuse_count;
-
-                            neighbor_index = regir_settings.spatial_reuse.spatial_neighbor_reuse_count - 1;
-                        }
-                        else
-                            valid_neighbor_count += 1.0f;
-                    }
-                    else
-                    {
-                        // The sample cannot be produced
-
-                        if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE && is_center_cell && !regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
-                        {
-                            // And it is the center cell that cannot produce it.
-                            //
-                            // This means that the visibility reuse pass (if it is enabled)
-                            // will discard this sample so we can just discard it right now and save us the visibility reuse cost
-                            //
-                            // Also, only doing this on non-canonical reservoirs because we do not want to visibility-kill canonical reservoirs 
-                            output_reservoir.weight_sum = ReGIRReservoir::VISIBILITY_REUSE_KILLED_UCW;
-                        }
-                    }
-                }
-            }
-        }
+        int valid_neighbor_count;
+        //if (render_data.render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
+            valid_neighbor_count = fixed_spatial_reuse_mis_weight(render_data, output_reservoir, 
+                reservoir_index_in_cell, linear_center_cell_index, xyz_center_cell_index, 
+                spatial_neighbor_rng, random_number_generator);
+        /*else
+            valid_neighbor_count = non_fixed_spatial_reuse_mis_weight(render_data, output_reservoir,
+                reservoir_index_in_cell, linear_center_cell_index, xyz_center_cell_index,
+                spatial_neighbor_rng, random_number_generator);*/
 
         // Normalizing the reservoirs to 1
         output_reservoir.M = 1;

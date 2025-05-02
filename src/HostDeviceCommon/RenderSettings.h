@@ -39,7 +39,6 @@ struct HIPRTRenderSettings
 	bool DEBUG_gmon_auto_blending_weights = true;
 	float DEBUG_GMON_DIVIDER = 3.0f;
 	int DEBUG_GMON_WINDOW_SIZE = 3;
-	int DEBUG_REGIR_SPATIEL_REUSE_RETRIES = 5;
 
 	bool DEBUG_QUICK_ALIAS_TABLE = false;
 	bool DEBUG_CORRELATE_LIGHTS = false;

@@ -123,8 +123,18 @@ struct ReGIRSpatialReuseSettings
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = true;
 
-	int spatial_neighbor_reuse_count = 1;
+	int spatial_neighbor_count = 8;
+	int reuse_per_neighbor_count = 8;
+	// When picking a random cell in the neighborhood for reuse, if that
+	// cell is out of the grid or if that cell is not alive etc..., we're
+	// going to retry another cell this many times
+	//
+	// This improves the chances that we're actually going to have a good
+	// neighbor to reuse from --> more reuse --> less variance
+	int retries_per_neighbor = 8;
 	int spatial_reuse_radius = 1;
+
+	bool DEBUG_oONLY_ONE_CENTER_CELL = true;
 
 	// Grid that contains the output of the spatial reuse pass
 	ReGIRGridBufferSoADevice output_grid;
@@ -515,7 +525,6 @@ struct ReGIRSettings
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
-	bool DEBUG_DO_FIXED_SPATIAL_REUSE = false;
 
 	ReGIRGridSettings grid;
 	ReGIRGridFillSettings grid_fill;
