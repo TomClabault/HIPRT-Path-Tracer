@@ -110,6 +110,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Maybe we can just swap the buffers for ReGIR staging buffers instead of copying
 // - Can we use ReSTIR DI and fill the ReGIR grid with the ReSTIR DI samples? ---> Doesn't work at later bounces though
 // - Can we start another grid fill in parallel of the mega kernel after the spatial reuse such that we overlap some work and don't have to do the grid fill at the next frame
+//		- We can even decouple the spatial reuse with the visibility pass of it and launch the grid fill during the visibility pass of teh spatial reuse
 // - Try per-warp light sampling to reduce divergence as HouseOfCards did
 // - Introduce envmap sampling into ReGIR to avoid having to integrate the envmap in a separate domain: big perf boost
 // - When shading, maybe pick random reservoirs from a single neighboring cell to reduce shadow rays count but do that on a per warp basis to reduce the size of artifacts (which would be grid cell size otherwise)

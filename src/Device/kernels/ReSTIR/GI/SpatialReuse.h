@@ -101,7 +101,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
-	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + (render_data.render_settings.DEBUG_DO_ONLY_NEIGHBOR ? 0 : 1); neighbor_index++)
+	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
 
@@ -149,23 +149,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel), 
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
 			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.sample_point_geometric_normal, center_pixel_surface.shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index], render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-
-#if 0
-			// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
-			if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
-			{
-				float new_pdf;
-				BSDFContext new_pdf_context(hippt::normalize(center_pixel_surface.shading_point - neighbor_reservoir.sample.sample_point), neighbor_reservoir.sample.sample_point_shading_normal, neighbor_reservoir.sample.sample_point_geometric_normal, neighbor_reservoir.sample.incident_light_direction_at_sample_point, neighbor_reservoir.sample.incident_light_info_at_sample_point, neighbor_reservoir.sample.sample_point_volume_state, false, neighbor_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-				bsdf_dispatcher_eval(render_data, new_pdf_context, new_pdf, random_number_generator);
-
-				float old_pdf;
-				BSDFContext old_pdf_context(hippt::normalize(render_data.g_buffer.primary_hit_position[neighbor_pixel_index] - neighbor_reservoir.sample.sample_point), neighbor_reservoir.sample.sample_point_shading_normal, neighbor_reservoir.sample.sample_point_geometric_normal, neighbor_reservoir.sample.incident_light_direction_at_sample_point, neighbor_reservoir.sample.incident_light_info_at_sample_point, neighbor_reservoir.sample.sample_point_volume_state, false, neighbor_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-				bsdf_dispatcher_eval(render_data, old_pdf_context, old_pdf, random_number_generator);
-
-				float bsdf_pdf_ratio = new_pdf / old_pdf;
-				shift_mapping_jacobian *= bsdf_pdf_ratio;
-			}
-#endif
 		}
 
 		float target_function_at_center = 0.0f;

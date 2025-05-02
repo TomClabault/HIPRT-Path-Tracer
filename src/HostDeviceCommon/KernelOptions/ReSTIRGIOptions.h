@@ -34,14 +34,6 @@
  */
 #define ReSTIR_GI_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
-/** 
- * Whether or not to include the change in BSDF at the sample point when resampling a neighbor.
- * This brings the target function closer to the integrand but at a non-negligeable performance cost.
- * 
- * Not worth it in practice, solely here for experimentation purposes
- */
-#define ReSTIRGIDoubleBSDFInTargetFunction KERNEL_OPTION_FALSE
-
 /**
 * Whether or not to use a visibility term in the MIS weights (MIS-like weights,
 * generalized balance heuristic, pairwise MIS, ...) used to remove bias when
