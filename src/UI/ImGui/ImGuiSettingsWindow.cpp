@@ -159,78 +159,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	if (ImGui::CollapsingHeader("Debug options"))
-	{
-		ImGui::TreePush("Debug options tree");
-
-		if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Don't reuse specular", &render_settings.DEBUG_DONT_REUSE_SPECULAR))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("BSDF PDF Ratio jacobian", &render_settings.DEBUG_DO_BSDF_RATIO))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Double BSDF shading", &render_settings.DEBUG_DOUBLE_BSDF_SHADING))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Do only neighbor", &render_settings.DEBUG_DO_ONLY_NEIGHBOR))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug only one alias table", &render_settings.DEBUG_QUICK_ALIAS_TABLE))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug only one center cell", &render_settings.regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL))
-			m_render_window->set_render_dirty(true);
-		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
-		if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("Debug Y", &render_settings.debug_y, 0, m_renderer->m_render_resolution.y - 1))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("Debug X 2", &render_settings.debug_x2, 0, m_renderer->m_render_resolution.x - 1))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("Debug Y 2", &render_settings.debug_y2, 0, m_renderer->m_render_resolution.y - 1))
-			m_render_window->set_render_dirty(true);
-
-		bool size_changed = false;
-		static bool use_cube_grid = true;
-		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
-		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
-		if (use_cube_grid)
-		{
-			static int grid_size = regir_settings.grid.grid_resolution.x;
-			if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
-			{
-				regir_settings.grid.grid_resolution.x = grid_size;
-				regir_settings.grid.grid_resolution.y = grid_size;
-				regir_settings.grid.grid_resolution.z = grid_size;
-
-				size_changed = true;
-			}
-		}
-		else
-		{
-			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
-			ImGui::SameLine();
-			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
-			ImGui::SameLine();
-			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
-
-			// Back to default size
-			ImGui::PopItemWidth();
-		}
-		if (size_changed)
-		{
-			m_render_window->set_render_dirty(true);
-		}
-
-		ImGui::TreePop();
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	}
-
-	ImGui::PopItemWidth();
+	// ImGui::PopItemWidth();
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
 	ImGui::TreePush("Render settings tree");
@@ -1636,19 +1565,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					if (render_settings.accumulate)
 						m_render_window->set_render_dirty(true);
 				}
-
-				bool double_bsdf_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DOUBLE_BSDF_TARGET_FUNCTION);
-				if (ImGui::Checkbox("Evaluate sample-point BSDF in target function", &double_bsdf_target_function))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_DOUBLE_BSDF_TARGET_FUNCTION, double_bsdf_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("Whether or not to include the change in BSDF at the sample point when resampling a neighbor.\n"
-					"This brings the target function closer to the integrand but at a non-negligeable performance cost.\n\n"
-					""
-					"Not worth it in practice, solely here for experimentation purposes.");
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -4273,7 +4189,62 @@ void ImGuiSettingsWindow::draw_debug_panel()
 	if (!ImGui::CollapsingHeader("Debug"))
 		return;
 
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
 	ImGui::TreePush("Debug tree");
+
+	if (ImGui::CollapsingHeader("Debug/WIP options"))
+	{
+		ImGui::TreePush("Debug options tree");
+
+		if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug only one alias table", &render_settings.DEBUG_QUICK_ALIAS_TABLE))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug only one center cell", &render_settings.regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL))
+			m_render_window->set_render_dirty(true);
+		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
+
+		bool size_changed = false;
+		static bool use_cube_grid = true;
+		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
+		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+		if (use_cube_grid)
+		{
+			static int grid_size = regir_settings.grid.grid_resolution.x;
+			if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
+			{
+				regir_settings.grid.grid_resolution.x = grid_size;
+				regir_settings.grid.grid_resolution.y = grid_size;
+				regir_settings.grid.grid_resolution.z = grid_size;
+
+				size_changed = true;
+			}
+		}
+		else
+		{
+			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
+			ImGui::SameLine();
+			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
+			ImGui::SameLine();
+			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
+
+			// Back to default size
+			ImGui::PopItemWidth();
+		}
+		if (size_changed)
+		{
+			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	}
 
 	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
 		m_render_window->set_render_dirty(true);

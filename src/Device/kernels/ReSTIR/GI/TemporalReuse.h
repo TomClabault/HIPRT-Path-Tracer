@@ -131,23 +131,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel), 
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
 			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(temporal_neighbor_reservoir.sample.sample_point, temporal_neighbor_reservoir.sample.sample_point_geometric_normal, center_pixel_surface.shading_point, render_data.g_buffer_prev_frame.primary_hit_position[temporal_neighbor_pixel_index], render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-
-#if 0
-			// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
-			if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
-			{
-				float new_pdf;
-				BSDFContext new_pdf_context(hippt::normalize(center_pixel_surface.shading_point - temporal_neighbor_reservoir.sample.sample_point), temporal_neighbor_reservoir.sample.sample_point_shading_normal, temporal_neighbor_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_reservoir.sample.incident_light_direction_at_sample_point, temporal_neighbor_reservoir.sample.incident_light_info_at_sample_point, temporal_neighbor_reservoir.sample.sample_point_volume_state, false, temporal_neighbor_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-				bsdf_dispatcher_eval(render_data, new_pdf_context, new_pdf, random_number_generator);
-
-				float old_pdf;
-				BSDFContext old_pdf_context(hippt::normalize(render_data.g_buffer.primary_hit_position[temporal_neighbor_pixel_index] - temporal_neighbor_reservoir.sample.sample_point), temporal_neighbor_reservoir.sample.sample_point_shading_normal, temporal_neighbor_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_reservoir.sample.incident_light_direction_at_sample_point, temporal_neighbor_reservoir.sample.incident_light_info_at_sample_point, temporal_neighbor_reservoir.sample.sample_point_volume_state, false, temporal_neighbor_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-				bsdf_dispatcher_eval(render_data, old_pdf_context, old_pdf, random_number_generator);
-
-				float bsdf_pdf_ratio = new_pdf / old_pdf;
-				shift_mapping_jacobian *= bsdf_pdf_ratio;
-			}
-#endif
 		}
 
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M

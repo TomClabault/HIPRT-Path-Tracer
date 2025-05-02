@@ -22,47 +22,38 @@ static std::mutex restir_gi_log_mutex;
 
 struct ReSTIRGISample
 {
-    static constexpr float RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE = -42.0f;
-
-    // TODO visible point and visible normal useless: already in G-buffer
-    // seed: unused
-    // target_function: can be stored in outoging_radiance_to_first_hit?
-    // sample_po_ntonormal: can be packed
-    // outgoing_radiance: can be packed
-    
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
+
+    float3 sample_point_geometric_normal;
+
     int sample_point_primitive_index = -1;
 
-    float3 sample_point_shading_normal = make_float3(-1.0f, -1.0f, -1.0f);
-    float3 sample_point_geometric_normal = make_float3(-1.0f, -1.0f, -1.0f);
-
-    // TOOD Is this one used? Can we not just store a float for the luminance and that's it?
+    // TOOD Pack this in RGBE
     ColorRGB32F incoming_radiance_to_visible_point;
-    // TODO pack this in RGBE
-    ColorRGB32F incoming_radiance_to_sample_point;
-    // TODO use a material index and texcoords instead of this and re-evaluate the material
-    DevicePackedEffectiveMaterial sample_point_material;
-    // The ray volume is only used for what's at the sample point right? Maybe we can just store what's needed to reconstruct the ray volyume state
-    RayVolumeState sample_point_volume_state;
 
-    float3 incident_light_direction_at_sample_point;
+    // float3 incident_light_direction_at_sample_point;
     BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
-    BSDFIncidentLightInfo incident_light_info_at_sample_point = BSDFIncidentLightInfo::NO_INFO;
 
-    unsigned int direct_lighting_at_sample_point_random_seed = 42;
+    // unsigned int direct_lighting_at_sample_point_random_seed = 42;
     // TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?
     unsigned int visible_to_sample_point_alpha_test_random_seed = 42;
 
+    // TODO can be stored in outoging_radiance_to_first_hit?
     float target_function = 0.0f;
 
-    HIPRT_HOST_DEVICE static bool is_envmap_path(const float3& reconnection_point_normal)
-    {
-        return reconnection_point_normal.x == RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
-    }
+    // Whether or not the sample point is on a material that is rough enough to be reconnected
+    // If the sample point is on a mirror for example, reconnecting to that point from our center pixel
+    // is going to change the view direction of the mirror BSDF without changing the incident light
+    // direction of the mirror BSDF and that's not going to work
+    //
+    // Also, because we do not re-evaluate the BSDF at the sample point, this would lead to some brightening
+    // bias because this would be assuming that reconnecting to the mirror has non-zero energy, even with
+    // the new view direction which is incorrect
+    bool sample_point_rough_enough = false;
 
     HIPRT_HOST_DEVICE bool is_envmap_path() const
     {
-        return ReSTIRGISample::is_envmap_path(sample_point_shading_normal);
+        return sample_point_primitive_index == -1;
     }
 };
 

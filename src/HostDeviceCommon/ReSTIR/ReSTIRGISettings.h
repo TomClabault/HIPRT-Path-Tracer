@@ -62,7 +62,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 
 
 
-		common_spatial_pass.do_spatial_reuse_pass = false;
+		common_spatial_pass.do_spatial_reuse_pass = true;
 
 		common_spatial_pass.spatial_pass_index = 0;
 		common_spatial_pass.number_of_passes = 2;
@@ -105,7 +105,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		use_jacobian_rejection_heuristic = true;
 		jacobian_rejection_threshold = 15.0f;
 
-		use_neighbor_sample_point_roughness_heuristic = false;
+		use_neighbor_sample_point_roughness_heuristic = true;
 		neighbor_sample_point_roughness_threshold = 0.1f;
 
 		m_cap = 3;

@@ -32,7 +32,7 @@ struct HIPRTRenderSettings
 	bool need_to_reset = true;
 
 
-	// TODO DEBUG REMOVE THIS
+	// TODO DEBUG REMOVE THESE
 	////////////////////////////////////////////////////
 
 	static constexpr bool DEBUG_DEV_GMON_BLEND_WEIGHTS = false;
@@ -46,20 +46,9 @@ struct HIPRTRenderSettings
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 
-	bool enable_direct = true;
-	bool DEBUG_DO_BSDF_RATIO = false;
-	bool DEBUG_DOUBLE_BSDF_SHADING = false;
-	bool DEBUG_DONT_REUSE_SPECULAR = false;
+	bool enable_direct = false;
 	AtomicType<unsigned long long int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
-	int debug_x = 442, debug_y = 346-(171)-1;
-	int debug_x2 = 136, debug_y2 = 147;
-	bool DEBUG_DO_ONLY_NEIGHBOR = false;
-	float fresnel_proba_DEBUG = -1.0f;
-	int debug_size = 0;
-	int debug_count_multiplier = 2;
-	int precision = 256;
-	int stop_value = SAMPLE_STOP * MULTIPLIER - 10;
 
 	////////////////////////////////////////////////////
 
@@ -109,7 +98,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 1;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
