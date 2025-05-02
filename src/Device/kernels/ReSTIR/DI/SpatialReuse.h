@@ -60,8 +60,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		return;
 
 	// Initializing the random generator
-	// TODO try having multiply instead of XOR again
-	unsigned int seed = render_data.render_settings.freeze_random ? wang_hash(center_pixel_index + 1) : wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_number);
+	unsigned int seed;
+	if (render_data.render_settings.freeze_random)
+		seed = wang_hash(center_pixel_index + 1);
+	else if (render_data.render_settings.restir_gi_settings.common_spatial_pass.coalesced_spatial_reuse)
+		seed = wang_hash((render_data.render_settings.sample_number + 1) * render_data.random_number);
+	else
+		seed = wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) * render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
 
 	ReSTIRDIReservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
