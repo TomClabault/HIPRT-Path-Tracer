@@ -159,67 +159,77 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Don't reuse specular", &render_settings.DEBUG_DONT_REUSE_SPECULAR))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("BSDF PDF Ratio jacobian", &render_settings.DEBUG_DO_BSDF_RATIO))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Double BSDF shading", &render_settings.DEBUG_DOUBLE_BSDF_SHADING))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Do only neighbor", &render_settings.DEBUG_DO_ONLY_NEIGHBOR))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Debug regir fixed spatial reuse", &render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::Checkbox("Debug only one alias table", &render_settings.DEBUG_QUICK_ALIAS_TABLE))
-		m_render_window->set_render_dirty(true);
-	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
-	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::SliderInt("Debug Y", &render_settings.debug_y, 0, m_renderer->m_render_resolution.y - 1))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::SliderInt("Debug X 2", &render_settings.debug_x2, 0, m_renderer->m_render_resolution.x - 1))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::SliderInt("Debug Y 2", &render_settings.debug_y2, 0, m_renderer->m_render_resolution.y - 1))
-
-	m_render_window->set_render_dirty(true);
-	bool size_changed = false;
-	static bool use_cube_grid = true;
-	ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
-	ImGui::Checkbox("Use cubic grid", &use_cube_grid);
-	if (use_cube_grid)
+	if (ImGui::CollapsingHeader("Debug options"))
 	{
-		static int grid_size = regir_settings.grid.grid_resolution.x;
-		if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
+		ImGui::TreePush("Debug options tree");
+
+		if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Don't reuse specular", &render_settings.DEBUG_DONT_REUSE_SPECULAR))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("BSDF PDF Ratio jacobian", &render_settings.DEBUG_DO_BSDF_RATIO))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Double BSDF shading", &render_settings.DEBUG_DOUBLE_BSDF_SHADING))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Do only neighbor", &render_settings.DEBUG_DO_ONLY_NEIGHBOR))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderFloat("Fresnel proba debug", &render_settings.fresnel_proba_DEBUG, 0.0f, 1.0f))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug regir fixed spatial reuse", &render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug only one alias table", &render_settings.DEBUG_QUICK_ALIAS_TABLE))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("ReGIR spatial reuse retries", &render_settings.DEBUG_REGIR_SPATIEL_REUSE_RETRIES, 0, 24))
+			m_render_window->set_render_dirty(true);
+		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
+		if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("Debug Y", &render_settings.debug_y, 0, m_renderer->m_render_resolution.y - 1))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("Debug X 2", &render_settings.debug_x2, 0, m_renderer->m_render_resolution.x - 1))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("Debug Y 2", &render_settings.debug_y2, 0, m_renderer->m_render_resolution.y - 1))
+
+			m_render_window->set_render_dirty(true);
+		bool size_changed = false;
+		static bool use_cube_grid = true;
+		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
+		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+		if (use_cube_grid)
 		{
-			regir_settings.grid.grid_resolution.x = grid_size;
-			regir_settings.grid.grid_resolution.y = grid_size;
-			regir_settings.grid.grid_resolution.z = grid_size;
+			static int grid_size = regir_settings.grid.grid_resolution.x;
+			if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
+			{
+				regir_settings.grid.grid_resolution.x = grid_size;
+				regir_settings.grid.grid_resolution.y = grid_size;
+				regir_settings.grid.grid_resolution.z = grid_size;
 
-			size_changed = true;
+				size_changed = true;
+			}
 		}
-	}
-	else
-	{
-		ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-		size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
-		ImGui::SameLine();
-		size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
-		ImGui::SameLine();
-		size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
+		else
+		{
+			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid.grid_resolution.x, 2, 30);
+			ImGui::SameLine();
+			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid.grid_resolution.y, 2, 30);
+			ImGui::SameLine();
+			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
 
-		// Back to default size
-		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-	}
-	if (size_changed)
-	{		
-		m_render_window->set_render_dirty(true);
+			// Back to default size
+			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+		}
+		if (size_changed)
+		{
+			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
 
 	ImGui::PopItemWidth();
@@ -4205,13 +4215,28 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 					ImGui::PushID(kernel_name.c_str());
 					if (ImGui::Button("C"))
 					{
+						std::string commandline_string;
+						
+						commandline_string = "hipcc -x hip ";
+
 						std::vector<std::string> options = kernel->get_kernel_options().get_all_macros_as_std_vector_string();
-						std::string options_string;
 						for (std::string& option : options)
-							options_string += option + " ";
-						ImGui::SetClipboardText(options_string.c_str());
+							commandline_string += option + " ";
+
+						std::vector<std::string> include_directories = GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
+						for (std::string& include_dir : include_directories)
+							commandline_string += "-I" + include_dir + " ";
+
+						// For debugging info and assembly-source code line correspondences
+						commandline_string += "-std=c++17 -gline-tables-only --save-temps";
+						// For hardware ray tracing instructions
+						commandline_string += "--offload-arch=gfx1100";
+						// Source file that hipcc compiles
+						commandline_string += " ../src/llvm-compile-kernel.h";
+
+						ImGui::SetClipboardText(commandline_string.c_str());
 					}
-					ImGuiRenderer::add_tooltip("Copies the compilation options of the kernel to the clipboard.");
+					ImGuiRenderer::add_tooltip("Copies the hipcc compilation command to the clipboard.");
 					ImGui::PopID();
 
 					ImGui::SameLine();

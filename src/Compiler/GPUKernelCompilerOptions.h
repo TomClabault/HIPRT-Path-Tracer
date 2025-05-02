@@ -221,10 +221,6 @@ private:
 	// This "custom macro" map contains the macros given by the user with set_macro_value().
 	// Any macro that isn't defined in KernelOptions.h will be found in this custom macro map
 	std::unordered_map<std::string, std::shared_ptr<int>> m_custom_macro_map;
-
-	// Additional include directories. Does not include the "-I".
-	// Example: "../"
-	std::vector<std::string> m_additional_include_directories;
 };
 
 

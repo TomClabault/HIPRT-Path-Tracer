@@ -245,7 +245,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions(const GPUKernelCompilerOption
 
 GPUKernelCompilerOptions& GPUKernelCompilerOptions::operator=(const GPUKernelCompilerOptions& other)
 {
-	m_additional_include_directories = other.m_additional_include_directories;
 	m_options_macro_map = other.m_options_macro_map;
 	m_custom_macro_map = other.m_custom_macro_map;
 
@@ -264,8 +263,6 @@ GPUKernelCompilerOptions GPUKernelCompilerOptions::deep_copy() const
 	for (auto& pair : m_custom_macro_map)
 		// Creating new shared ptr for the copy
 		out.m_custom_macro_map[pair.first] = std::make_shared<int>(*pair.second);
-
-	out.m_additional_include_directories = m_additional_include_directories;
 
 	return out;
 }
@@ -409,7 +406,6 @@ void GPUKernelCompilerOptions::clear()
 {
 	m_custom_macro_map.clear();
 	m_options_macro_map.clear();
-	m_additional_include_directories.clear();
 }
 
 void GPUKernelCompilerOptions::apply_onto(GPUKernelCompilerOptions& other)
