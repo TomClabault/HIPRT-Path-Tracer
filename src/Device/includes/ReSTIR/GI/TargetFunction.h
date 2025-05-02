@@ -41,10 +41,6 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 		return 0.0f;
 	else if constexpr (resamplingNeighbor)
 	{
-		if (render_data.render_settings.DEBUG_DONT_REUSE_SPECULAR)
-			if (sample.incident_light_info_at_sample_point == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE)
-				return 0.0f;
-
 		// If resampling a neighbor, the target function is going to evaluate to 0.0f if the sample point of the neighbor
 		// is specular: that is because when resampling a neighbor, i.e. reconnecting to the sample point of the neighbor,
 		// we're changing the view direction of the BSDF at the sample point.
@@ -54,8 +50,7 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 		// sample point will be 0.0f.
 		//
 		// So that's why we're returning 0.0f here
-		if (render_data.render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic &&
-			!MaterialUtils::can_do_light_sampling(sample.sample_point_material, render_data.render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold))
+		if (render_data.render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic && !sample.sample_point_rough_enough)
 			return 0.0f;
 	}
 
@@ -77,40 +72,7 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	if (bsdf_pdf > 0.0f)
 		visible_point_bsdf_color *= hippt::abs(cosine_term);
 
-#if ReSTIRGIDoubleBSDFInTargetFunction == KERNEL_OPTION_TRUE
-	if (!sample.is_envmap_path())
-	{
-		float sample_point_bsdf_pdf;
-		BSDFContext bsdf_context_sample_point(-incident_light_direction, sample.sample_point_shading_normal, sample.sample_point_geometric_normal, sample.incident_light_direction_at_sample_point, const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_sample_point), const_cast<RayVolumeState&>(sample.sample_point_volume_state), false, sample.sample_point_material.unpack(), 1, /* we don't care about accumulated path roughness here because no regularization */ 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
-		ColorRGB32F sample_point_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context_sample_point, sample_point_bsdf_pdf, random_number_generator);
-		ColorRGB32F incoming_radiance_to_visible_point_reconstructed;
-
-		RayPayload sample_point_ray_payload;
-		sample_point_ray_payload.bounce = 1;
-		sample_point_ray_payload.material = sample.sample_point_material.unpack();
-		sample_point_ray_payload.volume_state = sample.sample_point_volume_state;
-
-		HitInfo closest_hit_info_sample_point;
-		closest_hit_info_sample_point.geometric_normal = sample.sample_point_geometric_normal;
-		closest_hit_info_sample_point.shading_normal = sample.sample_point_shading_normal;
-		closest_hit_info_sample_point.inter_point = sample.sample_point;
-		closest_hit_info_sample_point.primitive_index = sample.sample_point_primitive_index;
-
-		MISBSDFRayReuse dummy_mis_reuse;
-		random_number_generator.m_state.seed = sample.direct_lighting_at_sample_point_random_seed;
-		ColorRGB32F direct_lighting_sample_point = estimate_direct_lighting(const_cast<HIPRTRenderData&>(render_data), sample_point_ray_payload, ColorRGB32F(1.0f), closest_hit_info_sample_point, -incident_light_direction, 42, 42, dummy_mis_reuse, random_number_generator);
-
-		if (sample_point_bsdf_pdf > 0.0f)
-			incoming_radiance_to_visible_point_reconstructed = sample_point_bsdf_color / sample_point_bsdf_pdf * hippt::abs(hippt::dot(sample.sample_point_shading_normal, sample.incident_light_direction_at_sample_point)) * (sample.incoming_radiance_to_sample_point + direct_lighting_sample_point);
-
-		return (visible_point_bsdf_color * incoming_radiance_to_visible_point_reconstructed).luminance();
-	}
-	else
-		return (visible_point_bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
-#else
-
 	return (visible_point_bsdf_color * sample.incoming_radiance_to_visible_point).luminance();
-#endif
 }
 
 #endif

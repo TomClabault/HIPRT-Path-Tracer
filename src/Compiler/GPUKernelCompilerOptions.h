@@ -81,7 +81,6 @@ public:
 
 	static const std::string RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
-	static const std::string RESTIR_GI_DOUBLE_BSDF_TARGET_FUNCTION;
 	static const std::string RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY;
 	static const std::string RESTIR_GI_BIAS_CORRECTION_WEIGHTS;
 	static const std::string RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING;

@@ -205,23 +205,6 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS,
 					{
 						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
-#if 0
-						// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
-						if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
-						{
-							float new_pdf;
-							BSDFContext new_pdf_context(hippt::normalize(temporal_neighbor_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-							bsdf_dispatcher_eval(render_data, new_pdf_context, new_pdf, random_number_generator);
-
-							float old_pdf;
-							BSDFContext old_pdf_context(hippt::normalize(center_pixel_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-							bsdf_dispatcher_eval(render_data, old_pdf_context, old_pdf, random_number_generator);
-
-							float bsdf_pdf_ratio = new_pdf / old_pdf;
-							jacobian *= bsdf_pdf_ratio;
-						}
-#endif
-
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 							// and has been rejected), the target function is set to 0
@@ -317,23 +300,6 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_
 					if (!initial_candidates_reservoir.sample.is_envmap_path())
 					{
 						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-
-#if 1
-						// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
-						if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
-						{
-							float new_pdf;
-							BSDFContext new_pdf_context(hippt::normalize(temporal_neighbor_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-							bsdf_dispatcher_eval(render_data, new_pdf_context, new_pdf, random_number_generator);
-
-							float old_pdf;
-							BSDFContext old_pdf_context(hippt::normalize(center_pixel_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-							bsdf_dispatcher_eval(render_data, old_pdf_context, old_pdf, random_number_generator);
-
-							float bsdf_pdf_ratio = new_pdf / old_pdf;
-							jacobian *= bsdf_pdf_ratio;
-						}
-#endif
 
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
@@ -445,23 +411,6 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RAT
 					if (!initial_candidates_reservoir.sample.is_envmap_path())
 					{
 						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-
-#if 0
-						// TODO below is a test of BSDF ratio jacobian for unbiased ReSTIR GI but this doesn't seem to work
-						if (render_data.render_settings.DEBUG_DO_BSDF_RATIO)
-						{
-							float new_pdf;
-							BSDFContext new_pdf_context(hippt::normalize(temporal_neighbor_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-							bsdf_dispatcher_eval(render_data, new_pdf_context, new_pdf, random_number_generator);
-
-							float old_pdf;
-							BSDFContext old_pdf_context(hippt::normalize(center_pixel_surface.shading_point - initial_candidates_reservoir.sample.sample_point), initial_candidates_reservoir.sample.sample_point_shading_normal, initial_candidates_reservoir.sample.sample_point_geometric_normal, initial_candidates_reservoir.sample.incident_light_direction_at_sample_point, initial_candidates_reservoir.sample.incident_light_info_at_sample_point, initial_candidates_reservoir.sample.sample_point_volume_state, false, initial_candidates_reservoir.sample.sample_point_material.unpack(), 1, 0.0f);
-							bsdf_dispatcher_eval(render_data, old_pdf_context, old_pdf, random_number_generator);
-
-							float bsdf_pdf_ratio = new_pdf / old_pdf;
-							jacobian *= bsdf_pdf_ratio;
-						}
-#endif
 
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
