@@ -48,7 +48,7 @@ struct ReSTIRGISample
     // the new view direction which is incorrect
     bool sample_point_rough_enough = false;
 
-    Octahedral24BitNormal sample_point_geometric_normal;
+    Octahedral24BitNormalPadded32b sample_point_geometric_normal;
 
     HIPRT_HOST_DEVICE bool is_envmap_path() const {  return sample_point_primitive_index == -1; }
 };

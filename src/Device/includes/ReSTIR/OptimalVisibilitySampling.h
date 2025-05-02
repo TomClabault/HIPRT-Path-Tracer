@@ -14,7 +14,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool IsReSTIRGI>
-HIPRT_HOST_DEVICE bool ReSTIR_optimal_visibility_sampling(HIPRTRenderData& render_data, 
+HIPRT_DEVICE bool ReSTIR_optimal_visibility_sampling(HIPRTRenderData& render_data, 
 	ReSTIRReservoirType<IsReSTIRGI>& spatial_reuse_output_reservoir, 
 	const ReSTIRReservoirType<IsReSTIRGI>& center_pixel_reservoir, ReSTIRSurface& center_pixel_surface, 
 	int neighbor_index, int reused_neighbors_count, 

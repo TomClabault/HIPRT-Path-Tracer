@@ -42,8 +42,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     
     // Resetting the G-Buffer
     render_data.g_buffer.first_hit_prim_index[pixel_index] = -1;
-    render_data.g_buffer.geometric_normals[pixel_index] = Octahedral24BitNormal::pack_static(make_float3(0.0f, 0.0f, 0.0f));
-    render_data.g_buffer.shading_normals[pixel_index] = Octahedral24BitNormal::pack_static(make_float3(0.0f, 0.0f, 0.0f));
+    render_data.g_buffer.geometric_normals[pixel_index] = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
+    render_data.g_buffer.shading_normals[pixel_index] = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
     render_data.g_buffer.primary_hit_position[pixel_index] = make_float3(0.0f, 0.0f, 0.0f);
     render_data.g_buffer.materials[pixel_index] = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
     
@@ -51,8 +51,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     if (render_data.render_settings.use_prev_frame_g_buffer())
     {
         render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index] = -1;
-        render_data.g_buffer_prev_frame.geometric_normals[pixel_index] = Octahedral24BitNormal::pack_static(make_float3(0.0f, 0.0f, 0.0f));
-        render_data.g_buffer_prev_frame.shading_normals[pixel_index] = Octahedral24BitNormal::pack_static(make_float3(0.0f, 0.0f, 0.0f));
+        render_data.g_buffer_prev_frame.geometric_normals[pixel_index] = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
+        render_data.g_buffer_prev_frame.shading_normals[pixel_index] = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
         render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] = make_float3(0.0f, 0.0f, 0.0f);
         render_data.g_buffer_prev_frame.materials[pixel_index] = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
     }

@@ -59,7 +59,7 @@ inline unsigned int __ballot() { return 1; }
 #elif defined(_MSC_VER) // MSVC
 #define GPU_CPU_ALIGN(n) __declspec(align(n))
 #else
-#error "Please provide a definition for MY_ALIGN macro for your host compiler!"
+#error "Please provide a definition for GPU_CPU_ALIGN macro for your host compiler!"
 #endif
 
 #endif // FIX_INTELISSENSE_H

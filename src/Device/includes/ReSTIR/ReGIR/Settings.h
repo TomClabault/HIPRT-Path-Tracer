@@ -190,7 +190,7 @@ struct ReGIRRepresentative
 	// on very finely tesselated geometry because the shadow rays may end up hitting another primitive
 	unsigned int* representative_points = nullptr;
 	// TODO Pack to octahedral
-	Octahedral24BitNormal* representative_normals = nullptr;
+	Octahedral24BitNormalPadded32b* representative_normals = nullptr;
 };
 
 struct ReGIRSettings

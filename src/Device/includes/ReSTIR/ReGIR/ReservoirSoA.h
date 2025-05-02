@@ -39,7 +39,7 @@ struct ReGIRSampleSoADevice
 	float* light_area = nullptr;
 	float3* point_on_light = nullptr;
 
-	Octahedral24BitNormal* light_source_normal = nullptr;
+	Octahedral24BitNormalPadded32b* light_source_normal = nullptr;
 };
 
 struct ReGIRReservoirSoADevice
