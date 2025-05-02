@@ -2416,6 +2416,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+				if (ImGui::Checkbox("Coalesced spatial reuse", &restir_settings.coalesced_spatial_reuse))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("Reuses the same random numbers for all the pixels in the "
+					"image for picking the spatial neighbors such that memory accesses to surface "
+					"data / reservoirs are coalesced");
+
 				if (ImGui::Checkbox("Increase disocclusion reuse count", &restir_settings.do_disocclusion_reuse_boost))
 				{
 					m_render_window->set_render_dirty(true);

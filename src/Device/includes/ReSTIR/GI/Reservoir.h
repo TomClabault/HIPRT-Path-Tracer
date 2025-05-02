@@ -24,17 +24,14 @@ struct ReSTIRGISample
 {
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
 
-    float3 sample_point_geometric_normal;
-
     int sample_point_primitive_index = -1;
 
     // TOOD Pack this in RGBE
-    ColorRGB32F incoming_radiance_to_visible_point;
+    RGBE9995Packed incoming_radiance_to_visible_point;
 
     // float3 incident_light_direction_at_sample_point;
     BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 
-    // unsigned int direct_lighting_at_sample_point_random_seed = 42;
     // TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?
     unsigned int visible_to_sample_point_alpha_test_random_seed = 42;
 
@@ -51,10 +48,9 @@ struct ReSTIRGISample
     // the new view direction which is incorrect
     bool sample_point_rough_enough = false;
 
-    HIPRT_HOST_DEVICE bool is_envmap_path() const
-    {
-        return sample_point_primitive_index == -1;
-    }
+    Octahedral24BitNormal sample_point_geometric_normal;
+
+    HIPRT_HOST_DEVICE bool is_envmap_path() const {  return sample_point_primitive_index == -1; }
 };
 
 struct ReSTIRGIReservoir

@@ -130,7 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
                 if (bounce == 1)
                 {
-                    restir_gi_initial_sample.sample_point_geometric_normal = closest_hit_info.geometric_normal;
+                    restir_gi_initial_sample.sample_point_geometric_normal.pack(closest_hit_info.geometric_normal);
                     restir_gi_initial_sample.sample_point = closest_hit_info.inter_point;
                     restir_gi_initial_sample.sample_point_primitive_index = closest_hit_info.primitive_index;
                     restir_gi_initial_sample.sample_point_rough_enough = MaterialUtils::can_do_light_sampling(ray_payload.material, render_data.render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold);
@@ -185,7 +185,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    restir_gi_initial_sample.incoming_radiance_to_visible_point = incoming_radiance_to_visible_point;
+    restir_gi_initial_sample.incoming_radiance_to_visible_point.pack(incoming_radiance_to_visible_point);
     restir_gi_initial_sample.target_function = ReSTIR_GI_evaluate_target_function<true, false>(render_data, restir_gi_initial_sample, initial_surface, random_number_generator);
 
     float resampling_weight = 0.0f;

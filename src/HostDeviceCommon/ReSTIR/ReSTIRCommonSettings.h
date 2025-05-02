@@ -75,6 +75,9 @@ struct ReSTIRCommonSpatialPassSettings
 	bool use_hammersley;
 	// This seed is used to generate the spatial neighbors positions if not using Hammersley
 	unsigned int spatial_neighbors_rng_seed;
+	// Reuses the same random numbers for all the pixels in the image for picking the spatial neighbors
+	// such that memory accesses to surface data / reservoirs are coalesced
+	bool coalesced_spatial_reuse;
 
 	// If true, the best per-pixel spatial reuse radius to use as
 	// well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse
