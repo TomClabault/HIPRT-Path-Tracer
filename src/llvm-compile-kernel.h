@@ -12,6 +12,7 @@
 #include "hiprt/hiprt_device.h"
 #include "hiprt/impl/hiprt_device_impl.h"
 
+#include "Device/kernels/Megakernel.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
@@ -47,7 +48,7 @@ int main()
     int number_of_blocks;
     int threads_per_block;
 
-    ReSTIR_DI_LightsPresampling<<<dim3(number_of_blocks), dim3(threads_per_block), 0, hipStreamDefault>>>(params, dummy);
+    MegaKernel<<<dim3(number_of_blocks), dim3(threads_per_block), 0, hipStreamDefault>>>(dummy);
 }
 
 #endif

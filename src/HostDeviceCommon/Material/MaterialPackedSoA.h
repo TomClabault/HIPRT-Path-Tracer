@@ -12,68 +12,68 @@
 
 struct DevicePackedEffectiveMaterialSoA
 {
-    HIPRT_HOST_DEVICE ColorRGB32F get_emission(int material_index) const { return this->emission[material_index]; }
-    HIPRT_HOST_DEVICE bool get_emissive_texture_used(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_EMISSIVE_TEXTURE_USED>(); }
+    HIPRT_DEVICE ColorRGB32F get_emission(int material_index) const { return this->emission[material_index]; }
+    HIPRT_DEVICE bool get_emissive_texture_used(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_EMISSIVE_TEXTURE_USED>(); }
 
-    HIPRT_HOST_DEVICE ColorRGB32F get_base_color(int material_index) const { return base_color_roughness[material_index].get_color(); }
+    HIPRT_DEVICE ColorRGB32F get_base_color(int material_index) const { return base_color_roughness[material_index].get_color(); }
 
-    HIPRT_HOST_DEVICE float get_roughness(int material_index) const { return base_color_roughness[material_index].get_float(); }
-    HIPRT_HOST_DEVICE float get_oren_nayar_sigma(int material_index) const { return this->oren_nayar_sigma[material_index]; }
+    HIPRT_DEVICE float get_roughness(int material_index) const { return base_color_roughness[material_index].get_float(); }
+    HIPRT_DEVICE float get_oren_nayar_sigma(int material_index) const { return this->oren_nayar_sigma[material_index]; }
 
-    HIPRT_HOST_DEVICE float get_metallic(int material_index) const { return metallic_F90_and_metallic[material_index].get_float(); }
-    HIPRT_HOST_DEVICE float get_metallic_F90_falloff_exponent(int material_index) const { return this->metallic_F90_falloff_exponent[material_index]; }
-    HIPRT_HOST_DEVICE ColorRGB32F get_metallic_F82(int material_index) const { return metallic_F82_packed_and_diffuse_transmission[material_index].get_color(); }
-    HIPRT_HOST_DEVICE ColorRGB32F get_metallic_F90(int material_index) const { return metallic_F90_and_metallic[material_index].get_color(); }
-    HIPRT_HOST_DEVICE float get_anisotropy(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY>(); }
-    HIPRT_HOST_DEVICE float get_anisotropy_rotation(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>(); }
-    HIPRT_HOST_DEVICE float get_second_roughness_weight(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS_WEIGHT>(); }
-    HIPRT_HOST_DEVICE float get_second_roughness(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS>(); }
-    HIPRT_HOST_DEVICE bool get_do_metallic_energy_compensation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::METALLIC_ENERGY_COMPENSATION>(); }
+    HIPRT_DEVICE float get_metallic(int material_index) const { return metallic_F90_and_metallic[material_index].get_float(); }
+    HIPRT_DEVICE float get_metallic_F90_falloff_exponent(int material_index) const { return this->metallic_F90_falloff_exponent[material_index]; }
+    HIPRT_DEVICE ColorRGB32F get_metallic_F82(int material_index) const { return metallic_F82_packed_and_diffuse_transmission[material_index].get_color(); }
+    HIPRT_DEVICE ColorRGB32F get_metallic_F90(int material_index) const { return metallic_F90_and_metallic[material_index].get_color(); }
+    HIPRT_DEVICE float get_anisotropy(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY>(); }
+    HIPRT_DEVICE float get_anisotropy_rotation(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>(); }
+    HIPRT_DEVICE float get_second_roughness_weight(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS_WEIGHT>(); }
+    HIPRT_DEVICE float get_second_roughness(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS>(); }
+    HIPRT_DEVICE bool get_do_metallic_energy_compensation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::METALLIC_ENERGY_COMPENSATION>(); }
 
-    HIPRT_HOST_DEVICE float get_specular(int material_index) const { return specular_and_darkening_and_coat_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_SPECULAR>(); }
-    HIPRT_HOST_DEVICE float get_specular_tint(int material_index) const { return specular_color_and_tint_factor[material_index].get_float(); }
-    HIPRT_HOST_DEVICE ColorRGB32F get_specular_color(int material_index) const { return specular_color_and_tint_factor[material_index].get_color(); }
-    HIPRT_HOST_DEVICE float get_specular_darkening(int material_index) const { return specular_and_darkening_and_coat_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_SPECULAR_DARKENING>(); }
-    HIPRT_HOST_DEVICE bool get_do_specular_energy_compensation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::SPECULAR_ENERGY_COMPENSATION>(); }
+    HIPRT_DEVICE float get_specular(int material_index) const { return specular_and_darkening_and_coat_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_SPECULAR>(); }
+    HIPRT_DEVICE float get_specular_tint(int material_index) const { return specular_color_and_tint_factor[material_index].get_float(); }
+    HIPRT_DEVICE ColorRGB32F get_specular_color(int material_index) const { return specular_color_and_tint_factor[material_index].get_color(); }
+    HIPRT_DEVICE float get_specular_darkening(int material_index) const { return specular_and_darkening_and_coat_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_SPECULAR_DARKENING>(); }
+    HIPRT_DEVICE bool get_do_specular_energy_compensation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::SPECULAR_ENERGY_COMPENSATION>(); }
 
-    HIPRT_HOST_DEVICE float get_coat(int material_index) const { return coat_and_medium_absorption[material_index].get_float(); }
-    HIPRT_HOST_DEVICE ColorRGB32F get_coat_medium_absorption(int material_index) const { return coat_and_medium_absorption[material_index].get_color(); }
-    HIPRT_HOST_DEVICE float get_coat_medium_thickness(int material_index) const { return this->coat_medium_thickness[material_index]; }
-    HIPRT_HOST_DEVICE float get_coat_roughness(int material_index) const { return specular_and_darkening_and_coat_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_COAT_ROUGHNESS>(); }
-    HIPRT_HOST_DEVICE float get_coat_roughening(int material_index) const { return coat_roughening_darkening_anisotropy_and_rotation[material_index].get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ROUGHENING>(); }
-    HIPRT_HOST_DEVICE float get_coat_darkening(int material_index) const { return coat_roughening_darkening_anisotropy_and_rotation[material_index].get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_DARKENING>(); }
-    HIPRT_HOST_DEVICE float get_coat_anisotropy(int material_index) const { return coat_roughening_darkening_anisotropy_and_rotation[material_index].get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY>(); }
-    HIPRT_HOST_DEVICE float get_coat_anisotropy_rotation(int material_index) const { return coat_roughening_darkening_anisotropy_and_rotation[material_index].get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY_ROTATION>(); }
-    HIPRT_HOST_DEVICE float get_coat_ior(int material_index) const { return this->coat_ior[material_index]; }
-    HIPRT_HOST_DEVICE bool get_do_coat_energy_compensation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::CLEARCOAT_ENERGY_COMPENSATION>(); }
+    HIPRT_DEVICE float get_coat(int material_index) const { return coat_and_medium_absorption[material_index].get_float(); }
+    HIPRT_DEVICE ColorRGB32F get_coat_medium_absorption(int material_index) const { return coat_and_medium_absorption[material_index].get_color(); }
+    HIPRT_DEVICE float get_coat_medium_thickness(int material_index) const { return this->coat_medium_thickness[material_index]; }
+    HIPRT_DEVICE float get_coat_roughness(int material_index) const { return specular_and_darkening_and_coat_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedSpecularGroupIndices::PACKED_COAT_ROUGHNESS>(); }
+    HIPRT_DEVICE float get_coat_roughening(int material_index) const { return coat_roughening_darkening_anisotropy_and_rotation[material_index].get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ROUGHENING>(); }
+    HIPRT_DEVICE float get_coat_darkening(int material_index) const { return coat_roughening_darkening_anisotropy_and_rotation[material_index].get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_DARKENING>(); }
+    HIPRT_DEVICE float get_coat_anisotropy(int material_index) const { return coat_roughening_darkening_anisotropy_and_rotation[material_index].get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY>(); }
+    HIPRT_DEVICE float get_coat_anisotropy_rotation(int material_index) const { return coat_roughening_darkening_anisotropy_and_rotation[material_index].get_float<DevicePackedEffectiveMaterial::PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY_ROTATION>(); }
+    HIPRT_DEVICE float get_coat_ior(int material_index) const { return this->coat_ior[material_index]; }
+    HIPRT_DEVICE bool get_do_coat_energy_compensation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::CLEARCOAT_ENERGY_COMPENSATION>(); }
 
-    HIPRT_HOST_DEVICE float get_sheen(int material_index) const { return sheen_and_color[material_index].get_float(); }
-    HIPRT_HOST_DEVICE float get_sheen_roughness(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SHEEN_ROUGHNESS>(); }
-    HIPRT_HOST_DEVICE ColorRGB32F get_sheen_color(int material_index) const { return sheen_and_color[material_index].get_color(); }
+    HIPRT_DEVICE float get_sheen(int material_index) const { return sheen_and_color[material_index].get_float(); }
+    HIPRT_DEVICE float get_sheen_roughness(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SHEEN_ROUGHNESS>(); }
+    HIPRT_DEVICE ColorRGB32F get_sheen_color(int material_index) const { return sheen_and_color[material_index].get_color(); }
 
-    HIPRT_HOST_DEVICE float get_ior(int material_index) const { return this->ior[material_index]; }
-    HIPRT_HOST_DEVICE float get_specular_transmission(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SPECULAR_TRANSMISSION>(); }
-    HIPRT_HOST_DEVICE float get_diffuse_transmission(int material_index) const { return metallic_F82_packed_and_diffuse_transmission[material_index].get_float(); }
-    HIPRT_HOST_DEVICE float get_absorption_at_distance(int material_index) const { return this->absorption_at_distance[material_index]; }
-    HIPRT_HOST_DEVICE ColorRGB32F get_absorption_color(int material_index) const { return absorption_color_packed[material_index].get_color(); }
-    HIPRT_HOST_DEVICE float get_dispersion_scale(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>(); }
-    HIPRT_HOST_DEVICE float get_dispersion_abbe_number(int material_index) const { return this->dispersion_abbe_number[material_index]; }
-    HIPRT_HOST_DEVICE bool get_thin_walled(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_THIN_WALLED >(); }
-    HIPRT_HOST_DEVICE bool get_do_glass_energy_compensation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::GLASS_ENERGY_COMPENSATION>(); }
+    HIPRT_DEVICE float get_ior(int material_index) const { return this->ior[material_index]; }
+    HIPRT_DEVICE float get_specular_transmission(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SPECULAR_TRANSMISSION>(); }
+    HIPRT_DEVICE float get_diffuse_transmission(int material_index) const { return metallic_F82_packed_and_diffuse_transmission[material_index].get_float(); }
+    HIPRT_DEVICE float get_absorption_at_distance(int material_index) const { return this->absorption_at_distance[material_index]; }
+    HIPRT_DEVICE ColorRGB32F get_absorption_color(int material_index) const { return absorption_color_packed[material_index].get_color(); }
+    HIPRT_DEVICE float get_dispersion_scale(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>(); }
+    HIPRT_DEVICE float get_dispersion_abbe_number(int material_index) const { return this->dispersion_abbe_number[material_index]; }
+    HIPRT_DEVICE bool get_thin_walled(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_THIN_WALLED >(); }
+    HIPRT_DEVICE bool get_do_glass_energy_compensation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::GLASS_ENERGY_COMPENSATION>(); }
 
-    HIPRT_HOST_DEVICE float get_thin_film(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_THIN_FILM>(); }
-    HIPRT_HOST_DEVICE float get_thin_film_ior(int material_index) const { return this->thin_film_ior[material_index]; }
-    HIPRT_HOST_DEVICE float get_thin_film_thickness(int material_index) const { return this->thin_film_thickness[material_index]; }
-    HIPRT_HOST_DEVICE float get_thin_film_kappa_3(int material_index) const { return this->thin_film_kappa_3[material_index]; }
-    HIPRT_HOST_DEVICE float get_thin_film_hue_shift_degrees(int material_index) const { return alpha_thin_film_hue_dielectric_priority[material_index].get_float<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_THIN_FILM_HUE_SHIFT>(); }
-    HIPRT_HOST_DEVICE float get_thin_film_base_ior_override(int material_index) const { return this->thin_film_base_ior_override[material_index]; }
-    HIPRT_HOST_DEVICE bool get_thin_film_do_ior_override(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_THIN_FILM_DO_IOR_OVERRIDE>(); }
+    HIPRT_DEVICE float get_thin_film(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_THIN_FILM>(); }
+    HIPRT_DEVICE float get_thin_film_ior(int material_index) const { return this->thin_film_ior[material_index]; }
+    HIPRT_DEVICE float get_thin_film_thickness(int material_index) const { return this->thin_film_thickness[material_index]; }
+    HIPRT_DEVICE float get_thin_film_kappa_3(int material_index) const { return this->thin_film_kappa_3[material_index]; }
+    HIPRT_DEVICE float get_thin_film_hue_shift_degrees(int material_index) const { return alpha_thin_film_hue_dielectric_priority[material_index].get_float<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_THIN_FILM_HUE_SHIFT>(); }
+    HIPRT_DEVICE float get_thin_film_base_ior_override(int material_index) const { return this->thin_film_base_ior_override[material_index]; }
+    HIPRT_DEVICE bool get_thin_film_do_ior_override(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_THIN_FILM_DO_IOR_OVERRIDE>(); }
 
-    HIPRT_HOST_DEVICE float get_alpha_opacity(int material_index) const { return alpha_thin_film_hue_dielectric_priority[material_index].get_float<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_ALPHA_OPACITY>(); }
-    HIPRT_HOST_DEVICE unsigned char get_dielectric_priority(int material_index) const { return alpha_thin_film_hue_dielectric_priority[material_index].get_uchar<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_DIELECTRIC_PRIORITY>(); }
+    HIPRT_DEVICE float get_alpha_opacity(int material_index) const { return alpha_thin_film_hue_dielectric_priority[material_index].get_float<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_ALPHA_OPACITY>(); }
+    HIPRT_DEVICE unsigned char get_dielectric_priority(int material_index) const { return alpha_thin_film_hue_dielectric_priority[material_index].get_uchar<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_DIELECTRIC_PRIORITY>(); }
 
-    HIPRT_HOST_DEVICE unsigned char get_energy_preservation_monte_carlo_samples(int material_index) const { return alpha_thin_film_hue_dielectric_priority[material_index].get_uchar<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>(); }
-    HIPRT_HOST_DEVICE bool get_enforce_strong_energy_conservation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION>(); }
+    HIPRT_DEVICE unsigned char get_energy_preservation_monte_carlo_samples(int material_index) const { return alpha_thin_film_hue_dielectric_priority[material_index].get_uchar<DevicePackedEffectiveMaterial::PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>(); }
+    HIPRT_DEVICE bool get_enforce_strong_energy_conservation(int material_index) const { return flags[material_index].get_bool<DevicePackedEffectiveMaterial::PackedFlagsIndices::PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION>(); }
 
     // Packed flags of the material:
     //  - thin_walled
@@ -221,17 +221,17 @@ struct DevicePackedEffectiveMaterialSoA
 
 struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 {
-    HIPRT_HOST_DEVICE unsigned short int get_normal_map_texture_index(int material_index) const { return normal_map_emission_index[material_index].get_value<DevicePackedTexturedMaterial::NormalMapEmissionIndices::NORMAL_MAP_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_emission_texture_index(int material_index) const { return normal_map_emission_index[material_index].get_value<DevicePackedTexturedMaterial::NormalMapEmissionIndices::EMISSION_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_base_color_texture_index(int material_index) const { return base_color_roughness_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::BaseColorRoughnessMetallicIndices::BASE_COLOR_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_roughness_metallic_texture_index(int material_index) const { return base_color_roughness_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::BaseColorRoughnessMetallicIndices::ROUGHNESS_METALLIC_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_roughness_texture_index(int material_index) const { return roughness_and_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::RoughnessAndMetallicIndices::ROUGHNESS_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_metallic_texture_index(int material_index) const { return roughness_and_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::RoughnessAndMetallicIndices::METALLIC_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_anisotropic_texture_index(int material_index) const { return roughness_and_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::AnisotropicSpecularIndices::ANISOTROPIC_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_specular_texture_index(int material_index) const { return anisotropic_specular_index[material_index].get_value<DevicePackedTexturedMaterial::AnisotropicSpecularIndices::SPECULAR_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_coat_texture_index(int material_index) const { return coat_sheen_index[material_index].get_value<DevicePackedTexturedMaterial::CoatSheenIndices::COAT_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_sheen_texture_index(int material_index) const { return coat_sheen_index[material_index].get_value<DevicePackedTexturedMaterial::CoatSheenIndices::SHEEN_INDEX>(); }
-    HIPRT_HOST_DEVICE unsigned short int get_specular_transmission_texture_index(int material_index) const { return specular_transmission_index[material_index].get_value<DevicePackedTexturedMaterial::SpecularTransmissionIndex::SPECULAR_TRANSMISSION_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_normal_map_texture_index(int material_index) const { return normal_map_emission_index[material_index].get_value<DevicePackedTexturedMaterial::NormalMapEmissionIndices::NORMAL_MAP_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_emission_texture_index(int material_index) const { return normal_map_emission_index[material_index].get_value<DevicePackedTexturedMaterial::NormalMapEmissionIndices::EMISSION_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_base_color_texture_index(int material_index) const { return base_color_roughness_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::BaseColorRoughnessMetallicIndices::BASE_COLOR_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_roughness_metallic_texture_index(int material_index) const { return base_color_roughness_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::BaseColorRoughnessMetallicIndices::ROUGHNESS_METALLIC_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_roughness_texture_index(int material_index) const { return roughness_and_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::RoughnessAndMetallicIndices::ROUGHNESS_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_metallic_texture_index(int material_index) const { return roughness_and_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::RoughnessAndMetallicIndices::METALLIC_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_anisotropic_texture_index(int material_index) const { return roughness_and_metallic_index[material_index].get_value<DevicePackedTexturedMaterial::AnisotropicSpecularIndices::ANISOTROPIC_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_specular_texture_index(int material_index) const { return anisotropic_specular_index[material_index].get_value<DevicePackedTexturedMaterial::AnisotropicSpecularIndices::SPECULAR_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_coat_texture_index(int material_index) const { return coat_sheen_index[material_index].get_value<DevicePackedTexturedMaterial::CoatSheenIndices::COAT_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_sheen_texture_index(int material_index) const { return coat_sheen_index[material_index].get_value<DevicePackedTexturedMaterial::CoatSheenIndices::SHEEN_INDEX>(); }
+    HIPRT_DEVICE unsigned short int get_specular_transmission_texture_index(int material_index) const { return specular_transmission_index[material_index].get_value<DevicePackedTexturedMaterial::SpecularTransmissionIndex::SPECULAR_TRANSMISSION_INDEX>(); }
 
     /**
      * The 'DevicePackedTexturedMaterial' returned contains all the data read 
@@ -245,7 +245,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
      * 
      * This function is fully commented out because it's actually never used
      */
-    //HIPRT_HOST_DEVICE DevicePackedTexturedMaterial read_full_textured_material(int material_index) const
+    //HIPRT_DEVICE DevicePackedTexturedMaterial read_full_textured_material(int material_index) const
     //{
     //    DevicePackedTexturedMaterial out;
 
@@ -378,7 +378,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
      * For example, if the 'coat' parameter of the material is 0.0f (i.e. the coat isn't used), none of the
      * coat parameters will be read from global memory which saves on memory traffic
      */
-    HIPRT_HOST_DEVICE DevicePackedTexturedMaterial read_partial_material(int material_index) const
+    HIPRT_DEVICE DevicePackedTexturedMaterial read_partial_material(int material_index) const
     {
         DevicePackedTexturedMaterial out;
 

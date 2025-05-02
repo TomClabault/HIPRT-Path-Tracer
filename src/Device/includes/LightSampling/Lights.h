@@ -22,7 +22,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     if (!MaterialUtils::can_do_light_sampling(ray_payload.material))
         return ColorRGB32F(0.0f);
@@ -81,7 +81,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
     return light_source_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
 
     float bsdf_sample_pdf;
@@ -124,7 +124,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
     return bsdf_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     ColorRGB32F light_source_radiance_mis;
 
@@ -243,7 +243,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     ColorRGB32F direct_light_contribution;
 
@@ -265,7 +265,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIP
     return direct_light_contribution / render_data.render_settings.number_of_nee_samples;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
     const float3& view_direction, 
     Xorshift32Generator& random_number_generator, int2 pixel_coords, MISBSDFRayReuse& mis_ray_reuse)
 {
@@ -317,7 +317,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRende
  * I think the better morale to remember is that the material being emissive doesn't matter at
  * all. As long as the material itself reflects light, then we should do NEE.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
     const float3& view_direction, 
     Xorshift32Generator& random_number_generator, int2 pixel_coords, MISBSDFRayReuse& mis_ray_reuse)
 {
@@ -358,7 +358,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_emissive_geometry(HIPRTRenderD
     return direct_light_contribution + material_self_textured_emission;
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lighting_contribution, float direct_contribution_clamp, int bounce)
+HIPRT_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lighting_contribution, float direct_contribution_clamp, int bounce)
 {
     return clamp_light_contribution(direct_lighting_contribution, direct_contribution_clamp, bounce > 0);
 
@@ -368,7 +368,7 @@ HIPRT_HOST_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direc
  * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
  * They can be ignored if not using ReSTIR DI
  */
-HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
     float3 view_direction,
     int x, int y,
     MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
@@ -408,7 +408,7 @@ HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_d
  * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
  * They can be ignored if not using ReSTIR DI
  */
-HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
     float3 view_direction,
     int x, int y,
     MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
@@ -420,7 +420,7 @@ HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderDa
  * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
  * They can be ignored if not using ReSTIR DI
  */
-HIPRT_HOST_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
     float3 view_direction,
     int x, int y,
     MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)

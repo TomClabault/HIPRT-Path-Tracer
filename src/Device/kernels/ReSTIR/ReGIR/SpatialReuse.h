@@ -45,7 +45,6 @@
             seed = wang_hash((reservoir_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
         Xorshift32Generator random_number_generator(seed);
-
         
         ReGIRReservoir output_reservoir;
         
@@ -53,12 +52,12 @@
         int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell();
         int linear_center_cell_index = cell_alive_index;
         if (regir_settings.shading.grid_cells_alive_count == regir_settings.get_total_number_of_cells())
-        // If all cells are alive, the cell index is straightforward
-        linear_center_cell_index = cell_alive_index;
+            // If all cells are alive, the cell index is straightforward
+            linear_center_cell_index = cell_alive_index;
         else
-        // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
-        // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
-        linear_center_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
+            // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
+            // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
+            linear_center_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
         int reservoir_index_in_grid = linear_center_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
         
         if (regir_settings.shading.grid_cells_alive[linear_center_cell_index] == 0)
@@ -81,7 +80,33 @@
         else
             spatial_neighbor_rng_seed = wang_hash(seed);
         Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
-        float3 random_neighbor = make_float3(spatial_neighbor_rng(), spatial_neighbor_rng(), spatial_neighbor_rng());
+        float3 random_neighbor;
+
+        int retry = 0;
+        bool neighbor_invalid = true;
+        while (retry < render_data.render_settings.DEBUG_REGIR_SPATIEL_REUSE_RETRIES && neighbor_invalid && render_data.render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
+        {
+            random_neighbor = make_float3(spatial_neighbor_rng(), spatial_neighbor_rng(), spatial_neighbor_rng());
+
+            int3 offset;
+            float3 offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
+            float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
+
+            offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
+
+            int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
+            int neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
+            if (neighbor_linear_cell_index_in_grid == -1)
+                // Neighbor is outside of the grid
+                neighbor_invalid = true;
+            else if (regir_settings.shading.grid_cells_alive[neighbor_linear_cell_index_in_grid] == 0)
+                // Neighbor cell isn't alive, let's not reuse it
+                neighbor_invalid = true;
+            else
+                neighbor_invalid = false;
+
+            retry++;
+        }
 
         int selected = 0;
         for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count + 1; neighbor_index++)
@@ -194,7 +219,7 @@
                     // Non-canonical sample, we need to count how many neighbors could have produced it
                     if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
                     {
-                        if (neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_reuse_count && regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
+                        if (!is_center_cell && regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE)
                         {
                             valid_neighbor_count += regir_settings.spatial_reuse.spatial_neighbor_reuse_count;
 
