@@ -100,7 +100,6 @@ extern ImGuiLogger g_imgui_logger;
 //		Perfect spatial hashing looks like a good candidate: maybe do that in a limited space around the camera instead of on the whole scene to gain in precision, and maybe incorporate some distance falloff in the hash function to have larger cells the further away from the camera
 // - We can do neighbor normal similarity during spatial reuse with representation points
 // - NEE++ mix up to help with visibility sampling?
-// - To profile the spatial reuse / grid fill pass and find which assembly instruction corresponds to code, maybe place some texture fetch instruction that we can then find back in the assembly
 // - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
 // - Is the grid fill bottleneck by random light sampling? Try on the class white room to see if perf improves
 //		A little bit yeah. Maybe we can do something with light presampling per cell
@@ -121,6 +120,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we do something with the time per grid cell ray? To try and reduce this "long tails" effect
 //		- Maybe what we can do here is compact the hard threads together so that we are able to launch all the light rays together and avoid divergence between light and heavy rays
 // - Is the persistent thread approach faster because we don't have to download data? Does it fill the holes that we see in the profiler?
+// - Do also multiple resample per neighbor during shading
+// - Gather some information of how many light samples are rejected because of visibility to get a feel for how much can be gained with NEE++
+//		- Also incorporate back facing lights info
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to compile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
