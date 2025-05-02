@@ -347,7 +347,7 @@ void ReGIRRenderPass::reset_representative_data()
 		}
 		
 		{
-			std::vector<Octahedral24BitNormal> normals_reset(m_representative_normals_buffer.size(), Octahedral24BitNormal::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
+			std::vector<Octahedral24BitNormalPadded32b> normals_reset(m_representative_normals_buffer.size(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
 			m_representative_normals_buffer.upload_data(normals_reset);
 		}
 

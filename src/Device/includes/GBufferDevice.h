@@ -28,8 +28,8 @@ struct GBufferDevice
 
 	// We need both normals to correct the black fringes from the microfacet
 	// model when used with smooth normals / normal mapping
-	Octahedral24BitNormal* shading_normals = nullptr;
-	Octahedral24BitNormal* geometric_normals = nullptr;
+	Octahedral24BitNormalPadded32b* shading_normals = nullptr;
+	Octahedral24BitNormalPadded32b* geometric_normals = nullptr;
 };
 
 #endif

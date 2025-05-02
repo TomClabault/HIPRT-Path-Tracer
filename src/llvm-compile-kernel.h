@@ -13,9 +13,10 @@
 #include "hiprt/impl/hiprt_device_impl.h"
 
 #include "Device/kernels/Megakernel.h"
-#include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
+//#include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
-#include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
+//#include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
+#include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
 
 __device__ bool filter_function(const hiprtRay& ray, const void* data, void* payload, const hiprtHit& hit);
 
@@ -42,13 +43,12 @@ HIPRT_DEVICE bool filterFunc(uint32_t geomType, uint32_t rayType, const hiprtFun
 
 int main()
 {
-    HIPRTRenderData dummy;
-    LightPresamplingParameters params;
+    /*HIPRTRenderData dummy;
 
     int number_of_blocks;
     int threads_per_block;
 
-    MegaKernel<<<dim3(number_of_blocks), dim3(threads_per_block), 0, hipStreamDefault>>>(dummy);
+    ReSTIR_GI_SpatialReuse<<<dim3(number_of_blocks), dim3(threads_per_block), 0, hipStreamDefault>>>(dummy);*/
 }
 
 #endif
