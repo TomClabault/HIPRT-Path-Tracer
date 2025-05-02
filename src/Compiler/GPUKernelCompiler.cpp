@@ -65,7 +65,6 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 #ifndef OROCHI_ENABLE_CUEW
 	compiler_options.push_back("-g");
 	compiler_options.push_back("-ggdb");
-	compiler_options.push_back("-DHIP_ENABLE_WARP_SYNC_BUILTINS");
 #endif
 	
 	// enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);

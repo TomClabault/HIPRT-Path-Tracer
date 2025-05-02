@@ -16,7 +16,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData& render_data, hiprtRay ray, RayPayload& out_ray_payload, HitInfo& out_closest_hit_info, MISBSDFRayReuse mis_reuse, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData& render_data, hiprtRay ray, RayPayload& out_ray_payload, HitInfo& out_closest_hit_info, MISBSDFRayReuse mis_reuse, Xorshift32Generator& random_number_generator)
 {
 	if (mis_reuse.has_ray())
 		// Reusing a BSDF MIS ray if there is one available
@@ -26,7 +26,7 @@ HIPRT_HOST_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRende
 		return trace_main_path_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, out_ray_payload.bounce, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, ColorRGB32F& out_bsdf_color, float3& out_bounce_direction, float& out_bsdf_pdf, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
+HIPRT_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, ColorRGB32F& out_bsdf_color, float3& out_bounce_direction, float& out_bsdf_pdf, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
 {
     if (mis_reuse.has_ray())
         out_bsdf_color = reuse_mis_bsdf_sample(out_bounce_direction, out_bsdf_pdf, ray_payload, mis_reuse, out_sampled_light_info);
@@ -46,7 +46,7 @@ HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData&
 /**
  * Returns the new ray throughput after attenuation of the given 'current_throughput'
  */
-HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F current_throughput, float& rr_throughput_scaling, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator, bool apply_russian_roulette = true)
+HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F current_throughput, float& rr_throughput_scaling, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator, bool apply_russian_roulette = true)
 {
     ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
     // Russian roulette
@@ -69,7 +69,7 @@ HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData
 /**
  * Returns the new ray throughput after attenuation of the given 'current_throughput'
  */
-HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F current_throughput, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator, bool apply_russian_roulette = true)
+HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, ColorRGB32F current_throughput, ColorRGB32F bsdf_color, float3 bounce_direction, float bsdf_pdf, Xorshift32Generator& random_number_generator, bool apply_russian_roulette = true)
 {
     float unused_rr_throughput_scaling;
     return path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, current_throughput, unused_rr_throughput_scaling, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator, apply_russian_roulette);
@@ -79,7 +79,7 @@ HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData
  * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
  */
-HIPRT_HOST_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr)
+HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr)
 {
     ColorRGB32F bsdf_color;
     float3 bounce_direction;
@@ -101,7 +101,7 @@ HIPRT_HOST_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData
     return true;
 }
 
-HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pixel_index, float3 shading_normal, ColorRGB32F base_color)
+HIPRT_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pixel_index, float3 shading_normal, ColorRGB32F base_color)
 {
     if (render_data.render_settings.sample_number == 0)
         render_data.aux_buffers.denoiser_albedo[pixel_index] = base_color;
@@ -120,7 +120,7 @@ HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_
     }
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, const ColorRGB32F& ray_throughput, float3 ray_direction, int bounce, uint32_t pixel_index)
+HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, const ColorRGB32F& ray_throughput, float3 ray_direction, int bounce, uint32_t pixel_index)
 {
     ColorRGB32F skysphere_color;
 
@@ -167,12 +167,12 @@ HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& r
     return clamped_indirect_lighting_contribution;
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, RayPayload& ray_payload, float3 ray_direction, uint32_t pixel_index)
+HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, RayPayload& ray_payload, float3 ray_direction, uint32_t pixel_index)
 {
     return path_tracing_miss_gather_envmap(render_data, ray_payload.throughput, ray_direction, ray_payload.bounce, pixel_index);
 }
 
-HIPRT_HOST_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
+HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
 {
     // Only outputting the ray color if no kernel option is going to output its own color
     // (mainly for debugging purposes) such as 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded'
@@ -204,7 +204,7 @@ HIPRT_HOST_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& rend
     }
 }
 
-HIPRT_HOST_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index)
+HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index)
 {
 #if ViewportColorOverriden == 1
     // Modifying the ray color such that we display some debug color to the screen

@@ -18,7 +18,7 @@
  * If 'update_ray_volume_state' is passed as true, the givenargument is passed as nullptr, the volume state of the ray won't
  * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& random_number_generator)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)
@@ -45,7 +45,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRende
  * If the 'ray_volume_state' argument is passed as nullptr, the volume state of the ray won't
  * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)

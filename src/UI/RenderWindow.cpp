@@ -50,7 +50,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - TOOD: variable number of spatial neighbors + variable number of retries + variable number of picks per spatial neighbors
 // - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
+// - Try correlating warp wise during the grid build but accross cells because right now this is done accross the reservoirs of a single cell, that's bad
 // - maybe try half correlations because there is quite a bit of loss in quality with the correlations it seems
 // - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 // - Try some more stuff with fixed spatial reuse because it does increase variance
@@ -108,6 +110,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Compact grid fill and spatial reuse and see if the profiler graph looks better
 // - Maybe we can just swap the buffers for ReGIR staging buffers instead of copying
 // - Can we use ReSTIR DI and fill the ReGIR grid with the ReSTIR DI samples? ---> Doesn't work at later bounces though
+// - Can we start another grid fill in parallel of the mega kernel after the spatial reuse such that we overlap some work and don't have to do the grid fill at the next frame
 // - Try per-warp light sampling to reduce divergence as HouseOfCards did
 // - Introduce envmap sampling into ReGIR to avoid having to integrate the envmap in a separate domain: big perf boost
 // - When shading, maybe pick random reservoirs from a single neighboring cell to reduce shadow rays count but do that on a per warp basis to reduce the size of artifacts (which would be grid cell size otherwise)

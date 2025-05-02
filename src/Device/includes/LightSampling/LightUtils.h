@@ -168,13 +168,11 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
     if (render_data.render_settings.DEBUG_QUICK_ALIAS_TABLE)
     {
         if (current_lane == first_active_thread_index)
-        {
             random_emissive_triangle_index = render_data.buffers.emissives_power_alias_table.sample(random_number_generator);
-        }
         else
         {
             if (!render_data.render_settings.DEBUG_CORRELATE_LIGHTS)
-            random_emissive_triangle_index = render_data.buffers.emissives_power_alias_table.sample(random_number_generator);
+                random_emissive_triangle_index = render_data.buffers.emissives_power_alias_table.sample(random_number_generator);
             else
             {
                 random_number_generator();
