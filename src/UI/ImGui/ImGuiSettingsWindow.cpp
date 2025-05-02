@@ -177,13 +177,11 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
 			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug regir fixed spatial reuse", &render_settings.regir_settings.DEBUG_DO_FIXED_SPATIAL_REUSE))
-			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug only one alias table", &render_settings.DEBUG_QUICK_ALIAS_TABLE))
 			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("ReGIR spatial reuse retries", &render_settings.DEBUG_REGIR_SPATIEL_REUSE_RETRIES, 0, 24))
+		if (ImGui::Checkbox("Debug only one center cell", &render_settings.regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL))
 			m_render_window->set_render_dirty(true);
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 		if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x - 1))
@@ -193,8 +191,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		if (ImGui::SliderInt("Debug X 2", &render_settings.debug_x2, 0, m_renderer->m_render_resolution.x - 1))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::SliderInt("Debug Y 2", &render_settings.debug_y2, 0, m_renderer->m_render_resolution.y - 1))
-
 			m_render_window->set_render_dirty(true);
+
 		bool size_changed = false;
 		static bool use_cube_grid = true;
 		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
@@ -221,7 +219,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid.grid_resolution.z, 2, 30);
 
 			// Back to default size
-			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+			ImGui::PopItemWidth();
 		}
 		if (size_changed)
 		{
@@ -1928,9 +1926,21 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame\n."
 				"This has the effect of coalescing neighbors memory accesses which improves performance");
 
-			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_reuse_count, 0, 32))
+			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_count, 0, 32))
 				m_render_window	->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("How many cells around the center cell to reuse from.");
+
+			if (ImGui::SliderInt("Reuse per neighbor count", &regir_settings.spatial_reuse.reuse_per_neighbor_count, 1, 16))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("How many reservoirs to reuse per neighbor cell.");
+
+			if (ImGui::SliderInt("Retries per neighbor", &regir_settings.spatial_reuse.retries_per_neighbor, 1, 16))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(" When picking a random cell in the neighborhood for reuse, if that "
+				"cell is out of the grid or if that cell is not alive etc..., we're "
+				"going to retry another cell this many times.\n"
+				"This improves the chances that we're actually going to have a good "
+				"neighbor to reuse from --> more reuse --> less variance.");
 
 			if (ImGui::SliderInt("Reuse radius", &regir_settings.spatial_reuse.spatial_reuse_radius, 1, 3))
 				m_render_window	->set_render_dirty(true);

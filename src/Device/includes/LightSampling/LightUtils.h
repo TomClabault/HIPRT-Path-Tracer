@@ -556,7 +556,7 @@ HIPRT_DEVICE HIPRT_INLINE float light_sample_pdf_for_MIS_solid_angle_measure(con
         // This basically mimics the effect of resampling
         //
         // This is very arbitrary. Clamping at 100.0f. Very arbitrary
-        fake_ReGIR_PDF *= hippt::min(100.0f, render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point * sqrtf(render_data.render_settings.regir_settings.grid_fill.sample_count_per_cell_reservoir) * sqrtf(render_data.render_settings.regir_settings.spatial_reuse.spatial_neighbor_reuse_count));
+        fake_ReGIR_PDF *= hippt::min(100.0f, render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point * sqrtf(render_data.render_settings.regir_settings.grid_fill.sample_count_per_cell_reservoir) * sqrtf(render_data.render_settings.regir_settings.spatial_reuse.spatial_neighbor_count));
 
         return fake_ReGIR_PDF;
     }

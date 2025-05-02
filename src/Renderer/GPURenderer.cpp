@@ -1090,7 +1090,6 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	});
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS);
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "---------------------- Joining on SCENE_LOADING_COMPUTE_TRIANGLE_AREAS ----------------------");
 	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, [this, &scene]()
 	{
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
