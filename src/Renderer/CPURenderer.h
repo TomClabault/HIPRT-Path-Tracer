@@ -185,7 +185,7 @@ private:
 
         std::vector<AtomicType<float>> distance_to_center;
         std::vector<unsigned int> representative_points;
-        std::vector<Octahedral24BitNormal> representative_normals;
+        std::vector<Octahedral24BitNormalPadded32b> representative_normals;
         std::vector<AtomicType<int>> representative_primitives;
 
         std::vector<unsigned char> grid_cells_alive;

@@ -78,7 +78,7 @@ private:
 	OrochiBuffer<float> m_distance_to_center_buffer;
 	OrochiBuffer<int> m_representative_primitive_buffer;
 	OrochiBuffer<unsigned int> m_representative_points_buffer;
-	OrochiBuffer<Octahedral24BitNormal> m_representative_normals_buffer;
+	OrochiBuffer<Octahedral24BitNormalPadded32b> m_representative_normals_buffer;
 
 	// Cells alive buffers
 	OrochiBuffer<unsigned char> m_grid_cells_alive_buffer;

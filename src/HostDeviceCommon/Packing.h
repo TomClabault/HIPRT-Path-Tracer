@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_PACKING_H
 #define HOST_DEVICE_COMMON_PACKING_H
 
+#include "Device/includes/FixIntellisense.h"
+
 #include "HostDeviceCommon/Color.h"
 
 /**
@@ -232,12 +234,12 @@ private:
  * 
  * [1] [Survey of Efficient Representations for Independent Unit Vectors, Cigolle et al., 2014]
  */
-struct Octahedral24BitNormal
+struct GPU_CPU_ALIGN(4) Octahedral24BitNormalPadded32b
 {
 public:
-	HIPRT_DEVICE static Octahedral24BitNormal pack_static(float3 normal)
+	HIPRT_DEVICE static Octahedral24BitNormalPadded32b pack_static(float3 normal)
 	{
-		Octahedral24BitNormal packed;
+		Octahedral24BitNormalPadded32b packed;
 		packed.pack(normal);
 
 		return packed;
@@ -342,6 +344,14 @@ private:
 	unsigned char m_packed_x;
 	unsigned char m_packed_y;
 	unsigned char m_packed_z;
+	// This padding here improves performance significantly on my machine for the megakernel.
+	// Order of 60% faster, mainly due to a massive reduction in register pressure and we got 2 more wavefronts running
+	// out of that. Tested with a lambertian BRDF
+	//
+	// Doesn't really make sense that we would get any register out of that but :shrug:.
+	// This padding here is theoretically better anyways thanks to the 4 bytes alignment that it
+	// provides instead of the 3-bytes alignement of the default packed struct (which is poor access pattern on the GPU)
+	unsigned char padding;
 };
 
 /**
