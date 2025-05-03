@@ -47,7 +47,13 @@
  *
  * This has no effect is representative points are not being used
  */
-#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_FALSE
+#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_TRUE
+
+/**
+ * Takes the cosine term at the light source (i.e. the cosine term of the geometry term) into account when
+ * evaluating the target function during grid fill
+ */
+#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

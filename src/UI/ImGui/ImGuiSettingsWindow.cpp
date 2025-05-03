@@ -1801,6 +1801,17 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"This has no effect is representative points are not being used.");
 
+			static bool cosine_term_light_source_grid_fill_target_function = ReGIR_GridFillTargetFunctionCosineTermLightSource;
+			if (ImGui::Checkbox("Use cosine term light source in target function", &cosine_term_light_source_grid_fill_target_function))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM_LIGHT_SOURCE, cosine_term_light_source_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Takes the cosine term at the light source (i.e. the cosine term of the geometry term) "
+				"into account when evaluating the target function during grid fill");
+
 			static bool do_visibility_reuse = ReGIR_DoVisibilityReuse;
 			if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 			{
