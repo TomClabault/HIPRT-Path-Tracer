@@ -3525,6 +3525,15 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			"This can improve performance at the cost of some bias depending on the scene.\n"
 			"0.0f to disable");
 
+		bool allow_backfacing_lihts = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS);
+		if (ImGui::Checkbox("Allow backfacing lights", &allow_backfacing_lihts))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS, allow_backfacing_lihts ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}

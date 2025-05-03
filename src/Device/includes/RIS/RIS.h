@@ -111,7 +111,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             float3 to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
             float distance_to_light = hippt::length(to_light_direction);
             to_light_direction = to_light_direction / distance_to_light; // Normalization
-            float cosine_at_light_source = hippt::abs(hippt::dot(light_sample_info.light_source_normal, -to_light_direction));
+            float cosine_at_light_source = compute_cosine_term_at_light_source(light_sample_info.light_source_normal, -to_light_direction);
             // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
             // for the dot product to be "properly" oriented.
             float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));

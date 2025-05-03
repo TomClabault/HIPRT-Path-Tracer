@@ -89,7 +89,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
             else
             {
                 float3 emissive_triangle_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, sample.emissive_triangle_index));
-                area_measure_to_solid_angle_conversion = hippt::abs(hippt::dot(emissive_triangle_normal, shadow_ray_direction));
+                area_measure_to_solid_angle_conversion = compute_cosine_term_at_light_source(emissive_triangle_normal, -shadow_ray_direction);
                 area_measure_to_solid_angle_conversion /= hippt::square(distance_to_light);
             }
 

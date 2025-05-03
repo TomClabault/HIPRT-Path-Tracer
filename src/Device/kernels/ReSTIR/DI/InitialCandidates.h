@@ -124,7 +124,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
 
             out_sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, to_light_direction));
 
-            float cosine_at_light_source = hippt::abs(hippt::dot(light_sample_info.light_source_normal, -to_light_direction));
+            float cosine_at_light_source = compute_cosine_term_at_light_source(light_sample_info.light_source_normal, -to_light_direction);
             bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_sample_info.emission * out_sample_cosine_term / out_sample_pdf);
             if (!contributes_enough)
             {
@@ -253,7 +253,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
                     //
                     // Removing the envmap proba to avoid double counting it below in
                     // 'light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability)'
-                    float light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure / (1.0f - envmap_candidate_probability), distance_to_light, hippt::abs(hippt::dot(to_light_direction, light_normal)));
+                    float light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure / (1.0f - envmap_candidate_probability), distance_to_light, compute_cosine_term_at_light_source(light_normal, -to_light_direction));
 
                     ColorRGB32F light_emission = ReSTIR_DI_get_light_sample_emission(render_data, light_sample, to_light_direction);
                     // Computing the approximate light sampler PDF for use in MIS in case the light sampler's PDF cannot be
@@ -391,12 +391,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 // so we multiply that here to take that into account
                 light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability);
 
-                // float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, nb_light_candidates);
                 float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle_for_MIS, nb_light_candidates);
 
                 float bsdf_sample_pdf_area_measure = bsdf_sample_pdf_solid_angle;
                 bsdf_sample_pdf_area_measure /= (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance);
-                bsdf_sample_pdf_area_measure *= hippt::abs(hippt::dot(shadow_light_ray_hit_info.hit_geometric_normal, bsdf_sampled_direction));
+                bsdf_sample_pdf_area_measure *= compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -bsdf_sampled_direction);
 
                 float candidate_weight = mis_weight * target_function / bsdf_sample_pdf_area_measure;
 
