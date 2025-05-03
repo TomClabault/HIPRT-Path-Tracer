@@ -467,7 +467,7 @@ struct ReGIRSettings
 		return ColorRGB32F::random_color(cell_index);
 	}
 
-	HIPRT_DEVICE unsigned int get_total_number_of_cells() const
+	HIPRT_DEVICE unsigned int get_total_number_of_cells_per_grid() const
 	{
 #ifdef __KERNELCC__
 		return m_total_number_of_cells;
@@ -483,7 +483,7 @@ struct ReGIRSettings
 		return m_number_of_reservoirs_per_grid;
 #else
 		// We need to keep this dynamic on the CPU so not using the precomputed variable
-		return get_total_number_of_cells() * grid_fill.get_total_reservoir_count_per_cell();
+		return get_total_number_of_cells_per_grid() * grid_fill.get_total_reservoir_count_per_cell();
 #endif
 	}
 

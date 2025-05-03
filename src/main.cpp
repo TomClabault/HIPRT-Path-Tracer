@@ -23,7 +23,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {   
@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     cpu_renderer.render();
-    cpu_renderer.tonemap(2.2f, 1.0f);
+    cpu_renderer.tonemap(2.2f, 1.8f);
 
     /*Image32Bit image_denoised_1 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 1.0f);
     Image32Bit image_denoised_075 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.75f);

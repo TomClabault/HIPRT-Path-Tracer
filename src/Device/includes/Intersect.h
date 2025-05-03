@@ -296,9 +296,6 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render
     // and keep intersecting the scene)
     float cumulative_t = 0.0f;
 
-    // TODO DEBUG REMOVE THIS minT
-    ray.minT = 1.0e-5f;
-
     hiprtHit hit;
     do
     {

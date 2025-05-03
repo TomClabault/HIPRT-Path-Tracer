@@ -47,7 +47,7 @@
  *
  * This has no effect is representative points are not being used
  */
-#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

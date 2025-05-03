@@ -38,7 +38,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -52,8 +52,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 120
-#define DEBUG_PIXEL_Y 173
+#define DEBUG_PIXEL_X 201
+#define DEBUG_PIXEL_Y 145
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -77,7 +77,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 5000
+#define DEBUG_NEIGHBORHOOD_SIZE 150
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -100,19 +100,21 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     m_regir_state.grid_buffer.resize(m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR());
     m_regir_state.spatial_grid_buffer.resize(m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid());
-    m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells());
+    m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
     for (AtomicType<float>& distance : m_regir_state.distance_to_center)
         distance.store(ReGIRRepresentative::UNDEFINED_DISTANCE);
-    m_regir_state.representative_points.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells(), ReGIRRepresentative::UNDEFINED_POINT);
-    m_regir_state.representative_normals.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
-    m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells());
+    m_regir_state.representative_points.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), ReGIRRepresentative::UNDEFINED_POINT);
+    m_regir_state.representative_normals.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
+    m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
     for (AtomicType<int>& rep_prim : m_regir_state.representative_primitives)
         rep_prim.store(ReGIRRepresentative::UNDEFINED_PRIMITIVE);
-    m_regir_state.grid_cells_alive.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells(), 1u);
-    m_regir_state.grid_cells_alive_staging = std::vector<AtomicType<unsigned int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells());
-    m_regir_state.grid_cells_alive_list.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells());
+    m_regir_state.grid_cells_alive.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1u);
+    m_regir_state.grid_cells_alive_staging = std::vector<AtomicType<unsigned int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
+    for (AtomicType<unsigned int>& cell_alive_staging : m_regir_state.grid_cells_alive_staging)
+        cell_alive_staging.store(0u);
+    m_regir_state.grid_cells_alive_list.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
     m_regir_state.grid_cells_alive_count_staging.store(0);
-    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_render_data.render_settings.regir_settings.get_total_number_of_cells();
+    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
 
 
 
@@ -266,7 +268,7 @@ void CPURenderer::ReGIR_post_render_update()
     }
 
     std::copy(m_regir_state.grid_cells_alive_staging.begin(), m_regir_state.grid_cells_alive_staging.end(), m_regir_state.grid_cells_alive.begin());
-    // m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_render_data.render_settings.regir_settings.get_total_number_of_cells();// m_regir_state.grid_cells_alive_count_staging.load();
+    std::fill(m_regir_state.grid_cells_alive_staging.begin(), m_regir_state.grid_cells_alive_staging.end(), 0u);
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_regir_state.grid_cells_alive_count_staging.load();
 }
 
@@ -349,6 +351,20 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_regir_state.grid_cells_alive_staging.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_regir_state.grid_cells_alive_list.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = &m_regir_state.grid_cells_alive_count_staging;
+    {
+        // Some precomputations
+        ReGIRGridSettings& grid = m_render_data.render_settings.regir_settings.grid;
+
+        float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
+        float3 cell_size = grid.extents / grid_resolution_float;
+
+        m_render_data.render_settings.regir_settings.m_cell_size = cell_size;
+        m_render_data.render_settings.regir_settings.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
+        m_render_data.render_settings.regir_settings.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+        m_render_data.render_settings.regir_settings.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
+        m_render_data.render_settings.regir_settings.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+        m_render_data.render_settings.regir_settings.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
+    }
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -564,7 +580,7 @@ void CPURenderer::pre_render_update(int frame_number)
 void CPURenderer::post_sample_update(int frame_number)
 {
     if (m_render_data.render_settings.accumulate)
-            m_render_data.render_settings.sample_number++;
+        m_render_data.render_settings.sample_number++;
     m_render_data.random_number = m_rng.xorshift32();
     m_render_data.render_settings.need_to_reset = false;
     // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
@@ -692,7 +708,7 @@ void CPURenderer::ReGIR_grid_fill_pass()
 {
     m_render_data.random_number = m_rng.xorshift32();
 
-    #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for (int index = 0; index < m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
     {
         ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index);
@@ -1120,9 +1136,7 @@ void CPURenderer::tonemap(float gamma, float exposure)
 {
     ColorRGB32F* framebuffer_data = get_framebuffer().get_data_as_ColorRGB32F();
 
-#if DEBUG_PIXEL == 0
 #pragma omp parallel for schedule(dynamic)
-#endif
     for (int y = 0; y < m_resolution.y; y++)
     {
         for (int x = 0; x < m_resolution.x; x++)
