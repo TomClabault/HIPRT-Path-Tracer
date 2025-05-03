@@ -231,14 +231,6 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
     while (thread_index < regir_settings.get_number_of_reservoirs_per_cell() * regir_settings.shading.grid_cells_alive_count)
     {
         int reservoir_index = thread_index;
-
-        unsigned int seed;
-        if (render_data.render_settings.freeze_random)
-            seed = wang_hash(reservoir_index + 1);
-        else
-            seed = wang_hash((reservoir_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
-
-        Xorshift32Generator random_number_generator(seed);
         
         ReGIRReservoir output_reservoir;
         
@@ -254,6 +246,14 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
             linear_center_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
         int reservoir_index_in_grid = linear_center_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
         
+        unsigned int seed;
+        if (render_data.render_settings.freeze_random)
+            seed = wang_hash(reservoir_index_in_grid + 1);
+        else
+            seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+
+        Xorshift32Generator random_number_generator(seed);
+
         if (regir_settings.shading.grid_cells_alive[linear_center_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
@@ -288,6 +288,12 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
         output_reservoir.finalize_resampling(valid_neighbor_count);
 
         regir_settings.spatial_reuse.store_reservoir_opt(output_reservoir, reservoir_index_in_grid);
+
+#ifndef __KERNELCC__
+        // We're dispatching exactly one thread per reservoir to compute on the CPU so no need
+        // for the work queue style of things that is only needed on the GPU, we can just exit here
+        break;
+#endif
 
         // We need to compute the next reservoir index for the next iteration
         thread_index += thread_count;

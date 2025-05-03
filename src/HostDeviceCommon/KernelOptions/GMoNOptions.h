@@ -13,6 +13,16 @@
  * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
  */
 
+ // This block is a security to make sure that we have everything defined otherwise this can lead
+ // to weird behavior because of the compiler not knowing about some macros
+#ifndef KERNEL_OPTION_TRUE
+#error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
+#else
+#ifndef KERNEL_OPTION_FALSE
+#error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
+#endif
+#endif
+
  /**
   * Options are defined in a #ifndef __KERNELCC__ block because:
   *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option

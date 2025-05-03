@@ -257,7 +257,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
     // may cause the grid cell to produce no valid reservoir at all so we need canonical samples to
     // cover those cases for unbiased results
-    bool need_canonical = (ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
+    bool need_canonical = (ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
     if (need_canonical)
     {
         ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_canonical_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
@@ -492,7 +492,7 @@ HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const H
     //  - We could be hitting the back of an emissive triangle (think of quad light hanging in the air)
     //  --> triangle normal not facing the same way 
     //  --> cos_angle negative
-    float cosine_light_source = hippt::abs(hippt::dot(light_surface_normal, to_light_direction));
+    float cosine_light_source = compute_cosine_term_at_light_source(light_surface_normal, -to_light_direction);
 
     float pdf_area_measure = pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, light_area, light_emission);
 
