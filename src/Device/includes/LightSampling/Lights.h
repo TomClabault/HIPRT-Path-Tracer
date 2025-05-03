@@ -46,7 +46,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& r
 
     ColorRGB32F light_source_radiance;
     // abs() here to allow backfacing light sources
-    float dot_light_source = hippt::abs(hippt::dot(light_sample.light_source_normal, shadow_ray.direction));
+    float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
     if (dot_light_source > 0.0f)
     {
         NEEPlusPlusContext nee_plus_plus_context;
@@ -160,7 +160,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& rend
 
                 if (bsdf_pdf > 0.0f)
                 {
-                    float cos_theta_at_light_source = hippt::abs(hippt::dot(light_sample.light_source_normal, shadow_ray.direction));
+                    float cos_theta_at_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
 
                     // Preventing division by 0 in the conversion to solid angle here
                     if (cos_theta_at_light_source > 1.0e-5f)

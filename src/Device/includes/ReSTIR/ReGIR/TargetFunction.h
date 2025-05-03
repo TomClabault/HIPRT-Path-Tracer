@@ -9,6 +9,7 @@
 #include "Device/includes/BSDFs/BSDFContext.h"
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/Intersect.h"
+#include "Device/includes/LightSampling/PDFConversion.h"
 #include "Device/includes/ReSTIR/ReGIR/VisibilityTest.h"
 
 #include "HostDeviceCommon/RenderData.h"
@@ -31,11 +32,14 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
 		target_function *= hippt::max(0.0f, hippt::dot(representative_normal, to_light_direction));
 
 	if constexpr (withCosineTermLightSource)
-		target_function *= hippt::max(0.0f, hippt::dot(sample_normal, -to_light_direction));
-		// target_function *= hippt::abs(hippt::dot(sample_normal, -to_light_direction));
+		target_function *= compute_cosine_term_at_light_source(sample_normal, -to_light_direction);
 
 	if constexpr (includeVisibility)
-		target_function *= ReGIR_grid_cell_visibility_test(render_data, representative_point, representative_primitive_index, sample_position, rng);
+	{
+		if (target_function > 0.0f)
+			// No need to visibility test if the target function is already 0
+			target_function *= ReGIR_grid_cell_visibility_test(render_data, representative_point, representative_primitive_index, sample_position, rng);
+	}
 
 	return target_function;
 }
@@ -62,7 +66,7 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 #endif
 
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction));
-	float geometry_term = hippt::abs(hippt::dot(light_source_normal, to_light_direction)) / hippt::square(distance_to_light);
+	float geometry_term = compute_cosine_term_at_light_source(light_source_normal, -to_light_direction) / hippt::square(distance_to_light);
 
 	float target_function = (bsdf_color * light_emission * cosine_term * geometry_term).luminance();
 

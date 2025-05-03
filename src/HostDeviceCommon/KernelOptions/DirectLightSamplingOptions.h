@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_DIRECT_LIGHT_SAMPLING_OPTIONS_H
 #define HOST_DEVICE_COMMON_DIRECT_LIGHT_SAMPLING_OPTIONS_H
 
+#include "HostDeviceCommon/KernelOptions/Common.h"
+
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_ONE_LIGHT 1
 #define LSS_BSDF 2
@@ -16,6 +18,16 @@
 #define LSS_BASE_UNIFORM 0
 #define LSS_BASE_POWER 1
 #define LSS_BASE_REGIR 2
+
+// This block is a security to make sure that we have everything defined otherwise this can lead
+// to weird behavior because of the compiler not knowing about some macros
+#ifndef KERNEL_OPTION_TRUE
+#error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
+#else
+#ifndef KERNEL_OPTION_FALSE
+#error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
+#endif
+#endif
 
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -106,6 +118,16 @@
 * performance comparisons
 */
 #define DirectLightSamplingDeltaDistributionOptimization KERNEL_OPTION_TRUE
+
+/**
+ * Whether or not to allow backfacing lights during NEE evaluation.
+ * 
+ * For most scenes, this is going to have no impact on visuals as lights are generally
+ * watertight meshes, meaning that backfacing emissive triangles of those meshes are not visible from
+ * the outside. There will thus be no visual difference but a non negligeable boost in 
+ * performance/sampling quality as backfacing lights will not be sampled anymore (depending on the sampling strategy)
+ */
+#define DirectLightSamplingAllowBackfacingLights KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

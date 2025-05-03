@@ -71,7 +71,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	if (!sample.is_envmap_sample())
 	{
 		float3 emissive_triangle_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, sample.emissive_triangle_index));
-		geometry_term = hippt::abs(hippt::dot(emissive_triangle_normal, sample_direction));
+		geometry_term = compute_cosine_term_at_light_source(emissive_triangle_normal, -sample_direction);
 		geometry_term /= hippt::square(distance_to_light);
 	}
 

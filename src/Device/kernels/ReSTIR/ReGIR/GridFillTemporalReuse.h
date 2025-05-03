@@ -16,10 +16,6 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-#ifndef __KERNELCC__
-#include "omp.h"
-#endif
-
 HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index_in_cell, int linear_cell_index,
     Xorshift32Generator& rng)
 {
@@ -34,13 +30,11 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
         float target_function;
         if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
             target_function = ReGIR_non_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource>(render_data, linear_cell_index,
-                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, 
-                rng);
+                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         else
             // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
             target_function = ReGIR_non_shading_evaluate_target_function<false, false, false>(render_data, linear_cell_index, 
-                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, 
-                rng);
+                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
 
         float source_pdf = light_sample.area_measure_pdf;
         float mis_weight = 1.0f;
@@ -95,21 +89,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
 #ifdef __KERNELCC__
     uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t thread_count = gridDim.x * blockDim.x;
-#else
-    const uint32_t thread_count = omp_get_num_threads();
 #endif
 
+    uint32_t DEBUG_original_thread_index = thread_index;
     while (thread_index < regir_settings.get_number_of_reservoirs_per_cell() * regir_settings.shading.grid_cells_alive_count)
     {
         int reservoir_index = thread_index;
-
-        unsigned int seed;
-        if (render_data.render_settings.freeze_random)
-            seed = wang_hash(reservoir_index + 1);
-        else
-            seed = wang_hash((reservoir_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
-
-        Xorshift32Generator random_number_generator(seed);
 
         // Reset grid
         if (render_data.render_settings.need_to_reset)
@@ -125,6 +110,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
         int linear_cell_index = regir_settings.shading.grid_cells_alive_count == regir_settings.get_total_number_of_cells_per_grid() ? cell_alive_index : regir_settings.shading.grid_cells_alive_list[cell_alive_index];
         int reservoir_index_in_grid = linear_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
+
+        unsigned int seed;
+        if (render_data.render_settings.freeze_random)
+            seed = wang_hash(reservoir_index_in_grid + 1);
+        else
+            seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+
+        Xorshift32Generator random_number_generator(seed);
 
         float3 cell_center = regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
 
@@ -153,15 +146,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         output_reservoir.finalize_resampling(normalization_weight);
 
         // Discarding occluded reservoirs with visibility reuse
-        // {x=1.43575239 y=2.43986511 z=0.625882506 }
         if (!regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, linear_cell_index, random_number_generator);
 
         regir_settings.store_reservoir_opt(output_reservoir, reservoir_index_in_grid);
 
+#ifndef __KERNELCC__
+        // We're dispatching exactly one thread per reservoir to compute on the CPU so no need
+        // for the work queue style of things that is only needed on the GPU, we can just exit here
+        break;
+#else
         // We need to compute the next reservoir index for the next iteration
         thread_index += thread_count;
+#endif
+
     }
 }
 

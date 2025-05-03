@@ -54,7 +54,7 @@ struct ReGIRGridSettings
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
 
-	static constexpr int DEFAULT_GRID_SIZE = 32;
+	static constexpr int DEFAULT_GRID_SIZE = 16;
 	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 };
 
@@ -320,7 +320,7 @@ struct ReGIRSettings
 	 * If 'out_point_outside_of_grid' is set to true, then the given shading point (+ the jittering) was outside of the grid
 	 * and no reservoir has been gathered
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_non_canonical_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false) const
+	HIPRT_DEVICE ReGIRReservoir get_non_canonical_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false, int sample_number = -1) const
 	{	
 		int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point, &rng, jitter);
 		if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
@@ -360,10 +360,19 @@ struct ReGIRSettings
 
 		out_point_outside_of_grid = false;
 
-		return get_random_cell_non_canonical_reservoir(linear_cell_index, rng);
+		ReGIRReservoir reservoir = get_random_cell_non_canonical_reservoir(linear_cell_index, rng);
+		static bool not_done = true;
+		if (not_done && sample_number == 1)
+		{
+			printf("Non-cano UCW: %f / %d\n", reservoir.UCW, linear_cell_index);
+			not_done = false;
+		}
+
+
+		return reservoir;
 	}
 
-	HIPRT_DEVICE ReGIRReservoir get_canonical_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false) const
+	HIPRT_DEVICE ReGIRReservoir get_canonical_reservoir_for_shading_from_world_pos(float3 shading_point, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false, int sample_number = -1) const
 	{
 		int linear_cell_index = get_linear_cell_index_from_world_pos(shading_point, &rng, jitter);
 		if (linear_cell_index < 0 || linear_cell_index >= grid.grid_resolution.x * grid.grid_resolution.y * grid.grid_resolution.z)
@@ -402,7 +411,15 @@ struct ReGIRSettings
 
 		out_point_outside_of_grid = false;
 
-		return get_random_cell_canonical_reservoir(linear_cell_index, rng);
+		ReGIRReservoir reservoir = get_random_cell_canonical_reservoir(linear_cell_index, rng);
+		static bool not_done = true;
+		if (not_done && sample_number == 1)
+		{
+			printf("Cano UCW: %f / %d\n", reservoir.UCW, linear_cell_index);
+			not_done = false;
+		}
+
+		return reservoir;
 	}
 
 	HIPRT_DEVICE int get_neighbor_replay_linear_cell_index_for_shading(float3 shading_point, Xorshift32Generator& rng, bool jitter = false) const
@@ -533,14 +550,12 @@ struct ReGIRSettings
 	ReGIRShadingSettings shading;
 	ReGIRRepresentative representative;
 
-	bool use_representative_points = true;
-	// If true, representative points will be updated at each frame such that representative points that are the closer
-	// to the cell center will be kept.
+	// If true, the center of the cells will not be used anymore to compute the ReGIR target functions
+	// but rather, points on the surface of the scene within the cells will be used
 	//
-	// If false, representative points are stored at random without preference and this usually yields some weird
-	// distribution of representative points that tends to be closer to the edge of grid cells
-	// bool optimize_representative_points_at_center_of_cell = true;
-
+	// This feature is non-deterministic
+	bool use_representative_points = false;
+	
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;
 

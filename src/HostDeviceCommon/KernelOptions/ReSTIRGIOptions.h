@@ -17,6 +17,16 @@
 
 #define RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT 64 // CHANGE THIS ONE TO MODIFY THE NUMBER OF BITS.
 
+ // This block is a security to make sure that we have everything defined otherwise this can lead
+ // to weird behavior because of the compiler not knowing about some macros
+#ifndef KERNEL_OPTION_TRUE
+#error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
+#else
+#ifndef KERNEL_OPTION_FALSE
+#error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
+#endif
+#endif
+
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
