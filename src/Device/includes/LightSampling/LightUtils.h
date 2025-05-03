@@ -300,9 +300,11 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             continue;
         }
 
-        if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index, 
+        if (ReGIR_shading_can_sample_be_produced_by(render_data, out_reservoir.sample, neighbor_cell_index, random_number_generator))
+
+        /*if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index, 
             out_reservoir.sample.emission.unpack(), out_reservoir.sample.point_on_light,
-            random_number_generator) > 0.0f)
+            random_number_generator) > 0.0f)*/
             normalization_weight += 1.0f;
     }
 

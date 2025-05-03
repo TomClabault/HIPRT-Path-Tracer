@@ -26,7 +26,7 @@
 #ifdef __KERNELCC__
     const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-    if (cell_index >= regir_settings.get_total_number_of_cells())
+    if (cell_index >= regir_settings.get_total_number_of_cells_per_grid())
         return;
 
     grid_cells_alive_buffer[cell_index] = grid_cells_alive_staging_buffer[cell_index] > 0 ? 1 : 0;

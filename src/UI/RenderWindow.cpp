@@ -50,9 +50,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - TOOD: variable number of spatial neighbors + variable number of retries + variable number of picks per spatial neighbors
-// - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
 // - Try correlating warp wise during the grid build but accross cells because right now this is done accross the reservoirs of a single cell, that's bad
+// - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
 // - maybe try half correlations because there is quite a bit of loss in quality with the correlations it seems
 // - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 // - Try some more stuff with fixed spatial reuse because it does increase variance
@@ -60,6 +59,7 @@ extern ImGuiLogger g_imgui_logger;
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
 // - We need light culling in the initial sampling
 // - Use some shjortcut in the BSDF in the target function during shading: rough material only use a constant BSDF, nothing more
+// - When computing the MIS weights by counting the neighbors, we actually don't need the full target function with the emission and everything, we just need the cosine term and shadow ray probably
 // - De-duplicate BSDF computations during shading: we evaluate the BRDF during the reservoir resampling and again during the light sampling
 //		May be exclusive with the BSDF simplifications that can be done in the target function because then we wouldn't be evaluating the proper full BSDF in the target function
 // - Only rebuild the ReGIR grid every N frames?
@@ -90,6 +90,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Try to find a case where temporal reuse erellay helps and then try the approach of having only one temporal grid instead of 8 and see if that still works well
 // - Cull lights that have too low a contribution during grid fill. Maybe some power function or something to keep things unbiased, not just plain reject
 // - We can cull back facing lights during grid fill
+// - Introduce the light surface cosine term to the target function
 // - For tracing rays in grid fill / spatial reuse, there's massive performance to gain from using a shared mem stack for the BVH traversal but we're going to need to split those kernels into multiple calls to avoid overloading the BVH global stack buffer already allocated (or we're going to need to allocate more but VRAM please)
 // - Many retries if the reservoir that was picked for shading was visibility-reuse-killed
 // - Maybe we can fix the jittering PER FRAME such that a given shading point only reuses from a single random neighboring cells instead of multiple neighboring cells when resampling multiple reservoirs. This may simplify MIS weights quite a bit at the cost of artifacts (but yet to try if the artifacts are actually bad or not)
@@ -124,6 +125,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Do also multiple resample per neighbor during shading
 // - Gather some information of how many light samples are rejected because of visibility to get a feel for how much can be gained with NEE++
 //		- Also incorporate back facing lights info
+// - We need a retry feature for ReGIR shading too becaues of the cell liveness
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to compile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction
