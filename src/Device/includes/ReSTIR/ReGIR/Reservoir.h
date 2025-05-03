@@ -20,7 +20,6 @@ struct ReGIRSample
 	float target_function = 0.0f;
 	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
 
-	// The light source normal is here for padding reasons :(
 	Octahedral24BitNormalPadded32b light_source_normal;
 };
 

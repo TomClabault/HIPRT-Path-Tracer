@@ -174,6 +174,11 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 
 HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
 {
+    /*int sampleIndex = 1;
+    if (render_data.render_settings.sample_number == sampleIndex)
+        render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (sampleIndex+1);
+    return;*/
+
     // Only outputting the ray color if no kernel option is going to output its own color
     // (mainly for debugging purposes) such as 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded'
     // for example

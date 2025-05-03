@@ -205,7 +205,7 @@
  * 
  *		The original ReSTIR GI paper indeed only is unbiased for a Lambertian BRDF
  */
-#define PathSamplingStrategy PSS_RESTIR_GI
+#define PathSamplingStrategy PSS_BSDF
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
