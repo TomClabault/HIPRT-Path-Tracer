@@ -115,6 +115,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRender
 {
 	if (DirectLightSamplingBaseStrategy != LSS_BASE_REGIR || render_data.render_settings.regir_settings.representative.distance_to_center == nullptr || !render_data.render_settings.regir_settings.use_representative_points)
 		return;
+	else if (primitive_index == -1)
+		return;
 
 	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
 	float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
