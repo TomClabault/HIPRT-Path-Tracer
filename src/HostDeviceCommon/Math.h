@@ -40,15 +40,7 @@
 #include <bit>
 #endif
 
-#ifdef __KERNELCC__
-template <typename T>
-using AtomicType = T;
-#else
-#include <atomic>
-
-template <typename T>
-using AtomicType = std::atomic<T>;
-#endif
+#include "HostDeviceCommon/AtomicType.h"
 
 struct float4x4
 {

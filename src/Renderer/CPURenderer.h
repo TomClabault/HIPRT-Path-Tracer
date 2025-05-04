@@ -20,7 +20,7 @@
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/PrecomputedEmissiveTrianglesDataSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -178,20 +178,13 @@ private:
 
     struct ReGIRState
     {
-        // ReGIRSettings settings;
+        ReGIRHashGridSoAHost<std::vector> grid_buffer;
+        ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
 
-        ReGIRGridBufferSoAHost<std::vector> grid_buffer;
-        ReGIRGridBufferSoAHost<std::vector> spatial_grid_buffer;
-
-        std::vector<AtomicType<float>> distance_to_center;
-        std::vector<unsigned int> representative_points;
-        std::vector<Octahedral24BitNormalPadded32b> representative_normals;
-        std::vector<AtomicType<int>> representative_primitives;
-
-        std::vector<unsigned char> grid_cells_alive;
-	    std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
+        std::vector<AtomicType<unsigned int>> grid_cells_alive;
+	    // std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
         std::vector<unsigned int> grid_cells_alive_list;
-        AtomicType<unsigned int> grid_cells_alive_count_staging;
+        AtomicType<unsigned int> grid_cells_alive_count;
     } m_regir_state;
 
     Image32Bit m_sheen_ltc_params;

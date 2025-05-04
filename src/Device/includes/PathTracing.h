@@ -174,9 +174,9 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 
 HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
 {
-    /*int sampleIndex = 1;
+    /*int sampleIndex = 2;
     if (render_data.render_settings.sample_number == sampleIndex)
-        render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (sampleIndex+1);
+        render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (sampleIndex + 1);
     return;*/
 
     // Only outputting the ray color if no kernel option is going to output its own color
@@ -226,7 +226,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
         float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
-        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit) * (render_data.render_settings.sample_number + 1);
+        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, render_data.current_camera.position) * (render_data.render_settings.sample_number + 1);
         ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
     }
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION
@@ -234,7 +234,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 
-        int cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(primary_hit);
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(primary_hit);
 
         float average_contribution = 0.0f;
         for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell(); i++)
@@ -257,7 +257,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 
-        int cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(primary_hit);
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(primary_hit);
 
         float average_contribution = 0.0f;
         for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.get_canonical_reservoir_count_per_cell(); i++)
@@ -279,7 +279,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
-        int cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(primary_hit);
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(primary_hit, render_data.current_camera.position);
 
         ColorRGB32F color;
         float3 rep_point = ReGIR_get_cell_representative_point(render_data, cell_index);

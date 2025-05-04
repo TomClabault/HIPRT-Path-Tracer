@@ -51,10 +51,12 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Maybe for the new hash grid ReGIR we can use the average of all hit points in a cell as the center of the cell? And so we can optimize representative points about that 'center point'
+// - Maybe try a "progressive liveness" where we keep alive all the cells that we have hit *so far* instead of only keeping the cells alive from the last frame
+//		- May need a maximum life length for that to avoid keeping cells that haven't been hit for 500 samples 
 // - Try correlating warp wise during the grid build but accross cells because right now this is done accross the reservoirs of a single cell, that's bad
 // - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
 // - maybe try half correlations because there is quite a bit of loss in quality with the correlations it seems
-// - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 // - Try some more stuff with fixed spatial reuse because it does increase variance
 //		- Because we now have fixed neighbor spatial reuse, we should check which neighbor to reuse to make sure we're not reusing from an empty cell or something --> similar to retries in ReSTIR
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
@@ -134,6 +136,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
+// - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 // - also reuse BSDF mis ray of envmap MIS
 // - We do not need the nested dielecttrics stack management in the camera rays kernel
 // - In the material packing, pack major material properties together: coat, metallic, specular_transmission, diffuse_transmission, ... so that we can, in a single memory access, determine whether or not we need to read the rest of the coat, specular transmission ,...
@@ -194,6 +197,8 @@ extern ImGuiLogger g_imgui_logger;
 // TODO Features:
 // Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
 //		- And maybe we can spatial reuse on that
+//		- Issue with MIS weights though because the MIS weights here are going to be an integral over the scene surface of the grid cell
+//			- Maybe SMIS and MMIS have something to say about that
 // - Stochastic light culling: https://jcgt.org/published/0005/01/02/paper-lowres.pdf
 // - Disney adaptive sampling: https://la.disneyresearch.com/wp-content/uploads/Adaptive-Rendering-with-Linear-Predictions-Paper.pdf?utm_source=chatgpt.com
 // - flush to zero denormal float numbers compiler option?
@@ -211,6 +216,7 @@ extern ImGuiLogger g_imgui_logger;
  // - Efficient Image-Space Shape Splatting for Monte Carlo Rendering
  // - DRMLT: https://joeylitalien.github.io/assets/drmlt/drmlt.pdf
  // - What's NEE-AT of RTXPT?
+ // - Area ReSTIR just for the antialiasing part
  // - Not very happy with the quality of NEE++ right now but what if go for the prepass instead of progressive refinement? 
  //		We would trace rays recursuvely for the indirect very very simply and could be fast
  //		Or, for the indirect, we could distribute random points in the bounding boxes of the objects of the scene, same as in Disney cache points
@@ -227,6 +233,7 @@ extern ImGuiLogger g_imgui_logger;
  //			RTXPT 1.5 has some ideas in "PathTracerNEE.hlsli" for that MIS weights issue
  //			Does RTXDI also hase some ideas?
  //		- the standard NEE pdf as a proxy just for computing MIS weights
+ // - Radiance caching for feeding russian roulette
  // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
  // - Some automatic metric to determine automatically what GMoN blend factor to use
  // - software opacity micromaps

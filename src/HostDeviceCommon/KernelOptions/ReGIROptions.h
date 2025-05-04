@@ -96,13 +96,6 @@
  */
 #define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
 
-/**
- * If true, only the proper number of threads will be dispatched for the GridFill and SpatialReuse kernels.
- * 
- * This improves performance at the cost of some more memory
- */
-#define ReGIR_DoDispatchCompaction KERNEL_OPTION_TRUE
-
 #endif // #ifndef __KERNELCC__
 
 #endif
