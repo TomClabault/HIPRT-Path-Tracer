@@ -217,26 +217,32 @@ struct ReGIRSettings
 			random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 
 		int linear_cell_index = ReGIRGridBufferSoADevice::get_linear_cell_index_from_world_pos(grid, world_position);
+
 		return get_cell_non_canonical_reservoir_from_cell_reservoir_index(linear_cell_index, random_non_canonical_reservoir_index_in_cell);
 	}
 
 	/**
 	 * Here, 'canonical_reservoir_index_in_cell' should be in [0, grid_fill.get_canonical_reservoir_count_per_cell() - 1]
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_cell_canonical_reservoir_from_cell_reservoir_index(float3 world_position, float3 camera_position, int canonical_reservoir_index_in_cell) const
+	HIPRT_DEVICE ReGIRReservoir get_cell_canonical_reservoir_from_cell_reservoir_index(int linear_cell_index, int canonical_reservoir_index_in_cell) const
 	{
-		int linear_cell_index = ReGIRGridBufferSoADevice::get_linear_cell_index_from_world_pos(grid, world_position);
-
 		return get_reservoir_for_shading_from_cell_indices(linear_cell_index, canonical_reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE ReGIRReservoir get_random_cell_canonical_reservoir(float3 world_position, float3 camera_position, Xorshift32Generator& rng) const
+	HIPRT_DEVICE ReGIRReservoir get_random_cell_canonical_reservoir(int linear_cell_index, Xorshift32Generator& rng) const
 	{
 		int random_canonical_reservoir_index_in_cell = 0;
 		if (grid_fill.get_canonical_reservoir_count_per_cell() > 1)
 			random_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 
-		return get_cell_canonical_reservoir_from_cell_reservoir_index(world_position, camera_position, random_canonical_reservoir_index_in_cell);
+		return get_cell_canonical_reservoir_from_cell_reservoir_index(linear_cell_index, grid_fill.get_non_canonical_reservoir_count_per_cell() + random_canonical_reservoir_index_in_cell);
+	}
+
+	HIPRT_DEVICE ReGIRReservoir get_random_cell_canonical_reservoir(float3 world_position, float3 camera_position, Xorshift32Generator& rng) const
+	{
+		int linear_cell_index = ReGIRGridBufferSoADevice::get_linear_cell_index_from_world_pos(grid, world_position);
+
+		return get_random_cell_canonical_reservoir(linear_cell_index, rng);
 	}
 
 	/**
@@ -342,7 +348,7 @@ struct ReGIRSettings
 
 		out_point_outside_of_grid = false;
 
-		return get_random_cell_non_canonical_reservoir(linear_cell_index, rng);
+		return get_random_cell_canonical_reservoir(linear_cell_index, rng);
 	}
 
 	HIPRT_DEVICE int get_neighbor_replay_linear_cell_index_for_shading(float3 shading_point, Xorshift32Generator& rng, bool jitter = false) const

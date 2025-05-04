@@ -12,9 +12,8 @@ struct ReGIRGridSettings
 	// "Length" of the grid in each X, Y, Z axis directions
 	float3 extents;
 
-	static constexpr int DEFAULT_GRID_SIZE = 32;
-	// int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
-	int3 grid_resolution = make_int3(96, 32, 96);
+	static constexpr int DEFAULT_GRID_SIZE = 64;
+	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 
 	// Some precomputed stuff
 	unsigned int m_total_number_of_cells = 0;
