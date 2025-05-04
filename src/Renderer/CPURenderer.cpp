@@ -358,12 +358,12 @@ void CPURenderer::set_scene(Scene& parsed_scene)
         float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
         float3 cell_size = grid.extents / grid_resolution_float;
 
-        m_render_data.render_settings.regir_settings.m_cell_size = cell_size;
-        m_render_data.render_settings.regir_settings.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-        m_render_data.render_settings.regir_settings.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-        m_render_data.render_settings.regir_settings.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
-        m_render_data.render_settings.regir_settings.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
-        m_render_data.render_settings.regir_settings.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
+        m_render_data.render_settings.regir_settings.grid.m_cell_size = cell_size;
+        m_render_data.render_settings.regir_settings.grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
+        m_render_data.render_settings.regir_settings.grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+        m_render_data.render_settings.regir_settings.grid.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
+        m_render_data.render_settings.regir_settings.grid.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+        m_render_data.render_settings.regir_settings.grid.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
     }
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();

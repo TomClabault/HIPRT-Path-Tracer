@@ -139,12 +139,12 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
 			float3 cell_size = grid.extents / grid_resolution_float;
 
-			render_data.render_settings.regir_settings.m_cell_size = cell_size;
-			render_data.render_settings.regir_settings.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-			render_data.render_settings.regir_settings.m_total_number_of_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-			render_data.render_settings.regir_settings.m_total_number_of_reservoirs = render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
-			render_data.render_settings.regir_settings.m_number_of_reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
-			render_data.render_settings.regir_settings.m_number_of_reservoirs_per_grid = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
+			render_data.render_settings.regir_settings.grid.m_cell_size = cell_size;
+			render_data.render_settings.regir_settings.grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
+			render_data.render_settings.regir_settings.grid.m_total_number_of_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+			render_data.render_settings.regir_settings.grid.m_total_number_of_reservoirs = render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
+			render_data.render_settings.regir_settings.grid.m_number_of_reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+			render_data.render_settings.regir_settings.grid.m_number_of_reservoirs_per_grid = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
 		}
 	}
 	else

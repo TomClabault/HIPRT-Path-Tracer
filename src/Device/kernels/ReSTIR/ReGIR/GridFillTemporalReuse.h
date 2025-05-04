@@ -45,7 +45,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
     return grid_fill_reservoir;
 }
 
-HIPRT_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int reservoir_index, const ReGIRReservoir& current_reservoir, float& in_out_normalization_weight, Xorshift32Generator& rng)
+HIPRT_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, float3 world_position, float3 camera_position, int reservoir_index_in_cell, const ReGIRReservoir& current_reservoir, float& in_out_normalization_weight, Xorshift32Generator& rng)
 {
     ReGIRReservoir output_reservoir = current_reservoir;
 
@@ -57,7 +57,7 @@ HIPRT_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_data, c
             if (grid_index == regir_settings.temporal_reuse.current_grid_index)
                 continue;
 
-            ReGIRReservoir past_frame_reservoir = regir_settings.get_temporal_reservoir_opt(reservoir_index, grid_index);
+            ReGIRReservoir past_frame_reservoir = regir_settings.get_temporal_reservoir_opt(world_position, camera_position, reservoir_index_in_cell, grid_index);
             // M-capping
             past_frame_reservoir.M = hippt::min(past_frame_reservoir.M, (unsigned char)regir_settings.temporal_reuse.m_cap);
 
@@ -130,7 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Grid cell wasn't used during shading in the last frame, let's not refill it
 
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_reservoir_opt(ReGIRReservoir(), reservoir_index_in_grid);
+            regir_settings.store_reservoir_opt_from_index_in_grid(ReGIRReservoir(), reservoir_index_in_grid);
 
             return;
         }
@@ -139,7 +139,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, linear_cell_index, random_number_generator);
 
         // Temporal reuse
-        output_reservoir = temporal_reuse(render_data, regir_settings, reservoir_index_in_grid, output_reservoir, normalization_weight, random_number_generator);
+        output_reservoir = temporal_reuse(render_data, regir_settings, cell_center, render_data.current_camera.position, reservoir_index_in_cell, output_reservoir, normalization_weight, random_number_generator);
 
         // Normalizing the reservoirs to 1
         output_reservoir.M = 1;
@@ -150,7 +150,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, linear_cell_index, random_number_generator);
 
-        regir_settings.store_reservoir_opt(output_reservoir, reservoir_index_in_grid);
+        regir_settings.store_reservoir_opt_from_index_in_grid(output_reservoir, reservoir_index_in_grid);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

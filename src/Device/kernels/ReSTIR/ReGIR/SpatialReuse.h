@@ -100,13 +100,15 @@ HIPRT_DEVICE ReGIRReservoir fixed_spatial_reuse(HIPRTRenderData& render_data,
 
             int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + random_reservoir_index_in_cell;
 
+            float3 representative_point = ReGIR_get_cell_representative_point(render_data, neighbor_linear_cell_index_in_grid);
+
             ReGIRReservoir neighbor_reservoir;
             if (regir_settings.temporal_reuse.do_temporal_reuse)
                 // Reading from the output of the temporal reuse
-                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
+                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(representative_point, render_data.current_camera.position, random_reservoir_index_in_cell);
             else
                 // No temporal reuse, reading from the output of the grid fill buffer
-                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
+                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(representative_point, render_data.current_camera.position, random_reservoir_index_in_cell);
 
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
@@ -259,7 +261,7 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.spatial_reuse.store_reservoir_opt(ReGIRReservoir(), reservoir_index_in_grid);
+            regir_settings.store_spatial_reservoir_opt_from_index_in_grid(ReGIRReservoir(), reservoir_index_in_grid);
             
             return;
         }
@@ -287,7 +289,7 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
         output_reservoir.M = 1;
         output_reservoir.finalize_resampling(valid_neighbor_count);
 
-        regir_settings.spatial_reuse.store_reservoir_opt(output_reservoir, reservoir_index_in_grid);
+        regir_settings.store_spatial_reservoir_opt_from_index_in_grid(output_reservoir, reservoir_index_in_grid);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

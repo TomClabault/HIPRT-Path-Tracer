@@ -235,7 +235,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
     {
-        ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_non_canonical_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+        ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_non_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera.position,
+            shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
         if (shading_point_outside_of_grid)
             continue;
@@ -260,7 +261,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     bool need_canonical = (ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
     if (need_canonical)
     {
-        ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_canonical_reservoir_for_shading_from_world_pos(shading_point, shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+        ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera.position,
+            shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
         // Adding visibility in the canonical sample target function's if we have visibility reuse
         // (or visibility in the grid fill target function) because otherwise this canonical sample
