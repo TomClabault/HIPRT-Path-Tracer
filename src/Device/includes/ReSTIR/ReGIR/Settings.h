@@ -7,9 +7,9 @@
 #define DEVICE_INCLUDES_REGIR_SETTINGS_H
 
 #include "Device/includes/Hash.h"
-#include "Device/includes/ReSTIR/ReGIR/GridBufferSoA.h"
+#include "Device/includes/ReSTIR/ReGIR/GridBufferSoAA.h"
 #include "Device/includes/ReSTIR/ReGIR/GridSettings.h"
-#include "Device/includes/ReSTIR/ReGIR/HashGridSoA.h"
+#include "Device/includes/ReSTIR/ReGIR/HashGridSoAA.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -196,9 +196,18 @@ struct ReGIRSettings
 	/**
 	 * Here, 'non_canonical_reservoir_index_in_cell' should be in [0, grid_fill.get_non_canonical_reservoir_count_per_cell() - 1]
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_cell_non_canonical_reservoir_from_cell_reservoir_index(float3 world_position, float3 camera_position, int non_canonical_reservoir_index_in_cell) const
+	HIPRT_DEVICE ReGIRReservoir get_cell_non_canonical_reservoir_from_cell_reservoir_index(int linear_cell_index, int non_canonical_reservoir_index_in_cell) const
 	{
-		return get_reservoir_for_shading_from_linear_reservoir_index(world_position, camera_position, non_canonical_reservoir_index_in_cell);
+		return get_reservoir_for_shading_from_cell_indices(linear_cell_index, non_canonical_reservoir_index_in_cell);
+	}
+
+	HIPRT_DEVICE ReGIRReservoir get_random_cell_non_canonical_reservoir(int linear_cell_index, Xorshift32Generator& rng) const
+	{
+		int random_non_canonical_reservoir_index_in_cell = 0;
+		if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
+			random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
+
+		return get_cell_non_canonical_reservoir_from_cell_reservoir_index(linear_cell_index, random_non_canonical_reservoir_index_in_cell);
 	}
 
 	HIPRT_DEVICE ReGIRReservoir get_random_cell_non_canonical_reservoir(float3 world_position, float3 camera_position, Xorshift32Generator& rng) const
@@ -207,7 +216,8 @@ struct ReGIRSettings
 		if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
 			random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 
-		return get_cell_non_canonical_reservoir_from_cell_reservoir_index(world_position, camera_position, random_non_canonical_reservoir_index_in_cell);
+		int linear_cell_index = ReGIRGridBufferSoADevice::get_linear_cell_index_from_world_pos(grid, world_position);
+		return get_cell_non_canonical_reservoir_from_cell_reservoir_index(linear_cell_index, random_non_canonical_reservoir_index_in_cell);
 	}
 
 	/**
@@ -215,7 +225,9 @@ struct ReGIRSettings
 	 */
 	HIPRT_DEVICE ReGIRReservoir get_cell_canonical_reservoir_from_cell_reservoir_index(float3 world_position, float3 camera_position, int canonical_reservoir_index_in_cell) const
 	{
-		return get_reservoir_for_shading_from_linear_reservoir_index(world_position, camera_position, canonical_reservoir_index_in_cell);
+		int linear_cell_index = ReGIRGridBufferSoADevice::get_linear_cell_index_from_world_pos(grid, world_position);
+
+		return get_reservoir_for_shading_from_cell_indices(linear_cell_index, canonical_reservoir_index_in_cell);
 	}
 
 	HIPRT_DEVICE ReGIRReservoir get_random_cell_canonical_reservoir(float3 world_position, float3 camera_position, Xorshift32Generator& rng) const
@@ -231,17 +243,17 @@ struct ReGIRSettings
 	 * If 'out_point_outside_of_grid' is set to true, then the given shading point (+ the jittering) was outside of the grid
 	 * and no reservoir has been gathered
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_reservoir_for_shading_from_linear_reservoir_index(float3 world_position, float3 camera_position, int reservoir_index_in_cell) const
+	HIPRT_DEVICE ReGIRReservoir get_reservoir_for_shading_from_cell_indices(int linear_cell_index, int reservoir_index_in_cell) const
 	{
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return spatial_reuse.output_grid.read_full_reservoir_opt(grid, world_position, camera_position, reservoir_index_in_cell);
+			return spatial_reuse.output_grid.read_full_reservoir_opt(grid, linear_cell_index, reservoir_index_in_cell);
 		else if (temporal_reuse.do_temporal_reuse)
 			// If only doing temporal reuse, reading from the output of the spatial reuse pass
-			return get_temporal_reservoir_opt(world_position, camera_position, reservoir_index_in_cell);
+			return get_temporal_reservoir_opt(linear_cell_index, reservoir_index_in_cell);
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return grid_fill.grid_buffers.read_full_reservoir_opt(grid, world_position, camera_position, reservoir_index_in_cell);
+			return grid_fill.grid_buffers.read_full_reservoir_opt(grid, linear_cell_index, reservoir_index_in_cell);
 	}
 
 	/**
@@ -288,7 +300,7 @@ struct ReGIRSettings
 
 		out_point_outside_of_grid = false;
 
-		return get_random_cell_non_canonical_reservoir(world_position, camera_position, rng);
+		return get_random_cell_non_canonical_reservoir(linear_cell_index, rng);
 	}
 
 	HIPRT_DEVICE ReGIRReservoir get_canonical_reservoir_for_shading_from_world_pos(float3 world_position, float3 camera_position, bool& out_point_outside_of_grid, Xorshift32Generator& rng, bool jitter = false, int sample_number = -1) const
@@ -330,7 +342,7 @@ struct ReGIRSettings
 
 		out_point_outside_of_grid = false;
 
-		return get_random_cell_non_canonical_reservoir(world_position, camera_position, rng);
+		return get_random_cell_non_canonical_reservoir(linear_cell_index, rng);
 	}
 
 	HIPRT_DEVICE int get_neighbor_replay_linear_cell_index_for_shading(float3 shading_point, Xorshift32Generator& rng, bool jitter = false) const
@@ -348,6 +360,14 @@ struct ReGIRSettings
 			rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 
 		return linear_cell_index;
+	}
+
+	HIPRT_DEVICE ReGIRReservoir get_temporal_reservoir_opt(int linear_cell_index, int reservoir_index_in_cell, int grid_index = -1) const
+	{
+		if (grid_index != -1)
+			return grid_fill.grid_buffers.read_full_reservoir_opt(grid, linear_cell_index, reservoir_index_in_cell, grid_index);
+		else
+			return grid_fill.grid_buffers.read_full_reservoir_opt(grid, linear_cell_index, reservoir_index_in_cell, temporal_reuse.current_grid_index);
 	}
 
 	/**
@@ -480,7 +500,7 @@ struct ReGIRSettings
 	// but rather, points on the surface of the scene within the cells will be used
 	//
 	// This feature is non-deterministic
-	bool use_representative_points = false;
+	bool use_representative_points = true;
 	
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;

@@ -119,6 +119,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRender
 		return;
 
 	int linear_cell_index = render_data.render_settings.regir_settings.get_linear_cell_index_from_world_pos(shading_point);
+	if (linear_cell_index < 0 || linear_cell_index >= render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid())
+		printf("Yep: %d\n", linear_cell_index);
+		
 	float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_linear_cell_index(linear_cell_index);
 	float previous_distance_to_center = render_data.render_settings.regir_settings.representative.distance_to_center[linear_cell_index];
 	float current_distance_to_center = hippt::length(cell_center - shading_point);
