@@ -45,6 +45,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- MIS for specular surfaces
 		- Spatial reuse
 		- Visibility reuse
+		- Spatial hashing
 - Next-event estimation strategies (built on-top of base techniques):
 	- ReSTIR DI
 	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
@@ -155,6 +156,7 @@ sudo usermod -a -G render $LOGNAME
 sudo apt install freeglut3-dev
 sudo apt install libglfw3-dev
 sudo apt install libglew-dev
+sudo apt install libomp-dev
 ```
 
 2) Install the NVIDIA CUDA SDK (called "CUDA Toolkit"). It can be downloaded and installed from [here](https://developer.nvidia.com/cuda-downloads).

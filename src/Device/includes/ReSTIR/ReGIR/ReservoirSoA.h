@@ -69,8 +69,9 @@ struct ReGIRReservoirSoADevice
 	}
 
 	float* UCW = nullptr;
-
 	unsigned char* M = nullptr;
+
+	unsigned int number_of_reservoirs_per_cell = 0;
 };
 
 #endif

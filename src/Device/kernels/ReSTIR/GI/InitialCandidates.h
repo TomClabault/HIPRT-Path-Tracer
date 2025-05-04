@@ -126,7 +126,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
                 else if (bounce > 0)
                     // Storing data for ReGIR representative points
-                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, closest_hit_info.primitive_index);
+                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, render_data.current_camera.position, closest_hit_info.shading_normal, closest_hit_info.primitive_index);
 
                 if (bounce == 1)
                 {

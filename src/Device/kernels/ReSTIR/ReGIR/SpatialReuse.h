@@ -16,13 +16,13 @@
 #include "omp.h"
 #endif
 
-HIPRT_DEVICE int get_random_neighbor_linear_cell_index_with_retries(HIPRTRenderData& render_data, 
-    int3 xyz_center_cell_index,
+HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(HIPRTRenderData& render_data, 
+    float3 point_in_cell,
     Xorshift32Generator& spatial_neighbor_rng)
 {
     ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    int neighbor_linear_cell_index_in_grid;
+    unsigned int neighbor_hash_grid_cell_index_in_grid;
     bool neighbor_invalid = true;
 
     int retry = 0;
@@ -33,14 +33,14 @@ HIPRT_DEVICE int get_random_neighbor_linear_cell_index_with_retries(HIPRTRenderD
         float3 offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
         float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
 
-        int3 offset = make_int3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
+        float3 offset = make_float3(offset_float_radius.x, offset_float_radius.y, offset_float_radius.z);
 
-        int3 neighbor_xyz_cell_index = xyz_center_cell_index + offset;
-        neighbor_linear_cell_index_in_grid = regir_settings.get_linear_cell_index_from_xyz(neighbor_xyz_cell_index);
-        if (neighbor_linear_cell_index_in_grid == -1)
+        float3 point_in_neighbor_cell = point_in_cell + offset * regir_settings.get_cell_size(point_in_cell);
+        neighbor_hash_grid_cell_index_in_grid = regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(point_in_neighbor_cell, render_data.current_camera.position);
+        if (neighbor_hash_grid_cell_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
             // Neighbor is outside of the grid
             neighbor_invalid = true;
-        else if (regir_settings.shading.grid_cells_alive[neighbor_linear_cell_index_in_grid] == 0)
+        else if (regir_settings.shading.grid_cells_alive[neighbor_hash_grid_cell_index_in_grid] == 0)
             // Neighbor cell isn't alive, let's not reuse it
             neighbor_invalid = true;
         else
@@ -51,13 +51,13 @@ HIPRT_DEVICE int get_random_neighbor_linear_cell_index_with_retries(HIPRTRenderD
 
     if (neighbor_invalid)
         // We couldn't find a good neighbor
-        return -1;
+        return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 
-    return neighbor_linear_cell_index_in_grid;
+    return neighbor_hash_grid_cell_index_in_grid;
 }
 
 HIPRT_DEVICE ReGIRReservoir fixed_spatial_reuse(HIPRTRenderData& render_data,
-    int reservoir_index_in_cell, int linear_center_cell_index, int3 xyz_center_cell_index,
+    int reservoir_index_in_cell, int hash_grid_cell_index, float3 point_in_cell,
     Xorshift32Generator& spatial_neighbor_rng, Xorshift32Generator& random_number_generator)
 {
     ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
@@ -73,14 +73,14 @@ HIPRT_DEVICE ReGIRReservoir fixed_spatial_reuse(HIPRTRenderData& render_data,
         //
         // This is to have more chance to get a reusable neighbor --> more reuse --> less variance
         float3 random_neighbor;
-        int neighbor_linear_cell_index_in_grid;
+        int neighbor_hash_grid_cell_index_in_grid;
 
         if (is_center_cell)
-            neighbor_linear_cell_index_in_grid = linear_center_cell_index;
+            neighbor_hash_grid_cell_index_in_grid = hash_grid_cell_index;
         else
         {
-            neighbor_linear_cell_index_in_grid = get_random_neighbor_linear_cell_index_with_retries(render_data, xyz_center_cell_index, spatial_neighbor_rng);
-            if (neighbor_linear_cell_index_in_grid == -1)
+            neighbor_hash_grid_cell_index_in_grid = get_random_neighbor_hash_grid_cell_index_with_retries(render_data, point_in_cell, spatial_neighbor_rng);
+            if (neighbor_hash_grid_cell_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
                 // Could not find a valid neighbor
                 continue;
         }
@@ -98,15 +98,17 @@ HIPRT_DEVICE ReGIRReservoir fixed_spatial_reuse(HIPRTRenderData& render_data,
             else
                 random_reservoir_index_in_cell = random_number_generator() * regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
 
-            int neighbor_reservoir_linear_index_in_grid = neighbor_linear_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + random_reservoir_index_in_cell;
+            int neighbor_reservoir_linear_index_in_grid = neighbor_hash_grid_cell_index_in_grid * regir_settings.grid_fill.get_total_reservoir_count_per_cell() + random_reservoir_index_in_cell;
+
+            float3 representative_point = ReGIR_get_cell_representative_point(render_data, neighbor_hash_grid_cell_index_in_grid);
 
             ReGIRReservoir neighbor_reservoir;
             if (regir_settings.temporal_reuse.do_temporal_reuse)
                 // Reading from the output of the temporal reuse
-                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
+                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(representative_point, render_data.current_camera.position, random_reservoir_index_in_cell);
             else
                 // No temporal reuse, reading from the output of the grid fill buffer
-                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(neighbor_reservoir_linear_index_in_grid);
+                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(representative_point, render_data.current_camera.position, random_reservoir_index_in_cell);
 
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
@@ -116,11 +118,11 @@ HIPRT_DEVICE ReGIRReservoir fixed_spatial_reuse(HIPRTRenderData& render_data,
             float target_function_at_center;
             if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
                 // Never using the template visibility/cosine terms arguments for canonical reservoirs
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false, false>(render_data, linear_center_cell_index, 
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false, false>(render_data, hash_grid_cell_index, 
                     neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.light_source_normal.unpack(), neighbor_reservoir.sample.point_on_light,
                     random_number_generator);
             else
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true, true>(render_data, linear_center_cell_index, 
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true, true>(render_data, hash_grid_cell_index, 
                     neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.light_source_normal.unpack(), neighbor_reservoir.sample.point_on_light,
                     random_number_generator);
 
@@ -132,7 +134,7 @@ HIPRT_DEVICE ReGIRReservoir fixed_spatial_reuse(HIPRTRenderData& render_data,
 }
 
 HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, const ReGIRReservoir& output_reservoir,
-    int reservoir_index_in_cell, int linear_center_cell_index, int3 xyz_center_cell_index,
+    int reservoir_index_in_cell, int hash_grid_cell_index, float3 point_in_cell,
     Xorshift32Generator& spatial_neighbor_rng, Xorshift32Generator& random_number_generator)
 {
     ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
@@ -147,14 +149,14 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
         {
             bool is_center_cell = neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_count;
 
-            int neighbor_linear_cell_index_in_grid;
+            int neighbor_hash_grid_cell_index_in_grid;
 
             if (is_center_cell)
-                neighbor_linear_cell_index_in_grid = linear_center_cell_index;
+                neighbor_hash_grid_cell_index_in_grid = hash_grid_cell_index;
             else
             {
-                neighbor_linear_cell_index_in_grid = get_random_neighbor_linear_cell_index_with_retries(render_data, xyz_center_cell_index, spatial_neighbor_rng);
-                if (neighbor_linear_cell_index_in_grid == -1)
+                neighbor_hash_grid_cell_index_in_grid = get_random_neighbor_hash_grid_cell_index_with_retries(render_data, point_in_cell, spatial_neighbor_rng);
+                if (neighbor_hash_grid_cell_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
                     // Could not find a valid neighbor
                     continue;
             }
@@ -171,7 +173,7 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
             else
             {
                 // Non-canonical sample, we need to count how many neighbors could have produced it
-                if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_linear_cell_index_in_grid, random_number_generator))
+                if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_hash_grid_cell_index_in_grid, random_number_generator))
                 {
                     if (is_center_cell)
                         valid_neighbor_count += regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL ? 1.0f : regir_settings.spatial_reuse.reuse_per_neighbor_count;
@@ -210,9 +212,9 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
   * Each cell reuses from random cells adjacent to it
   */
  #ifdef __KERNELCC__
- GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Spatial_Reuse(HIPRTRenderData render_data)
+ GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Spatial_Reuse(HIPRTRenderData render_data, unsigned int number_of_cells_alive)
  #else
- GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data, int thread_index)
+ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data, int thread_index, unsigned int number_of_cells_alive)
  #endif
  {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -228,7 +230,7 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
     const uint32_t thread_count = omp_get_num_threads();
 #endif
 
-    while (thread_index < regir_settings.get_number_of_reservoirs_per_cell() * regir_settings.shading.grid_cells_alive_count)
+    while (thread_index < regir_settings.get_number_of_reservoirs_per_cell() * number_of_cells_alive)
     {
         int reservoir_index = thread_index;
         
@@ -236,15 +238,15 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
         
         int reservoir_index_in_cell = reservoir_index % regir_settings.grid_fill.get_total_reservoir_count_per_cell();
         int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell();
-        int linear_center_cell_index = cell_alive_index;
-        if (regir_settings.shading.grid_cells_alive_count == regir_settings.get_total_number_of_cells_per_grid())
+        int hash_grid_cell_index = cell_alive_index;
+        if (number_of_cells_alive == regir_settings.get_total_number_of_cells_per_grid())
             // If all cells are alive, the cell index is straightforward
-            linear_center_cell_index = cell_alive_index;
+            hash_grid_cell_index = cell_alive_index;
         else
             // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
             // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
-            linear_center_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
-        int reservoir_index_in_grid = linear_center_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
+            hash_grid_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
+        int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
         
         unsigned int seed;
         if (render_data.render_settings.freeze_random)
@@ -254,17 +256,17 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
 
         Xorshift32Generator random_number_generator(seed);
 
-        if (regir_settings.shading.grid_cells_alive[linear_center_cell_index] == 0)
+        float3 point_in_cell = regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index];
+
+        if (regir_settings.shading.grid_cells_alive[hash_grid_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.spatial_reuse.store_reservoir_opt(ReGIRReservoir(), reservoir_index_in_grid);
+            regir_settings.store_spatial_reservoir_opt(ReGIRReservoir(), point_in_cell, render_data.current_camera.position, reservoir_index_in_cell);
             
             return;
         }
-        
-        int3 xyz_center_cell_index = regir_settings.get_xyz_cell_index_from_linear(linear_center_cell_index);
         
         unsigned int spatial_neighbor_rng_seed;
         if (regir_settings.spatial_reuse.do_coalesced_spatial_reuse)
@@ -275,19 +277,19 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
             spatial_neighbor_rng_seed = wang_hash(seed);
 
         Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
-        output_reservoir = fixed_spatial_reuse(render_data, reservoir_index_in_cell, linear_center_cell_index, xyz_center_cell_index, spatial_neighbor_rng, random_number_generator);
+        output_reservoir = fixed_spatial_reuse(render_data, reservoir_index_in_cell, hash_grid_cell_index, point_in_cell, spatial_neighbor_rng, random_number_generator);
 
         spatial_neighbor_rng.m_state.seed = spatial_neighbor_rng_seed;
 
         int valid_neighbor_count = fixed_spatial_reuse_mis_weight(render_data, output_reservoir, 
-                reservoir_index_in_cell, linear_center_cell_index, xyz_center_cell_index, 
+                reservoir_index_in_cell, hash_grid_cell_index, point_in_cell,
                 spatial_neighbor_rng, random_number_generator);
 
         // Normalizing the reservoirs to 1
         output_reservoir.M = 1;
         output_reservoir.finalize_resampling(valid_neighbor_count);
 
-        regir_settings.spatial_reuse.store_reservoir_opt(output_reservoir, reservoir_index_in_grid);
+        regir_settings.store_spatial_reservoir_opt(output_reservoir, point_in_cell, render_data.current_camera.position, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

@@ -7,7 +7,7 @@
 #define REGIR_RENDER_PASS_H
 
 #include "Renderer/RenderPasses/RenderPass.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 
 class GPURenderer;
 
@@ -71,21 +71,18 @@ private:
 	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,
 	// this buffer will contain one more than one grid worth of space to
 	// accomodate for the grid of the past frames for temporal reuse
-	ReGIRGridBufferSoAHost<OrochiBuffer> m_grid_buffers;
-	ReGIRGridBufferSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
-
-	// Representative data buffers
-	OrochiBuffer<float> m_distance_to_center_buffer;
-	OrochiBuffer<int> m_representative_primitive_buffer;
-	OrochiBuffer<unsigned int> m_representative_points_buffer;
-	OrochiBuffer<Octahedral24BitNormalPadded32b> m_representative_normals_buffer;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_grid_buffers;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
 
 	// Cells alive buffers
-	OrochiBuffer<unsigned char> m_grid_cells_alive_buffer;
-	OrochiBuffer<unsigned int> m_grid_cells_alive_staging_buffer;
-	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_buffer;
+	OrochiBuffer<unsigned int> m_grid_cells_alive_buffer;
+	OrochiBuffer<unsigned int> m_grid_cells_alive_count_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_list_buffer;
+
+	unsigned int m_number_of_cells_alive = 0;
+	unsigned int m_total_number_of_cells = 0;
+	unsigned int m_hash_grid_current_overallocation_factor = 30;
 };
 
 #endif
