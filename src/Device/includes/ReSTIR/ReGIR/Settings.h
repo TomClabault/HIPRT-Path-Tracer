@@ -7,9 +7,9 @@
 #define DEVICE_INCLUDES_REGIR_SETTINGS_H
 
 #include "Device/includes/Hash.h"
-#include "Device/includes/ReSTIR/ReGIR/GridBufferSoAA.h"
+#include "Device/includes/ReSTIR/ReGIR/GridBufferSoA.h"
 #include "Device/includes/ReSTIR/ReGIR/GridSettings.h"
-#include "Device/includes/ReSTIR/ReGIR/HashGridSoAA.h"
+#include "Device/includes/ReSTIR/ReGIR/HashGridSoA.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
 
 #include "HostDeviceCommon/Xorshift.h"
