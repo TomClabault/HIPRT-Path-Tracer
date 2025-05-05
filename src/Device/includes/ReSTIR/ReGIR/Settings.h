@@ -17,7 +17,7 @@
 struct ReGIRGridFillSettings
 {
 	// How many light samples are resampled into each reservoir of the grid cell
-	int sample_count_per_cell_reservoir = 32;
+	int sample_count_per_cell_reservoir = 320;
 
 	HIPRT_DEVICE int get_non_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_DEVICE int get_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_canonical; }
