@@ -64,9 +64,9 @@ struct ReGIRGridBufferSoADevice
 	/**
 	 * Just some overload to adhere to the API of the hash grid
 	 */
-	HIPRT_DEVICE ReGIRReservoir read_full_reservoir_opt(const ReGIRHashGrid& grid_settings, int linear_cell_index, int reservoir_index_in_cell, int grid_index = -1) const 
+	HIPRT_DEVICE ReGIRReservoir read_full_reservoir_opt(const ReGIRHashGrid& grid_settings, int hash_grid_cell_index, int reservoir_index_in_cell, int grid_index = -1) const 
 	{
-		int reservoir_index_in_grid = linear_cell_index * grid_settings.m_number_of_reservoirs_per_cell + reservoir_index_in_cell;
+		int reservoir_index_in_grid = hash_grid_cell_index * grid_settings.m_number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
 		return read_full_reservoir_opt(reservoir_index_in_grid); 
 	}
@@ -76,9 +76,9 @@ struct ReGIRGridBufferSoADevice
 	 */
 	HIPRT_DEVICE ReGIRReservoir read_full_reservoir_opt(const ReGIRHashGrid& grid_settings, float3 world_position, float3 camera_position, int reservoir_index_in_cell, int grid_index = -1) const 
 	{
-		int linear_cell_index = grid_settings.get_linear_cell_index_from_world_pos(world_position);
+		int hash_grid_cell_index = grid_settings.get_hash_grid_cell_index_from_world_pos(world_position, camera_position);
 
-		return read_full_reservoir_opt(grid_settings, linear_cell_index, reservoir_index_in_cell, grid_index);
+		return read_full_reservoir_opt(grid_settings, hash_grid_cell_index, reservoir_index_in_cell, grid_index);
 	}
 };
 

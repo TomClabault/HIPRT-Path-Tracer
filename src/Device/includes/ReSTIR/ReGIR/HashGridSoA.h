@@ -12,22 +12,25 @@
 struct ReGIRHashGridSoADevice
 {
 	// These two SoAs are allocated to hold 'number_cells * number_reservoirs_per_cell'
+	// So for a given 'hash_grid_cell_index', the cell contains reservoirs and samples going from 
+	// reservoirs[hash_grid_cell_index * number_reservoirs_per_cell] to reservoirs[cell_index * number_reservoirs_per_cell + number_reservoirs_per_cell[
 	ReGIRReservoirSoADevice reservoirs;
 	ReGIRSampleSoADevice samples;
+	// This SoA is allocated to hold 'number_cells' only
 	ReGIRRepresentativeSoADevice representative;
 
-	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, int linear_cell_index, int reservoir_index_in_cell, int grid_index = -1)
+	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, int hash_grid_cell_index, int reservoir_index_in_cell, int grid_index = -1)
 	{
 		if (grid_index != -1)
 			// TODO fix this, we would need the number of reservoirs per grid in here but we don't have it
 			return;
 
-		int reservoir_index_in_grid = linear_cell_index + reservoir_index_in_cell;
+		int reservoir_index_in_grid = hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
 		store_reservoir_and_sample_opt_from_index_in_grid(reservoir_index_in_grid, reservoir, grid_index);
 	}
 
-	HIPRT_DEVICE ReGIRReservoir read_full_reservoir_opt(int linear_cell_index, int reservoir_index_in_cell, int grid_index = -1) const
+	HIPRT_DEVICE ReGIRReservoir read_full_reservoir_opt(int hash_grid_cell_index, int reservoir_index_in_cell, int grid_index = -1) const
 	{
 		if (grid_index != -1)
 			// TODO fix this, we would need the number of reservoirs per grid in here but we don't have it
@@ -35,7 +38,7 @@ struct ReGIRHashGridSoADevice
 
 		ReGIRReservoir reservoir;
 
-		int reservoir_index_in_grid = linear_cell_index + reservoir_index_in_cell;
+		int reservoir_index_in_grid = hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
 		float UCW = reservoirs.UCW[reservoir_index_in_grid];
 		if (UCW <= 0.0f)

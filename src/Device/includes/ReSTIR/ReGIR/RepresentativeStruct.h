@@ -23,12 +23,13 @@ struct ReGIRRepresentativeSoADevice
 	// 'number_cells' in size
 
 	// TODO Pack distance to unsigned char? Yep but then we need a way to atomic on that
-	AtomicType<float>* distance_to_center = nullptr;
+	//AtomicType<float>* distance_to_center = nullptr;
 	AtomicType<int>* representative_primitive = nullptr;
 	// TODO test quantize these guys but we may end up with the point below the
 	// actual surface because of the quantization and this may be an issue for shadow rays
 	// on very finely tesselated geometry because the shadow rays may end up hitting another primitive
-	unsigned int* representative_points = nullptr;
+	//unsigned int* representative_points = nullptr;
+	float3* representative_points = nullptr;
 	// TODO Pack to octahedral
 	Octahedral24BitNormalPadded32b* representative_normals = nullptr;
 };

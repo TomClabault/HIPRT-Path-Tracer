@@ -51,10 +51,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Maybe for the new hash grid ReGIR we can use the average of all hit points in a cell as the center of the cell? And so we can optimize representative points about that 'center point'
 // - Try correlating warp wise during the grid build but accross cells because right now this is done accross the reservoirs of a single cell, that's bad
 // - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
 // - maybe try half correlations because there is quite a bit of loss in quality with the correlations it seems
-// - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 // - Try some more stuff with fixed spatial reuse because it does increase variance
 //		- Because we now have fixed neighbor spatial reuse, we should check which neighbor to reuse to make sure we're not reusing from an empty cell or something --> similar to retries in ReSTIR
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
@@ -134,6 +134,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
+// - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 // - also reuse BSDF mis ray of envmap MIS
 // - We do not need the nested dielecttrics stack management in the camera rays kernel
 // - In the material packing, pack major material properties together: coat, metallic, specular_transmission, diffuse_transmission, ... so that we can, in a single memory access, determine whether or not we need to read the rest of the coat, specular transmission ,...

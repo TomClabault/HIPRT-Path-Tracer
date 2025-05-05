@@ -119,18 +119,18 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			updated = true;
 		}
 
-		// Representative cells data
-		if (m_distance_to_center_buffer.size() != render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid())
-		{
-			m_distance_to_center_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
-			m_representative_points_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
-			m_representative_normals_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
-			m_representative_primitive_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
-			
-			reset_representative_data();
+		//// Representative cells data
+		//if (m_distance_to_center_buffer.size() != render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid())
+		//{
+		//	m_distance_to_center_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
+		//	m_representative_points_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
+		//	m_representative_normals_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
+		//	m_representative_primitive_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
+		//	
+		//	reset_representative_data();
 
-			updated = true;
-		}
+		//	updated = true;
+		//}
 
 		// Some precomputations that can be done here instead of being done on the GPU for each pixel
 		{
@@ -173,7 +173,7 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			updated = true;
 		}
 
-		if (m_distance_to_center_buffer.size() > 0)
+		/*if (m_distance_to_center_buffer.size() > 0)
 		{
 			m_distance_to_center_buffer.free();
 			m_representative_points_buffer.free();
@@ -181,7 +181,7 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			m_representative_primitive_buffer.free();
 
 			updated = true;
-		}
+		}*/
 	}
 
 	return updated;
@@ -327,28 +327,29 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 
 void ReGIRRenderPass::reset_representative_data()
 {
-	if (m_distance_to_center_buffer.size() > 0)
-	{
-		{
-			std::vector<float> distance_reset(m_distance_to_center_buffer.size(), ReGIRRepresentativeSoADevice::UNDEFINED_DISTANCE);
-			m_distance_to_center_buffer.upload_data(distance_reset);
-		}
+	///*if (m.size() > 0)
+	//*/{
+	//	/*{
+	//		std::vector<float> distance_reset(m_distance_to_center_buffer.size(), ReGIRRepresentativeSoADevice::UNDEFINED_DISTANCE);
+	//		m_distance_to_center_buffer.upload_data(distance_reset);
+	//	}*/
 
-		{
-			std::vector<unsigned int> points_reset(m_representative_points_buffer.size(), ReGIRRepresentativeSoADevice::UNDEFINED_POINT);
-			m_representative_points_buffer.upload_data(points_reset);
-		}
-		
-		{
-			std::vector<Octahedral24BitNormalPadded32b> normals_reset(m_representative_normals_buffer.size(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentativeSoADevice::UNDEFINED_NORMAL));
-			m_representative_normals_buffer.upload_data(normals_reset);
-		}
+	//	{
+	//		std::vector<float3> points_reset(m_grid_buffers.size_cells(), ReGIRRepresentativeSoADevice::UNDEFINED_POINT);
+	//		m_grid_buffers.get_buffer<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_POINTS>().upload_data(points_resets);
+	//		m_representative_points_buffer.upload_data(points_reset);
+	//	}
+	//	
+	//	{
+	//		std::vector<Octahedral24BitNormalPadded32b> normals_reset(m_representative_normals_buffer.size(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentativeSoADevice::UNDEFINED_NORMAL));
+	//		m_representative_normals_buffer.upload_data(normals_reset);
+	//	}
 
-		{
-			std::vector<int> primitive_reset(m_representative_primitive_buffer.size(), ReGIRRepresentativeSoADevice::UNDEFINED_PRIMITIVE);
-			m_representative_primitive_buffer.upload_data(primitive_reset);
-		}
-	}
+	//	{
+	//		std::vector<int> primitive_reset(m_representative_primitive_buffer.size(), ReGIRRepresentativeSoADevice::UNDEFINED_PRIMITIVE);
+	//		m_representative_primitive_buffer.upload_data(primitive_reset);
+	//	}
+	////}
 }
 
 bool ReGIRRenderPass::is_render_pass_used() const
@@ -362,10 +363,10 @@ float ReGIRRenderPass::get_VRAM_usage() const
 		m_grid_buffers.get_byte_size() + 
 		m_spatial_reuse_output_grid_buffer.get_byte_size() + 
 
-		m_distance_to_center_buffer.get_byte_size() + 
+		/*m_distance_to_center_buffer.get_byte_size() + 
 		m_representative_points_buffer.get_byte_size() + 
 		m_representative_normals_buffer.get_byte_size() + 
-		m_representative_primitive_buffer.get_byte_size() +
+		m_representative_primitive_buffer.get_byte_size() +*/
 
 		m_grid_cells_alive_buffer.get_byte_size() + 
 		m_grid_cells_alive_staging_buffer.get_byte_size() +

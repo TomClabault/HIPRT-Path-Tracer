@@ -82,6 +82,12 @@ struct GenericSoA
 	}
 
     template<int bufferIndex>
+    auto& get_buffer()
+    {
+        return std::get<bufferIndex>(buffers);
+    }
+
+    template<int bufferIndex>
     auto* get_buffer_data_ptr()
     {
         return std::get<bufferIndex>(buffers).data();

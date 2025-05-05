@@ -14,7 +14,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
 
 template <template <typename> typename DataContainer>
-using ReGIRRepresentativeSoAHost = GenericSoA<DataContainer, GenericAtomicType<float, DataContainer>, GenericAtomicType<int, DataContainer>, unsigned int, Octahedral24BitNormalPadded32b>;
+using ReGIRRepresentativeSoAHost = GenericSoA<DataContainer, GenericAtomicType<float, DataContainer>, GenericAtomicType<int, DataContainer>, float3, Octahedral24BitNormalPadded32b>;
 
 enum ReGIRRepresentativeSoAHostBuffers
 {
@@ -32,6 +32,8 @@ struct ReGIRHashGridSoAHost
 		samples.resize(new_number_of_cells * num_reservoirs_per_cell);
 		reservoirs.resize(new_number_of_cells * num_reservoirs_per_cell);
 		representative.resize(new_number_of_cells);
+
+		m_reservoirs_per_cell = num_reservoirs_per_cell;
 	}
 
 	void free()
@@ -68,8 +70,9 @@ struct ReGIRHashGridSoAHost
 
 		hash_grid_soa.reservoirs.UCW = reservoirs.template get_buffer_data_ptr<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>();
 		hash_grid_soa.reservoirs.M = reservoirs.template get_buffer_data_ptr<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_M>();
+		hash_grid_soa.reservoirs.number_of_reservoirs_per_cell = m_reservoirs_per_cell;
 
-		hash_grid_soa.representative.distance_to_center = representative.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_DISTANCE_TO_CENTER>();
+		//hash_grid_soa.representative.distance_to_center = representative.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_DISTANCE_TO_CENTER>();
 		hash_grid_soa.representative.representative_primitive = representative.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_PRIM_INDEX>();
 		hash_grid_soa.representative.representative_points = representative.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_POINTS>();
 		hash_grid_soa.representative.representative_normals = representative.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_NORMALS>();
@@ -80,6 +83,8 @@ struct ReGIRHashGridSoAHost
 	ReGIRSampleSoAHost<DataContainer> samples;
 	ReGIRReservoirSoAHost<DataContainer> reservoirs;
 	ReGIRRepresentativeSoAHost<DataContainer> representative;
+
+	unsigned int m_reservoirs_per_cell = 0;
 };
 
 #endif

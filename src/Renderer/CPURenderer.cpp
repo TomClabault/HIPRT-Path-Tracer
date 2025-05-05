@@ -38,7 +38,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -52,8 +52,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 377
-#define DEBUG_PIXEL_Y 240
+#define DEBUG_PIXEL_X 413
+#define DEBUG_PIXEL_Y 326
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -100,14 +100,18 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     m_regir_state.grid_buffer.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
     m_regir_state.spatial_grid_buffer.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
-    m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
-    for (AtomicType<float>& distance : m_regir_state.distance_to_center)
-        distance.store(ReGIRRepresentativeSoADevice::UNDEFINED_DISTANCE);
-    m_regir_state.representative_points.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), ReGIRRepresentativeSoADevice::UNDEFINED_POINT);
+
+
+    /*m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
+    for (AtomicType<float>& distance : m_regir_state.grid_buffer.representative.)
+        distance.store(ReGIRRepresentativeSoADevice::UNDEFINED_DISTANCE);*/
+    /*m_regir_state.representative_points.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), ReGIRRepresentativeSoADevice::UNDEFINED_POINT);
     m_regir_state.representative_normals.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentativeSoADevice::UNDEFINED_NORMAL));
-    m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
-    for (AtomicType<int>& rep_prim : m_regir_state.representative_primitives)
+    m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());*/
+    for (AtomicType<int>& rep_prim : m_regir_state.grid_buffer.representative.get_buffer<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_PRIM_INDEX>())
         rep_prim.store(ReGIRRepresentativeSoADevice::UNDEFINED_PRIMITIVE);
+
+
     m_regir_state.grid_cells_alive.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1u);
     m_regir_state.grid_cells_alive_staging = std::vector<AtomicType<unsigned int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
     for (AtomicType<unsigned int>& cell_alive_staging : m_regir_state.grid_cells_alive_staging)

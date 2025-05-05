@@ -283,7 +283,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     neighbor_rng.m_state.seed = neighbor_rng_seed;
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + need_canonical; i++)
     {
-        int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_linear_cell_index_for_shading(shading_point, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+		int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(shading_point, render_data.current_camera.position,
+            neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
         if (neighbor_cell_index == -1)
             continue;
 

@@ -183,11 +183,6 @@ private:
         ReGIRHashGridSoAHost<std::vector> grid_buffer;
         ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
 
-        std::vector<AtomicType<float>> distance_to_center;
-        std::vector<unsigned int> representative_points;
-        std::vector<Octahedral24BitNormalPadded32b> representative_normals;
-        std::vector<AtomicType<int>> representative_primitives;
-
         std::vector<unsigned char> grid_cells_alive;
 	    std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
         std::vector<unsigned int> grid_cells_alive_list;
