@@ -261,7 +261,7 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_spatial_reservoir_opt_from_index_in_grid(ReGIRReservoir(), reservoir_index_in_grid);
+            regir_settings.store_spatial_reservoir_opt(ReGIRReservoir(), linear_center_cell_index, reservoir_index_in_cell);
             
             return;
         }
@@ -289,7 +289,7 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
         output_reservoir.M = 1;
         output_reservoir.finalize_resampling(valid_neighbor_count);
 
-        regir_settings.store_spatial_reservoir_opt_from_index_in_grid(output_reservoir, reservoir_index_in_grid);
+        regir_settings.store_spatial_reservoir_opt(output_reservoir, linear_center_cell_index, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

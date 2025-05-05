@@ -96,10 +96,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     {
         int reservoir_index = thread_index;
 
-        // Reset grid
-        if (render_data.render_settings.need_to_reset)
-            regir_settings.reset_reservoirs(reservoir_index);
-
         ReGIRReservoir output_reservoir;
         float normalization_weight = regir_settings.grid_fill.sample_count_per_cell_reservoir;
         int reservoir_index_in_cell = reservoir_index % regir_settings.get_number_of_reservoirs_per_cell();
@@ -110,6 +106,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
         int linear_cell_index = regir_settings.shading.grid_cells_alive_count == regir_settings.get_total_number_of_cells_per_grid() ? cell_alive_index : regir_settings.shading.grid_cells_alive_list[cell_alive_index];
         int reservoir_index_in_grid = linear_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
+
+        // Reset grid
+        if (render_data.render_settings.need_to_reset)
+            regir_settings.reset_reservoirs(linear_cell_index, reservoir_index_in_cell);
 
         unsigned int seed;
         if (render_data.render_settings.freeze_random)
@@ -130,7 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Grid cell wasn't used during shading in the last frame, let's not refill it
 
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_reservoir_opt_from_index_in_grid(ReGIRReservoir(), reservoir_index_in_grid);
+            regir_settings.store_reservoir_opt(ReGIRReservoir(), linear_cell_index, reservoir_index_in_cell);
 
             return;
         }
@@ -150,7 +150,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, linear_cell_index, random_number_generator);
 
-        regir_settings.store_reservoir_opt_from_index_in_grid(output_reservoir, reservoir_index_in_grid);
+        regir_settings.store_reservoir_opt(output_reservoir, linear_cell_index, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

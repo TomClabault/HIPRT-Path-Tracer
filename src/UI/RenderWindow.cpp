@@ -194,6 +194,8 @@ extern ImGuiLogger g_imgui_logger;
 // TODO Features:
 // Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
 //		- And maybe we can spatial reuse on that
+//		- Issue with MIS weights though because the MIS weights here are going to be an integral over the scene surface of the grid cell
+//			- Maybe SMIS and MMIS have something to say about that
 // - Stochastic light culling: https://jcgt.org/published/0005/01/02/paper-lowres.pdf
 // - Disney adaptive sampling: https://la.disneyresearch.com/wp-content/uploads/Adaptive-Rendering-with-Linear-Predictions-Paper.pdf?utm_source=chatgpt.com
 // - flush to zero denormal float numbers compiler option?
@@ -211,6 +213,7 @@ extern ImGuiLogger g_imgui_logger;
  // - Efficient Image-Space Shape Splatting for Monte Carlo Rendering
  // - DRMLT: https://joeylitalien.github.io/assets/drmlt/drmlt.pdf
  // - What's NEE-AT of RTXPT?
+ // - Area ReSTIR just for the antialiasing part
  // - Not very happy with the quality of NEE++ right now but what if go for the prepass instead of progressive refinement? 
  //		We would trace rays recursuvely for the indirect very very simply and could be fast
  //		Or, for the indirect, we could distribute random points in the bounding boxes of the objects of the scene, same as in Disney cache points
@@ -227,6 +230,7 @@ extern ImGuiLogger g_imgui_logger;
  //			RTXPT 1.5 has some ideas in "PathTracerNEE.hlsli" for that MIS weights issue
  //			Does RTXDI also hase some ideas?
  //		- the standard NEE pdf as a proxy just for computing MIS weights
+ // - Radiance caching for feeding russian roulette
  // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
  // - Some automatic metric to determine automatically what GMoN blend factor to use
  // - software opacity micromaps

@@ -7,7 +7,7 @@
 #define REGIR_RENDER_PASS_H
 
 #include "Renderer/RenderPasses/RenderPass.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 
 class GPURenderer;
 
@@ -71,8 +71,8 @@ private:
 	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,
 	// this buffer will contain one more than one grid worth of space to
 	// accomodate for the grid of the past frames for temporal reuse
-	ReGIRGridBufferSoAHost<OrochiBuffer> m_grid_buffers;
-	ReGIRGridBufferSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_grid_buffers;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
 
 	// Representative data buffers
 	OrochiBuffer<float> m_distance_to_center_buffer;

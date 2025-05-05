@@ -6,9 +6,28 @@
 #ifndef RENDERER_GENERIC_SOA_H
 #define RENDERER_GENERIC_SOA_H
 
-#include <tuple>
 #include <cstddef>
+#include <tuple>
+#include <type_traits>
 #include <utility>
+
+#include "HostDeviceCommon/AtomicType.h"
+
+template<typename T, template<typename> class Container>
+using GenericAtomicType = typename std::conditional_t<std::is_same<Container<T>, std::vector<T>>::value, AtomicType<T>, T>;
+
+// Helper to detect std::atomic<...>
+//
+// std::false_type and std::true_type are structures that
+// have ::value equal to 'false' or ::value equal to 'true' respectively
+//
+// By inheriting from std::false_type or std::true_type, we can check at compile time
+// what's our ::value and use a constexpr if() on that
+template<typename T>
+struct is_std_atomic : std::false_type {};
+
+template<typename U>
+struct is_std_atomic<std::atomic<U>> : std::true_type {};
 
 /**
  * Can be used to create a structure of arrays for multiple buffers of different types.
@@ -38,7 +57,10 @@ struct GenericSoA
     void resize(std::size_t new_element_count)
     {
         // Applies resize(new_element_count) on each buffer in the tuple
-        std::apply([new_element_count](auto&... buffer) { (buffer.resize(new_element_count), ...); }, buffers);
+        std::apply([this, new_element_count](auto&... buffer) 
+        { 
+            (resize_buffer_internal(buffer, new_element_count), ...);
+        }, buffers);
     }
 
     std::size_t get_byte_size() const
@@ -60,9 +82,20 @@ struct GenericSoA
 	}
 
     template<int bufferIndex>
-    auto& get_buffer()
+    auto* get_buffer_data_ptr()
     {
-        return std::get<bufferIndex>(buffers);
+        return std::get<bufferIndex>(buffers).data();
+    }
+
+    template<int bufferIndex>
+    auto* get_buffer_data_atomic_ptr()
+    {
+        if constexpr (std::is_same<Container<BufferTypeFromIndex<bufferIndex>>, std::vector<BufferTypeFromIndex<bufferIndex>>>::value)
+            // std::vector so this is for the CPU
+			return std::get<bufferIndex>(buffers).data();
+        else
+            // For the GPU
+            return std::get<bufferIndex>(buffers).get_atomic_device_pointer();
     }
 
     template <int bufferIndex>
@@ -72,13 +105,13 @@ struct GenericSoA
         {
             // If our main container type for this SoA is std::vector (i.e. this is for the CPU), then we're uploading
             // to the buffer simply by copying
-            get_buffer<bufferIndex>() = data;
+            get_buffer_data_ptr<bufferIndex>() = data;
         }
         else if constexpr (std::is_same_v<Container<BufferTypeFromIndex<bufferIndex>>, OrochiBuffer<BufferTypeFromIndex<bufferIndex>>>)
         {
             // If our main container type for this SoA is OrochiBuffer (i.e. this is for the GPU), then we're uploading
             // to the buffer by uploading to the GPU
-            get_buffer<bufferIndex>().upload_data(data);
+            get_buffer_data_ptr<bufferIndex>().upload_data(data);
         }
     }
 
@@ -94,6 +127,19 @@ struct GenericSoA
             // the reference, hence the use of std::decay_t
             ((buffer = std::decay_t<decltype(buffer)>{}), ...);
         }, buffers);
+    }
+
+private:
+    template <typename BufferType>
+    void resize_buffer_internal(BufferType& buffer, std::size_t new_element_count)
+    {
+        if constexpr (is_std_atomic<typename BufferType::value_type>::value)
+            // If the buffer is a buffer of std::atomic on the CPU, we cannot use resize
+            // (because std::atomic are missing some operators used by
+            // std::vector.resize() so we have to recreate the buffer instead
+            buffer = std::decay_t<decltype(buffer)>(new_element_count);
+        else
+            buffer.resize(new_element_count);
     }
 };
 

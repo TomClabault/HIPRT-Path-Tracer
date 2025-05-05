@@ -20,7 +20,7 @@
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/PrecomputedEmissiveTrianglesDataSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -180,8 +180,8 @@ private:
     {
         // ReGIRSettings settings;
 
-        ReGIRGridBufferSoAHost<std::vector> grid_buffer;
-        ReGIRGridBufferSoAHost<std::vector> spatial_grid_buffer;
+        ReGIRHashGridSoAHost<std::vector> grid_buffer;
+        ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
 
         std::vector<AtomicType<float>> distance_to_center;
         std::vector<unsigned int> representative_points;

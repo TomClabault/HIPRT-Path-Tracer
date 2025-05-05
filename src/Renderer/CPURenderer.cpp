@@ -98,16 +98,16 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
 
 
-    m_regir_state.grid_buffer.resize(m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR());
-    m_regir_state.spatial_grid_buffer.resize(m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid());
+    m_regir_state.grid_buffer.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
+    m_regir_state.spatial_grid_buffer.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
     m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
     for (AtomicType<float>& distance : m_regir_state.distance_to_center)
-        distance.store(ReGIRRepresentative::UNDEFINED_DISTANCE);
-    m_regir_state.representative_points.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), ReGIRRepresentative::UNDEFINED_POINT);
-    m_regir_state.representative_normals.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentative::UNDEFINED_NORMAL));
+        distance.store(ReGIRRepresentativeSoADevice::UNDEFINED_DISTANCE);
+    m_regir_state.representative_points.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), ReGIRRepresentativeSoADevice::UNDEFINED_POINT);
+    m_regir_state.representative_normals.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentativeSoADevice::UNDEFINED_NORMAL));
     m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
     for (AtomicType<int>& rep_prim : m_regir_state.representative_primitives)
-        rep_prim.store(ReGIRRepresentative::UNDEFINED_PRIMITIVE);
+        rep_prim.store(ReGIRRepresentativeSoADevice::UNDEFINED_PRIMITIVE);
     m_regir_state.grid_cells_alive.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1u);
     m_regir_state.grid_cells_alive_staging = std::vector<AtomicType<unsigned int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
     for (AtomicType<unsigned int>& cell_alive_staging : m_regir_state.grid_cells_alive_staging)
@@ -338,32 +338,32 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-    m_render_data.render_settings.regir_settings.grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
-    // m_render_data.render_settings.regir_settings.grid.grid_resolution = m_regir_state.settings.grid.grid_resolution;
-    m_render_data.render_settings.regir_settings.grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
-    m_render_data.render_settings.regir_settings.grid_fill.grid_buffers = m_regir_state.grid_buffer.to_device();
-    m_render_data.render_settings.regir_settings.spatial_reuse.output_grid = m_regir_state.spatial_grid_buffer.to_device();
-    m_render_data.render_settings.regir_settings.representative.distance_to_center = m_regir_state.distance_to_center.data();
+    m_render_data.render_settings.regir_settings.hash_grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
+    // m_render_data.render_settings.regir_settings.hash_grid.grid_resolution = m_regir_state.settings.hash_grid.grid_resolution;
+    m_render_data.render_settings.regir_settings.hash_grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
+    m_render_data.render_settings.regir_settings.grid_fill_grid = m_regir_state.grid_buffer.to_device();
+    m_render_data.render_settings.regir_settings.spatial_grid = m_regir_state.spatial_grid_buffer.to_device();
+    /*m_render_data.render_settings.regir_settings.representative.distance_to_center = m_regir_state.distance_to_center.data();
     m_render_data.render_settings.regir_settings.representative.representative_points= m_regir_state.representative_points.data();
     m_render_data.render_settings.regir_settings.representative.representative_normals = m_regir_state.representative_normals.data();
-    m_render_data.render_settings.regir_settings.representative.representative_primitive = m_regir_state.representative_primitives.data();
+    m_render_data.render_settings.regir_settings.representative.representative_primitive = m_regir_state.representative_primitives.data();*/
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive = m_regir_state.grid_cells_alive.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_regir_state.grid_cells_alive_staging.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_regir_state.grid_cells_alive_list.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = &m_regir_state.grid_cells_alive_count_staging;
     {
         // Some precomputations
-        ReGIRGridSettings& grid = m_render_data.render_settings.regir_settings.grid;
+        ReGIRHashGrid& grid = m_render_data.render_settings.regir_settings.hash_grid;
 
         float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
         float3 cell_size = grid.extents / grid_resolution_float;
 
-        m_render_data.render_settings.regir_settings.grid.m_cell_size = cell_size;
-        m_render_data.render_settings.regir_settings.grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-        m_render_data.render_settings.regir_settings.grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-        m_render_data.render_settings.regir_settings.grid.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
-        m_render_data.render_settings.regir_settings.grid.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
-        m_render_data.render_settings.regir_settings.grid.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
+        m_render_data.render_settings.regir_settings.hash_grid.m_cell_size = cell_size;
+        m_render_data.render_settings.regir_settings.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
+        m_render_data.render_settings.regir_settings.hash_grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+        m_render_data.render_settings.regir_settings.hash_grid.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
+        m_render_data.render_settings.regir_settings.hash_grid.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+        m_render_data.render_settings.regir_settings.hash_grid.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
     }
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
