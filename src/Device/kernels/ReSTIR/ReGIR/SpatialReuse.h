@@ -22,7 +22,7 @@ HIPRT_DEVICE int get_random_neighbor_hash_grid_cell_index_with_retries(HIPRTRend
 {
     ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    int neighbor_hash_grid_cell_index_in_grid;
+    unsigned int neighbor_hash_grid_cell_index_in_grid;
     bool neighbor_invalid = true;
 
     int retry = 0;
@@ -256,17 +256,17 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
 
         Xorshift32Generator random_number_generator(seed);
 
+        float3 point_in_cell = regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index];
+
         if (regir_settings.shading.grid_cells_alive[hash_grid_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_spatial_reservoir_opt(ReGIRReservoir(), hash_grid_cell_index, reservoir_index_in_cell);
+            regir_settings.store_spatial_reservoir_opt(ReGIRReservoir(), point_in_cell, render_data.current_camera.position, reservoir_index_in_cell);
             
             return;
         }
-        
-        float3 point_in_cell = regir_settings.grid_fill_grid.representative.representative_points[hash_grid_cell_index];
         
         unsigned int spatial_neighbor_rng_seed;
         if (regir_settings.spatial_reuse.do_coalesced_spatial_reuse)
@@ -289,7 +289,7 @@ HIPRT_DEVICE int fixed_spatial_reuse_mis_weight(HIPRTRenderData& render_data, co
         output_reservoir.M = 1;
         output_reservoir.finalize_resampling(valid_neighbor_count);
 
-        regir_settings.store_spatial_reservoir_opt(output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
+        regir_settings.store_spatial_reservoir_opt(output_reservoir, point_in_cell, render_data.current_camera.position, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

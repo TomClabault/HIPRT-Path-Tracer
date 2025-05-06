@@ -14,38 +14,42 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
 
 template <template <typename> typename DataContainer>
-using ReGIRRepresentativeSoAHost = GenericSoA<DataContainer, GenericAtomicType<float, DataContainer>, GenericAtomicType<int, DataContainer>, float3, Octahedral24BitNormalPadded32b>;
+using ReGIRHashCellDataSoAHost = GenericSoA<DataContainer, GenericAtomicType<float, DataContainer>, GenericAtomicType<int, DataContainer>, float3, Octahedral24BitNormalPadded32b, unsigned int>;
 
 enum ReGIRRepresentativeSoAHostBuffers
 {
 	REGIR_REPRESENTATIVE_DISTANCE_TO_CENTER,
-	REGIR_REPRESENTATIVE_PRIM_INDEX,
-	REGIR_REPRESENTATIVE_POINTS,
-	REGIR_REPRESENTATIVE_NORMALS
+	REGIR_HASH_CELL_PRIM_INDEX,
+	REGIR_HASH_CELL_POINTS,
+	REGIR_HASH_CELL_NORMALS,
+	REGIR_HASH_CELL_HASH_KEYS
 };
 
 template <template <typename> typename DataContainer>
 struct ReGIRHashGridSoAHost
 {
-	void resize(int new_number_of_cells, int num_reservoirs_per_cell)
+	void resize(ReGIRSettings& settings, int overallocation_factor = 1)
 	{
-		samples.resize(new_number_of_cells * num_reservoirs_per_cell);
-		reservoirs.resize(new_number_of_cells * num_reservoirs_per_cell);
-		representative.resize(new_number_of_cells);
+		m_total_number_of_cells = settings.grid_fill_grid.hash_grid.grid_resolution.x * settings.grid_fill_grid.hash_grid.grid_resolution.y * settings.grid_fill_grid.hash_grid.grid_resolution.z;
+		m_total_number_of_cells *= overallocation_factor;
 
-		m_reservoirs_per_cell = num_reservoirs_per_cell;
+		samples.resize(m_total_number_of_cells * settings.get_number_of_reservoirs_per_cell());
+		reservoirs.resize(m_total_number_of_cells * settings.get_number_of_reservoirs_per_cell());
+		hash_cell_data.resize(m_total_number_of_cells);
+
+		m_reservoirs_per_cell = settings.get_number_of_reservoirs_per_cell();
 	}
 
 	void free()
 	{
 		samples.free();
 		reservoirs.free();
-		representative.free();
+		hash_cell_data.free();
 	}
 
 	std::size_t get_byte_size() const
 	{
-		return samples.get_byte_size() + reservoirs.get_byte_size() + representative.get_byte_size();
+		return samples.get_byte_size() + reservoirs.get_byte_size() + hash_cell_data.get_byte_size();
 	}
 
 	unsigned int size_reservoirs() const
@@ -55,7 +59,7 @@ struct ReGIRHashGridSoAHost
 
 	unsigned int size_cells() const
 	{
-		return representative.size();
+		return hash_cell_data.size();
 	}
 
 	ReGIRHashGridSoADevice to_device()
@@ -72,18 +76,22 @@ struct ReGIRHashGridSoAHost
 		hash_grid_soa.reservoirs.M = reservoirs.template get_buffer_data_ptr<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_M>();
 		hash_grid_soa.reservoirs.number_of_reservoirs_per_cell = m_reservoirs_per_cell;
 
-		//hash_grid_soa.representative.distance_to_center = representative.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_DISTANCE_TO_CENTER>();
-		hash_grid_soa.representative.representative_primitive = representative.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_PRIM_INDEX>();
-		hash_grid_soa.representative.representative_points = representative.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_POINTS>();
-		hash_grid_soa.representative.representative_normals = representative.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_NORMALS>();
+		//hash_grid_soa.hash_cell_data.distance_to_center = hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_DISTANCE_TO_CENTER>();
+		hash_grid_soa.hash_cell_data.representative_primitive = hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>();
+		hash_grid_soa.hash_cell_data.representative_points = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_POINTS>();
+		hash_grid_soa.hash_cell_data.representative_normals = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();
+		hash_grid_soa.hash_cell_data.hash_keys = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>();
+
+		hash_grid_soa.m_total_number_of_cells = m_total_number_of_cells;
 
 		return hash_grid_soa;
 	}
 
 	ReGIRSampleSoAHost<DataContainer> samples;
 	ReGIRReservoirSoAHost<DataContainer> reservoirs;
-	ReGIRRepresentativeSoAHost<DataContainer> representative;
+	ReGIRHashCellDataSoAHost<DataContainer> hash_cell_data;
 
+	unsigned int m_total_number_of_cells = 0;
 	unsigned int m_reservoirs_per_cell = 0;
 };
 

@@ -52,6 +52,8 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Maybe for the new hash grid ReGIR we can use the average of all hit points in a cell as the center of the cell? And so we can optimize representative points about that 'center point'
+// - Maybe try a "progressive liveness" where we keep alive all the cells that we have hit *so far* instead of only keeping the cells alive from the last frame
+//		- May need a maximum life length for that to avoid keeping cells that haven't been hit for 500 samples 
 // - Try correlating warp wise during the grid build but accross cells because right now this is done accross the reservoirs of a single cell, that's bad
 // - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
 // - maybe try half correlations because there is quite a bit of loss in quality with the correlations it seems

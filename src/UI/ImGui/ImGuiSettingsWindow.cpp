@@ -1963,12 +1963,12 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
 		if (use_cube_grid)
 		{
-			static int grid_size = regir_settings.hash_grid.grid_resolution.x;
+			static int grid_size = regir_settings.grid_fill_grid.hash_grid.grid_resolution.x;
 			if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
 			{
-				regir_settings.hash_grid.grid_resolution.x = grid_size;
-				regir_settings.hash_grid.grid_resolution.y = grid_size;
-				regir_settings.hash_grid.grid_resolution.z = grid_size;
+				regir_settings.grid_fill_grid.hash_grid.grid_resolution.x = grid_size;
+				regir_settings.grid_fill_grid.hash_grid.grid_resolution.y = grid_size;
+				regir_settings.grid_fill_grid.hash_grid.grid_resolution.z = grid_size;
 
 				size_changed = true;
 			}
@@ -1976,11 +1976,11 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		else
 		{
 			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.hash_grid.grid_resolution.x, 2, 30);
+			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid_fill_grid.hash_grid.grid_resolution.x, 2, 30);
 			ImGui::SameLine();
-			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.hash_grid.grid_resolution.y, 2, 30);
+			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid_fill_grid.hash_grid.grid_resolution.y, 2, 30);
 			ImGui::SameLine();
-			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.hash_grid.grid_resolution.z, 2, 30);
+			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid_fill_grid.hash_grid.grid_resolution.z, 2, 30);
 
 			// Back to default size
 			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
@@ -4240,12 +4240,12 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
 		if (use_cube_grid)
 		{
-			static int grid_size = regir_settings.hash_grid.grid_resolution.x;
+			static int grid_size = regir_settings.grid_fill_grid.hash_grid.grid_resolution.x;
 			if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
 			{
-				regir_settings.hash_grid.grid_resolution.x = grid_size;
-				regir_settings.hash_grid.grid_resolution.y = grid_size;
-				regir_settings.hash_grid.grid_resolution.z = grid_size;
+				regir_settings.grid_fill_grid.hash_grid.grid_resolution.x = grid_size;
+				regir_settings.grid_fill_grid.hash_grid.grid_resolution.y = grid_size;
+				regir_settings.grid_fill_grid.hash_grid.grid_resolution.z = grid_size;
 
 				size_changed = true;
 			}
@@ -4253,11 +4253,11 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		else
 		{
 			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.hash_grid.grid_resolution.x, 2, 30);
+			size_changed |= ImGui::SliderInt("##Grid_sizeX", &regir_settings.grid_fill_grid.hash_grid.grid_resolution.x, 2, 30);
 			ImGui::SameLine();
-			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.hash_grid.grid_resolution.y, 2, 30);
+			size_changed |= ImGui::SliderInt("##Grid_sizeY", &regir_settings.grid_fill_grid.hash_grid.grid_resolution.y, 2, 30);
 			ImGui::SameLine();
-			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.hash_grid.grid_resolution.z, 2, 30);
+			size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &regir_settings.grid_fill_grid.hash_grid.grid_resolution.z, 2, 30);
 
 			// Back to default size
 			ImGui::PopItemWidth();

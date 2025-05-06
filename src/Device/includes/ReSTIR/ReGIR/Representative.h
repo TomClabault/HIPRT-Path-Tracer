@@ -6,7 +6,7 @@
 #ifndef DEVICE_KERNELS_REGIR_REPRESENTATIVE_H
 #define DEVICE_KERNELS_REGIR_REPRESENTATIVE_H
  
-#include "Device/includes/ReSTIR/ReGIR/RepresentativeStruct.h"
+#include "Device/includes/ReSTIR/ReGIR/HashGridCellData.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -46,77 +46,73 @@
 //	return ReGIR_unpack_representative_point(regir_settings.get_cell_size(), regir_settings.get_cell_origin_from_hash_grid_cell_index(hash_grid_cell_index), packed_rep_point, hash_grid_cell_index);
 //}
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point, int hash_grid_cell_index)
-{
-	// render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_points[hash_grid_cell_index] = ReGIR_pack_representative_point(render_data.render_settings.regir_settings, rep_point, hash_grid_cell_index);
-	render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_points[hash_grid_cell_index] = rep_point;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point, float3 camera_position)
-{
-	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(rep_point, camera_position);
-	if (hash_grid_cell_index < 0 || hash_grid_cell_index >= render_data.render_settings.regir_settings.hash_grid.grid_resolution.x * render_data.render_settings.regir_settings.hash_grid.grid_resolution.y * render_data.render_settings.regir_settings.hash_grid.grid_resolution.z)
-		// Outside of the grid
-		return;
-
-	ReGIR_store_representative_point(render_data, rep_point, hash_grid_cell_index);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_normal, int hash_grid_cell_index)
-{
-	render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_normals[hash_grid_cell_index].pack(shading_normal);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_point, float3 camera_position, float3 shading_normal)
-{
-	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(shading_point, camera_position);
-	if (hash_grid_cell_index < 0 || hash_grid_cell_index >= render_data.render_settings.regir_settings.hash_grid.grid_resolution.x * render_data.render_settings.regir_settings.hash_grid.grid_resolution.y * render_data.render_settings.regir_settings.hash_grid.grid_resolution.z)
-		// Outside of the grid
-		return;
-
-	ReGIR_store_representative_normal(render_data, shading_normal, hash_grid_cell_index);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_primitive(const HIPRTRenderData& render_data, int primitive_index, int hash_grid_cell_index)
-{
-	render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_primitive[hash_grid_cell_index] = primitive_index;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_primitive(const HIPRTRenderData& render_data, float3 shading_point, float3 camera_position, int primitive_index)
-{
-	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(shading_point, camera_position);
-	if (hash_grid_cell_index < 0 || hash_grid_cell_index >= render_data.render_settings.regir_settings.hash_grid.grid_resolution.x * render_data.render_settings.regir_settings.hash_grid.grid_resolution.y * render_data.render_settings.regir_settings.hash_grid.grid_resolution.z)
-		// Outside of the grid
-		return;
-
-	ReGIR_store_representative_primitive(render_data, primitive_index, hash_grid_cell_index);
-}
+//HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point, int hash_grid_cell_index)
+//{
+//	// render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index] = ReGIR_pack_representative_point(render_data.render_settings.regir_settings, rep_point, hash_grid_cell_index);
+//	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index] = rep_point;
+//}
+//
+//HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point, float3 camera_position)
+//{
+//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(rep_point, camera_position);
+//
+//	ReGIR_store_representative_point(render_data, rep_point, hash_grid_cell_index);
+//}
+//
+//HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_normal, int hash_grid_cell_index)
+//{
+//	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_normals[hash_grid_cell_index].pack(shading_normal);
+//}
+//
+//HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_point, float3 camera_position, float3 shading_normal)
+//{
+//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(shading_point, camera_position);
+//
+//	ReGIR_store_representative_normal(render_data, shading_normal, hash_grid_cell_index);
+//}
+//
+//HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_primitive(const HIPRTRenderData& render_data, int primitive_index, int hash_grid_cell_index)
+//{
+//	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_primitive[hash_grid_cell_index] = primitive_index;
+//}
+//
+//HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_primitive(const HIPRTRenderData& render_data, float3 shading_point, float3 camera_position, int primitive_index)
+//{
+//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(shading_point, camera_position);
+//
+//	ReGIR_store_representative_primitive(render_data, primitive_index, hash_grid_cell_index);
+//}
+//
+//HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_hash_cell_hash(const HIPRTRenderData& render_data, unsigned int hash)
+//{
+//	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.hash[hash] = hash;
+//}
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_representative_shading_normal(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	return render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_normals[hash_grid_cell_index].unpack();
+	return render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_normals[hash_grid_cell_index].unpack();
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_representative_point(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	/*unsigned int rep_point_packed = render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_points[hash_grid_cell_index];
-	if (rep_point_packed == ReGIRRepresentativeSoADevice::UNDEFINED_POINT)
+	/*unsigned int rep_point_packed = render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index];
+	if (rep_point_packed == ReGIRHashCellDataSoADevice::UNDEFINED_POINT)
 		return render_data.render_settings.regir_settings.get_cell_center_from_hash_grid_cell_index(hash_grid_cell_index);
 	else
 		return ReGIR_unpack_representative_point(render_data.render_settings.regir_settings, rep_point_packed, hash_grid_cell_index);*/
 
-	return render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_points[hash_grid_cell_index];
+	return render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index];
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE int ReGIR_get_cell_representative_primitive(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	return render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_primitive[hash_grid_cell_index];
+	return render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_primitive[hash_grid_cell_index];
 }
 
 /**
- * If using the feature that "optimizes" representative points to be as close as possible to the cell center:
- * 		- this function stores the given pixel index into the representative point buffer if it is closer to
- *		the grid cell center than the current representative point
+ * If using the feature that "optimizes" hash_cell_data points to be as close as possible to the cell center:
+ * 		- this function stores the given pixel index into the hash_cell_data point buffer if it is closer to
+ *		the grid cell center than the current hash_cell_data point
  * 
  * Otherwise:
  *		- this function always stores the given pixel index in the grid cell corresponding to the given shading point
@@ -128,44 +124,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRender
 	else if (primitive_index == -1)
 		return;
 
-	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(shading_point, camera_position);
-		
+	render_data.render_settings.regir_settings.grid_fill_grid.update_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, camera_position, shading_normal, primitive_index);
 	//float3 cell_center = render_data.render_settings.regir_settings.get_cell_center_from_hash_grid_cell_index(hash_grid_cell_index);
-	//float previous_distance_to_center = render_data.render_settings.regir_settings.grid_fill_grid.representative.distance_to_center[hash_grid_cell_index];
+	//float previous_distance_to_center = render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.distance_to_center[hash_grid_cell_index];
 	//float current_distance_to_center = hippt::length(cell_center - shading_point);
-	//if (previous_distance_to_center != ReGIRRepresentativeSoADevice::UNDEFINED_DISTANCE && current_distance_to_center < previous_distance_to_center)
+	//if (previous_distance_to_center != ReGIRHashCellDataSoADevice::UNDEFINED_DISTANCE && current_distance_to_center < previous_distance_to_center)
 	//{
-	//	// We have some representative data already, we're going to update it if we're closer to the
-	//	// center of the cell than the previous representative data
+	//	// We have some hash_cell_data data already, we're going to update it if we're closer to the
+	//	// center of the cell than the previous hash_cell_data data
 	//	
-	//	if (previous_distance_to_center < render_data.render_settings.regir_settings.get_cell_diagonal_length() * ReGIRRepresentativeSoADevice::OK_DISTANCE_TO_CENTER_FACTOR)
+	//	if (previous_distance_to_center < render_data.render_settings.regir_settings.get_cell_diagonal_length() * ReGIRHashCellDataSoADevice::OK_DISTANCE_TO_CENTER_FACTOR)
 	//		// We're also only updating if we're not already close enough to the center.
 	//		// 
-	//		// Here, we're close enough to the center so our representative data is good and we don't need to update
+	//		// Here, we're close enough to the center so our hash_cell_data data is good and we don't need to update
 	//		// anymore
 	//		return;
 
-	//	if (hippt::atomic_compare_exchange(&render_data.render_settings.regir_settings.grid_fill_grid.representative.distance_to_center[hash_grid_cell_index], previous_distance_to_center, ReGIRRepresentativeSoADevice::UNDEFINED_DISTANCE) == previous_distance_to_center)
+	//	if (hippt::atomic_compare_exchange(&render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.distance_to_center[hash_grid_cell_index], previous_distance_to_center, ReGIRHashCellDataSoADevice::UNDEFINED_DISTANCE) == previous_distance_to_center)
 	//	{
 	//		ReGIR_store_representative_point(render_data, shading_point, hash_grid_cell_index);
 	//		ReGIR_store_representative_normal(render_data, shading_normal, hash_grid_cell_index);
 	//		ReGIR_store_representative_primitive(render_data, primitive_index, hash_grid_cell_index);
-	//		render_data.render_settings.regir_settings.grid_fill_grid.representative.distance_to_center[hash_grid_cell_index] = current_distance_to_center;
+	//		render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.distance_to_center[hash_grid_cell_index] = current_distance_to_center;
 
 	//		return;
 	//	}
 	//}
-
-	if (render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_primitive[hash_grid_cell_index] == ReGIRRepresentativeSoADevice::UNDEFINED_PRIMITIVE)
-	{
-		if (hippt::atomic_compare_exchange(&render_data.render_settings.regir_settings.grid_fill_grid.representative.representative_primitive[hash_grid_cell_index], ReGIRRepresentativeSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRRepresentativeSoADevice::UNDEFINED_PRIMITIVE)
-		{
-			ReGIR_store_representative_point(render_data, shading_point, hash_grid_cell_index);
-			ReGIR_store_representative_normal(render_data, shading_normal, hash_grid_cell_index);
-
-			// render_data.render_settings.regir_settings.grid_fill_grid.representative.distance_to_center[hash_grid_cell_index] = current_distance_to_center;
-		}
-	}
 }
 
 #endif

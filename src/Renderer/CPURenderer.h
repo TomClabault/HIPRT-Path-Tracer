@@ -178,8 +178,6 @@ private:
 
     struct ReGIRState
     {
-        // ReGIRSettings settings;
-
         ReGIRHashGridSoAHost<std::vector> grid_buffer;
         ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
 

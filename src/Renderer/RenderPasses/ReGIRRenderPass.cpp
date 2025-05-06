@@ -84,14 +84,14 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		// Resizing the grid if it is not the right size
 		if (m_grid_buffers.size_reservoirs() != render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR())
 		{
-			m_grid_buffers.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
+			m_grid_buffers.resize(render_data.render_settings.regir_settings, 3);
 
 			updated = true;
 		}
 
 		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse && m_spatial_reuse_output_grid_buffer.size_reservoirs() != render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid())
 		{
-			m_spatial_reuse_output_grid_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
+			m_spatial_reuse_output_grid_buffer.resize(render_data.render_settings.regir_settings, 3);
 
 			updated = true;
 		}
@@ -134,17 +134,17 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 
 		// Some precomputations that can be done here instead of being done on the GPU for each pixel
 		{
-			ReGIRHashGrid& grid = render_data.render_settings.regir_settings.hash_grid;
+			ReGIRHashGrid& grid = render_data.render_settings.regir_settings.grid_fill_grid.hash_grid;
 
 			float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
 			float3 cell_size = grid.extents / grid_resolution_float;
 
-			render_data.render_settings.regir_settings.hash_grid.m_cell_size = cell_size;
-			render_data.render_settings.regir_settings.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-			render_data.render_settings.regir_settings.hash_grid.m_total_number_of_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-			render_data.render_settings.regir_settings.hash_grid.m_total_number_of_reservoirs = render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
-			render_data.render_settings.regir_settings.hash_grid.m_number_of_reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
-			render_data.render_settings.regir_settings.hash_grid.m_number_of_reservoirs_per_grid = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
+			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_size = cell_size;
+			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
+			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
+			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
 		}
 	}
 	else
@@ -280,8 +280,8 @@ void ReGIRRenderPass::update_render_data()
 
 	if (is_render_pass_used())
 	{
-		render_data.render_settings.regir_settings.hash_grid.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
-		render_data.render_settings.regir_settings.hash_grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
+		render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
+		render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 
 		render_data.render_settings.regir_settings.grid_fill_grid = m_grid_buffers.to_device();
 		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
@@ -297,7 +297,7 @@ void ReGIRRenderPass::update_render_data()
 		render_data.render_settings.regir_settings.grid_fill_grid = ReGIRHashGridSoADevice();
 		render_data.render_settings.regir_settings.spatial_grid = ReGIRHashGridSoADevice();
 
-		render_data.render_settings.regir_settings.grid_fill_grid.representative = ReGIRRepresentativeSoADevice();
+		render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data = ReGIRHashCellDataSoADevice();
 
 		render_data.render_settings.regir_settings.shading.grid_cells_alive = nullptr;
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = nullptr;
@@ -327,29 +327,25 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 
 void ReGIRRenderPass::reset_representative_data()
 {
-	///*if (m.size() > 0)
-	//*/{
-	//	/*{
-	//		std::vector<float> distance_reset(m_distance_to_center_buffer.size(), ReGIRRepresentativeSoADevice::UNDEFINED_DISTANCE);
-	//		m_distance_to_center_buffer.upload_data(distance_reset);
-	//	}*/
+	/*if (m.size() > 0)
+	*/
+	{
+		/*{
+			std::vector<float> distance_reset(m_distance_to_center_buffer.size(), ReGIRHashCellDataSoADevice::UNDEFINED_DISTANCE);
+			m_distance_to_center_buffer.upload_data(distance_reset);
+		}*/
 
-	//	{
-	//		std::vector<float3> points_reset(m_grid_buffers.size_cells(), ReGIRRepresentativeSoADevice::UNDEFINED_POINT);
-	//		m_grid_buffers.get_buffer<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_POINTS>().upload_data(points_resets);
-	//		m_representative_points_buffer.upload_data(points_reset);
-	//	}
-	//	
-	//	{
-	//		std::vector<Octahedral24BitNormalPadded32b> normals_reset(m_representative_normals_buffer.size(), Octahedral24BitNormalPadded32b::pack_static(ReGIRRepresentativeSoADevice::UNDEFINED_NORMAL));
-	//		m_representative_normals_buffer.upload_data(normals_reset);
-	//	}
+		{
+			std::vector<int> primitive_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
+			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().upload_data(primitive_reset);
+		}
 
-	//	{
-	//		std::vector<int> primitive_reset(m_representative_primitive_buffer.size(), ReGIRRepresentativeSoADevice::UNDEFINED_PRIMITIVE);
-	//		m_representative_primitive_buffer.upload_data(primitive_reset);
-	//	}
-	////}
+		{
+			std::vector<unsigned int> hash_keys_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
+			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
+		}
+	}
+	//}
 }
 
 bool ReGIRRenderPass::is_render_pass_used() const

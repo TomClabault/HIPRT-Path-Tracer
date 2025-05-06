@@ -20,7 +20,7 @@
  #ifdef __KERNELCC__
  GLOBAL_KERNEL_SIGNATURE(void) ReGIR_CellLivenessCopy(unsigned int* __restrict__ grid_cells_alive_staging_buffer, unsigned char* __restrict__ grid_cells_alive_buffer, ReGIRSettings regir_settings)
  #else
- GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_CellLivenessCopy(unsigned int* grid_cells_alive_staging_buffer, unsigned char* grid_cells_alive_buffer, ReGIRSettings regir_settings, int cell_index)
+ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_CellLivenessCopy(unsigned int* grid_cells_alive_staging_buffer, unsigned char* grid_cells_alive_buffer, ReGIRSettings regir_settings, unsigned int cell_index)
  #endif
  {
 #ifdef __KERNELCC__

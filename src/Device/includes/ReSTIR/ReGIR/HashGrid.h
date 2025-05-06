@@ -8,41 +8,6 @@
 
 struct ReGIRHashGrid
 {
-	HIPRT_DEVICE unsigned int hash(float3 world_position, float3 camera_position) const
-	{
-		float3 relative_to_camera = world_position;// -camera_position;
-
-		constexpr unsigned int p1 = 73856093;
-		constexpr unsigned int p2 = 19349663;
-		constexpr unsigned int p3 = 83492791;
-
-		unsigned int x = relative_to_camera.x * grid_resolution.x;
-		unsigned int y = relative_to_camera.y * grid_resolution.y;
-		unsigned int z = relative_to_camera.z * grid_resolution.z;
-
-		return ((x * p1) ^ (y * p2) ^ (z * p3)) % m_total_number_of_cells;
-	}
-
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos(float3 world_position, float3 camera_position) const
-	{
-		return hash(world_position, camera_position);
-	}
-
-	HIPRT_DEVICE float3 get_cell_size(float3 world_position = make_float3(0, 0, 0), float3 camera_position = make_float3(0, 0, 0)) const
-	{
-		return m_cell_size;
-	}
-
-	HIPRT_DEVICE float get_cell_diagonal_length() const
-	{
-		return m_cell_diagonal_length;
-	}
-
-	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, Xorshift32Generator& rng) const
-	{
-		return original_world_position + (make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f)) * get_cell_size() * 0.5f;
-	}
-
 	//HIPRT_DEVICE int get_hash_grid_cell_index_from_world_pos(float3 world_position) const
 	//{
 	//	float3 position_in_grid = world_position - grid_origin;
@@ -63,16 +28,16 @@ struct ReGIRHashGrid
 		return get_cell_center_from_hash_grid_cell_index(get_hash_grid_cell_index_from_world_pos(world_point, camera_position));
 	}*/
 
-	HIPRT_DEVICE int get_hash_grid_cell_index_from_xyz(int3 xyz_cell_index) const
-	{
-		if (xyz_cell_index.x < 0 || xyz_cell_index.x >= grid_resolution.x
-			|| xyz_cell_index.y < 0 || xyz_cell_index.y >= grid_resolution.y
-			|| xyz_cell_index.z < 0 || xyz_cell_index.z >= grid_resolution.z)
-			// Outside of the grid
-			return -1;
+	//HIPRT_DEVICE int get_hash_grid_cell_index_from_xyz(int3 xyz_cell_index) const
+	//{
+	//	if (xyz_cell_index.x < 0 || xyz_cell_index.x >= grid_resolution.x
+	//		|| xyz_cell_index.y < 0 || xyz_cell_index.y >= grid_resolution.y
+	//		|| xyz_cell_index.z < 0 || xyz_cell_index.z >= grid_resolution.z)
+	//		// Outside of the grid
+	//		return -1;
 
-		return xyz_cell_index.x + xyz_cell_index.y * grid_resolution.x + xyz_cell_index.z * grid_resolution.x * grid_resolution.y;
-	}
+	//	return xyz_cell_index.x + xyz_cell_index.y * grid_resolution.x + xyz_cell_index.z * grid_resolution.x * grid_resolution.y;
+	//}
 
 	float3 grid_origin;
 	// "Length" of the grid in each X, Y, Z axis directions
