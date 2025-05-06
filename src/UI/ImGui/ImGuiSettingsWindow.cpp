@@ -2007,15 +2007,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePop();
 		}
 
-		static bool do_compaction = ReGIR_DoDispatchCompaction;
-		if (ImGui::Checkbox("Do dispatch compaction", &do_compaction))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_DO_DISPATCH_COMPACTION, do_compaction ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}

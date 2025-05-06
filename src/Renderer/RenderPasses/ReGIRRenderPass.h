@@ -81,11 +81,14 @@ private:
 	OrochiBuffer<Octahedral24BitNormalPadded32b> m_representative_normals_buffer;*/
 
 	// Cells alive buffers
-	OrochiBuffer<unsigned char> m_grid_cells_alive_buffer;
-	OrochiBuffer<unsigned int> m_grid_cells_alive_staging_buffer;
-	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_buffer;
+	OrochiBuffer<unsigned int> m_grid_cells_alive_buffer;
+	OrochiBuffer<unsigned int> m_grid_cells_alive_count_buffer;
+	//OrochiBuffer<unsigned int> m_grid_cells_alive_staging_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_list_buffer;
+
+	unsigned int m_number_of_cells_alive = 0;
+	unsigned int m_hash_grid_current_overallocation_factor = 1;
 };
 
 #endif

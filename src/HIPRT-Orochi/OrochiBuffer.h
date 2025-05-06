@@ -73,7 +73,7 @@ public:
 	 * 'host_pointer' can also be the pointer returned by 'get_host_pinned_pointer()' if using host pinned
 	 * memory
 	 */
-	void download_data(T* host_pointer) const;
+	void download_data_into(T* host_pointer) const;
 
 	/**
 	 * Downloads elements ['start_element_index', 'stop_element_index_excluded'[ from the buffer
@@ -341,7 +341,7 @@ std::vector<T> OrochiBuffer<T>::download_data() const
 }
 
 template <typename T>
-void OrochiBuffer<T>::download_data(T* host_pointer) const
+void OrochiBuffer<T>::download_data_into(T* host_pointer) const
 {
 	if (!m_data_pointer)
 		return;

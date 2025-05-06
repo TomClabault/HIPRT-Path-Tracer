@@ -22,7 +22,7 @@ struct ReGIRShadingSettings
 	//
 	// If the unsigned char is 0, that grid cell hasn't been used last frame and will be filled by the grid fill/temporal/spatial reuse
 	// passes
-	const unsigned char* grid_cells_alive = nullptr;
+	// const unsigned char* grid_cells_alive = nullptr;
 
 	// The staging buffer is used to store the grid cells that are alive during shading: for each grid cell that a ray falls into during shading,
 	// we position the unsigned char to 1
@@ -31,10 +31,10 @@ struct ReGIRShadingSettings
 	// may be reading from that buffer at the same time to see if a cell is alive or not
 	//
 	// That staging buffer is then copied to the 'grid_cells_alive' buffer at the end of the frame
-	AtomicType<unsigned int>* grid_cells_alive_staging = nullptr;
+	AtomicType<unsigned int>* grid_cells_alive = nullptr;
 	unsigned int* grid_cells_alive_list = nullptr;
-	unsigned int grid_cells_alive_count;
-	AtomicType<unsigned int>* grid_cells_alive_count_staging = nullptr;
+	// unsigned int grid_cells_alive_count;
+	AtomicType<unsigned int>* grid_cells_alive_count = nullptr;
 };
 
 #endif

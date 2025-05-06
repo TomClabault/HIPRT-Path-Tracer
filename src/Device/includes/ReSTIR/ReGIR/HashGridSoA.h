@@ -13,6 +13,12 @@
 
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 
+#include <atomic>
+
+extern std::atomic<int> counter_total;
+extern std::atomic<int> counter_iterations;
+extern std::atomic<int> counter_fail;
+
 struct ReGIRHashGridSoADevice
 {
 	HIPRT_DEVICE void reset_reservoir(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, int grid_index = -1)
@@ -34,10 +40,10 @@ struct ReGIRHashGridSoADevice
 
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
-		int reservoir_index_in_grid = hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
-
 		if (!resolve_collision(hash_grid_cell_index, hash_key))
 			return;
+
+		int reservoir_index_in_grid = hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
 		store_reservoir_and_sample_opt_from_index_in_grid(reservoir_index_in_grid, reservoir, grid_index);
 	}
@@ -73,6 +79,8 @@ struct ReGIRHashGridSoADevice
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
+		/*if (shading_normal.z > 0.8f && hash_grid_cell_index == 694)
+			printf("\n");*/
 
 		unsigned int current_hash_key = hash_cell_data.hash_keys[hash_grid_cell_index];
 		if (current_hash_key != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
@@ -87,18 +95,21 @@ struct ReGIRHashGridSoADevice
 					// Could not resolve the collision
 					return;
 				else if (new_hash_cell_index == hash_grid_cell_index)
-					// We resolved the collision by finding our correct cell
+					// We resolved the collision by finding our own cell
 					// 
 					// This means that we already have something in the cell, nothing to do
 					return;
 				else
-					// Nothing in the cell, just doing nothing here so that we fill the cell with the code below
-					;
+					// We resolved the collision with a new cell
+					hash_grid_cell_index = new_hash_cell_index;
 			}
 			else
 				// Already have something in the cell and that's our hash, no collision, nothing to do
 				return;
 		}
+
+
+		float3 DEBUG_REMOVE_NORMAL = hash_cell_data.representative_normals[hash_grid_cell_index].unpack();
 
 		if (hippt::atomic_compare_exchange(&hash_cell_data.representative_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
 		{
@@ -108,28 +119,37 @@ struct ReGIRHashGridSoADevice
 		}
 
 		// Because we just updated that grid cell, it is now alive
-#if ReGIR_DoDispatchCompaction == KERNEL_OPTION_TRUE
 		// Only go through all that atomic stuff if the cell hasn't been staged already
-		if (shading_settings.grid_cells_alive_staging[hash_grid_cell_index] == 0)
+		if (shading_settings.grid_cells_alive[hash_grid_cell_index] == 0)
 		{
-			if (hippt::atomic_compare_exchange(&shading_settings.grid_cells_alive_staging[hash_grid_cell_index], 0u, 1u) == 0u)
+			if (hippt::atomic_compare_exchange(&shading_settings.grid_cells_alive[hash_grid_cell_index], 0u, 1u) == 0u)
 			{
-				unsigned int cell_alive_index = hippt::atomic_fetch_add(shading_settings.grid_cells_alive_count_staging, 1u);
+				unsigned int cell_alive_index = hippt::atomic_fetch_add(shading_settings.grid_cells_alive_count, 1u);
 
 				shading_settings.grid_cells_alive_list[cell_alive_index] = hash_grid_cell_index;
 			}
 		}
-#else
-		shading_settings.grid_cells_alive_staging[hash_grid_cell_index] = 1;
-#endif
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos(float3 world_position, float3 camera_position) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(float3 world_position, float3 camera_position) const
 	{
 		unsigned int hash_key;
 		unsigned int hash_cell_index = hash(world_position, camera_position, hash_key);
 
 		return hash_cell_index;
+	}
+
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(float3 world_position, float3 camera_position, float3 DEBUG_SHADING_NORMAL = make_float3(0, 0, 0)) const
+	{
+		unsigned int hash_key;
+		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
+		/*if (DEBUG_SHADING_NORMAL.z > 0.8f && hash_grid_cell_index == 694)
+			printf("\n");*/
+
+		if (!resolve_collision(hash_grid_cell_index, hash_key))
+			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+		else
+			return hash_grid_cell_index;
 	}
 
 	HIPRT_DEVICE float3 get_cell_size(float3 world_position = make_float3(0, 0, 0), float3 camera_position = make_float3(0, 0, 0)) const
@@ -176,7 +196,7 @@ private:
 		unsigned int y = static_cast<unsigned int>(relative_to_camera.y * hash_grid.grid_resolution.y) % (1 << 10);
 		unsigned int z = static_cast<unsigned int>(relative_to_camera.z * hash_grid.grid_resolution.z) % (1 << 10);
 
-		out_hash_key = x | (y < 10) | (z << 20);
+		out_hash_key = x | (y << 10) | (z << 20);
 
 		return ((x * p1) ^ (y * p2) ^ (z * p3)) % m_total_number_of_cells;
 	}
@@ -187,6 +207,9 @@ private:
 	 */
 	HIPRT_DEVICE bool resolve_collision(unsigned int& in_out_hash_cell_index, unsigned int hash_key) const
 	{
+		counter_total++;
+		counter_iterations++;
+
 		if (hash_cell_data.hash_keys[in_out_hash_cell_index] != hash_key)
 		{
 			// This is a collision
@@ -194,7 +217,7 @@ private:
 			unsigned int base_hash_cell = in_out_hash_cell_index;
 
 			// Linear probing
-			for (int i = 1; i <= 32; i++)
+			for (int i = 1; i <= 32; i++, counter_iterations++)
 			{
 				unsigned int next_hash_cell_index = (base_hash_cell + i) % m_total_number_of_cells;
 				if (next_hash_cell_index == base_hash_cell)
@@ -213,6 +236,7 @@ private:
 				}
 			}
 
+			counter_fail++;
 			// Linear probing couldn't find a better position in the hash grid
 			return false;
 		}

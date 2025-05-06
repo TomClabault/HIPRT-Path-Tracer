@@ -236,7 +236,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point; i++)
     {
         ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_non_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera.position,
-            shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+            shading_point_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering, shading_normal);
 
         if (shading_point_outside_of_grid)
             continue;
@@ -279,13 +279,16 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             selected_neighbor = render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
     }
 
+    if (out_reservoir.weight_sum == 0.0f)
+        return LightSampleInformation();
+
     float normalization_weight = 0.0f;
     neighbor_rng.m_state.seed = neighbor_rng_seed;
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + need_canonical; i++)
     {
 		unsigned int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(shading_point, render_data.current_camera.position,
             neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
-        if (neighbor_cell_index == -1)
+        if (neighbor_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
             continue;
 
         if (i == selected_neighbor)
@@ -304,15 +307,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         }
 
         if (ReGIR_shading_can_sample_be_produced_by(render_data, out_reservoir.sample, neighbor_cell_index, random_number_generator))
-
-        /*if (ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm>(render_data, neighbor_cell_index, 
-            out_reservoir.sample.emission.unpack(), out_reservoir.sample.point_on_light,
-            random_number_generator) > 0.0f)*/
             normalization_weight += 1.0f;
     }
 
-    if (out_reservoir.weight_sum == 0.0f)
-        return LightSampleInformation();
 
     out_reservoir.finalize_resampling(normalization_weight);
 

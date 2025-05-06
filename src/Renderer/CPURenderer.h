@@ -181,10 +181,10 @@ private:
         ReGIRHashGridSoAHost<std::vector> grid_buffer;
         ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
 
-        std::vector<unsigned char> grid_cells_alive;
-	    std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
+        std::vector<AtomicType<unsigned int>> grid_cells_alive;
+	    // std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
         std::vector<unsigned int> grid_cells_alive_list;
-        AtomicType<unsigned int> grid_cells_alive_count_staging;
+        AtomicType<unsigned int> grid_cells_alive_count;
     } m_regir_state;
 
     Image32Bit m_sheen_ltc_params;

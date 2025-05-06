@@ -114,12 +114,12 @@ struct ReGIRSettings
 		return grid_fill_grid.hash_grid.get_hash_grid_cell_index_from_xyz(xyz_cell_index);
 	}*/
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos(float3 world_position, float3 camera_position, Xorshift32Generator* rng = nullptr, bool jitter = false) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(float3 world_position, float3 camera_position, Xorshift32Generator* rng = nullptr, bool jitter = false) const
 	{
 		if (jitter)
 			world_position = grid_fill_grid.jitter_world_position(world_position, *rng);
 
-		return grid_fill_grid.get_hash_grid_cell_index_from_world_pos(world_position, camera_position);
+		return grid_fill_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(world_position, camera_position);
 	}
 
 	/*HIPRT_DEVICE int3 get_xyz_cell_index_from_linear(int hash_grid_cell_index) const
@@ -155,7 +155,7 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid_from_world_pos(float3 world_position, float3 camera_position, int reservoir_index_in_cell) const
 	{
-		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos(world_position, camera_position);
+		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(world_position, camera_position);
 
 		return hash_grid_cell_index * grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
 	}
@@ -215,14 +215,14 @@ struct ReGIRSettings
 	 * If 'out_invalid_sample' is set to true, then the given shading point (+ the jittering) was outside of the grid
 	 * and no reservoir has been gathered
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_non_canonical_reservoir_for_shading_from_world_pos(float3 world_position, float3 camera_position, bool& out_invalid_sample, Xorshift32Generator& rng, bool jitter = false, int sample_number = -1) const
+	HIPRT_DEVICE ReGIRReservoir get_non_canonical_reservoir_for_shading_from_world_pos(float3 world_position, float3 camera_position, bool& out_invalid_sample, Xorshift32Generator& rng, bool jitter = false, float3 DEBUG_SHADING_NORMAL = make_float3(0, 0, 0)) const
 	{	
 		if (jitter)
 			world_position = grid_fill_grid.jitter_world_position(world_position, rng);
 
-		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos(world_position, camera_position);
+		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(world_position, camera_position, DEBUG_SHADING_NORMAL);
 
-		 if (shading.grid_cells_alive[hash_grid_cell_index] == 0)
+		 if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
 		 {
 		 	// The grid cell is inside the grid but not alive
 		 	// We're indicating that this cell should not be used by setting the 'out_invalid_sample' to true
@@ -241,9 +241,9 @@ struct ReGIRSettings
 		if (jitter)
 			world_position = grid_fill_grid.jitter_world_position(world_position, rng);
 
-		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos(world_position, camera_position);
+		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(world_position, camera_position);
 
-		if (shading.grid_cells_alive[hash_grid_cell_index] == 0)
+		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
 		{
 			// The grid cell is inside the grid but not alive
 			// We're indicating that this cell should not be used by setting the 'out_invalid_sample' to true
@@ -262,11 +262,11 @@ struct ReGIRSettings
 		if (jitter)
 			shading_point = grid_fill_grid.jitter_world_position(shading_point, rng);
 
-		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos(shading_point, camera_position);
+		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(shading_point, camera_position);
 
-		if (shading.grid_cells_alive[hash_grid_cell_index] == 0)
+		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
 			// The grid cell is inside the grid but not alive
-			return -1;
+			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 
 		// Advancing the RNG to mimic 'get_non_canonical_reservoir_for_shading_from_world_pos'
 		if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
@@ -320,7 +320,7 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, float3 camera_position) const
 	{
-		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos(position, camera_position);
+		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(position, camera_position);
 
 		return ColorRGB32F::random_color(cell_index);
 	}
@@ -377,7 +377,7 @@ struct ReGIRSettings
 			spatial_grid.reset_reservoir(hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
-	bool DEBUG_INCLUDE_CANONICAL = true;
+	bool DEBUG_INCLUDE_CANONICAL = false;
 
 	ReGIRHashGridSoADevice grid_fill_grid;
 	// Grid that contains the output of the spatial reuse pass

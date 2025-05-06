@@ -84,37 +84,36 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		// Resizing the grid if it is not the right size
 		if (m_grid_buffers.size_reservoirs() != render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR())
 		{
-			m_grid_buffers.resize(render_data.render_settings.regir_settings, 3);
+			m_grid_buffers.resize(render_data.render_settings.regir_settings, m_hash_grid_current_overallocation_factor);
 
 			updated = true;
 		}
 
 		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse && m_spatial_reuse_output_grid_buffer.size_reservoirs() != render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid())
 		{
-			m_spatial_reuse_output_grid_buffer.resize(render_data.render_settings.regir_settings, 3);
+			m_spatial_reuse_output_grid_buffer.resize(render_data.render_settings.regir_settings, m_hash_grid_current_overallocation_factor);
 
 			updated = true;
 		}
 
 		if (m_grid_cells_alive_buffer.size() != render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid())
 		{
-			m_grid_cells_alive_staging_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
+			// m_grid_cells_alive_staging_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
 			m_grid_cells_alive_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
 			m_grid_cells_alive_list_buffer.resize(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
-			m_grid_cells_alive_count_staging_buffer.resize(1);
+			m_grid_cells_alive_count_buffer.resize(1);
 			m_grid_cells_alive_count_staging_host_pinned_buffer.resize_host_pinned_mem(1);
 
-			std::vector<unsigned int> init_data_inactive(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 0u);
-			m_grid_cells_alive_staging_buffer.upload_data(init_data_inactive);
+			/*std::vector<unsigned int> init_data_inactive(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 0u);
+			m_grid_cells_alive_staging_buffer.upload_data(init_data_inactive);*/
 
-			// Initializing all the cells to alive
-			std::vector<unsigned char> init_data_alive(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1u);
+			// Initializing all the cells to inactive
+			std::vector<unsigned int> init_data_alive(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 0u);
 			m_grid_cells_alive_buffer.upload_data(init_data_alive);
 
-			// All cells are alive at the beginning of the render
-			unsigned int all_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-			render_data.render_settings.regir_settings.shading.grid_cells_alive_count = all_cells;
-			m_grid_cells_alive_count_staging_buffer.upload_data(&all_cells);
+			// No cell is alive at the beginning of the render
+			unsigned int zero = 0;
+			m_grid_cells_alive_count_buffer.upload_data(&zero);
 
 			updated = true;
 		}
@@ -166,8 +165,7 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		if (m_grid_cells_alive_buffer.size() > 0)
 		{
 			m_grid_cells_alive_buffer.free();
-			m_grid_cells_alive_staging_buffer.free();
-			m_grid_cells_alive_count_staging_buffer.free();
+			m_grid_cells_alive_count_buffer.free();
 			m_grid_cells_alive_list_buffer.free();
 
 			updated = true;
@@ -192,17 +190,12 @@ bool ReGIRRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOpti
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::REGIR_DO_DISPATCH_COMPACTION) == KERNEL_OPTION_TRUE)
-	{
-		m_grid_cells_alive_count_staging_buffer.download_data(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
-	}
-	else
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_count = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+	m_grid_cells_alive_count_buffer.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+	m_number_of_cells_alive = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
-	if (render_data.render_settings.regir_settings.shading.grid_cells_alive_count > 0)
+	if (m_number_of_cells_alive > 0)
 	{
 		launch_grid_fill_temporal_reuse(render_data);
 		launch_spatial_reuse(render_data);
@@ -213,7 +206,7 @@ bool ReGIRRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOpti
 
 void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data)
 {
-	void* launch_args[] = { &render_data };
+	void* launch_args[] = { &render_data, &m_number_of_cells_alive };
 
 	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
 
@@ -229,7 +222,7 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 	//
 	// To make sure one kernel launch still covers all the reservoirs that we have to cover, the kernel code
 	// uses a while loop such that a single thread potentially computes more than 1 reservoir
-	unsigned int nb_threads = hippt::min(render_data.render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+	unsigned int nb_threads = hippt::min(m_number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
@@ -238,12 +231,12 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		return;
 
-	void* launch_args[] = { &render_data };
+	void* launch_args[] = { &render_data, &m_number_of_cells_alive };
 
 	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
 
 	// Same reason for nb_threads here as explained in the GridFill kernel launch
-	unsigned int nb_threads = hippt::min(render_data.render_settings.regir_settings.shading.grid_cells_alive_count * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+	unsigned int nb_threads = hippt::min(m_number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
@@ -252,12 +245,12 @@ void ReGIRRenderPass::launch_cell_liveness_copy_pass(HIPRTRenderData& render_dat
 	if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
 		return;
 
-	unsigned int* staging_ptr = m_grid_cells_alive_staging_buffer.get_device_pointer();
+	/*unsigned int* staging_ptr = m_grid_cells_alive_staging_buffer.get_device_pointer();
 	unsigned char* non_staging_ptr = m_grid_cells_alive_buffer.get_device_pointer();
 
 	void* launch_args[] = { &staging_ptr, &non_staging_ptr, &render_data.render_settings.regir_settings };
 
-	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1, launch_args, m_renderer->get_main_stream());*/
 }
 
 void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -287,9 +280,9 @@ void ReGIRRenderPass::update_render_data()
 		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 			render_data.render_settings.regir_settings.spatial_grid = m_spatial_reuse_output_grid_buffer.to_device();
 
-		render_data.render_settings.regir_settings.shading.grid_cells_alive = m_grid_cells_alive_buffer.get_device_pointer();
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_grid_cells_alive_staging_buffer.get_atomic_device_pointer();
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = m_grid_cells_alive_count_staging_buffer.get_atomic_device_pointer();
+		render_data.render_settings.regir_settings.shading.grid_cells_alive = m_grid_cells_alive_buffer.get_atomic_device_pointer();
+		/*render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_grid_cells_alive_staging_buffer.get_atomic_device_pointer();
+		render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = m_grid_cells_alive_count_buffer.get_atomic_device_pointer();*/
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_grid_cells_alive_list_buffer.get_device_pointer();
 	}
 	else
@@ -300,8 +293,8 @@ void ReGIRRenderPass::update_render_data()
 		render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data = ReGIRHashCellDataSoADevice();
 
 		render_data.render_settings.regir_settings.shading.grid_cells_alive = nullptr;
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = nullptr;
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = nullptr;
+		/*render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = nullptr;
+		render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = nullptr;*/
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_list = nullptr;
 	}
 }
@@ -315,13 +308,12 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 	if (m_grid_cells_alive_buffer.size() > 0)
 	{
 		// Resetting the 'cell alive' buffers
-		std::vector<unsigned char> init_data_alive(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1);
+		std::vector<unsigned int> init_data_alive(render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 0);
 		m_grid_cells_alive_buffer.upload_data(init_data_alive);
 
 		// Resetting the count buffers
-		unsigned int all_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_count = all_cells;
-		m_grid_cells_alive_count_staging_buffer.upload_data(&all_cells);
+		unsigned int zero = 0;
+		m_grid_cells_alive_count_buffer.upload_data(&zero);
 	}
 }
 
@@ -365,18 +357,12 @@ float ReGIRRenderPass::get_VRAM_usage() const
 		m_representative_primitive_buffer.get_byte_size() +*/
 
 		m_grid_cells_alive_buffer.get_byte_size() + 
-		m_grid_cells_alive_staging_buffer.get_byte_size() +
-		m_grid_cells_alive_count_staging_buffer.get_byte_size() +
+		//m_grid_cells_alive_staging_buffer.get_byte_size() +
+		m_grid_cells_alive_count_buffer.get_byte_size() +
 		m_grid_cells_alive_list_buffer.get_byte_size()) / 1000000.0f;
 }
 
 float ReGIRRenderPass::get_alive_cells_ratio() const
 {
-	std::vector<unsigned char> alive = m_grid_cells_alive_buffer.download_data();
-	std::size_t count = 0;
-	for (unsigned char cell : alive)
-		if (cell == 1)
-			count++;
-
-	return count / static_cast<float>(m_grid_cells_alive_buffer.size());;
+	return m_number_of_cells_alive / static_cast<float>(m_grid_cells_alive_buffer.size());
 }

@@ -54,7 +54,7 @@
 //
 //HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point, float3 camera_position)
 //{
-//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(rep_point, camera_position);
+//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(rep_point, camera_position);
 //
 //	ReGIR_store_representative_point(render_data, rep_point, hash_grid_cell_index);
 //}
@@ -66,7 +66,7 @@
 //
 //HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_point, float3 camera_position, float3 shading_normal)
 //{
-//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(shading_point, camera_position);
+//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(shading_point, camera_position);
 //
 //	ReGIR_store_representative_normal(render_data, shading_normal, hash_grid_cell_index);
 //}
@@ -78,7 +78,7 @@
 //
 //HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_primitive(const HIPRTRenderData& render_data, float3 shading_point, float3 camera_position, int primitive_index)
 //{
-//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(shading_point, camera_position);
+//	int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(shading_point, camera_position);
 //
 //	ReGIR_store_representative_primitive(render_data, primitive_index, hash_grid_cell_index);
 //}

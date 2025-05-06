@@ -76,7 +76,7 @@ struct ReGIRGridBufferSoADevice
 	// */
 	//HIPRT_DEVICE ReGIRReservoir read_full_reservoir_opt(const ReGIRHashGrid& grid_settings, float3 world_position, float3 camera_position, int reservoir_index_in_cell, int grid_index = -1) const 
 	//{
-	//	unsigned int hash_grid_cell_index = grid_settings. get_hash_grid_cell_index_from_world_pos(world_position, camera_position);
+	//	unsigned int hash_grid_cell_index = grid_settings. get_hash_grid_cell_index_from_world_pos_no_collision_resolve(world_position, camera_position);
 
 	//	return read_full_reservoir_opt(grid_settings, hash_grid_cell_index, reservoir_index_in_cell, grid_index);
 	//}
