@@ -13,7 +13,7 @@ struct ReGIRShadingSettings
 	int cell_reservoir_resample_per_shading_point = 1;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_cell_jittering = false;
+	bool do_cell_jittering = true;
 
 	// For each grid cell, indicates whether that grid cell has been used at least once during shading in the last frame
 	// 

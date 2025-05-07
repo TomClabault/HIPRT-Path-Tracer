@@ -51,7 +51,6 @@ struct ReGIRHashGrid
 	unsigned int m_total_number_of_reservoirs = 0;
 	unsigned int m_number_of_reservoirs_per_cell = 0;
 	unsigned int m_number_of_reservoirs_per_grid = 0;
-	float3 m_cell_size = make_float3(0.0f, 0.0f, 0.0f);
 	float m_cell_diagonal_length = 0.0f;
 };
 

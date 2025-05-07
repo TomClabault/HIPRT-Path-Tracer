@@ -16,7 +16,7 @@
 struct ReGIRGridFillSettings
 {
 	// How many light samples are resampled into each reservoir of the grid cell
-	int sample_count_per_cell_reservoir = 320;
+	int sample_count_per_cell_reservoir = 32;
 
 	HIPRT_DEVICE int get_non_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_DEVICE int get_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_canonical; }
@@ -41,7 +41,7 @@ private:
 	// and 1 canonical reservoir:
 	//
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_non_canonical = 1;
+	int reservoirs_count_per_grid_cell_non_canonical = 16;
 
 	// Number of canonical reservoirs per cell
 	// 
@@ -49,7 +49,7 @@ private:
 	// and 1 canonical reservoir:
 	// 
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_canonical = 1;
+	int reservoirs_count_per_grid_cell_canonical = 8;
 };
 
 struct ReGIRTemporalReuseSettings

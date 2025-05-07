@@ -143,6 +143,10 @@ struct ReGIRHashGridSoADevice
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
+		if (hash_key == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+			// This is refering to a grid cell that hasn't been filled yet
+			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+
 		/*if (DEBUG_SHADING_NORMAL.z > 0.8f && hash_grid_cell_index == 694)
 			printf("\n");*/
 
@@ -154,7 +158,7 @@ struct ReGIRHashGridSoADevice
 
 	HIPRT_DEVICE float3 get_cell_size(float3 world_position = make_float3(0, 0, 0), float3 camera_position = make_float3(0, 0, 0)) const
 	{
-		return hash_grid.m_cell_size;
+		return make_float3(1.0f / hash_grid.grid_resolution.x, 1.0f / hash_grid.grid_resolution.y, 1.0f / hash_grid.grid_resolution.z);
 	}
 
 	HIPRT_DEVICE float get_cell_diagonal_length() const

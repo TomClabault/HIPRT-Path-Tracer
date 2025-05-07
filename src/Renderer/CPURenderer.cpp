@@ -38,7 +38,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -52,8 +52,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 128
-#define DEBUG_PIXEL_Y 128
+#define DEBUG_PIXEL_X 936
+#define DEBUG_PIXEL_Y 440
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -367,7 +367,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
         float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
         float3 cell_size = grid.extents / grid_resolution_float;
 
-        m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_size = cell_size;
         m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
         m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
         m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
