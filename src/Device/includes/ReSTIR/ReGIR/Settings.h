@@ -365,7 +365,7 @@ struct ReGIRSettings
 			spatial_grid.reset_reservoir(hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
-	bool DEBUG_INCLUDE_CANONICAL = false;
+	bool DEBUG_INCLUDE_CANONICAL = true;
 
 	ReGIRHashGridSoADevice grid_fill_grid;
 	// Grid that contains the output of the spatial reuse pass
