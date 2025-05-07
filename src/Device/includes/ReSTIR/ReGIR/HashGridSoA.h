@@ -74,8 +74,6 @@ struct ReGIRHashGridSoADevice
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
-		/*if (shading_normal.z > 0.8f && hash_grid_cell_index == 694)
-			printf("\n");*/
 
 		unsigned int current_hash_key = hash_cell_data.hash_keys[hash_grid_cell_index];
 		if (current_hash_key != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)

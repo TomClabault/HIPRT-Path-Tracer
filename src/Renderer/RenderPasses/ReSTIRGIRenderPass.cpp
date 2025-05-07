@@ -122,11 +122,11 @@ bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	return recompiled;
 }
 
-bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
+bool ReSTIRGIRenderPass::pre_render_update_async(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	MegaKernelRenderPass::pre_render_update(delta_time);
+	MegaKernelRenderPass::pre_render_update_async(delta_time);
 
 	bool render_data_invalidated = false;
 
@@ -346,7 +346,7 @@ void ReSTIRGIRenderPass::launch_shading_pass(HIPRTRenderData& render_data)
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
-bool ReSTIRGIRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+bool ReSTIRGIRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;

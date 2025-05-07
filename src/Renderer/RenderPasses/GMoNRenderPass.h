@@ -31,8 +31,8 @@ public:
 	 * 
 	 * Returns true or false depending on whether or not the render buffer data have been invalidated
 	 */
-	virtual bool pre_render_update(float delta_time) override;
-	virtual bool launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+	virtual bool pre_render_update_async(float delta_time) override;
+	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
 	float compute_gmon_darkening(HIPRTRenderData& render_data);
 	float get_gmon_darkening();

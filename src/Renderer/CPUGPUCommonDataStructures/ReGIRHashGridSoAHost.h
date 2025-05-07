@@ -14,11 +14,10 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
 
 template <template <typename> typename DataContainer>
-using ReGIRHashCellDataSoAHost = GenericSoA<DataContainer, GenericAtomicType<float, DataContainer>, GenericAtomicType<int, DataContainer>, float3, Octahedral24BitNormalPadded32b, unsigned int>;
+using ReGIRHashCellDataSoAHost = GenericSoA<DataContainer, GenericAtomicType<int, DataContainer>, float3, Octahedral24BitNormalPadded32b, unsigned int>;
 
 enum ReGIRRepresentativeSoAHostBuffers
 {
-	REGIR_REPRESENTATIVE_DISTANCE_TO_CENTER,
 	REGIR_HASH_CELL_PRIM_INDEX,
 	REGIR_HASH_CELL_POINTS,
 	REGIR_HASH_CELL_NORMALS,
@@ -81,7 +80,6 @@ struct ReGIRHashGridSoAHost
 		hash_grid_soa.reservoirs.M = reservoirs.template get_buffer_data_ptr<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_M>();
 		hash_grid_soa.reservoirs.number_of_reservoirs_per_cell = m_reservoirs_per_cell;
 
-		//hash_grid_soa.hash_cell_data.distance_to_center = hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_REPRESENTATIVE_DISTANCE_TO_CENTER>();
 		hash_grid_soa.hash_cell_data.representative_primitive = hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>();
 		hash_grid_soa.hash_cell_data.representative_points = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_POINTS>();
 		hash_grid_soa.hash_cell_data.representative_normals = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();

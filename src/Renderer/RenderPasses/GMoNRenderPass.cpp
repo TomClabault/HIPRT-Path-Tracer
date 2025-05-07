@@ -20,7 +20,7 @@ GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : RenderPass(renderer, GMo
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->synchronize_options_with(renderer->get_global_compiler_options(), {});
 }
 
-bool GMoNRenderPass::pre_render_update(float delta_time)
+bool GMoNRenderPass::pre_render_update_async(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
@@ -83,7 +83,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 	return false;
 }
 
-bool GMoNRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;

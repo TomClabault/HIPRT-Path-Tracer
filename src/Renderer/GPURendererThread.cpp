@@ -117,7 +117,7 @@ void GPURendererThread::pre_render_update(float delta_time, RenderWindow* render
 	if (m_render_graph.pre_render_compilation_check(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets, true, true))
 		// Some kernels have been recompiled, renderer is now dirty
 		render_window->set_render_dirty(true);
-	m_renderer->m_render_data_buffers_invalidated |= m_render_graph.pre_render_update(delta_time);
+	m_renderer->m_render_data_buffers_invalidated |= m_render_graph.pre_render_update_async(delta_time);
 
 	internal_pre_render_update_clear_device_status_buffers();
 	internal_pre_render_update_global_stack_buffer();
@@ -391,7 +391,7 @@ void GPURendererThread::render_path_tracing()
 			// active, ...)
 			render_data_copy.render_settings.do_update_status_buffers = true;
 
-		m_render_graph.launch(render_data_copy, compiler_options_copy);
+		m_render_graph.launch_async(render_data_copy, compiler_options_copy);
 
 		post_sample_update(render_data_copy, compiler_options_copy);
 	}

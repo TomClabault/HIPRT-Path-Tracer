@@ -44,9 +44,9 @@ public:
 
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
 
-	virtual bool pre_render_update(float delta_time) override;
+	virtual bool pre_render_update_async(float delta_time) override;
 
-	virtual bool launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data);
 	void launch_spatial_reuse(HIPRTRenderData& render_data);
 	void launch_cell_liveness_copy_pass(HIPRTRenderData& render_data);
