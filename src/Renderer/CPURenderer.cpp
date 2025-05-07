@@ -533,10 +533,6 @@ Image32Bit& CPURenderer::get_framebuffer()
         return m_framebuffer;
 }
 
-extern std::atomic<int> counter_total;
-extern std::atomic<int> counter_iterations;
-extern std::atomic<int> counter_fail;
-
 void CPURenderer::render()  
 {
     std::cout << "CPU rendering..." << std::endl;
@@ -572,8 +568,6 @@ void CPURenderer::render()
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
-
-    printf("\n\nTotal: %d, iterations average: %.3f, fail average: %.3f%%\n", counter_total.load(), counter_iterations.load() / (float)counter_total.load(), counter_fail.load() / (float)counter_total.load() * 100.0f);
 
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
