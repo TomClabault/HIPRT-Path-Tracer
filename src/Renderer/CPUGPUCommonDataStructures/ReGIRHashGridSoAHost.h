@@ -85,6 +85,7 @@ struct ReGIRHashGridSoAHost
 		regir_settings.hash_cell_data.representative_normals = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();
 		regir_settings.hash_cell_data.hash_keys = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>();
 
+		hash_grid_soa.hash_grid.grid_resolution = regir_settings.grid_fill_grid.hash_grid.grid_resolution;
 		hash_grid_soa.m_total_number_of_cells = m_total_number_of_cells;
 
 		return hash_grid_soa;

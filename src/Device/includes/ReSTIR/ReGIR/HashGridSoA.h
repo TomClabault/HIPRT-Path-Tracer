@@ -102,10 +102,8 @@ struct ReGIRHashGridSoADevice
 	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, Xorshift32Generator& rng) const
 	{
 		float3 random_offset = make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f);
-		float3 random_offset_integer = make_float3(roundf(random_offset.x), roundf(random_offset.y), roundf(random_offset.z));
-		// random_offset_integer = make_float3(0, 1, 1);
 
-		return original_world_position + random_offset_integer * get_cell_size() * 0.5f;
+		return original_world_position + random_offset * get_cell_size() * 0.5f;
 	}
 
 	ReGIRHashGrid hash_grid;

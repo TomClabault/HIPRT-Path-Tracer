@@ -264,8 +264,6 @@ void ReGIRRenderPass::update_render_data()
 		render_data.render_settings.regir_settings.hash_cell_data = ReGIRHashCellDataSoADevice();
 
 		render_data.render_settings.regir_settings.shading.grid_cells_alive = nullptr;
-		/*render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = nullptr;
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_count_staging = nullptr;*/
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_list = nullptr;
 	}
 }
