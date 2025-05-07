@@ -188,17 +188,13 @@ private:
 		constexpr unsigned int p2 = 19349663;
 		constexpr unsigned int p3 = 83492791;
 
-		float grid_coord_x = relative_to_camera.x * hash_grid.grid_resolution.x;
-		float grid_coord_y = relative_to_camera.y * hash_grid.grid_resolution.y;
-		float grid_coord_z = relative_to_camera.z * hash_grid.grid_resolution.z;
+		unsigned int grid_coord_x = static_cast<int>(relative_to_camera.x * hash_grid.grid_resolution.x);
+		unsigned int grid_coord_y = static_cast<int>(relative_to_camera.y * hash_grid.grid_resolution.y);
+		unsigned int grid_coord_z = static_cast<int>(relative_to_camera.z * hash_grid.grid_resolution.z);
 
-		grid_coord_x += grid_coord_x < 0 ? 0xFFFFFFFF : 0;
-		grid_coord_y += grid_coord_y < 0 ? 0xFFFFFFFF : 0;
-		grid_coord_z += grid_coord_z < 0 ? 0xFFFFFFFF : 0;
-
-		unsigned int x = static_cast<unsigned int>(grid_coord_x) % (1 << 10);
-		unsigned int y = static_cast<unsigned int>(grid_coord_y) % (1 << 10);
-		unsigned int z = static_cast<unsigned int>(grid_coord_z) % (1 << 10);
+		unsigned int x = grid_coord_x % (1 << 10);
+		unsigned int y = grid_coord_y % (1 << 10);
+		unsigned int z = grid_coord_z % (1 << 10);
 
 		out_hash_key = x | (y << 10) | (z << 20);
 

@@ -25,10 +25,6 @@ extern ImGuiLogger g_imgui_logger;
 
 #define GPU_RENDER 1
 
-std::atomic<int> counter_total;
-std::atomic<int> counter_iterations;
-std::atomic<int> counter_fail;
-
 int main(int argc, char* argv[])
 {   
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
