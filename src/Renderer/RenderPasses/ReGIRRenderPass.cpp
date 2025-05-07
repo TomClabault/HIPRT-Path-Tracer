@@ -73,7 +73,7 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	return !grid_fill_compiled || !spatial_reuse_compiled || !cell_liveness_copy_compiled;
 }
 
-bool ReGIRRenderPass::pre_render_update(float delta_time)
+bool ReGIRRenderPass::pre_render_update_async(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
@@ -88,6 +88,13 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 		if (m_grid_buffers.size_reservoirs() != m_total_number_of_cells * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell())
 		{
 			m_grid_buffers.resize(render_data.render_settings.regir_settings, m_hash_grid_current_overallocation_factor);
+
+			// Resetting the hash cell data
+			std::vector<int> primitive_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
+			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().upload_data(primitive_reset);
+
+			std::vector<unsigned int> hash_keys_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
+			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
 
 			if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 				// Also resizing the spatial reuse buffer
@@ -112,20 +119,6 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 			m_grid_cells_alive_count_buffer.upload_data(&zero);
 
 			updated = true;
-		}
-
-		// Some precomputations that can be done here instead of being done on the GPU for each pixel
-		{
-			// ReGIRHashGrid& grid = render_data.render_settings.regir_settings.grid_fill_grid.hash_grid;
-
-			// float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
-			// float3 cell_size = grid.extents / grid_resolution_float;
-
-			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-			// // render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
-			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
-			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
 		}
 	}
 	else
@@ -152,22 +145,12 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 
 			updated = true;
 		}
-
-		/*if (m_distance_to_center_buffer.size() > 0)
-		{
-			m_distance_to_center_buffer.free();
-			m_representative_points_buffer.free();
-			m_representative_normals_buffer.free();
-			m_representative_primitive_buffer.free();
-
-			updated = true;
-		}*/
 	}
 
 	return updated;
 }
 
-bool ReGIRRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
@@ -297,7 +280,11 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 		unsigned int zero = 0;
 		m_grid_cells_alive_count_buffer.upload_data(&zero);
 
-		reset_representative_data();
+		std::vector<int> primitive_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
+		m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().upload_data(primitive_reset);
+
+		std::vector<unsigned int> hash_keys_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
+		m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
 	}
 }
 

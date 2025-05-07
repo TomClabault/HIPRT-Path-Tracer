@@ -53,11 +53,11 @@ void RenderGraph::is_render_pass_used_pass()
 		name_to_render_pass.second->set_is_render_pass_used(name_to_render_pass.second->is_render_pass_used());
 }
 
-bool RenderGraph::pre_render_update(float delta_time)
+bool RenderGraph::pre_render_update_async(float delta_time)
 {
 	bool render_data_invalidated = false;
 	for (auto& name_to_render_pass : m_render_passes)
-		render_data_invalidated |= name_to_render_pass.second->pre_render_update(delta_time);
+		render_data_invalidated |= name_to_render_pass.second->pre_render_update_async(delta_time);
 
 	// pre_render_update means that this is a new frame
 	m_new_frame = true;
@@ -65,7 +65,7 @@ bool RenderGraph::pre_render_update(float delta_time)
 	return render_data_invalidated;
 }
 
-bool RenderGraph::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+bool RenderGraph::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 		// Resetting the state of whether or not the render passes have been launched this frame or not
 	for (auto& name_to_render_pass : m_render_passes)
@@ -104,7 +104,7 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 		launch_render_pass_with_dependencies(dependency, render_data, compiler_options);
 
 	// Now launching the render pass itself since all dependencies have been launched
-	bool effectively_launched = render_pass->launch(render_data, compiler_options);
+	bool effectively_launched = render_pass->launch_async(render_data, compiler_options);
 	m_render_pass_launched_this_frame_yet[render_pass.get()] = true;
 
 	if (effectively_launched)

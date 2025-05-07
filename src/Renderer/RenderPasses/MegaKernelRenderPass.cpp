@@ -29,7 +29,7 @@ void MegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_heigh
 	m_render_resolution.y = new_height;
 }
 
-bool MegaKernelRenderPass::pre_render_update(float delta_time)
+bool MegaKernelRenderPass::pre_render_update_async(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
@@ -45,7 +45,7 @@ bool MegaKernelRenderPass::pre_render_update(float delta_time)
 	return false;
 }
 
-bool MegaKernelRenderPass::launch(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
