@@ -38,7 +38,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -52,8 +52,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 936
-#define DEBUG_PIXEL_Y 440
+#define DEBUG_PIXEL_X 118
+#define DEBUG_PIXEL_Y 158
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -77,7 +77,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 350
+#define DEBUG_NEIGHBORHOOD_SIZE 250
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -98,8 +98,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
 
 
-    m_regir_state.grid_buffer.resize(m_render_data.render_settings.regir_settings, 30);
-    m_regir_state.spatial_grid_buffer.resize(m_render_data.render_settings.regir_settings, 30);
+    m_regir_state.grid_buffer.resize(m_render_data.render_settings.regir_settings, 100);
+    m_regir_state.spatial_grid_buffer.resize(m_render_data.render_settings.regir_settings, 100);
 
     unsigned int number_of_cells = m_regir_state.grid_buffer.m_total_number_of_cells;
 
@@ -111,8 +111,6 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());*/
     for (AtomicType<int>& rep_prim : m_regir_state.grid_buffer.hash_cell_data.get_buffer<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>())
         rep_prim.store(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-    for (unsigned int& cell_hash : m_regir_state.grid_buffer.hash_cell_data.get_buffer<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>())
-        cell_hash = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 
 
     m_regir_state.grid_cells_alive = std::vector<AtomicType<unsigned int>>(number_of_cells);
@@ -347,32 +345,13 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-    // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
-    // // m_render_data.render_settings.regir_settings.hash_grid.grid_resolution = m_regir_state.settings.hash_grid.grid_resolution;
-    // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
-    m_render_data.render_settings.regir_settings.grid_fill_grid = m_regir_state.grid_buffer.to_device();
-    m_render_data.render_settings.regir_settings.spatial_grid = m_regir_state.spatial_grid_buffer.to_device();
-    /*m_render_data.render_settings.regir_settings.hash_cell_data.distance_to_center = m_regir_state.distance_to_center.data();
-    m_render_data.render_settings.regir_settings.hash_cell_data.representative_points= m_regir_state.representative_points.data();
-    m_render_data.render_settings.regir_settings.hash_cell_data.representative_normals = m_regir_state.representative_normals.data();
-    m_render_data.render_settings.regir_settings.hash_cell_data.representative_primitive = m_regir_state.representative_primitives.data();*/
+    m_render_data.render_settings.regir_settings.spatial_grid = m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings);
+    m_render_data.render_settings.regir_settings.grid_fill_grid = m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings);
+    for (unsigned int& cell_hash : m_regir_state.grid_buffer.hash_cell_data.get_buffer<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>())
+        cell_hash = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive = m_regir_state.grid_cells_alive.data();
-    //m_render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_regir_state.grid_cells_alive_staging.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_regir_state.grid_cells_alive_list.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = &m_regir_state.grid_cells_alive_count;
-    {
-        // Some precomputations
-        // ReGIRHashGrid& grid = m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid;
-
-        // float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
-        // float3 cell_size = grid.extents / grid_resolution_float;
-
-        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-        // // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
-        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
-        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
-    }
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -719,7 +698,7 @@ void CPURenderer::ReGIR_grid_fill_pass()
 {
     m_render_data.random_number = m_rng.xorshift32();
 
-#pragma omp parallel for schedule(dynamic)
+// #pragma omp parallel for schedule(dynamic)
     for (int index = 0; index < *m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
     {
         ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count);

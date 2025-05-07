@@ -43,7 +43,7 @@ struct ReGIRHashGrid
 	// // "Length" of the grid in each X, Y, Z axis directions
 	// float3 extents;
 
-	static constexpr int DEFAULT_GRID_SIZE = 4;
+	static constexpr int DEFAULT_GRID_SIZE = 8;
 	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 
 	// Some precomputed stuff

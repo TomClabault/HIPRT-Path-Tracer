@@ -128,7 +128,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Do also multiple resample per neighbor during shading
 // - Gather some information of how many light samples are rejected because of visibility to get a feel for how much can be gained with NEE++
 //		- Also incorporate back facing lights info
-// - We need a retry feature for ReGIR shading too becaues of the cell liveness
+// - We need a retry feature for ReGIR shading too because of the cell liveness / jittering into cells that are not on the scene's surface
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to compile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction

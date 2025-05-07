@@ -1988,25 +1988,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		if (size_changed)
 			m_render_window->set_render_dirty(true);
 
-		if (ImGui::Checkbox("Use representative points", &regir_settings.use_representative_points))
-		{
-			m_renderer->get_ReGIR_render_pass()->reset_representative_data();
-
-			m_render_window->set_render_dirty(true);
-		}
-		if (regir_settings.use_representative_points)
-		{
-			ImGui::TreePush("Representative points settings tree");
-
-			if (ImGui::Button("Reset representative data"))
-			{
-				m_renderer->get_ReGIR_render_pass()->reset_representative_data();
-				m_render_window->set_render_dirty(true);
-			}
-
-			ImGui::TreePop();
-		}
-
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}

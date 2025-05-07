@@ -96,10 +96,16 @@ bool ReGIRRenderPass::pre_render_update_async(float delta_time)
 			std::vector<unsigned int> hash_keys_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
 			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
 
+			
+			updated = true;
+		}
+		
+		if (m_spatial_reuse_output_grid_buffer.size_reservoirs() != m_total_number_of_cells * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell())
+		{
 			if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 				// Also resizing the spatial reuse buffer
 				m_spatial_reuse_output_grid_buffer.resize(render_data.render_settings.regir_settings, m_hash_grid_current_overallocation_factor);
-
+			
 			updated = true;
 		}
 
@@ -241,9 +247,9 @@ void ReGIRRenderPass::update_render_data()
 		// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
 		// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 
-		render_data.render_settings.regir_settings.grid_fill_grid = m_grid_buffers.to_device();
 		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-			render_data.render_settings.regir_settings.spatial_grid = m_spatial_reuse_output_grid_buffer.to_device();
+			render_data.render_settings.regir_settings.spatial_grid = m_spatial_reuse_output_grid_buffer.to_device(render_data.render_settings.regir_settings);
+		render_data.render_settings.regir_settings.grid_fill_grid = m_grid_buffers.to_device(render_data.render_settings.regir_settings);
 
 		render_data.render_settings.regir_settings.shading.grid_cells_alive = m_grid_cells_alive_buffer.get_atomic_device_pointer();
 		// render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_grid_cells_alive_staging_buffer.get_atomic_device_pointer();
@@ -255,7 +261,7 @@ void ReGIRRenderPass::update_render_data()
 		render_data.render_settings.regir_settings.grid_fill_grid = ReGIRHashGridSoADevice();
 		render_data.render_settings.regir_settings.spatial_grid = ReGIRHashGridSoADevice();
 
-		render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data = ReGIRHashCellDataSoADevice();
+		render_data.render_settings.regir_settings.hash_cell_data = ReGIRHashCellDataSoADevice();
 
 		render_data.render_settings.regir_settings.shading.grid_cells_alive = nullptr;
 		/*render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = nullptr;

@@ -341,9 +341,9 @@ private:
 		return make_float2(unpack_Snorm12(s.x), unpack_Snorm12(s.y));
 	}
 
-	unsigned char m_packed_x;
-	unsigned char m_packed_y;
-	unsigned char m_packed_z;
+	unsigned char m_packed_x = 0;
+	unsigned char m_packed_y = 0;
+	unsigned char m_packed_z = 0;
 	// This padding here improves performance significantly on my machine for the megakernel.
 	// Order of 60% faster, mainly due to a massive reduction in register pressure and we got 2 more wavefronts running
 	// out of that. Tested with a lambertian BRDF
@@ -351,7 +351,7 @@ private:
 	// Doesn't really make sense that we would get any register out of that but :shrug:.
 	// This padding here is theoretically better anyways thanks to the 4 bytes alignment that it
 	// provides instead of the 3-bytes alignement of the default packed struct (which is poor access pattern on the GPU)
-	unsigned char padding;
+	unsigned char padding = 0;
 };
 
 /**
