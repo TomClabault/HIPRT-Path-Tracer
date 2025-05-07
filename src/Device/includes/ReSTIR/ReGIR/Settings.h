@@ -296,6 +296,8 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, float3 camera_position) const
 	{
+		if( hippt::thread_idx_global() < 5)
+			printf("Grid res: %d\n", grid_fill_grid.hash_grid.grid_resolution.x);
 		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, position, camera_position);
 
 		return ColorRGB32F::random_color(cell_index);
