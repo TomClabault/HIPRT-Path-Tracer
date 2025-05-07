@@ -13,7 +13,7 @@
 struct ReGIRSample
 {
 	Float3xLengthUint10bPacked emission;
-	int emissive_triangle_index; // Only needed for ReSTIR DI
+	int emissive_triangle_index = -1; // Only needed for ReSTIR DI
 
 	float light_area = 0.0f;
 	// TODO maybe not needed during shading?

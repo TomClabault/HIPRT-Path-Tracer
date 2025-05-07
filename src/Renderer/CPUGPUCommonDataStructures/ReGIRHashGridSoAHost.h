@@ -66,7 +66,7 @@ struct ReGIRHashGridSoAHost
 		return settings.grid_fill_grid.hash_grid.grid_resolution.x * settings.grid_fill_grid.hash_grid.grid_resolution.y * settings.grid_fill_grid.hash_grid.grid_resolution.z * overallocation_factor;
 	}
 
-	ReGIRHashGridSoADevice to_device()
+	ReGIRHashGridSoADevice to_device(ReGIRSettings& regir_settings)
 	{
 		ReGIRHashGridSoADevice hash_grid_soa;
 
@@ -80,10 +80,10 @@ struct ReGIRHashGridSoAHost
 		hash_grid_soa.reservoirs.M = reservoirs.template get_buffer_data_ptr<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_M>();
 		hash_grid_soa.reservoirs.number_of_reservoirs_per_cell = m_reservoirs_per_cell;
 
-		hash_grid_soa.hash_cell_data.representative_primitive = hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>();
-		hash_grid_soa.hash_cell_data.representative_points = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_POINTS>();
-		hash_grid_soa.hash_cell_data.representative_normals = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();
-		hash_grid_soa.hash_cell_data.hash_keys = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>();
+		regir_settings.hash_cell_data.representative_primitive = hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>();
+		regir_settings.hash_cell_data.representative_points = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_POINTS>();
+		regir_settings.hash_cell_data.representative_normals = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();
+		regir_settings.hash_cell_data.hash_keys = hash_cell_data.template get_buffer_data_ptr<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>();
 
 		hash_grid_soa.m_total_number_of_cells = m_total_number_of_cells;
 

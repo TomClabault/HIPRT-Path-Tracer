@@ -66,20 +66,20 @@ struct ReGIRTemporalReuseSettings
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = false;
+	bool do_spatial_reuse = true;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = true;
 
 	int spatial_neighbor_count = 8;
-	int reuse_per_neighbor_count = 8;
+	int reuse_per_neighbor_count = 1;
 	// When picking a random cell in the neighborhood for reuse, if that
 	// cell is out of the grid or if that cell is not alive etc..., we're
 	// going to retry another cell this many times
 	//
 	// This improves the chances that we're actually going to have a good
 	// neighbor to reuse from --> more reuse --> less variance
-	int retries_per_neighbor = 8;
+	int retries_per_neighbor = 16;
 	int spatial_reuse_radius = 1;
 
 	bool DEBUG_oONLY_ONE_CENTER_CELL = true;
@@ -122,34 +122,10 @@ struct ReGIRSettings
 		return grid_fill_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(world_position, camera_position);
 	}
 
-	/*HIPRT_DEVICE int3 get_xyz_cell_index_from_linear(int hash_grid_cell_index) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(float3 world_position, float3 camera_position) const
 	{
-		unsigned int packed_rep_point = grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index];
-		float3 rep_point = ReGIR_unpack_representative_point(get_cell_size(), , packed_rep_point, hash_grid_cell_index);
-
-		int index_x = hash_grid_cell_index % grid_resolution.x;
-		int index_y = (hash_grid_cell_index % (grid_resolution.x * grid_resolution.y)) / grid_resolution.x;
-		int index_z = hash_grid_cell_index / (grid_resolution.x * grid_resolution.y);
-
-		return make_int3(index_x, index_y, index_z);
-	}*/
-
-	/*HIPRT_DEVICE float3 get_cell_origin_from_hash_grid_cell_index(int hash_grid_cell_index) const
-	{
-		float3 cell_size = get_cell_size();
-
-		int3 cell_index_xyz = get_xyz_cell_index_from_linear(hash_grid_cell_index);
-		float3 cell_index_xyz_float = make_float3(static_cast<float>(cell_index_xyz.x), static_cast<float>(cell_index_xyz.y), static_cast<float>(cell_index_xyz.z));
-
-		return grid_origin + cell_size * cell_index_xyz_float;
-	}*/
-
-	/*HIPRT_DEVICE float3 get_cell_center_from_hash_grid_cell_index(unsigned int hash_grid_cell_index) const
-	{
-		float3 cell_size = get_cell_size();
-
-		return get_cell_origin_from_hash_grid_cell_index(hash_grid_cell_index) + cell_size * 0.5f;
-	}*/
+		return grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, world_position, camera_position);
+	}
 
 	///////////////////// Delegating to the grid for these functions /////////////////////
 
@@ -202,13 +178,13 @@ struct ReGIRSettings
 	{
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return spatial_grid.read_full_reservoir_opt(world_position, camera_position, reservoir_index_in_cell);
+			return spatial_grid.read_full_reservoir_opt(hash_cell_data, world_position, camera_position, reservoir_index_in_cell);
 		else if (temporal_reuse.do_temporal_reuse)
 			// If only doing temporal reuse, reading from the output of the spatial reuse pass
 			return get_temporal_reservoir_opt(world_position, camera_position, reservoir_index_in_cell);
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return grid_fill_grid.read_full_reservoir_opt(world_position, camera_position, reservoir_index_in_cell);
+			return grid_fill_grid.read_full_reservoir_opt(hash_cell_data, world_position, camera_position, reservoir_index_in_cell);
 	}
 
 	/**
@@ -220,7 +196,7 @@ struct ReGIRSettings
 		if (jitter)
 			world_position = grid_fill_grid.jitter_world_position(world_position, rng);
 
-		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(world_position, camera_position);
+		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, world_position, camera_position);
 
 		 if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
 		 {
@@ -241,7 +217,7 @@ struct ReGIRSettings
 		if (jitter)
 			world_position = grid_fill_grid.jitter_world_position(world_position, rng);
 
-		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(world_position, camera_position);
+		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, world_position, camera_position);
 
 		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
 		{
@@ -262,7 +238,7 @@ struct ReGIRSettings
 		if (jitter)
 			shading_point = grid_fill_grid.jitter_world_position(shading_point, rng);
 
-		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(shading_point, camera_position);
+		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, shading_point, camera_position);
 
 		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
 			// The grid cell is inside the grid but not alive
@@ -293,9 +269,9 @@ struct ReGIRSettings
 	HIPRT_DEVICE ReGIRReservoir get_temporal_reservoir_opt(float3 world_position, float3 camera_position, int reservoir_index_in_cell, int grid_index = -1) const
 	{
 		if (grid_index != -1)
-			return grid_fill_grid.read_full_reservoir_opt(world_position, camera_position, reservoir_index_in_cell, grid_index);
+			return grid_fill_grid.read_full_reservoir_opt(hash_cell_data, world_position, camera_position, reservoir_index_in_cell, grid_index);
 		else
-			return grid_fill_grid.read_full_reservoir_opt(world_position, camera_position, reservoir_index_in_cell, -1);
+			return grid_fill_grid.read_full_reservoir_opt(hash_cell_data, world_position, camera_position, reservoir_index_in_cell, -1);
 	}
 
 	HIPRT_DEVICE ReGIRReservoir get_grid_fill_output_reservoir_opt(float3 world_position, float3 camera_position, int reservoir_index_in_cell) const
@@ -307,20 +283,20 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE void store_spatial_reservoir_opt(const ReGIRReservoir& reservoir, float3 world_position, float3 camera_position, int reservoir_index_in_cell)
 	{
-		spatial_grid.store_reservoir_and_sample_opt(reservoir, world_position, camera_position, reservoir_index_in_cell);
+		spatial_grid.store_reservoir_and_sample_opt(reservoir, hash_cell_data, world_position, camera_position, reservoir_index_in_cell);
 	}
 
 	HIPRT_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, float3 world_position, float3 camera_position, int reservoir_index_in_cell, int grid_index = -1)
 	{
 		if (grid_index != -1)
-			grid_fill_grid.store_reservoir_and_sample_opt(reservoir, world_position, camera_position, reservoir_index_in_cell, grid_index);
+			grid_fill_grid.store_reservoir_and_sample_opt(reservoir, hash_cell_data, world_position, camera_position, reservoir_index_in_cell, grid_index);
 		else
-			grid_fill_grid.store_reservoir_and_sample_opt(reservoir, world_position, camera_position, reservoir_index_in_cell, -1);
+			grid_fill_grid.store_reservoir_and_sample_opt(reservoir, hash_cell_data, world_position, camera_position, reservoir_index_in_cell, -1);
 	}
 
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, float3 camera_position) const
 	{
-		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(position, camera_position);
+		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, position, camera_position);
 
 		return ColorRGB32F::random_color(cell_index);
 	}
@@ -365,23 +341,73 @@ struct ReGIRSettings
 			spatial_grid.reset_reservoir(hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
-	bool DEBUG_INCLUDE_CANONICAL = true;
+	HIPRT_DEVICE void update_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, float3 camera_position, float3 shading_normal, int primitive_index)
+	{
+		unsigned int hash_key;
+		unsigned int hash_grid_cell_index = grid_fill_grid.hash(world_position, camera_position, hash_key);
 
+		unsigned int current_hash_key = hash_cell_data.hash_keys[hash_grid_cell_index];
+		if (current_hash_key != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		{
+			// We already have something in that cell
+			if (current_hash_key != hash_key)
+			{
+				// And it's not our hash so this is a collision
+
+				unsigned int new_hash_cell_index = hash_grid_cell_index;
+				if (!grid_fill_grid.resolve_collision(hash_cell_data, new_hash_cell_index, hash_key))
+					// Could not resolve the collision
+					return;
+				else if (new_hash_cell_index == hash_grid_cell_index)
+					// We resolved the collision by finding our own cell
+					// 
+					// This means that we already have something in the cell, nothing to do
+					return;
+				else
+					// We resolved the collision with a new cell
+					hash_grid_cell_index = new_hash_cell_index;
+			}
+			else
+				// Already have something in the cell and that's our hash, no collision, nothing to do
+				return;
+		}
+
+		if (hippt::atomic_compare_exchange(&hash_cell_data.representative_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
+		{
+			hash_cell_data.representative_points[hash_grid_cell_index] = world_position;
+			hash_cell_data.representative_normals[hash_grid_cell_index].pack(shading_normal);
+			hash_cell_data.hash_keys[hash_grid_cell_index] = hash_key;
+		}
+
+		// Because we just updated that grid cell, it is now alive
+		// Only go through all that atomic stuff if the cell hasn't been staged already
+		if (shading_settings.grid_cells_alive[hash_grid_cell_index] == 0)
+		{
+			if (hippt::atomic_compare_exchange(&shading_settings.grid_cells_alive[hash_grid_cell_index], 0u, 1u) == 0u)
+			{
+				unsigned int cell_alive_index = hippt::atomic_fetch_add(shading_settings.grid_cells_alive_count, 1u);
+
+				shading_settings.grid_cells_alive_list[cell_alive_index] = hash_grid_cell_index;
+			}
+		}
+	}
+
+	bool DEBUG_INCLUDE_CANONICAL = false;
+
+	// Grid that contains the output reservoirs of the grid fill pass
 	ReGIRHashGridSoADevice grid_fill_grid;
-	// Grid that contains the output of the spatial reuse pass
+	// Grid that contains the output reservoirs of the spatial reuse pass
 	ReGIRHashGridSoADevice spatial_grid;
+	// This SoA is allocated to hold 'number_cells' only.
+
+	// It contains data associated with the grid cells themselves
+	ReGIRHashCellDataSoADevice hash_cell_data;
 
 	ReGIRGridFillSettings grid_fill;
 	ReGIRTemporalReuseSettings temporal_reuse;
 	ReGIRSpatialReuseSettings spatial_reuse;
 	ReGIRShadingSettings shading;
 
-	// If true, the center of the cells will not be used anymore to compute the ReGIR target functions
-	// but rather, points on the surface of the scene within the cells will be used
-	//
-	// This feature is non-deterministic
-	bool use_representative_points = true;
-	
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;
 };
