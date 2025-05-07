@@ -64,12 +64,12 @@ struct ReGIRGridBufferSoADevice
 	/**
 	 * Just some overload to adhere to the API of the hash grid
 	 */
-	HIPRT_DEVICE ReGIRReservoir read_full_reservoir_opt(const ReGIRHashGrid& grid_settings, unsigned int hash_grid_cell_index, int reservoir_index_in_cell, int grid_index = -1) const
-	{
-		int reservoir_index_in_grid = hash_grid_cell_index * grid_settings.m_number_of_reservoirs_per_cell + reservoir_index_in_cell;
+	// HIPRT_DEVICE ReGIRReservoir read_full_reservoir_opt(const ReGIRHashGrid& grid_settings, unsigned int hash_grid_cell_index, int reservoir_index_in_cell, int grid_index = -1) const
+	// {
+	// 	int reservoir_index_in_grid = hash_grid_cell_index * grid_settings.m_number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
-		return read_full_reservoir_opt(reservoir_index_in_grid); 
-	}
+	// 	return read_full_reservoir_opt(reservoir_index_in_grid); 
+	// }
 
 	///**
 	// * Just some overload to adhere to the API of the hash grid

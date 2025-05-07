@@ -347,9 +347,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-    m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
-    // m_render_data.render_settings.regir_settings.hash_grid.grid_resolution = m_regir_state.settings.hash_grid.grid_resolution;
-    m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
+    // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.extents = parsed_scene.metadata.scene_bounding_box.get_extents();
+    // // m_render_data.render_settings.regir_settings.hash_grid.grid_resolution = m_regir_state.settings.hash_grid.grid_resolution;
+    // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
     m_render_data.render_settings.regir_settings.grid_fill_grid = m_regir_state.grid_buffer.to_device();
     m_render_data.render_settings.regir_settings.spatial_grid = m_regir_state.spatial_grid_buffer.to_device();
     /*m_render_data.render_settings.regir_settings.hash_cell_data.distance_to_center = m_regir_state.distance_to_center.data();
@@ -362,16 +362,16 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = &m_regir_state.grid_cells_alive_count;
     {
         // Some precomputations
-        ReGIRHashGrid& grid = m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid;
+        // ReGIRHashGrid& grid = m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid;
 
-        float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
-        float3 cell_size = grid.extents / grid_resolution_float;
+        // float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
+        // float3 cell_size = grid.extents / grid_resolution_float;
 
-        m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-        m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
-        m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
-        m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
+        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
+        // // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
+        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
     }
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();

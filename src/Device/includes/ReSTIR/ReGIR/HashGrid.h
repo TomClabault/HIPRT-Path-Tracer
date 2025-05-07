@@ -39,18 +39,18 @@ struct ReGIRHashGrid
 	//	return xyz_cell_index.x + xyz_cell_index.y * grid_resolution.x + xyz_cell_index.z * grid_resolution.x * grid_resolution.y;
 	//}
 
-	float3 grid_origin;
-	// "Length" of the grid in each X, Y, Z axis directions
-	float3 extents;
+	// float3 grid_origin;
+	// // "Length" of the grid in each X, Y, Z axis directions
+	// float3 extents;
 
 	static constexpr int DEFAULT_GRID_SIZE = 4;
 	int3 grid_resolution = make_int3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 
 	// Some precomputed stuff
-	unsigned int m_total_number_of_reservoirs = 0;
-	unsigned int m_number_of_reservoirs_per_cell = 0;
-	unsigned int m_number_of_reservoirs_per_grid = 0;
-	float m_cell_diagonal_length = 0.0f;
+	//unsigned int m_total_number_of_reservoirs = 0;
+	//unsigned int m_number_of_reservoirs_per_cell = 0;
+	//unsigned int m_number_of_reservoirs_per_grid = 0;
+	//float m_cell_diagonal_length = 0.0f;
 };
 
 #endif

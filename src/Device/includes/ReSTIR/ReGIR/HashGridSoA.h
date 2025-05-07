@@ -20,7 +20,8 @@ struct ReGIRHashGridSoADevice
 		if (grid_index == -1)
 			grid_index = 0;
 
-		int reservoir_index_in_grid = hash_grid.m_number_of_reservoirs_per_grid * grid_index + hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
+		unsigned int reservoirs_per_grid = m_total_number_of_cells * reservoirs.number_of_reservoirs_per_cell;
+		int reservoir_index_in_grid = reservoirs_per_grid * grid_index + hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
 		reservoirs.store_reservoir_opt(reservoir_index_in_grid, ReGIRReservoir());
 		samples.store_sample(reservoir_index_in_grid, ReGIRReservoir().sample);
@@ -102,9 +103,6 @@ struct ReGIRHashGridSoADevice
 				return;
 		}
 
-
-		float3 DEBUG_REMOVE_NORMAL = hash_cell_data.representative_normals[hash_grid_cell_index].unpack();
-
 		if (hippt::atomic_compare_exchange(&hash_cell_data.representative_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
 		{
 			hash_cell_data.representative_points[hash_grid_cell_index] = world_position;
@@ -133,7 +131,7 @@ struct ReGIRHashGridSoADevice
 		return hash_cell_index;
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(float3 world_position, float3 camera_position, float3 DEBUG_SHADING_NORMAL = make_float3(0, 0, 0)) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(float3 world_position, float3 camera_position) const
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
@@ -155,10 +153,10 @@ struct ReGIRHashGridSoADevice
 		return make_float3(1.0f / hash_grid.grid_resolution.x, 1.0f / hash_grid.grid_resolution.y, 1.0f / hash_grid.grid_resolution.z);
 	}
 
-	HIPRT_DEVICE float get_cell_diagonal_length() const
-	{
-		return hash_grid.m_cell_diagonal_length;
-	}
+	// HIPRT_DEVICE float get_cell_diagonal_length() const
+	// {
+	// 	return hash_grid.m_cell_diagonal_length;
+	// }
 
 	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, Xorshift32Generator& rng) const
 	{

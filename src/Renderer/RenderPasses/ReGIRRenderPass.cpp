@@ -116,16 +116,16 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 
 		// Some precomputations that can be done here instead of being done on the GPU for each pixel
 		{
-			ReGIRHashGrid& grid = render_data.render_settings.regir_settings.grid_fill_grid.hash_grid;
+			// ReGIRHashGrid& grid = render_data.render_settings.regir_settings.grid_fill_grid.hash_grid;
 
-			float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
-			float3 cell_size = grid.extents / grid_resolution_float;
+			// float3 grid_resolution_float = make_float3(grid.grid_resolution.x, grid.grid_resolution.y, grid.grid_resolution.z);
+			// float3 cell_size = grid.extents / grid_resolution_float;
 
-			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
-			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
-			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
-			render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
+			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
+			// // render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
+			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+			// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
 		}
 	}
 	else
@@ -255,8 +255,8 @@ void ReGIRRenderPass::update_render_data()
 
 	if (is_render_pass_used())
 	{
-		render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
-		render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
+		// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
+		// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
 
 		render_data.render_settings.regir_settings.grid_fill_grid = m_grid_buffers.to_device();
 		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)

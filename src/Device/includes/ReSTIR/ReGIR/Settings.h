@@ -220,7 +220,7 @@ struct ReGIRSettings
 		if (jitter)
 			world_position = grid_fill_grid.jitter_world_position(world_position, rng);
 
-		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(world_position, camera_position, DEBUG_SHADING_NORMAL);
+		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(world_position, camera_position);
 
 		 if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
 		 {
@@ -320,7 +320,7 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, float3 camera_position) const
 	{
-		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(position, camera_position);
+		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(position, camera_position);
 
 		return ColorRGB32F::random_color(cell_index);
 	}
@@ -332,12 +332,8 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE unsigned int get_number_of_reservoirs_per_grid() const
 	{
-#ifdef __KERNELCC__
-		return grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid;
-#else
 		// We need to keep this dynamic on the CPU so not using the precomputed variable
 		return get_total_number_of_cells_per_grid() * grid_fill.get_total_reservoir_count_per_cell();
-#endif
 	}
 
 	HIPRT_DEVICE unsigned int get_number_of_reservoirs_per_cell() const
@@ -348,14 +344,10 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE unsigned int get_total_number_of_reservoirs_ReGIR() const
 	{
-#ifdef __KERNELCC__
-		return grid_fill_grid.hash_grid.m_total_number_of_reservoirs;
-#else
 		// We need to keep this dynamic on the CPU so not using the precomputed variable
 		int temporal_grid_count = temporal_reuse.do_temporal_reuse ? temporal_reuse.temporal_history_length : 1;
 
 		return get_number_of_reservoirs_per_grid() * temporal_grid_count;
-#endif
 	}
 
 	/**
