@@ -327,7 +327,7 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE unsigned int get_total_number_of_cells_per_grid() const
 	{
-		return grid_fill_grid.hash_grid.m_total_number_of_cells;
+		return grid_fill_grid.m_total_number_of_cells;
 	}
 
 	HIPRT_DEVICE unsigned int get_number_of_reservoirs_per_grid() const
@@ -342,12 +342,8 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE unsigned int get_number_of_reservoirs_per_cell() const
 	{
-#ifdef __KERNELCC__
-		return grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell;
-#else
 		// We need to keep this dynamic on the CPU so not using the precomputed variable
 		return grid_fill.get_total_reservoir_count_per_cell();
-#endif
 	}
 
 	HIPRT_DEVICE unsigned int get_total_number_of_reservoirs_ReGIR() const

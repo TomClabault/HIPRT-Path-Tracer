@@ -74,21 +74,15 @@ private:
 	ReGIRHashGridSoAHost<OrochiBuffer> m_grid_buffers;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
 
-	// Representative data buffers
-	/*OrochiBuffer<float> m_distance_to_center_buffer;
-	OrochiBuffer<int> m_representative_primitive_buffer;
-	OrochiBuffer<unsigned int> m_representative_points_buffer;
-	OrochiBuffer<Octahedral24BitNormalPadded32b> m_representative_normals_buffer;*/
-
 	// Cells alive buffers
 	OrochiBuffer<unsigned int> m_grid_cells_alive_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_buffer;
-	//OrochiBuffer<unsigned int> m_grid_cells_alive_staging_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_list_buffer;
 
 	unsigned int m_number_of_cells_alive = 0;
-	unsigned int m_hash_grid_current_overallocation_factor = 1;
+	unsigned int m_total_number_of_cells = 0;
+	unsigned int m_hash_grid_current_overallocation_factor = 30;
 };
 
 #endif

@@ -13,12 +13,6 @@
 
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 
-#include <atomic>
-
-extern std::atomic<int> counter_total;
-extern std::atomic<int> counter_iterations;
-extern std::atomic<int> counter_fail;
-
 struct ReGIRHashGridSoADevice
 {
 	HIPRT_DEVICE void reset_reservoir(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, int grid_index = -1)
@@ -211,9 +205,6 @@ private:
 	 */
 	HIPRT_DEVICE bool resolve_collision(unsigned int& in_out_hash_cell_index, unsigned int hash_key) const
 	{
-		counter_total++;
-		counter_iterations++;
-
 		if (hash_cell_data.hash_keys[in_out_hash_cell_index] != hash_key)
 		{
 			// This is a collision
@@ -221,7 +212,7 @@ private:
 			unsigned int base_hash_cell = in_out_hash_cell_index;
 
 			// Linear probing
-			for (int i = 1; i <= 32; i++, counter_iterations++)
+			for (int i = 1; i <= 32; i++)
 			{
 				unsigned int next_hash_cell_index = (base_hash_cell + i) % m_total_number_of_cells;
 				if (next_hash_cell_index == base_hash_cell)
@@ -240,7 +231,6 @@ private:
 				}
 			}
 
-			counter_fail++;
 			// Linear probing couldn't find a better position in the hash grid
 			return false;
 		}

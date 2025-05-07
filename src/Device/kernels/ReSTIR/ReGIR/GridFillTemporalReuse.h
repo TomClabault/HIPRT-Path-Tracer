@@ -124,9 +124,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         float3 representative_point = ReGIR_get_cell_representative_point(render_data, hash_grid_cell_index);
         float3 normal = ReGIR_get_cell_representative_shading_normal(render_data, hash_grid_cell_index);
 
-        /*if (hash_grid_cell_index == 695)
-            printf("\n");*/
-
         if (regir_settings.shading.grid_cells_alive[hash_grid_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
@@ -136,7 +133,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
 
             return;
         }
-
 
         // Grid fill
         output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, hash_grid_cell_index, random_number_generator);

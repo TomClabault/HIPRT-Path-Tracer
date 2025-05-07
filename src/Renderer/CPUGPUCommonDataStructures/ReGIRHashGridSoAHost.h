@@ -62,6 +62,11 @@ struct ReGIRHashGridSoAHost
 		return hash_cell_data.size();
 	}
 
+	unsigned int get_total_number_of_cells(ReGIRSettings& settings, int overallocation_factor = 1) const
+	{
+		return settings.grid_fill_grid.hash_grid.grid_resolution.x * settings.grid_fill_grid.hash_grid.grid_resolution.y * settings.grid_fill_grid.hash_grid.grid_resolution.z * overallocation_factor;
+	}
+
 	ReGIRHashGridSoADevice to_device()
 	{
 		ReGIRHashGridSoADevice hash_grid_soa;

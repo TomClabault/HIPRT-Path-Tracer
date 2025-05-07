@@ -368,7 +368,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
         float3 cell_size = grid.extents / grid_resolution_float;
 
         m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_cell_diagonal_length = hippt::length(cell_size * 0.5f);
-        m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
+        // m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_cells = m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid();
         m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_total_number_of_reservoirs = m_render_data.render_settings.regir_settings.get_total_number_of_reservoirs_ReGIR();
         m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_cell = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
         m_render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.m_number_of_reservoirs_per_grid = m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid();
