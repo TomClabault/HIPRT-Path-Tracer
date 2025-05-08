@@ -273,8 +273,13 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     {
         // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
         bool shading_reservoir_outside_of_grid;
+        // No jittering for the canonical samples, we want to make sure that we always have a canonical sample
+        // to compensate for the bias of non-canonical samples.
+        //
+        // But if we're jittering even for canonical samples, the jittering may end up out of the grid and this is
+        // going to end up in no canonical sample since we're out of the grid --> bias non compensated --> biased render
         ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera.position,
-            shading_reservoir_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+            shading_reservoir_outside_of_grid, neighbor_rng, false);
 
         if (!shading_reservoir_outside_of_grid)
             shading_point_outside_of_grid = false;
@@ -294,16 +299,28 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             selected_neighbor = render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
     }
 
-    if (out_reservoir.weight_sum == 0.0f)
+    if (out_reservoir.weight_sum == 0.0f || shading_point_outside_of_grid)
         return LightSampleInformation();
 
     float normalization_weight = 0.0f;
     neighbor_rng.m_state.seed = neighbor_rng_seed;
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + need_canonical; i++)
     {
+        bool is_canonical = i == render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;
+
+        // No jittering for the canonical samples, we want to make sure that we always have a canonical sample
+        // to compensate for the bias of non-canonical samples.
+        // 
+        // Jittering removes that guarantee of always having a canonical sample
 		unsigned int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(shading_point, render_data.current_camera.position,
-            neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+            neighbor_rng, is_canonical ? false : render_data.render_settings.regir_settings.shading.do_cell_jittering);
+
         if (neighbor_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+            // Outside of the alive grid
+            //
+            // Note that this also applies for the canonical sample because canonical samples are gathered
+            // from neighbors. But if the neighbor is outside of the grid (or in a non-alive grid cell), then
+            // we have no canonical neighbor to count in the MIS weights
             continue;
 
         if (i == selected_neighbor)
@@ -312,7 +329,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
             continue;
         }
-        else if (i == render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point)
+        else if (is_canonical)
         {
             // Canonical reservoir.
             // This one can always produce any sample so this is always a valid neighbor
@@ -324,7 +341,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         if (ReGIR_shading_can_sample_be_produced_by(render_data, out_reservoir.sample, neighbor_cell_index, random_number_generator))
             normalization_weight += 1.0f;
     }
-
 
     out_reservoir.finalize_resampling(normalization_weight);
 

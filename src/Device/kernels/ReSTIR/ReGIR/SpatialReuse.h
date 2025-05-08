@@ -97,7 +97,7 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             else
                 random_reservoir_index_in_cell = random_number_generator() * regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
 
-            float3 representative_point = ReGIR_get_cell_representative_point(render_data, neighbor_hash_grid_cell_index_in_grid);
+            float3 representative_point = ReGIR_get_cell_world_point(render_data, neighbor_hash_grid_cell_index_in_grid);
 
             ReGIRReservoir neighbor_reservoir;
             if (regir_settings.temporal_reuse.do_temporal_reuse)
@@ -249,7 +249,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
 
         Xorshift32Generator random_number_generator(seed);
 
-        float3 point_in_cell = regir_settings.hash_cell_data.representative_points[hash_grid_cell_index];
+        float3 point_in_cell = regir_settings.hash_cell_data.world_points[hash_grid_cell_index];
 
         if (regir_settings.shading.grid_cells_alive[hash_grid_cell_index] == 0)
         {

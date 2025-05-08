@@ -7,7 +7,8 @@
 #define REGIR_RENDER_PASS_H
 
 #include "Renderer/RenderPasses/RenderPass.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
+#include "Renderer/RenderPasses/ReGIRHashGridStorage.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 
 class GPURenderer;
 
@@ -17,6 +18,7 @@ public:
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_CELL_LIVENESS_COPY_KERNEL_ID;
+	static const std::string REGIR_REHASH_KERNEL_ID;
 
 	static const std::string REGIR_RENDER_PASS_NAME;
 
@@ -50,12 +52,12 @@ public:
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data);
 	void launch_spatial_reuse(HIPRTRenderData& render_data);
 	void launch_cell_liveness_copy_pass(HIPRTRenderData& render_data);
+	void launch_rehashing_kernel(HIPRTRenderData& render_data, ReGIRHashGridSoADevice& new_hash_grid, ReGIRHashCellDataSoADevice& new_hash_cell_data, unsigned int* new_grid_cells_alive, unsigned int* new_grid_cells_alive_list);
 
 	virtual void post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void update_render_data() override;
 
 	virtual void reset(bool reset_by_camera_movement) override;
-	void reset_representative_data();
 
 	virtual bool is_render_pass_used() const override;
 
@@ -64,25 +66,22 @@ public:
 	 */
 	float get_VRAM_usage() const;
 
+	unsigned int update_cell_alive_count();
 	float get_alive_cells_ratio() const;
 
-private:
+// private:
+
 	int m_current_grid_index = 0;
-	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,
-	// this buffer will contain one more than one grid worth of space to
-	// accomodate for the grid of the past frames for temporal reuse
-	ReGIRHashGridSoAHost<OrochiBuffer> m_grid_buffers;
-	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
+
+	ReGIRHashGridStorage m_hash_grid_storage;
 
 	// Cells alive buffers
+	unsigned int m_number_of_cells_alive = 0;
+
 	OrochiBuffer<unsigned int> m_grid_cells_alive_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_list_buffer;
-
-	unsigned int m_number_of_cells_alive = 0;
-	unsigned int m_total_number_of_cells = 0;
-	unsigned int m_hash_grid_current_overallocation_factor = 30;
 };
 
 #endif

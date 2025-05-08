@@ -7,7 +7,6 @@
 #define DEVICE_INCLUDES_REGIR_GRID_BUFFER_SOA_H
 
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
-#include "Device/includes/ReSTIR/ReGIR/HashGrid.h"
 
 struct ReGIRGridBufferSoADevice
 {

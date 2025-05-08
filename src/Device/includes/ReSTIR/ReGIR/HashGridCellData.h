@@ -10,31 +10,35 @@
 
 struct ReGIRHashCellDataSoADevice
 {
-	// If the current representative data of a cell is at a distance 'OK_DISTANCE_TO_CENTER_FACTOR * get_cell_diagonal_length()' or lower,
-	// then we assume that the representative data is good enough and we do not update it anymore
-	static constexpr float OK_DISTANCE_TO_CENTER_FACTOR = 0.4f;
-
 	static constexpr float UNDEFINED_DISTANCE = -42.0f;
+
 	static constexpr unsigned int UNDEFINED_POINT = 0xFFFFFFFF;
 	static constexpr float3 UNDEFINED_NORMAL = { 0.0f, 0.0f, 0.0f };
 	static constexpr int UNDEFINED_PRIMITIVE = -1;
 	static constexpr unsigned int UNDEFINED_HASH_KEY = 0xFFFFFFFF;
 
+	static constexpr unsigned int CELL_LOCKED_SENTINEL_VALUE = 0u;
+
 	// These three buffers are only allocated per each cell, not per each reservoir so they are
 	// 'number_cells' in size
 
 	// TODO Pack distance to unsigned char? Yep but then we need a way to atomic on that
-	//AtomicType<float>* distance_to_center = nullptr;
-	AtomicType<int>* representative_primitive = nullptr;
+	//
+	// These 3 buffers are used to "optimize" the representative points of the cells
+	// closer to the center of the cells
+	AtomicType<float>* distance_to_center = nullptr;
+	float3* sum_points = nullptr;
+	AtomicType<unsigned int>* num_points = nullptr;
+
+	AtomicType<int>* hit_primitive = nullptr;
 	// TODO test quantize these guys but we may end up with the point below the
 	// actual surface because of the quantization and this may be an issue for shadow rays
 	// on very finely tesselated geometry because the shadow rays may end up hitting another primitive
-	//unsigned int* representative_points = nullptr;
-	float3* representative_points = nullptr;
+	float3* world_points = nullptr;
 	// TODO Pack to octahedral
-	Octahedral24BitNormalPadded32b* representative_normals = nullptr;
+	Octahedral24BitNormalPadded32b* world_normals = nullptr;
 	// The has for each entry of the table to check for collisions
-	unsigned int* hash_keys = nullptr;
+	AtomicType<unsigned int>* hash_keys = nullptr;
 };
 
 #endif

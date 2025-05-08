@@ -167,6 +167,11 @@ namespace hippt
 	__device__ bool is_inf(const T& v) { return isinf(v); }
 	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
+	__device__ unsigned int float_as_uint(float float_num)
+	{
+		return __float_as_uint(float_num);
+	}
+
 	/**
 	 * Reads the 32-bit or 64-bit word old located at the address 'address' 
 	 * in global or shared memory and stores 'value' to memory at the same address. 
@@ -411,6 +416,11 @@ namespace hippt
 	template <typename T>
 	inline bool is_inf(const T& v) { return std::isinf(v); }
 	inline bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
+
+	inline unsigned int float_as_uint(float float_num)
+	{
+		return *reinterpret_cast<unsigned int*>(&float_num);
+	}
 
 	/**
 	 * Reads the 32-bit or 64-bit word old located at the address 'address'

@@ -48,8 +48,8 @@
 
 //HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point, int hash_grid_cell_index)
 //{
-//	// render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index] = ReGIR_pack_representative_point(render_data.render_settings.regir_settings, rep_point, hash_grid_cell_index);
-//	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index] = rep_point;
+//	// render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.world_points[hash_grid_cell_index] = ReGIR_pack_representative_point(render_data.render_settings.regir_settings, rep_point, hash_grid_cell_index);
+//	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.world_points[hash_grid_cell_index] = rep_point;
 //}
 //
 //HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_point(const HIPRTRenderData& render_data, float3 rep_point, float3 camera_position)
@@ -61,7 +61,7 @@
 //
 //HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_normal, int hash_grid_cell_index)
 //{
-//	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_normals[hash_grid_cell_index].pack(shading_normal);
+//	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.world_normals[hash_grid_cell_index].pack(shading_normal);
 //}
 //
 //HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_store_representative_normal(const HIPRTRenderData& render_data, float3 shading_point, float3 camera_position, float3 shading_normal)
@@ -88,25 +88,25 @@
 //	render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.hash[hash] = hash;
 //}
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_representative_shading_normal(const HIPRTRenderData& render_data, int hash_grid_cell_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_world_shading_normal(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	return render_data.render_settings.regir_settings.hash_cell_data.representative_normals[hash_grid_cell_index].unpack();
+	return render_data.render_settings.regir_settings.hash_cell_data.world_normals[hash_grid_cell_index].unpack();
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_representative_point(const HIPRTRenderData& render_data, int hash_grid_cell_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_world_point(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	/*unsigned int rep_point_packed = render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.representative_points[hash_grid_cell_index];
+	/*unsigned int rep_point_packed = render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.world_points[hash_grid_cell_index];
 	if (rep_point_packed == ReGIRHashCellDataSoADevice::UNDEFINED_POINT)
 		return render_data.render_settings.regir_settings.get_cell_center_from_hash_grid_cell_index(hash_grid_cell_index);
 	else
 		return ReGIR_unpack_representative_point(render_data.render_settings.regir_settings, rep_point_packed, hash_grid_cell_index);*/
 
-	return render_data.render_settings.regir_settings.hash_cell_data.representative_points[hash_grid_cell_index];
+	return render_data.render_settings.regir_settings.hash_cell_data.world_points[hash_grid_cell_index];
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE int ReGIR_get_cell_representative_primitive(const HIPRTRenderData& render_data, int hash_grid_cell_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE int ReGIR_get_cell_primitive_index(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	return render_data.render_settings.regir_settings.hash_cell_data.representative_primitive[hash_grid_cell_index];
+	return render_data.render_settings.regir_settings.hash_cell_data.hit_primitive[hash_grid_cell_index];
 }
 
 /**
@@ -124,7 +124,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRender
 	else if (primitive_index == -1)
 		return;
 
-	render_data.render_settings.regir_settings.update_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, camera_position, shading_normal, primitive_index);
+	render_data.render_settings.regir_settings.insert_hash_cell_data<true>(render_data.render_settings.regir_settings.shading, shading_point, camera_position, shading_normal, primitive_index);
 }
 
 #endif

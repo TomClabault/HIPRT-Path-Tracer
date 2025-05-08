@@ -51,6 +51,15 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Maybe we can include the surface normal in the hash table by having a two-level lookup: first hash only using the spatial coordinates: this gives us the cell index and then lookup in that cell index which reservoir set to use based on the quantized normal. The question is: which normal to use for the lookup
+// - Do we want to jitter for canonical samples in the ReGIR shading? Is it not better for variance to always use the canonical samples of our own cells?
+// - Update hash cell data point normal seems to be very expensive
+// - We may have an issue with updating the representative points on the fly with more than 1 bounce because the representative points are going to change *during* the path tracing and so the MIS weights with visibility rays and so on are going to be computed with the updated rep points even though the reservoirs were produced with the old rep points
+// - Deduplicate hash grid cell idnex calculations in fetch reservoirs functions mainly for performance reasons
+// - To profile the hash grid, may be useful to, for example, store everything from the camera rays pass into some buffers and then run a separate hash grid cell data fill kernel just to be able to profile that kernel in isolation
+// - For the spatial reuse output grid buffer, we don't have to store the rservoirs, we can just store the indices of the cell which we resample from so let's save some VRAM there
+// - Can we store just the light index per each regir sample? And reconstruct, the normal and everything from that? Maybe that's not going to be much more expensive that having to read everything from the Regir sample but this would save a lot of memory
+// - Directional spatial reuse to directly hit the right neighbors instead of having to retry multiple times (one memory access for each retry)
 // - Maybe for the new hash grid ReGIR we can use the average of all hit points in a cell as the center of the cell? And so we can optimize representative points about that 'center point'
 // - Maybe try a "progressive liveness" where we keep alive all the cells that we have hit *so far* instead of only keeping the cells alive from the last frame
 //		- May need a maximum life length for that to avoid keeping cells that haven't been hit for 500 samples 

@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_REGIR_SPATIAL_REUSE_H
-#define DEVICE_KERNELS_REGIR_SPATIAL_REUSE_H
+#ifndef DEVICE_KERNELS_REGIR_CELL_LIVENESS_COPY_H
+#define DEVICE_KERNELS_REGIR_CELL_LIVENESS_COPY_H
  
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"

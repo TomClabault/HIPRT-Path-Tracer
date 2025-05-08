@@ -56,6 +56,8 @@ void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_heig
 
 bool FillGBufferRenderPass::pre_render_update_async(float delta_time)
 {
+	m_renderer->get_ReGIR_render_pass()->update_cell_alive_count();
+
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (render_data.render_settings.use_prev_frame_g_buffer(m_renderer))
@@ -92,7 +94,29 @@ bool FillGBufferRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 
 	void* launch_args[] = { &render_data };
 
+	if( m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
+	{
+		unsigned int manual_count = 0;
+		std::vector<unsigned int> cell_alive_list = m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_buffer.download_data();
+		for (unsigned int cell : cell_alive_list)
+		if (cell > 0)
+		manual_count++;
+		
+		std::cout << "Count (auto) before camera rays: " << m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_count_buffer.download_data()[0] << " / " << cell_alive_list.size() << std::endl;
+		std::cout << "Count (manual) before camera rays: " << manual_count << std::endl;
+	}
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+	if( m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
+	{
+	std::cout << "Count after (auto) camera rays: " << m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_count_buffer.download_data()[0] << std::endl;
+	
+	unsigned int manual_count = 0;
+	std::vector<unsigned int> cell_alive_list_after = m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_buffer.download_data();
+	for (unsigned int cell : cell_alive_list_after)
+		if (cell > 0)
+			manual_count++;
+	std::cout << "Count after (manual) camera rays: " << m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_count_buffer.download_data()[0] << std::endl;
+	}
 
 	return true;
 }

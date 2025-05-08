@@ -49,7 +49,7 @@ HIPRT_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_data, c
 {
     ReGIRReservoir output_reservoir = current_reservoir;
 
-    float3 representative_point = ReGIR_get_cell_representative_point(render_data, hash_grid_cell_index);
+    float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
 
     if (regir_settings.temporal_reuse.do_temporal_reuse)
     {
@@ -121,8 +121,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
 
         Xorshift32Generator random_number_generator(seed);
 
-        float3 representative_point = ReGIR_get_cell_representative_point(render_data, hash_grid_cell_index);
-        float3 normal = ReGIR_get_cell_representative_shading_normal(render_data, hash_grid_cell_index);
+        float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
+        float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index);
 
         if (regir_settings.shading.grid_cells_alive[hash_grid_cell_index] == 0)
         {

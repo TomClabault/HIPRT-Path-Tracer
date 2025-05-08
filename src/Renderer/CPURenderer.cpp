@@ -52,8 +52,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 118
-#define DEBUG_PIXEL_Y 158
+#define DEBUG_PIXEL_X 325
+#define DEBUG_PIXEL_Y 54
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -77,7 +77,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 250
+#define DEBUG_NEIGHBORHOOD_SIZE 150
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -97,29 +97,21 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_pixel_squared_luminance.resize(width * height, 0.0f);
 
 
+    unsigned int new_cell_count = hippt::max((unsigned int)(m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution.x * m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution.y * m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution.z), 1u);
+    // ReGIR hash grid Overallocation factor
+    new_cell_count *= 50;
+    m_regir_state.grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
+    m_regir_state.spatial_grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
+    m_regir_state.hash_cell_data.resize(new_cell_count);
 
-    m_regir_state.grid_buffer.resize(m_render_data.render_settings.regir_settings, 100);
-    m_regir_state.spatial_grid_buffer.resize(m_render_data.render_settings.regir_settings, 100);
+    /*for (AtomicType<int>& rep_prim : m_regir_state.hash_cell_data.m_hash_cell_data.get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>())
+        rep_prim.store(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);*/
 
-    unsigned int number_of_cells = m_regir_state.grid_buffer.m_total_number_of_cells;
-
-    /*m_regir_state.distance_to_center = std::vector<AtomicType<float>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());
-    for (AtomicType<float>& distance : m_regir_state.grid_buffer.hash_cell_data.)
-        distance.store(ReGIRHashCellDataSoADevice::UNDEFINED_DISTANCE);*/
-    /*m_regir_state.representative_points.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), ReGIRHashCellDataSoADevice::UNDEFINED_POINT);
-    m_regir_state.representative_normals.resize(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), Octahedral24BitNormalPadded32b::pack_static(ReGIRHashCellDataSoADevice::UNDEFINED_NORMAL));
-    m_regir_state.representative_primitives = std::vector<AtomicType<int>>(m_render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid());*/
-    for (AtomicType<int>& rep_prim : m_regir_state.grid_buffer.hash_cell_data.get_buffer<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>())
-        rep_prim.store(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-
-
-    m_regir_state.grid_cells_alive = std::vector<AtomicType<unsigned int>>(number_of_cells);
+    m_regir_state.grid_cells_alive = std::vector<AtomicType<unsigned int>>(new_cell_count);
     for (AtomicType<unsigned int>& cell_alive_staging : m_regir_state.grid_cells_alive)
         cell_alive_staging.store(0u);
-    /*m_regir_state.grid_cells_alive_staging = std::vector<AtomicType<unsigned int>>(number_of_cells);
-    for (AtomicType<unsigned int>& cell_alive_staging : m_regir_state.grid_cells_alive_staging)
-        cell_alive_staging.store(0u);*/
-    m_regir_state.grid_cells_alive_list.resize(number_of_cells);
+
+    m_regir_state.grid_cells_alive_list.resize(new_cell_count);
     m_regir_state.grid_cells_alive_count.store(0);
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = 0;
 
@@ -273,10 +265,6 @@ void CPURenderer::ReGIR_post_render_update()
         m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index++;
         m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index %= m_render_data.render_settings.regir_settings.temporal_reuse.temporal_history_length;
     }
-
-    /*std::copy(m_regir_state.grid_cells_alive_staging.begin(), m_regir_state.grid_cells_alive_staging.end(), m_regir_state.grid_cells_alive.begin());
-    std::fill(m_regir_state.grid_cells_alive_staging.begin(), m_regir_state.grid_cells_alive_staging.end(), 0u);*/
-    // m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_regir_state.grid_cells_alive_count_staging.load();
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -345,10 +333,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-    m_render_data.render_settings.regir_settings.spatial_grid = m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings);
-    m_render_data.render_settings.regir_settings.grid_fill_grid = m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings);
-    for (unsigned int& cell_hash : m_regir_state.grid_buffer.hash_cell_data.get_buffer<ReGIRRepresentativeSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>())
-        cell_hash = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+    m_render_data.render_settings.regir_settings.spatial_grid = m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
+    m_render_data.render_settings.regir_settings.grid_fill_grid = m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
+    m_render_data.render_settings.regir_settings.hash_cell_data = m_regir_state.hash_cell_data.to_device();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive = m_regir_state.grid_cells_alive.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_regir_state.grid_cells_alive_list.data();
     m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = &m_regir_state.grid_cells_alive_count;
@@ -629,7 +616,7 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 #endif // DEBUG_OTHER_FLIP_Y
 #endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
 
-    // Debugging the chosen pixel
+    // Debugging the chosen pixel first
     render_pass_function(debug_x, debug_y);
 
 #if DEBUG_RENDER_NEIGHBORHOOD
@@ -687,9 +674,6 @@ void CPURenderer::camera_rays_pass()
 
 void CPURenderer::ReGIR_pass()
 {
-    /*if (m_render_data.render_settings.sample_number == 0)
-        m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_regir_state.grid_cells_alive_count_staging.load();*/
-
     ReGIR_grid_fill_pass();
     ReGIR_spatial_reuse_pass();
 }
@@ -698,7 +682,7 @@ void CPURenderer::ReGIR_grid_fill_pass()
 {
     m_render_data.random_number = m_rng.xorshift32();
 
-// #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for (int index = 0; index < *m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
     {
         ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count);

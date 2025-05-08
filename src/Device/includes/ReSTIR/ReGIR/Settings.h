@@ -66,7 +66,7 @@ struct ReGIRTemporalReuseSettings
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = true;
+	bool do_spatial_reuse = false;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = true;
@@ -93,26 +93,6 @@ struct ReGIRSettings
 	{
 		return grid_fill_grid.get_cell_size(world_position, camera_position);
 	}
-
-	/*HIPRT_DEVICE float get_cell_diagonal_length() const
-	{
-		return grid_fill_grid.get_cell_diagonal_length();
-	}*/
-
-	/*HIPRT_DEVICE float3 get_cell_center_from_hash_grid_cell_index(unsigned int hash_grid_cell_index) const
-	{
-		return grid_fill_grid.hash_grid.get_cell_center_from_hash_grid_cell_index(hash_grid_cell_index);
-	}*/
-
-	/*HIPRT_DEVICE float3 get_cell_origin_from_hash_grid_cell_index(int hash_grid_cell_index) const
-	{
-		return grid_fill_grid.hash_grid.get_cell_origin_from_hash_grid_cell_index(hash_grid_cell_index);
-	}*/
-
-	/*HIPRT_DEVICE int get_hash_grid_cell_index_from_xyz(int3 xyz_cell_index) const
-	{
-		return grid_fill_grid.hash_grid.get_hash_grid_cell_index_from_xyz(xyz_cell_index);
-	}*/
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(float3 world_position, float3 camera_position, Xorshift32Generator* rng = nullptr, bool jitter = false) const
 	{
@@ -198,14 +178,14 @@ struct ReGIRSettings
 
 		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, world_position, camera_position);
 
-		 if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
-		 {
-		 	// The grid cell is inside the grid but not alive
-		 	// We're indicating that this cell should not be used by setting the 'out_invalid_sample' to true
-		 	out_invalid_sample = true;
+		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || shading.grid_cells_alive[hash_grid_cell_index] == 0)
+		{
+			// The grid cell is inside the grid but not alive
+			// We're indicating that this cell should not be used by setting the 'out_invalid_sample' to true
+			out_invalid_sample = true;
 
-		 	return ReGIRReservoir();
-		 }
+			return ReGIRReservoir();
+		}
 
 		out_invalid_sample = false;
 
@@ -296,9 +276,13 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, float3 camera_position) const
 	{
-		if( hippt::thread_idx_global() < 5)
-			printf("Grid res: %d\n", grid_fill_grid.hash_grid.grid_resolution.x);
+		unsigned int DEBUG_BASE_INDEX = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(position, camera_position);
+		if (DEBUG_BASE_INDEX == 196)
+			return ColorRGB32F(1.0f, 0.0f, 0.0f);
+
 		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, position, camera_position);
+		if (cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+			return ColorRGB32F(0.0f);
 
 		return ColorRGB32F::random_color(cell_index);
 	}
@@ -343,58 +327,171 @@ struct ReGIRSettings
 			spatial_grid.reset_reservoir(hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE void update_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, float3 camera_position, float3 shading_normal, int primitive_index)
+	HIPRT_DEVICE static void insert_hash_cell_point_normal(ReGIRHashCellDataSoADevice& hash_cell_data_to_update, 
+		AtomicType<unsigned int>* grid_cells_alive, unsigned int* grid_cells_alive_list, AtomicType<unsigned int>* grid_cells_alive_count,
+		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index)
 	{
-		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = grid_fill_grid.hash(world_position, camera_position, hash_key);
-
-		unsigned int current_hash_key = hash_cell_data.hash_keys[hash_grid_cell_index];
-		if (current_hash_key != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		// TODO is this atomic needed since we can only be here if the cell was unoccupied?
+		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.hit_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
 		{
-			// We already have something in that cell
-			if (current_hash_key != hash_key)
-			{
-				// And it's not our hash so this is a collision
+			hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
+			hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
 
-				unsigned int new_hash_cell_index = hash_grid_cell_index;
-				if (!grid_fill_grid.resolve_collision(hash_cell_data, new_hash_cell_index, hash_key))
-					// Could not resolve the collision
-					return;
-				else if (new_hash_cell_index == hash_grid_cell_index)
-					// We resolved the collision by finding our own cell
-					// 
-					// This means that we already have something in the cell, nothing to do
-					return;
-				else
-					// We resolved the collision with a new cell
-					hash_grid_cell_index = new_hash_cell_index;
-			}
-			else
-				// Already have something in the cell and that's our hash, no collision, nothing to do
-				return;
+			hash_cell_data_to_update.sum_points[hash_grid_cell_index] = world_position;
+			hash_cell_data_to_update.num_points[hash_grid_cell_index] = 1;
 		}
 
-		if (hippt::atomic_compare_exchange(&hash_cell_data.representative_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
+		// Because we just inserted into that grid cell, it is now alive
+		// Only go through all that atomic stuff if the cell isn't alive
+		if (grid_cells_alive[hash_grid_cell_index] == 0)
 		{
-			hash_cell_data.representative_points[hash_grid_cell_index] = world_position;
-			hash_cell_data.representative_normals[hash_grid_cell_index].pack(shading_normal);
-			hash_cell_data.hash_keys[hash_grid_cell_index] = hash_key;
-		}
-
-		// Because we just updated that grid cell, it is now alive
-		// Only go through all that atomic stuff if the cell hasn't been staged already
-		if (shading_settings.grid_cells_alive[hash_grid_cell_index] == 0)
-		{
-			if (hippt::atomic_compare_exchange(&shading_settings.grid_cells_alive[hash_grid_cell_index], 0u, 1u) == 0u)
+			// TODO is this atomic needed since we can only be here if the cell was unoccoupied?
+			if (hippt::atomic_compare_exchange(&grid_cells_alive[hash_grid_cell_index], 0u, 1u) == 0u)
 			{
-				unsigned int cell_alive_index = hippt::atomic_fetch_add(shading_settings.grid_cells_alive_count, 1u);
+				unsigned int cell_alive_index = hippt::atomic_fetch_add(grid_cells_alive_count, 1u);
 
-				shading_settings.grid_cells_alive_list[cell_alive_index] = hash_grid_cell_index;
+				grid_cells_alive_list[cell_alive_index] = hash_grid_cell_index;
 			}
 		}
 	}
 
-	bool DEBUG_INCLUDE_CANONICAL = false;
+	HIPRT_DEVICE static void update_hash_cell_point_normal(ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
+		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index)
+	{
+		unsigned int current_num_points = hash_cell_data_to_update.num_points[hash_grid_cell_index];
+		if (current_num_points == 0xFFFFFFFF)
+			// We've already accumulated as many points as we can for that grid cell, can't do more
+			return;
+		
+		// We're going to add our point to the sum of points for that grid cell.
+		// 
+		// We need to do that atomically in case many threads want to add to the same grid cell at the same time
+		// so we're going to lock that grid cell by setting the existing distance to CELL_LOCKED_DISTANCE, indicating that a thread is already
+		// incrementing the sum of points for that grid cell
+
+		// float existing_distance = hash_cell_data_to_update.distance_to_center[hash_grid_cell_index];
+		unsigned int previous_num_points = hippt::atomic_compare_exchange(&hash_cell_data_to_update.num_points[hash_grid_cell_index], current_num_points, ReGIRHashCellDataSoADevice::CELL_LOCKED_SENTINEL_VALUE);
+
+		if (previous_num_points == current_num_points && previous_num_points != ReGIRHashCellDataSoADevice::CELL_LOCKED_SENTINEL_VALUE)
+		{
+			// We have access to the cell if the value of the distance wasn't ReGIRHashCellDataSoADevice::CELL_LOCKED_DISTANCE
+			// and if we are the one thread that swapped its value with the distance (previous_distance == existing_distance)
+
+			// We can increment everything atomically here
+
+			float3 current_sum_points = hash_cell_data_to_update.sum_points[hash_grid_cell_index];
+			// Adding our point
+			current_sum_points += world_position;
+
+			// Computing the average of the points that have been added to that grid cell so far
+			float3 average_cell_point = current_sum_points / (current_num_points + 1);
+
+			float existing_distance = hippt::length(hash_cell_data_to_update.world_points[hash_grid_cell_index] - average_cell_point);
+			float new_distance_to_average_point = hippt::length(world_position - average_cell_point);
+
+			if (new_distance_to_average_point < existing_distance)
+			{
+				// If our point is closer to the center of the cell (approximated by the average of all hit points in the cell)
+				// than the existing point, then our current hit (world pos, normal, primitive, ...) becomes the new
+				// representative hit for that grid cell
+
+				// Updating the distance
+				// hash_cell_data_to_update.distance_to_center[hash_grid_cell_index] = new_distance_to_average_point;
+
+				hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
+				hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
+				hash_cell_data_to_update.hit_primitive[hash_grid_cell_index] = primitive_index;
+			}
+
+			// Writing back the new sum of points
+			hash_cell_data_to_update.sum_points[hash_grid_cell_index] = current_sum_points;
+			// Incrementing the number of points
+			hash_cell_data_to_update.num_points[hash_grid_cell_index] = current_num_points + 1;
+		}
+	}
+
+	template <bool debug = false>
+	HIPRT_DEVICE static void insert_hash_cell_data_static(ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update, 
+		AtomicType<unsigned int>* grid_cells_alive, unsigned int* grid_cells_alive_list, AtomicType<unsigned int>* grid_cells_alive_count,
+		float3 world_position, float3 camera_position, float3 shading_normal, int primitive_index)
+	{
+		unsigned int hash_key;
+		unsigned int hash_grid_cell_index = hash_grid_to_update.hash(world_position, camera_position, hash_key);
+		
+		// TODO we can have a if(current_hash_key != undefined_key) here to skip some atomic operations
+		
+		// Trying to insert the new key atomically 
+		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY, hash_key) != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		{
+			// We tried inserting in our cell but there is something else there already
+			
+			unsigned int existing_hash_key = hash_cell_data_to_update.hash_keys[hash_grid_cell_index];
+			if (existing_hash_key != hash_key)
+			{
+				// And it's not our hash so this is a collision
+
+				unsigned int new_hash_cell_index = hash_grid_cell_index;
+				if (!hash_grid_to_update.resolve_collision<true>(hash_cell_data_to_update, new_hash_cell_index, hash_key))
+				{
+					// Could not resolve the collision
+
+					return;
+				}
+				else 
+				{
+					if (new_hash_cell_index == hash_grid_cell_index)
+					{
+						// We resolved the collision by finding our own cell hash with probing
+						// 
+						// This means that we already have something in our grid cell
+						// We're going to update the average 
+
+						// TODO never getting here?
+						update_hash_cell_point_normal(hash_cell_data_to_update,
+							hash_grid_cell_index, world_position, shading_normal, primitive_index);
+
+						return;
+					}
+					else
+					{
+						// We resolved the collision by finding an empty cell
+						hash_grid_cell_index = new_hash_cell_index;
+
+						insert_hash_cell_point_normal(hash_cell_data_to_update,
+							grid_cells_alive, grid_cells_alive_list, grid_cells_alive_count, 
+							hash_grid_cell_index, world_position, shading_normal, primitive_index);
+					}
+				}
+			}
+			else
+			{
+				// We're trying to insert in a cell that has the same hash as us so we're going to update
+				// that cell with our data
+				update_hash_cell_point_normal(hash_cell_data_to_update,
+					hash_grid_cell_index, world_position, shading_normal, primitive_index);
+			}
+		}
+		else
+		{
+			// We just succeeded the insertion of our key in an empty cell
+			
+			insert_hash_cell_point_normal(hash_cell_data_to_update,
+				grid_cells_alive, grid_cells_alive_list, grid_cells_alive_count, 
+				hash_grid_cell_index, world_position, shading_normal, primitive_index);
+		}
+
+	}
+
+	template <bool debug = false>
+	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, float3 camera_position, float3 shading_normal, int primitive_index)
+	{
+		ReGIRSettings::insert_hash_cell_data_static<debug>(
+			grid_fill_grid, hash_cell_data, 
+			shading_settings.grid_cells_alive, shading_settings.grid_cells_alive_list, shading_settings.grid_cells_alive_count, 
+			world_position, camera_position, shading_normal, primitive_index);
+	}
+
+	bool DEBUG_INCLUDE_CANONICAL = true;
 
 	// Grid that contains the output reservoirs of the grid fill pass
 	ReGIRHashGridSoADevice grid_fill_grid;

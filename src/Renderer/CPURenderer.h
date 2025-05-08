@@ -21,6 +21,7 @@
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/PrecomputedEmissiveTrianglesDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -180,6 +181,7 @@ private:
     {
         ReGIRHashGridSoAHost<std::vector> grid_buffer;
         ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
+        ReGIRHashCellDataSoAHost<std::vector> hash_cell_data;
 
         std::vector<AtomicType<unsigned int>> grid_cells_alive;
 	    // std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
