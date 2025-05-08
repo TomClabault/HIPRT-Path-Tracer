@@ -9,6 +9,7 @@
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID = "ReGIR Grid fill & temp. reuse";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID = "ReGIR Spatial reuse";
 const std::string ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID = "ReGIR Cell liveness copy";
+const std::string ReGIRRenderPass::REGIR_REHASH_KERNEL_ID = "ReGIR Rehash kernel";
 
 const std::string ReGIRRenderPass::REGIR_RENDER_PASS_NAME = "ReGIR Render Pass";
 
@@ -17,6 +18,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, "ReGIR_Spatial_Reuse" },
 	{ REGIR_CELL_LIVENESS_COPY_KERNEL_ID, "ReGIR_CellLivenessCopy" },
+	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
 };
 
 const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES =
@@ -24,10 +26,13 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
 	{ REGIR_CELL_LIVENESS_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/CellLivenessCopy.h" },
+	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
 };
 
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
 {
+	m_hash_grid_storage.set_regir_render_pass(this);
+
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
@@ -51,6 +56,10 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID));
+
+	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
+	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -70,54 +79,33 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	if (!cell_liveness_copy_compiled)
 		m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	return !grid_fill_compiled || !spatial_reuse_compiled || !cell_liveness_copy_compiled;
+	bool rehash_kernel_compiled = m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->has_been_compiled();
+	if (!rehash_kernel_compiled)
+		m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	return !grid_fill_compiled || !spatial_reuse_compiled || !cell_liveness_copy_compiled || !rehash_kernel_compiled;
 }
 
 bool ReGIRRenderPass::pre_render_update_async(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 	bool updated = false;
 
 	if (is_render_pass_used())
 	{
-		// Updating the total number of cells
-		m_total_number_of_cells = m_grid_buffers.get_total_number_of_cells(render_data.render_settings.regir_settings, m_hash_grid_current_overallocation_factor);
+		updated |= m_hash_grid_storage.pre_render_update(render_data);
 
-		// Resizing the grid if it is not the right size
-		if (m_grid_buffers.size_reservoirs() != m_total_number_of_cells * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell())
+		if (m_grid_cells_alive_buffer.size() != m_hash_grid_storage.get_total_number_of_cells())
 		{
-			m_grid_buffers.resize(render_data.render_settings.regir_settings, m_hash_grid_current_overallocation_factor);
-
-			// Resetting the hash cell data
-			std::vector<int> primitive_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().upload_data(primitive_reset);
-
-			std::vector<unsigned int> hash_keys_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
-			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
-
-			
-			updated = true;
-		}
-		
-		if (m_spatial_reuse_output_grid_buffer.size_reservoirs() != m_total_number_of_cells * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell())
-		{
-			if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-				// Also resizing the spatial reuse buffer
-				m_spatial_reuse_output_grid_buffer.resize(render_data.render_settings.regir_settings, m_hash_grid_current_overallocation_factor);
-			
-			updated = true;
-		}
-
-		if (m_grid_cells_alive_buffer.size() != m_total_number_of_cells)
-		{
-			m_grid_cells_alive_buffer.resize(m_total_number_of_cells);
-			m_grid_cells_alive_list_buffer.resize(m_total_number_of_cells);
+			m_grid_cells_alive_buffer.resize(m_hash_grid_storage.get_total_number_of_cells());
+			m_grid_cells_alive_list_buffer.resize(m_hash_grid_storage.get_total_number_of_cells());
 			m_grid_cells_alive_count_buffer.resize(1);
 			m_grid_cells_alive_count_staging_host_pinned_buffer.resize_host_pinned_mem(1);
 
 			// Initializing all the cells to inactive
-			std::vector<unsigned int> init_data_alive(m_total_number_of_cells, 0u);
+			std::vector<unsigned int> init_data_alive(m_hash_grid_storage.get_total_number_of_cells(), 0u);
 			m_grid_cells_alive_buffer.upload_data(init_data_alive);
 
 			// No cell is alive at the beginning of the render
@@ -129,19 +117,8 @@ bool ReGIRRenderPass::pre_render_update_async(float delta_time)
 	}
 	else
 	{
-		if (m_grid_buffers.size_cells() > 0)
-		{
-			m_grid_buffers.free();
-
+		if (m_hash_grid_storage.free())
 			updated = true;
-		}
-
-		if (m_spatial_reuse_output_grid_buffer.size_cells() > 0)
-		{
-			m_spatial_reuse_output_grid_buffer.free();
-
-			updated = true;
-		}
 
 		if (m_grid_cells_alive_buffer.size() > 0)
 		{
@@ -161,8 +138,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	m_grid_cells_alive_count_buffer.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
-	m_number_of_cells_alive = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
+	update_cell_alive_count();
 
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
@@ -224,6 +200,43 @@ void ReGIRRenderPass::launch_cell_liveness_copy_pass(HIPRTRenderData& render_dat
 	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1, launch_args, m_renderer->get_main_stream());*/
 }
 
+void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, 
+	ReGIRHashGridSoADevice& new_hash_grid, ReGIRHashCellDataSoADevice& new_hash_cell_data,
+	unsigned int* new_grid_cells_alive, unsigned int* new_grid_cells_alive_list)
+{
+	unsigned int nb_threads = update_cell_alive_count();
+	
+	OrochiBuffer<unsigned int> temp_grid_cell_alive_counter_buffer(1);
+	unsigned int zero = 0;
+	temp_grid_cell_alive_counter_buffer.upload_data(&zero);
+	
+	unsigned int* cell_alive_list_ptr = m_grid_cells_alive_list_buffer.get_device_pointer();
+	unsigned int* temp_grid_cell_alive_counter = temp_grid_cell_alive_counter_buffer.get_device_pointer();
+	unsigned int old_cell_count = m_grid_cells_alive_list_buffer.size();
+	
+	for (int i = 0; i < old_cell_count; i++)
+	{
+		void* launch_args[] = { 
+			&render_data.current_camera.position,
+			
+			&new_hash_grid, &new_hash_cell_data, 
+			&new_grid_cells_alive, &new_grid_cells_alive_list,
+			
+			&render_data.render_settings.regir_settings.hash_cell_data,
+			&cell_alive_list_ptr, &temp_grid_cell_alive_counter,
+			
+			&old_cell_count, &i
+		};
+			
+			// Launching this on the null stream because we want this to be a synchronous operation.
+		m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_asynchronous(1, 1, 1, 1, launch_args, m_renderer->get_main_stream());
+		oroStreamSynchronize(m_renderer->get_main_stream());
+	}
+
+	std::cout << "Cell alive count after rehashing (auto count): " << temp_grid_cell_alive_counter_buffer.download_data()[0] << std::endl;
+	m_grid_cells_alive_count_buffer.upload_data(&temp_grid_cell_alive_counter_buffer.download_data()[0]);
+}
+
 void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
@@ -244,15 +257,9 @@ void ReGIRRenderPass::update_render_data()
 
 	if (is_render_pass_used())
 	{
-		// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.grid_origin = m_renderer->get_scene_metadata().scene_bounding_box.mini;
-		// render_data.render_settings.regir_settings.grid_fill_grid.hash_grid.extents = m_renderer->get_scene_metadata().scene_bounding_box.get_extents();
-
-		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-			render_data.render_settings.regir_settings.spatial_grid = m_spatial_reuse_output_grid_buffer.to_device(render_data.render_settings.regir_settings);
-		render_data.render_settings.regir_settings.grid_fill_grid = m_grid_buffers.to_device(render_data.render_settings.regir_settings);
+		m_hash_grid_storage.to_device(render_data);
 
 		render_data.render_settings.regir_settings.shading.grid_cells_alive = m_grid_cells_alive_buffer.get_atomic_device_pointer();
-		// render_data.render_settings.regir_settings.shading.grid_cells_alive_staging = m_grid_cells_alive_staging_buffer.get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_buffer.get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_grid_cells_alive_list_buffer.get_device_pointer();
 	}
@@ -277,33 +284,15 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 	if (m_grid_cells_alive_buffer.size() > 0)
 	{
 		// Resetting the 'cell alive' buffers
-		std::vector<unsigned int> init_data_alive(m_total_number_of_cells, 0);
+		std::vector<unsigned int> init_data_alive(m_hash_grid_storage.get_total_number_of_cells(), 0);
 		m_grid_cells_alive_buffer.upload_data(init_data_alive);
 
+		std::cout << "Reset" << std::endl;
 		// Resetting the count buffers
 		unsigned int zero = 0;
 		m_grid_cells_alive_count_buffer.upload_data(&zero);
 
-		std::vector<int> primitive_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-		m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().upload_data(primitive_reset);
-
-		std::vector<unsigned int> hash_keys_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
-		m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
-	}
-}
-
-void ReGIRRenderPass::reset_representative_data()
-{
-	{
-		{
-			std::vector<int> primitive_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().upload_data(primitive_reset);
-		}
-
-		{
-			std::vector<unsigned int> hash_keys_reset(m_grid_buffers.size_cells(), ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
-			m_grid_buffers.hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
-		}
+		m_hash_grid_storage.reset();
 	}
 }
 
@@ -315,13 +304,19 @@ bool ReGIRRenderPass::is_render_pass_used() const
 float ReGIRRenderPass::get_VRAM_usage() const
 {
 	return (
-		m_grid_buffers.get_byte_size() + 
-		m_spatial_reuse_output_grid_buffer.get_byte_size() + 
+		m_hash_grid_storage.get_byte_size() +
 
 		m_grid_cells_alive_buffer.get_byte_size() + 
-		//m_grid_cells_alive_staging_buffer.get_byte_size() +
 		m_grid_cells_alive_count_buffer.get_byte_size() +
 		m_grid_cells_alive_list_buffer.get_byte_size()) / 1000000.0f;
+}
+
+unsigned int ReGIRRenderPass::update_cell_alive_count()
+{
+	m_grid_cells_alive_count_buffer.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+	m_number_of_cells_alive = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
+
+	return m_number_of_cells_alive;
 }
 
 float ReGIRRenderPass::get_alive_cells_ratio() const

@@ -148,6 +148,9 @@ OrochiBuffer<T>::~OrochiBuffer()
 template <typename T>
 void OrochiBuffer<T>::operator=(OrochiBuffer&& other) noexcept
 {
+	if (m_data_pointer)
+		free();
+
 	m_data_pointer = other.m_data_pointer;
 	m_element_count = other.m_element_count;
 

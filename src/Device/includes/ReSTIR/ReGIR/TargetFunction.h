@@ -18,18 +18,18 @@ template <bool includeVisibility, bool withCosineTerm, bool withCosineTermLightS
 HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderData& render_data, int hash_grid_cell_index, 
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
 {
-    int representative_primitive_index = ReGIR_get_cell_representative_primitive(render_data, hash_grid_cell_index);
-    float3 representative_point = ReGIR_get_cell_representative_point(render_data, hash_grid_cell_index);
-	float3 representative_normal = ReGIR_get_cell_representative_shading_normal(render_data, hash_grid_cell_index);
+    int cell_primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index);
+    float3 cell_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
+	float3 cell_normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index);
 
-	float3 to_light_direction = sample_position - representative_point;
+	float3 to_light_direction = sample_position - cell_point;
 	float distance_to_light = hippt::length(to_light_direction);
 	to_light_direction /= distance_to_light;
 
 	float target_function = sample_emission.luminance() / hippt::square(distance_to_light);
-	if (representative_primitive_index != -1 && withCosineTerm)
+	if (cell_primitive_index != -1 && withCosineTerm)
 		// We do have a representative normal, taking the cosine term into account
-		target_function *= hippt::max(0.0f, hippt::dot(representative_normal, to_light_direction));
+		target_function *= hippt::max(0.0f, hippt::dot(cell_normal, to_light_direction));
 
 	if constexpr (withCosineTermLightSource)
 		target_function *= compute_cosine_term_at_light_source(sample_normal, -to_light_direction);
@@ -38,7 +38,7 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
 	{
 		if (target_function > 0.0f)
 			// No need to visibility test if the target function is already 0
-			target_function *= ReGIR_grid_cell_visibility_test(render_data, representative_point, representative_primitive_index, sample_position, rng);
+			target_function *= ReGIR_grid_cell_visibility_test(render_data, cell_point, cell_primitive_index, sample_position, rng);
 	}
 
 	return target_function;

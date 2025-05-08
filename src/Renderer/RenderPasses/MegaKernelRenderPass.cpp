@@ -53,8 +53,50 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 	
 	void* launch_args[] = { &render_data };
+
+	if( m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
+	{
+		unsigned int manual_count = 0;
+		std::vector<unsigned int> cell_alive_list = m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_buffer.download_data();
+		for (unsigned int cell : cell_alive_list)
+			if (cell > 0)
+				manual_count++;
+
+		std::cout << "Count (auto) before megakernel: " << m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_count_buffer.download_data()[0] << " / " << cell_alive_list.size() << std::endl;
+		std::cout << "Count (manual) before megakernel: " << manual_count << std::endl;
+	}
 	
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+
+	if( m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
+	{
+		std::cout << "Count after (auto) megakernel: " << m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_count_buffer.download_data()[0] << std::endl;
+		unsigned int manual_count = 0;
+		std::vector<unsigned int> cell_alive_list_after = m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_buffer.download_data();
+		for (unsigned int cell : cell_alive_list_after)
+			if (cell > 0)
+				manual_count++;
+		std::cout << "Count after (manual) megakernel: " << m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_count_buffer.download_data()[0] << std::endl;
+
+		std::vector<unsigned int> cell_hashes = m_renderer->get_ReGIR_render_pass()->m_hash_grid_storage.m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>().download_data();
+		std::vector<unsigned int> cell_alive_indices = m_renderer->get_ReGIR_render_pass()->m_grid_cells_alive_list_buffer.download_data();
+		std::unordered_set<unsigned int> cell_hashes_set;
+
+		for (int i = 0; i < hippt::min((std::size_t)manual_count, cell_hashes.size()); i++)
+		{
+			unsigned int cell_index = cell_alive_indices[i];
+			unsigned int current_hash = cell_hashes[cell_index];
+
+			if (cell_hashes_set.find(current_hash) != cell_hashes_set.end() && current_hash != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+			{
+				std::cout << "-------------- We have at least 1 double! ------------: " << current_hash << std::endl;
+
+				break;
+			}
+			else
+				cell_hashes_set.insert(current_hash);
+		}
+	}
 
 	return true;
 }

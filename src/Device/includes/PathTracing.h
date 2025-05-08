@@ -282,7 +282,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(primary_hit, render_data.current_camera.position);
 
         ColorRGB32F color;
-        float3 rep_point = ReGIR_get_cell_representative_point(render_data, cell_index);
+        float3 rep_point = ReGIR_get_cell_world_point(render_data, cell_index);
         // Interpreting debug_view_scale_factor as a distance
         if (hippt::length(rep_point - primary_hit) < render_data.render_settings.regir_settings.debug_view_scale_factor)
             color = ColorRGB32F::random_color(cell_index + 1);

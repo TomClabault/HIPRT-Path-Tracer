@@ -24,10 +24,10 @@ using GenericAtomicType = typename std::conditional_t<std::is_same<Container<T>,
 // By inheriting from std::false_type or std::true_type, we can check at compile time
 // what's our ::value and use a constexpr if() on that
 template<typename T>
-struct is_std_atomic : std::false_type {};
+struct IsStdAtomic : std::false_type {};
 
 template<typename U>
-struct is_std_atomic<std::atomic<U>> : std::true_type {};
+struct IsStdAtomic<std::atomic<U>> : std::true_type {};
 
 /**
  * Can be used to create a structure of arrays for multiple buffers of different types.
@@ -47,12 +47,12 @@ template<
 struct GenericSoA
 {
     template <typename T>
-    using BufferValueType = typename std::decay_t<T>::value_type;
+    using BufferTypeFromVariable = typename std::decay_t<T>::value_type;
 
     template <int bufferIndex>
     using BufferTypeFromIndex = typename std::tuple_element<bufferIndex, std::tuple<Container<Ts>...>>::type::value_type;
 
-    std::tuple<Container<Ts>...> buffers;
+    using IsCPUBuffer = std::is_same<Container<BufferTypeFromIndex<0>>, std::vector<BufferTypeFromIndex<0>>>;
 
     void resize(std::size_t new_element_count)
     {
@@ -70,7 +70,7 @@ struct GenericSoA
         // For each container, add sizeof(value_type) * size()
         std::apply([&](auto const&... buffer) 
         {
-            ((total += buffer.size() * sizeof(BufferValueType<decltype(buffer)>)), ...);
+            ((total += buffer.size() * sizeof(BufferTypeFromVariable<decltype(buffer)>)), ...);
         }, buffers);
 
         return total;
@@ -80,6 +80,28 @@ struct GenericSoA
 	{
         return std::get<0>(buffers).size();
 	}
+
+    template<int bufferIndex>
+    void memset_buffer(BufferTypeFromIndex<bufferIndex> memset_value)
+    {
+        if constexpr (IsCPUBuffer::value)
+        {
+            if constexpr (IsStdAtomic<BufferTypeFromIndex<bufferIndex>>::value)
+            {
+                // For atomic types, we have to store into them with a loop because they do not have an =operator()
+                // so we can't use std::fill
+                for (auto& value : get_buffer<bufferIndex>())
+                    value.store(memset_value);
+            }
+            else
+                std::fill(get_buffer<bufferIndex>().begin(), get_buffer<bufferIndex>().end(), memset_value);
+        }
+        else
+        {
+            std::vector<BufferTypeFromIndex<bufferIndex>> data(size(), memset_value);
+            get_buffer<bufferIndex>().upload_data(data);
+        }
+    }
 
     template<int bufferIndex>
     auto& get_buffer()
@@ -96,24 +118,23 @@ struct GenericSoA
     template<int bufferIndex>
     auto* get_buffer_data_atomic_ptr()
     {
-        if constexpr (std::is_same<Container<BufferTypeFromIndex<bufferIndex>>, std::vector<BufferTypeFromIndex<bufferIndex>>>::value)
-            // std::vector so this is for the CPU
+        if constexpr (IsCPUBuffer::value)
 			return std::get<bufferIndex>(buffers).data();
         else
-            // For the GPU
+            // For the GPU, calling the 'get_atomic_device_pointer' of OrochiBuffer
             return std::get<bufferIndex>(buffers).get_atomic_device_pointer();
     }
 
     template <int bufferIndex>
     void upload_to_buffer(const std::vector<BufferTypeFromIndex<bufferIndex>>& data)
     {
-        if constexpr (std::is_same_v<Container<BufferTypeFromIndex<bufferIndex>>, std::vector<BufferTypeFromIndex<bufferIndex>>>)
+        if constexpr (IsCPUBuffer::value)
         {
             // If our main container type for this SoA is std::vector (i.e. this is for the CPU), then we're uploading
             // to the buffer simply by copying
             get_buffer_data_ptr<bufferIndex>() = data;
         }
-        else if constexpr (std::is_same_v<Container<BufferTypeFromIndex<bufferIndex>>, OrochiBuffer<BufferTypeFromIndex<bufferIndex>>>)
+        else
         {
             // If our main container type for this SoA is OrochiBuffer (i.e. this is for the GPU), then we're uploading
             // to the buffer by uploading to the GPU
@@ -139,7 +160,7 @@ private:
     template <typename BufferType>
     void resize_buffer_internal(BufferType& buffer, std::size_t new_element_count)
     {
-        if constexpr (is_std_atomic<typename BufferType::value_type>::value)
+        if constexpr (IsStdAtomic<typename BufferType::value_type>::value)
             // If the buffer is a buffer of std::atomic on the CPU, we cannot use resize
             // (because std::atomic are missing some operators used by
             // std::vector.resize() so we have to recreate the buffer instead
@@ -147,6 +168,8 @@ private:
         else
             buffer.resize(new_element_count);
     }
+
+    std::tuple<Container<Ts>...> buffers;
 };
 
 #endif

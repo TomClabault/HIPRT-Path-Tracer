@@ -502,6 +502,9 @@ void GPURenderer::resize(int new_width, int new_height)
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
+	std::cout << std::endl;
+	std::cout << std::endl;
+	
 	m_render_thread.get_render_graph().is_render_pass_used_pass();
 	pre_render_update(delta_time_gpu, render_window);
 
