@@ -39,7 +39,7 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
         if (neighbor_hash_grid_cell_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
             // Neighbor is outside of the grid
             neighbor_invalid = true;
-        else if (regir_settings.shading.grid_cells_alive[neighbor_hash_grid_cell_index_in_grid] == 0)
+        else if (regir_settings.hash_cell_data.grid_cells_alive[neighbor_hash_grid_cell_index_in_grid] == 0)
             // Neighbor cell isn't alive, let's not reuse it
             neighbor_invalid = true;
         else
@@ -238,7 +238,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
         else
             // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
             // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
-            hash_grid_cell_index = regir_settings.shading.grid_cells_alive_list[cell_alive_index];
+            hash_grid_cell_index = regir_settings.hash_cell_data.grid_cells_alive_list[cell_alive_index];
         int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
         
         unsigned int seed;
@@ -251,7 +251,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
 
         float3 point_in_cell = regir_settings.hash_cell_data.world_points[hash_grid_cell_index];
 
-        if (regir_settings.shading.grid_cells_alive[hash_grid_cell_index] == 0)
+        if (regir_settings.hash_cell_data.grid_cells_alive[hash_grid_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             

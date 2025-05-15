@@ -21,7 +21,9 @@ using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
 	GenericAtomicType<int, DataContainer>,  // primitive
 	float3, // world points
 	Octahedral24BitNormalPadded32b,  // world normals
-	GenericAtomicType<unsigned int, DataContainer> // hash keys
+	GenericAtomicType<unsigned int, DataContainer>, // hash keys
+	GenericAtomicType<unsigned int, DataContainer>, // grid cells alive
+	unsigned int // grid cells alive list
 >;
 
 enum ReGIRHashCellDataSoAHostBuffers
@@ -33,7 +35,10 @@ enum ReGIRHashCellDataSoAHostBuffers
 	REGIR_HASH_CELL_PRIM_INDEX,
 	REGIR_HASH_CELL_POINTS,
 	REGIR_HASH_CELL_NORMALS,
-	REGIR_HASH_CELL_HASH_KEYS
+	REGIR_HASH_CELL_HASH_KEYS,
+
+	REGIR_HASH_CELLS_ALIVE,
+	REGIR_HASH_CELLS_ALIVE_LIST
 };
 
 template <template <typename> typename DataContainer>
@@ -44,11 +49,16 @@ struct ReGIRHashCellDataSoAHost
 		new_number_of_cells = hippt::max(new_number_of_cells, 1u);
 
 		m_hash_cell_data.resize(new_number_of_cells);
+		GenericSoAHelpers::resize<DataContainer>(m_grid_cells_alive_count, 1);
 
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_DISTANCE_TO_CENTER>(ReGIRHashCellDataSoADevice::UNDEFINED_DISTANCE);
 
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>(ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
+
+		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>(0u);
+		// memset_buffer static call
+		GenericSoAHelpers::memset_buffer<DataContainer>(m_grid_cells_alive_count, 0u);
 	}
 
 	void free()
@@ -79,10 +89,25 @@ struct ReGIRHashCellDataSoAHost
 		hash_cell_data.world_normals = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();
 		hash_cell_data.hash_keys = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>();
 
+		hash_cell_data.grid_cells_alive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>();
+		hash_cell_data.grid_cells_alive_list = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
+
+		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)
+			// This buffer is an std::vector so we can just call .data()
+			hash_cell_data.grid_cells_alive_count = m_grid_cells_alive_count.data();
+		else
+			// For the GPU, we need to call .get_atomic_device_pointer()
+			hash_cell_data.grid_cells_alive_count = m_grid_cells_alive_count.get_atomic_device_pointer();
+
 		return hash_cell_data;
 	}
 
 	ReGIRHashCellDataSoAHostInternal<DataContainer> m_hash_cell_data;
+
+	// Not in the SoA because this buffer's size doesn't follow the size of the other buffers.
+	//
+	// This one always just has size 1
+	DataContainer<GenericAtomicType<unsigned int, DataContainer>> m_grid_cells_alive_count;
 };
 
 #endif

@@ -242,7 +242,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
         bool shading_reservoir_outside_of_grid;
         ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_non_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera.position,
-            shading_reservoir_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering, shading_normal);
+            shading_reservoir_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
         if (shading_reservoir_outside_of_grid)
             continue;

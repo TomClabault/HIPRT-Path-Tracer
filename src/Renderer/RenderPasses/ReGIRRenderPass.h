@@ -69,19 +69,15 @@ public:
 	unsigned int update_cell_alive_count();
 	float get_alive_cells_ratio() const;
 
-// private:
-
+	ReGIRHashGridStorage m_hash_grid_storage;
+	
+private:
 	int m_current_grid_index = 0;
 
-	ReGIRHashGridStorage m_hash_grid_storage;
 
-	// Cells alive buffers
 	unsigned int m_number_of_cells_alive = 0;
 
-	OrochiBuffer<unsigned int> m_grid_cells_alive_buffer;
-	OrochiBuffer<unsigned int> m_grid_cells_alive_count_buffer;
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
-	OrochiBuffer<unsigned int> m_grid_cells_alive_list_buffer;
 };
 
 #endif

@@ -28,8 +28,9 @@ public:
 
 	void to_device(HIPRTRenderData& render_data);
 
-// private:
+	ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa();
 
+private:
 	ReGIRRenderPass* m_regir_render_pass = nullptr;
 
 	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,

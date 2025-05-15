@@ -56,8 +56,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
     int primitive_index = old_hash_cell_data.hit_primitive[cell_alive_index];
 
     ReGIRSettings::insert_hash_cell_data_static<true>(
-        new_hash_grid, new_hash_cell_data, 
-        new_grid_cells_alive, new_grid_cells_alive_list, temporary_grid_cell_alive_count,
+        new_hash_grid, new_hash_cell_data,
         world_position, camera_position, shading_normal, primitive_index);
 }
 
