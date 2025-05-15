@@ -95,39 +95,16 @@ bool ReGIRRenderPass::pre_render_update_async(float delta_time)
 
 	if (is_render_pass_used())
 	{
-		updated |= m_hash_grid_storage.pre_render_update(render_data);
-
-		if (m_grid_cells_alive_buffer.size() != m_hash_grid_storage.get_total_number_of_cells())
-		{
-			m_grid_cells_alive_buffer.resize(m_hash_grid_storage.get_total_number_of_cells());
-			m_grid_cells_alive_list_buffer.resize(m_hash_grid_storage.get_total_number_of_cells());
-			m_grid_cells_alive_count_buffer.resize(1);
+		bool storage_updated = m_hash_grid_storage.pre_render_update(render_data);
+		if (storage_updated)
 			m_grid_cells_alive_count_staging_host_pinned_buffer.resize_host_pinned_mem(1);
 
-			// Initializing all the cells to inactive
-			std::vector<unsigned int> init_data_alive(m_hash_grid_storage.get_total_number_of_cells(), 0u);
-			m_grid_cells_alive_buffer.upload_data(init_data_alive);
-
-			// No cell is alive at the beginning of the render
-			unsigned int zero = 0;
-			m_grid_cells_alive_count_buffer.upload_data(&zero);
-
-			updated = true;
-		}
+		updated |= storage_updated;
 	}
 	else
 	{
 		if (m_hash_grid_storage.free())
 			updated = true;
-
-		if (m_grid_cells_alive_buffer.size() > 0)
-		{
-			m_grid_cells_alive_buffer.free();
-			m_grid_cells_alive_count_buffer.free();
-			m_grid_cells_alive_list_buffer.free();
-
-			updated = true;
-		}
 	}
 
 	return updated;
@@ -210,9 +187,9 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 	unsigned int zero = 0;
 	temp_grid_cell_alive_counter_buffer.upload_data(&zero);
 	
-	unsigned int* cell_alive_list_ptr = m_grid_cells_alive_list_buffer.get_device_pointer();
+	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 	unsigned int* temp_grid_cell_alive_counter = temp_grid_cell_alive_counter_buffer.get_device_pointer();
-	unsigned int old_cell_count = m_grid_cells_alive_list_buffer.size();
+	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa().size();
 	
 	for (int i = 0; i < old_cell_count; i++)
 	{
@@ -234,7 +211,10 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 	}
 
 	std::cout << "Cell alive count after rehashing (auto count): " << temp_grid_cell_alive_counter_buffer.download_data()[0] << std::endl;
-	m_grid_cells_alive_count_buffer.upload_data(&temp_grid_cell_alive_counter_buffer.download_data()[0]);
+
+	// We need to re-upload the cell alive count because there may have possibly been severe collisions during the reinsertion
+	// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different
+	m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.upload_data(&temp_grid_cell_alive_counter_buffer.download_data()[0]);
 }
 
 void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -256,22 +236,13 @@ void ReGIRRenderPass::update_render_data()
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (is_render_pass_used())
-	{
 		m_hash_grid_storage.to_device(render_data);
-
-		render_data.render_settings.regir_settings.shading.grid_cells_alive = m_grid_cells_alive_buffer.get_atomic_device_pointer();
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_count = m_grid_cells_alive_count_buffer.get_atomic_device_pointer();
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_grid_cells_alive_list_buffer.get_device_pointer();
-	}
 	else
 	{
 		render_data.render_settings.regir_settings.grid_fill_grid = ReGIRHashGridSoADevice();
 		render_data.render_settings.regir_settings.spatial_grid = ReGIRHashGridSoADevice();
 
 		render_data.render_settings.regir_settings.hash_cell_data = ReGIRHashCellDataSoADevice();
-
-		render_data.render_settings.regir_settings.shading.grid_cells_alive = nullptr;
-		render_data.render_settings.regir_settings.shading.grid_cells_alive_list = nullptr;
 	}
 }
 
@@ -281,16 +252,16 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
 
-	if (m_grid_cells_alive_buffer.size() > 0)
+	if (m_hash_grid_storage.get_byte_size() > 0)
 	{
 		// Resetting the 'cell alive' buffers
 		std::vector<unsigned int> init_data_alive(m_hash_grid_storage.get_total_number_of_cells(), 0);
-		m_grid_cells_alive_buffer.upload_data(init_data_alive);
+		m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().upload_data(init_data_alive);
 
 		std::cout << "Reset" << std::endl;
 		// Resetting the count buffers
 		unsigned int zero = 0;
-		m_grid_cells_alive_count_buffer.upload_data(&zero);
+		m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.upload_data(&zero);
 
 		m_hash_grid_storage.reset();
 	}
@@ -303,17 +274,12 @@ bool ReGIRRenderPass::is_render_pass_used() const
 
 float ReGIRRenderPass::get_VRAM_usage() const
 {
-	return (
-		m_hash_grid_storage.get_byte_size() +
-
-		m_grid_cells_alive_buffer.get_byte_size() + 
-		m_grid_cells_alive_count_buffer.get_byte_size() +
-		m_grid_cells_alive_list_buffer.get_byte_size()) / 1000000.0f;
+	return (m_hash_grid_storage.get_byte_size()) / 1000000.0f;
 }
 
 unsigned int ReGIRRenderPass::update_cell_alive_count()
 {
-	m_grid_cells_alive_count_buffer.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+	m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 	m_number_of_cells_alive = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 
 	return m_number_of_cells_alive;
@@ -321,5 +287,5 @@ unsigned int ReGIRRenderPass::update_cell_alive_count()
 
 float ReGIRRenderPass::get_alive_cells_ratio() const
 {
-	return m_number_of_cells_alive / static_cast<float>(m_grid_cells_alive_buffer.size());
+	return m_number_of_cells_alive / static_cast<float>(m_hash_grid_storage.get_total_number_of_cells());
 }

@@ -106,7 +106,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         //
         // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
         // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
-        int hash_grid_cell_index = number_of_cells_alive == regir_settings.get_total_number_of_cells_per_grid() ? cell_alive_index : regir_settings.shading.grid_cells_alive_list[cell_alive_index];
+        int hash_grid_cell_index = number_of_cells_alive == regir_settings.get_total_number_of_cells_per_grid() ? cell_alive_index : regir_settings.hash_cell_data.grid_cells_alive_list[cell_alive_index];
         int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
 
         // Reset grid
@@ -124,7 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
         float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index);
 
-        if (regir_settings.shading.grid_cells_alive[hash_grid_cell_index] == 0)
+        if (regir_settings.hash_cell_data.grid_cells_alive[hash_grid_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
 

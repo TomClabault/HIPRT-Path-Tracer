@@ -49,7 +49,7 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 	{
 		// We don't need a full reset, instead checking if we need to dynamically grow the size of the hash
 		// table to keep the load factor in check
-		printf("Test rehash: %d / %d = %f%%\n", m_regir_render_pass->m_grid_cells_alive_count_buffer.download_data()[0], m_total_number_of_cells, m_regir_render_pass->get_alive_cells_ratio() * 100.0f);
+		printf("Test rehash: %d / %d = %f%%\n", m_hash_cell_data.m_grid_cells_alive_count.download_data()[0], m_total_number_of_cells, m_regir_render_pass->get_alive_cells_ratio() * 100.0f);
 
 		if (m_regir_render_pass->get_alive_cells_ratio() > 11.75f)
 		{
@@ -59,12 +59,12 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 				std::cout << "Rehashing" << std::endl;
 
 				unsigned int grid_cell_alive_count_before = 0;
-				std::vector<unsigned int> data_alive_before = m_regir_render_pass->m_grid_cells_alive_buffer.download_data();
+				std::vector<unsigned int> data_alive_before = m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().download_data();
 				for (unsigned int& cell_alive : data_alive_before)
 					if (cell_alive > 0)
 					grid_cell_alive_count_before++;
 
-				std::cout << "Cell alive count before (auto count): " << m_regir_render_pass->m_grid_cells_alive_count_buffer.download_data()[0] << std::endl;
+				std::cout << "Cell alive count before (auto count): " << m_hash_cell_data.m_grid_cells_alive_count.download_data()[0] << std::endl;
 				std::cout << "Cell alive count before (manual count): " << grid_cell_alive_count_before << std::endl;
 
 				// Increasing the allocation factor 
@@ -97,8 +97,8 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 					new_hash_grid_device, new_hash_cell_data_device,
 					new_grid_cells_alive_buffer.get_device_pointer(), new_grid_cells_alive_list.get_device_pointer());
 
-				m_regir_render_pass->m_grid_cells_alive_buffer = std::move(new_grid_cells_alive_buffer);
-				m_regir_render_pass->m_grid_cells_alive_list_buffer = std::move(new_grid_cells_alive_list);
+				m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>() = std::move(new_grid_cells_alive_buffer);
+				m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>() = std::move(new_grid_cells_alive_list);
 
 				m_grid_buffers = std::move(new_hash_grid);
 				if (regir_settings.spatial_reuse.do_spatial_reuse)
@@ -106,7 +106,7 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 				m_hash_cell_data = std::move(new_hash_cell_data);
 
 				unsigned int grid_cell_alive_count = 0;
-				std::vector<unsigned int> data_alive = m_regir_render_pass->m_grid_cells_alive_buffer.download_data();
+				std::vector<unsigned int> data_alive = m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().download_data();
 				for (unsigned int& cell_alive : data_alive)
 					if (cell_alive > 0)
 						grid_cell_alive_count++;
@@ -163,5 +163,11 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.grid_fill_grid = m_grid_buffers.to_device(render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
 	if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		render_data.render_settings.regir_settings.spatial_grid = m_spatial_reuse_output_grid_buffer.to_device(render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
+
 	render_data.render_settings.regir_settings.hash_cell_data = m_hash_cell_data.to_device();
+}
+
+ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data_soa()
+{
+	return m_hash_cell_data;
 }

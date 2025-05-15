@@ -38,7 +38,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -103,17 +103,6 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_regir_state.grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
     m_regir_state.spatial_grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
     m_regir_state.hash_cell_data.resize(new_cell_count);
-
-    /*for (AtomicType<int>& rep_prim : m_regir_state.hash_cell_data.m_hash_cell_data.get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>())
-        rep_prim.store(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);*/
-
-    m_regir_state.grid_cells_alive = std::vector<AtomicType<unsigned int>>(new_cell_count);
-    for (AtomicType<unsigned int>& cell_alive_staging : m_regir_state.grid_cells_alive)
-        cell_alive_staging.store(0u);
-
-    m_regir_state.grid_cells_alive_list.resize(new_cell_count);
-    m_regir_state.grid_cells_alive_count.store(0);
-    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = 0;
 
 
 
@@ -336,9 +325,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.spatial_grid = m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
     m_render_data.render_settings.regir_settings.grid_fill_grid = m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
     m_render_data.render_settings.regir_settings.hash_cell_data = m_regir_state.hash_cell_data.to_device();
-    m_render_data.render_settings.regir_settings.shading.grid_cells_alive = m_regir_state.grid_cells_alive.data();
-    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_list = m_regir_state.grid_cells_alive_list.data();
-    m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count = &m_regir_state.grid_cells_alive_count;
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -683,9 +669,9 @@ void CPURenderer::ReGIR_grid_fill_pass()
     m_render_data.random_number = m_rng.xorshift32();
 
 #pragma omp parallel for schedule(dynamic)
-    for (int index = 0; index < *m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
+    for (int index = 0; index < *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
     {
-        ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count);
+        ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count);
     }
 }
 
@@ -695,9 +681,9 @@ void CPURenderer::ReGIR_spatial_reuse_pass()
         return;
 
 #pragma omp parallel for schedule(dynamic)
-    for (int index = 0; index < *m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
+    for (int index = 0; index < *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
     {
-        ReGIR_Spatial_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.shading.grid_cells_alive_count);
+        ReGIR_Spatial_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count);
     }
 }
 

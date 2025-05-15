@@ -172,4 +172,44 @@ private:
     std::tuple<Container<Ts>...> buffers;
 };
 
+namespace GenericSoAHelpers
+{
+    template<template<typename> class BufferContainer, typename T, typename U>
+    void memset_buffer(BufferContainer<T>& buffer, U memset_value)
+    {
+        if constexpr (std::is_same_v<BufferContainer<T>, std::vector<T>>)
+        {
+            // std::vector type
+
+            if constexpr (IsStdAtomic<T>::value)
+            {
+                // For atomic types, we have to store into them with a loop because they do not have an =operator()
+                // so we can't use std::fill
+                for (auto& value : buffer)
+                    value.store(memset_value);
+            }
+            else
+                std::fill(buffer.begin(), buffer.end(), memset_value);
+        }
+        else
+        {
+            std::vector<T> data(buffer.size(), memset_value);
+
+            buffer.upload_data(data);
+        }
+    }
+
+    template<template<typename> class BufferContainer, typename T>
+    void resize(BufferContainer<T>& buffer, std::size_t new_size)
+    {
+        if constexpr (IsStdAtomic<T>::value)
+            // If the buffer is a buffer of std::atomic on the CPU, we cannot use resize
+            // (because std::atomic are missing some operators used by
+            // std::vector.resize() so we have to recreate the buffer instead
+            buffer = std::decay_t<decltype(buffer)>(new_size);
+        else
+            buffer.resize(new_size);
+    }
+}
+
 #endif
