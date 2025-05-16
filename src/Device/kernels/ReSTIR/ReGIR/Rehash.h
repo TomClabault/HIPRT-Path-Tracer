@@ -24,8 +24,7 @@ GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Rehash(float3 camera_position,
     unsigned int* old_grid_cells_alive_list,
     unsigned int* temporary_grid_cell_alive_count,
 
-    unsigned int old_cell_count, 
-    unsigned int cell_index)
+    unsigned int old_cell_count)
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
     float3 camera_position,
@@ -43,7 +42,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
 #endif
 {
 #ifdef __KERNELCC__
-    // const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t cell_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 
     if (cell_index >= old_cell_count)
