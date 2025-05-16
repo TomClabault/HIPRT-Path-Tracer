@@ -266,6 +266,8 @@ void GPURenderer::compute_emissives_power_alias_table(
 
 		if (!needs_emissives_power_alias_table())
 			return;
+		else if (emissive_triangle_indices.size() == 0)
+			return;
 
 		std::vector<float> power_list(emissive_triangle_indices.size());
 		float power_sum = 0.0f;
@@ -1000,7 +1002,8 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
 		m_render_data.buffers.material_opaque = m_hiprt_scene.material_opaque.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
-		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
+		if (m_hiprt_scene.emissive_triangles_indices.size() > 0)
+			m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 		m_render_data.buffers.triangles_areas = m_hiprt_scene.triangle_areas.get_device_pointer();
 		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
 			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
