@@ -302,8 +302,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     if (out_reservoir.weight_sum == 0.0f || shading_point_outside_of_grid)
         return LightSampleInformation();
 
-    float normalization_weight = 0.0f;
     neighbor_rng.m_state.seed = neighbor_rng_seed;
+    
+    float normalization_weight = 0.0f;
     for (int i = 0; i < render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point + need_canonical; i++)
     {
         bool is_canonical = i == render_data.render_settings.regir_settings.shading.cell_reservoir_resample_per_shading_point;

@@ -186,13 +186,13 @@ struct ReGIRSettings
 
 		unsigned int hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, shading_point, camera_position);
 
-		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
-			// The grid cell is inside the grid but not alive
-			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
-
 		// Advancing the RNG to mimic 'get_non_canonical_reservoir_for_shading_from_world_pos'
 		if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
 			rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
+
+		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY || !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
+			// The grid cell is inside the grid but not alive
+			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 
 		return hash_grid_cell_index;
 	}

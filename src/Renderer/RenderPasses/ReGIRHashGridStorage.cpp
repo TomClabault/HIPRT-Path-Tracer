@@ -64,8 +64,6 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 				if (cell_alive > 0)
 				grid_cell_alive_count_before++;
 				
-				if (m_regir_render_pass->get_alive_cells_ratio() < 1.0f)
-					printf("\n");
 				std::cout << "Cell alive count before (auto count): " << m_hash_cell_data.m_grid_cells_alive_count.download_data()[0] << std::endl;
 				std::cout << "Cell alive count before (manual count): " << grid_cell_alive_count_before << std::endl;
 
