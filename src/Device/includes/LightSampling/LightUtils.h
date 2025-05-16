@@ -130,6 +130,9 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_emissive_triangle(int emissive_tr
  */
 HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_uniform(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
 {
+    if (render_data.buffers.emissive_triangles_count == 0)
+        return LightSampleInformation();
+        
     LightSampleInformation light_sample;
 
     int random_emissive_triangle_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
@@ -158,6 +161,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_un
 
 HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_power(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
 {
+    if (render_data.buffers.emissive_triangles_count == 0)
+        return LightSampleInformation();
+
     LightSampleInformation out_sample;
 
     unsigned int current_lane = (threadIdx.x + threadIdx.y * blockDim.x) % hippt::warp_size();
