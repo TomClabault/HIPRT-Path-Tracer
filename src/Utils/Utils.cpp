@@ -58,6 +58,9 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
 
 void Utils::compute_alias_table(const std::vector<float>& input, float in_input_total_sum, std::vector<float>& out_probas, std::vector<int>& out_alias)
 {
+    if (input.size() == 0)
+        return;
+
     // TODO try using floats here to reduce memory usage during the construction and see if precision is an issue or not
 
     // A vector of the luminance of all the pixels of the envmap
