@@ -8,7 +8,6 @@
 
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID = "ReGIR Grid fill & temp. reuse";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID = "ReGIR Spatial reuse";
-const std::string ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID = "ReGIR Cell liveness copy";
 const std::string ReGIRRenderPass::REGIR_REHASH_KERNEL_ID = "ReGIR Rehash kernel";
 
 const std::string ReGIRRenderPass::REGIR_RENDER_PASS_NAME = "ReGIR Render Pass";
@@ -17,7 +16,6 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 {
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, "ReGIR_Spatial_Reuse" },
-	{ REGIR_CELL_LIVENESS_COPY_KERNEL_ID, "ReGIR_CellLivenessCopy" },
 	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
 };
 
@@ -25,7 +23,6 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 {
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
-	{ REGIR_CELL_LIVENESS_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/CellLivenessCopy.h" },
 	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
 };
 
@@ -53,10 +50,6 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	// in parallel by the ReGIR kernels
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
-	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID] = std::make_shared<GPUKernel>();
-	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID));
-	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID));
-
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
@@ -75,15 +68,11 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	if (!spatial_reuse_compiled)
 		m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	bool cell_liveness_copy_compiled = m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->has_been_compiled();
-	if (!cell_liveness_copy_compiled)
-		m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-
 	bool rehash_kernel_compiled = m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->has_been_compiled();
 	if (!rehash_kernel_compiled)
 		m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	return !grid_fill_compiled || !spatial_reuse_compiled || !cell_liveness_copy_compiled || !rehash_kernel_compiled;
+	return !grid_fill_compiled || !spatial_reuse_compiled || !rehash_kernel_compiled;
 }
 
 bool ReGIRRenderPass::pre_render_update_async(float delta_time)
@@ -164,19 +153,6 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::launch_cell_liveness_copy_pass(HIPRTRenderData& render_data)
-{
-	if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
-		return;
-
-	/*unsigned int* staging_ptr = m_grid_cells_alive_staging_buffer.get_device_pointer();
-	unsigned char* non_staging_ptr = m_grid_cells_alive_buffer.get_device_pointer();
-
-	void* launch_args[] = { &staging_ptr, &non_staging_ptr, &render_data.render_settings.regir_settings };
-
-	m_kernels[ReGIRRenderPass::REGIR_CELL_LIVENESS_COPY_KERNEL_ID]->launch_asynchronous(64, 1, render_data.render_settings.regir_settings.get_total_number_of_cells_per_grid(), 1, launch_args, m_renderer->get_main_stream());*/
-}
-
 void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, 
 	ReGIRHashGridSoADevice& new_hash_grid, ReGIRHashCellDataSoADevice& new_hash_cell_data,
 	unsigned int* new_grid_cells_alive, unsigned int* new_grid_cells_alive_list)
@@ -223,8 +199,6 @@ void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernel
 		m_current_grid_index++;
 		m_current_grid_index %= render_data.render_settings.regir_settings.temporal_reuse.temporal_history_length;
 	}
-
-	launch_cell_liveness_copy_pass(render_data);
 }
 
 void ReGIRRenderPass::update_render_data()
