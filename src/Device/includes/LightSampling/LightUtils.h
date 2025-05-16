@@ -33,7 +33,7 @@ HIPRT_DEVICE HIPRT_INLINE void square_to_triangle(float& x, float& y)
         y -= x;
     }
     else 
-        {
+    {
         y *= 0.5f;
         x -= y;
     }
