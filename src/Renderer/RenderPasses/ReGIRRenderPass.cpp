@@ -228,7 +228,6 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 		std::vector<unsigned int> init_data_alive(m_hash_grid_storage.get_total_number_of_cells(), 0);
 		m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().upload_data(init_data_alive);
 
-		std::cout << "Reset" << std::endl;
 		// Resetting the count buffers
 		unsigned int zero = 0;
 		m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.upload_data(&zero);

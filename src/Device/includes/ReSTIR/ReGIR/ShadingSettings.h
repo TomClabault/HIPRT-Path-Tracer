@@ -10,7 +10,7 @@ struct ReGIRShadingSettings
 {
 	// At path tracing time, how many reservoirs of the grid cell of the point we're trying to shade
 	// are going to be resampled (with the BRDF term) to produce the final light sample used for NEE
-	int cell_reservoir_resample_per_shading_point = 1;
+	int cell_reservoir_resample_per_shading_point = 4;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
 	bool do_cell_jittering = true;
