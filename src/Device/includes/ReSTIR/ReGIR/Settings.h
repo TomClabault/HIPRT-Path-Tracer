@@ -242,10 +242,6 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, float3 camera_position) const
 	{
-		unsigned int DEBUG_BASE_INDEX = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(position, camera_position);
-		if (DEBUG_BASE_INDEX == 196)
-			return ColorRGB32F(1.0f, 0.0f, 0.0f);
-
 		unsigned int cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, position, camera_position);
 		if (cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 			return ColorRGB32F(0.0f);

@@ -105,6 +105,10 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		return false;
 
 	update_cell_alive_count();
+	if (m_hash_grid_storage.try_rehash(render_data))
+	{
+		update_render_data();
+	}
 
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 

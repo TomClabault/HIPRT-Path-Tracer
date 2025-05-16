@@ -52,7 +52,6 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - rename hash keys as checksum
-// - With hash table rehashing, we're having some issues with more than 1 sample per frame because then the hash table is only rehashed every N frames but we would like rehash every frame to reduce variance
 // - Maybe we can include the surface normal in the hash table by having a two-level lookup: first hash only using the spatial coordinates: this gives us the cell index and then lookup in that cell index which reservoir set to use based on the quantized normal. The question is: which normal to use for the lookup
 // - Do we want to jitter for canonical samples in the ReGIR shading? Is it not better for variance to always use the canonical samples of our own cells?
 // - Update hash cell data point normal seems to be very expensive
