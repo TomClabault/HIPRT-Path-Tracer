@@ -192,28 +192,21 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa().size();
 	
 	// The old number of cells alive is the number of cells that we're going to have to rehash
+	
+	void* launch_args[] = { 
+		&render_data.current_camera.position,
+		
+		&new_hash_grid, &new_hash_cell_data, 
+		&new_grid_cells_alive, &new_grid_cells_alive_list,
+		
+		&render_data.render_settings.regir_settings.hash_cell_data,
+		&cell_alive_list_ptr, &temp_grid_cell_alive_counter,
+		
+		&old_cell_count
+	};
+	
 	unsigned int old_cell_alive_count = m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0];
-
-	for (int i = 0; i < old_cell_alive_count; i++)
-	{
-		void* launch_args[] = { 
-			&render_data.current_camera.position,
-			
-			&new_hash_grid, &new_hash_cell_data, 
-			&new_grid_cells_alive, &new_grid_cells_alive_list,
-			
-			&render_data.render_settings.regir_settings.hash_cell_data,
-			&cell_alive_list_ptr, &temp_grid_cell_alive_counter,
-			
-			&old_cell_count, &i
-		};
-			
-			// Launching this on the null stream because we want this to be a synchronous operation.
-		m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_asynchronous(1, 1, 1, 1, launch_args, m_renderer->get_main_stream());
-		oroStreamSynchronize(m_renderer->get_main_stream());
-	}
-
-	std::cout << "Cell alive count after rehashing (auto count): " << temp_grid_cell_alive_counter_buffer.download_data()[0] << std::endl;
+	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_asynchronous(64, 1, old_cell_alive_count, 1, launch_args, 0);
 
 	// We need to re-upload the cell alive count because there may have possibly been severe collisions during the reinsertion
 	// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different
