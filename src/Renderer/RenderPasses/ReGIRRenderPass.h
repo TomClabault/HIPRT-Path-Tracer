@@ -17,7 +17,6 @@ class ReGIRRenderPass: public RenderPass
 public:
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_KERNEL_ID;
-	static const std::string REGIR_CELL_LIVENESS_COPY_KERNEL_ID;
 	static const std::string REGIR_REHASH_KERNEL_ID;
 
 	static const std::string REGIR_RENDER_PASS_NAME;
@@ -51,7 +50,6 @@ public:
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data);
 	void launch_spatial_reuse(HIPRTRenderData& render_data);
-	void launch_cell_liveness_copy_pass(HIPRTRenderData& render_data);
 	void launch_rehashing_kernel(HIPRTRenderData& render_data, ReGIRHashGridSoADevice& new_hash_grid, ReGIRHashCellDataSoADevice& new_hash_cell_data, unsigned int* new_grid_cells_alive, unsigned int* new_grid_cells_alive_list);
 
 	virtual void post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
