@@ -46,9 +46,9 @@ struct AuxiliaryBuffers
 	float* pixel_squared_luminance = nullptr;
 
 	// If a given pixel has converged, this buffer contains the number of samples
-	// that were necessary for the convergence. 
+	// that were necessary for the convergence.
 	// 
-	// If the pixel hasn't converged yet, the buffer contains the -1 value
+	// If the pixel hasn't converged yet, the buffer contains the -1 value for that pixel
 	int* pixel_converged_sample_count = nullptr;
 
 	// A single boolean (contained in a buffer, hence the pointer) 
@@ -62,7 +62,7 @@ struct AuxiliaryBuffers
 	// noise threshold. If this value is equal to the number of pixels of the
 	// framebuffer, then all pixels have converged according to the given
 	// noise threshold.
-	AtomicType<unsigned int>* stop_noise_threshold_converged_count = nullptr;
+	AtomicType<unsigned int>* pixel_count_converged_so_far = nullptr;
 
 	// Same for ReSTIR GI
 	ReSTIRGIReservoir* restir_gi_reservoir_buffer_1 = nullptr;

@@ -50,12 +50,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
         int pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
         if (pixel_sample_count > render_settings.adaptive_sampling_min_samples)
         {
-            bool pixel_needs_sampling;
             float average_luminance;
-            float confidence_interval;
-            confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
+            float confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
 
-            pixel_needs_sampling = confidence_interval > render_settings.adaptive_sampling_noise_threshold * average_luminance;
+            bool pixel_needs_sampling = confidence_interval > render_settings.adaptive_sampling_noise_threshold * average_luminance;
             if (!pixel_needs_sampling)
             {
                 if (aux_buffers.pixel_converged_sample_count[pixel_index] == -1)

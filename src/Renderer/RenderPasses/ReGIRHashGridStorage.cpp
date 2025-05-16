@@ -51,7 +51,7 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 		// table to keep the load factor in check
 		printf("Test rehash: %d / %d = %f%%\n", m_hash_cell_data.m_grid_cells_alive_count.download_data()[0], m_total_number_of_cells, m_regir_render_pass->get_alive_cells_ratio() * 100.0f);
 
-		if (m_regir_render_pass->get_alive_cells_ratio() > 11.75f)
+		if (m_regir_render_pass->get_alive_cells_ratio() > 1.75f)
 		{
 			unsigned int m_grid_cells_alive = m_regir_render_pass->update_cell_alive_count();
 			if (m_grid_cells_alive > 0)

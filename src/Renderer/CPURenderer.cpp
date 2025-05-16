@@ -300,7 +300,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.pixel_converged_sample_count = m_pixel_converged_sample_count.data();
     m_render_data.aux_buffers.pixel_squared_luminance = m_pixel_squared_luminance.data();
     m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
-    m_render_data.aux_buffers.stop_noise_threshold_converged_count = &m_stop_noise_threshold_count;
+    m_render_data.aux_buffers.pixel_count_converged_so_far = &m_stop_noise_threshold_count;
 
     m_render_data.render_settings.DEBUG_SUMS = m_DEBUG_SUMS.data();
     m_render_data.render_settings.DEBUG_SUM_COUNT = m_DEBUG_SUM_COUNT.data();
@@ -531,7 +531,7 @@ void CPURenderer::pre_render_update(int frame_number)
     // Uploading false to reset the flag
     *m_render_data.aux_buffers.still_one_ray_active = false;
     // Resetting the counter of pixels converged to 0
-    m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
+    m_render_data.aux_buffers.pixel_count_converged_so_far->store(0);
 
     if (frame_number > m_nee_plus_plus.stop_update_samples)
         m_render_data.nee_plus_plus.update_visibility_map = false;
