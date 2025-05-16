@@ -51,19 +51,21 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 		// table to keep the load factor in check
 		printf("Test rehash: %d / %d = %f%%\n", m_hash_cell_data.m_grid_cells_alive_count.download_data()[0], m_total_number_of_cells, m_regir_render_pass->get_alive_cells_ratio() * 100.0f);
 
-		if (m_regir_render_pass->get_alive_cells_ratio() > 1.75f)
+		if (m_regir_render_pass->get_alive_cells_ratio() > 0.75f)
 		{
 			unsigned int m_grid_cells_alive = m_regir_render_pass->update_cell_alive_count();
 			if (m_grid_cells_alive > 0)
 			{
 				std::cout << "Rehashing" << std::endl;
-
+				
 				unsigned int grid_cell_alive_count_before = 0;
 				std::vector<unsigned int> data_alive_before = m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().download_data();
 				for (unsigned int& cell_alive : data_alive_before)
-					if (cell_alive > 0)
-					grid_cell_alive_count_before++;
-
+				if (cell_alive > 0)
+				grid_cell_alive_count_before++;
+				
+				if (m_regir_render_pass->get_alive_cells_ratio() < 1.0f)
+					printf("\n");
 				std::cout << "Cell alive count before (auto count): " << m_hash_cell_data.m_grid_cells_alive_count.download_data()[0] << std::endl;
 				std::cout << "Cell alive count before (manual count): " << grid_cell_alive_count_before << std::endl;
 

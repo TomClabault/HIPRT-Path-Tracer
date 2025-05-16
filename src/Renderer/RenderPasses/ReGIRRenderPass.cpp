@@ -191,7 +191,10 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 	unsigned int* temp_grid_cell_alive_counter = temp_grid_cell_alive_counter_buffer.get_device_pointer();
 	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa().size();
 	
-	for (int i = 0; i < old_cell_count; i++)
+	// The old number of cells alive is the number of cells that we're going to have to rehash
+	unsigned int old_cell_alive_count = m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0];
+
+	for (int i = 0; i < old_cell_alive_count; i++)
 	{
 		void* launch_args[] = { 
 			&render_data.current_camera.position,
