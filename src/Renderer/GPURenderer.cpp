@@ -1022,7 +1022,7 @@ void GPURenderer::update_render_data()
 
 		m_render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
 		m_render_data.aux_buffers.still_one_ray_active = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
-		m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_status_buffers.pixels_converged_count_buffer.get_device_pointer());
+		m_render_data.aux_buffers.pixel_count_converged_so_far = m_status_buffers.pixels_converged_count_buffer.get_atomic_device_pointer();
 
 		if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		{
@@ -1040,7 +1040,7 @@ void GPURenderer::update_render_data()
 		m_render_thread.get_render_graph().update_render_data();
 
 		m_render_data_buffers_invalidated = false;
-		m_render_data.render_settings.need_to_reset = true;
+		// m_render_data.render_settings.need_to_reset = true;
 	}
 }
 
