@@ -166,6 +166,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 	unsigned int* temp_grid_cell_alive_counter = temp_grid_cell_alive_counter_buffer.get_device_pointer();
 	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa().size();
+	unsigned int old_cell_alive_count = m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0];
 	
 	// The old number of cells alive is the number of cells that we're going to have to rehash
 	
@@ -178,10 +179,9 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 		&render_data.render_settings.regir_settings.hash_cell_data,
 		&cell_alive_list_ptr, &temp_grid_cell_alive_counter,
 		
-		&old_cell_count
+		&old_cell_alive_count
 	};
 	
-	unsigned int old_cell_alive_count = m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0];
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_asynchronous(64, 1, old_cell_alive_count, 1, launch_args, 0);
 
 	// We need to re-upload the cell alive count because there may have possibly been severe collisions during the reinsertion

@@ -42,7 +42,7 @@ private:
 
 	float3 m_current_grid_resolution = make_float3(ReGIRHashGridSoADevice::DEFAULT_GRID_SIZE, ReGIRHashGridSoADevice::DEFAULT_GRID_SIZE, ReGIRHashGridSoADevice::DEFAULT_GRID_SIZE);
 	unsigned int m_total_number_of_cells = 0;
-	unsigned int m_hash_grid_current_overallocation_factor = 10;
+	unsigned int m_hash_grid_current_overallocation_factor = 2;
 };
 
 #endif
