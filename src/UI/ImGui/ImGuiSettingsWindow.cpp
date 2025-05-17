@@ -1070,6 +1070,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 			{
 				// Will recompute the alias table if necessary
+				if (*global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == 2)
+					printf("\n");
 				m_renderer->recompute_emissives_power_alias_table();
 
 				m_renderer->recompile_kernels();

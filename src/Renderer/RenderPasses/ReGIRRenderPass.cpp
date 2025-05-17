@@ -75,7 +75,7 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	return !grid_fill_compiled || !spatial_reuse_compiled || !rehash_kernel_compiled;
 }
 
-bool ReGIRRenderPass::pre_render_update_async(float delta_time)
+bool ReGIRRenderPass::pre_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
@@ -203,7 +203,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 	m_number_of_cells_alive = new_grid_cells_alive_count;
 }
 
-void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return;

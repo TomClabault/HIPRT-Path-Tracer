@@ -160,6 +160,8 @@ bool ReGIRHashGridStorage::free()
 		updated = true;
 	}
 
+	m_total_number_of_cells = 0;
+
 	return updated;
 }
 

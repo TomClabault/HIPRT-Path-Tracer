@@ -31,7 +31,7 @@ public:
 	 * 
 	 * Returns true or false depending on whether or not the render buffer data have been invalidated
 	 */
-	virtual bool pre_render_update_async(float delta_time) override;
+	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
 	float compute_gmon_darkening(HIPRTRenderData& render_data);
@@ -45,7 +45,7 @@ public:
 	 * Returns true a buffer was allocated or deallocated
 	 * Returns false if buffer were left untouched
 	 */
-	virtual void post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
 	virtual void update_render_data() override;
 	virtual void reset(bool reset_by_camera_movement) override;

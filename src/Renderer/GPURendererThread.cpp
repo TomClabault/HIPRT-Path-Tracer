@@ -117,7 +117,7 @@ void GPURendererThread::pre_render_update(float delta_time, RenderWindow* render
 	if (m_render_graph.pre_render_compilation_check(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets, true, true))
 		// Some kernels have been recompiled, renderer is now dirty
 		render_window->set_render_dirty(true);
-	m_renderer->m_render_data_buffers_invalidated |= m_render_graph.pre_render_update_async(delta_time);
+	m_renderer->m_render_data_buffers_invalidated |= m_render_graph.pre_render_update(delta_time);
 
 	internal_pre_render_update_clear_device_status_buffers();
 	internal_pre_render_update_global_stack_buffer();
@@ -277,7 +277,7 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 
 void GPURendererThread::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	m_render_graph.post_sample_update(render_data, compiler_options);
+	m_render_graph.post_sample_update_async(render_data, compiler_options);
 
 	render_data.render_settings.sample_number++;
 	m_render_data->render_settings.sample_number++;
@@ -290,7 +290,7 @@ void GPURendererThread::post_sample_update(HIPRTRenderData& render_data, GPUKern
 	// again)
 	render_data.render_settings.need_to_reset = false;
 	m_render_data->render_settings.need_to_reset = false;
-	
+
 	render_data.nee_plus_plus.reset_visibility_map = false;
 	m_render_data->nee_plus_plus.reset_visibility_map = false;
 }
