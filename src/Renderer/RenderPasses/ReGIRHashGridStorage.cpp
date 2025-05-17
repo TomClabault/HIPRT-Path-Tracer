@@ -80,7 +80,7 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 
 			// Allocating a larger hash table
 			ReGIRHashGridSoAHost<OrochiBuffer> new_hash_grid;
-			new_hash_grid.resize(m_total_number_of_cells, render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
+			new_hash_grid.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
 
 			ReGIRHashCellDataSoAHost<OrochiBuffer> new_hash_cell_data;
 			new_hash_cell_data.resize(m_total_number_of_cells);

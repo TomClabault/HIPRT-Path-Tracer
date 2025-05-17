@@ -104,11 +104,19 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (!m_render_pass_used_this_frame)
 		return false;
 
+	// This needs to be called before the rehash because the 
+	// rehash needs the updated number of cells alive to function
 	update_cell_alive_count();
+
 	if (m_hash_grid_storage.try_rehash(render_data))
 	{
 		update_render_data();
+		
+		// We also want the local 'render_data' parameter here to be updated such
+		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
+		m_hash_grid_storage.to_device(render_data);
 	}
+
 
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
@@ -170,7 +178,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 	unsigned int* temp_grid_cell_alive_counter = temp_grid_cell_alive_counter_buffer.get_device_pointer();
 	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa().size();
-	unsigned int old_cell_alive_count = m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0];
+	unsigned int old_cell_alive_count = m_number_of_cells_alive;
 	
 	// The old number of cells alive is the number of cells that we're going to have to rehash
 	
@@ -190,7 +198,9 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 
 	// We need to re-upload the cell alive count because there may have possibly been severe collisions during the reinsertion
 	// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different
-	m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.upload_data(&temp_grid_cell_alive_counter_buffer.download_data()[0]);
+	unsigned int new_grid_cells_alive_count = temp_grid_cell_alive_counter_buffer.download_data()[0];
+	m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.upload_data(&new_grid_cells_alive_count);
+	m_number_of_cells_alive = new_grid_cells_alive_count;
 }
 
 void ReGIRRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
