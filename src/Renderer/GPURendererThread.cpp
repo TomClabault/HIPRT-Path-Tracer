@@ -279,13 +279,19 @@ void GPURendererThread::post_sample_update(HIPRTRenderData& render_data, GPUKern
 {
 	m_render_graph.post_sample_update(render_data, compiler_options);
 
+	render_data.render_settings.sample_number++;
 	m_render_data->render_settings.sample_number++;
+
+	render_data.render_settings.denoiser_AOV_accumulation_counter++;
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter++;
 
 	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
 	// so we're setting the flag to false (it will be set to true again if we need to reset the render
 	// again)
+	render_data.render_settings.need_to_reset = false;
 	m_render_data->render_settings.need_to_reset = false;
+	
+	render_data.nee_plus_plus.reset_visibility_map = false;
 	m_render_data->nee_plus_plus.reset_visibility_map = false;
 }
 
