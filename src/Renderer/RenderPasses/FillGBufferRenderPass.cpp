@@ -54,9 +54,10 @@ void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_heig
 	m_render_resolution = m_renderer->m_render_resolution;
 }
 
-bool FillGBufferRenderPass::pre_render_update_async(float delta_time)
+bool FillGBufferRenderPass::pre_render_update(float delta_time)
 {
-	m_renderer->get_ReGIR_render_pass()->update_cell_alive_count();
+	if (m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
+		m_renderer->get_ReGIR_render_pass()->update_cell_alive_count();
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 

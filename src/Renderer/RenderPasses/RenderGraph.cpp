@@ -47,17 +47,17 @@ void RenderGraph::prepass()
 		name_to_render_pass.second->prepass();
 }
 
-void RenderGraph::is_render_pass_used_pass()
+void RenderGraph::update_is_render_pass_used()
 {
 	for (auto& name_to_render_pass : m_render_passes)
 		name_to_render_pass.second->set_is_render_pass_used(name_to_render_pass.second->is_render_pass_used());
 }
 
-bool RenderGraph::pre_render_update_async(float delta_time)
+bool RenderGraph::pre_render_update(float delta_time)
 {
 	bool render_data_invalidated = false;
 	for (auto& name_to_render_pass : m_render_passes)
-		render_data_invalidated |= name_to_render_pass.second->pre_render_update_async(delta_time);
+		render_data_invalidated |= name_to_render_pass.second->pre_render_update(delta_time);
 
 	// pre_render_update means that this is a new frame
 	m_new_frame = true;
@@ -113,10 +113,10 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 		m_render_pass_effectively_launched_this_frame[render_pass.get()] = true;
 }
 
-void RenderGraph::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+void RenderGraph::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	for (auto& name_to_render_pass : m_render_passes)
-		name_to_render_pass.second->post_sample_update(render_data, compiler_options);
+		name_to_render_pass.second->post_sample_update_async(render_data, compiler_options);
 }
 
 void RenderGraph::update_render_data()

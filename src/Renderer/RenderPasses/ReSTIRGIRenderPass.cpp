@@ -122,11 +122,11 @@ bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	return recompiled;
 }
 
-bool ReSTIRGIRenderPass::pre_render_update_async(float delta_time)
+bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	MegaKernelRenderPass::pre_render_update_async(delta_time);
+	MegaKernelRenderPass::pre_render_update(delta_time);
 
 	bool render_data_invalidated = false;
 
@@ -374,13 +374,13 @@ bool ReSTIRGIRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	return true;
 }
 
-void ReSTIRGIRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+void ReSTIRGIRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag
 	m_temporal_buffer_clear_requested = false;
 
-	MegaKernelRenderPass::post_sample_update(render_data, compiler_options);
+	MegaKernelRenderPass::post_sample_update_async(render_data, compiler_options);
 }
 
 void ReSTIRGIRenderPass::update_render_data()

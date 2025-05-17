@@ -29,7 +29,7 @@ void MegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_heigh
 	m_render_resolution.y = new_height;
 }
 
-bool MegaKernelRenderPass::pre_render_update_async(float delta_time)
+bool MegaKernelRenderPass::pre_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
@@ -54,7 +54,6 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 	
 	void* launch_args[] = { &render_data };
 
-	std::cout << "-------- Sample number: " << render_data.render_settings.sample_number << std::endl;
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	if( m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
@@ -69,21 +68,6 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 		std::vector<unsigned int> cell_hashes = m_renderer->get_ReGIR_render_pass()->m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>().download_data();
 		std::vector<unsigned int> cell_alive_indices = m_renderer->get_ReGIR_render_pass()->m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 		std::unordered_set<unsigned int> cell_hashes_set;
-
-		for (int i = 0; i < hippt::min((std::size_t)manual_count, cell_hashes.size()); i++)
-		{
-			unsigned int cell_index = cell_alive_indices[i];
-			unsigned int current_hash = cell_hashes[cell_index];
-
-			if (cell_hashes_set.find(current_hash) != cell_hashes_set.end() && current_hash != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
-			{
-				std::cout << "-------------- We have at least 1 double! ------------: " << current_hash << std::endl;
-
-				break;
-			}
-			else
-				cell_hashes_set.insert(current_hash);
-		}
 	}
 
 	return true;

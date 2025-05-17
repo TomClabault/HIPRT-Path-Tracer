@@ -113,7 +113,7 @@ public:
 	 * 
 	 * Returns false otherwise
 	 */
-	virtual bool pre_render_update_async(float delta_time) = 0;
+	virtual bool pre_render_update(float delta_time) = 0;
 
 	/**
 	 * This function may be overriden by render passes that can be enabled/disabled at runtime.
@@ -195,7 +195,7 @@ public:
 	 * is a race condition with the asynchronous ImGui UI.
 	 * !!!!!!!!!
 	 */
-	virtual void post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) = 0;
+	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) = 0;
 
 	/**
 	 * This function is called when the renderer that holds this render pass needs to 

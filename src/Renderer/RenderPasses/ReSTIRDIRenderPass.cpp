@@ -129,7 +129,7 @@ void ReSTIRDIRenderPass::precompile_kernels(GPUKernelCompilerOptions partial_opt
 	ThreadManager::detach_threads(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS);
 }
 
-bool ReSTIRDIRenderPass::pre_render_update_async(float delta_time)
+bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
@@ -381,7 +381,7 @@ bool ReSTIRDIRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	return true;
 }
 
-void ReSTIRDIRenderPass::post_sample_update(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+void ReSTIRDIRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	// If we had requested a temporal buffers clear, this has be done by this frame so we can
 	// now reset the flag

@@ -448,6 +448,7 @@ void GPURenderer::synchronize_all_kernels()
 		return;
 
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
+	
 	m_render_thread.wait_on_render_completion();
 }
 
@@ -507,7 +508,7 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 	std::cout << std::endl;
 	std::cout << std::endl;
 	
-	m_render_thread.get_render_graph().is_render_pass_used_pass();
+	m_render_thread.get_render_graph().update_is_render_pass_used();
 	pre_render_update(delta_time_gpu, render_window);
 
 	// Mapping the render buffers on the main thread so that we can use them in the render thread.
