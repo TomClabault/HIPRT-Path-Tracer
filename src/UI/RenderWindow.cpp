@@ -51,9 +51,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Test compress cells by only storing the emissive light index instead of all the info
 // - rename hash keys as checksum
-// - Maybe we can include the surface normal in the hash table by having a two-level lookup: first hash only using the spatial coordinates: this gives us the cell index and then lookup in that cell index which reservoir set to use based on the quantized normal. The question is: which normal to use for the lookup
 // - Do we want to jitter for canonical samples in the ReGIR shading? Is it not better for variance to always use the canonical samples of our own cells?
+//		- Do jitter + retries and fallback on center cell
 // - Update hash cell data point normal seems to be very expensive
 // - We may have an issue with updating the representative points on the fly with more than 1 bounce because the representative points are going to change *during* the path tracing and so the MIS weights with visibility rays and so on are going to be computed with the updated rep points even though the reservoirs were produced with the old rep points
 // - Deduplicate hash grid cell idnex calculations in fetch reservoirs functions mainly for performance reasons
