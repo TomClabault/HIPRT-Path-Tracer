@@ -85,26 +85,11 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			ReGIRHashCellDataSoAHost<OrochiBuffer> new_hash_cell_data;
 			new_hash_cell_data.resize(m_total_number_of_cells);
 
-			OrochiBuffer<unsigned int> new_grid_cells_alive_buffer(m_total_number_of_cells);
-
-			// Initializing all the cells to inactive
-			std::vector<unsigned int> init_data_alive(m_total_number_of_cells, 0u);
-			new_grid_cells_alive_buffer.upload_data(init_data_alive);
-
-			OrochiBuffer<unsigned int> new_grid_cells_alive_list(m_total_number_of_cells);
-			std::vector<unsigned int> zero_data(m_total_number_of_cells);
-			new_grid_cells_alive_list.upload_data(zero_data);
-
 			ReGIRHashGridSoADevice new_hash_grid_device = new_hash_grid.to_device(m_current_grid_resolution);
 			ReGIRHashCellDataSoADevice new_hash_cell_data_device = new_hash_cell_data.to_device();
 
 			// For each cell alive, we're going to insert it in the new, larger, hash table, with a GPU kernel to do that
-			m_regir_render_pass->launch_rehashing_kernel(render_data,
-				new_hash_grid_device, new_hash_cell_data_device,
-				new_grid_cells_alive_buffer.get_device_pointer(), new_grid_cells_alive_list.get_device_pointer());
-
-			m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>() = std::move(new_grid_cells_alive_buffer);
-			m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>() = std::move(new_grid_cells_alive_list);
+			m_regir_render_pass->launch_rehashing_kernel(render_data, new_hash_grid_device, new_hash_cell_data_device);
 
 			m_grid_buffers = std::move(new_hash_grid);
 			if (regir_settings.spatial_reuse.do_spatial_reuse)

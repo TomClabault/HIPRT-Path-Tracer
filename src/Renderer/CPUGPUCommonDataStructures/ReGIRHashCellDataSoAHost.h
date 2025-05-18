@@ -49,15 +49,14 @@ struct ReGIRHashCellDataSoAHost
 		new_number_of_cells = hippt::max(new_number_of_cells, 1u);
 
 		m_hash_cell_data.resize(new_number_of_cells);
-		GenericSoAHelpers::resize<DataContainer>(m_grid_cells_alive_count, 1);
 
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_DISTANCE_TO_CENTER>(ReGIRHashCellDataSoADevice::UNDEFINED_DISTANCE);
-
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>(ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>(0u);
-		// memset_buffer static call
+
+		// resize and memset_buffer static call
+		GenericSoAHelpers::resize<DataContainer>(m_grid_cells_alive_count, 1);
 		GenericSoAHelpers::memset_buffer<DataContainer>(m_grid_cells_alive_count, 0u);
 	}
 

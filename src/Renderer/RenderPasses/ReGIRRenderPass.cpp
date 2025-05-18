@@ -165,18 +165,9 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, 
-	ReGIRHashGridSoADevice& new_hash_grid, ReGIRHashCellDataSoADevice& new_hash_cell_data,
-	unsigned int* new_grid_cells_alive, unsigned int* new_grid_cells_alive_list)
+void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, ReGIRHashGridSoADevice& new_hash_grid, ReGIRHashCellDataSoADevice& new_hash_cell_data)
 {
-	unsigned int nb_threads = update_cell_alive_count();
-	
-	OrochiBuffer<unsigned int> temp_grid_cell_alive_counter_buffer(1);
-	unsigned int zero = 0;
-	temp_grid_cell_alive_counter_buffer.upload_data(&zero);
-	
 	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
-	unsigned int* temp_grid_cell_alive_counter = temp_grid_cell_alive_counter_buffer.get_device_pointer();
 	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa().size();
 	unsigned int old_cell_alive_count = m_number_of_cells_alive;
 	
@@ -185,22 +176,18 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 	void* launch_args[] = { 
 		&render_data.current_camera.position,
 		
-		&new_hash_grid, &new_hash_cell_data, 
-		&new_grid_cells_alive, &new_grid_cells_alive_list,
+		&new_hash_grid, &new_hash_cell_data,
 		
-		&render_data.render_settings.regir_settings.hash_cell_data,
-		&cell_alive_list_ptr, &temp_grid_cell_alive_counter,
-		
+		&render_data.render_settings.regir_settings.hash_cell_data, // old hash cell data
+		&cell_alive_list_ptr, // old cell alive list		
 		&old_cell_alive_count
 	};
 	
-	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_asynchronous(64, 1, old_cell_alive_count, 1, launch_args, 0);
+	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_synchronous(64, 1, old_cell_alive_count, 1, launch_args);
 
 	// We need to re-upload the cell alive count because there may have possibly been severe collisions during the reinsertion
 	// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different
-	unsigned int new_grid_cells_alive_count = temp_grid_cell_alive_counter_buffer.download_data()[0];
-	m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.upload_data(&new_grid_cells_alive_count);
-	m_number_of_cells_alive = new_grid_cells_alive_count;
+	m_number_of_cells_alive  = m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0];
 }
 
 void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)

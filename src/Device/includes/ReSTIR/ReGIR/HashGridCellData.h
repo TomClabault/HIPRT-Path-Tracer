@@ -24,9 +24,12 @@ struct ReGIRHashCellDataSoADevice
 
 	// TODO Pack distance to unsigned char? Yep but then we need a way to atomic on that
 	//
-	// These 3 buffers are used to "optimize" the representative points of the cells
-	// closer to the center of the cells
+	// These 3 buffers are used to "optimize" the cell points
+	// closer to the center of the cells. The center of the cell is actually going
+	// to be the average of all the points that hit that cell so far
 	AtomicType<float>* distance_to_center = nullptr;
+	// Two buffers sum points and num points that we keep to compute the average of the points
+	// that hit each cell
 	float3* sum_points = nullptr;
 	AtomicType<unsigned int>* num_points = nullptr;
 

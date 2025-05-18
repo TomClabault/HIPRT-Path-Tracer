@@ -116,21 +116,13 @@ struct ReGIRSettings
 
 	///////////////////// Delegating to the grid for these functions /////////////////////
 
-	/**
-	 * Here, 'non_canonical_reservoir_index_in_cell' should be in [0, grid_fill.get_non_canonical_reservoir_count_per_cell() - 1]
-	 */
-	HIPRT_DEVICE ReGIRReservoir get_cell_reservoir_from_cell_reservoir_index(float3 world_position, float3 camera_position, int non_canonical_reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
-	{
-		return get_reservoir_for_shading_from_cell_indices(world_position, camera_position, non_canonical_reservoir_index_in_cell, out_invalid_sample);
-	}
-
 	HIPRT_DEVICE ReGIRReservoir get_random_cell_non_canonical_reservoir(float3 world_position, float3 camera_position, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
 	{
 		int random_non_canonical_reservoir_index_in_cell = 0;
 		if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
 			random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 
-		return get_cell_reservoir_from_cell_reservoir_index(world_position, camera_position, random_non_canonical_reservoir_index_in_cell, out_invalid_sample);
+		return get_reservoir_for_shading_from_cell_indices(world_position, camera_position, random_non_canonical_reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	HIPRT_DEVICE ReGIRReservoir get_random_cell_canonical_reservoir(float3 world_position, float3 camera_position, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
@@ -139,7 +131,7 @@ struct ReGIRSettings
 		if (grid_fill.get_canonical_reservoir_count_per_cell() > 1)
 			random_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 
-		return get_cell_reservoir_from_cell_reservoir_index(world_position, camera_position, grid_fill.get_non_canonical_reservoir_count_per_cell() + random_canonical_reservoir_index_in_cell, out_invalid_sample);
+		return get_reservoir_for_shading_from_cell_indices(world_position, camera_position, grid_fill.get_non_canonical_reservoir_count_per_cell() + random_canonical_reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	/**
@@ -307,6 +299,7 @@ struct ReGIRSettings
 		if (hash_cell_data_to_update.grid_cells_alive[hash_grid_cell_index] == 0)
 		{
 			// TODO is this atomic needed since we can only be here if the cell was unoccoupied?
+
 			if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.grid_cells_alive[hash_grid_cell_index], 0u, 1u) == 0u)
 			{
 				unsigned int cell_alive_index = hippt::atomic_fetch_add(hash_cell_data_to_update.grid_cells_alive_count, 1u);
@@ -371,17 +364,18 @@ struct ReGIRSettings
 		}
 	}
 
-	template <bool debug = false>
-	HIPRT_DEVICE static void insert_hash_cell_data_static(ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
+	HIPRT_DEVICE static void insert_hash_cell_data_static(
+		ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
 		float3 world_position, float3 camera_position, float3 shading_normal, int primitive_index)
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash_grid_to_update.hash(world_position, camera_position, hash_key);
 		
-		// TODO we can have a if(current_hash_key != undefined_key) here to skip some atomic operations
+		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 
-		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY, hash_key) != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		unsigned int before = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY, hash_key);
+		if (before != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 		{
 			// We tried inserting in our cell but there is something else there already
 			
@@ -440,10 +434,9 @@ struct ReGIRSettings
 
 	}
 
-	template <bool debug = false>
 	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, float3 camera_position, float3 shading_normal, int primitive_index)
 	{
-		ReGIRSettings::insert_hash_cell_data_static<debug>(grid_fill_grid, hash_cell_data, world_position, camera_position, shading_normal, primitive_index);
+		ReGIRSettings::insert_hash_cell_data_static(grid_fill_grid, hash_cell_data, world_position, camera_position, shading_normal, primitive_index);
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
