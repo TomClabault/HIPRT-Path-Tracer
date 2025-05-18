@@ -25,7 +25,7 @@
  // This block is a security to make sure that we have everything defined otherwise this can lead
  // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
-#error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
+#error "KERNEL_OPTION_TRUE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
 #else
 #ifndef KERNEL_OPTION_FALSE
 #error "KERNEL_OPTION_FALSE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
