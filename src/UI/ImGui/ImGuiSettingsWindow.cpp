@@ -1747,6 +1747,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::TreePush("ReGIR settings tree");
 
 		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReGIR_render_pass()->get_VRAM_usage());
+		ImGui::Text("# of hash cells: %u", m_renderer->get_ReGIR_render_pass()->get_number_of_cells());
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling" };

@@ -101,6 +101,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
             if (bounce > 0)
                 intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, mis_reuse, random_number_generator);
 
+            /*if (render_data.render_settings.sample_number == 3)
+                printf("");*/
+
             if (intersection_found)
             {
                 if (bounce == 0)

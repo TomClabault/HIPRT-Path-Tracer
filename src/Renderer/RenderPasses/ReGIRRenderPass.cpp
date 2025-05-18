@@ -260,6 +260,11 @@ float ReGIRRenderPass::get_VRAM_usage() const
 	return (m_hash_grid_storage.get_byte_size()) / 1000000.0f;
 }
 
+unsigned int ReGIRRenderPass::get_number_of_cells() const
+{
+	return m_hash_grid_storage.get_total_number_of_cells();
+}
+
 unsigned int ReGIRRenderPass::update_cell_alive_count()
 {
 	m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
