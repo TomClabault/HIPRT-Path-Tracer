@@ -134,6 +134,10 @@ public:
 				// There seems to be some very rare bug in the ThreadManager where sometimes, 
 				// we're trying to join (with thread.join()) below a thread that has a NULL
 				// handle from the 'ParseEmissiveTrianglesKey' thread key
+				//
+				// UPDATE: This seems to happen when we're calling join_all_threads() while
+				// we're are still starting some thread with dependencies: we end up in a situation where we're
+				// trying to join on a dependecy that has already been joined by join_all_threads()
 				if (thread.native_handle() == 0)
 					Utils::debugbreak();
 

@@ -18,25 +18,20 @@
 GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Rehash(float3 camera_position,
 
     ReGIRHashGridSoADevice new_hash_grid, ReGIRHashCellDataSoADevice new_hash_cell_data,
-    AtomicType<unsigned int>* new_grid_cells_alive, unsigned int* new_grid_cells_alive_list,
 
     ReGIRHashCellDataSoADevice old_hash_cell_data,
     unsigned int* old_grid_cells_alive_list,
-    unsigned int* temporary_grid_cell_alive_count,
-
     unsigned int old_cell_count)
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
     float3 camera_position,
 
     ReGIRHashGridSoADevice new_hash_grid, ReGIRHashCellDataSoADevice new_hash_cell_data,
-    AtomicType<unsigned int>* new_grid_cells_alive, unsigned int* new_grid_cells_alive_list,
 
     ReGIRHashCellDataSoADevice old_hash_cell_data,
-    unsigned int* old_grid_cells_alive_list,
-    AtomicType<unsigned int>* temporary_grid_cell_alive_count,
-
+    unsigned int* old_grid_cells_alive_list, 
     unsigned int old_cell_count,
+
     unsigned int cell_index
 )
 #endif
@@ -54,7 +49,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
     float3 shading_normal = old_hash_cell_data.world_normals[cell_alive_index].unpack();
     int primitive_index = old_hash_cell_data.hit_primitive[cell_alive_index];
 
-    ReGIRSettings::insert_hash_cell_data_static<true>(
+    ReGIRSettings::insert_hash_cell_data_static(
         new_hash_grid, new_hash_cell_data,
         world_position, camera_position, shading_normal, primitive_index);
 }
