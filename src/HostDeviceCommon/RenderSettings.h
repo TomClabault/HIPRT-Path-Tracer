@@ -46,7 +46,7 @@ struct HIPRTRenderSettings
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 
-	bool enable_direct = true;
+	bool enable_direct = false;
 	AtomicType<unsigned long long int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 
@@ -98,7 +98,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 1;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
