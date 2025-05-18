@@ -15,10 +15,9 @@
 
 template <template <typename> typename DataContainer>
 using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer, 
-	GenericAtomicType<float, DataContainer>,  // distance to center
 	float3, // sum points
 	GenericAtomicType<unsigned int, DataContainer>, // num points
-	GenericAtomicType<int, DataContainer>,  // primitive
+	GenericAtomicType<int, DataContainer>,  // primitive index
 	float3, // world points
 	Octahedral24BitNormalPadded32b,  // world normals
 	GenericAtomicType<unsigned int, DataContainer>, // hash keys
@@ -28,7 +27,6 @@ using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
 
 enum ReGIRHashCellDataSoAHostBuffers
 {
-	REGIR_HASH_CELL_DISTANCE_TO_CENTER,
 	REGIR_HASH_CELL_SUM_POINTS,
 	REGIR_HASH_CELL_NUM_POINTS,
 
@@ -50,7 +48,6 @@ struct ReGIRHashCellDataSoAHost
 
 		m_hash_cell_data.resize(new_number_of_cells);
 
-		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_DISTANCE_TO_CENTER>(ReGIRHashCellDataSoADevice::UNDEFINED_DISTANCE);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>(ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>(0u);
@@ -79,7 +76,6 @@ struct ReGIRHashCellDataSoAHost
 	{
 		ReGIRHashCellDataSoADevice hash_cell_data;
 
-		hash_cell_data.distance_to_center = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_DISTANCE_TO_CENTER>();
 		hash_cell_data.sum_points = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_SUM_POINTS>();
 		hash_cell_data.num_points = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_NUM_POINTS>();
 

@@ -323,7 +323,6 @@ struct ReGIRSettings
 		// so we're going to lock that grid cell by setting the existing distance to CELL_LOCKED_DISTANCE, indicating that a thread is already
 		// incrementing the sum of points for that grid cell
 
-		// float existing_distance = hash_cell_data_to_update.distance_to_center[hash_grid_cell_index];
 		unsigned int previous_num_points = hippt::atomic_compare_exchange(&hash_cell_data_to_update.num_points[hash_grid_cell_index], current_num_points, ReGIRHashCellDataSoADevice::CELL_LOCKED_SENTINEL_VALUE);
 
 		if (previous_num_points == current_num_points && previous_num_points != ReGIRHashCellDataSoADevice::CELL_LOCKED_SENTINEL_VALUE)
@@ -348,9 +347,6 @@ struct ReGIRSettings
 				// If our point is closer to the center of the cell (approximated by the average of all hit points in the cell)
 				// than the existing point, then our current hit (world pos, normal, primitive, ...) becomes the new
 				// representative hit for that grid cell
-
-				// Updating the distance
-				// hash_cell_data_to_update.distance_to_center[hash_grid_cell_index] = new_distance_to_average_point;
 
 				hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
 				hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
