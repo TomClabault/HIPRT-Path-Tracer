@@ -123,6 +123,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (m_number_of_cells_alive > 0)
 	{
 		launch_grid_fill_temporal_reuse(render_data);
+
 		launch_spatial_reuse(render_data);
 	}
 
@@ -155,6 +156,9 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 {
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		return;
+
+	std::cout << "Launching spatial" << std::endl;
+
 
 	void* launch_args[] = { &render_data, &m_number_of_cells_alive };
 

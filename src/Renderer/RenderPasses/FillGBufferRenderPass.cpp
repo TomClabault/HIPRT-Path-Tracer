@@ -97,9 +97,6 @@ bool FillGBufferRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
-	if (m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
-		std::cout << "Count after (auto) camera rays: " << m_renderer->get_ReGIR_render_pass()->m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0] << std::endl;
-
 	return true;
 }
 
