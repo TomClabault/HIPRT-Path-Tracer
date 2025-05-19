@@ -27,10 +27,13 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-	if (m_total_number_of_cells == 0 ||
-		m_current_grid_resolution.x != regir_settings.grid_fill_grid.grid_resolution.x ||
+	bool grid_not_allocated = m_total_number_of_cells == 0;
+	bool grid_res_changed = m_current_grid_resolution.x != regir_settings.grid_fill_grid.grid_resolution.x ||
 		m_current_grid_resolution.y != regir_settings.grid_fill_grid.grid_resolution.y ||
-		m_current_grid_resolution.z != regir_settings.grid_fill_grid.grid_resolution.z)
+		m_current_grid_resolution.z != regir_settings.grid_fill_grid.grid_resolution.z;
+	bool reservoirs_per_cell_changed = regir_settings.get_number_of_reservoirs_per_cell() != m_grid_buffers.m_reservoirs_per_cell;
+
+	if (grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed)
 	{
 		m_total_number_of_cells = m_current_grid_resolution.x * m_current_grid_resolution.y * m_current_grid_resolution.z * m_hash_grid_current_overallocation_factor;
 		m_current_grid_resolution = regir_settings.grid_fill_grid.grid_resolution;

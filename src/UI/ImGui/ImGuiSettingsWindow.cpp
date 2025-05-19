@@ -1746,8 +1746,15 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 	{
 		ImGui::TreePush("ReGIR settings tree");
 
-		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReGIR_render_pass()->get_VRAM_usage());
-		ImGui::Text("# of hash cells: %u", m_renderer->get_ReGIR_render_pass()->get_number_of_cells());
+		std::shared_ptr<ReGIRRenderPass> regir_render_pass = m_renderer->get_ReGIR_render_pass();
+
+		ImGui::Text("# of hash cells occupied: %u", regir_render_pass->get_number_of_cells_alive());
+		ImGui::Text("Hash cells capacity: %u", regir_render_pass->get_number_of_cells());
+		ImGui::Text("Load Factor: %.3f%%", regir_render_pass->get_alive_cells_ratio() * 100.0f);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Text("VRAM Usage: %.3fMB (%.1fB per cell)", regir_render_pass->get_VRAM_usage(), regir_render_pass->get_VRAM_usage() * 1000000.0f / (float)regir_render_pass->get_number_of_cells());
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling" };
@@ -1941,19 +1948,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			{
 				if (ImGui::SliderFloat("Distance to point", &regir_settings.debug_view_scale_factor, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
-			}
-
-			static bool query_cell_alive_percentage = false;
-			ImGui::Checkbox("Query alive cell percentage", &query_cell_alive_percentage);
-			if (query_cell_alive_percentage)
-			{
-				float ratio = m_renderer->get_ReGIR_render_pass()->get_alive_cells_ratio();
-					
-				ImGui::TreePush("Alive ReGIR cells tree");
-
-				ImGui::Text("Alive cells: %f%%", ratio * 100.0f);
-
-				ImGui::TreePop();
 			}
 
 			ImGui::TreePop();
