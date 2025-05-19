@@ -14,6 +14,15 @@
 #define REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION 3
 #define REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS 4
 
+/**
+ * If using jittering, how many tries to perform to find a good neighbor at shading time?
+ *
+ * This is because with jittering, our jittered position may end up outside of the grid
+ * or in an empty cell, in which case we want to retry with a differently jittered position
+ * to try and find a good neighbor
+ */
+#define ReGIR_ShadingJitterTries 4
+
  // This block is a security to make sure that we have everything defined otherwise this can lead
  // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
@@ -24,7 +33,7 @@
 #endif
 #endif
 
- /**
+/**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
  *		cannot override a #define statement. This means that if the #define statement are encountered by the compiler,

@@ -38,6 +38,8 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
+// - For the spatial reuse buffer, we don't have to store a whole grid at all, we can just store the index of the cell the reservoir reused from --> massive VRAM saves
+// - Using the indirect index for the spatial output buffer, can we double buffer the initial candidates grid and run the spatial reuse of ReGIR async of the path tracing too?
 // - There is bias in ReSTIR DI
 // - Greedy spatial reuse to retry neighbors if we didn't get a good one
 //			For the greedy neighbor search of restir spatial reuse, maybe reduce progressively the radius ?
