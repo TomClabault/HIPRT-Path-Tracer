@@ -68,6 +68,7 @@ public:
 	 * Returns the total number of cells currently used by the hash grid
 	 */
 	unsigned int get_number_of_cells() const;
+	unsigned int get_number_of_cells_alive() const;
 
 	unsigned int update_cell_alive_count();
 	float get_alive_cells_ratio() const;

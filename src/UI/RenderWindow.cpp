@@ -51,6 +51,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
 // - Test compress cells by only storing the emissive light index instead of all the info
 // - rename hash keys as checksum
 // - Do we want to jitter for canonical samples in the ReGIR shading? Is it not better for variance to always use the canonical samples of our own cells?
