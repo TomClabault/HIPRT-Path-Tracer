@@ -56,20 +56,6 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
-	if( m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
-	{
-		std::cout << "Count after (auto) megakernel: " << m_renderer->get_ReGIR_render_pass()->m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0] << std::endl;
-		unsigned int manual_count = 0;
-		std::vector<unsigned int> cell_alive_list_after = m_renderer->get_ReGIR_render_pass()->m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().download_data();
-		for (unsigned int cell : cell_alive_list_after)
-			if (cell > 0)
-				manual_count++;
-
-		std::vector<unsigned int> cell_hashes = m_renderer->get_ReGIR_render_pass()->m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>().download_data();
-		std::vector<unsigned int> cell_alive_indices = m_renderer->get_ReGIR_render_pass()->m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
-		std::unordered_set<unsigned int> cell_hashes_set;
-	}
-
 	return true;
 }
 

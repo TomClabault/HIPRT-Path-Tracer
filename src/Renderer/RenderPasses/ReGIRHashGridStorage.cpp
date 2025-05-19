@@ -58,24 +58,11 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 	
 	// We don't need a full reset, instead checking if we need to dynamically grow the size of the hash
 	// table to keep the load factor in check
-	printf("Test rehash: %d / %d = %f%%\n", m_hash_cell_data.m_grid_cells_alive_count.download_data()[0], m_total_number_of_cells, m_regir_render_pass->get_alive_cells_ratio() * 100.0f);
-
 	if (m_regir_render_pass->get_alive_cells_ratio() > 0.75f)
 	{
 		unsigned int m_grid_cells_alive = m_regir_render_pass->update_cell_alive_count();
 		if (m_grid_cells_alive > 0)
 		{
-			std::cout << "Rehashing" << std::endl;
-			
-			unsigned int grid_cell_alive_count_before = 0;
-			std::vector<unsigned int> data_alive_before = m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().download_data();
-			for (unsigned int& cell_alive : data_alive_before)
-			if (cell_alive > 0)
-			grid_cell_alive_count_before++;
-			
-			std::cout << "Cell alive count before (auto count): " << m_hash_cell_data.m_grid_cells_alive_count.download_data()[0] << std::endl;
-			std::cout << "Cell alive count before (manual count): " << grid_cell_alive_count_before << std::endl;
-
 			// Increasing the allocation factor 
 			m_hash_grid_current_overallocation_factor *= 1.5f;
 
@@ -98,14 +85,6 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			if (regir_settings.spatial_reuse.do_spatial_reuse)
 				m_spatial_reuse_output_grid_buffer.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
 			m_hash_cell_data = std::move(new_hash_cell_data);
-
-			unsigned int grid_cell_alive_count = 0;
-			std::vector<unsigned int> data_alive = m_hash_cell_data.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().download_data();
-			for (unsigned int& cell_alive : data_alive)
-				if (cell_alive > 0)
-					grid_cell_alive_count++;
-
-			std::cout << "Cell alive count after rehashing (manual count): " << grid_cell_alive_count << " / " << data_alive.size() << std::endl;
 
 			return true;
 		}
