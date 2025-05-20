@@ -157,9 +157,6 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		return;
 
-	std::cout << "Launching spatial" << std::endl;
-
-
 	void* launch_args[] = { &render_data, &m_number_of_cells_alive };
 
 	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
