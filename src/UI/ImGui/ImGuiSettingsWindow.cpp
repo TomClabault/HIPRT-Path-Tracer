@@ -1959,7 +1959,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		if (use_cube_grid)
 		{
 			static float grid_size = regir_settings.grid_fill_grid.grid_resolution.x;
-			if (ImGui::SliderFloat("Grid resolution (X, Y & Z)", &grid_size, 2, 32))
+			if (ImGui::SliderFloat("Grid resolution (X, Y & Z)", &grid_size, 1, 5))
 			{
 				regir_settings.grid_fill_grid.grid_resolution.x = grid_size;
 				regir_settings.grid_fill_grid.grid_resolution.y = grid_size;

@@ -108,7 +108,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
         unsigned int hash_grid_cell_index = number_of_cells_alive == regir_settings.get_total_number_of_cells_per_grid() ? cell_alive_index : regir_settings.hash_cell_data.grid_cells_alive_list[cell_alive_index];
         unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
-
+        
         // Reset grid
         if (render_data.render_settings.need_to_reset)
             regir_settings.reset_reservoirs(hash_grid_cell_index, reservoir_index_in_cell);
@@ -151,8 +151,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             output_reservoir = visibility_reuse(render_data, output_reservoir, hash_grid_cell_index, random_number_generator);
         
         regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera.position, reservoir_index_in_cell);
-        // return;
-        // regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera.position, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

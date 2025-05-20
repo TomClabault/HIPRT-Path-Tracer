@@ -77,6 +77,7 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			// Increasing the allocation factor 
 			m_hash_grid_current_overallocation_factor *= 1.5f;
 
+			// Recomputing the new number of cells with the new allocation factor
 			m_total_number_of_cells = m_current_grid_resolution.x * m_current_grid_resolution.y * m_current_grid_resolution.z * m_hash_grid_current_overallocation_factor;
 
 			// Allocating a larger hash table
@@ -96,6 +97,10 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			if (regir_settings.spatial_reuse.do_spatial_reuse)
 				m_spatial_reuse_output_grid_buffer.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
 			m_hash_cell_data = std::move(new_hash_cell_data);
+
+			// We need to update the cell alive count because there may have possibly been collisions that couldn't be resolved during the rehashing
+			// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different (lower) --> need to update
+			m_regir_render_pass->update_cell_alive_count();
 
 			return true;
 		}

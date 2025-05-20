@@ -117,7 +117,6 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_hash_grid_storage.to_device(render_data);
 	}
 
-
 	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
 
 	if (m_number_of_cells_alive > 0)
@@ -149,6 +148,7 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 	// To make sure one kernel launch still covers all the reservoirs that we have to cover, the kernel code
 	// uses a while loop such that a single thread potentially computes more than 1 reservoir
 	unsigned int nb_threads = hippt::min(m_number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+	
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
@@ -185,10 +185,6 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, ReGI
 	};
 	
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_synchronous(64, 1, old_cell_alive_count, 1, launch_args);
-
-	// We need to re-upload the cell alive count because there may have possibly been severe collisions during the reinsertion
-	// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different
-	m_number_of_cells_alive  = m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data()[0];
 }
 
 void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
