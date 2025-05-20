@@ -31,6 +31,8 @@ struct ReGIRHashGridSoAHost
 	{
 		samples.free();
 		reservoirs.free();
+
+		m_total_number_of_cells = 0;
 	}
 
 	std::size_t get_byte_size() const
