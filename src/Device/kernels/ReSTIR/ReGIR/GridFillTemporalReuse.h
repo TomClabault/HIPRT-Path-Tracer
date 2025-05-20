@@ -93,21 +93,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
     const uint32_t thread_count = gridDim.x * blockDim.x;
 #endif
 
-    uint32_t DEBUG_original_thread_index = thread_index;
     while (thread_index < regir_settings.get_number_of_reservoirs_per_cell() * number_of_cells_alive)
     {
         int reservoir_index = thread_index;
         
         ReGIRReservoir output_reservoir;
+
         float normalization_weight = regir_settings.grid_fill.sample_count_per_cell_reservoir;
-        int reservoir_index_in_cell = reservoir_index % regir_settings.get_number_of_reservoirs_per_cell();
-        int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell();
+        unsigned int reservoir_index_in_cell = reservoir_index % regir_settings.get_number_of_reservoirs_per_cell();
+        unsigned int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell();
         // If all cells are alive, the cell index is straightforward
         //
         // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
         // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
-        int hash_grid_cell_index = number_of_cells_alive == regir_settings.get_total_number_of_cells_per_grid() ? cell_alive_index : regir_settings.hash_cell_data.grid_cells_alive_list[cell_alive_index];
-        int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
+        unsigned int hash_grid_cell_index = number_of_cells_alive == regir_settings.get_total_number_of_cells_per_grid() ? cell_alive_index : regir_settings.hash_cell_data.grid_cells_alive_list[cell_alive_index];
+        unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
 
         // Reset grid
         if (render_data.render_settings.need_to_reset)
@@ -120,7 +120,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
         
         Xorshift32Generator random_number_generator(seed);
-        return;
         
         float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
         float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index);
@@ -151,7 +150,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, hash_grid_cell_index, random_number_generator);
         
-        // regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera.position, reservoir_index_in_cell);
+        regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera.position, reservoir_index_in_cell);
         // return;
         // regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera.position, reservoir_index_in_cell);
 
