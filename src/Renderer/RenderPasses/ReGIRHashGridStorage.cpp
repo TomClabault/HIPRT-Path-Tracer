@@ -38,15 +38,26 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 		m_total_number_of_cells = m_current_grid_resolution.x * m_current_grid_resolution.y * m_current_grid_resolution.z * m_hash_grid_current_overallocation_factor;
 		m_current_grid_resolution = regir_settings.grid_fill_grid.grid_resolution;
 
-		// We need a full reset of the grid
 		m_grid_buffers.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
-		if (regir_settings.spatial_reuse.do_spatial_reuse)
-			// Also resizing the spatial reuse buffer
-			m_spatial_reuse_output_grid_buffer.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
-
 		m_hash_cell_data.resize(m_total_number_of_cells);
 
 		updated = true;
+	}
+
+	if (regir_settings.spatial_reuse.do_spatial_reuse)
+	{
+		if (m_spatial_reuse_output_grid_buffer.m_total_number_of_cells != m_total_number_of_cells)
+		{
+			// Resizing the spatial buffer
+			m_spatial_reuse_output_grid_buffer.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
+
+			updated = true;
+		}
+	}
+	else
+	{
+		if (m_spatial_reuse_output_grid_buffer.m_total_number_of_cells > 0)
+			m_spatial_reuse_output_grid_buffer.free();
 	}
 
 	return updated;
