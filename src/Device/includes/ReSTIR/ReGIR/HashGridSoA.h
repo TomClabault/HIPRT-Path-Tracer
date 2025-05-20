@@ -113,7 +113,7 @@ struct ReGIRHashGridSoADevice
 		return original_world_position + random_offset * get_cell_size() * 0.5f;
 	}
 
-	static constexpr float DEFAULT_GRID_SIZE = 4.5f;
+	static constexpr float DEFAULT_GRID_SIZE = 5.5f;
 	float3 grid_resolution = make_float3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
 
 	// These two SoAs are allocated to hold 'number_cells * number_reservoirs_per_cell'
