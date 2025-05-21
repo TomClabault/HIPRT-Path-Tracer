@@ -1773,7 +1773,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
 
-		if (ImGui::CollapsingHeader("Grid build"))
+		if (ImGui::CollapsingHeader("Grid fill pass"))
 		{
 			ImGui::TreePush("ReGIR grid build tree");
 

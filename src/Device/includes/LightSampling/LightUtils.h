@@ -247,7 +247,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     {
         // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
         bool shading_reservoir_outside_of_grid;
-        ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_non_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera.position,
+        ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_non_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera,
             shading_reservoir_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
         if (shading_reservoir_outside_of_grid)
@@ -284,7 +284,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         //
         // But if we're jittering even for canonical samples, the jittering may end up out of the grid and this is
         // going to end up in no canonical sample since we're out of the grid --> bias non compensated --> biased render
-        ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera.position,
+        ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_canonical_reservoir_for_shading_from_world_pos(shading_point, render_data.current_camera,
             shading_reservoir_outside_of_grid, neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
         if (!shading_reservoir_outside_of_grid)
@@ -320,7 +320,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         // 
         // Jittering removes that guarantee of always having a canonical sample
 		unsigned int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
-            shading_point, render_data.current_camera.position,
+            shading_point, render_data.current_camera,
             is_canonical, 
             neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 

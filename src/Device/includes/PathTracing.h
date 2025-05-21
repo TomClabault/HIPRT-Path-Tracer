@@ -223,7 +223,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
         float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
-        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, render_data.current_camera.position) * (render_data.render_settings.sample_number + 1);
+        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, render_data.current_camera) * (render_data.render_settings.sample_number + 1);
         ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
     }
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION

@@ -6,7 +6,7 @@
 #include "Renderer/GPURenderer.h"
 #include "Scene/Camera.h"
 
-HIPRTCamera Camera::to_hiprt()
+HIPRTCamera Camera::to_hiprt(int render_width, int render_height)
 {
     HIPRTCamera hiprt_cam;
 
@@ -22,6 +22,10 @@ HIPRTCamera Camera::to_hiprt()
 
     glm::vec4 position_glm = glm::vec4(0, 0, 0, 1) * view_matrix_inv;
     hiprt_cam.position = make_float3(position_glm.x, position_glm.y, position_glm.z);
+
+    hiprt_cam.vertical_fov = vertical_fov;
+    hiprt_cam.sensor_width = render_width;
+    hiprt_cam.sensor_height = render_height;
 
     hiprt_cam.do_jittering = do_jittering;
 

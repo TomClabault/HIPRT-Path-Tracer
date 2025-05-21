@@ -33,7 +33,7 @@ struct Camera
     // Note that this may be a little scuffed for scenes that are very elongated.
     static constexpr float SCENE_CROSS_TIME = 5.0f;
 
-    HIPRTCamera to_hiprt();
+    HIPRTCamera to_hiprt(int render_width, int render_height);
     glm::mat4x4 get_view_matrix() const;
 
     void set_aspect(float new_aspect);

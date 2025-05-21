@@ -42,10 +42,10 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Uniform light sampling for direct lighting estimation + MIS
 	- Power-proportional light sampling
 	- ReGIR [\[Boksansky et al., 2021\]](https://cwyman.org/papers/rtg2-manyLightReGIR.pdf) augmented with:
-		- MIS for specular surfaces
+		- Approximated MIS for specular surfaces
 		- Spatial reuse
 		- Visibility reuse
-		- Spatial hashing
+		- Hash grid
 - Next-event estimation strategies (built on-top of base techniques):
 	- ReSTIR DI
 	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
