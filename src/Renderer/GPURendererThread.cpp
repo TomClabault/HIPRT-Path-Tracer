@@ -333,8 +333,8 @@ void GPURendererThread::render_debug_kernel()
 	HIPRTRenderData render_data_copy = m_renderer->get_render_data();
 
 	// Updating the previous and current camera
-	render_data_copy.current_camera = m_renderer->m_camera.to_hiprt();
-	render_data_copy.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt();
+	render_data_copy.current_camera = m_renderer->m_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
+	render_data_copy.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 
 	launch_debug_kernel(render_data_copy);
 
@@ -386,8 +386,8 @@ void GPURendererThread::render_path_tracing()
 	// the asynchronous ImGui UI which may also modifiy the render data
 	HIPRTRenderData render_data_copy = m_renderer->get_render_data();
 	// Updating the previous and current camera
-	render_data_copy.current_camera = m_renderer->m_camera.to_hiprt();
-	render_data_copy.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt();
+	render_data_copy.current_camera = m_renderer->m_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
+	render_data_copy.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 
 	for (int i = 1; i <= m_render_data->render_settings.samples_per_frame; i++)
 	{

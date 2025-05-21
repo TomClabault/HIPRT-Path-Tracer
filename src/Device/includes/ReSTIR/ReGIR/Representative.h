@@ -39,14 +39,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int ReGIR_get_cell_primitive_index(const HIPRTRen
  * Otherwise:
  *		- this function always stores the given pixel index in the grid cell corresponding to the given shading point
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 camera_position, float3 shading_normal, int primitive_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
 {
 	if (DirectLightSamplingBaseStrategy != LSS_BASE_REGIR)
 		return;
 	else if (primitive_index == -1)
 		return;
 
-	render_data.render_settings.regir_settings.insert_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, camera_position, shading_normal, primitive_index);
+	render_data.render_settings.regir_settings.insert_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, current_camera, shading_normal, primitive_index);
 }
 
 #endif

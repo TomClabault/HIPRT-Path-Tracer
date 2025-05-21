@@ -10,6 +10,7 @@
 #include "Device/includes/ReSTIR/ReGIR/ShadingSettings.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
 
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 
 struct ReGIRHashGridSoADevice
@@ -26,14 +27,14 @@ struct ReGIRHashGridSoADevice
 		samples.store_sample(reservoir_index_in_grid, ReGIRReservoir().sample);
 	}
 
-	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, float3 camera_position, int reservoir_index_in_cell, int grid_index = -1)
+	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1)
 	{
 		if (grid_index != -1)
 			// TODO fix this, we would need the number of reservoirs per grid in here but we don't have it
 			return;
 
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
+		unsigned int hash_grid_cell_index = hash(world_position, current_camera, hash_key);
 		if (!resolve_collision(hash_cell_data, hash_grid_cell_index, hash_key))
 			return;
 
@@ -42,14 +43,14 @@ struct ReGIRHashGridSoADevice
 		store_reservoir_and_sample_opt_from_index_in_grid(reservoir_index_in_grid, reservoir, grid_index);
 	}
 
-	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, float3 camera_position, int reservoir_index_in_cell, int grid_index = -1, bool* out_invalid_sample = nullptr) const
+	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1, bool* out_invalid_sample = nullptr) const
 	{
 		if (grid_index != -1)
 			// TODO fix this, we would need the number of reservoirs per grid in here but we don't have it
 			return ReGIRReservoir();
 
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
+		unsigned int hash_grid_cell_index = hash(world_position, current_camera, hash_key);
 		if (!resolve_collision(hash_cell_data, hash_grid_cell_index, hash_key) || !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
 		{
 			if (out_invalid_sample)
@@ -82,18 +83,18 @@ struct ReGIRHashGridSoADevice
 		return reservoir;
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(float3 world_position, float3 camera_position) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(float3 world_position, const HIPRTCamera& current_camera) const
 	{
 		unsigned int hash_key;
-		unsigned int hash_cell_index = hash(world_position, camera_position, hash_key);
+		unsigned int hash_cell_index = hash(world_position, current_camera, hash_key);
 
 		return hash_cell_index;
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, float3 camera_position) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera) const
 	{
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash(world_position, camera_position, hash_key);
+		unsigned int hash_grid_cell_index = hash(world_position, current_camera, hash_key);
 
 		if (!resolve_collision(hash_cell_data, hash_grid_cell_index, hash_key))
 			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
@@ -101,28 +102,12 @@ struct ReGIRHashGridSoADevice
 			return hash_grid_cell_index;
 	}
 
-	HIPRT_DEVICE float3 get_cell_size(float3 world_position = make_float3(0, 0, 0), float3 camera_position = make_float3(0, 0, 0)) const
-	{
-		return make_float3(1.0f / grid_resolution.x, 1.0f / grid_resolution.y, 1.0f / grid_resolution.z);
-	}
-
-	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, Xorshift32Generator& rng) const
+	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng) const
 	{
 		float3 random_offset = make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f);
 
-		return original_world_position + random_offset * get_cell_size() * 0.5f;
+		return original_world_position + random_offset * compute_adaptive_cell_size(original_world_position, current_camera) * 0.5f;
 	}
-
-	static constexpr float DEFAULT_GRID_SIZE = 2.5f;
-	float3 grid_resolution = make_float3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
-
-	// These two SoAs are allocated to hold 'number_cells * number_reservoirs_per_cell'
-	// So for a given 'hash_grid_cell_index', the cell contains reservoirs and samples going from 
-	// reservoirs[hash_grid_cell_index * number_reservoirs_per_cell] to reservoirs[cell_index * number_reservoirs_per_cell + number_reservoirs_per_cell[
-	ReGIRReservoirSoADevice reservoirs;
-	ReGIRSampleSoADevice samples;
-
-	unsigned int m_total_number_of_cells = 0;
 
 	/**
 	 * PCG for the first hash function
@@ -165,18 +150,34 @@ struct ReGIRHashGridSoADevice
 	}
 
 	/**
+	 * Reference: [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
+	 */
+	HIPRT_DEVICE float compute_adaptive_cell_size(float3 world_position, const HIPRTCamera& current_camera) const
+	{
+		float3 camera_position = current_camera.position;
+		float target_projected_size = current_camera.sensor_width * ReGIRHashGridSoADevice::GRID_CELL_TARGET_PROJECTED_SIZE_RATIO;
+		float min_cell_size = ReGIRHashGridSoADevice::GRID_CELL_MIN_SIZE;
+		float vertical_fov = current_camera.vertical_fov;
+		int width = current_camera.sensor_width;
+		int height = current_camera.sensor_height;
+
+		float cell_size_step = hippt::length(world_position - camera_position) * tanf(target_projected_size * vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
+		float log_step = floorf(log2f(cell_size_step / min_cell_size));
+
+		return min_cell_size * exp2f(log_step);
+	}
+
+	/**
 	 * Returns the hash cell index of the given world position and camera position. Does not resolve collisions.
 	 * The hash key for resolving collision is given in 'out_hash_key'
 	 */
-	HIPRT_DEVICE unsigned int hash(float3 world_position, float3 camera_position, unsigned int& out_hash_key) const
+	HIPRT_DEVICE unsigned int hash(float3 world_position, const HIPRTCamera& current_camera, unsigned int& out_hash_key) const
 	{
-		float3 relative_to_camera = world_position;// -camera_position;
+		float cell_size = compute_adaptive_cell_size(world_position, current_camera);
 
-		float cell_size = 1.0f / grid_resolution.x;
-
-		unsigned int grid_coord_x = static_cast<int>(relative_to_camera.x * grid_resolution.x);
-		unsigned int grid_coord_y = static_cast<int>(relative_to_camera.y * grid_resolution.y);
-		unsigned int grid_coord_z = static_cast<int>(relative_to_camera.z * grid_resolution.z);
+		unsigned int grid_coord_x = static_cast<int>(floorf(world_position.x / cell_size));
+		unsigned int grid_coord_y = static_cast<int>(floorf(world_position.y / cell_size));
+		unsigned int grid_coord_z = static_cast<int>(floorf(world_position.z / cell_size));
 
 		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
 		out_hash_key = hippt::max(1u, h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x)))));
@@ -308,6 +309,20 @@ struct ReGIRHashGridSoADevice
 			// This is already our hash, no collision
 			return true;
 	}
+
+	static constexpr float DEFAULT_GRID_SIZE = 2.5f;
+	float3 grid_resolution = make_float3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
+
+	static constexpr float GRID_CELL_MIN_SIZE = 1.0f / 10.0f;
+	static constexpr float GRID_CELL_TARGET_PROJECTED_SIZE_RATIO = 0.02f;
+
+	// These two SoAs are allocated to hold 'number_cells * number_reservoirs_per_cell'
+	// So for a given 'hash_grid_cell_index', the cell contains reservoirs and samples going from 
+	// reservoirs[hash_grid_cell_index * number_reservoirs_per_cell] to reservoirs[cell_index * number_reservoirs_per_cell + number_reservoirs_per_cell[
+	ReGIRReservoirSoADevice reservoirs;
+	ReGIRSampleSoADevice samples;
+
+	unsigned int m_total_number_of_cells = 0;
 	
 private:
 	HIPRT_DEVICE void store_reservoir_and_sample_opt_from_index_in_grid(int reservoir_index_in_grid, const ReGIRReservoir& reservoir, int grid_index = -1)

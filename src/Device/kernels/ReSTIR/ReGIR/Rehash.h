@@ -15,7 +15,8 @@
  * of the old (smaller) hash table into the new (larger) hash table
  */
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Rehash(float3 camera_position,
+GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Rehash(
+    HIPRTCamera current_camera,
 
     ReGIRHashGridSoADevice new_hash_grid, ReGIRHashCellDataSoADevice new_hash_cell_data,
 
@@ -24,7 +25,7 @@ GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Rehash(float3 camera_position,
     unsigned int old_cell_count)
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
-    float3 camera_position,
+    HIPRTCamera current_camera,
 
     ReGIRHashGridSoADevice new_hash_grid, ReGIRHashCellDataSoADevice new_hash_cell_data,
 
@@ -51,7 +52,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
 
     ReGIRSettings::insert_hash_cell_data_static(
         new_hash_grid, new_hash_cell_data,
-        world_position, camera_position, shading_normal, primitive_index);
+        world_position, current_camera, shading_normal, primitive_index);
 }
 
 #endif

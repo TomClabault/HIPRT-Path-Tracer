@@ -20,6 +20,9 @@ struct HIPRTCamera
     float4x4 view_projection;
     float3 position;
 
+    float vertical_fov;
+    int sensor_width, sensor_height;
+
     bool do_jittering = true;
 
     /**

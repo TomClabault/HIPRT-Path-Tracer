@@ -464,7 +464,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 void CPURenderer::set_camera(Camera& camera)
 {
     m_camera = camera;
-    m_render_data.current_camera = camera.to_hiprt();
+    m_render_data.current_camera = camera.to_hiprt(m_resolution.x, m_resolution.y);
 }
 
 HIPRTRenderData& CPURenderer::get_render_data()
@@ -554,7 +554,7 @@ void CPURenderer::post_sample_update(int frame_number)
 void CPURenderer::update_render_data(int sample)
 {
     m_render_data.prev_camera = m_render_data.current_camera;
-    m_render_data.current_camera = m_camera.to_hiprt();
+    m_render_data.current_camera = m_camera.to_hiprt(m_resolution.x, m_resolution.y);
 }
 
 void CPURenderer::reset()

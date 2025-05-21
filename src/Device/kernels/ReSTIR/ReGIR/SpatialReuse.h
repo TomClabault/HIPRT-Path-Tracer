@@ -33,9 +33,9 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
         float3 offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
         float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
         float3 offset = make_float3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
-        float3 point_in_neighbor_cell = point_in_cell + offset * regir_settings.get_cell_size(point_in_cell);
+        float3 point_in_neighbor_cell = point_in_cell + offset * regir_settings.get_cell_size(point_in_cell, render_data.current_camera);
         
-        neighbor_hash_grid_cell_index_in_grid = regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(point_in_neighbor_cell, render_data.current_camera.position);
+        neighbor_hash_grid_cell_index_in_grid = regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(point_in_neighbor_cell, render_data.current_camera);
         if (neighbor_hash_grid_cell_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
             // Neighbor is outside of the grid
             neighbor_invalid = true;
@@ -102,10 +102,10 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             ReGIRReservoir neighbor_reservoir;
             if (regir_settings.temporal_reuse.do_temporal_reuse)
                 // Reading from the output of the temporal reuse
-                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(representative_point, render_data.current_camera.position, random_reservoir_index_in_cell);
+                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(representative_point, render_data.current_camera, random_reservoir_index_in_cell);
             else
                 // No temporal reuse, reading from the output of the grid fill buffer
-                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(representative_point, render_data.current_camera.position, random_reservoir_index_in_cell);
+                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(representative_point, render_data.current_camera, random_reservoir_index_in_cell);
 
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
@@ -256,7 +256,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_spatial_reservoir_opt(ReGIRReservoir(), point_in_cell, render_data.current_camera.position, reservoir_index_in_cell);
+            regir_settings.store_spatial_reservoir_opt(ReGIRReservoir(), point_in_cell, render_data.current_camera, reservoir_index_in_cell);
             
             return;
         }
@@ -282,7 +282,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
         output_reservoir.M = 1;
         output_reservoir.finalize_resampling(valid_neighbor_count);
 
-        regir_settings.store_spatial_reservoir_opt(output_reservoir, point_in_cell, render_data.current_camera.position, reservoir_index_in_cell);
+        regir_settings.store_spatial_reservoir_opt(output_reservoir, point_in_cell, render_data.current_camera, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

@@ -175,7 +175,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, ReGI
 	// The old number of cells alive is the number of cells that we're going to have to rehash
 	
 	void* launch_args[] = { 
-		&render_data.current_camera.position,
+		&render_data.current_camera,
 		
 		&new_hash_grid, &new_hash_cell_data,
 		
