@@ -1951,37 +1951,15 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePop();
 		}
 			
-
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		bool size_changed = false;
-		static bool use_cube_grid = true;
-		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
-		if (use_cube_grid)
-		{
-			static float grid_size = regir_settings.grid_fill_grid.grid_resolution.x;
-			if (ImGui::SliderFloat("Grid resolution (X, Y & Z)", &grid_size, 1, 5))
-			{
-				regir_settings.grid_fill_grid.grid_resolution.x = grid_size;
-				regir_settings.grid_fill_grid.grid_resolution.y = grid_size;
-				regir_settings.grid_fill_grid.grid_resolution.z = grid_size;
-
-				size_changed = true;
-			}
-		}
-		else
-		{
-			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-			size_changed |= ImGui::SliderFloat("##Grid_sizeX", &regir_settings.grid_fill_grid.grid_resolution.x, 2, 32);
-			ImGui::SameLine();
-			size_changed |= ImGui::SliderFloat("##Grid_sizeY", &regir_settings.grid_fill_grid.grid_resolution.y, 2, 32);
-			ImGui::SameLine();
-			size_changed |= ImGui::SliderFloat("Grid size (X/Y/Z)", &regir_settings.grid_fill_grid.grid_resolution.z, 2, 32);
-
-			// Back to default size
-			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-		}
-		if (size_changed)
+		if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.grid_fill_grid.m_grid_cell_target_projected_size_ratio, 25, 250))
 			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
+			"This has the effect of making the grid cells larger in the distance so that the projected size stays approximately constant.");
+
+		if (ImGui::SliderFloat("Grid cell minimum size", &regir_settings.grid_fill_grid.m_grid_cell_min_size, 0.005, 0.5))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
 
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4200,39 +4178,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::Checkbox("Debug only one center cell", &render_settings.regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL))
 			m_render_window->set_render_dirty(true);
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
-
-		bool size_changed = false;
-		static bool use_cube_grid = true;
-		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
-		ImGui::Checkbox("Use cubic grid", &use_cube_grid);
-		if (use_cube_grid)
-		{
-			static float grid_size = regir_settings.grid_fill_grid.grid_resolution.x;
-			if (ImGui::SliderFloat("Grid size (X, Y & Z)", &grid_size, 2, 30))
-			{
-				regir_settings.grid_fill_grid.grid_resolution.x = grid_size;
-				regir_settings.grid_fill_grid.grid_resolution.y = grid_size;
-				regir_settings.grid_fill_grid.grid_resolution.z = grid_size;
-
-				size_changed = true;
-			}
-		}
-		else
-		{
-			ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-			size_changed |= ImGui::SliderFloat("##Grid_sizeX", &regir_settings.grid_fill_grid.grid_resolution.x, 2, 30);
-			ImGui::SameLine();
-			size_changed |= ImGui::SliderFloat("##Grid_sizeY", &regir_settings.grid_fill_grid.grid_resolution.y, 2, 30);
-			ImGui::SameLine();
-			size_changed |= ImGui::SliderFloat("Grid size (X/Y/Z)", &regir_settings.grid_fill_grid.grid_resolution.z, 2, 30);
-
-			// Back to default size
-			ImGui::PopItemWidth();
-		}
-		if (size_changed)
-		{
-			m_render_window->set_render_dirty(true);
-		}
 
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

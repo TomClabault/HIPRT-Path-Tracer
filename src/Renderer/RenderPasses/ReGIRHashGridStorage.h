@@ -17,6 +17,8 @@ class ReGIRRenderPass;
 class ReGIRHashGridStorage
 {
 public:
+	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT = 10000;
+
 	void set_regir_render_pass(ReGIRRenderPass* regir_render_pass);
 
 	unsigned int get_total_number_of_cells() const;
@@ -41,12 +43,10 @@ private:
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data;
 
-	// This member variable is used to track the last resolution of the grid such that when
-	// the grid is resized through the user interface, we detect the change and we can resize the grid
-	float3 m_current_grid_resolution = make_float3(ReGIRHashGridSoADevice::DEFAULT_GRID_SIZE, ReGIRHashGridSoADevice::DEFAULT_GRID_SIZE, ReGIRHashGridSoADevice::DEFAULT_GRID_SIZE);
+	float m_current_grid_min_cell_size = 0.0f;
+	float m_grid_cell_target_projected_size_ratio = 0.0f;
 
 	unsigned int m_total_number_of_cells = 0;
-	unsigned int m_hash_grid_current_overallocation_factor = 10;
 };
 
 #endif
