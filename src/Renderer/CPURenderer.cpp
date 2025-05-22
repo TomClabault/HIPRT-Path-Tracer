@@ -97,7 +97,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_pixel_squared_luminance.resize(width * height, 0.0f);
 
 
-    unsigned int new_cell_count = hippt::max((unsigned int)(m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution.x * m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution.y * m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution.z), 1u);
+    unsigned int new_cell_count = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT;
     // ReGIR hash grid Overallocation factor
     new_cell_count *= 50;
     m_regir_state.grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
@@ -322,8 +322,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-    m_render_data.render_settings.regir_settings.spatial_grid = m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
-    m_render_data.render_settings.regir_settings.grid_fill_grid = m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
+    m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.spatial_grid);
+    m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.grid_fill_grid);
     m_render_data.render_settings.regir_settings.hash_cell_data = m_regir_state.hash_cell_data.to_device();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();

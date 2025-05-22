@@ -54,10 +54,8 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
-// - Test compress cells by only storing the emissive light index instead of all the info
+// - Test compress cells by only storing the emissive light index instead of all the info --> Is it going to be bad on the performance?
 // - rename hash keys as checksum
-// - Do we want to jitter for canonical samples in the ReGIR shading? Is it not better for variance to always use the canonical samples of our own cells?
-//		- Do jitter + retries and fallback on center cell
 // - Update hash cell data point normal seems to be very expensive
 // - We may have an issue with updating the representative points on the fly with more than 1 bounce because the representative points are going to change *during* the path tracing and so the MIS weights with visibility rays and so on are going to be computed with the updated rep points even though the reservoirs were produced with the old rep points
 // - Deduplicate hash grid cell idnex calculations in fetch reservoirs functions mainly for performance reasons
@@ -199,15 +197,6 @@ extern ImGuiLogger g_imgui_logger;
 // - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
-// TODO Code Organization:
-// - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
-// - do not pass so many arguments to kernels everytime: make a "KernelArguments" folder in the source files with one file that contains the arguments needed for a kernel: ReSTIR_DI_InitialCandidatesArguments, ReSTIR_DI_SpatialReuseArguments, ...
-// - denoiser albedo and normals still useful now that we have the GBuffer?
-// - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
-// - use a proper GLTF loader because ASSIMP isn't good, poor support of the GLTF spec
-
-
-
 // TODO Features:
 // Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
 //		- And maybe we can spatial reuse on that
@@ -224,6 +213,7 @@ extern ImGuiLogger g_imgui_logger;
 
  */
  // - Eta scaling for russian roulette refractions
+ // - Better adaptive sampling error metrics: https://theses.hal.science/tel-03675200v1/document, section 10.1.1, Heitz et al 2018 + Rigau et al 2003
  // - Projected solid angle light sampling https://momentsingraphics.de/ToyRenderer4RayTracing.html
  // - Disable back facing lights for performance because most of those lights, for correct meshes, are going to be occluded
  //		- Add an option to re-enable manually back facing lights in the material

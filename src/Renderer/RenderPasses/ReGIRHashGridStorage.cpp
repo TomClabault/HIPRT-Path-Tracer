@@ -28,15 +28,17 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 	bool grid_not_allocated = m_total_number_of_cells == 0;
-	bool grid_res_changed = m_current_grid_resolution.x != regir_settings.grid_fill_grid.grid_resolution.x ||
-		m_current_grid_resolution.y != regir_settings.grid_fill_grid.grid_resolution.y ||
-		m_current_grid_resolution.z != regir_settings.grid_fill_grid.grid_resolution.z;
+	bool grid_res_changed = m_current_grid_min_cell_size != regir_settings.grid_fill_grid.m_grid_cell_min_size ||
+		m_grid_cell_target_projected_size_ratio != regir_settings.grid_fill_grid.m_grid_cell_target_projected_size_ratio;
 	bool reservoirs_per_cell_changed = regir_settings.get_number_of_reservoirs_per_cell() != m_grid_buffers.m_reservoirs_per_cell;
 
 	if (grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed)
 	{
-		m_total_number_of_cells = m_current_grid_resolution.x * m_current_grid_resolution.y * m_current_grid_resolution.z * m_hash_grid_current_overallocation_factor;
-		m_current_grid_resolution = regir_settings.grid_fill_grid.grid_resolution;
+		if (grid_not_allocated)
+			m_total_number_of_cells = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT; // Default grid size
+
+		m_current_grid_min_cell_size = regir_settings.grid_fill_grid.m_grid_cell_min_size;
+		m_grid_cell_target_projected_size_ratio = regir_settings.grid_fill_grid.m_grid_cell_target_projected_size_ratio;
 
 		m_grid_buffers.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
 		m_hash_cell_data.resize(m_total_number_of_cells);
@@ -74,11 +76,8 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 		unsigned int m_grid_cells_alive = m_regir_render_pass->update_cell_alive_count();
 		if (m_grid_cells_alive > 0)
 		{
-			// Increasing the allocation factor 
-			m_hash_grid_current_overallocation_factor *= 1.5f;
-
-			// Recomputing the new number of cells with the new allocation factor
-			m_total_number_of_cells = m_current_grid_resolution.x * m_current_grid_resolution.y * m_current_grid_resolution.z * m_hash_grid_current_overallocation_factor;
+			// Increasing the number of cells
+			m_total_number_of_cells *= 1.5;
 
 			// Allocating a larger hash table
 			ReGIRHashGridSoAHost<OrochiBuffer> new_hash_grid;
@@ -87,7 +86,9 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			ReGIRHashCellDataSoAHost<OrochiBuffer> new_hash_cell_data;
 			new_hash_cell_data.resize(m_total_number_of_cells);
 
-			ReGIRHashGridSoADevice new_hash_grid_device = new_hash_grid.to_device(m_current_grid_resolution);
+			ReGIRHashGridSoADevice new_hash_grid_device;
+			new_hash_grid.to_device(new_hash_grid_device);
+
 			ReGIRHashCellDataSoADevice new_hash_cell_data_device = new_hash_cell_data.to_device();
 
 			// For each cell alive, we're going to insert it in the new, larger, hash table, with a GPU kernel to do that
@@ -150,9 +151,9 @@ bool ReGIRHashGridStorage::free()
 
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
-	render_data.render_settings.regir_settings.grid_fill_grid = m_grid_buffers.to_device(render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
+	m_grid_buffers.to_device(render_data.render_settings.regir_settings.grid_fill_grid);
 	if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-		render_data.render_settings.regir_settings.spatial_grid = m_spatial_reuse_output_grid_buffer.to_device(render_data.render_settings.regir_settings.grid_fill_grid.grid_resolution);
+		m_spatial_reuse_output_grid_buffer.to_device(render_data.render_settings.regir_settings.spatial_grid);
 
 	render_data.render_settings.regir_settings.hash_cell_data = m_hash_cell_data.to_device();
 }

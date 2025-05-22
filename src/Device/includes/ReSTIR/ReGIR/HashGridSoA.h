@@ -155,8 +155,8 @@ struct ReGIRHashGridSoADevice
 	HIPRT_DEVICE float compute_adaptive_cell_size(float3 world_position, const HIPRTCamera& current_camera) const
 	{
 		float3 camera_position = current_camera.position;
-		float target_projected_size = current_camera.sensor_width * ReGIRHashGridSoADevice::GRID_CELL_TARGET_PROJECTED_SIZE_RATIO;
-		float min_cell_size = ReGIRHashGridSoADevice::GRID_CELL_MIN_SIZE;
+		float target_projected_size = m_grid_cell_target_projected_size_ratio;// current_camera.sensor_width* m_grid_cell_target_projected_size_ratio;
+		float min_cell_size = m_grid_cell_min_size;
 		float vertical_fov = current_camera.vertical_fov;
 		int width = current_camera.sensor_width;
 		int height = current_camera.sensor_height;
@@ -164,7 +164,7 @@ struct ReGIRHashGridSoADevice
 		float cell_size_step = hippt::length(world_position - camera_position) * tanf(target_projected_size * vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
 		float log_step = floorf(log2f(cell_size_step / min_cell_size));
 
-		return min_cell_size * exp2f(log_step);
+		return hippt::max(min_cell_size, min_cell_size * exp2f(log_step));
 	}
 
 	/**
@@ -311,10 +311,6 @@ struct ReGIRHashGridSoADevice
 	}
 
 	static constexpr float DEFAULT_GRID_SIZE = 2.5f;
-	float3 grid_resolution = make_float3(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE);
-
-	static constexpr float GRID_CELL_MIN_SIZE = 1.0f / 10.0f;
-	static constexpr float GRID_CELL_TARGET_PROJECTED_SIZE_RATIO = 0.02f;
 
 	// These two SoAs are allocated to hold 'number_cells * number_reservoirs_per_cell'
 	// So for a given 'hash_grid_cell_index', the cell contains reservoirs and samples going from 
@@ -323,6 +319,9 @@ struct ReGIRHashGridSoADevice
 	ReGIRSampleSoADevice samples;
 
 	unsigned int m_total_number_of_cells = 0;
+
+	float m_grid_cell_min_size = 1.0f / 10.0f;
+	float m_grid_cell_target_projected_size_ratio = 25.0f;
 	
 private:
 	HIPRT_DEVICE void store_reservoir_and_sample_opt_from_index_in_grid(int reservoir_index_in_grid, const ReGIRReservoir& reservoir, int grid_index = -1)
