@@ -301,6 +301,13 @@ struct ReGIRSettings
 		unsigned int canonical_offset = getCanonicalReservoir ? grid_fill.get_non_canonical_reservoir_count_per_cell() : 0;
 		unsigned int reservoir_index_in_grid = grid_cell_index * get_number_of_reservoirs_per_cell() + canonical_offset + reservoir_index_in_cell;
 
+		if (reservoir_index_in_grid >= grid_fill_grid.reservoirs.number_of_reservoirs_per_cell * grid_fill_grid.m_total_number_of_cells)
+		{
+			printf("Too big: %u by:\n\t'index in cell' = %u\n\tcano offset: %u\n\tis cano: %u\n\n", reservoir_index_in_grid, reservoir_index_in_cell, canonical_offset, getCanonicalReservoir ? 1u : 0u);
+
+			return ReGIRReservoir();
+		}
+
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
 			return spatial_grid.read_full_reservoir(hash_cell_data, reservoir_index_in_grid);
