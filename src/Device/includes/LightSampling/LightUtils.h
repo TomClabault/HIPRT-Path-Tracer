@@ -281,21 +281,27 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     {
         // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
         unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(shading_point, render_data.current_camera, neighbor_rng);
-        ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(neighbor_grid_cell_index, neighbor_rng);
 
-        // Adding visibility in the canonical sample target function's if we have visibility reuse
-        // (or visibility in the grid fill target function) because otherwise this canonical sample
-        // will kill all the benefits of the visibility reuse
-        //
-        // This is pretty much necessary for good visibility reuse quality
-        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility>(render_data,
-            shading_point, view_direction, shading_normal, geometric_normal,
-            last_hit_primitive_index, ray_payload, canonical_reservoir,
-            random_number_generator);
+        // Fetching the center cell should never fail because the center cell always exists but it may actually fail in case of collisions
+        // that cannot be resolved
+        if (neighbor_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+        {
+            ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(neighbor_grid_cell_index, neighbor_rng);
 
-        float mis_weight = 1.0f;
-        if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_reservoir, random_number_generator))
-            selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors;
+            // Adding visibility in the canonical sample target function's if we have visibility reuse
+            // (or visibility in the grid fill target function) because otherwise this canonical sample
+            // will kill all the benefits of the visibility reuse
+            //
+            // This is pretty much necessary for good visibility reuse quality
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility>(render_data,
+                shading_point, view_direction, shading_normal, geometric_normal,
+                last_hit_primitive_index, ray_payload, canonical_reservoir,
+                random_number_generator);
+
+            float mis_weight = 1.0f;
+            if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_reservoir, random_number_generator))
+                selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors;
+        }
     }
 
     if (out_reservoir.weight_sum == 0.0f || shading_point_outside_of_grid)

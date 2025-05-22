@@ -68,6 +68,13 @@ struct ReGIRHashGridSoADevice
 
 	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashCellDataSoADevice& hash_cell_data, unsigned int reservoir_index_in_grid) const
 	{
+		// if (reservoir_index_in_grid >= reservoirs.number_of_reservoirs_per_cell * m_total_number_of_cells)
+		// {
+		// 	printf("Too big: %u by 'index in cell' = %u\n", reservoir_index_in_grid, reservoir_index_in_cell);
+
+		// 	return ReGIRReservoir();
+		// }
+
 		if (reservoir_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 			return ReGIRReservoir();
 
@@ -93,6 +100,7 @@ struct ReGIRHashGridSoADevice
 	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1, bool* out_invalid_sample = nullptr) const
 	{
 		unsigned int reservoir_index_in_grid = get_reservoir_index_in_grid(hash_cell_data, world_position, current_camera, reservoir_index_in_cell, grid_index);
+
 		if (out_invalid_sample)
 		{
 			if (reservoir_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
