@@ -66,13 +66,13 @@ struct ReGIRTemporalReuseSettings
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = false;
+	bool do_spatial_reuse = true;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = true;
 
-	int spatial_neighbor_count = 8;
-	int reuse_per_neighbor_count = 1;
+	int spatial_neighbor_count = 4;
+	int reuse_per_neighbor_count = 4;
 	// When picking a random cell in the neighborhood for reuse, if that
 	// cell is out of the grid or if that cell is not alive etc..., we're
 	// going to retry another cell this many times
@@ -158,53 +158,52 @@ struct ReGIRSettings
 	 * If 'out_invalid_sample' is set to true, then the given shading point (+ the jittering) was outside of the grid
 	 * and no reservoir has been gathered
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_non_canonical_reservoir_for_shading_from_world_pos(float3 world_position, const HIPRTCamera& current_camera, bool& out_invalid_sample, Xorshift32Generator& rng, bool jitter = false) const
+	template <bool getCanonicalReservoir>
+	HIPRT_DEVICE ReGIRReservoir get_reservoir_for_shading_from_world_pos(float3 world_position, const HIPRTCamera& current_camera, bool& out_invalid_sample, Xorshift32Generator& rng, bool jitter = false) const
 	{	
-		// This is just constructing a function pointer to pass to the function below for
-		// code factorization
-		auto get_reservoir_lambda = [this](float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample)
+		if constexpr (getCanonicalReservoir)
 		{
-			return this->get_random_cell_non_canonical_reservoir(world_position, current_camera, rng, out_invalid_sample);
-		};
-
-		return internal_get_reservoirs_with_retries<ReGIR_ShadingJitterTries>(world_position, current_camera, out_invalid_sample, rng, jitter, get_reservoir_lambda);
-	}
-
-	HIPRT_DEVICE ReGIRReservoir get_canonical_reservoir_for_shading_from_world_pos(float3 world_position, const HIPRTCamera& current_camera, bool& out_invalid_sample, Xorshift32Generator& rng, bool jitter = false) const
-	{
-		// This is just constructing a function pointer to pass to the function below for
-		// code factorization
-		auto get_reservoir_lambda = [this](float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample)
-		{
-			return this->get_random_cell_canonical_reservoir(world_position, current_camera, rng, out_invalid_sample);
-		};
-
-		ReGIRReservoir reservoir = internal_get_reservoirs_with_retries<ReGIR_ShadingJitterTries>(world_position, current_camera, out_invalid_sample, rng, jitter, get_reservoir_lambda);
-		if (out_invalid_sample)
-			// We couldn't find a canonical neighbor with jittering, directly returning the center cell instead
-			//
-			// Only 1 retry + no jittering is guaranteed to just return the center cell
-			return internal_get_reservoirs_with_retries<1>(world_position, current_camera, out_invalid_sample, rng, false, get_reservoir_lambda);
+			// This is just constructing a function pointer to pass to the function below for
+			// code factorization
+			auto get_reservoir_lambda = [this](float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample)
+			{
+				return this->get_random_cell_canonical_reservoir(world_position, current_camera, rng, out_invalid_sample);
+			};
+	
+			ReGIRReservoir reservoir = internal_get_reservoirs_with_retries<ReGIR_ShadingJitterTries>(world_position, current_camera, out_invalid_sample, rng, jitter, get_reservoir_lambda);
+			if (out_invalid_sample)
+				// We couldn't find a canonical neighbor with jittering, directly returning the center cell instead
+				//
+				// Only 1 retry + no jittering is guaranteed to just return a reservoir from the center cell
+				return internal_get_reservoirs_with_retries<1>(world_position, current_camera, out_invalid_sample, rng, false, get_reservoir_lambda);
+			else
+				// We could find a canonical reservoir in the neighborhood, all good
+				return reservoir;
+		}
 		else
-			// We could find a canonical reservoir in the neighborhood, all good
-			return reservoir;
+		{
+			// This is just constructing a function pointer to pass to the function below for
+			// code factorization
+			auto get_reservoir_lambda = [this](float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample)
+			{
+				return this->get_random_cell_non_canonical_reservoir(world_position, current_camera, rng, out_invalid_sample);
+			};
+
+			return internal_get_reservoirs_with_retries<ReGIR_ShadingJitterTries>(world_position, current_camera, out_invalid_sample, rng, jitter, get_reservoir_lambda);
+		}
 	}
 
 	HIPRT_DEVICE unsigned int get_neighbor_replay_hash_grid_cell_index_for_shading(float3 shading_point, const HIPRTCamera& current_camera, bool replay_canonical, Xorshift32Generator& rng, bool jitter = false) const
 	{
-		unsigned char retry = 0;
+		unsigned int neighbor_cell_index;
+		if (replay_canonical)
+            neighbor_cell_index = find_valid_jittered_neighbor_cell_index<true>(shading_point, current_camera, rng);
+        else
+            neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, current_camera, rng);
 
-		unsigned int hash_grid_cell_index;
-
-		do
+		if (neighbor_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 		{
-			float3 jittered = shading_point;
-			if (jitter)
-				jittered = grid_fill_grid.jitter_world_position(shading_point, current_camera, rng);
-
-			hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, jittered, current_camera);
-			// Advancing the RNG to mimic 'get_non_canonical_reservoir_for_shading_from_world_pos'
-
+			// Advancing the RNG simulating the random reservoir pick within the grid cell
 			if (replay_canonical)
 			{
 				if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
@@ -215,31 +214,102 @@ struct ReGIRSettings
 				if (grid_fill.get_canonical_reservoir_count_per_cell() > 1)
 					rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 			}
+		}
 
-			if (hash_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
-				// The grid cell is inside the grid but not alive
-				hash_grid_cell_index = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+		return neighbor_cell_index;
+
+		// do
+		// {
+		// 	float3 jittered = shading_point;
+		// 	if (jitter)
+		// 		jittered = grid_fill_grid.jitter_world_position(shading_point, current_camera, rng);
+
+		// 	hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, jittered, current_camera);
+		// 	// Advancing the RNG to mimic 'get_non_canonical_reservoir_for_shading_from_world_pos'
+
+
+		// 	if (hash_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
+		// 		// The grid cell is inside the grid but not alive
+		// 		hash_grid_cell_index = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+
+		// 	retry++;
+		// } while (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry < ReGIR_ShadingJitterTries);
+
+		// if (retry == ReGIR_ShadingJitterTries && hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		// {
+		// 	// We ran out of retries
+		// 	if (!replay_canonical)
+		// 		// It's fine for non-canonical neighbors
+		// 		return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+		// 	else
+		// 	{
+		// 		// For non-canonical neighbors, we're falling back to the center cell (no jittering)
+		// 		// because we absolutely want a canonical neighbor to avoid bias
+
+		// 		// We can just directly return the index
+		// 		return grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, shading_point, current_camera);
+		// 	}
+		// }
+		// else
+		// 	return hash_grid_cell_index;
+	}
+
+	template <bool fallbackOnCenterCell>
+	HIPRT_DEVICE unsigned int find_valid_jittered_neighbor_cell_index(float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng) const
+	{
+		unsigned int retry = 0;
+		unsigned int neighbor_grid_cell_index;
+		
+		do
+		{
+			float3 jittered = grid_fill_grid.jitter_world_position(world_position, current_camera, rng);
+
+			neighbor_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index(hash_cell_data, jittered, current_camera);
 
 			retry++;
-		} while (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry < ReGIR_ShadingJitterTries);
+		} while (neighbor_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry < ReGIR_ShadingJitterTries);
 
-		if (retry == 4 && hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		if (fallbackOnCenterCell && neighbor_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry == ReGIR_ShadingJitterTries)
+			// We couldn't find a valid neighbor and the fallback on center cell is enabled: we're going to return the index of the center cell
+			return grid_fill_grid.get_hash_grid_cell_index(hash_cell_data, world_position, current_camera);
+
+		return neighbor_grid_cell_index;
+	}
+
+	template <bool getCanonicalReservoir>
+	HIPRT_DEVICE ReGIRReservoir get_random_reservoir_in_grid_cell_for_shading(unsigned int grid_cell_index, Xorshift32Generator& rng) const
+	{
+		unsigned int reservoir_index_in_cell;
+
+		if constexpr (getCanonicalReservoir)
 		{
-			// We ran out of retries
-			if (!replay_canonical)
-				// It's fine for non-canonical neighbors
-				return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
-			else
-			{
-				// For non-canonical neighbors, we're falling back to the center cell (no jittering)
-				// because we absolutely want a canonical neighbor to avoid bias
+			int random_canonical_reservoir_index_in_cell = 0;
+			if (grid_fill.get_canonical_reservoir_count_per_cell() > 1)
+				random_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 
-				// We can just directly return the index
-				return grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, shading_point, current_camera);
-			}
+			reservoir_index_in_cell = random_canonical_reservoir_index_in_cell;
 		}
 		else
-			return hash_grid_cell_index;
+		{
+			int random_non_canonical_reservoir_index_in_cell = 0;
+			if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
+				random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
+
+			reservoir_index_in_cell = random_non_canonical_reservoir_index_in_cell;
+		}
+
+		unsigned int canonical_offset = getCanonicalReservoir ? grid_fill.get_non_canonical_reservoir_count_per_cell() : 0;
+		unsigned int reservoir_index_in_grid = grid_cell_index * get_number_of_reservoirs_per_cell() + canonical_offset + reservoir_index_in_cell;
+
+		if (spatial_reuse.do_spatial_reuse)
+			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
+			return spatial_grid.read_full_reservoir(hash_cell_data, reservoir_index_in_grid);
+		// else if (temporal_reuse.do_temporal_reuse)
+		// 	// If only doing temporal reuse, reading from the output of the spatial reuse pass
+		// 	return get_temporal_reservoir_opt(world_position, current_camera, reservoir_index_in_cell, -1, out_invalid_sample);
+		else
+			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
+			return grid_fill_grid.read_full_reservoir(hash_cell_data, reservoir_index_in_grid);
 	}
 
 	/**

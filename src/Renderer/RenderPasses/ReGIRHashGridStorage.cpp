@@ -28,11 +28,12 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 	bool grid_not_allocated = m_total_number_of_cells == 0;
-	bool grid_res_changed = m_current_grid_min_cell_size != regir_settings.grid_fill_grid.m_grid_cell_min_size ||
-		m_grid_cell_target_projected_size_ratio != regir_settings.grid_fill_grid.m_grid_cell_target_projected_size_ratio;
+	bool grid_res_changed = m_current_grid_min_cell_size != regir_settings.grid_fill_grid.m_grid_cell_min_size || m_grid_cell_target_projected_size_ratio != regir_settings.grid_fill_grid.m_grid_cell_target_projected_size_ratio;
 	bool reservoirs_per_cell_changed = regir_settings.get_number_of_reservoirs_per_cell() != m_grid_buffers.m_reservoirs_per_cell;
 
-	if (grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed)
+	bool needs_grid_resize = grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed;
+
+	if (needs_grid_resize)
 	{
 		if (grid_not_allocated)
 			m_total_number_of_cells = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT; // Default grid size
@@ -48,7 +49,12 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 
 	if (regir_settings.spatial_reuse.do_spatial_reuse)
 	{
-		if (m_spatial_reuse_output_grid_buffer.m_total_number_of_cells != m_total_number_of_cells)
+		bool spatial_grid_not_allocated = m_spatial_reuse_output_grid_buffer.m_total_number_of_cells == 0;
+		bool reservoirs_per_cell_spatial_changed = regir_settings.get_number_of_reservoirs_per_cell() != m_spatial_reuse_output_grid_buffer.m_reservoirs_per_cell;
+
+		bool needs_spatial_grid_resize = spatial_grid_not_allocated || grid_res_changed || reservoirs_per_cell_spatial_changed;
+
+		if (needs_spatial_grid_resize)
 		{
 			// Resizing the spatial buffer
 			m_spatial_reuse_output_grid_buffer.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());

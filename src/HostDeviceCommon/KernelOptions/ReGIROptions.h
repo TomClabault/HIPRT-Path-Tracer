@@ -91,7 +91,7 @@
  * 
  * This can be expensive but can also lead to substantial gains in quality
  */
-#define ReGIR_DoVisibilityReuse KERNEL_OPTION_FALSE
+#define ReGIR_DoVisibilityReuse KERNEL_OPTION_TRUE
 
 /**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
@@ -103,7 +103,7 @@
 /**
  * Debug option to color the scene with the grid cells
  */
-#define ReGIR_DebugMode REGIR_DEBUG_MODE_GRID_CELLS
+#define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
 
 #endif // #ifndef __KERNELCC__
 

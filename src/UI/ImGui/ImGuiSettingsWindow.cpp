@@ -1777,7 +1777,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR grid build tree");
 
-			if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 128))
+			if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 64))
 				m_render_window->set_render_dirty(true);
 			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 128))
 				m_render_window->set_render_dirty(true);
@@ -1915,7 +1915,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
 				m_render_window->set_render_dirty(true);
 
-			if (ImGui::SliderInt("Reservoir resampled during shading", &regir_settings.shading.cell_reservoir_resample_per_shading_point, 1, 32))
+			if (ImGui::SliderInt("Neighbors resampled during shading", &regir_settings.shading.number_of_neighbors, 1, 8))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Reservoirs tap per neighbor during shading", &regir_settings.shading.reservoir_tap_count_per_neighbor, 1, 8))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePop();
