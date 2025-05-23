@@ -322,8 +322,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-    m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.spatial_grid);
-    m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.grid_fill_grid);
+    m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.initial_reservoirs_grid);
+    m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.spatial_output_grid);
     m_render_data.render_settings.regir_settings.hash_cell_data = m_regir_state.hash_cell_data.to_device();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();

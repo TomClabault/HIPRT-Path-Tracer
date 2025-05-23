@@ -3,84 +3,82 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_REGIR_HASH_GRID_SOA_H
-#define DEVICE_INCLUDES_REGIR_HASH_GRID_SOA_H
+#ifndef DEVICE_INCLUDES_REGIR_HASH_GRID_H
+#define DEVICE_INCLUDES_REGIR_HASH_GRID_H
 
 #include "Device/includes/ReSTIR/ReGIR/HashGridCellData.h"
+#include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingSettings.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 
-struct ReGIRHashGridSoADevice
+struct ReGIRHashGrid
 {
-	HIPRT_DEVICE void reset_reservoir(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, int grid_index = -1)
+	HIPRT_DEVICE void reset_reservoir(ReGIRHashGridSoADevice& soa, unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, int grid_index = -1)
 	{
 		if (grid_index == -1)
 			grid_index = 0;
 
-		unsigned int reservoirs_per_grid = m_total_number_of_cells * reservoirs.number_of_reservoirs_per_cell;
-		int reservoir_index_in_grid = reservoirs_per_grid * grid_index + hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
+		unsigned int reservoirs_per_grid = soa.m_total_number_of_cells * soa.reservoirs.number_of_reservoirs_per_cell;
+		int reservoir_index_in_grid = reservoirs_per_grid * grid_index + hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
-		reservoirs.store_reservoir_opt(reservoir_index_in_grid, ReGIRReservoir());
-		samples.store_sample(reservoir_index_in_grid, ReGIRReservoir().sample);
+		soa.reservoirs.store_reservoir_opt(reservoir_index_in_grid, ReGIRReservoir());
+		soa.samples.store_sample(reservoir_index_in_grid, ReGIRReservoir().sample);
 	}
 
-	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1)
+	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashGridSoADevice& soa, ReGIRHashCellDataSoADevice& hash_cell_data, 
+		float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1)
 	{
 		if (grid_index != -1)
 			// TODO fix this, we would need the number of reservoirs per grid in here but we don't have it
 			return;
 
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash(world_position, current_camera, hash_key);
-		if (!resolve_collision(hash_cell_data, hash_grid_cell_index, hash_key))
+		unsigned int hash_grid_cell_index = hash(soa.m_total_number_of_cells, world_position, current_camera, hash_key);
+		if (!resolve_collision(hash_cell_data, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
 			return;
 
-		int reservoir_index_in_grid = hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
+		int reservoir_index_in_grid = hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
-		store_reservoir_and_sample_opt_from_index_in_grid(reservoir_index_in_grid, reservoir, grid_index);
+		store_reservoir_and_sample_opt_from_index_in_grid(soa, reservoir_index_in_grid, reservoir, grid_index);
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera, int grid_index = -1) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
+		float3 world_position, const HIPRTCamera& current_camera, int grid_index = -1) const
 	{
 		if (grid_index != -1)
 			// TODO fix this, we would need the number of reservoirs per grid in here but we don't have it
 			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash(world_position, current_camera, hash_key);
-		if (!resolve_collision(hash_cell_data, hash_grid_cell_index, hash_key) || !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
+		unsigned int hash_grid_cell_index = hash(soa.m_total_number_of_cells, world_position, current_camera, hash_key);
+		if (!resolve_collision(hash_cell_data, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
 			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 
 		return hash_grid_cell_index;
 	}
 
-	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1) const
+	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
+		float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1) const
 	{
-		unsigned int hash_grid_cell_index = get_hash_grid_cell_index(hash_cell_data, world_position, current_camera, grid_index);
+		unsigned int hash_grid_cell_index = get_hash_grid_cell_index(soa, hash_cell_data, world_position, current_camera, grid_index);
 		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 
-		return hash_grid_cell_index * reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
+		return hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 	}
 
-	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashCellDataSoADevice& hash_cell_data, unsigned int reservoir_index_in_grid) const
+	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
+		unsigned int reservoir_index_in_grid) const
 	{
-		// if (reservoir_index_in_grid >= reservoirs.number_of_reservoirs_per_cell * m_total_number_of_cells)
-		// {
-		// 	printf("Too big: %u by 'index in cell' = %u\n", reservoir_index_in_grid, reservoir_index_in_cell);
-
-		// 	return ReGIRReservoir();
-		// }
-
 		if (reservoir_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 			return ReGIRReservoir();
 
 		ReGIRReservoir reservoir;
 
-		float UCW = reservoirs.UCW[reservoir_index_in_grid];
+		float UCW = soa.reservoirs.UCW[reservoir_index_in_grid];
 		if (UCW <= 0.0f)
 		{
 			// If the reservoir doesn't have a valid sample, not even reading the rest of it
@@ -90,16 +88,17 @@ struct ReGIRHashGridSoADevice
 			return out;
 		}
 
-		reservoir = reservoirs.read_reservoir<false>(reservoir_index_in_grid);
+		reservoir = soa.reservoirs.read_reservoir<false>(reservoir_index_in_grid);
 		reservoir.UCW = UCW;
-		reservoir.sample = samples.read_sample(reservoir_index_in_grid);
+		reservoir.sample = soa.samples.read_sample(reservoir_index_in_grid);
 
 		return reservoir;
 	}
 
-	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1, bool* out_invalid_sample = nullptr) const
+	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
+		float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1, bool* out_invalid_sample = nullptr) const
 	{
-		unsigned int reservoir_index_in_grid = get_reservoir_index_in_grid(hash_cell_data, world_position, current_camera, reservoir_index_in_cell, grid_index);
+		unsigned int reservoir_index_in_grid = get_reservoir_index_in_grid(soa, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, grid_index);
 
 		if (out_invalid_sample)
 		{
@@ -109,23 +108,25 @@ struct ReGIRHashGridSoADevice
 				*out_invalid_sample = false;
 		}
 
-		return read_full_reservoir(hash_cell_data, reservoir_index_in_grid);
+		return read_full_reservoir(soa, hash_cell_data, reservoir_index_in_grid);
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(float3 world_position, const HIPRTCamera& current_camera) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(const ReGIRHashGridSoADevice& soa, 
+		float3 world_position, const HIPRTCamera& current_camera) const
 	{
 		unsigned int hash_key;
-		unsigned int hash_cell_index = hash(world_position, current_camera, hash_key);
+		unsigned int hash_cell_index = hash(soa.m_total_number_of_cells, world_position, current_camera, hash_key);
 
 		return hash_cell_index;
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(const ReGIRHashCellDataSoADevice& hash_cell_data, float3 world_position, const HIPRTCamera& current_camera) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
+		float3 world_position, const HIPRTCamera& current_camera) const
 	{
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash(world_position, current_camera, hash_key);
+		unsigned int hash_grid_cell_index = hash(soa. m_total_number_of_cells, world_position, current_camera, hash_key);
 
-		if (!resolve_collision(hash_cell_data, hash_grid_cell_index, hash_key))
+		if (!resolve_collision(hash_cell_data, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
 			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 		else
 			return hash_grid_cell_index;
@@ -200,7 +201,7 @@ struct ReGIRHashGridSoADevice
 	 * Returns the hash cell index of the given world position and camera position. Does not resolve collisions.
 	 * The hash key for resolving collision is given in 'out_hash_key'
 	 */
-	HIPRT_DEVICE unsigned int hash(float3 world_position, const HIPRTCamera& current_camera, unsigned int& out_hash_key) const
+	HIPRT_DEVICE unsigned int hash(unsigned int total_number_of_cells, float3 world_position, const HIPRTCamera& current_camera, unsigned int& out_hash_key) const
 	{
 		float cell_size = compute_adaptive_cell_size(world_position, current_camera);
 
@@ -211,7 +212,7 @@ struct ReGIRHashGridSoADevice
 		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
 		out_hash_key = hippt::max(1u, h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x)))));
 		
-		unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x)))) % m_total_number_of_cells;
+		unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x)))) % total_number_of_cells;
 
 		return cell_hash;
 	}
@@ -225,7 +226,7 @@ struct ReGIRHashGridSoADevice
 	 * aborted because too many iterations
 	 */
 	template <bool isInsertion = false>
-	HIPRT_DEVICE bool resolve_collision(const ReGIRHashCellDataSoADevice& hash_cell_data, unsigned int& in_out_hash_cell_index, unsigned int hash_key) const
+	HIPRT_DEVICE bool resolve_collision(const ReGIRHashCellDataSoADevice& hash_cell_data, unsigned int total_number_of_cells, unsigned int& in_out_hash_cell_index, unsigned int hash_key) const
 	{
 		unsigned int existing_hash_key = hash_cell_data.hash_keys[in_out_hash_cell_index];
 		if (existing_hash_key == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
@@ -276,7 +277,7 @@ struct ReGIRHashGridSoADevice
 			// Linear probing
 			for (int i = 1; i <= 32; i++)
 			{
-				unsigned int next_hash_cell_index = (base_cell_index + i) % m_total_number_of_cells;
+				unsigned int next_hash_cell_index = (base_cell_index + i) % total_number_of_cells;
 				if (next_hash_cell_index == base_cell_index)
 					// We looped on the whole hash table. Couldn't find an empty cell
 					return false;
@@ -341,19 +342,11 @@ struct ReGIRHashGridSoADevice
 
 	static constexpr float DEFAULT_GRID_SIZE = 2.5f;
 
-	// These two SoAs are allocated to hold 'number_cells * number_reservoirs_per_cell'
-	// So for a given 'hash_grid_cell_index', the cell contains reservoirs and samples going from 
-	// reservoirs[hash_grid_cell_index * number_reservoirs_per_cell] to reservoirs[cell_index * number_reservoirs_per_cell + number_reservoirs_per_cell[
-	ReGIRReservoirSoADevice reservoirs;
-	ReGIRSampleSoADevice samples;
-
-	unsigned int m_total_number_of_cells = 0;
-
 	float m_grid_cell_min_size = 0.05f;// 1.0f / 10.0f;
 	float m_grid_cell_target_projected_size_ratio = 1.250f;// 25.0f;
 	
 private:
-	HIPRT_DEVICE void store_reservoir_and_sample_opt_from_index_in_grid(int reservoir_index_in_grid, const ReGIRReservoir& reservoir, int grid_index = -1)
+	HIPRT_DEVICE void store_reservoir_and_sample_opt_from_index_in_grid(ReGIRHashGridSoADevice& soa, int reservoir_index_in_grid, const ReGIRReservoir& reservoir, int grid_index = -1)
 	{
 		if (grid_index != -1)
 			// TODO fix this, we would need the number of reservoirs per grid in here but we don't have it
@@ -362,13 +355,13 @@ private:
 		if (reservoir.UCW <= 0.0f)
 		{
 			// No need to store the rest if the UCW is invalid
-			reservoirs.UCW[reservoir_index_in_grid] = reservoir.UCW;
+			soa.reservoirs.UCW[reservoir_index_in_grid] = reservoir.UCW;
 
 			return;
 		}
 
-		reservoirs.store_reservoir_opt(reservoir_index_in_grid, reservoir);
-		samples.store_sample(reservoir_index_in_grid, reservoir.sample);
+		soa.reservoirs.store_reservoir_opt(reservoir_index_in_grid, reservoir);
+		soa.samples.store_sample(reservoir_index_in_grid, reservoir.sample);
 	}
 };
 

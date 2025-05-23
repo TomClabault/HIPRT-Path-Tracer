@@ -28,7 +28,7 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 	bool grid_not_allocated = m_total_number_of_cells == 0;
-	bool grid_res_changed = m_current_grid_min_cell_size != regir_settings.grid_fill_grid.m_grid_cell_min_size || m_grid_cell_target_projected_size_ratio != regir_settings.grid_fill_grid.m_grid_cell_target_projected_size_ratio;
+	bool grid_res_changed = m_current_grid_min_cell_size != regir_settings.hash_grid.m_grid_cell_min_size || m_grid_cell_target_projected_size_ratio != regir_settings.hash_grid.m_grid_cell_target_projected_size_ratio;
 	bool reservoirs_per_cell_changed = regir_settings.get_number_of_reservoirs_per_cell() != m_grid_buffers.m_reservoirs_per_cell;
 
 	bool needs_grid_resize = grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed;
@@ -38,8 +38,8 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 		if (grid_not_allocated)
 			m_total_number_of_cells = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT; // Default grid size
 
-		m_current_grid_min_cell_size = regir_settings.grid_fill_grid.m_grid_cell_min_size;
-		m_grid_cell_target_projected_size_ratio = regir_settings.grid_fill_grid.m_grid_cell_target_projected_size_ratio;
+		m_current_grid_min_cell_size = regir_settings.hash_grid.m_grid_cell_min_size;
+		m_grid_cell_target_projected_size_ratio = regir_settings.hash_grid.m_grid_cell_target_projected_size_ratio;
 
 		m_grid_buffers.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
 		m_hash_cell_data.resize(m_total_number_of_cells);
@@ -86,21 +86,21 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			m_total_number_of_cells *= 1.5;
 
 			// Allocating a larger hash table
-			ReGIRHashGridSoAHost<OrochiBuffer> new_hash_grid;
-			new_hash_grid.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
+			ReGIRHashGridSoAHost<OrochiBuffer> new_hash_grid_soa;
+			new_hash_grid_soa.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
 
 			ReGIRHashCellDataSoAHost<OrochiBuffer> new_hash_cell_data;
 			new_hash_cell_data.resize(m_total_number_of_cells);
 
 			ReGIRHashGridSoADevice new_hash_grid_device;
-			new_hash_grid.to_device(new_hash_grid_device);
+			new_hash_grid_soa.to_device(new_hash_grid_device);
 
 			ReGIRHashCellDataSoADevice new_hash_cell_data_device = new_hash_cell_data.to_device();
 
 			// For each cell alive, we're going to insert it in the new, larger, hash table, with a GPU kernel to do that
 			m_regir_render_pass->launch_rehashing_kernel(render_data, new_hash_grid_device, new_hash_cell_data_device);
 
-			m_grid_buffers = std::move(new_hash_grid);
+			m_grid_buffers = std::move(new_hash_grid_soa);
 			if (regir_settings.spatial_reuse.do_spatial_reuse)
 				m_spatial_reuse_output_grid_buffer.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
 			m_hash_cell_data = std::move(new_hash_cell_data);
@@ -157,9 +157,9 @@ bool ReGIRHashGridStorage::free()
 
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
-	m_grid_buffers.to_device(render_data.render_settings.regir_settings.grid_fill_grid);
+	m_grid_buffers.to_device(render_data.render_settings.regir_settings.initial_reservoirs_grid);
 	if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-		m_spatial_reuse_output_grid_buffer.to_device(render_data.render_settings.regir_settings.spatial_grid);
+		m_spatial_reuse_output_grid_buffer.to_device(render_data.render_settings.regir_settings.spatial_output_grid);
 
 	render_data.render_settings.regir_settings.hash_cell_data = m_hash_cell_data.to_device();
 }
