@@ -53,8 +53,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
 // - Test compress cells by only storing the emissive light index instead of all the info --> Is it going to be bad on the performance?
+// - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
 // - rename hash keys as checksum
 // - Update hash cell data point normal seems to be very expensive
 // - We may have an issue with updating the representative points on the fly with more than 1 bounce because the representative points are going to change *during* the path tracing and so the MIS weights with visibility rays and so on are going to be computed with the updated rep points even though the reservoirs were produced with the old rep points

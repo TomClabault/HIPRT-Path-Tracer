@@ -79,7 +79,7 @@ struct ReGIRSpatialReuseSettings
 	//
 	// This improves the chances that we're actually going to have a good
 	// neighbor to reuse from --> more reuse --> less variance
-	int retries_per_neighbor = 16;
+	int retries_per_neighbor = 4;
 	int spatial_reuse_radius = 1;
 
 	bool DEBUG_oONLY_ONE_CENTER_CELL = true;
@@ -566,6 +566,8 @@ struct ReGIRSettings
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
+	bool DEBUG_CORRELATE_rEGIR = true;
+	int DEBUG_CORRELATE_rEGIR_SIZE = 32;
 
 	// Grid that contains the output reservoirs of the grid fill pass
 	ReGIRHashGridSoADevice grid_fill_grid;
