@@ -155,7 +155,7 @@ struct HIPRTScene
 	OrochiBuffer<float> emissive_power_alias_table_probas;
 	OrochiBuffer<int> emissive_power_alias_table_alias;
 	// This is a remnant of some tests and it was actually not worth it
-	// PrecomputedEmissiveTrianglesDataSoAHost<OrochiBuffer> precomputed_emissive_triangles_data;
+	PrecomputedEmissiveTrianglesDataSoAHost<OrochiBuffer> precomputed_emissive_triangles_data;
 
 	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
 	// be destroyed which means that the underlying textures would be destroyed

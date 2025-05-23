@@ -349,8 +349,8 @@ struct ReGIRHashGridSoADevice
 
 	unsigned int m_total_number_of_cells = 0;
 
-	float m_grid_cell_min_size = 1.0f / 10.0f;
-	float m_grid_cell_target_projected_size_ratio = 25.0f;
+	float m_grid_cell_min_size = 0.05f;// 1.0f / 10.0f;
+	float m_grid_cell_target_projected_size_ratio = 1.250f;// 25.0f;
 	
 private:
 	HIPRT_DEVICE void store_reservoir_and_sample_opt_from_index_in_grid(int reservoir_index_in_grid, const ReGIRReservoir& reservoir, int grid_index = -1)

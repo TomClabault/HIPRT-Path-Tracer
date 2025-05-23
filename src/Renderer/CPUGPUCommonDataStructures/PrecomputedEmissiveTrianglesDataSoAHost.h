@@ -27,9 +27,9 @@ namespace PrecomputedEmissiveTrianglesDataSoAHostHelpers
 	{
 		PrecomputedEmissiveTrianglesDataSoADevice petd_device;
 
-		petd_device.triangles_A = petd_host.template get_buffer_data_ptr<0>().data();
-		petd_device.triangles_AB = petd_host.template get_buffer_data_ptr<1>().data();
-		petd_device.triangles_AC = petd_host.template get_buffer_data_ptr<2>().data();
+		petd_device.triangles_A = petd_host.template get_buffer_data_ptr<VERTEX_A_BUFFER>();
+		petd_device.triangles_AB = petd_host.template get_buffer_data_ptr<AB_BUFFER>();
+		petd_device.triangles_AC = petd_host.template get_buffer_data_ptr<AC_BUFFER>();
 
 		return petd_device;
 	}
