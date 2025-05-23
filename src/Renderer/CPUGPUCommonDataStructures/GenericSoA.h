@@ -132,13 +132,13 @@ struct GenericSoA
         {
             // If our main container type for this SoA is std::vector (i.e. this is for the CPU), then we're uploading
             // to the buffer simply by copying
-            get_buffer_data_ptr<bufferIndex>() = data;
+            get_buffer<bufferIndex>() = data;
         }
         else
         {
             // If our main container type for this SoA is OrochiBuffer (i.e. this is for the GPU), then we're uploading
             // to the buffer by uploading to the GPU
-            get_buffer_data_ptr<bufferIndex>().upload_data(data);
+            get_buffer<bufferIndex>().upload_data(data);
         }
     }
 

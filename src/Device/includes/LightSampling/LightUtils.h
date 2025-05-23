@@ -106,10 +106,10 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_emissive_triangle(int emissive_tr
     float u = 1.0f - sqrt_r1;
     float v = (1.0f - rand_2) * sqrt_r1;
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_HEITZ_2019
-    square_to_triangle(rand_1, rand_2);
+    float2 rands = square_to_triangle(rand_1, rand_2);
 
-    float u = rand_1;
-    float v = rand_2;
+    float u = rands.x;
+    float v = rands.y;
 #endif
 
     float3 vertex_A = petd.triangles_A[emissive_triangle_index];

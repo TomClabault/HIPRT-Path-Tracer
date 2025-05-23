@@ -996,6 +996,8 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
 		m_render_data.buffers.has_vertex_normals = m_hiprt_scene.has_vertex_normals.get_device_pointer();
 		m_render_data.buffers.vertex_normals = m_hiprt_scene.vertex_normals.get_device_pointer();
+		// m_render_data.buffers.precomputed_emissive_triangles_data = PrecomputedEmissiveTrianglesDataSoAHostHelpers::to_device(m_hiprt_scene.precomputed_emissive_triangles_data);
+
 		m_render_data.buffers.material_indices = m_hiprt_scene.material_indices.get_device_pointer();
 		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
 		m_render_data.buffers.material_opaque = m_hiprt_scene.material_opaque.get_device_pointer();
@@ -1041,9 +1043,10 @@ void GPURenderer::update_render_data()
 		m_render_thread.get_render_graph().update_render_data();
 
 		m_render_data_buffers_invalidated = false;
-		// m_render_data.render_settings.need_to_reset = true;
 	}
 }
+
+#include "Renderer/CPUGPUCommonDataStructures/PrecomputedEmissiveTrianglesDataSoAHost.h"
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
@@ -1149,6 +1152,11 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 			m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
 			m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
 		}
+
+		/*m_hiprt_scene.precomputed_emissive_triangles_data.resize(m_hiprt_scene.emissive_triangles_count);
+		m_hiprt_scene.precomputed_emissive_triangles_data.template upload_to_buffer<PrecomputedEmissiveTrianglesDataSoAHostHelpers::VERTEX_A_BUFFER>(scene.triangle_A);
+		m_hiprt_scene.precomputed_emissive_triangles_data.template upload_to_buffer<PrecomputedEmissiveTrianglesDataSoAHostHelpers::AB_BUFFER>(scene.triangle_AB);
+		m_hiprt_scene.precomputed_emissive_triangles_data.template upload_to_buffer<PrecomputedEmissiveTrianglesDataSoAHostHelpers::AC_BUFFER>(scene.triangle_AC);*/
 	});
 }
 

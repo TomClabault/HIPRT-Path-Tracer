@@ -53,6 +53,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Fix wrong spatial reuse output when resizing the grid min cell size / target projected size at runtime
+// - Scalarization of hash grid fill because we know that consecutive threads are in the same cell
+// - Scalarization of the hash grid fetches for the camera rays?
+// - We can optimize the grid cell aliv ecounter atomic increment by incrementing by the number of threads in the wavefront instead of 1 per thread
 // - Test compress cells by only storing the emissive light index instead of all the info --> Is it going to be bad on the performance?
 // - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
 // - rename hash keys as checksum
