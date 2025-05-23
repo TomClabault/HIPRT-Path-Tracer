@@ -81,6 +81,9 @@ namespace hippt
 	__device__ bool is_pixel_index(int x, int y) { return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
 	__device__ int current_warp_lane() { return (threadIdx.x + threadIdx.y * blockDim.x) % hippt::warp_size(); }
 
+	template <typename T>
+	__device__ T ldg_load(T* address) { return __ldg(address); }
+
 	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
@@ -336,6 +339,9 @@ namespace hippt
 	inline int thread_idx_global() { return 0; }
 	inline bool is_pixel_index(int x, int y) { return false; }
 	inline int current_warp_lane() { return 0; }
+
+	template <typename T>
+	inline T ldg_load(T* address) { return *address; }
 
 	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
