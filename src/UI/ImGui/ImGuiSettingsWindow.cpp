@@ -4132,6 +4132,9 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 						// Source file that hipcc compiles
 						commandline_string += " ../src/llvm-compile-kernel.h";
 
+						// For outputting the disassembly + source line correspondances to a .txt and opening it with notepad++
+						commandline_string += " && llvm-objdump --no-show-raw-insn -S llvm-compile-kernel-hip-amdgcn-amd-amdhsa-gfx1100.out > assembly.txt && notepad++.exe assembly.txt &";
+
 						ImGui::SetClipboardText(commandline_string.c_str());
 					}
 					ImGuiRenderer::add_tooltip("Copies the hipcc compilation command to the clipboard.");
@@ -4180,6 +4183,17 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::Checkbox("Debug only one center cell", &render_settings.regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL))
 			m_render_window->set_render_dirty(true);
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
+
+		if (ImGui::Checkbox("Correlate ReGIR", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR))
+			m_render_window->set_render_dirty(true);
+
+		bool changed = false;
+		changed |= ImGui::RadioButton("32", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 32); ImGui::SameLine();
+		changed |= ImGui::RadioButton("16", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 16); ImGui::SameLine();
+		changed |= ImGui::RadioButton("8", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 8); ImGui::SameLine();
+		changed |= ImGui::RadioButton("4", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 4);
+		if (changed)
+			m_render_window->set_render_dirty(true);
 
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

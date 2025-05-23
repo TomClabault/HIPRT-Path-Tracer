@@ -91,7 +91,7 @@
  * 
  * This can be expensive but can also lead to substantial gains in quality
  */
-#define ReGIR_DoVisibilityReuse KERNEL_OPTION_TRUE
+#define ReGIR_DoVisibilityReuse KERNEL_OPTION_FALSE
 
 /**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
