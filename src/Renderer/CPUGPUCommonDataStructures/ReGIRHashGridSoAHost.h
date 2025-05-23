@@ -6,7 +6,7 @@
 #ifndef RENDERER_REGIR_HASH_GRID_SOA_CPU_GPU_H
 #define RENDERER_REGIR_HASH_GRID_SOA_CPU_GPU_H
 
-#include "Device/includes/ReSTIR/ReGIR/HashGridSoA.h"
+#include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
 
 #include "HostDeviceCommon/Packing.h"
 

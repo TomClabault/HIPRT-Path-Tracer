@@ -166,7 +166,8 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, ReGIRHashGridSoADevice& new_hash_grid, ReGIRHashCellDataSoADevice& new_hash_cell_data)
+void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, 
+	ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)
 {
 	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa().size();
@@ -177,7 +178,8 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, ReGI
 	void* launch_args[] = { 
 		&render_data.current_camera,
 		
-		&new_hash_grid, &new_hash_cell_data,
+		&render_data.render_settings.regir_settings.hash_grid,
+		&new_hash_grid_soa, &new_hash_cell_data,
 		
 		&render_data.render_settings.regir_settings.hash_cell_data, // old hash cell data
 		&cell_alive_list_ptr, // old cell alive list		
@@ -207,8 +209,8 @@ void ReGIRRenderPass::update_render_data()
 		m_hash_grid_storage.to_device(render_data);
 	else
 	{
-		render_data.render_settings.regir_settings.grid_fill_grid = ReGIRHashGridSoADevice();
-		render_data.render_settings.regir_settings.spatial_grid = ReGIRHashGridSoADevice();
+		render_data.render_settings.regir_settings.initial_reservoirs_grid = ReGIRHashGridSoADevice();
+		render_data.render_settings.regir_settings.spatial_output_grid = ReGIRHashGridSoADevice();
 
 		render_data.render_settings.regir_settings.hash_cell_data = ReGIRHashCellDataSoADevice();
 	}

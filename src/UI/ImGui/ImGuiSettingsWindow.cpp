@@ -1954,12 +1954,12 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		}
 			
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.grid_fill_grid.m_grid_cell_target_projected_size_ratio, 25, 250))
+		if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.hash_grid.m_grid_cell_target_projected_size_ratio, 25, 250))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
 			"This has the effect of making the grid cells larger in the distance so that the projected size stays approximately constant.");
 
-		if (ImGui::SliderFloat("Grid cell minimum size", &regir_settings.grid_fill_grid.m_grid_cell_min_size, 0.005, 0.5))
+		if (ImGui::SliderFloat("Grid cell minimum size", &regir_settings.hash_grid.m_grid_cell_min_size, 0.005, 0.5))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
 
