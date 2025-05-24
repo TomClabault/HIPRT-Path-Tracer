@@ -1836,20 +1836,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
-		/*if (ImGui::CollapsingHeader("Temporal reuse"))
-		{
-			ImGui::TreePush("ReGIR temporal reuse tree");
-
-			if (ImGui::Checkbox("Do temporal reuse", &regir_settings.temporal_reuse.do_temporal_reuse))
-				m_render_window->set_render_dirty(true);
-
-			if (ImGui::SliderInt("Temporal history length", &regir_settings.temporal_reuse.temporal_history_length, 1, 16))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::TreePop();
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		}*/
-
 		if (ImGui::CollapsingHeader("Spatial reuse"))
 		{
 			ImGui::TreePush("ReGIR spatial reuse tree");

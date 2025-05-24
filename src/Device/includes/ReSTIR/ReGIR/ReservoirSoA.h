@@ -47,7 +47,6 @@ struct ReGIRReservoirSoADevice
 	HIPRT_HOST_DEVICE void store_reservoir_opt(int linear_reservoir_index, const ReGIRReservoir& reservoir)
 	{
 		UCW[linear_reservoir_index] = reservoir.UCW;
-		M[linear_reservoir_index] = reservoir.M;
 	}
 
 	/**
@@ -63,13 +62,11 @@ struct ReGIRReservoirSoADevice
 
 		if constexpr (readUCW)
 			reservoir.UCW = UCW[linear_reservoir_index];
-		reservoir.M = M[linear_reservoir_index];
 
 		return reservoir;
 	}
 
 	float* UCW = nullptr;
-	unsigned char* M = nullptr;
 
 	unsigned int number_of_reservoirs_per_cell = 0;
 };

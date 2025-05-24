@@ -100,12 +100,8 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             float3 representative_point = ReGIR_get_cell_world_point(render_data, neighbor_hash_grid_cell_index_in_grid);
 
             ReGIRReservoir neighbor_reservoir;
-            if (regir_settings.temporal_reuse.do_temporal_reuse)
-                // Reading from the output of the temporal reuse
-                neighbor_reservoir = regir_settings.get_temporal_reservoir_opt(representative_point, render_data.current_camera, random_reservoir_index_in_cell);
-            else
-                // No temporal reuse, reading from the output of the grid fill buffer
-                neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(representative_point, render_data.current_camera, random_reservoir_index_in_cell);
+            // Reading from the output of the grid fill buffer
+            neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(representative_point, render_data.current_camera, random_reservoir_index_in_cell);
 
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
@@ -279,7 +275,6 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
                 spatial_neighbor_rng, random_number_generator);
 
         // Normalizing the reservoirs to 1
-        output_reservoir.M = 1;
         output_reservoir.finalize_resampling(valid_neighbor_count);
 
         regir_settings.store_spatial_reservoir_opt(output_reservoir, point_in_cell, render_data.current_camera, reservoir_index_in_cell);

@@ -53,18 +53,6 @@ private:
 	int reservoirs_count_per_grid_cell_canonical = 8;
 };
 
-struct ReGIRTemporalReuseSettings
-{
-	// Whether or not to reuse the reservoirs from the last frame as well as current frame
-	bool do_temporal_reuse = false;
-
-	int m_cap = 50;
-	// How many grids to keep in memory to help with sample quality
-	int temporal_history_length = 8;
-	// Index of the grid of the current frame. In [0, temporal_history_length - 1]
-	int current_grid_index = 0;
-};
-
 struct ReGIRSpatialReuseSettings
 {
 	bool do_spatial_reuse = true;
@@ -146,13 +134,10 @@ struct ReGIRSettings
 	{
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return hash_grid.read_full_reservoir(spatial_output_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, -1, out_invalid_sample);
-		else if (temporal_reuse.do_temporal_reuse)
-			// If only doing temporal reuse, reading from the output of the spatial reuse pass
-			return get_temporal_reservoir_opt(world_position, current_camera, reservoir_index_in_cell, -1, out_invalid_sample);
+			return hash_grid.read_full_reservoir(spatial_output_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, out_invalid_sample);
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, -1, out_invalid_sample);
+			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	/**
@@ -328,19 +313,16 @@ struct ReGIRSettings
 	 * will only be read if the UCW is > 0.0f.
 	 * If the UCW is <= 0.0f, the returned reservoir will have uninitialized values in all of its fields
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_temporal_reservoir_opt(float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1, bool* out_invalid_sample = nullptr) const
+	HIPRT_DEVICE ReGIRReservoir get_temporal_reservoir_opt(float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
 	{
-		if (grid_index != -1)
-			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, grid_index, out_invalid_sample);
-		else
-			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, -1, out_invalid_sample);
+		return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	HIPRT_DEVICE ReGIRReservoir get_grid_fill_output_reservoir_opt(float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
 	{
 		// The output of the grid fill pass is in the current frame grid so we can call the temporal method with
 		// index -1
-		return get_temporal_reservoir_opt(world_position, current_camera, reservoir_index_in_cell, -1, out_invalid_sample);
+		return get_temporal_reservoir_opt(world_position, current_camera, reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	HIPRT_DEVICE void store_spatial_reservoir_opt(const ReGIRReservoir& reservoir, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell)
@@ -348,12 +330,9 @@ struct ReGIRSettings
 		hash_grid.store_reservoir_and_sample_opt(reservoir, spatial_output_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, int grid_index = -1)
+	HIPRT_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell)
 	{
-		if (grid_index != -1)
-			hash_grid.store_reservoir_and_sample_opt(reservoir, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, grid_index);
-		else
-			hash_grid.store_reservoir_and_sample_opt(reservoir, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, -1);
+		hash_grid.store_reservoir_and_sample_opt(reservoir, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell);
 	}
 
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, const HIPRTCamera& current_camera) const
@@ -384,10 +363,7 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE unsigned int get_total_number_of_reservoirs_ReGIR() const
 	{
-		// We need to keep this dynamic on the CPU so not using the precomputed variable
-		int temporal_grid_count = temporal_reuse.do_temporal_reuse ? temporal_reuse.temporal_history_length : 1;
-
-		return get_number_of_reservoirs_per_grid() * temporal_grid_count;
+		return get_number_of_reservoirs_per_grid();
 	}
 
 	/**
@@ -395,10 +371,7 @@ struct ReGIRSettings
 	 */
 	HIPRT_DEVICE void reset_reservoirs(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell)
 	{
-		int temporal_grid_count = temporal_reuse.do_temporal_reuse ? temporal_reuse.temporal_history_length : 1;
-
-		for (int grid_index = 0; grid_index < temporal_grid_count; grid_index++)
-			hash_grid.reset_reservoir(initial_reservoirs_grid, hash_grid_cell_index, reservoir_index_in_cell, grid_index);
+		hash_grid.reset_reservoir(initial_reservoirs_grid, hash_grid_cell_index, reservoir_index_in_cell);
 
 		// Also clearing the spatial reuse output buffers (grid) if spatial reuse is enabled
 		if (spatial_reuse.do_spatial_reuse)
@@ -575,7 +548,6 @@ struct ReGIRSettings
 	ReGIRHashCellDataSoADevice hash_cell_data;
 
 	ReGIRGridFillSettings grid_fill;
-	ReGIRTemporalReuseSettings temporal_reuse;
 	ReGIRSpatialReuseSettings spatial_reuse;
 	ReGIRShadingSettings shading;
 

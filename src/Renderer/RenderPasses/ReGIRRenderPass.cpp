@@ -117,8 +117,6 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_hash_grid_storage.to_device(render_data);
 	}
 
-	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = m_current_grid_index;
-
 	if (m_number_of_cells_alive > 0)
 	{
 		launch_grid_fill_temporal_reuse(render_data);
@@ -150,6 +148,19 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 	unsigned int nb_threads = hippt::min(m_number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 	
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
+
+	/*oroStream_t stream1, stream2;
+	oroStreamCreate(&stream1);
+	oroStreamCreate(&stream2);
+
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream1);
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream2);
+
+	oroStreamSynchronize(stream1);
+	oroStreamSynchronize(stream2);
+
+	oroStreamDestroy(stream1);
+	oroStreamDestroy(stream2);*/
 }
 
 void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
@@ -193,12 +204,6 @@ void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPU
 {
 	if (!m_render_pass_used_this_frame)
 		return;
-	
-	if (render_data.render_settings.regir_settings.temporal_reuse.do_temporal_reuse)
-	{
-		m_current_grid_index++;
-		m_current_grid_index %= render_data.render_settings.regir_settings.temporal_reuse.temporal_history_length;
-	}
 }
 
 void ReGIRRenderPass::update_render_data()
@@ -219,8 +224,6 @@ void ReGIRRenderPass::update_render_data()
 void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
-	render_data.render_settings.regir_settings.temporal_reuse.current_grid_index = 0;
 
 	if (m_hash_grid_storage.get_byte_size() > 0)
 	{
