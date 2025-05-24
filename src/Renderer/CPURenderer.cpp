@@ -247,13 +247,6 @@ void CPURenderer::ReGIR_post_render_update()
 #if DirectLightSamplingBaseStrategy != LSS_BASE_REGIR
     return;
 #endif
-
-    // Incrementing the index of the current grid for ReGIR temporal reuse
-    if (m_render_data.render_settings.regir_settings.temporal_reuse.do_temporal_reuse)
-    {
-        m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index++;
-        m_render_data.render_settings.regir_settings.temporal_reuse.current_grid_index %= m_render_data.render_settings.regir_settings.temporal_reuse.temporal_history_length;
-    }
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)

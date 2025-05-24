@@ -54,7 +54,6 @@ struct ReGIRHashGridSoAHost
 		out_soa_device.samples.light_source_normal = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_SOURCE_NORMAL>();
 
 		out_soa_device.reservoirs.UCW = reservoirs.template get_buffer_data_ptr<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>();
-		out_soa_device.reservoirs.M = reservoirs.template get_buffer_data_ptr<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_M>();
 		out_soa_device.reservoirs.number_of_reservoirs_per_cell = m_reservoirs_per_cell;
 
 		out_soa_device.m_total_number_of_cells = m_total_number_of_cells;

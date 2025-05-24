@@ -45,32 +45,6 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
     return grid_fill_reservoir;
 }
 
-HIPRT_DEVICE ReGIRReservoir temporal_reuse(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, int hash_grid_cell_index, int reservoir_index_in_cell, const ReGIRReservoir& current_reservoir, float& in_out_normalization_weight, Xorshift32Generator& rng)
-{
-    ReGIRReservoir output_reservoir = current_reservoir;
-
-    float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
-
-    if (regir_settings.temporal_reuse.do_temporal_reuse)
-    {
-        // Looping over the grids of the past frames to combine the reservoirs with the current
-        for (int grid_index = 0; grid_index < regir_settings.temporal_reuse.temporal_history_length; grid_index++)
-        {
-            if (grid_index == regir_settings.temporal_reuse.current_grid_index)
-                continue;
-
-            ReGIRReservoir past_frame_reservoir = regir_settings.get_temporal_reservoir_opt(representative_point, render_data.current_camera, reservoir_index_in_cell, grid_index);
-            // M-capping
-            past_frame_reservoir.M = hippt::min(past_frame_reservoir.M, (unsigned char)regir_settings.temporal_reuse.m_cap);
-
-            output_reservoir.stream_reservoir(past_frame_reservoir.M, past_frame_reservoir.sample.target_function, past_frame_reservoir, rng);
-            in_out_normalization_weight += past_frame_reservoir.M;
-        }
-    }
-
-    return output_reservoir;
-}
-
 /** 
  * This kernel is in charge of resetting (when necessary) and filling the ReGIR grid.
  * 
@@ -138,11 +112,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         // Grid fill
         output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, hash_grid_cell_index, random_number_generator);
         
-        // Temporal reuse
-        output_reservoir = temporal_reuse(render_data, regir_settings, hash_grid_cell_index, reservoir_index_in_cell, output_reservoir, normalization_weight, random_number_generator);
-        
         // Normalizing the reservoirs to 1
-        output_reservoir.M = 1;
         output_reservoir.finalize_resampling(normalization_weight);
         
         // Discarding occluded reservoirs with visibility reuse
