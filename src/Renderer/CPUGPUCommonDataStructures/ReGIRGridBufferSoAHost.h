@@ -34,8 +34,7 @@ enum ReGIRSampleSoAHostBuffers
 
 enum ReGIRReservoirSoAHostBuffers
 {
-	REGIR_RESERVOIR_UCW,
-	REGIR_RESERVOIR_M
+	REGIR_RESERVOIR_UCW
 };
 
 template <template <typename> typename DataContainer>

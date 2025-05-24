@@ -235,12 +235,12 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
-    bool& shading_point_outside_of_grid,
+    bool& out_need_fallback_sampling,
     Xorshift32Generator& random_number_generator)
 {
     // Starting with this at true and if we find a single good neighbor,
-    // this will be set o false
-    shading_point_outside_of_grid = true;
+    // this will be set to false
+    out_need_fallback_sampling = true;
 
     float3 selected_point_on_light;
     float3 selected_light_source_normal;
@@ -263,7 +263,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             // Couldn't find a valid neighbor
             continue;
         else
-            shading_point_outside_of_grid = false;
+            out_need_fallback_sampling = false;
 
         for (int i = 0; i < render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor; i++)
         {
@@ -274,17 +274,23 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 // No valid sample in that reservoir
                 continue;
 
+            if (non_canonical_reservoir.sample.emissive_triangle_index == -1 || non_canonical_reservoir.sample.emissive_triangle_index * 3 + 2 >= 11531025)
+            {
+                // printf("yep, %d, UCW = %f | hash grid indx : %u\n", non_canonical_reservoir.sample.emissive_triangle_index, non_canonical_reservoir.UCW, neighbor_grid_cell_index);
+                return LightSampleInformation();
+            }
+
             // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
             float3 point_on_light;
             float3 light_source_normal;
 			float light_source_area;
             Xorshift32Generator rng_point_on_triangle(non_canonical_reservoir.sample.random_seed);
-            ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
 			if (!sample_point_on_generic_triangle(non_canonical_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices, 
                 rng_point_on_triangle, 
                 point_on_light, light_source_normal, light_source_area))
                 continue;
-
+                
+            ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
             float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
@@ -317,13 +323,23 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         // that cannot be resolved
         if (neighbor_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
         {
+            // We found at least one good sample so we're not going to need a fallback on another light sampling strategy than ReGIR
+            out_need_fallback_sampling = false;
+
             ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(neighbor_grid_cell_index, neighbor_rng);
+
             if (canonical_reservoir.UCW > 0.0f)
             {
-
                 float3 point_on_light;
                 float3 light_source_normal;
                 float light_source_area;
+
+                if ((canonical_reservoir.sample.emissive_triangle_index == -1 || canonical_reservoir.sample.emissive_triangle_index * 3 + 2 >= 11531025))
+                {
+                    printf("yep cano, %d, UCW = %f | hash grid indx : %u\n", canonical_reservoir.sample.emissive_triangle_index, canonical_reservoir.UCW, neighbor_grid_cell_index);
+                    return LightSampleInformation();
+                }
+
                 ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_index);
                 Xorshift32Generator rng_point_on_triangle(canonical_reservoir.sample.random_seed);
                 if (sample_point_on_generic_triangle(canonical_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
@@ -359,7 +375,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         }
     }
 
-    if (out_reservoir.weight_sum == 0.0f || shading_point_outside_of_grid)
+    if (out_reservoir.weight_sum == 0.0f || out_need_fallback_sampling)
         return LightSampleInformation();
 
     neighbor_rng.m_state.seed = neighbor_rng_seed;

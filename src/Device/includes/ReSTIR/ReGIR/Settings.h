@@ -290,9 +290,6 @@ struct ReGIRSettings
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
 			return hash_grid.read_full_reservoir(spatial_output_grid, hash_cell_data, reservoir_index_in_grid);
-		// else if (temporal_reuse.do_temporal_reuse)
-		// 	// If only doing temporal reuse, reading from the output of the spatial reuse pass
-		// 	return get_temporal_reservoir_opt(world_position, current_camera, reservoir_index_in_cell, -1, out_invalid_sample);
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
 			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, reservoir_index_in_grid);
@@ -410,6 +407,7 @@ struct ReGIRSettings
 		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index)
 	{
 		unsigned int current_num_points = hash_cell_data_to_update.num_points[hash_grid_cell_index];
+
 		if (current_num_points == 0xFFFFFFFF)
 			// We've already accumulated as many points as we can for that grid cell, can't do more
 			return;

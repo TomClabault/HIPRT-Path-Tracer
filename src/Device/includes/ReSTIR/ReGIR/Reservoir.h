@@ -14,7 +14,7 @@ struct ReGIRSample
 {
 	//Float3xLengthUint10bPacked emission;
 	int emissive_triangle_index = -1; // Only needed for ReSTIR DI
-	unsigned int random_seed;
+	unsigned int random_seed = 0;
 
 	/*float light_area = 0.0f;
 	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);

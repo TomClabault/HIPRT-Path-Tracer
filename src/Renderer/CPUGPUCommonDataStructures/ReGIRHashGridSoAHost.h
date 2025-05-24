@@ -25,6 +25,9 @@ struct ReGIRHashGridSoAHost
 
 		samples.resize(m_total_number_of_cells * reservoirs_per_cell);
 		reservoirs.resize(m_total_number_of_cells * reservoirs_per_cell);
+
+		samples.template memset_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSIVE_TRIANGLE_INDEX>(-1);
+		reservoirs.template memset_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>(100.0f);
 	}
 
 	void free()

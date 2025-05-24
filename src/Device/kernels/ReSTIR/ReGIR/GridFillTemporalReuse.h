@@ -124,7 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         if (!regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, hash_grid_cell_index, random_number_generator);
-        
+
         regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
