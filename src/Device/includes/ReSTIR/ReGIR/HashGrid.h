@@ -338,9 +338,9 @@ private:
 	{
 		if (reservoir.UCW <= 0.0f)
 		{
-			// No need to store the rest if the UCW is invalid
 			soa.reservoirs.UCW[reservoir_index_in_grid] = reservoir.UCW;
-
+			
+			// No need to store the rest if the UCW is invalid, we can already return
 			return;
 		}
 

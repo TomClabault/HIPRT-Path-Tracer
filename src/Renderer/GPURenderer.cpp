@@ -1054,6 +1054,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 		// Empty scene, nothing todo
 		return;
 
+	std::cout << "SIZE: " << scene.triangles_indices.size() << std::endl;
 	m_hiprt_scene.geometry.upload_triangle_indices(scene.triangles_indices);
 	m_hiprt_scene.geometry.upload_vertices_positions(scene.vertices_positions);
 	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;

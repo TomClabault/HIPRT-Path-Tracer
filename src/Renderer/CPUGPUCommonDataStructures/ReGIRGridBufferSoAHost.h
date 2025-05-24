@@ -11,24 +11,30 @@
 #include "Renderer/CPUGPUCommonDataStructures/GenericSoA.h"
 
 template <template <typename> typename DataContainer>
-using ReGIRSampleSoAHost = GenericSoA<DataContainer, Float3xLengthUint10bPacked, int, float, float3, Octahedral24BitNormalPadded32b>;
+//using ReGIRSampleSoAHost = GenericSoA<DataContainer, Float3xLengthUint10bPacked, int, float, float3, Octahedral24BitNormalPadded32b>;
+using ReGIRSampleSoAHost = GenericSoA<DataContainer, int, unsigned int>;
 
 template <template <typename> typename DataContainer>
 using ReGIRReservoirSoAHost = GenericSoA<DataContainer, float>;
 
+//enum ReGIRSampleSoAHostBuffers
+//{
+//	REGIR_SAMPLE_EMISSION,
+//	REGIR_SAMPLE_EMISSIVE_TRIANGLE_INDEX,
+//	REGIR_SAMPLE_LIGHT_AREA,
+//	REGIR_SAMPLE_POINT_ON_LIGHT,
+//	REGIR_SAMPLE_LIGHT_SOURCE_NORMAL
+//};
+
 enum ReGIRSampleSoAHostBuffers
 {
-	REGIR_SAMPLE_EMISSION,
 	REGIR_SAMPLE_EMISSIVE_TRIANGLE_INDEX,
-	REGIR_SAMPLE_LIGHT_AREA,
-	REGIR_SAMPLE_POINT_ON_LIGHT,
-	REGIR_SAMPLE_LIGHT_SOURCE_NORMAL
+	REGIR_SAMPLE_RANDOM_SEED
 };
 
 enum ReGIRReservoirSoAHostBuffers
 {
-	REGIR_RESERVOIR_UCW,
-	REGIR_RESERVOIR_M
+	REGIR_RESERVOIR_UCW
 };
 
 template <template <typename> typename DataContainer>
