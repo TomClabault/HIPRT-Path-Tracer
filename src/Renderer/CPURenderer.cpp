@@ -99,7 +99,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     unsigned int new_cell_count = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT;
     // ReGIR hash grid Overallocation factor
-    new_cell_count *= 50;
+    new_cell_count *= 500;
     m_regir_state.grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
     m_regir_state.spatial_grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
     m_regir_state.hash_cell_data.resize(new_cell_count);

@@ -23,6 +23,11 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 
     for (int light_sample_index = 0; light_sample_index < regir_settings.grid_fill.sample_count_per_cell_reservoir; light_sample_index++)
     {
+        Xorshift32Generator rng_point(rng.m_state.seed);
+        rng_point();
+        rng_point();
+        unsigned int random_seed_for_point_on_triangle = rng_point.m_state.seed;
+
         LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
         if (light_sample.emissive_triangle_index == -1)
             continue;
@@ -39,7 +44,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
         float source_pdf = light_sample.area_measure_pdf;
         float mis_weight = 1.0f;
 
-        grid_fill_reservoir.stream_sample(mis_weight, target_function, source_pdf, light_sample, rng);
+        grid_fill_reservoir.stream_sample(mis_weight, target_function, source_pdf, random_seed_for_point_on_triangle, light_sample, rng);
     }
 
     return grid_fill_reservoir;
@@ -119,7 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         if (!regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, hash_grid_cell_index, random_number_generator);
-        
+
         regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__

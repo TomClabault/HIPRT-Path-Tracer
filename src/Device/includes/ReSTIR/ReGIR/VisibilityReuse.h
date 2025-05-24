@@ -19,9 +19,19 @@ HIPRT_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_data,
 
 #if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
     if (current_reservoir.UCW > 0.0f)
-        //if (!ReGIR_non_shading_evaluate_target_function<true>(render_data, hash_grid_cell_index, current_reservoir.sample.emission, current_reservoir.sample.point_on_light, rng))
-        if (!ReGIR_grid_cell_visibility_test(render_data, hash_grid_cell_index, current_reservoir.sample.point_on_light, rng))
+    {
+		Xorshift32Generator rng_point_on_triangle(current_reservoir.sample.random_seed);
+
+        float3 point_on_light;
+		float3 light_normal_trash;
+		float triangle_area_trash;
+        sample_point_on_generic_triangle(current_reservoir.sample.emissive_triangle_index,
+            render_data.buffers.vertices_positions, render_data.buffers.triangles_indices, rng_point_on_triangle,
+            point_on_light, light_normal_trash, triangle_area_trash);
+
+        if (!ReGIR_grid_cell_visibility_test(render_data, hash_grid_cell_index, point_on_light, rng))
             out_reservoir.UCW = ReGIRReservoir::VISIBILITY_REUSE_KILLED_UCW;
+    }
 #endif
 
     return out_reservoir;

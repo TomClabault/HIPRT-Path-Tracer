@@ -7,6 +7,7 @@
 #define DEVICE_KERNELS_REGIR_SPATIAL_REUSE_H
  
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 #include "Device/includes/ReSTIR/ReGIR/VisibilityReuse.h"
 
@@ -109,15 +110,29 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             // MIS weight is 1.0f because we're going to normalize at the end instead of during the resampling
             float mis_weight = 1.0f;
             float target_function_at_center;
+
+            ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, neighbor_reservoir.sample.emissive_triangle_index);
+            float3 point_on_light;
+            float3 light_source_normal;
+            float light_source_area;
+            Xorshift32Generator rng_point_on_triangle(neighbor_reservoir.sample.random_seed);
+
+            if (!sample_point_on_generic_triangle(neighbor_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
+                rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))
+                continue;
             if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
+            {
                 // Never using the template visibility/cosine terms arguments for canonical reservoirs
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false, false>(render_data, hash_grid_cell_index, 
-                    neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.light_source_normal.unpack(), neighbor_reservoir.sample.point_on_light,
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false, false>(render_data, hash_grid_cell_index,
+                    emission, light_source_normal, point_on_light,
                     random_number_generator);
+            }
             else
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true, true>(render_data, hash_grid_cell_index, 
-                    neighbor_reservoir.sample.emission.unpack(), neighbor_reservoir.sample.light_source_normal.unpack(), neighbor_reservoir.sample.point_on_light,
+            {
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true, true>(render_data, hash_grid_cell_index,
+                    emission, light_source_normal, point_on_light,
                     random_number_generator);
+            }
 
             output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
         }
@@ -138,6 +153,14 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
 
     if (output_reservoir.weight_sum > 0.0f)
     {
+        float3 point_on_light;
+        float3 light_source_normal;
+        float light_source_area;
+        ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, output_reservoir.sample.emissive_triangle_index);
+        Xorshift32Generator rng_point_on_triangle(output_reservoir.sample.random_seed);
+        if (sample_point_on_generic_triangle(output_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
+            rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))
+
         for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
         {
             bool is_center_cell = neighbor_index == regir_settings.spatial_reuse.spatial_neighbor_count;
@@ -166,7 +189,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
             else
             {
                 // Non-canonical sample, we need to count how many neighbors could have produced it
-                if (ReGIR_shading_can_sample_be_produced_by(render_data, output_reservoir.sample, neighbor_hash_grid_cell_index_in_grid, random_number_generator))
+                if (ReGIR_shading_can_sample_be_produced_by_internal(render_data,emission, light_source_normal, point_on_light, neighbor_hash_grid_cell_index_in_grid, random_number_generator))
                 {
                     if (is_center_cell)
                         valid_neighbor_count += regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL ? 1.0f : regir_settings.spatial_reuse.reuse_per_neighbor_count;

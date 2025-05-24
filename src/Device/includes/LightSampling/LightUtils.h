@@ -15,7 +15,7 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE ColorRGB32F get_emission_of_triangle_from_index(HIPRTRenderData& render_data, int triangle_index)
+HIPRT_DEVICE ColorRGB32F get_emission_of_triangle_from_index(const HIPRTRenderData& render_data, int triangle_index)
 {
     return render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[triangle_index]);
 }
@@ -235,14 +235,18 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
-    bool& shading_point_outside_of_grid,
+    bool& out_need_fallback_sampling,
     Xorshift32Generator& random_number_generator)
 {
     // Starting with this at true and if we find a single good neighbor,
-    // this will be set o false
-    shading_point_outside_of_grid = true;
+    // this will be set to false
+    out_need_fallback_sampling = true;
 
-    LightSampleInformation out_sample;
+    float3 selected_point_on_light;
+    float3 selected_light_source_normal;
+    float selected_light_source_area;
+    ColorRGB32F selected_emission;
+
     ReGIRReservoir out_reservoir;
 
     // Some random seed to generate to positions of the neighbors (when jittering)
@@ -259,7 +263,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             // Couldn't find a valid neighbor
             continue;
         else
-            shading_point_outside_of_grid = false;
+            out_need_fallback_sampling = false;
 
         for (int i = 0; i < render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor; i++)
         {
@@ -270,15 +274,39 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 // No valid sample in that reservoir
                 continue;
 
+            if (non_canonical_reservoir.sample.emissive_triangle_index == -1 || non_canonical_reservoir.sample.emissive_triangle_index * 3 + 2 >= 11531025)
+            {
+                // printf("yep, %d, UCW = %f | hash grid indx : %u\n", non_canonical_reservoir.sample.emissive_triangle_index, non_canonical_reservoir.UCW, neighbor_grid_cell_index);
+                return LightSampleInformation();
+            }
+
             // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
+            float3 point_on_light;
+            float3 light_source_normal;
+			float light_source_area;
+            Xorshift32Generator rng_point_on_triangle(non_canonical_reservoir.sample.random_seed);
+			if (!sample_point_on_generic_triangle(non_canonical_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices, 
+                rng_point_on_triangle, 
+                point_on_light, light_source_normal, light_source_area))
+                continue;
+                
+            ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data,
+                shading_point, view_direction, shading_normal, geometric_normal,
+                last_hit_primitive_index, ray_payload,
+                point_on_light, light_source_normal,
+                emission, random_number_generator);
             float mis_weight = 1.0f;
-            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility>(render_data, 
-                shading_point, view_direction, shading_normal, geometric_normal, 
-                last_hit_primitive_index, ray_payload, non_canonical_reservoir,
-                random_number_generator);
 
             if (out_reservoir.stream_reservoir(mis_weight, target_function, non_canonical_reservoir, random_number_generator))
+            {
                 selected_neighbor = neighbor;
+
+				selected_point_on_light = point_on_light;
+				selected_light_source_normal = light_source_normal;
+                selected_light_source_area = light_source_area;
+				selected_emission = emission;
+            }
         }
 }
 
@@ -295,25 +323,59 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         // that cannot be resolved
         if (neighbor_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
         {
+            // We found at least one good sample so we're not going to need a fallback on another light sampling strategy than ReGIR
+            out_need_fallback_sampling = false;
+
             ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(neighbor_grid_cell_index, neighbor_rng);
 
-            // Adding visibility in the canonical sample target function's if we have visibility reuse
-            // (or visibility in the grid fill target function) because otherwise this canonical sample
-            // will kill all the benefits of the visibility reuse
-            //
-            // This is pretty much necessary for good visibility reuse quality
-            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility>(render_data,
-                shading_point, view_direction, shading_normal, geometric_normal,
-                last_hit_primitive_index, ray_payload, canonical_reservoir,
-                random_number_generator);
+            if (canonical_reservoir.UCW > 0.0f)
+            {
+                float3 point_on_light;
+                float3 light_source_normal;
+                float light_source_area;
 
-            float mis_weight = 1.0f;
-            if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_reservoir, random_number_generator))
-                selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors;
+                if ((canonical_reservoir.sample.emissive_triangle_index == -1 || canonical_reservoir.sample.emissive_triangle_index * 3 + 2 >= 11531025))
+                {
+                    printf("yep cano, %d, UCW = %f | hash grid indx : %u\n", canonical_reservoir.sample.emissive_triangle_index, canonical_reservoir.UCW, neighbor_grid_cell_index);
+                    return LightSampleInformation();
+                }
+
+                ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_index);
+                Xorshift32Generator rng_point_on_triangle(canonical_reservoir.sample.random_seed);
+                if (sample_point_on_generic_triangle(canonical_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
+                    rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))
+                {
+                    // Adding visibility in the canonical sample target function's if we have visibility reuse
+                    // (or visibility in the grid fill target function) because otherwise this canonical sample
+                    // will kill all the benefits of the visibility reuse
+                    //
+                    // This is pretty much necessary for good visibility reuse quality
+                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility>(render_data,
+                        shading_point, view_direction, shading_normal, geometric_normal,
+                        last_hit_primitive_index, ray_payload,
+                        point_on_light, light_source_normal,
+                        emission, random_number_generator);
+                    /*float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility>(render_data,
+                        shading_point, view_direction, shading_normal, geometric_normal,
+                        last_hit_primitive_index, ray_payload, canonical_reservoir,
+                        random_number_generator);*/
+
+                    float mis_weight = 1.0f;
+                    if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_reservoir, random_number_generator))
+                    {
+                        selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors;
+
+                        selected_point_on_light = point_on_light;
+                        selected_light_source_normal = light_source_normal;
+                        selected_light_source_area = light_source_area;
+                        selected_emission = emission;
+                    }
+                }
+            }
         }
     }
 
-    if (out_reservoir.weight_sum == 0.0f || shading_point_outside_of_grid)
+    if (out_reservoir.weight_sum == 0.0f || out_need_fallback_sampling)
         return LightSampleInformation();
 
     neighbor_rng.m_state.seed = neighbor_rng_seed;
@@ -354,19 +416,21 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             continue;
         }
 
-        if (ReGIR_shading_can_sample_be_produced_by(render_data, out_reservoir.sample, neighbor_cell_index, random_number_generator))
+        if (ReGIR_shading_can_sample_be_produced_by_internal(render_data, selected_emission, selected_light_source_normal, selected_point_on_light, neighbor_cell_index, random_number_generator))
             normalization_weight += render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor;
     }
 
     out_reservoir.finalize_resampling(normalization_weight);
 
+    LightSampleInformation out_sample;
+
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
     out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
     out_sample.emissive_triangle_index = out_reservoir.sample.emissive_triangle_index;
-    out_sample.emission = out_reservoir.sample.emission.unpack();
-    out_sample.light_area = out_reservoir.sample.light_area;
-    out_sample.light_source_normal = out_reservoir.sample.light_source_normal.unpack();
-    out_sample.point_on_light = out_reservoir.sample.point_on_light;
+    out_sample.emission = selected_emission;// out_reservoir.sample.emission.unpack();
+    out_sample.light_area = selected_light_source_area;// out_reservoir.sample.light_area;
+    out_sample.light_source_normal = selected_light_source_normal;// out_reservoir.sample.light_source_normal.unpack();
+    out_sample.point_on_light = selected_point_on_light;// out_reservoir.sample.point_on_light;
 
     return out_sample;
 }
