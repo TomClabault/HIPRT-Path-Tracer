@@ -98,7 +98,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 5;
+	int nb_bounces = 1;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
