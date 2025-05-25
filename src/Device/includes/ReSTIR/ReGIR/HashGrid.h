@@ -42,7 +42,7 @@ struct ReGIRHashGrid
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash(soa.m_total_number_of_cells, world_position, current_camera, hash_key);
-		if (!resolve_collision(hash_cell_data, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
+		if (!resolve_collision(hash_cell_data, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || hash_cell_data.grid_cells_alive[hash_grid_cell_index] == 0u)
 			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
 
 		return hash_grid_cell_index;

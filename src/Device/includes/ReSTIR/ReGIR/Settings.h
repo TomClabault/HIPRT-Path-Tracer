@@ -203,41 +203,6 @@ struct ReGIRSettings
 		}
 
 		return neighbor_cell_index;
-
-		// do
-		// {
-		// 	float3 jittered = shading_point;
-		// 	if (jitter)
-		// 		jittered = grid_fill_grid.jitter_world_position(shading_point, current_camera, rng);
-
-		// 	hash_grid_cell_index = grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, jittered, current_camera);
-		// 	// Advancing the RNG to mimic 'get_non_canonical_reservoir_for_shading_from_world_pos'
-
-
-		// 	if (hash_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && !hash_cell_data.grid_cells_alive[hash_grid_cell_index])
-		// 		// The grid cell is inside the grid but not alive
-		// 		hash_grid_cell_index = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
-
-		// 	retry++;
-		// } while (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry < ReGIR_ShadingJitterTries);
-
-		// if (retry == ReGIR_ShadingJitterTries && hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
-		// {
-		// 	// We ran out of retries
-		// 	if (!replay_canonical)
-		// 		// It's fine for non-canonical neighbors
-		// 		return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
-		// 	else
-		// 	{
-		// 		// For non-canonical neighbors, we're falling back to the center cell (no jittering)
-		// 		// because we absolutely want a canonical neighbor to avoid bias
-
-		// 		// We can just directly return the index
-		// 		return grid_fill_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(hash_cell_data, shading_point, current_camera);
-		// 	}
-		// }
-		// else
-		// 	return hash_grid_cell_index;
 	}
 
 	template <bool fallbackOnCenterCell>
@@ -251,13 +216,40 @@ struct ReGIRSettings
 			float3 jittered = hash_grid.jitter_world_position(world_position, current_camera, rng);
 
 			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, jittered, current_camera);
+			if (neighbor_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+			{
+				// This part here is to avoid race concurrency issues from the Megakernel shader:
+				//
+				// In the megakernel, rays that bounce around the scene may hit cells that have never been hit
+				// before. This will cause these cells to become alive.
+				//
+				// When a cell is alive, it may be picked during the megakernel shading with ReGIR.
+				// However, the cells are only filled during the grid fill pass/spatial reuse pass of ReGIR
+				//
+				// What can happen is that the Megakernel sets some grid cells alive and some other threads of the Megakernel then
+				// tries to use that grid cell for shading (since that grid cell is now alive). This though is that the grid fill pass
+				// hasn't been launched yet (it will be launched at the next frame) and so the grid cell, even though it's alive, doesn't
+				// contain valid data --> reading invalid reservoir data for shading
+				//
+				// So we're checking here if the cell contains valid data and if it doesn't, we're going to position the cell
+				// as being invalid with UNDEFINED_HASH_KEY
+
+				float UCW;
+				if (spatial_reuse.do_spatial_reuse)
+					UCW = spatial_output_grid.reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell()];
+				else
+					UCW = initial_reservoirs_grid.reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell()];
+
+				if (UCW == ReGIRReservoir::UNDEFINED_UCW)
+					neighbor_grid_cell_index = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+			}
 
 			retry++;
 		} while (neighbor_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry < ReGIR_ShadingJitterTries);
 
 		if (fallbackOnCenterCell && neighbor_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry == ReGIR_ShadingJitterTries)
 			// We couldn't find a valid neighbor and the fallback on center cell is enabled: we're going to return the index of the center cell
-			return hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, world_position, current_camera);
+			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, world_position, current_camera);
 
 		return neighbor_grid_cell_index;
 	}
