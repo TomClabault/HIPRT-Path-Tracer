@@ -53,6 +53,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Issue with microfacet regularization x ReGIR?
 // - Let's only do like 250 max hash cell data update instead of 0xFFFFFFFF
 // - Scalarization of hash grid fill because we know that consecutive threads are in the same cell
 // - Scalarization of the hash grid fetches for the camera rays?
@@ -61,7 +62,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
 // - rename hash keys as checksum
 // - Update hash cell data point normal seems to be very expensive
-// - We may have an issue with updating the representative points on the fly with more than 1 bounce because the representative points are going to change *during* the path tracing and so the MIS weights with visibility rays and so on are going to be computed with the updated rep points even though the reservoirs were produced with the old rep points
 // - Deduplicate hash grid cell idnex calculations in fetch reservoirs functions mainly for performance reasons
 // - To profile the hash grid, may be useful to, for example, store everything from the camera rays pass into some buffers and then run a separate hash grid cell data fill kernel just to be able to profile that kernel in isolation
 // - For the spatial reuse output grid buffer, we don't have to store the rservoirs, we can just store the indices of the cell which we resample from so let's save some VRAM there
