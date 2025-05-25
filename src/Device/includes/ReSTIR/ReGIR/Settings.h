@@ -400,8 +400,8 @@ struct ReGIRSettings
 	{
 		unsigned int current_num_points = hash_cell_data_to_update.num_points[hash_grid_cell_index];
 
-		if (current_num_points == 0xFFFFFFFF)
-			// We've already accumulated as many points as we can for that grid cell, can't do more
+		if (current_num_points >= 255)
+			// We've already accumulated enough points for that grid cell, not doing more to save on perf
 			return;
 		
 		// We're going to add our point to the sum of points for that grid cell.
