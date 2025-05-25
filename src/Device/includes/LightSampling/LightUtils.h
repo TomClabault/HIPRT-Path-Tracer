@@ -274,12 +274,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 // No valid sample in that reservoir
                 continue;
 
-            if (non_canonical_reservoir.sample.emissive_triangle_index == -1 || non_canonical_reservoir.sample.emissive_triangle_index * 3 + 2 >= 11531025)
-            {
-                // printf("yep, %d, UCW = %f | hash grid indx : %u\n", non_canonical_reservoir.sample.emissive_triangle_index, non_canonical_reservoir.UCW, neighbor_grid_cell_index);
-                return LightSampleInformation();
-            }
-
             // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
             float3 point_on_light;
             float3 light_source_normal;
@@ -328,17 +322,11 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
             ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(neighbor_grid_cell_index, neighbor_rng);
 
-            if (canonical_reservoir.UCW > 0.0f)
+            if (canonical_reservoir.UCW > 0.0f && canonical_reservoir.UCW != ReGIRReservoir::UNDEFINED_UCW)
             {
                 float3 point_on_light;
                 float3 light_source_normal;
                 float light_source_area;
-
-                if ((canonical_reservoir.sample.emissive_triangle_index == -1 || canonical_reservoir.sample.emissive_triangle_index * 3 + 2 >= 11531025))
-                {
-                    printf("yep cano, %d, UCW = %f | hash grid indx : %u\n", canonical_reservoir.sample.emissive_triangle_index, canonical_reservoir.UCW, neighbor_grid_cell_index);
-                    return LightSampleInformation();
-                }
 
                 ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_index);
                 Xorshift32Generator rng_point_on_triangle(canonical_reservoir.sample.random_seed);

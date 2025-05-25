@@ -32,12 +32,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int ReGIR_get_cell_primitive_index(const HIPRTRen
 }
 
 /**
- * If using the feature that "optimizes" hash_cell_data points to be as close as possible to the cell center:
- * 		- this function stores the given pixel index into the hash_cell_data point buffer if it is closer to
- *		the grid cell center than the current hash_cell_data point
- * 
- * Otherwise:
- *		- this function always stores the given pixel index in the grid cell corresponding to the given shading point
+ *	Updates the representative point and normal (and other data) of the cell at the given shading point
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
 {
