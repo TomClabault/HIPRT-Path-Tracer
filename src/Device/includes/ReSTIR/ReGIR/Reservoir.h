@@ -28,6 +28,7 @@ struct ReGIRSample
 struct ReGIRReservoir
 {
 	static constexpr float VISIBILITY_REUSE_KILLED_UCW = -42.0f;
+	static constexpr float UNDEFINED_UCW = -4242.0f;
 	
 	HIPRT_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, unsigned int random_seed, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
 	{
