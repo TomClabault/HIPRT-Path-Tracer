@@ -42,7 +42,7 @@ private:
 	// and 1 canonical reservoir:
 	//
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_non_canonical = 16;
+	int reservoirs_count_per_grid_cell_non_canonical = 40;
 
 	// Number of canonical reservoirs per cell
 	// 
@@ -508,6 +508,16 @@ struct ReGIRSettings
 	bool DEBUG_INCLUDE_CANONICAL = true;
 	bool DEBUG_CORRELATE_rEGIR = true;
 	int DEBUG_CORRELATE_rEGIR_SIZE = 32;
+
+	// How many frames to skip before running the grid fill and spatial reuse passes again
+	// 
+	// A value of 1 for example means that the grid fill and spatial reuse will be ran at frame 0
+	// but not at frame 1. And ran at frame 2 but not at frame 3. ...
+	//
+	// This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell
+	// contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used
+	// and new samples are necessary
+	int frame_skip = 2;
 
 	ReGIRHashGrid hash_grid;
 

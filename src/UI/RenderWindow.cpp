@@ -65,9 +65,6 @@ extern ImGuiLogger g_imgui_logger;
 // - For the spatial reuse output grid buffer, we don't have to store the rservoirs, we can just store the indices of the cell which we resample from so let's save some VRAM there
 // - Can we store just the light index per each regir sample? And reconstruct, the normal and everything from that? Maybe that's not going to be much more expensive that having to read everything from the Regir sample but this would save a lot of memory
 // - Directional spatial reuse to directly hit the right neighbors instead of having to retry multiple times (one memory access for each retry)
-// - Maybe for the new hash grid ReGIR we can use the average of all hit points in a cell as the center of the cell? And so we can optimize representative points about that 'center point'
-// - Maybe try a "progressive liveness" where we keep alive all the cells that we have hit *so far* instead of only keeping the cells alive from the last frame
-//		- May need a maximum life length for that to avoid keeping cells that haven't been hit for 500 samples 
 // - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
 // - Use some shjortcut in the BSDF in the target function during shading: rough material only use a constant BSDF, nothing more

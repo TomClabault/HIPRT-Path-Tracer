@@ -1964,6 +1964,17 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePop();
 		}
 
+		if (ImGui::SliderInt("Frame skip", &regir_settings.frame_skip, 0, 8))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("How many frames to skip before running the grid fill and spatial reuse passes again.\n\n"
+			""
+			"A value of 1 for example means that the grid fill and spatial reuse will be ran at frame 0 "
+			"but not at frame 1. And ran at frame 2 but not at frame 3. ...\n\n"
+			""
+			"This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell "
+			"contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used "
+			"and new samples are necessary");
+
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
