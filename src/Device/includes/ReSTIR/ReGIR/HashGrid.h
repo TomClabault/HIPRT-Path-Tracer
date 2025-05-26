@@ -214,9 +214,15 @@ struct ReGIRHashGrid
 	 * aborted because too many iterations
 	 */
 	template <bool isInsertion = false>
-	HIPRT_DEVICE bool resolve_collision(const ReGIRHashCellDataSoADevice& hash_cell_data, unsigned int total_number_of_cells, unsigned int& in_out_hash_cell_index, unsigned int hash_key) const
+	HIPRT_DEVICE bool resolve_collision(const ReGIRHashCellDataSoADevice& hash_cell_data, unsigned int total_number_of_cells, unsigned int& in_out_hash_cell_index, unsigned int hash_key, unsigned int opt_existing_hash_key = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY) const
 	{
-		unsigned int existing_hash_key = hash_cell_data.hash_keys[in_out_hash_cell_index];
+		unsigned int existing_hash_key;
+		if (opt_existing_hash_key != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+			// The current hash key was passed as an argument, no need to fetch from memory
+			existing_hash_key = opt_existing_hash_key;
+		else
+			existing_hash_key = hash_cell_data.hash_keys[in_out_hash_cell_index];
+
 		if (existing_hash_key == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 		{
 			// This is refering to a hash cell that hasn't been populated yet
@@ -263,7 +269,7 @@ struct ReGIRHashGrid
 			unsigned int base_cell_index = in_out_hash_cell_index;
 
 			// Linear probing
-			for (int i = 1; i <= 32; i++)
+			for (int i = 1; i <= ReGIR_LinearProbingSteps; i++)
 			{
 				unsigned int next_hash_cell_index = (base_cell_index + i) % total_number_of_cells;
 				if (next_hash_cell_index == base_cell_index)
@@ -279,7 +285,6 @@ struct ReGIRHashGrid
 
 					in_out_hash_cell_index = next_hash_cell_index;
 
-					// We found an empty cell
 					return true;
 				}
 				else if (next_cell_hash_key == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)

@@ -52,7 +52,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
     float3 shading_normal = old_hash_cell_data.world_normals[cell_alive_index].unpack();
     int primitive_index = old_hash_cell_data.hit_primitive[cell_alive_index];
 
-    ReGIRSettings::insert_hash_cell_data_static(
+    ReGIRSettings::rehash_hash_cell_data_static(
         new_hash_grid, new_hash_grid_soa, new_hash_cell_data,
         world_position, current_camera, shading_normal, primitive_index);
 }
