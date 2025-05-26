@@ -1949,6 +1949,21 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
 
+		static int linear_probing_steps = ReGIR_LinearProbingSteps;
+		ImGui::SliderInt("Linear probing max. steps", &linear_probing_steps, 1, 32);
+		if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS))
+		{
+			ImGui::TreePush("ReGIR linear probing steps apply button");
+			if (ImGui::Button("Apply"))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS, linear_probing_steps);
+
+				m_render_window->set_render_dirty(true);
+				m_renderer->recompile_kernels();
+			}
+			ImGui::TreePop();
+		}
+
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}

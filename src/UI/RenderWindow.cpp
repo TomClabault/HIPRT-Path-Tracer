@@ -54,11 +54,9 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Issue with microfacet regularization x ReGIR?
-// - Let's only do like 250 max hash cell data update instead of 0xFFFFFFFF
 // - Scalarization of hash grid fill because we know that consecutive threads are in the same cell
 // - Scalarization of the hash grid fetches for the camera rays?
 // - We can optimize the grid cell aliv ecounter atomic increment by incrementing by the number of threads in the wavefront instead of 1 per thread
-// - Test compress cells by only storing the emissive light index instead of all the info --> Is it going to be bad on the performance?
 // - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
 // - rename hash keys as checksum
 // - Update hash cell data point normal seems to be very expensive
@@ -72,7 +70,6 @@ extern ImGuiLogger g_imgui_logger;
 //		- May need a maximum life length for that to avoid keeping cells that haven't been hit for 500 samples 
 // - Do we have bad divergence when ReGIR falls back to power sampling? Maybe we could retry more and more ReGIR until we find a reservoir to avoid the divergence
 // - If we want initial visibility in ReGIR, we're going to have to check whether the center of the cell is in an object or not because otherwise, all the samples for that cell are going to be occluded and that's going to be biased if a surface goes through that cell
-// - We need light culling in the initial sampling
 // - Use some shjortcut in the BSDF in the target function during shading: rough material only use a constant BSDF, nothing more
 // - When computing the MIS weights by counting the neighbors, we actually don't need the full target function with the emission and everything, we just need the cosine term and shadow ray probably
 // - De-duplicate BSDF computations during shading: we evaluate the BRDF during the reservoir resampling and again during the light sampling
@@ -88,33 +85,13 @@ extern ImGuiLogger g_imgui_logger;
 //		
 //			- We would need a prepass at lower resolution, same as for radiance caching?
 //			- Maybe we can keep the grids of past frames to help with that?
-// - Temporal reuse
-// - When building a grid around the camera, the size of the voxel can be chosen such that the projected bounding box of a voxel spans a certain amount of pixels on screen ---> maybe this can be done separately for each dimensions
-// - Right now, ReGIR's temporal reuse only softens black pixels (no good sample) because of the MIS weights, something better to do?
-//		- This may actually be because all samples are pretty good from the point of view of the target function --> all samples are equal ---> same weights --> 1/M --> averaging.
-//		- But in the case where the sampling is poor and neighbors help a lot, the story may be different
 // - For the visibility reuse of ReGIR, maybe we can just trace from the center of the cell and if at shading time, the reservoir is 0, we know that this must be because the reservoir is occluded for that sample so we can just draw a canonical candidate instead there
 //		- Always tracing from the center of the cell may be always broken depending on the geometry of the scene so maybe we want to trace from the center of the cell as a default but as path tracing progresses, we want to save one point on the surface of geometry in that cell and use that point to trace shadow rays from onwards, that way we're always tracing from a valid surface in the grid cell
 //		- And with that new "representative point" for each cell, we can also have the normal to evaluate the cosine term
-// - Can we do temporal reuse without storing past grid (VRAM please)? Same as in ReSTIR DI?
 // - For performance, at shading time when resampling the reservoirs, there may be only a few materials that benefit from the BSDF in the resampling target function because lambertian doesn't care, mirrors don't care, specular don't care, really it's only materials at like 0.3 roughness ish
 // - Looking at the average contribution of cells seems to be giving some good metric on the performance of the sampling per cell no? What can we do with that info? Adaptive sampling somehow?
 //		Maybe we can adaptively adapt the number of samples per grid cell during grid fill with that
-// - We can include the cosine term of the geometry term in the target function
-// - Are we really chaining spatial and temporal reuse?
-// - Try to find a case where temporal reuse erellay helps and then try the approach of having only one temporal grid instead of 8 and see if that still works well
 // - Cull lights that have too low a contribution during grid fill. Maybe some power function or something to keep things unbiased, not just plain reject
-// - We can cull back facing lights during grid fill
-// - Introduce the light surface cosine term to the target function
-// - For tracing rays in grid fill / spatial reuse, there's massive performance to gain from using a shared mem stack for the BVH traversal but we're going to need to split those kernels into multiple calls to avoid overloading the BVH global stack buffer already allocated (or we're going to need to allocate more but VRAM please)
-// - Many retries if the reservoir that was picked for shading was visibility-reuse-killed
-// - Maybe we can fix the jittering PER FRAME such that a given shading point only reuses from a single random neighboring cells instead of multiple neighboring cells when resampling multiple reservoirs. This may simplify MIS weights quite a bit at the cost of artifacts (but yet to try if the artifacts are actually bad or not)
-// - Pack emission to length + 16 bits (maybe even 10? Try also length + RGBE9995 in terms of precision) per channel
-// - Sparse grid somehow? hash table? perfect spatial hasing?
-//		Sparse voxel octrees? https://research.nvidia.com/sites/default/files/pubs/2010-02_Efficient-Sparse-Voxel/laine2010tr1_paper.pdf?utm_source=chatgpt.com
-//		Voxel hasing? https://niessnerlab.org/papers/2013/4hashing/niessner2013hashing.pdf?utm_source=chatgpt.com
-//		Perfect spatial hashing looks like a good candidate: maybe do that in a limited space around the camera instead of on the whole scene to gain in precision, and maybe incorporate some distance falloff in the hash function to have larger cells the further away from the camera
-// - We can do neighbor normal similarity during spatial reuse with representation points
 // - NEE++ mix up to help with visibility sampling?
 // - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
 // - Is the grid fill bottleneck by random light sampling? Try on the class white room to see if perf improves
@@ -122,12 +99,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Shared mem ray tracing helps a ton for ReGIR grid fill & spatial reuse ----> maybe have them in a separate kernel to be able to use max shared mem without destroying the L1?
 // - Can we add the canonical sample at the end of the spatial pass instead of in the shading pass?
 // - The idea to fix the bad ReGIR target function that may prioritze occluded samples is to use NEE with a visibility weight
-// - Compact grid fill and spatial reuse and see if the profiler graph looks better
 // - Maybe we can just swap the buffers for ReGIR staging buffers instead of copying
 // - Can we use ReSTIR DI and fill the ReGIR grid with the ReSTIR DI samples? ---> Doesn't work at later bounces though
 // - Can we start another grid fill in parallel of the mega kernel after the spatial reuse such that we overlap some work and don't have to do the grid fill at the next frame
 //		- We can even decouple the spatial reuse with the visibility pass of it and launch the grid fill during the visibility pass of teh spatial reuse
-// - Try per-warp light sampling to reduce divergence as HouseOfCards did
 // - Introduce envmap sampling into ReGIR to avoid having to integrate the envmap in a separate domain: big perf boost
 // - When shading, maybe pick random reservoirs from a single neighboring cell to reduce shadow rays count but do that on a per warp basis to reduce the size of artifacts (which would be grid cell size otherwise)
 // - Is there something to do with a wavefront architecture when tracing shadow rays at the end of the spatial reuse or something? Do we want maybe to dispatch kernels together for tracing from a given cell?
@@ -136,11 +111,8 @@ extern ImGuiLogger g_imgui_logger;
 //		We can just test that tehroretically and see if that helps performance at all
 // - Can we do something with the time per grid cell ray? To try and reduce this "long tails" effect
 //		- Maybe what we can do here is compact the hard threads together so that we are able to launch all the light rays together and avoid divergence between light and heavy rays
-// - Is the persistent thread approach faster because we don't have to download data? Does it fill the holes that we see in the profiler?
-// - Do also multiple resample per neighbor during shading
 // - Gather some information of how many light samples are rejected because of visibility to get a feel for how much can be gained with NEE++
 //		- Also incorporate back facing lights info
-// - We need a retry feature for ReGIR shading too because of the cell liveness / jittering into cells that are not on the scene's surface
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to compile mega kernel even though we don't need it
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for both shading_point and view_direction

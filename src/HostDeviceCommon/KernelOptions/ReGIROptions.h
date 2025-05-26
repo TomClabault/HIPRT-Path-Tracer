@@ -101,6 +101,11 @@
 #define ReGIR_FallbackLightSamplingStrategy LSS_BASE_POWER
 
 /**
+ * Maximum number of steps for the linear probing in the hash table to resolve collisions
+ */
+#define ReGIR_LinearProbingSteps 4
+
+/**
  * Debug option to color the scene with the grid cells
  */
 #define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
