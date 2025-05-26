@@ -103,6 +103,8 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
+	else if (render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip + 1) != 0)
+		return false;
 
 	// This needs to be called before the rehash because the 
 	// rehash needs the updated number of cells alive to function
@@ -148,19 +150,6 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 	unsigned int nb_threads = hippt::min(m_number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 	
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
-
-	/*oroStream_t stream1, stream2;
-	oroStreamCreate(&stream1);
-	oroStreamCreate(&stream2);
-
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream1);
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream2);
-
-	oroStreamSynchronize(stream1);
-	oroStreamSynchronize(stream2);
-
-	oroStreamDestroy(stream1);
-	oroStreamDestroy(stream2);*/
 }
 
 void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
