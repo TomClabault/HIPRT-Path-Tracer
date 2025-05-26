@@ -447,7 +447,7 @@ struct ReGIRSettings
 		}
 	}
 
-	HIPRT_DEVICE static void insert_hash_cell_data_static(
+	HIPRT_DEVICE static void rehash_hash_cell_data_static(
 		const ReGIRHashGrid& hash_grid, ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
 		float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
 	{
@@ -457,18 +457,17 @@ struct ReGIRSettings
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 
-		unsigned int before = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY, hash_key);
-		if (before != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		unsigned int existing_hash_key = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY, hash_key);
+		if (existing_hash_key != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 		{
 			// We tried inserting in our cell but there is something else there already
 			
-			unsigned int existing_hash_key = hash_cell_data_to_update.hash_keys[hash_grid_cell_index];
 			if (existing_hash_key != hash_key)
 			{
 				// And it's not our hash so this is a collision
 
 				unsigned int new_hash_cell_index = hash_grid_cell_index;
-				if (!hash_grid.resolve_collision<true>(hash_cell_data_to_update, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, hash_key))
+				if (!hash_grid.resolve_collision<true>(hash_cell_data_to_update, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, hash_key, existing_hash_key))
 				{
 					// Could not resolve the collision
 
@@ -476,27 +475,11 @@ struct ReGIRSettings
 				}
 				else 
 				{
-					if (new_hash_cell_index == hash_grid_cell_index)
-					{
-						// We resolved the collision by finding our own cell hash with probing
-						// 
-						// This means that we already have something in our grid cell
-						// We're going to update the average 
+					// We resolved the collision by finding an empty cell
+					hash_grid_cell_index = new_hash_cell_index;
 
-						// TODO never getting here?
-						update_hash_cell_point_normal(hash_cell_data_to_update,
-							hash_grid_cell_index, world_position, shading_normal, primitive_index);
-
-						return;
-					}
-					else
-					{
-						// We resolved the collision by finding an empty cell
-						hash_grid_cell_index = new_hash_cell_index;
-
-						insert_hash_cell_point_normal(hash_cell_data_to_update,
-							hash_grid_cell_index, world_position, shading_normal, primitive_index);
-					}
+					insert_hash_cell_point_normal(hash_cell_data_to_update,
+						hash_grid_cell_index, world_position, shading_normal, primitive_index);
 				}
 			}
 			else
@@ -517,9 +500,9 @@ struct ReGIRSettings
 
 	}
 
-	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
+	HIPRT_DEVICE void rehash_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
 	{
-		ReGIRSettings::insert_hash_cell_data_static(hash_grid, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, shading_normal, primitive_index);
+		ReGIRSettings::rehash_hash_cell_data_static(hash_grid, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, shading_normal, primitive_index);
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
