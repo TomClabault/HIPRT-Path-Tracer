@@ -33,6 +33,7 @@ public:
 
 	static float compute_image_mse(const Image32Bit& reference, const Image32Bit& subject);
 	static float compute_image_rmse(const Image32Bit& reference, const Image32Bit& subject);
+    static float compute_image_weighted_median_FLIP(const Image32Bit& reference, const Image32Bit& subject, float** out_error_map);
 
     /*
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image
