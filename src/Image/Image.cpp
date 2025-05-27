@@ -476,6 +476,31 @@ bool Image32Bit::write_image_hdr(const char* filename, const bool flipY) const
     return stbi_write_hdr(filename, width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
+Image32Bit Image32Bit::to_linear_rgb() const
+{
+    Image32Bit out(width, height, channels);
+
+#pragma omp parallel for
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            int start_pixel = (x + y * width) * channels;
+            int out_start_pixel = (x + y * width) * channels;
+
+            for (int i = 0; i < channels; i++)
+            {
+                float color_component = m_pixel_data[start_pixel + i];
+
+                // Assuming gamma 2.2
+                out.m_pixel_data[out_start_pixel + i] = powf(color_component, 2.2f);
+            }
+        }
+	}
+
+    return out;
+}
+
 float Image32Bit::luminance_of_pixel(int x, int y) const
 {
     int start_pixel = (x + y * width) * channels;

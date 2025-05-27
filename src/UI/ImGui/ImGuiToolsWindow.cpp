@@ -472,6 +472,34 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 				status_text = std::string("RMSE: " + std::to_string(difference));
 			}
 		}
+
+		static bool output_flip_error_map = false;
+		if (ImGui::Button("Compute FLIP"))
+		{
+			Image32Bit reference_image_data = Image32Bit::read_image(reference_image, 3, false);
+			Image32Bit subject_image_data = Image32Bit::read_image(subject_image, 3, false);
+
+			if (reference_image_data.width != subject_image_data.width ||
+				reference_image_data.height != subject_image_data.height)
+			{
+				status_text = "Error: Images must have the same dimensions!";
+			}
+			else
+			{
+				float* error_map = nullptr;
+				difference = Utils::compute_image_weighted_median_FLIP(reference_image_data, subject_image_data, &error_map);
+
+				if (output_flip_error_map)
+					// Write the error map to disk
+					Image32Bit(error_map, reference_image_data.width, reference_image_data.height, 3).write_image_png("FLIP_error_map.png", true);
+				free(error_map);
+
+				status_text = std::string("FLIP: " + std::to_string(difference));
+			}
+		}
+		ImGui::TreePush("Output FLIP error map tree");
+		ImGui::Checkbox("Output error map", &output_flip_error_map);
+		ImGui::TreePop();
 		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
