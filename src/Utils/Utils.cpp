@@ -8,6 +8,7 @@
 #include "Image/Image.h"
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
+#include "FLIP.h"
 
 #include <deque>
 #include <iostream>
@@ -256,6 +257,19 @@ float Utils::compute_image_mse(const Image32Bit& reference, const Image32Bit& su
 float Utils::compute_image_rmse(const Image32Bit& reference, const Image32Bit& subject)
 {
     return sqrtf(Utils::compute_image_mse(reference, subject));
+}
+
+float Utils::compute_image_weighted_median_FLIP(const Image32Bit& reference_srgb, const Image32Bit& subject_srgb, float** out_error_map)
+{
+	float mean_flip_error = 0.0f;
+
+    Image32Bit reference = reference_srgb.to_linear_rgb();
+    Image32Bit subject = subject_srgb.to_linear_rgb();
+
+    FLIP::Parameters parameters;
+    FLIP::evaluate(reference.data().data(), subject.data().data(), reference.width, reference.height, false, parameters, true, true, mean_flip_error, out_error_map);
+
+    return mean_flip_error;
 }
 
 Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor)

@@ -72,6 +72,7 @@ file(GLOB_RECURSE OROCHI_SOURCES_AND_HEADERS ${OROCHI_SOURCES_DIR}/*.h ${OROCHI_
 file(GLOB_RECURSE CUEW_SOURCES_AND_HEADERS ${CUEW_SOURCES_DIR}/*.h ${CUEW_SOURCES_DIR}/*.cpp)
 file(GLOB_RECURSE HIPEW_SOURCES_AND_HEADERS ${HIPEW_SOURCES_DIR}/*.h ${HIPEW_SOURCES_DIR}/*.cpp)
 file(GLOB_RECURSE TINYFILEDIALOGS_SOURCE_AND_HEADERS thirdparties/libtinyfiledialogs/tinyfiledialogs.h thirdparties/libtinyfiledialogs/tinyfiledialogs.cpp)
+file(GLOB_RECURSE NVIDIA_FLIP_HEADERS thirdparties/nvidia-FLIP/*.h)
 
 add_executable(HIPRTPathTracer
 	${SOURCE_FILES}
@@ -88,6 +89,7 @@ add_executable(HIPRTPathTracer
 	${CUEW_SOURCES_AND_HEADERS}
 	${HIPEW_SOURCES_AND_HEADERS}
 	${TINYFILEDIALOGS_SOURCE_AND_HEADERS}
+	${NVIDIA_FLIP_HEADERS}
 )
 
 set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 20)
@@ -112,6 +114,7 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/glm/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/backends")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/tinyexr/")
+target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/nvidia-FLIP/")
 target_include_directories(HIPRTPathTracer PRIVATE ${HIPRT_HEADERS_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
@@ -120,7 +123,6 @@ target_include_directories(HIPRTPathTracer PRIVATE ${TRACY_PUBLIC_DIR})
 
 # Auto setup of Orochi for NVIDIA by including their cmake file
 include(${HIPRT_SUBMODULE_DIR}/contrib/Orochi/Orochi/enable_cuew.cmake)
-
 
 if (WIN32)
 	message(STATUS "Copying OpenImageDenoise binaries...")

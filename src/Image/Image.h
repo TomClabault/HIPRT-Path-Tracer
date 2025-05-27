@@ -95,6 +95,8 @@ public:
     bool write_image_png(const char* filename, const bool flipY = true) const;
     bool write_image_hdr(const char* filename, const bool flipY = true) const;
 
+    Image32Bit to_linear_rgb() const;
+
     float luminance_of_pixel(int x, int y) const;
     float luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const;
     float luminance_of_area(const ImageBin& area) const;
