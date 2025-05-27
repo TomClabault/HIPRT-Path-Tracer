@@ -9,6 +9,7 @@
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
 #include "FLIP.h"
+#include "clip.h"
 
 #include <deque>
 #include <iostream>
@@ -270,6 +271,67 @@ float Utils::compute_image_weighted_median_FLIP(const Image32Bit& reference_srgb
     FLIP::evaluate(reference.data().data(), subject.data().data(), reference.width, reference.height, false, parameters, true, true, mean_flip_error, out_error_map);
 
     return mean_flip_error;
+}
+
+void Utils::copy_u8_image_data_to_clipboard(const std::vector<unsigned char>& data, int width, int height)
+{
+    clip::image_spec spec;
+    spec.width = width;
+    spec.height = height;
+    spec.bits_per_pixel = 32;
+    spec.bytes_per_row = spec.width * 4;
+    spec.red_mask = 0xff;
+    spec.green_mask = 0xff00;
+    spec.blue_mask = 0xff0000;
+    spec.alpha_mask = 0xff000000;
+    spec.red_shift = 0;
+    spec.green_shift = 8;
+    spec.blue_shift = 16;
+    spec.alpha_shift = 24;
+    clip::image img(data.data(), spec);
+
+    if (!clip::set_image(img))
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Failed to copy image to clipboard.");
+}
+
+void Utils::copy_image_to_clipboard(const Image8Bit& image)
+{
+    std::vector<unsigned char> flipped_data(image.width * image.height * 4);
+    for (int y = 0; y < image.height; y++)
+    {
+        for (int x = 0; x < image.width; x++)
+        {
+            int input_index = (x + y * image.width) * image.channels;
+            int output_index = (x + (image.height - 1 - y) * image.width) * 4;
+
+            flipped_data[output_index + 0] = image.data().data()[input_index + 0];
+            flipped_data[output_index + 1] = image.data().data()[input_index + 1];
+            flipped_data[output_index + 2] = image.data().data()[input_index + 2];
+            flipped_data[output_index + 3] = 255;
+        }
+    }
+
+    copy_u8_image_data_to_clipboard(flipped_data, image.width, image.height);
+}
+
+void Utils::copy_image_to_clipboard(const Image32Bit& image)
+{
+    std::vector<unsigned char> image_data_8u(image.width * image.height * 4);
+    for (int y = 0; y < image.height; y++)
+    {
+        for (int x = 0; x < image.width; x++)
+        {
+            int input_index = (x + y * image.width) * image.channels;
+            int output_index = (x + (image.height - 1 - y) * image.width) * 4;
+
+            image_data_8u[output_index + 0] = static_cast<unsigned char>(hippt::clamp(0.0f, 1.0f, image.data().data()[input_index + 0]) * 255.0f);
+            image_data_8u[output_index + 1] = static_cast<unsigned char>(hippt::clamp(0.0f, 1.0f, image.data().data()[input_index + 1]) * 255.0f);
+            image_data_8u[output_index + 2] = static_cast<unsigned char>(hippt::clamp(0.0f, 1.0f, image.data().data()[input_index + 2]) * 255.0f);
+            image_data_8u[output_index + 3] = 255;
+        }
+    }
+
+    copy_u8_image_data_to_clipboard(image_data_8u, image.width, image.height);
 }
 
 Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor)

@@ -35,6 +35,10 @@ public:
 	static float compute_image_rmse(const Image32Bit& reference, const Image32Bit& subject);
     static float compute_image_weighted_median_FLIP(const Image32Bit& reference, const Image32Bit& subject, float** out_error_map);
 
+    static void copy_u8_image_data_to_clipboard(const std::vector<unsigned char>& data, int width, int height);
+    static void copy_image_to_clipboard(const Image8Bit& image);
+    static void copy_image_to_clipboard(const Image32Bit& image);
+
     /*
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image
      */

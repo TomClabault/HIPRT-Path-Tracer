@@ -35,8 +35,9 @@ public:
 	 * for example
 	 */
 	void write_to_png();
-	void write_to_png(const char* filepath);
 	void write_to_png(std::string filepath);
+
+	Image8Bit get_image();
 
 private:
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;

@@ -32,6 +32,9 @@ include(cmake/SetupOrochi.cmake)
 # Include Tracy for OpenGL profiling
 include(cmake/SetupTracy.cmake)
 
+# Clip for copying images to clipboard
+include(cmake/Clip.cmake)
+
 set(GLFW_LIB_DIR "thirdparties/opengl/lib/GLFW")
 set(GLEW_LIB_DIR "thirdparties/opengl/lib/GLEW")
 set(GLEW_BIN_DIR "thirdparties/opengl/bin/GLEW")
@@ -100,10 +103,10 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 
 if (WIN32)
 	# "version" is a library from the Windows SDK
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02004 TracyClient version)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02004 TracyClient clip version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02004 TracyClient)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02004 clip TracyClient)
 endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
@@ -115,6 +118,7 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/backends")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/tinyexr/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/nvidia-FLIP/")
+target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/clip/")
 target_include_directories(HIPRTPathTracer PRIVATE ${HIPRT_HEADERS_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
