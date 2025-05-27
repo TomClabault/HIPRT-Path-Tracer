@@ -53,6 +53,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Have a variable radius when picking reservoirs for shading 
 // - Issue with microfacet regularization x ReGIR?
 // - Scalarization of hash grid fill because we know that consecutive threads are in the same cell
 // - Scalarization of the hash grid fetches for the camera rays?

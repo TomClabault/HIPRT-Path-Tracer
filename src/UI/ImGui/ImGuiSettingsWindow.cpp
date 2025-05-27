@@ -1900,11 +1900,38 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
 				m_render_window->set_render_dirty(true);
+			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering);
+			if (ImGui::SliderFloat("Jittering radius", &regir_settings.shading.jittering_radius, 0.5f, 3.0f))
+				m_render_window->set_render_dirty(true);
 
-			if (ImGui::SliderInt("Neighbors resampled during shading", &regir_settings.shading.number_of_neighbors, 1, 8))
+			static int jitter_tries = ReGIR_ShadingJitterTries;
+			ImGui::SliderInt("Jitter tries", &jitter_tries, 1, 16);
+			ImGuiRenderer::show_help_marker("If using jittering, how many tries to perform to find a good neighbor at shading time ?\n\n"
+				""
+				"This is because with jittering, our jittered position may end up outside of the grid "
+				"or in an empty cell, in which case we want to retry with a differently jittered position "
+				"to try and find a good neighbor");
+			if (jitter_tries != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES))
+			{
+				ImGui::TreePush("Apply jitter tries regir");
+
+				if (ImGui::Button("Apply"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES, jitter_tries);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+			ImGui::EndDisabled();
+
+			if (ImGui::SliderInt("Neighbors resampled", &regir_settings.shading.number_of_neighbors, 1, 8))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Reservoirs tap per neighbor during shading", &regir_settings.shading.reservoir_tap_count_per_neighbor, 1, 8))
+			if (ImGui::SliderInt("Taps per neighbor", &regir_settings.shading.reservoir_tap_count_per_neighbor, 1, 8))
 				m_render_window->set_render_dirty(true);
+
 
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

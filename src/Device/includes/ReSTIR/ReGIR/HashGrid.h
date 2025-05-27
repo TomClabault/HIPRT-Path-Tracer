@@ -120,11 +120,11 @@ struct ReGIRHashGrid
 			return hash_grid_cell_index;
 	}
 
-	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng) const
+	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, float jittering_radius = 0.5f) const
 	{
 		float3 random_offset = make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f);
 
-		return original_world_position + random_offset * compute_adaptive_cell_size(original_world_position, current_camera) * 0.5f;
+		return original_world_position + random_offset * compute_adaptive_cell_size(original_world_position, current_camera) * jittering_radius;
 	}
 
 	/**
