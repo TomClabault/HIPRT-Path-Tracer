@@ -226,6 +226,38 @@ std::string Utils::open_file_dialog(const char* filter_patterns[], int filter_co
         return "";
 }
 
+float Utils::compute_image_mse(const Image32Bit& reference, const Image32Bit& subject)
+{
+    float mse = 0.0f;
+
+    if (reference.width != subject.width || reference.height != subject.height)
+    {
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot compute difference between images of different sizes.");
+        return mse;
+    }
+
+    for (int i = 0; i < reference.width * reference.height; i++)
+    {
+        ColorRGB32F reference_pixel = reference.get_pixel_ColorRGB32F(i);
+        ColorRGB32F subject_pixel = subject.get_pixel_ColorRGB32F(i);
+
+        float diff_r_2 = hippt::square(reference_pixel.r - subject_pixel.r);
+        float diff_g_2 = hippt::square(reference_pixel.g - subject_pixel.g);
+        float diff_b_2 = hippt::square(reference_pixel.b - subject_pixel.b);
+
+        mse += diff_r_2 + diff_g_2 + diff_b_2;
+    }
+
+    mse /= static_cast<float>(reference.width * reference.height);
+
+    return mse;
+}
+
+float Utils::compute_image_rmse(const Image32Bit& reference, const Image32Bit& subject)
+{
+    return sqrtf(Utils::compute_image_mse(reference, subject));
+}
+
 Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor)
 {
     // Create an Open Image Denoise device
