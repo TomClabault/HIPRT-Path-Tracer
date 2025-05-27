@@ -3,14 +3,14 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef IMGUI_BAKING_WINDOW_H
-#define IMGUI_BAKING_WINDOW_H
+#ifndef IMGUI_TOOLS_WINDOW_H
+#define IMGUI_TOOLS_WINDOW_H
 
 #include "Renderer/GPURenderer.h"
 
 class RenderWindow;
 
-class ImGuiBakingWindow
+class ImGuiToolsWindow
 {
 public:
 	static const char* TITLE;
@@ -24,6 +24,8 @@ public:
 	void draw_GGX_glass();
 	void draw_GGX_thin_glass();
 	void draw_glossy_dielectric();
+
+	void draw_image_difference_panel();
 
 private:
 	RenderWindow* m_render_window = nullptr;

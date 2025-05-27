@@ -71,6 +71,7 @@ file(GLOB_RECURSE HIPRT_HEADERS ${HIPRT_HEADERS_DIR}/*.h)
 file(GLOB_RECURSE OROCHI_SOURCES_AND_HEADERS ${OROCHI_SOURCES_DIR}/*.h ${OROCHI_SOURCES_DIR}/*.cpp)
 file(GLOB_RECURSE CUEW_SOURCES_AND_HEADERS ${CUEW_SOURCES_DIR}/*.h ${CUEW_SOURCES_DIR}/*.cpp)
 file(GLOB_RECURSE HIPEW_SOURCES_AND_HEADERS ${HIPEW_SOURCES_DIR}/*.h ${HIPEW_SOURCES_DIR}/*.cpp)
+file(GLOB_RECURSE TINYFILEDIALOGS_SOURCE_AND_HEADERS thirdparties/libtinyfiledialogs/tinyfiledialogs.h thirdparties/libtinyfiledialogs/tinyfiledialogs.c)
 
 add_executable(HIPRTPathTracer
 	${SOURCE_FILES}
@@ -86,6 +87,7 @@ add_executable(HIPRTPathTracer
 	${OROCHI_SOURCES_AND_HEADERS}
 	${CUEW_SOURCES_AND_HEADERS}
 	${HIPEW_SOURCES_AND_HEADERS}
+	${TINYFILEDIALOGS_SOURCE_AND_HEADERS}
 )
 
 set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 20)
@@ -105,6 +107,7 @@ endif()
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
+target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/libtinyfiledialogs/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/glm/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/backends")
