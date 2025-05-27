@@ -71,7 +71,7 @@ file(GLOB_RECURSE HIPRT_HEADERS ${HIPRT_HEADERS_DIR}/*.h)
 file(GLOB_RECURSE OROCHI_SOURCES_AND_HEADERS ${OROCHI_SOURCES_DIR}/*.h ${OROCHI_SOURCES_DIR}/*.cpp)
 file(GLOB_RECURSE CUEW_SOURCES_AND_HEADERS ${CUEW_SOURCES_DIR}/*.h ${CUEW_SOURCES_DIR}/*.cpp)
 file(GLOB_RECURSE HIPEW_SOURCES_AND_HEADERS ${HIPEW_SOURCES_DIR}/*.h ${HIPEW_SOURCES_DIR}/*.cpp)
-file(GLOB_RECURSE TINYFILEDIALOGS_SOURCE_AND_HEADERS thirdparties/libtinyfiledialogs/tinyfiledialogs.h thirdparties/libtinyfiledialogs/tinyfiledialogs.c)
+file(GLOB_RECURSE TINYFILEDIALOGS_SOURCE_AND_HEADERS thirdparties/libtinyfiledialogs/tinyfiledialogs.h thirdparties/libtinyfiledialogs/tinyfiledialogs.cpp)
 
 add_executable(HIPRTPathTracer
 	${SOURCE_FILES}
