@@ -406,50 +406,62 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 		static float difference = 1.0f;
 		static std::string status_text = "";
-		static std::string reference_image = "";
-		static std::string subject_image = "";
+		static std::string reference_image_path = "";
+		static std::string subject_image_path = "";
+
+		static Image32Bit reference_image;
+		static Image32Bit subject_image;
 
 		if (ImGui::Button("Select reference image"))
-			reference_image = Utils::open_file_dialog(filters, 2);
-		if (reference_image != "")
+		{
+			reference_image_path = Utils::open_file_dialog(filters, 2);
+			reference_image = Image32Bit::read_image(reference_image_path, 3, false);
+		}
+		if (reference_image_path != "")
 		{
 			ImGui::TreePush("Reference image text tree");
 			
-			std::string filename = std::filesystem::path(reference_image).filename().string();
-			ImGui::Text("%s", filename.c_str());
+			std::string filename = std::filesystem::path(reference_image_path).filename().string();
+			ImGui::Text("%s", filename.c_str()); ImGui::SameLine();
+			if (ImGui::Button("C"))
+				Utils::copy_image_to_clipboard(reference_image);
+			ImGuiRenderer::add_tooltip("Copies the image to the clipboard");
 
 			ImGui::TreePop();
 		}
 
 		if (ImGui::Button("Select subject image"))
-			subject_image = Utils::open_file_dialog(filters, 2);
-		if (subject_image != "")
+		{
+			subject_image_path = Utils::open_file_dialog(filters, 2);
+			subject_image = Image32Bit::read_image(subject_image_path, 3, false);
+		}
+		if (subject_image_path != "")
 		{
 			ImGui::TreePush("Subject image text tree");
 
-			std::string filename = std::filesystem::path(subject_image).filename().string();
-			ImGui::Text("%s", filename.c_str());
+			std::string filename = std::filesystem::path(subject_image_path).filename().string();
+			ImGui::Text("%s", filename.c_str()); ImGui::SameLine();
+			if (ImGui::Button("C"))
+				Utils::copy_image_to_clipboard(subject_image);
+			ImGuiRenderer::add_tooltip("Copies the image to the clipboard");
 
 			ImGui::TreePop();
 		}
 
-		bool ready_to_compute = reference_image != "" && subject_image != "";
+		bool ready_to_compute = reference_image_path != "" && subject_image_path != "";
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::BeginDisabled(!ready_to_compute);
 		if (ImGui::Button("Compute MSE"))
 		{
-			Image32Bit reference_image_data = Image32Bit::read_image(reference_image, 3, false);
-			Image32Bit subject_image_data = Image32Bit::read_image(subject_image, 3, false);
-
-			if (reference_image_data.width != subject_image_data.width ||
-				reference_image_data.height != subject_image_data.height)
+			if (reference_image.width != subject_image.width ||
+				reference_image.height != subject_image.height)
 			{
 				status_text = "Error: Images must have the same dimensions!";
 			}
 			else
 			{
-				difference = Utils::compute_image_mse(reference_image_data, subject_image_data);
+				difference = Utils::compute_image_mse(reference_image, subject_image);
 
 				status_text = std::string("MSE: " + std::to_string(difference));
 			}
@@ -457,17 +469,14 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 		if (ImGui::Button("Compute RMSE"))
 		{
-			Image32Bit reference_image_data = Image32Bit::read_image(reference_image, 3, false);
-			Image32Bit subject_image_data = Image32Bit::read_image(subject_image, 3, false);
-
-			if (reference_image_data.width != subject_image_data.width ||
-				reference_image_data.height != subject_image_data.height)
+			if (reference_image.width != subject_image.width ||
+				reference_image.height != subject_image.height)
 			{
 				status_text = "Error: Images must have the same dimensions!";
 			}
 			else
 			{
-				difference = Utils::compute_image_rmse(reference_image_data, subject_image_data);
+				difference = Utils::compute_image_rmse(reference_image, subject_image);
 
 				status_text = std::string("RMSE: " + std::to_string(difference));
 			}
@@ -476,8 +485,8 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		static bool output_flip_error_map = false;
 		if (ImGui::Button("Compute FLIP"))
 		{
-			Image32Bit reference_image_data = Image32Bit::read_image(reference_image, 3, false);
-			Image32Bit subject_image_data = Image32Bit::read_image(subject_image, 3, false);
+			Image32Bit reference_image_data = Image32Bit::read_image(reference_image_path, 3, false);
+			Image32Bit subject_image_data = Image32Bit::read_image(subject_image_path, 3, false);
 
 			if (reference_image_data.width != subject_image_data.width ||
 				reference_image_data.height != subject_image_data.height)
@@ -491,14 +500,14 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 				if (output_flip_error_map)
 					// Write the error map to disk
-					Image32Bit(error_map, reference_image_data.width, reference_image_data.height, 3).write_image_png("FLIP_error_map.png", true);
+					Utils::copy_image_to_clipboard(Image32Bit(error_map, reference_image_data.width, reference_image_data.height, 3));
 				free(error_map);
 
 				status_text = std::string("FLIP: " + std::to_string(difference));
 			}
 		}
 		ImGui::TreePush("Output FLIP error map tree");
-		ImGui::Checkbox("Output error map", &output_flip_error_map);
+		ImGui::Checkbox("Copy error map to clipboard", &output_flip_error_map);
 		ImGui::TreePop();
 		ImGui::EndDisabled();
 
