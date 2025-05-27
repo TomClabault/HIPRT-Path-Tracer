@@ -104,10 +104,10 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_emissive_triangle(int emissive_tr
     float u = 1.0f - sqrt_r1;
     float v = (1.0f - rand_2) * sqrt_r1;
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_HEITZ_2019
-    float2 rands = square_to_triangle(rand_1, rand_2);
+    float2 remapped = square_to_triangle(rand_1, rand_2);
 
-    float u = rands.x;
-    float v = rands.y;
+    float u = remapped.x;
+    float v = remapped.y;
 #endif
 
     float3 vertex_A = petd.triangles_A[emissive_triangle_index];
@@ -256,7 +256,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
     for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
     {
-        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(shading_point, render_data.current_camera, neighbor_rng);
+        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(shading_point, render_data.current_camera, render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
         if (neighbor_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
             // Couldn't find a valid neighbor
             continue;
@@ -309,7 +309,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     if (need_canonical)
     {
         // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
-        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(shading_point, render_data.current_camera, neighbor_rng);
+        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(shading_point, render_data.current_camera, render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
 
         // Fetching the center cell should never fail because the center cell always exists but it may actually fail in case of collisions
         // that cannot be resolved
@@ -374,6 +374,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 		unsigned int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
             shading_point, render_data.current_camera,
             is_canonical, 
+            render_data.render_settings.regir_settings.shading.jittering_radius,
             neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
 
         if (neighbor_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)

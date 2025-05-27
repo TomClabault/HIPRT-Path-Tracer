@@ -15,6 +15,8 @@ struct ReGIRShadingSettings
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
 	bool do_cell_jittering = true;
+	// Radius of jittering when picking reservoirs from neoring grid cells for shading
+	float jittering_radius = 0.5f;
 };
 
 #endif
