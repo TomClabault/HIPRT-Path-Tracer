@@ -31,6 +31,9 @@ public:
     static bool is_file_on_ssd(const char* file_path);
     static std::string open_file_dialog(const char* filter_patterns[], int filter_count);
 
+	static float compute_image_mse(const Image32Bit& reference, const Image32Bit& subject);
+	static float compute_image_rmse(const Image32Bit& reference, const Image32Bit& subject);
+
     /*
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image
      */
