@@ -179,13 +179,13 @@ struct ReGIRSettings
 		}
 	}
 
-	HIPRT_DEVICE unsigned int get_neighbor_replay_hash_grid_cell_index_for_shading(float3 shading_point, const HIPRTCamera& current_camera, bool replay_canonical, float jittering_radius, Xorshift32Generator& rng, bool jitter = false) const
+	HIPRT_DEVICE unsigned int get_neighbor_replay_hash_grid_cell_index_for_shading(float3 shading_point, const HIPRTCamera& current_camera, bool replay_canonical, bool do_jittering, float jittering_radius, Xorshift32Generator& rng) const
 	{
 		unsigned int neighbor_cell_index;
 		if (replay_canonical)
-			neighbor_cell_index = find_valid_jittered_neighbor_cell_index<true>(shading_point, current_camera, jittering_radius, rng);
+			neighbor_cell_index = find_valid_jittered_neighbor_cell_index<true>(shading_point, current_camera, do_jittering, jittering_radius, rng);
         else
-            neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, current_camera, jittering_radius, rng);
+            neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, current_camera, do_jittering, jittering_radius, rng);
 
 		if (neighbor_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 		{
@@ -206,14 +206,18 @@ struct ReGIRSettings
 	}
 
 	template <bool fallbackOnCenterCell>
-	HIPRT_DEVICE unsigned int find_valid_jittered_neighbor_cell_index(float3 world_position, const HIPRTCamera& current_camera, float jittering_radius, Xorshift32Generator& rng) const
+	HIPRT_DEVICE unsigned int find_valid_jittered_neighbor_cell_index(float3 world_position, const HIPRTCamera& current_camera, bool do_jittering, float jittering_radius, Xorshift32Generator& rng) const
 	{
 		unsigned int retry = 0;
 		unsigned int neighbor_grid_cell_index;
 		
 		do
 		{
-			float3 jittered = hash_grid.jitter_world_position(world_position, current_camera, rng, jittering_radius);
+			float3 jittered;
+			if (do_jittering)
+				jittered = hash_grid.jitter_world_position(world_position, current_camera, rng, jittering_radius);
+			else
+				jittered = world_position;
 
 			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, jittered, current_camera);
 			if (neighbor_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
