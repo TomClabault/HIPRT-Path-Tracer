@@ -15,4 +15,4 @@
 	url = https://github.com/wolfpld/tracy.git
 [submodule "thirdparties/libtinyfiledialogs"]
 	path = thirdparties/libtinyfiledialogs
-	url = https://github.com/native-toolkit/libtinyfiledialogs.git
+	url = https://github.com/TomClabault/libtinyfiledialogs.git
