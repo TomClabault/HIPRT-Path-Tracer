@@ -17,7 +17,7 @@
 #include <sstream>
 
 #if defined(_WIN32) || defined(_WIN32_WCE) || defined(__WIN32__)
-#include <Windows.h> // for is_file_on_SSD()
+#include <Windows.h> // for is_file_on_SSD() and other functions
 #endif
 
 extern ImGuiLogger g_imgui_logger;
@@ -213,6 +213,17 @@ bool Utils::is_file_on_ssd(const char* file_path)
     CloseHandle(volume);
     return is_ssd;
 #endif
+}
+
+#include "tinyfiledialogs.h"
+
+std::string Utils::open_file_dialog(const char* filter_patterns[], int filter_count)
+{
+    const char* file = tinyfd_openFileDialog("let us read the password back", "", filter_count, filter_patterns, NULL, 0);
+    if (file)
+        return std::string(file);
+    else
+        return "";
 }
 
 Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor)

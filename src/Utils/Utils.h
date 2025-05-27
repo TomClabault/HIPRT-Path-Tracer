@@ -29,6 +29,7 @@ public:
 
     static void* get_volume_handle_for_file(const char* filePath);
     static bool is_file_on_ssd(const char* file_path);
+    static std::string open_file_dialog(const char* filter_patterns[], int filter_count);
 
     /*
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image
