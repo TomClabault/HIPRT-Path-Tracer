@@ -256,7 +256,10 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
     for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
     {
-        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(shading_point, render_data.current_camera, render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
+        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
+            shading_point, render_data.current_camera, 
+            render_data.render_settings.regir_settings.shading.do_cell_jittering,
+            render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
         if (neighbor_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
             // Couldn't find a valid neighbor
             continue;
@@ -309,7 +312,10 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     if (need_canonical)
     {
         // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
-        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(shading_point, render_data.current_camera, render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
+        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(
+            shading_point, render_data.current_camera, 
+            render_data.render_settings.regir_settings.shading.do_cell_jittering,
+            render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
 
         // Fetching the center cell should never fail because the center cell always exists but it may actually fail in case of collisions
         // that cannot be resolved
@@ -341,10 +347,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         last_hit_primitive_index, ray_payload,
                         point_on_light, light_source_normal,
                         emission, random_number_generator);
-                    /*float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility>(render_data,
-                        shading_point, view_direction, shading_normal, geometric_normal,
-                        last_hit_primitive_index, ray_payload, canonical_reservoir,
-                        random_number_generator);*/
 
                     float mis_weight = 1.0f;
                     if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_reservoir, random_number_generator))
@@ -374,8 +376,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 		unsigned int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
             shading_point, render_data.current_camera,
             is_canonical, 
+            render_data.render_settings.regir_settings.shading.do_cell_jittering,
             render_data.render_settings.regir_settings.shading.jittering_radius,
-            neighbor_rng, render_data.render_settings.regir_settings.shading.do_cell_jittering);
+            neighbor_rng);
 
         if (neighbor_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
             // Outside of the alive grid
