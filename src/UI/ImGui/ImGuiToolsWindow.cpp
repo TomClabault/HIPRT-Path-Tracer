@@ -402,18 +402,80 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 	{
 		ImGui::TreePush("Image difference tree");
 
-		ImGui::SeparatorText("RMSE");
-
 		const char* filters[] = {"*.png", "*.jpg"};
 
+		static float difference = 1.0f;
+		static std::string status_text = "";
 		static std::string reference_image = "";
 		static std::string subject_image = "";
+
 		if (ImGui::Button("Select reference image"))
 			reference_image = Utils::open_file_dialog(filters, 2);
+		if (reference_image != "")
+		{
+			ImGui::TreePush("Reference image text tree");
+			
+			std::string filename = std::filesystem::path(reference_image).filename().string();
+			ImGui::Text("%s", filename.c_str());
+
+			ImGui::TreePop();
+		}
+
 		if (ImGui::Button("Select subject image"))
 			subject_image = Utils::open_file_dialog(filters, 2);
+		if (subject_image != "")
+		{
+			ImGui::TreePush("Subject image text tree");
 
-		std::cout << reference_image << std::endl;
+			std::string filename = std::filesystem::path(subject_image).filename().string();
+			ImGui::Text("%s", filename.c_str());
+
+			ImGui::TreePop();
+		}
+
+		bool ready_to_compute = reference_image != "" && subject_image != "";
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::BeginDisabled(!ready_to_compute);
+		if (ImGui::Button("Compute MSE"))
+		{
+			Image32Bit reference_image_data = Image32Bit::read_image(reference_image, 3, false);
+			Image32Bit subject_image_data = Image32Bit::read_image(subject_image, 3, false);
+
+			if (reference_image_data.width != subject_image_data.width ||
+				reference_image_data.height != subject_image_data.height)
+			{
+				status_text = "Error: Images must have the same dimensions!";
+			}
+			else
+			{
+				difference = Utils::compute_image_mse(reference_image_data, subject_image_data);
+
+				status_text = std::string("MSE: " + std::to_string(difference));
+			}
+		}
+
+		if (ImGui::Button("Compute RMSE"))
+		{
+			Image32Bit reference_image_data = Image32Bit::read_image(reference_image, 3, false);
+			Image32Bit subject_image_data = Image32Bit::read_image(subject_image, 3, false);
+
+			if (reference_image_data.width != subject_image_data.width ||
+				reference_image_data.height != subject_image_data.height)
+			{
+				status_text = "Error: Images must have the same dimensions!";
+			}
+			else
+			{
+				difference = Utils::compute_image_rmse(reference_image_data, subject_image_data);
+
+				status_text = std::string("RMSE: " + std::to_string(difference));
+			}
+		}
+		ImGui::EndDisabled();
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Text("%s", status_text.c_str());
 
 		ImGui::TreePop();
 	}
