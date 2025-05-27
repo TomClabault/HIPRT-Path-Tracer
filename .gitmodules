@@ -16,3 +16,6 @@
 [submodule "thirdparties/libtinyfiledialogs"]
 	path = thirdparties/libtinyfiledialogs
 	url = https://github.com/TomClabault/libtinyfiledialogs.git
+[submodule "thirdparties/clip"]
+	path = thirdparties/clip
+	url = https://github.com/dacap/clip.git

@@ -122,14 +122,14 @@ void Screenshoter::resize_output_image(int width, int height)
 
 void Screenshoter::write_to_png(std::string filepath)
 {
-	write_to_png(filepath.c_str());
+	Image8Bit image = get_image();
+	image.write_image_png(filepath.c_str(), true);
 }
 
-void Screenshoter::write_to_png(const char* filepath)
+Image8Bit Screenshoter::get_image()
 {
 	int width = m_renderer->m_render_resolution.x;
 	int height = m_renderer->m_render_resolution.y;
-
 
 	// We're using OpenGL compute shader here and not an HIP kernel because we want to be able to use the same 
 	// fragment shader files that we use for the displaying. If we were doing the post-processing with an HIP kernel, 
@@ -161,8 +161,6 @@ void Screenshoter::write_to_png(const char* filepath)
 	std::vector<unsigned char> mapped_data(width * height * 4);
 	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, mapped_data.data());
 
-	stbi_flip_vertically_on_write(true);
-	if (stbi_write_png(filepath, width, height, 4, mapped_data.data(), width * sizeof(unsigned char) * 4))
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath);
+	return Image8Bit(mapped_data, width, height, 4);
 }
 
