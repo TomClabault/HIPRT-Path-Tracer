@@ -54,6 +54,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Can we keep the grid of reservoirs from the last frame to pick them during shading to reduce correlations? Only memory cost but it's ok
+//		- Maybe only that for primary hit reservoirs because those are the only one to be correlated hard?
 // - Have a variable radius when picking reservoirs for shading 
 // - Issue with microfacet regularization x ReGIR?
 // - Scalarization of hash grid fill because we know that consecutive threads are in the same cell

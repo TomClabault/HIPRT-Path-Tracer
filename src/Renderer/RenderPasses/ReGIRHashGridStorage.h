@@ -25,6 +25,7 @@ public:
 	std::size_t get_byte_size() const;
 
 	bool pre_render_update(HIPRTRenderData& render_data);
+	void post_sample_update_async(HIPRTRenderData& render_data);
 	bool try_rehash(HIPRTRenderData& render_data);
 	void reset();
 	bool free();
@@ -32,6 +33,7 @@ public:
 	void to_device(HIPRTRenderData& render_data);
 
 	ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa();
+	unsigned int get_supersampling_current_frame() const;
 
 private:
 	ReGIRRenderPass* m_regir_render_pass = nullptr;
@@ -41,6 +43,10 @@ private:
 	// accomodate for the grid of the past frames for temporal reuse
 	ReGIRHashGridSoAHost<OrochiBuffer> m_grid_buffers;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
+
+	unsigned int m_supersampling_curent_frame = 0;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_supersample_grid;
+
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data;
 
 	float m_current_grid_min_cell_size = 0.0f;

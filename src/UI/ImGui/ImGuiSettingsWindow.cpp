@@ -1903,7 +1903,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
 				m_render_window->set_render_dirty(true);
 			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering);
-			if (ImGui::SliderFloat("Jittering radius", &regir_settings.shading.jittering_radius, 0.5f, 3.0f))
+			if (ImGui::SliderFloat("Jittering radius", &regir_settings.shading.jittering_radius, 0.5f, 2.0f))
 				m_render_window->set_render_dirty(true);
 
 			static int jitter_tries = ReGIR_ShadingJitterTries;
@@ -1934,6 +1934,11 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (ImGui::SliderInt("Taps per neighbor", &regir_settings.shading.reservoir_tap_count_per_neighbor, 1, 8))
 				m_render_window->set_render_dirty(true);
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::Checkbox("Do supersampling", &regir_settings.supersampling.do_supersampling))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Supersampling factor", &regir_settings.supersampling.supersampling_factor, 1, 8))
+				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

@@ -123,7 +123,8 @@ void Screenshoter::resize_output_image(int width, int height)
 void Screenshoter::write_to_png(std::string filepath)
 {
 	Image8Bit image = get_image();
-	image.write_image_png(filepath.c_str(), true);
+	if (image.write_image_png(filepath.c_str(), true))
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath);
 }
 
 Image8Bit Screenshoter::get_image()
