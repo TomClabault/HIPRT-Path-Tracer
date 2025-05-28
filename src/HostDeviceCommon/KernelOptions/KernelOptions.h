@@ -217,6 +217,15 @@
  */
 #define RISUseVisiblityTargetFunction KERNEL_OPTION_FALSE
 
+/**
+ * Debug option which, if enabled, only outputs the sample 'render_settings.output_debug_sample_N'
+ * to the framebuffer.
+ * 
+ * Useful for debugging features that may take effect after the first sample and we only want to see what
+ * the second sample looks like without the accumulation
+ */
+#define DisplayOnlySampleN KERNEL_OPTION_FALSE
+
 #endif // #ifndef __KERNELCC__
 
 /**

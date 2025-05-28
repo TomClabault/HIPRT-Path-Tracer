@@ -50,12 +50,8 @@ struct ReGIRHashGridSoAHost
 
 	void to_device(ReGIRHashGridSoADevice& out_soa_device)
 	{
-		//out_soa_device.samples.emission = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSION>();
 		out_soa_device.samples.emissive_triangle_index = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSIVE_TRIANGLE_INDEX>();
 		out_soa_device.samples.random_seed = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_RANDOM_SEED>();
-		//out_soa_device.samples.light_area = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_AREA>();
-		//out_soa_device.samples.point_on_light = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_POINT_ON_LIGHT>();
-		//out_soa_device.samples.light_source_normal = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_LIGHT_SOURCE_NORMAL>();
 
 		out_soa_device.reservoirs.UCW = reservoirs.template get_buffer_data_ptr<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>();
 		out_soa_device.reservoirs.number_of_reservoirs_per_cell = m_reservoirs_per_cell;

@@ -174,10 +174,14 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 
 HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
 {
-    // int sampleIndex = 0;
-    // if (render_data.render_settings.sample_number == sampleIndex)
-    //     render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (sampleIndex + 1);
-    // return;
+#if DisplayOnlySampleN == KERNEL_OPTION_TRUE
+     int sampleIndex = render_data.render_settings.output_debug_sample_N;
+
+     if (render_data.render_settings.sample_number == sampleIndex)
+         render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (sampleIndex + 1);
+
+     return;
+#endif
 
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
     {

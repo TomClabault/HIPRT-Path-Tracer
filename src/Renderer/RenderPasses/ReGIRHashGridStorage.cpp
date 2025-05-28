@@ -18,7 +18,7 @@ unsigned int ReGIRHashGridStorage::get_total_number_of_cells() const
 
 std::size_t ReGIRHashGridStorage::get_byte_size() const
 {
-	return m_grid_buffers.get_byte_size() + m_spatial_reuse_output_grid_buffer.get_byte_size() + m_hash_cell_data.get_byte_size();
+	return m_grid_buffers.get_byte_size() + m_spatial_reuse_output_grid_buffer.get_byte_size() + m_supersample_grid.get_byte_size() + m_hash_cell_data.get_byte_size();
 }
 
 bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
@@ -68,7 +68,38 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 			m_spatial_reuse_output_grid_buffer.free();
 	}
 
+	if (regir_settings.supersampling.do_supersampling)
+	{
+		bool supersample_grid_not_allocated = m_supersample_grid.m_total_number_of_cells == 0;
+		bool supersample_reservoirs_count_changed = regir_settings.get_number_of_reservoirs_per_cell() != m_supersample_grid.m_reservoirs_per_cell / regir_settings.supersampling.supersampling_factor;
+		bool needs_supersample_grid_resize = supersample_grid_not_allocated || grid_res_changed || supersample_reservoirs_count_changed;
+
+		if (needs_supersample_grid_resize)
+		{
+			m_supersample_grid.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell() * regir_settings.supersampling.supersampling_factor);
+
+			m_supersampling_curent_grid_offset = 0;
+			m_supersampling_frames_available = 0;
+
+			updated = true;
+		}
+	}
+	else
+	{
+		if (m_supersample_grid.m_total_number_of_cells > 0)
+			m_supersample_grid.free();
+	}
+
 	return updated;
+}
+
+void ReGIRHashGridStorage::post_sample_update_async(HIPRTRenderData& render_data)
+{
+	m_supersampling_curent_grid_offset++;
+	m_supersampling_curent_grid_offset %= render_data.render_settings.regir_settings.supersampling.supersampling_factor;
+	
+	m_supersampling_frames_available++;
+	m_supersampling_frames_available = hippt::min(m_supersampling_frames_available, render_data.render_settings.regir_settings.supersampling.supersampling_factor);
 }
 
 bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
@@ -103,6 +134,13 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			m_grid_buffers = std::move(new_hash_grid_soa);
 			if (regir_settings.spatial_reuse.do_spatial_reuse)
 				m_spatial_reuse_output_grid_buffer.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
+			if (regir_settings.supersampling.do_supersampling)
+			{
+				m_supersample_grid.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell() * regir_settings.supersampling.supersampling_factor);
+
+				m_supersampling_curent_grid_offset = 0;
+				m_supersampling_frames_available = 0;
+			}
 			m_hash_cell_data = std::move(new_hash_cell_data);
 
 			// We need to update the cell alive count because there may have possibly been collisions that couldn't be resolved during the rehashing
@@ -143,6 +181,13 @@ bool ReGIRHashGridStorage::free()
 		updated = true;
 	}
 
+	if (m_supersample_grid.get_byte_size() > 0)
+	{
+		m_supersample_grid.free();
+
+		updated = true;
+	}
+
 	if (m_hash_cell_data.get_byte_size() > 0)
 	{
 		m_hash_cell_data.free();
@@ -158,8 +203,12 @@ bool ReGIRHashGridStorage::free()
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
 	m_grid_buffers.to_device(render_data.render_settings.regir_settings.initial_reservoirs_grid);
+
 	if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		m_spatial_reuse_output_grid_buffer.to_device(render_data.render_settings.regir_settings.spatial_output_grid);
+
+	if (render_data.render_settings.regir_settings.supersampling.do_supersampling)
+		m_supersample_grid.to_device(render_data.render_settings.regir_settings.supersampling.supersampling_grid);
 
 	render_data.render_settings.regir_settings.hash_cell_data = m_hash_cell_data.to_device();
 }
@@ -167,4 +216,14 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data_soa()
 {
 	return m_hash_cell_data;
+}
+
+unsigned int ReGIRHashGridStorage::get_supersampling_current_frame() const
+{
+	return m_supersampling_curent_grid_offset;
+}
+
+unsigned int ReGIRHashGridStorage::get_supersampling_frames_available() const
+{
+	return m_supersampling_frames_available;
 }
