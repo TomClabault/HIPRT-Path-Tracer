@@ -15,6 +15,7 @@ class GPURenderer;
 class ReGIRRenderPass: public RenderPass
 {
 public:
+	static const std::string REGIR_GRID_PRE_POPULATE;
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_REHASH_KERNEL_ID;
@@ -45,10 +46,18 @@ public:
 	virtual void resize(unsigned int new_width, unsigned int new_height) override {};
 
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
-
 	virtual bool pre_render_update(float delta_time) override;
 
+
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+
+	/**
+	 * The prepass in ReGIR is used to shoot rays in every directions from the G-Buffer to discover how many grid cells
+	 * are going to be needed for the ReGIR grid.
+	 */
+	void launch_grid_pre_population(HIPRTRenderData& render_data);
+	bool rehash(HIPRTRenderData& render_data);
+
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data);
 	void launch_spatial_reuse(HIPRTRenderData& render_data);
 	void launch_supersampling_copy(HIPRTRenderData& render_data);

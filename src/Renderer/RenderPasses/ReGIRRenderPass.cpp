@@ -6,6 +6,7 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
 
+const std::string ReGIRRenderPass::REGIR_GRID_PRE_POPULATE = "ReGIR Pre-population";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID = "ReGIR Grid fill & temp. reuse";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID = "ReGIR Spatial reuse";
 const std::string ReGIRRenderPass::REGIR_REHASH_KERNEL_ID = "ReGIR Rehash kernel";
@@ -15,6 +16,7 @@ const std::string ReGIRRenderPass::REGIR_RENDER_PASS_NAME = "ReGIR Render Pass";
 
 const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCTION_NAMES =
 {
+	{ REGIR_GRID_PRE_POPULATE, "ReGIR_Grid_Prepopulate" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, "ReGIR_Spatial_Reuse" },
 	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
@@ -23,6 +25,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 
 const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES =
 {
+	{ REGIR_GRID_PRE_POPULATE, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridPrepopulate.h" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
 	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
@@ -35,22 +38,21 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 
+	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_PRE_POPULATE));
+	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_PRE_POPULATE));
+	m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE, BSDF_LAMBERTIAN);
+
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	// Disabling the shared memory stack traversal here because ReGIR kernels are not dispatched with a number of threads equal to the render resolution
-	// which means that the global stack traversal BVH buffer may be too small to manage the traversal of all the rays that will be launched
-	// in parallel by the ReGIR kernels
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	// Disabling the shared memory stack traversal here because ReGIR kernels are not dispatched with a number of threads equal to the render resolution
-	// which means that the global stack traversal BVH buffer may be too small to manage the traversal of all the rays that will be launched
-	// in parallel by the ReGIR kernels
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID] = std::make_shared<GPUKernel>();
@@ -66,6 +68,10 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 {
 	if (!is_render_pass_used())
 		return false;
+
+	bool regir_grid_populate = m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->has_been_compiled();
+	if (!regir_grid_populate)
+		m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 	bool grid_fill_compiled = m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
 	if (!grid_fill_compiled)
@@ -83,7 +89,7 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	if (!supersample_copy_kernel_compiled)
 		m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	return !grid_fill_compiled || !spatial_reuse_compiled || !rehash_kernel_compiled || !supersample_copy_kernel_compiled;
+	return !regir_grid_populate || !grid_fill_compiled || !spatial_reuse_compiled || !rehash_kernel_compiled || !supersample_copy_kernel_compiled;
 }
 
 bool ReGIRRenderPass::pre_render_update(float delta_time)
@@ -117,18 +123,14 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	else if (render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip + 1) != 0)
 		return false;
 
+	if (render_data.render_settings.sample_number == 0)
+		launch_grid_pre_population(render_data);
+
 	// This needs to be called before the rehash because the 
 	// rehash needs the updated number of cells alive to function
 	update_cell_alive_count();
 
-	if (m_hash_grid_storage.try_rehash(render_data))
-	{
-		update_render_data();
-		
-		// We also want the local 'render_data' parameter here to be updated such
-		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
-		m_hash_grid_storage.to_device(render_data);
-	}
+	rehash(render_data);
 
 	render_data.render_settings.regir_settings.supersampling.supersampling_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
 	render_data.render_settings.regir_settings.supersampling.supersampled_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
@@ -141,6 +143,47 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	}
 
 	return true;
+}
+
+void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
+{
+	bool has_rehashed = false;
+
+	printf("GETTING IN\n");
+
+	do
+	{
+		update_cell_alive_count();
+		printf("Sample %d, Cell count before: %u\n", render_data.render_settings.sample_number, m_number_of_cells_alive);
+		
+		void* launch_args[] = { &render_data };
+		m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+
+		update_cell_alive_count();
+		printf("Cell count after: %u\n", m_number_of_cells_alive);
+
+		has_rehashed = rehash(render_data);
+		printf("Has rehashed: %d\n", has_rehashed);
+		if (has_rehashed)
+			update_render_data();
+
+	} while (has_rehashed);
+}
+
+bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
+{
+	if (m_hash_grid_storage.try_rehash(render_data))
+	{
+		update_render_data();
+		
+		// We also want the local 'render_data' parameter here to be updated such
+		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
+		m_hash_grid_storage.to_device(render_data);
+
+		return true;
+	}
+
+	return false;
 }
 
 void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data)
