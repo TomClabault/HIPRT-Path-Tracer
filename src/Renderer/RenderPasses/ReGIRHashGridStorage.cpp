@@ -78,8 +78,7 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 		{
 			m_supersample_grid.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell() * regir_settings.supersampling.supersampling_factor);
 
-			printf("RESET\n");
-			m_supersampling_curent_frame = 0;
+			m_supersampling_curent_grid_offset = 0;
 			m_supersampling_frames_available = 0;
 
 			updated = true;
@@ -96,8 +95,8 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 
 void ReGIRHashGridStorage::post_sample_update_async(HIPRTRenderData& render_data)
 {
-	m_supersampling_curent_frame++;
-	m_supersampling_curent_frame %= render_data.render_settings.regir_settings.supersampling.supersampling_factor;
+	m_supersampling_curent_grid_offset++;
+	m_supersampling_curent_grid_offset %= render_data.render_settings.regir_settings.supersampling.supersampling_factor;
 	
 	m_supersampling_frames_available++;
 	m_supersampling_frames_available = hippt::min(m_supersampling_frames_available, render_data.render_settings.regir_settings.supersampling.supersampling_factor);
@@ -139,8 +138,7 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			{
 				m_supersample_grid.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell() * regir_settings.supersampling.supersampling_factor);
 
-				printf("RESET rehash\n");
-				m_supersampling_curent_frame = 0;
+				m_supersampling_curent_grid_offset = 0;
 				m_supersampling_frames_available = 0;
 			}
 			m_hash_cell_data = std::move(new_hash_cell_data);
@@ -222,7 +220,7 @@ ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data
 
 unsigned int ReGIRHashGridStorage::get_supersampling_current_frame() const
 {
-	return m_supersampling_curent_frame;
+	return m_supersampling_curent_grid_offset;
 }
 
 unsigned int ReGIRHashGridStorage::get_supersampling_frames_available() const

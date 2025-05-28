@@ -4259,6 +4259,20 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		ImGui::TreePop();
 	}
 
+	static bool display_only_sample = DisplayOnlySampleN;
+	if (ImGui::Checkbox("Display only sample N", &display_only_sample))
+	{
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N, display_only_sample ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+		m_render_window->set_render_dirty(true);
+		m_renderer->recompile_kernels();
+	}
+	if (display_only_sample)
+	{
+		ImGui::SameLine();
+		ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N);
+	}
+
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	std::vector<const char*> trace_kernel_items = { "None", "TraceTest" };
 	if (ImGui::Combo("Override trace kernel", &m_debug_trace_kernel_selected, trace_kernel_items.data(), trace_kernel_items.size()))

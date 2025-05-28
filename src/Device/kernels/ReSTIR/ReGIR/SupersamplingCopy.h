@@ -51,7 +51,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Supersampling_Copy(HIPRTRenderData re
     else
         reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.initial_reservoirs_grid, reservoir_index_in_grid);
 
-	unsigned int reservoir_index_in_supersampling_grid = reservoir_index_in_grid + regir_settings.supersampling.supersampling_current_frame * regir_settings.get_number_of_reservoirs_per_grid();
+	unsigned int reservoir_index_in_supersampling_grid = reservoir_index_in_grid + regir_settings.supersampling.supersampling_current_grid * regir_settings.get_number_of_reservoirs_per_grid();
 
     render_data.render_settings.regir_settings.hash_grid.store_full_reservoir(regir_settings.supersampling.supersampling_grid, reservoir_to_copy, reservoir_index_in_supersampling_grid);
 }

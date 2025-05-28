@@ -45,7 +45,7 @@ private:
 	ReGIRHashGridSoAHost<OrochiBuffer> m_grid_buffers;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
 
-	int m_supersampling_curent_frame = 0;
+	int m_supersampling_curent_grid_offset = 0;
 	int m_supersampling_frames_available = 0;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_supersample_grid;
 

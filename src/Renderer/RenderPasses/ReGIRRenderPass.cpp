@@ -130,18 +130,14 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_hash_grid_storage.to_device(render_data);
 	}
 
-	render_data.render_settings.regir_settings.supersampling.supersampling_current_frame = m_hash_grid_storage.get_supersampling_current_frame();
+	render_data.render_settings.regir_settings.supersampling.supersampling_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
 	render_data.render_settings.regir_settings.supersampling.supersampled_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
-
-	printf("Supersampling current frame / avail: %u / %u\n", render_data.render_settings.regir_settings.supersampling.supersampling_current_frame, render_data.render_settings.regir_settings.supersampling.supersampled_frames_available);
 
 	if (m_number_of_cells_alive > 0)
 	{
 		launch_grid_fill_temporal_reuse(render_data);
 
 		launch_spatial_reuse(render_data);
-
-		launch_supersampling_copy(render_data);
 	}
 
 	return true;
@@ -222,6 +218,8 @@ void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPU
 {
 	if (!m_render_pass_used_this_frame)
 		return;
+
+	launch_supersampling_copy(render_data);
 
 	m_hash_grid_storage.post_sample_update_async(render_data);
 }

@@ -53,6 +53,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Lambertian BRDF goes through lampshade in white room but principled BSDF doesn't
 // - Can we keep the grid of reservoirs from the last frame to pick them during shading to reduce correlations? Only memory cost but it's ok
 //		- Maybe only that for primary hit reservoirs because those are the only one to be correlated hard?
 // - Have a variable radius when picking reservoirs for shading 

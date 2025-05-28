@@ -42,7 +42,7 @@ private:
 	// and 1 canonical reservoir:
 	//
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_non_canonical = 40;
+	int reservoirs_count_per_grid_cell_non_canonical = 100 / 16;
 
 	// Number of canonical reservoirs per cell
 	// 
@@ -78,9 +78,9 @@ struct ReGIRSupersamplingSettings
 {
 	bool do_supersampling = true;
 
-	int supersampling_factor = 1;
-	unsigned int supersampled_frames_available = 0;
-	unsigned int supersampling_current_frame = 0;
+	int supersampling_factor = 16;
+	int supersampled_frames_available = 0;
+	unsigned int supersampling_current_grid = 0;
 
 	ReGIRHashGridSoADevice supersampling_grid;
 };
@@ -272,8 +272,10 @@ struct ReGIRSettings
 		if constexpr (getCanonicalReservoir)
 		{
 			if (supersampling.do_supersampling)
+			{
 				// If supersampling is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + supersampling reservoirs)
 				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell() * (supersampling.supersampled_frames_available + 1));
+			}
 			else
 				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 		}
