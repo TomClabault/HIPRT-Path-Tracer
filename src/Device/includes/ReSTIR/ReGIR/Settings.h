@@ -78,7 +78,7 @@ struct ReGIRSupersamplingSettings
 {
 	bool do_supersampling = true;
 
-	int supersampling_factor = 2;
+	int supersampling_factor = 1;
 	unsigned int supersampled_frames_available = 0;
 	unsigned int supersampling_current_frame = 0;
 
@@ -273,7 +273,7 @@ struct ReGIRSettings
 		{
 			if (supersampling.do_supersampling)
 				// If supersampling is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + supersampling reservoirs)
-				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell() * (supersampling.supersampling_factor + 1));
+				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell() * (supersampling.supersampled_frames_available + 1));
 			else
 				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 		}
@@ -281,7 +281,7 @@ struct ReGIRSettings
 		{
 			if (supersampling.do_supersampling)
 				// If supersampling is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + supersampling reservoirs)
-				reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell() * (supersampling.supersampling_factor + 1));
+				reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell() * (supersampling.supersampled_frames_available + 1));
 			else
 				reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 		}
@@ -306,10 +306,10 @@ struct ReGIRSettings
 
 			if (spatial_reuse.do_spatial_reuse)
 				// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-				return hash_grid.read_full_reservoir(spatial_output_grid, hash_cell_data, reservoir_index_in_grid);
+				return hash_grid.read_full_reservoir(spatial_output_grid, reservoir_index_in_grid);
 			else
 				// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-				return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, reservoir_index_in_grid);
+				return hash_grid.read_full_reservoir(initial_reservoirs_grid, reservoir_index_in_grid);
 		}
 		else
 		{
@@ -317,7 +317,7 @@ struct ReGIRSettings
 			// so we have grid_index - 1
 			unsigned int reservoir_index_in_supersample_grid = reservoir_index_in_grid + (grid_index - 1) * get_number_of_reservoirs_per_grid();
 
-			return hash_grid.read_full_reservoir(supersampling.supersampling_grid, hash_cell_data, reservoir_index_in_supersample_grid);
+			return hash_grid.read_full_reservoir(supersampling.supersampling_grid, reservoir_index_in_supersample_grid);
 		}
 	}
 

@@ -34,6 +34,7 @@ public:
 
 	ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa();
 	unsigned int get_supersampling_current_frame() const;
+	unsigned int get_supersampling_frames_available() const;
 
 private:
 	ReGIRRenderPass* m_regir_render_pass = nullptr;
@@ -44,7 +45,8 @@ private:
 	ReGIRHashGridSoAHost<OrochiBuffer> m_grid_buffers;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
 
-	unsigned int m_supersampling_curent_frame = 0;
+	int m_supersampling_curent_frame = 0;
+	int m_supersampling_frames_available = 0;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_supersample_grid;
 
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data;

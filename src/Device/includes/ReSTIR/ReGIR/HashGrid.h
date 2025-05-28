@@ -34,7 +34,7 @@ struct ReGIRHashGrid
 
 		int reservoir_index_in_grid = hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
-		store_reservoir_and_sample_opt_from_index_in_grid(soa, reservoir_index_in_grid, reservoir);
+		store_full_reservoir(soa, reservoir, reservoir_index_in_grid);
 	}
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
@@ -58,8 +58,21 @@ struct ReGIRHashGrid
 		return hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 	}
 
-	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
-		unsigned int reservoir_index_in_grid) const
+	HIPRT_DEVICE void store_full_reservoir(ReGIRHashGridSoADevice& soa, const ReGIRReservoir& reservoir, int reservoir_index_in_grid)
+	{
+		if (reservoir.UCW <= 0.0f)
+		{
+			soa.reservoirs.UCW[reservoir_index_in_grid] = reservoir.UCW;
+			
+			// No need to store the rest if the UCW is invalid, we can already return
+			return;
+		}
+
+		soa.reservoirs.store_reservoir_opt(reservoir_index_in_grid, reservoir);
+		soa.samples.store_sample(reservoir_index_in_grid, reservoir.sample);
+	}
+
+	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, unsigned int reservoir_index_in_grid) const
 	{
 		if (reservoir_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
 			return ReGIRReservoir();
@@ -96,7 +109,7 @@ struct ReGIRHashGrid
 				*out_invalid_sample = false;
 		}
 
-		return read_full_reservoir(soa, hash_cell_data, reservoir_index_in_grid);
+		return read_full_reservoir(soa, reservoir_index_in_grid);
 	}
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(const ReGIRHashGridSoADevice& soa, 
@@ -337,21 +350,6 @@ struct ReGIRHashGrid
 
 	float m_grid_cell_min_size = 1.0f / 10.0f;
 	float m_grid_cell_target_projected_size_ratio = 25.0f;
-	
-private:
-	HIPRT_DEVICE void store_reservoir_and_sample_opt_from_index_in_grid(ReGIRHashGridSoADevice& soa, int reservoir_index_in_grid, const ReGIRReservoir& reservoir)
-	{
-		if (reservoir.UCW <= 0.0f)
-		{
-			soa.reservoirs.UCW[reservoir_index_in_grid] = reservoir.UCW;
-			
-			// No need to store the rest if the UCW is invalid, we can already return
-			return;
-		}
-
-		soa.reservoirs.store_reservoir_opt(reservoir_index_in_grid, reservoir);
-		soa.samples.store_sample(reservoir_index_in_grid, reservoir.sample);
-	}
 };
 
 #endif

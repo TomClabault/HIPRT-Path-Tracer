@@ -124,7 +124,7 @@ void Screenshoter::write_to_png(std::string filepath)
 {
 	Image8Bit image = get_image();
 	if (image.write_image_png(filepath.c_str(), true))
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath.c_str());
 }
 
 Image8Bit Screenshoter::get_image()

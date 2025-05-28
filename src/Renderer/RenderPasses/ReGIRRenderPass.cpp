@@ -131,6 +131,9 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	}
 
 	render_data.render_settings.regir_settings.supersampling.supersampling_current_frame = m_hash_grid_storage.get_supersampling_current_frame();
+	render_data.render_settings.regir_settings.supersampling.supersampled_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
+
+	printf("Supersampling current frame / avail: %u / %u\n", render_data.render_settings.regir_settings.supersampling.supersampling_current_frame, render_data.render_settings.regir_settings.supersampling.supersampled_frames_available);
 
 	if (m_number_of_cells_alive > 0)
 	{
