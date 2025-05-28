@@ -42,7 +42,7 @@ private:
 	// and 1 canonical reservoir:
 	//
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_non_canonical = 40;
+	int reservoirs_count_per_grid_cell_non_canonical = 100 / 16;
 
 	// Number of canonical reservoirs per cell
 	// 
@@ -72,6 +72,17 @@ struct ReGIRSpatialReuseSettings
 	int spatial_reuse_radius = 1;
 
 	bool DEBUG_oONLY_ONE_CENTER_CELL = true;
+};
+
+struct ReGIRSupersamplingSettings
+{
+	bool do_supersampling = true;
+
+	int supersampling_factor = 16;
+	int supersampled_frames_available = 0;
+	unsigned int supersampling_current_grid = 0;
+
+	ReGIRHashGridSoADevice supersampling_grid;
 };
 
 struct ReGIRSettings
@@ -110,18 +121,14 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE ReGIRReservoir get_random_cell_non_canonical_reservoir(float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
 	{
-		int random_non_canonical_reservoir_index_in_cell = 0;
-		if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
-			random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
+		int random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 
 		return get_reservoir_for_shading_from_cell_indices(world_position, current_camera, random_non_canonical_reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	HIPRT_DEVICE ReGIRReservoir get_random_cell_canonical_reservoir(float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
 	{
-		int random_canonical_reservoir_index_in_cell = 0;
-		if (grid_fill.get_canonical_reservoir_count_per_cell() > 1)
-			random_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
+		int random_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 
 		return get_reservoir_for_shading_from_cell_indices(world_position, current_camera, grid_fill.get_non_canonical_reservoir_count_per_cell() + random_canonical_reservoir_index_in_cell, out_invalid_sample);
 	}
@@ -191,15 +198,9 @@ struct ReGIRSettings
 		{
 			// Advancing the RNG simulating the random reservoir pick within the grid cell
 			if (replay_canonical)
-			{
-				if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
-					rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
-			}
+				rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 			else
-			{
-				if (grid_fill.get_canonical_reservoir_count_per_cell() > 1)
-					rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
-			}
+				rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 		}
 
 		return neighbor_cell_index;
@@ -262,33 +263,64 @@ struct ReGIRSettings
 	HIPRT_DEVICE ReGIRReservoir get_random_reservoir_in_grid_cell_for_shading(unsigned int grid_cell_index, Xorshift32Generator& rng) const
 	{
 		unsigned int reservoir_index_in_cell;
+		// If this stays to 0, this means that we're going to read the reservoirs from
+		// either the regular initial candidates grid or spatial reuse grid
+		// 
+		// If this is > 0, then we're going to read the reservoirs from the supersampling grid
+		unsigned int grid_index = 0;
 
 		if constexpr (getCanonicalReservoir)
 		{
-			int random_canonical_reservoir_index_in_cell = 0;
-			if (grid_fill.get_canonical_reservoir_count_per_cell() > 1)
-				random_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
-
-			reservoir_index_in_cell = random_canonical_reservoir_index_in_cell;
+			if (supersampling.do_supersampling)
+			{
+				// If supersampling is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + supersampling reservoirs)
+				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell() * (supersampling.supersampled_frames_available + 1));
+			}
+			else
+				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 		}
 		else
 		{
-			int random_non_canonical_reservoir_index_in_cell = 0;
-			if (grid_fill.get_non_canonical_reservoir_count_per_cell() > 1)
-				random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
+			if (supersampling.do_supersampling)
+				// If supersampling is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + supersampling reservoirs)
+				reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell() * (supersampling.supersampled_frames_available + 1));
+			else
+				reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
+		}
 
-			reservoir_index_in_cell = random_non_canonical_reservoir_index_in_cell;
+		if constexpr (getCanonicalReservoir)
+		{
+			grid_index = reservoir_index_in_cell / grid_fill.get_canonical_reservoir_count_per_cell();
+			reservoir_index_in_cell %= grid_fill.get_canonical_reservoir_count_per_cell();
+		}
+		else
+		{
+			grid_index = reservoir_index_in_cell / grid_fill.get_non_canonical_reservoir_count_per_cell();
+			reservoir_index_in_cell %= grid_fill.get_non_canonical_reservoir_count_per_cell();
 		}
 
 		unsigned int canonical_offset = getCanonicalReservoir ? grid_fill.get_non_canonical_reservoir_count_per_cell() : 0;
 		unsigned int reservoir_index_in_grid = grid_cell_index * get_number_of_reservoirs_per_cell() + canonical_offset + reservoir_index_in_cell;
 
-		if (spatial_reuse.do_spatial_reuse)
-			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return hash_grid.read_full_reservoir(spatial_output_grid, hash_cell_data, reservoir_index_in_grid);
+		if (grid_index == 0)
+		{
+			// Reading from the regular grids
+
+			if (spatial_reuse.do_spatial_reuse)
+				// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
+				return hash_grid.read_full_reservoir(spatial_output_grid, reservoir_index_in_grid);
+			else
+				// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
+				return hash_grid.read_full_reservoir(initial_reservoirs_grid, reservoir_index_in_grid);
+		}
 		else
-			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, reservoir_index_in_grid);
+		{
+			// If we have grid_index == 1 here for example, this is going to be grid index 0 of the supersampling grid
+			// so we have grid_index - 1
+			unsigned int reservoir_index_in_supersample_grid = reservoir_index_in_grid + (grid_index - 1) * get_number_of_reservoirs_per_grid();
+
+			return hash_grid.read_full_reservoir(supersampling.supersampling_grid, reservoir_index_in_supersample_grid);
+		}
 	}
 
 	/**
@@ -521,7 +553,7 @@ struct ReGIRSettings
 	// This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell
 	// contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used
 	// and new samples are necessary
-	int frame_skip = 2;
+	int frame_skip = 0;
 
 	ReGIRHashGrid hash_grid;
 
@@ -537,6 +569,7 @@ struct ReGIRSettings
 	ReGIRGridFillSettings grid_fill;
 	ReGIRSpatialReuseSettings spatial_reuse;
 	ReGIRShadingSettings shading;
+	ReGIRSupersamplingSettings supersampling;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;

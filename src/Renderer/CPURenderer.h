@@ -181,6 +181,7 @@ private:
     {
         ReGIRHashGridSoAHost<std::vector> grid_buffer;
         ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
+        ReGIRHashGridSoAHost<std::vector> supersampling_grid;
         ReGIRHashCellDataSoAHost<std::vector> hash_cell_data;
 
         std::vector<AtomicType<unsigned int>> grid_cells_alive;

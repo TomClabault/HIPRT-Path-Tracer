@@ -11,6 +11,7 @@
 
 #include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
+#include "Device/kernels/ReSTIR/ReGIR/SupersamplingCopy.h"
 
 #include "Device/kernels/ReSTIR/DirectionalReuseCompute.h"
 
@@ -77,7 +78,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 150
+#define DEBUG_NEIGHBORHOOD_SIZE 250
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -99,9 +100,10 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     unsigned int new_cell_count = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT;
     // ReGIR hash grid Overallocation factor
-    new_cell_count *= 500;
+    new_cell_count *= 50;
     m_regir_state.grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
     m_regir_state.spatial_grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
+    m_regir_state.supersampling_grid.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell() * m_render_data.render_settings.regir_settings.supersampling.supersampling_factor);
     m_regir_state.hash_cell_data.resize(new_cell_count);
 
 
@@ -247,6 +249,18 @@ void CPURenderer::ReGIR_post_render_update()
 #if DirectLightSamplingBaseStrategy != LSS_BASE_REGIR
     return;
 #endif
+
+#pragma omp parallel for
+    for (int x = 0; x < *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); x++)
+    {
+        ReGIR_Supersampling_Copy(m_render_data, x);
+    }
+
+    m_render_data.render_settings.regir_settings.supersampling.supersampling_current_grid++;
+    m_render_data.render_settings.regir_settings.supersampling.supersampling_current_grid %= m_render_data.render_settings.regir_settings.supersampling.supersampling_factor;
+
+    m_render_data.render_settings.regir_settings.supersampling.supersampled_frames_available++;
+    m_render_data.render_settings.regir_settings.supersampling.supersampled_frames_available = hippt::min(m_render_data.render_settings.regir_settings.supersampling.supersampled_frames_available, m_render_data.render_settings.regir_settings.supersampling.supersampling_factor);
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -317,6 +331,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.initial_reservoirs_grid);
     m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.spatial_output_grid);
+    m_regir_state.supersampling_grid.to_device(m_render_data.render_settings.regir_settings.supersampling.supersampling_grid);
     m_render_data.render_settings.regir_settings.hash_cell_data = m_regir_state.hash_cell_data.to_device();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();

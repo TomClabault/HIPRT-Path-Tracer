@@ -9,6 +9,7 @@
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID = "ReGIR Grid fill & temp. reuse";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID = "ReGIR Spatial reuse";
 const std::string ReGIRRenderPass::REGIR_REHASH_KERNEL_ID = "ReGIR Rehash kernel";
+const std::string ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID = "ReGIR Supersampling copy";
 
 const std::string ReGIRRenderPass::REGIR_RENDER_PASS_NAME = "ReGIR Render Pass";
 
@@ -17,6 +18,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, "ReGIR_Spatial_Reuse" },
 	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
+	{ REGIR_SUPERSAMPLING_COPY_KERNEL_ID, "ReGIR_Supersampling_Copy" },
 };
 
 const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES =
@@ -24,6 +26,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h" },
 	{ REGIR_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
 	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
+	{ REGIR_SUPERSAMPLING_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SupersamplingCopy.h" },
 };
 
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
@@ -53,6 +56,10 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
+
+	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID));
+	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID));
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -72,7 +79,11 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	if (!rehash_kernel_compiled)
 		m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	return !grid_fill_compiled || !spatial_reuse_compiled || !rehash_kernel_compiled;
+	bool supersample_copy_kernel_compiled = m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->has_been_compiled();
+	if (!supersample_copy_kernel_compiled)
+		m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	return !grid_fill_compiled || !spatial_reuse_compiled || !rehash_kernel_compiled || !supersample_copy_kernel_compiled;
 }
 
 bool ReGIRRenderPass::pre_render_update(float delta_time)
@@ -118,6 +129,9 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
 		m_hash_grid_storage.to_device(render_data);
 	}
+
+	render_data.render_settings.regir_settings.supersampling.supersampling_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
+	render_data.render_settings.regir_settings.supersampling.supersampled_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
 
 	if (m_number_of_cells_alive > 0)
 	{
@@ -167,6 +181,16 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
+void ReGIRRenderPass::launch_supersampling_copy(HIPRTRenderData& render_data)
+{
+	if (!render_data.render_settings.regir_settings.supersampling.do_supersampling)
+		return;
+
+	void* launch_args[] = { &render_data };
+
+	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->launch_asynchronous(64, 1, m_number_of_cells_alive * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(), 1, launch_args, m_renderer->get_main_stream());
+}
+
 void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, 
 	ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)
 {
@@ -194,6 +218,10 @@ void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPU
 {
 	if (!m_render_pass_used_this_frame)
 		return;
+
+	launch_supersampling_copy(render_data);
+
+	m_hash_grid_storage.post_sample_update_async(render_data);
 }
 
 void ReGIRRenderPass::update_render_data()

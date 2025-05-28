@@ -78,7 +78,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.do_neighbor_rotation = false;
 		common_spatial_pass.use_hammersley = false;
 		common_spatial_pass.spatial_neighbors_rng_seed = 42;
-		common_spatial_pass.coalesced_spatial_reuse = true;
+		common_spatial_pass.coalesced_spatial_reuse = false;
 		common_spatial_pass.use_adaptive_directional_spatial_reuse = true;
 
 		common_spatial_pass.allow_converged_neighbors_reuse = false;

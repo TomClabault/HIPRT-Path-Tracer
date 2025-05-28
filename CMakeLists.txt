@@ -208,5 +208,6 @@ if(MSVC_IDE)
 		assimp uninstall zlibstatic UpdateAssimpLibsDebugSymbolsAndDLLs # ASSIMP Targets
 		hiprt02004 hiprtCopyDLL # HIPRT Targets
 		TracyClient # Tracy
+		hello_world copy clip_user_format_tests clip_text_tests clip_image_tests clip int_format paste put_image show_image # Clip
 		PROPERTIES FOLDER ExternalTargets)
 endif()

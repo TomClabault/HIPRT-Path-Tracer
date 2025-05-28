@@ -18,6 +18,7 @@ public:
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_REHASH_KERNEL_ID;
+	static const std::string REGIR_SUPERSAMPLING_COPY_KERNEL_ID;
 
 	static const std::string REGIR_RENDER_PASS_NAME;
 
@@ -50,6 +51,7 @@ public:
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data);
 	void launch_spatial_reuse(HIPRTRenderData& render_data);
+	void launch_supersampling_copy(HIPRTRenderData& render_data);
 	void launch_rehashing_kernel(HIPRTRenderData& render_data, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data);
 
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
@@ -72,16 +74,13 @@ public:
 
 	unsigned int update_cell_alive_count();
 	float get_alive_cells_ratio() const;
-
-	ReGIRHashGridStorage m_hash_grid_storage;
 	
 private:
-	int m_current_grid_index = 0;
-
-
 	unsigned int m_number_of_cells_alive = 0;
 
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
+
+	ReGIRHashGridStorage m_hash_grid_storage;
 };
 
 #endif
