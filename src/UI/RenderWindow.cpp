@@ -53,6 +53,12 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// Trry to disable canonical and see if it converges quicker
+//		- It does
+// Try to downweigjt canonical MIS weight instead of 1 / M
+// Try to sort the cell alive list and see if we get better perf
+// Can we compact the cell alive buffer to 1 / 32 of its size ? 1 bit per cell alive flag
+// - Lower resolution for prepoluation
 // - Lambertian BRDF goes through lampshade in white room but principled BSDF doesn't
 // - Can we keep the grid of reservoirs from the last frame to pick them during shading to reduce correlations? Only memory cost but it's ok
 //		- Maybe only that for primary hit reservoirs because those are the only one to be correlated hard?
