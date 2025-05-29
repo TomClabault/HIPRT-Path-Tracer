@@ -60,6 +60,7 @@ public:
 
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data);
 	void launch_spatial_reuse(HIPRTRenderData& render_data);
+	void launch_supersampling_fill(HIPRTRenderData& render_data);
 	void launch_supersampling_copy(HIPRTRenderData& render_data);
 	void launch_rehashing_kernel(HIPRTRenderData& render_data, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data);
 
@@ -87,6 +88,7 @@ public:
 private:
 	unsigned int m_number_of_cells_alive = 0;
 
+	Xorshift32Generator m_supersampling_rng = Xorshift32Generator(42);
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 
 	ReGIRHashGridStorage m_hash_grid_storage;

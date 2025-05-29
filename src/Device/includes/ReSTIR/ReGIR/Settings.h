@@ -78,7 +78,7 @@ struct ReGIRSupersamplingSettings
 {
 	bool do_supersampling = true;
 
-	int supersampling_factor = 16;
+	int supersampling_factor = 8;
 	int supersampled_frames_available = 0;
 	unsigned int supersampling_current_grid = 0;
 

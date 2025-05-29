@@ -124,7 +124,10 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		return false;
 
 	if (render_data.render_settings.sample_number == 0)
+	{
 		launch_grid_pre_population(render_data);
+		launch_supersampling_fill(render_data);
+	}
 
 	// This needs to be called before the rehash because the 
 	// rehash needs the updated number of cells alive to function
@@ -149,21 +152,16 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 {
 	bool has_rehashed = false;
 
-	printf("GETTING IN\n");
-
 	do
 	{
 		update_cell_alive_count();
-		printf("Sample %d, Cell count before: %u\n", render_data.render_settings.sample_number, m_number_of_cells_alive);
 		
 		void* launch_args[] = { &render_data };
 		m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 		update_cell_alive_count();
-		printf("Cell count after: %u\n", m_number_of_cells_alive);
 
 		has_rehashed = rehash(render_data);
-		printf("Has rehashed: %d\n", has_rehashed);
 		if (has_rehashed)
 			update_render_data();
 
@@ -222,6 +220,32 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
 	unsigned int nb_threads = hippt::min(m_number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 	
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
+}
+
+void ReGIRRenderPass::launch_supersampling_fill(HIPRTRenderData& render_data)
+{
+	if (!render_data.render_settings.regir_settings.supersampling.do_supersampling)
+		return;
+
+	unsigned int seed_backup = render_data.random_number;
+
+	for (int i = 0; i < render_data.render_settings.regir_settings.supersampling.supersampling_factor; i++)
+	{
+		render_data.random_number = m_supersampling_rng.xorshift32();
+
+		launch_grid_fill_temporal_reuse(render_data);
+		launch_spatial_reuse(render_data);
+		launch_supersampling_copy(render_data);
+
+		m_hash_grid_storage.increment_supersampling_counters(render_data);
+
+		render_data.render_settings.regir_settings.supersampling.supersampling_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
+		render_data.render_settings.regir_settings.supersampling.supersampled_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
+
+		m_hash_grid_storage.DEBUG_PRINT(render_data);
+	}
+
+	render_data.random_number = seed_backup;
 }
 
 void ReGIRRenderPass::launch_supersampling_copy(HIPRTRenderData& render_data)
