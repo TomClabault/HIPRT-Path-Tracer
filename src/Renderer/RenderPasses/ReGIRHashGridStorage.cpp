@@ -95,16 +95,36 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 
 void ReGIRHashGridStorage::post_sample_update_async(HIPRTRenderData& render_data)
 {
+	increment_supersampling_counters(render_data);
+}
+
+void ReGIRHashGridStorage::increment_supersampling_counters(HIPRTRenderData& render_data)
+{
 	m_supersampling_curent_grid_offset++;
 	m_supersampling_curent_grid_offset %= render_data.render_settings.regir_settings.supersampling.supersampling_factor;
-	
+
 	m_supersampling_frames_available++;
 	m_supersampling_frames_available = hippt::min(m_supersampling_frames_available, render_data.render_settings.regir_settings.supersampling.supersampling_factor);
+}
+
+void ReGIRHashGridStorage::DEBUG_PRINT(HIPRTRenderData& render_data)
+{
+	if (render_data.render_settings.regir_settings.supersampling.do_supersampling)
+	{
+		std::vector<unsigned int> samples = m_supersample_grid.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_RANDOM_SEED>().download_data();
+		for (int i = 0; i < render_data.render_settings.regir_settings.supersampling.supersampling_factor; i++)
+		{
+			printf("%d = %u --- ", i, samples[i * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid()]);
+		}
+		printf("\n\n\n");
+	}
 }
 
 bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 {
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+	DEBUG_PRINT(render_data);
 	
 	// We don't need a full reset, instead checking if we need to dynamically grow the size of the hash
 	// table to keep the load factor in check
