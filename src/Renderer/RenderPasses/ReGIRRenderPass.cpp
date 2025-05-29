@@ -133,7 +133,9 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	// rehash needs the updated number of cells alive to function
 	update_cell_alive_count();
 
-	rehash(render_data);
+	if (rehash(render_data))
+		// A rehashing with supersampling enabled will empty the supersampling grid so we need to fill it again
+		launch_supersampling_fill(render_data);
 
 	render_data.render_settings.regir_settings.supersampling.supersampling_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
 	render_data.render_settings.regir_settings.supersampling.supersampled_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
@@ -241,8 +243,6 @@ void ReGIRRenderPass::launch_supersampling_fill(HIPRTRenderData& render_data)
 
 		render_data.render_settings.regir_settings.supersampling.supersampling_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
 		render_data.render_settings.regir_settings.supersampling.supersampled_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
-
-		m_hash_grid_storage.DEBUG_PRINT(render_data);
 	}
 
 	render_data.random_number = seed_backup;
