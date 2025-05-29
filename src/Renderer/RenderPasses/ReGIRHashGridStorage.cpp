@@ -107,25 +107,10 @@ void ReGIRHashGridStorage::increment_supersampling_counters(HIPRTRenderData& ren
 	m_supersampling_frames_available = hippt::min(m_supersampling_frames_available, render_data.render_settings.regir_settings.supersampling.supersampling_factor);
 }
 
-void ReGIRHashGridStorage::DEBUG_PRINT(HIPRTRenderData& render_data)
-{
-	if (render_data.render_settings.regir_settings.supersampling.do_supersampling)
-	{
-		std::vector<unsigned int> samples = m_supersample_grid.samples.template get_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_RANDOM_SEED>().download_data();
-		for (int i = 0; i < render_data.render_settings.regir_settings.supersampling.supersampling_factor; i++)
-		{
-			printf("%d = %u --- ", i, samples[i * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_grid()]);
-		}
-		printf("\n\n\n");
-	}
-}
-
 bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 {
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-	DEBUG_PRINT(render_data);
-	
 	// We don't need a full reset, instead checking if we need to dynamically grow the size of the hash
 	// table to keep the load factor in check
 	if (m_regir_render_pass->get_alive_cells_ratio() > 0.75f)
@@ -166,7 +151,7 @@ bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
 			// We need to update the cell alive count because there may have possibly been collisions that couldn't be resolved during the rehashing
 			// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different (lower) --> need to update
 			m_regir_render_pass->update_cell_alive_count();
-
+			
 			return true;
 		}
 	}

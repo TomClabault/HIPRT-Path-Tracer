@@ -4270,7 +4270,22 @@ void ImGuiSettingsWindow::draw_debug_panel()
 	if (display_only_sample)
 	{
 		ImGui::SameLine();
-		ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N);
+		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+		if (ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N))
+			m_render_window->set_render_dirty(true);
+
+		static bool auto_sample = true;
+		ImGui::SameLine();
+		ImGui::Checkbox("Auto", &auto_sample);
+		if (auto_sample)
+		{
+			int new_sample_count = m_render_window->get_application_settings()->max_sample_count - 1;
+
+			if (m_renderer->get_render_data().render_settings.output_debug_sample_N != new_sample_count)
+				m_render_window->set_render_dirty(true);
+
+			m_renderer->get_render_data().render_settings.output_debug_sample_N = m_render_window->get_application_settings()->max_sample_count - 1;
+		}
 	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));

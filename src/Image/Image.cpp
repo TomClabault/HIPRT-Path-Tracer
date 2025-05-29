@@ -334,6 +334,28 @@ Image32Bit::Image32Bit(const float* data, int width, int height, int channels) :
 
 Image32Bit::Image32Bit(const std::vector<float>& data, int width, int height, int channels) : width(width), height(height), channels(channels), m_pixel_data(data) {}
 
+Image32Bit::Image32Bit(Image8Bit image, int channels)
+{
+    int input_channels = image.channels;
+    int output_channels = channels == -1 ? image.channels : channels;
+
+	m_pixel_data.resize(image.width * image.height * output_channels);
+
+    for (int y = 0; y < image.height; y++)
+    {
+        for (int x = 0; x < image.width; x++)
+        {
+            int index = x + y * image.width;
+            for (int i = 0; i < output_channels; i++)
+                m_pixel_data[index * output_channels + i] = static_cast<float>(image[index * input_channels + i]) / 255.0f;
+        }
+	}
+
+    width = image.width;
+    height = image.height;
+    this->channels = output_channels;
+}
+
 Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channels, bool flipY)
 {
     stbi_set_flip_vertically_on_load(flipY);

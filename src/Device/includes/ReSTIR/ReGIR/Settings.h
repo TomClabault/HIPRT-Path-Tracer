@@ -42,7 +42,7 @@ private:
 	// and 1 canonical reservoir:
 	//
 	// [non-canon, non-canon, non-canon, canonical]
-	int reservoirs_count_per_grid_cell_non_canonical = 100 / 16;
+	int reservoirs_count_per_grid_cell_non_canonical = 24;
 
 	// Number of canonical reservoirs per cell
 	// 
