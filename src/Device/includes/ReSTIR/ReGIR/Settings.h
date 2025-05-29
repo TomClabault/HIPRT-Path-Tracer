@@ -76,9 +76,9 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRSupersamplingSettings
 {
-	bool do_supersampling = true;
+	bool do_supersampling = false;
 
-	int supersampling_factor = 8;
+	int supersampling_factor = 4;
 	int supersampled_frames_available = 0;
 	unsigned int supersampling_current_grid = 0;
 
@@ -487,6 +487,10 @@ struct ReGIRSettings
 		const ReGIRHashGrid& hash_grid, ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
 		float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
 	{
+#if ReGIR_FreezeGridAllocations == KERNEL_OPTION_TRUE
+		return;
+#endif
+
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash_grid.hash(hash_grid_to_update.m_total_number_of_cells, world_position, current_camera, hash_key);
 		

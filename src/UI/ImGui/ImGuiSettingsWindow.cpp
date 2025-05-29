@@ -1781,9 +1781,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 128))
+			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill.get_canonical_reservoir_count_per_cell_ptr(), 1, 8))
+			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
 				m_render_window->set_render_dirty(true);
 
 			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;
@@ -1969,6 +1969,16 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				if (ImGui::SliderFloat("Distance to point", &regir_settings.debug_view_scale_factor, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
 			}
+
+			/*ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			static bool freeze_allocations = ReGIR_FreezeGridAllocations;
+			if (ImGui::Checkbox("Freeze grid allocations", &freeze_allocations))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_FREEZE_GRID_ALLOCATIONS, freeze_allocations ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_render_window->set_render_dirty(true);
+				m_renderer->recompile_kernels();
+			}*/
 
 			ImGui::TreePop();
 		}

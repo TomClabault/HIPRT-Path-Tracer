@@ -25,6 +25,13 @@
 #endif
 
 /**
+ * The resolution downscale factor to apply for the ReGIR grid prepopulation.
+ * 
+ * The lower the downscale, the more effective the prepoluation but also the more costly
+ */
+#define ReGIR_GridPrepoluationResolutionDownscale 2
+
+/**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
  *		cannot override a #define statement. This means that if the #define statement are encountered by the compiler,
@@ -109,6 +116,14 @@
  * Debug option to color the scene with the grid cells
  */
 #define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
+
+/**
+ * If true, new cells won't be created where rays hit unaffected cells.
+ * 
+ * This can be used for debugging the state of the grid by moving the camear without
+ * new cells being allocated
+ */
+#define ReGIR_FreezeGridAllocations KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 
