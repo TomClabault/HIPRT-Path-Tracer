@@ -421,11 +421,11 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		{
 			ImGui::TreePush("Reference image text tree");
 			
-			std::string filename = std::filesystem::path(reference_image_path).filename().string();
-			ImGui::Text("%s", filename.c_str()); ImGui::SameLine();
 			if (ImGui::Button("C"))
 				Utils::copy_image_to_clipboard(reference_image);
 			ImGuiRenderer::add_tooltip("Copies the image to the clipboard");
+			std::string filename = std::filesystem::path(reference_image_path).filename().string();
+			ImGui::SameLine();  ImGui::Text("%s", filename.c_str());
 
 			ImGui::TreePop();
 		}
@@ -448,10 +448,11 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		{
 			ImGui::TreePush("Subject image text tree");
 
-			ImGui::Text("%s", subject_image_text.c_str()); ImGui::SameLine();
 			if (ImGui::Button("C"))
 				Utils::copy_image_to_clipboard(subject_image);
 			ImGuiRenderer::add_tooltip("Copies the image to the clipboard");
+			ImGui::SameLine();
+			ImGui::Text("%s", subject_image_text.c_str());
 
 			ImGui::TreePop();
 		}

@@ -138,7 +138,7 @@ HIPRT_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& rende
  * The normals are only flipped if some conditions are met, read the 
  * comment in the function for more details
  */
-HIPRT_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray_payload, HitInfo& hit_info, const float3& view_direction)
+HIPRT_DEVICE HIPRT_INLINE void fix_backfacing_normals(HitInfo& hit_info, const float3& view_direction)
 {
     if (hippt::dot(view_direction, hit_info.geometric_normal) < 0.0f)
     {
@@ -240,7 +240,7 @@ HIPRT_DEVICE HIPRT_INLINE bool trace_main_path_ray(const HIPRTRenderData& render
             // If we're traveling inside a volume, accumulating the distance for Beer's law
             in_out_ray_payload.volume_state.distance_in_volume += hit.t;
 
-        fix_backfacing_normals(in_out_ray_payload, out_hit_info, -ray.direction);
+        fix_backfacing_normals(out_hit_info, -ray.direction);
 
         if (skipping_volume_boundary)
         {
