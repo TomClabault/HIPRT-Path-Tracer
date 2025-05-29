@@ -25,6 +25,13 @@
 #endif
 
 /**
+ * The resolution downscale factor to apply for the ReGIR grid prepopulation.
+ * 
+ * The lower the downscale, the more effective the prepoluation but also the more costly
+ */
+#define ReGIR_GridPrepoluationResolutionDownscale 2
+
+/**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
  *		cannot override a #define statement. This means that if the #define statement are encountered by the compiler,
