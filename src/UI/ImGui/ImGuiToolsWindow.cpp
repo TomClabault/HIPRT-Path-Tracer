@@ -404,7 +404,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 		const char* filters[] = {"*.png", "*.jpg"};
 
-		static float difference = 1.0f;
+		static float error_value = 1.0f;
 		static std::string status_text = "";
 		static std::string reference_image_path = "";
 		static std::string subject_image_path = "";
@@ -430,17 +430,25 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			ImGui::TreePop();
 		}
 
+		static std::string subject_image_text = "";
 		if (ImGui::Button("Select subject image"))
 		{
 			subject_image_path = Utils::open_file_dialog(filters, 2);
 			subject_image = Image32Bit::read_image(subject_image_path, 3, false);
+
+			subject_image_text = std::filesystem::path(subject_image_path).filename().string();
 		}
-		if (subject_image_path != "")
+		ImGui::SameLine();
+		if (ImGui::Button("Use viewport"))
+		{
+			subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
+			subject_image_text = "Viewport";
+		}
+		if (subject_image_text != "")
 		{
 			ImGui::TreePush("Subject image text tree");
 
-			std::string filename = std::filesystem::path(subject_image_path).filename().string();
-			ImGui::Text("%s", filename.c_str()); ImGui::SameLine();
+			ImGui::Text("%s", subject_image_text.c_str()); ImGui::SameLine();
 			if (ImGui::Button("C"))
 				Utils::copy_image_to_clipboard(subject_image);
 			ImGuiRenderer::add_tooltip("Copies the image to the clipboard");
@@ -448,12 +456,16 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			ImGui::TreePop();
 		}
 
-		bool ready_to_compute = reference_image_path != "" && subject_image_path != "";
+		bool ready_to_compute = reference_image.width != 0 && subject_image.width != 0;
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::BeginDisabled(!ready_to_compute);
 		if (ImGui::Button("Compute MSE"))
 		{
+			if (subject_image_text == "Viewport")
+				// Updating the subject image with the viewport
+				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
+
 			if (reference_image.width != subject_image.width ||
 				reference_image.height != subject_image.height)
 			{
@@ -461,14 +473,18 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			}
 			else
 			{
-				difference = Utils::compute_image_mse(reference_image, subject_image);
+				error_value = Utils::compute_image_mse(reference_image, subject_image);
 
-				status_text = std::string("MSE: " + std::to_string(difference));
+				status_text = std::string("MSE: " + std::to_string(error_value));
 			}
 		}
 
 		if (ImGui::Button("Compute RMSE"))
 		{
+			if (subject_image_text == "Viewport")
+				// Updating the subject image with the viewport
+				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
+
 			if (reference_image.width != subject_image.width ||
 				reference_image.height != subject_image.height)
 			{
@@ -476,34 +492,35 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			}
 			else
 			{
-				difference = Utils::compute_image_rmse(reference_image, subject_image);
+				error_value = Utils::compute_image_rmse(reference_image, subject_image);
 
-				status_text = std::string("RMSE: " + std::to_string(difference));
+				status_text = std::string("RMSE: " + std::to_string(error_value));
 			}
 		}
 
 		static bool output_flip_error_map = false;
 		if (ImGui::Button("Compute FLIP"))
 		{
-			Image32Bit reference_image_data = Image32Bit::read_image(reference_image_path, 3, false);
-			Image32Bit subject_image_data = Image32Bit::read_image(subject_image_path, 3, false);
+			if (subject_image_text == "Viewport")
+				// Updating the subject image with the viewport
+				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
-			if (reference_image_data.width != subject_image_data.width ||
-				reference_image_data.height != subject_image_data.height)
+			if (reference_image.width != subject_image.width ||
+				reference_image.height != subject_image.height)
 			{
 				status_text = "Error: Images must have the same dimensions!";
 			}
 			else
 			{
 				float* error_map = nullptr;
-				difference = Utils::compute_image_weighted_median_FLIP(reference_image_data, subject_image_data, &error_map);
+				error_value = Utils::compute_image_weighted_median_FLIP(reference_image, subject_image, &error_map);
 
 				if (output_flip_error_map)
 					// Write the error map to disk
-					Utils::copy_image_to_clipboard(Image32Bit(error_map, reference_image_data.width, reference_image_data.height, 3));
+					Utils::copy_image_to_clipboard(Image32Bit(error_map, reference_image.width, reference_image.height, 3));
 				free(error_map);
 
-				status_text = std::string("FLIP: " + std::to_string(difference));
+				status_text = std::string("FLIP: " + std::to_string(error_value));
 			}
 		}
 		ImGui::TreePush("Output FLIP error map tree");

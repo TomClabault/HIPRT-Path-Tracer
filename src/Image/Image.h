@@ -87,6 +87,7 @@ public:
     Image32Bit(int width, int height, int channels);
     Image32Bit(const float* data, int width, int height, int channels);
     Image32Bit(const std::vector<float>& data, int width, int height, int channels);
+    Image32Bit(Image8Bit image, int channels = -1);
 
     static Image32Bit read_image(const std::string& filepath, int output_channels, bool flipY);
     static Image32Bit read_image_hdr(const std::string& filepath, int output_channels, bool flipY);
