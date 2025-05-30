@@ -117,6 +117,14 @@
  */
 #define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
 
+/**
+ * If true, new cells won't be created where rays hit unaffected cells.
+ * 
+ * This can be used for debugging the state of the grid by moving the camear without
+ * new cells being allocated
+ */
+#define ReGIR_FreezeGridAllocations KERNEL_OPTION_FALSE
+
 #endif // #ifndef __KERNELCC__
 
 #endif

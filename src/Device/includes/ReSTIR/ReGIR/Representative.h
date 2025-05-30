@@ -17,12 +17,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_world_shading_normal(const 
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_world_point(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	/*unsigned int rep_point_packed = render_data.render_settings.regir_settings.grid_fill_grid.hash_cell_data.world_points[hash_grid_cell_index];
-	if (rep_point_packed == ReGIRHashCellDataSoADevice::UNDEFINED_POINT)
-		return render_data.render_settings.regir_settings.get_cell_center_from_hash_grid_cell_index(hash_grid_cell_index);
-	else
-		return ReGIR_unpack_representative_point(render_data.render_settings.regir_settings, rep_point_packed, hash_grid_cell_index);*/
-
 	return render_data.render_settings.regir_settings.hash_cell_data.world_points[hash_grid_cell_index];
 }
 

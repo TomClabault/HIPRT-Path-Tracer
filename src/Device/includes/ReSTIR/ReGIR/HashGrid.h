@@ -348,10 +348,8 @@ struct ReGIRHashGrid
 
 	static constexpr float DEFAULT_GRID_SIZE = 2.5f;
 
-	//float m_grid_cell_min_size = 0.3f;
-	float m_grid_cell_min_size = 0.1f;
-	//float m_grid_cell_target_projected_size_ratio = 25.0f;
-	float m_grid_cell_target_projected_size_ratio = 12.50f;
+	float m_grid_cell_min_size = 0.3f;
+	float m_grid_cell_target_projected_size_ratio = 25.0f;
 };
 
 #endif
