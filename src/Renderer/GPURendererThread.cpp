@@ -72,17 +72,17 @@ void GPURendererThread::setup_render_passes()
 	gmon_render_pass->add_dependency(megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_gi_render_pass);
 
+	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = std::make_shared<NEEPlusPlusRenderPass>(m_renderer);
+
 	m_render_graph.add_render_pass(camera_rays_render_pass);
 	m_render_graph.add_render_pass(regir_render_pass);
 	m_render_graph.add_render_pass(restir_di_render_pass);
 	m_render_graph.add_render_pass(megakernel_render_pass);
 	m_render_graph.add_render_pass(restir_gi_render_pass);
+	m_render_graph.add_render_pass(nee_plus_plus_render_pass);
 	m_render_graph.add_render_pass(gmon_render_pass);
 
 	m_render_graph.compile(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);
-
-	if (m_renderer->m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
-		m_renderer->m_nee_plus_plus.compile_finalize_accumulation_kernel(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);
 }
 
 void GPURendererThread::request_frame()
@@ -122,7 +122,6 @@ void GPURendererThread::pre_render_update(float delta_time, RenderWindow* render
 	internal_pre_render_update_clear_device_status_buffers();
 	internal_pre_render_update_global_stack_buffer();
 	internal_pre_render_update_adaptive_sampling_buffers();
-	internal_pre_render_update_nee_plus_plus(delta_time);
 
 	m_renderer->update_render_data();
 
@@ -175,79 +174,6 @@ void GPURendererThread::internal_pre_render_update_adaptive_sampling_buffers()
 
 			m_renderer->m_render_data_buffers_invalidated = true;
 		}
-	}
-}
-
-void GPURendererThread::internal_pre_render_update_nee_plus_plus(float delta_time)
-{
-	if (m_renderer->m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE)
-	{
-		// Not using NEE++, we just need to free the buffers if they weren't already
-
-		if (m_renderer->m_nee_plus_plus.packed_buffer.size() != 0)
-		{
-			m_renderer->m_nee_plus_plus.packed_buffer.free();
-			m_renderer->m_nee_plus_plus.total_shadow_ray_queries.free();
-			m_renderer->m_nee_plus_plus.shadow_rays_actually_traced.free();
-
-			m_renderer->m_render_data_buffers_invalidated = true;
-		}
-
-		return;
-	}
-
-	float3 min_grid_extent_with_envmap, max_grid_extent_with_envmap;
-	m_renderer->m_nee_plus_plus.get_grid_extents(m_renderer->m_nee_plus_plus.grid_dimensions_no_envmap, min_grid_extent_with_envmap, max_grid_extent_with_envmap);
-
-	// Adding (2, 2, 2) for envmap NEE++
-	m_render_data->nee_plus_plus.grid_dimensions = m_renderer->m_nee_plus_plus.grid_dimensions_no_envmap + make_int3(2, 2, 2);
-	m_render_data->nee_plus_plus.grid_min_point = min_grid_extent_with_envmap;
-	m_render_data->nee_plus_plus.grid_max_point = max_grid_extent_with_envmap;
-
-	// Allocating / deallocating buffers
-	unsigned int matrix_element_count = m_renderer->m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data->nee_plus_plus.grid_dimensions);
-	if (m_renderer->m_nee_plus_plus.packed_buffer.size() != matrix_element_count)
-	{
-		m_renderer->m_nee_plus_plus.packed_buffer.resize(matrix_element_count);
-		m_renderer->m_nee_plus_plus.shadow_rays_actually_traced.resize(1);
-		m_renderer->m_nee_plus_plus.total_shadow_ray_queries.resize(1);
-
-		m_renderer->m_render_data_buffers_invalidated = true;
-	}
-
-	// Clearing the visibility map if this has been asked by the user
-	if (m_render_data->nee_plus_plus.reset_visibility_map)
-	{
-		// Clearing the visibility map by memseting everything to 0
-		m_renderer->m_nee_plus_plus.packed_buffer.memset_whole_buffer(0);
-		m_renderer->m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
-		m_renderer->m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
-	}
-
-	if (m_render_data->render_settings.sample_number > m_renderer->m_nee_plus_plus.stop_update_samples)
-		// Past a certain number of samples, there isn't really a point to keep updating, the visibility map
-		// is probably converged enough that it doesn't make a difference anymore
-		m_render_data->nee_plus_plus.update_visibility_map = false;
-
-	m_renderer->m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;
-	m_renderer->m_nee_plus_plus.milliseconds_before_finalizing_accumulation = hippt::max(0.0f, m_renderer->m_nee_plus_plus.milliseconds_before_finalizing_accumulation); // Clamping for nice display in ImGui (0.0f instead of negative values)
-	if (m_renderer->m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f && m_render_data->nee_plus_plus.packed_buffers != nullptr)
-	{
-		m_renderer->m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
-
-		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
-		// buffers to the visibilit map, we have to use a kernel that the does unpacking-copy
-		void* launch_args[] = { &m_render_data->nee_plus_plus };
-		m_renderer->m_nee_plus_plus.finalize_accumulation_kernel->launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_renderer->get_main_stream());
-	}
-
-	m_renderer->m_nee_plus_plus.statistics_refresh_timer -= delta_time;
-	if (m_renderer->m_nee_plus_plus.statistics_refresh_timer <= 0.0f && m_render_data->nee_plus_plus.do_update_shadow_rays_traced_statistics)
-	{
-		m_renderer->m_nee_plus_plus.statistics_refresh_timer = NEEPlusPlusGPUData::STATISTICS_REFRESH_TIMER;
-
-		OROCHI_CHECK_ERROR(oroMemcpy(&m_renderer->m_nee_plus_plus.total_shadow_ray_queries_cpu, m_renderer->m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
-		OROCHI_CHECK_ERROR(oroMemcpy(&m_renderer->m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_renderer->m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 	}
 }
 
@@ -456,6 +382,11 @@ std::shared_ptr<ReSTIRDIRenderPass> GPURendererThread::get_ReSTIR_DI_render_pass
 std::shared_ptr<ReSTIRGIRenderPass> GPURendererThread::get_ReSTIR_GI_render_pass()
 {
 	return std::dynamic_pointer_cast<ReSTIRGIRenderPass>(m_render_graph.get_render_pass(ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME));
+}
+
+std::shared_ptr<NEEPlusPlusRenderPass> GPURendererThread::get_NEE_plus_plus_render_pass()
+{
+	return std::dynamic_pointer_cast<NEEPlusPlusRenderPass>(m_render_graph.get_render_pass(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME));
 }
 
 bool GPURendererThread::frame_render_done()
