@@ -14,7 +14,6 @@
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
-#include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/GPURendererThread.h"
 #include "Renderer/HardwareAccelerationSupport.h"
@@ -23,6 +22,7 @@
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
+#include "Renderer/RenderPasses/NEEPlusPlusRenderPass.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
@@ -44,13 +44,6 @@ class OpenGLInteropBuffer;
 class GPURenderer
 {
 public:
-	/**
-	 * These constants here are used to reference kernel objects in the 'm_kernels' map
-	 * or in the 'm_render_pass_times' map
-	 */
-	static const std::string NEE_PLUS_PLUS_CACHING_PREPASS_ID;
-	static const std::string NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_ID;
-
 	// List of compiler options that will be specific to each kernel. We don't want these options
 	// to be synchronized between kernels
 	static const std::unordered_set<std::string> KERNEL_OPTIONS_NOT_SYNCHRONIZED;
@@ -95,16 +88,6 @@ public:
 	void load_GGX_glass_energy_compensation_textures(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
 	/**
-	 * Sets up the bounds of the scene for the grid of NEE++
-	 */
-	void setup_nee_plus_plus_from_scene(const Scene& scene);
-
-	/**
-	 * Clears the visibility map of NEE++ so that it is recomputed next frame
-	 */
-	void reset_nee_plus_plus();
-
-	/**
 	 * Computes the alias table for sampling emissive triangles according to power
 	 */
 	void compute_emissives_power_alias_table(const Scene& scene);
@@ -120,6 +103,7 @@ public:
 	bool needs_emissives_power_alias_table();
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
+	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
@@ -412,8 +396,6 @@ private:
 	 */
 	void compute_render_pass_times();
 
-	void launch_nee_plus_plus_caching_prepass();
-
 	/**
 	 * Precompiles direct lighting strategy kernels
 	 */
@@ -530,8 +512,6 @@ private:
 	// Custom stream onto which kernels are dispatched
 	oroStream_t m_main_stream = nullptr;
 
-	// Buffers and settings for NEE++
-	NEEPlusPlusGPUData m_nee_plus_plus;
 	// Render data passed to the GPU for rendering. Most importantly it contains
 	// 
 	// The WorldSettings: Settings relative to the scene such as the intensity of the uniform light, the

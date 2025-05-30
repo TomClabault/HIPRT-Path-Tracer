@@ -2717,7 +2717,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				unsigned int traced = 0;
 				unsigned int total = 0;
 
-				ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_data().shadow_rays_actually_traced_cpu/ (float)m_renderer->get_nee_plus_plus_data().total_shadow_ray_queries_cpu * 100.0f);
+				ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_data().shadow_rays_actually_traced_cpu / (float)m_renderer->get_nee_plus_plus_data().total_shadow_ray_queries_cpu * 100.0f);
 				ImGui::SameLine();
 				std::string button_text = render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics ? "Stop" : "Resume";
 				if (ImGui::Button(button_text.c_str()))
@@ -2801,7 +2801,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					// Clamping
 					m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap = hippt::clamp(make_int3(2, 2, 2), make_int3(30, 30, 30), m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap);
 
-					m_renderer->reset_nee_plus_plus();
+					m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
 					m_render_window->set_render_dirty(true);
 				}
 
@@ -2849,7 +2849,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 				if (ImGui::Button("Clear visibility map"))
 				{
-					m_renderer->reset_nee_plus_plus();
+					m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
 					m_render_window->set_render_dirty(true);
 				}
 			}

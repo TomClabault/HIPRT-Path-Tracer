@@ -337,7 +337,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
 
     if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
         // Updating the statistics
-        hippt::atomic_fetch_add(render_data.nee_plus_plus.total_shadow_ray_queries, 1u);
+        hippt::atomic_fetch_add(render_data.nee_plus_plus.total_shadow_ray_queries, 1ull);
 
     bool nee_plus_plus_envmap_rr_disabled = nee_plus_plus_context.envmap && !render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_envmap;
     bool nee_plus_plus_emissives_rr_disabled = !nee_plus_plus_context.envmap && !render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_emissives;
@@ -348,7 +348,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
 
         if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
             // Updating the statistics
-            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1u);
+            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 0ull);
 
         shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
         shadow_ray_discarded = false;
@@ -366,7 +366,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
     {
         if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
             // Updating the statistics
-            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1u);
+            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 0ull);
 
         // The shadow ray is likely visible, testing with a shadow ray
         shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);

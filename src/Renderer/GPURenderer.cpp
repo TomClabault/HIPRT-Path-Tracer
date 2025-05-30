@@ -19,8 +19,6 @@
 
 #include <condition_variable>
 
-const std::string GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID = "NEE++ Caching Prepass";
-
 // List of partials_options that will be specific to each kernel. We don't want these partials_options
 	// to be synchronized between kernels
 const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED =
@@ -165,29 +163,6 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 	m_GGX_thin_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	m_render_data_buffers_invalidated = true;
-}
-
-void GPURenderer::setup_nee_plus_plus_from_scene(const Scene& scene)
-{
-	m_nee_plus_plus.base_grid_min_point = scene.metadata.scene_bounding_box.mini;
-	m_nee_plus_plus.base_grid_max_point = scene.metadata.scene_bounding_box.maxi;
-}
-
-void GPURenderer::reset_nee_plus_plus()
-{
-	m_render_data.nee_plus_plus.reset_visibility_map = true;
-	m_render_data.nee_plus_plus.update_visibility_map = true;
-
-	// Resetting the counters
-	if (m_nee_plus_plus.total_shadow_ray_queries.is_allocated())
-	{
-		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
-		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
-	}
-	m_nee_plus_plus.total_shadow_ray_queries_cpu = 1;
-	m_nee_plus_plus.shadow_rays_actually_traced_cpu = 1;
-
-	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
 
 void GPURenderer::compute_emissives_power_alias_table(const Scene& scene)
@@ -346,6 +321,11 @@ std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 	return m_render_thread.get_gmon_render_pass();
 }
 
+std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pass()
+{
+	return m_render_thread.get_NEE_plus_plus_render_pass();
+}
+
 std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass()
 {
 	return m_render_thread.get_ReGIR_render_pass();
@@ -363,7 +343,7 @@ std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
 
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
 {
-	return m_nee_plus_plus;
+	return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_data();
 }
 
 void GPURenderer::setup_filter_functions()
@@ -431,15 +411,6 @@ void GPURenderer::recreate_global_bvh_stack_buffer()
 		HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, m_render_data.global_traversal_stack_buffer));
 
 	HIPRT_CHECK_ERROR(hiprtCreateGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, stackBufferInput, m_render_data.global_traversal_stack_buffer));
-}
-
-void GPURenderer::launch_nee_plus_plus_caching_prepass()
-{
-	unsigned int caching_sample_count = 1024;
-	void* launch_args[] = { &m_render_data, &caching_sample_count };
-
-	m_render_data.random_number = m_rng.xorshift32();
-	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::synchronize_all_kernels()
@@ -679,9 +650,6 @@ void GPURenderer::recompile_kernels(bool use_cache)
 		name_to_kenel.second->compile(m_hiprt_orochi_ctx, m_func_name_sets, use_cache, false);
 
 	m_render_thread.get_render_graph().recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
-
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
-		m_nee_plus_plus.recompile(m_hiprt_orochi_ctx);
 
 	// The main thread is done with the compilation, we can release the other threads
 	// so that they can continue compiling (background compilation of shaders most likely)
@@ -967,8 +935,6 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 		m_render_data.render_settings.need_to_reset = true;
 	}
 
-	reset_nee_plus_plus();
-
 	internal_clear_m_status_buffers();
 
 	bool moving_camera_while_not_accumulating = reset_by_camera_movement && !m_render_data.render_settings.accumulate;
@@ -1026,19 +992,6 @@ void GPURenderer::update_render_data()
 		m_render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
 		m_render_data.aux_buffers.still_one_ray_active = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
 		m_render_data.aux_buffers.pixel_count_converged_so_far = m_status_buffers.pixels_converged_count_buffer.get_atomic_device_pointer();
-
-		if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
-		{
-			m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
-			m_render_data.nee_plus_plus.shadow_rays_actually_traced = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer());
-			m_render_data.nee_plus_plus.total_shadow_ray_queries = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer());
-		}
-		else
-		{
-			m_render_data.nee_plus_plus.packed_buffers = nullptr;
-			m_render_data.nee_plus_plus.shadow_rays_actually_traced = nullptr;
-			m_render_data.nee_plus_plus.total_shadow_ray_queries = nullptr;
-		}
 
 		m_render_thread.get_render_graph().update_render_data();
 
@@ -1168,7 +1121,6 @@ void GPURenderer::rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_comp
 void GPURenderer::set_scene(const Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
-	setup_nee_plus_plus_from_scene(scene);
 	compute_emissives_power_alias_table(scene);
 
 	m_original_materials = scene.materials;
