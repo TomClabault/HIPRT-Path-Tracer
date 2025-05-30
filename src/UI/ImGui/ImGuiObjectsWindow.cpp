@@ -1174,7 +1174,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 			material_changed |= emission_changed;
 			if (emission_changed)
-				m_renderer->reset_nee_plus_plus();
+				m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();

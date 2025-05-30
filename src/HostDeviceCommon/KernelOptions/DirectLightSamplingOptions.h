@@ -80,12 +80,12 @@
 *		Uses ReGIR to sample lights
 *		Implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021]
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_REGIR
+#define DirectLightSamplingBaseStrategy LSS_BASE_POWER
 
 /**
 * Whether or not to use NEE++ features at all
 */
-#define DirectLightUseNEEPlusPlus KERNEL_OPTION_FALSE
+#define DirectLightUseNEEPlusPlus KERNEL_OPTION_TRUE
 
 /**
 * Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility

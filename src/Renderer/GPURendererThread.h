@@ -9,6 +9,7 @@
 #include "Renderer/RenderPasses/RenderGraph.h"
 #include "RenderPasses/FillGBufferRenderPass.h"
 #include "RenderPasses/GMoNRenderPass.h"
+#include "RenderPasses/NEEPlusPlusRenderPass.h"
 #include "RenderPasses/ReGIRRenderPass.h"
 #include "RenderPasses/ReSTIRDIRenderPass.h"
 #include "RenderPasses/ReSTIRGIRenderPass.h"
@@ -94,6 +95,7 @@ public:
 
 	RenderGraph& get_render_graph();
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
+	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
@@ -119,15 +121,6 @@ private:
 	 * If they are not needed, they will be freed to save some VRAM.
 	 */
 	void internal_pre_render_update_adaptive_sampling_buffers();
-
-	/**
-	 * Allocates/deallocates the data structure for NEE++ depending on whether or not
-	 * NEE++ is being used
-	 *
-	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to internal_pre_render_update_nee_plus_plus()
-	 */
-	void internal_pre_render_update_nee_plus_plus(float delta_time);
 
 	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE

@@ -13,11 +13,6 @@
 
 struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 {
-	NEEPlusPlusGPUData();
-
-	void compile_finalize_accumulation_kernel(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx);
-	void recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool silent = false, bool use_cache = true);
-
 	// This is the timer value 
 	static constexpr float FINALIZE_ACCUMULATION_TIMER = 2000.0f;
 	static constexpr float FINALIZE_ACCUMULATION_START_TIMER = 500.0f;
@@ -45,8 +40,6 @@ struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 	unsigned long long int total_shadow_ray_queries_cpu = 1;
 	unsigned long long int shadow_rays_actually_traced_cpu = 1;
 	float statistics_refresh_timer = STATISTICS_REFRESH_TIMER;
-
-	std::shared_ptr<GPUKernel> finalize_accumulation_kernel;
 };
 
 #endif

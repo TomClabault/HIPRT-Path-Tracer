@@ -31,8 +31,6 @@ struct NEEPlusPlusContext
 	// ----- WARNING:
 	// 'point_on_light' should be the normalized direction towards the envmap if this is set to true
 	bool envmap = false;
-
-
 };
 
 /**
@@ -125,8 +123,8 @@ struct NEEPlusPlusDevice
 	// queries made. This is used in 'evaluate_shadow_ray_nee_plus_plus()'
 	bool do_update_shadow_rays_traced_statistics = true;
 
-	AtomicType<unsigned int>* total_shadow_ray_queries = nullptr;
-	AtomicType<unsigned int>* shadow_rays_actually_traced = nullptr;
+	AtomicType<unsigned long long int>* total_shadow_ray_queries = nullptr;
+	AtomicType<unsigned long long int>* shadow_rays_actually_traced = nullptr;
 
 	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, int matrix_index)
 	{
