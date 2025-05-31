@@ -260,7 +260,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             shading_point, render_data.current_camera, 
             render_data.render_settings.regir_settings.shading.do_cell_jittering,
             render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
-        if (neighbor_grid_cell_index == HashGrid::UNDEFINED_HASH_KEY)
+        if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
             // Couldn't find a valid neighbor
             continue;
         else
@@ -319,7 +319,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
         // Fetching the center cell should never fail because the center cell always exists but it may actually fail in case of collisions
         // that cannot be resolved
-        if (neighbor_grid_cell_index != HashGrid::UNDEFINED_HASH_KEY)
+        if (neighbor_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
         {
             // We found at least one good sample so we're not going to need a fallback on another light sampling strategy than ReGIR
             out_need_fallback_sampling = false;
@@ -380,7 +380,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             render_data.render_settings.regir_settings.shading.jittering_radius,
             neighbor_rng);
 
-        if (neighbor_cell_index == HashGrid::UNDEFINED_HASH_KEY)
+        if (neighbor_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
             // Outside of the alive grid
             //
             // Note that this also applies for the canonical sample because canonical samples are gathered

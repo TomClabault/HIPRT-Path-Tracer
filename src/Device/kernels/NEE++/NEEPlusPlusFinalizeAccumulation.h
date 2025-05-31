@@ -19,7 +19,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusFinalizeAccumulation(NEEPlusPlus
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
     uint32_t pixel_index = x;
-    if (x >= nee_plus_plus_data.get_visibility_matrix_element_count())
+    if (x >= nee_plus_plus_data.m_total_number_of_cells)
         return;
 
     nee_plus_plus_data.copy_accumulation_buffers(pixel_index);

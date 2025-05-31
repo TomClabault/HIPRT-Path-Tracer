@@ -9,37 +9,25 @@
 #include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
-#include "Renderer/CPUGPUCommonDataStructures/NEEPlusPlusCPUGPUCommonData.h"
 
-struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
+struct NEEPlusPlusGPUData
 {
-	// This is the timer value 
-	static constexpr float FINALIZE_ACCUMULATION_TIMER = 2000.0f;
-	static constexpr float FINALIZE_ACCUMULATION_START_TIMER = 500.0f;
+	OrochiBuffer<unsigned int> total_unoccluded_rays;
+	OrochiBuffer<unsigned int> total_num_rays;
 
-	static constexpr float STATISTICS_REFRESH_TIMER = 1000.0f;
+	OrochiBuffer<unsigned int> num_rays_staging;
+	OrochiBuffer<unsigned int> unoccluded_rays_staging;
 
-	// How many seconds to render before copying the
-	// visibility accumulation buffers to the visibility map
-	//
-	// See the comments of 'accumulation_buffer' and 'accumulation_buffer_count'
-	// in the NEE++ device structure for more details
-	//
-	// Note that this parameter is dynamically updated by the application so even though
-	// it is initialized at 2000.0f, it will actually decrease until it reaches 0ms. At 0ms, the buffers
-	// are copied and this variable (which is essentially a timer) is reset back to its default counter value
-	float milliseconds_before_finalizing_accumulation = FINALIZE_ACCUMULATION_START_TIMER;
-
-	OrochiBuffer<unsigned int> packed_buffer;
+	OrochiBuffer<unsigned int> checksum_buffer;
 	
 	// Counters on the GPU for tracking 
 	OrochiBuffer<unsigned long long int> total_shadow_ray_queries;
 	OrochiBuffer<unsigned long long int> shadow_rays_actually_traced;
+
 	// Same counters but on the CPU for displaying the stats in ImGui.
 	// These counters are updated 
 	unsigned long long int total_shadow_ray_queries_cpu = 1;
 	unsigned long long int shadow_rays_actually_traced_cpu = 1;
-	float statistics_refresh_timer = STATISTICS_REFRESH_TIMER;
 };
 
 #endif

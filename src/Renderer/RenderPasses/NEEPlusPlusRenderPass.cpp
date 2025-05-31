@@ -42,9 +42,14 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 	{
 		// Not using NEE++, we just need to free the buffers if they weren't already
 
-		if (m_nee_plus_plus.packed_buffer.size() != 0)
+		if (m_nee_plus_plus.total_num_rays.size() != 0)
 		{
-			m_nee_plus_plus.packed_buffer.free();
+			m_nee_plus_plus.total_num_rays.free();
+			m_nee_plus_plus.total_unoccluded_rays.free();
+			m_nee_plus_plus.num_rays_staging.free();
+			m_nee_plus_plus.unoccluded_rays_staging.free();
+			m_nee_plus_plus.checksum_buffer.free();
+
 			m_nee_plus_plus.total_shadow_ray_queries.free();
 			m_nee_plus_plus.shadow_rays_actually_traced.free();
 		}
@@ -52,19 +57,15 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 		return true;
 	}
 
-	float3 min_grid_extent_with_envmap, max_grid_extent_with_envmap;
-	m_nee_plus_plus.get_grid_extents(m_nee_plus_plus.grid_dimensions_no_envmap, min_grid_extent_with_envmap, max_grid_extent_with_envmap);
-
-	// Adding (2, 2, 2) for envmap NEE++
-	render_data.nee_plus_plus.grid_dimensions = m_nee_plus_plus.grid_dimensions_no_envmap + make_int3(2, 2, 2);
-	render_data.nee_plus_plus.grid_min_point = min_grid_extent_with_envmap;
- 	render_data.nee_plus_plus.grid_max_point = max_grid_extent_with_envmap;
-
 	// Allocating / deallocating buffers
-	unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count(render_data.nee_plus_plus.grid_dimensions);
-	if (m_nee_plus_plus.packed_buffer.size() != matrix_element_count)
+	if (m_nee_plus_plus.total_num_rays.size() != 80000000)
 	{
-		m_nee_plus_plus.packed_buffer.resize(matrix_element_count);
+		m_nee_plus_plus.total_num_rays.resize(80000000);
+		m_nee_plus_plus.total_unoccluded_rays.resize(80000000);
+		m_nee_plus_plus.num_rays_staging.resize(80000000);
+		m_nee_plus_plus.unoccluded_rays_staging.resize(80000000);
+		m_nee_plus_plus.checksum_buffer.resize(80000000);
+		
 		m_nee_plus_plus.shadow_rays_actually_traced.resize(1);
 		m_nee_plus_plus.total_shadow_ray_queries.resize(1);
 
@@ -72,39 +73,33 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 	}
 
 	// Clearing the visibility map if this has been asked by the user
-	if (render_data.nee_plus_plus.reset_visibility_map)
+	if (render_data.nee_plus_plus.m_reset_visibility_map)
 	{
 		// Clearing the visibility map by memseting everything to 0
-		m_nee_plus_plus.packed_buffer.memset_whole_buffer(0);
-		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
-		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
+		m_nee_plus_plus.total_num_rays.memset_whole_buffer(0);
+		m_nee_plus_plus.total_unoccluded_rays.memset_whole_buffer(0);
+		m_nee_plus_plus.num_rays_staging.memset_whole_buffer(0);
+		m_nee_plus_plus.unoccluded_rays_staging.memset_whole_buffer(0);
+		m_nee_plus_plus.checksum_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+
+		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(0);
+		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(0);
 	}
 
-	if (render_data.render_settings.sample_number > m_nee_plus_plus.stop_update_samples)
+	if (render_data.render_settings.sample_number > render_data.nee_plus_plus.m_stop_update_samples)
 		// Past a certain number of samples, there isn't really a point to keep updating, the visibility map
 		// is probably converged enough that it doesn't make a difference anymore
-		render_data.nee_plus_plus.update_visibility_map = false;
+		render_data.nee_plus_plus.m_update_visibility_map = false;
 
-	m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;
-	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = hippt::max(0.0f, m_nee_plus_plus.milliseconds_before_finalizing_accumulation); // Clamping for nice display in ImGui (0.0f instead of negative values)
-	if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f && render_data.nee_plus_plus.packed_buffers != nullptr)
-	{
-		m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
-
-		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
-		// buffers to the visibilit map, we have to use a kernel that the does unpacking-copy
-		void* launch_args[] = { &render_data.nee_plus_plus };
-		m_kernels[NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID]->launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_renderer->get_main_stream());
-	}
-
-	m_nee_plus_plus.statistics_refresh_timer -= delta_time;
-	if (m_nee_plus_plus.statistics_refresh_timer <= 0.0f && render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
-	{
-		m_nee_plus_plus.statistics_refresh_timer = NEEPlusPlusGPUData::STATISTICS_REFRESH_TIMER;
-
-		OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.total_shadow_ray_queries_cpu, m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
-		OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
-	}
+	/////////////////////
+	unsigned int counter = 0;
+	auto checksums = m_nee_plus_plus.checksum_buffer.download_data();
+	for (unsigned int check : checksums)
+	if (check != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+	counter++;
+	
+	printf("Alive GPU: %u | Traced: %llu / %llu, %.3f\n", counter, m_nee_plus_plus.shadow_rays_actually_traced.download_data()[0], m_nee_plus_plus.total_shadow_ray_queries.download_data()[0], m_nee_plus_plus.shadow_rays_actually_traced.download_data()[0] / (float)m_nee_plus_plus.total_shadow_ray_queries.download_data()[0]);
+	/////////////////////
 
     return updated;
 }
@@ -115,19 +110,48 @@ void NEEPlusPlusRenderPass::update_render_data()
 
     if (is_render_pass_used())
     {
-	    render_data.nee_plus_plus.packed_buffers = m_nee_plus_plus.packed_buffer.get_atomic_device_pointer();
+	    render_data.nee_plus_plus.m_entries_buffer.total_num_rays = m_nee_plus_plus.total_num_rays.get_atomic_device_pointer();
+	    render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = m_nee_plus_plus.total_unoccluded_rays.get_atomic_device_pointer();
+	    render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = m_nee_plus_plus.num_rays_staging.get_atomic_device_pointer();
+	    render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = m_nee_plus_plus.unoccluded_rays_staging.get_atomic_device_pointer();
+	    render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = m_nee_plus_plus.checksum_buffer.get_atomic_device_pointer();
+		render_data.nee_plus_plus.m_total_number_of_cells = 80000000;
+
 	    render_data.nee_plus_plus.shadow_rays_actually_traced = m_nee_plus_plus.shadow_rays_actually_traced.get_atomic_device_pointer();
     	render_data.nee_plus_plus.total_shadow_ray_queries = m_nee_plus_plus.total_shadow_ray_queries.get_atomic_device_pointer();
     }
     else
     {
-	render_data.nee_plus_plus.packed_buffers = nullptr;
+		render_data.nee_plus_plus.m_entries_buffer.total_num_rays = nullptr;
+	    render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = nullptr;
+	    render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = nullptr;
+	    render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = nullptr;
+	    render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = nullptr;
+
 		render_data.nee_plus_plus.shadow_rays_actually_traced = nullptr;
 		render_data.nee_plus_plus.total_shadow_ray_queries = nullptr;
 	}
 }
 
 bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) { return false; }
+
+void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) 
+{ 
+	if (!m_render_pass_used_this_frame)
+		return;
+		
+	// if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f && m_nee_plus_plus.total_num_rays.size() > 0)
+	if (m_nee_plus_plus.total_num_rays.size() > 0)
+	{
+		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
+		// buffers to the visibilit map, we have to use a kernel that the does unpacking-copy
+		void* launch_args[] = { &render_data.nee_plus_plus };
+		m_kernels[NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID]->launch_asynchronous(256, 1, m_nee_plus_plus.total_num_rays.size(), 1, launch_args, m_renderer->get_main_stream());
+	}
+
+	OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.total_shadow_ray_queries_cpu, m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
+	OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
+}
  
 void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 {
@@ -136,8 +160,8 @@ void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 
     HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-    render_data.nee_plus_plus.reset_visibility_map = true;
-	render_data.nee_plus_plus.update_visibility_map = true;
+    render_data.nee_plus_plus.m_reset_visibility_map = true;
+	render_data.nee_plus_plus.m_update_visibility_map = true;
 
 	// Resetting the counters
 	if (m_nee_plus_plus.total_shadow_ray_queries.is_allocated())
@@ -147,8 +171,6 @@ void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 	}
 	m_nee_plus_plus.total_shadow_ray_queries_cpu = 1;
 	m_nee_plus_plus.shadow_rays_actually_traced_cpu = 1;
-
-	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
  
 bool NEEPlusPlusRenderPass::is_render_pass_used() const
@@ -161,4 +183,9 @@ bool NEEPlusPlusRenderPass::is_render_pass_used() const
 NEEPlusPlusGPUData& NEEPlusPlusRenderPass::get_nee_plus_plus_data()
 {
     return m_nee_plus_plus;
+}
+
+std::size_t NEEPlusPlusRenderPass::get_vram_usage_bytes() const
+{
+	return m_nee_plus_plus.total_unoccluded_rays.get_byte_size() + m_nee_plus_plus.total_num_rays.get_byte_size() + m_nee_plus_plus.num_rays_staging.get_byte_size() + m_nee_plus_plus.unoccluded_rays_staging.get_byte_size();
 }

@@ -24,9 +24,6 @@ void TestCopyKernelAlignment()
     OrochiBuffer<ColorRGB32F> buffer_a(BUFFER_SIZE);
     OrochiBuffer<ColorRGB32F> buffer_b(BUFFER_SIZE);
 
-    buffer_a.memset_whole_buffer(1);
-    buffer_b.memset_whole_buffer(1);
-
     size_t buffer_size = BUFFER_SIZE;
 
     ColorRGB32F* buffer_a_ptr = buffer_a.get_device_pointer();

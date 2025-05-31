@@ -217,8 +217,8 @@ void GPURendererThread::post_sample_update(HIPRTRenderData& render_data, GPUKern
 	render_data.render_settings.need_to_reset = false;
 	m_render_data->render_settings.need_to_reset = false;
 
-	render_data.nee_plus_plus.reset_visibility_map = false;
-	m_render_data->nee_plus_plus.reset_visibility_map = false;
+	render_data.nee_plus_plus.m_reset_visibility_map = false;
+	m_render_data->nee_plus_plus.m_reset_visibility_map = false;
 }
 
 void GPURendererThread::post_frame_update()

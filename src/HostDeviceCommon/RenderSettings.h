@@ -92,7 +92,7 @@ struct HIPRTRenderSettings
 	// This is the sum of samples_per_frame for all frames that have been rendered.
 	unsigned int sample_number = 0;
 	// See the DisplayOnlySampleN kernel option
-	int output_debug_sample_N = 0;
+	int output_debug_sample_N = 1;
 
 	// How many samples to compute per pixel per frame
 	// Higher values reduce CPU overhead since the GPU spends
@@ -162,7 +162,7 @@ struct HIPRTRenderSettings
 	// enabled or according to 'stop_pixel_noise_threshold' if adaptive sampling is not enabled.
 	//
 	// If false, the render will not stop until all pixels have converged
-	bool use_pixel_stop_noise_threshold = true;
+	bool use_pixel_stop_noise_threshold = false;
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.
