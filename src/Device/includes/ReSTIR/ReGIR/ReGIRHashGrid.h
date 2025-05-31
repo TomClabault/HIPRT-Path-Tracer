@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_REGIR_HASH_GRID_H
 #define DEVICE_INCLUDES_REGIR_HASH_GRID_H
 
+#include "Device/includes/HashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridCellData.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingSettings.h"
@@ -29,7 +30,7 @@ struct ReGIRHashGrid
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash(soa.m_total_number_of_cells, world_position, current_camera, hash_key);
-		if (!resolve_collision(hash_cell_data, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
+		if (!m_hash_grid.resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.hash_keys, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
 			return;
 
 		int reservoir_index_in_grid = hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
@@ -42,8 +43,8 @@ struct ReGIRHashGrid
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash(soa.m_total_number_of_cells, world_position, current_camera, hash_key);
-		if (!resolve_collision(hash_cell_data, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || hash_cell_data.grid_cells_alive[hash_grid_cell_index] == 0u)
-			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+		if (!m_hash_grid.resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.hash_keys, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || hash_cell_data.grid_cells_alive[hash_grid_cell_index] == 0u)
+			return HashGrid::UNDEFINED_HASH_KEY;
 
 		return hash_grid_cell_index;
 	}
@@ -52,8 +53,8 @@ struct ReGIRHashGrid
 		float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell) const
 	{
 		unsigned int hash_grid_cell_index = get_hash_grid_cell_index(soa, hash_cell_data, world_position, current_camera);
-		if (hash_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
-			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+		if (hash_grid_cell_index == HashGrid::UNDEFINED_HASH_KEY)
+			return HashGrid::UNDEFINED_HASH_KEY;
 
 		return hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 	}
@@ -74,7 +75,7 @@ struct ReGIRHashGrid
 
 	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, unsigned int reservoir_index_in_grid) const
 	{
-		if (reservoir_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		if (reservoir_index_in_grid == HashGrid::UNDEFINED_HASH_KEY)
 			return ReGIRReservoir();
 
 		ReGIRReservoir reservoir;
@@ -103,7 +104,7 @@ struct ReGIRHashGrid
 
 		if (out_invalid_sample)
 		{
-			if (reservoir_index_in_grid == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+			if (reservoir_index_in_grid == HashGrid::UNDEFINED_HASH_KEY)
 				*out_invalid_sample = true;
 			else
 				*out_invalid_sample = false;
@@ -125,10 +126,10 @@ struct ReGIRHashGrid
 		float3 world_position, const HIPRTCamera& current_camera) const
 	{
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash(soa. m_total_number_of_cells, world_position, current_camera, hash_key);
+		unsigned int hash_grid_cell_index = hash(soa.m_total_number_of_cells, world_position, current_camera, hash_key);
 
-		if (!resolve_collision(hash_cell_data, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
-			return ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+		if (!m_hash_grid.resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.hash_keys, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
+			return HashGrid::UNDEFINED_HASH_KEY;
 		else
 			return hash_grid_cell_index;
 	}
@@ -138,46 +139,6 @@ struct ReGIRHashGrid
 		float3 random_offset = make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f);
 
 		return original_world_position + random_offset * compute_adaptive_cell_size(original_world_position, current_camera) * jittering_radius;
-	}
-
-	/**
-	 * PCG for the first hash function
-	 */
-	HIPRT_DEVICE unsigned int h1_pcg(unsigned int seed) const
-	{
-		unsigned int state = seed * 747796405u + 2891336453u;
-		unsigned int word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-		
-		return (word >> 22u) ^ word;
-	}
-
-	HIPRT_HOST_DEVICE unsigned int h1_pcg(float seed) const
-	{
-		return h1_pcg(hippt::float_as_uint(seed));
-	}
-
-	/**
-	 * xxhash32 for the second hash function
-	 */
-	HIPRT_DEVICE unsigned int h2_xxhash32(unsigned int seed) const
-	{
-		constexpr unsigned int PRIME32_2 = 2246822519U;
-		constexpr unsigned int PRIME32_3 = 3266489917U;
-		constexpr unsigned int PRIME32_4 = 668265263U;
-		constexpr unsigned int PRIME32_5 = 374761393U;
-
-		unsigned int h32 = seed + PRIME32_5;
-
-		h32 = PRIME32_4*((h32 << 17) | (h32 >> (32 - 17)));
-		h32 = PRIME32_2*(h32^(h32 >> 15));
-		h32 = PRIME32_3*(h32^(h32 >> 13));
-
-		return h32^(h32 >> 16);
-	}
-
-	HIPRT_HOST_DEVICE unsigned int h2_xxhash32(float seed) const
-	{
-		return h2_xxhash32(hippt::float_as_uint(seed));
 	}
 
 	/**
@@ -218,138 +179,53 @@ struct ReGIRHashGrid
 		return cell_hash;
 	}
 
-	/**
-	 * Returns true if the collision was resolved with success and the new hash
-	 * (or unchanged if there was no collision) is set in 'in_out_base_hash'
-	 * 
-	 * Returns false if the given 'in_out_hash_cell_index' refers to a hash cell that hasn't been
-	 * allocated yet or if there was a collision but it couldn't be resolved and the collision resolution was
-	 * aborted because too many iterations
-	 */
-	template <bool isInsertion = false>
-	HIPRT_DEVICE bool resolve_collision(const ReGIRHashCellDataSoADevice& hash_cell_data, unsigned int total_number_of_cells, unsigned int& in_out_hash_cell_index, unsigned int hash_key, unsigned int opt_existing_hash_key = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY) const
-	{
-		unsigned int existing_hash_key;
-		if (opt_existing_hash_key != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
-			// The current hash key was passed as an argument, no need to fetch from memory
-			existing_hash_key = opt_existing_hash_key;
-		else
-			existing_hash_key = hash_cell_data.hash_keys[in_out_hash_cell_index];
-
-		if (existing_hash_key == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
-		{
-			// This is refering to a hash cell that hasn't been populated yet
-
-			if (!isInsertion)
-				// If we're not inserting, this means that we're querrying an empty cell
-				return false;
-			else
-			{
-				// This is refering to a hash cell that hasn't been populated yet and we're
-				// inserting into it so we just found an empty cell first try
-				// 
-				// Let's try to insert atomically into it
-
-				unsigned int previous_hash_key = hippt::atomic_compare_exchange(&hash_cell_data.hash_keys[in_out_hash_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY, hash_key);
-				if (previous_hash_key == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
-				{
-					// (and we made sure sure through an atomic CAS that someone else wasn't
-					// also competing for that empty cell)
-
-					return true;
-				}
-				else if (previous_hash_key == hash_key)
-				{
-					// Another thread just inserted the same hash key at the same time but this
-					// current thread here wasn't fast enough on the atomic compare exchange above
-					// so the key was already inserted.
-
-					// This thread has nothing else to do.
-					return true;
-				}
-				else
-				{
-					// Another hash key has been inserted in the same position, we're going to have to
-					// probe for a good position
-				}
-			}
-		}
-
-		if (existing_hash_key != hash_key)
-		{
-			// This is a collision
-
-			unsigned int base_cell_index = in_out_hash_cell_index;
-
-			// Linear probing
-			for (int i = 1; i <= ReGIR_LinearProbingSteps; i++)
-			{
-				unsigned int next_hash_cell_index = (base_cell_index + i) % total_number_of_cells;
-				if (next_hash_cell_index == base_cell_index)
-					// We looped on the whole hash table. Couldn't find an empty cell
-					return false;
-
-				unsigned int next_cell_hash_key = hash_cell_data.hash_keys[next_hash_cell_index];
-				if (next_cell_hash_key == hash_key)
-				{
-					// Stopping if we found our proper cell (with our hash).
-					//
-					// This means that we have resolved the collision 
-
-					in_out_hash_cell_index = next_hash_cell_index;
-
-					return true;
-				}
-				else if (next_cell_hash_key == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
-				{
-					if (isInsertion)
-					{
-						// Stopping if we found an empty cell for insertion
-
-						unsigned int previous_hash_key = hippt::atomic_compare_exchange(&hash_cell_data.hash_keys[next_hash_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY, hash_key);
-						if (previous_hash_key == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
-						{
-							// (and we made sure sure through an atomic CAS that someone else wasn't
-							// also competing for that empty cell)
-
-							in_out_hash_cell_index = next_hash_cell_index;
-
-							return true;
-						}
-						else if (previous_hash_key == hash_key)
-						{
-							// Another thread just inserted the same hash key at the same time but this
-							// current thread here wasn't fast enough on the atomic compare exchange
-							// above so the key was already inserted.
-
-							in_out_hash_cell_index = next_hash_cell_index;
-
-							// This thread has nothing else to do.
-							return true;
-						}
-					}
-					else
-					{
-						// This is a query but we've hit an empty cell during probing which means that we're querrying
-						// a cell that has never been populated
-
-						return false;
-					}
-				}
-			}
-
-			// Linear probing couldn't find a valid position in the hash map
-			return false;
-		}
-		else
-			// This is already our hash, no collision
-			return true;
-	}
+	HashGrid m_hash_grid;
 
 	static constexpr float DEFAULT_GRID_SIZE = 2.5f;
 
 	float m_grid_cell_min_size = 0.3f;
 	float m_grid_cell_target_projected_size_ratio = 25.0f;
+
+private:
+	/**
+	 * PCG for the first hash function
+	 */
+	HIPRT_DEVICE unsigned int h1_pcg(unsigned int seed) const
+	{
+		unsigned int state = seed * 747796405u + 2891336453u;
+		unsigned int word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+		
+		return (word >> 22u) ^ word;
+	}
+
+	HIPRT_HOST_DEVICE unsigned int h1_pcg(float seed) const
+	{
+		return h1_pcg(hippt::float_as_uint(seed));
+	}
+
+	/**
+	 * xxhash32 for the second hash function
+	 */
+	HIPRT_DEVICE unsigned int h2_xxhash32(unsigned int seed) const
+	{
+		constexpr unsigned int PRIME32_2 = 2246822519U;
+		constexpr unsigned int PRIME32_3 = 3266489917U;
+		constexpr unsigned int PRIME32_4 = 668265263U;
+		constexpr unsigned int PRIME32_5 = 374761393U;
+
+		unsigned int h32 = seed + PRIME32_5;
+
+		h32 = PRIME32_4*((h32 << 17) | (h32 >> (32 - 17)));
+		h32 = PRIME32_2*(h32^(h32 >> 15));
+		h32 = PRIME32_3*(h32^(h32 >> 13));
+
+		return h32^(h32 >> 16);
+	}
+
+	HIPRT_HOST_DEVICE unsigned int h2_xxhash32(float seed) const
+	{
+		return h2_xxhash32(hippt::float_as_uint(seed));
+	}
 };
 
 #endif

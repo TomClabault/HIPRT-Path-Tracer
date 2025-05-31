@@ -7,7 +7,7 @@
 #define DEVICE_INCLUDES_REGIR_SETTINGS_H
 
 #include "Device/includes/Hash.h"
-#include "Device/includes/ReSTIR/ReGIR/HashGrid.h"
+#include "Device/includes/ReSTIR/ReGIR/ReGIRHashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
 
@@ -194,7 +194,7 @@ struct ReGIRSettings
         else
             neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, current_camera, do_jittering, jittering_radius, rng);
 
-		if (neighbor_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		if (neighbor_cell_index != HashGrid::UNDEFINED_HASH_KEY)
 		{
 			// Advancing the RNG simulating the random reservoir pick within the grid cell
 			if (replay_canonical)
@@ -221,7 +221,7 @@ struct ReGIRSettings
 				jittered = world_position;
 
 			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, jittered, current_camera);
-			if (neighbor_grid_cell_index != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+			if (neighbor_grid_cell_index != HashGrid::UNDEFINED_HASH_KEY)
 			{
 				// This part here is to avoid race concurrency issues from the Megakernel shader:
 				//
@@ -246,13 +246,13 @@ struct ReGIRSettings
 					UCW = initial_reservoirs_grid.reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell()];
 
 				if (UCW == ReGIRReservoir::UNDEFINED_UCW)
-					neighbor_grid_cell_index = ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY;
+					neighbor_grid_cell_index = HashGrid::UNDEFINED_HASH_KEY;
 			}
 
 			retry++;
-		} while (neighbor_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry < ReGIR_ShadingJitterTries);
+		} while (neighbor_grid_cell_index == HashGrid::UNDEFINED_HASH_KEY && retry < ReGIR_ShadingJitterTries);
 
-		if (fallbackOnCenterCell && neighbor_grid_cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY && retry == ReGIR_ShadingJitterTries)
+		if (fallbackOnCenterCell && neighbor_grid_cell_index == HashGrid::UNDEFINED_HASH_KEY && retry == ReGIR_ShadingJitterTries)
 			// We couldn't find a valid neighbor and the fallback on center cell is enabled: we're going to return the index of the center cell
 			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, world_position, current_camera);
 
@@ -363,7 +363,7 @@ struct ReGIRSettings
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, const HIPRTCamera& current_camera) const
 	{
 		unsigned int cell_index = hash_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(initial_reservoirs_grid, hash_cell_data, position, current_camera);
-		if (cell_index == ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		if (cell_index == HashGrid::UNDEFINED_HASH_KEY)
 			return ColorRGB32F(0.0f);
 
 		return ColorRGB32F::random_color(cell_index);
@@ -483,7 +483,7 @@ struct ReGIRSettings
 		}
 	}
 
-	HIPRT_DEVICE static void rehash_hash_cell_data_static(
+	HIPRT_DEVICE static void insert_hash_cell_data_static(
 		const ReGIRHashGrid& hash_grid, ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
 		float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
 	{
@@ -497,8 +497,8 @@ struct ReGIRSettings
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 
-		unsigned int existing_hash_key = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY, hash_key);
-		if (existing_hash_key != ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY)
+		unsigned int existing_hash_key = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], HashGrid::UNDEFINED_HASH_KEY, hash_key);
+		if (existing_hash_key != HashGrid::UNDEFINED_HASH_KEY)
 		{
 			// We tried inserting in our cell but there is something else there already
 			
@@ -507,7 +507,7 @@ struct ReGIRSettings
 				// And it's not our hash so this is a collision
 
 				unsigned int new_hash_cell_index = hash_grid_cell_index;
-				if (!hash_grid.resolve_collision<true>(hash_cell_data_to_update, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, hash_key, existing_hash_key))
+				if (!hash_grid.m_hash_grid.resolve_collision<ReGIR_LinearProbingSteps, true>(hash_cell_data_to_update.hash_keys, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, hash_key, existing_hash_key))
 				{
 					// Could not resolve the collision
 
@@ -540,9 +540,9 @@ struct ReGIRSettings
 
 	}
 
-	HIPRT_DEVICE void rehash_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
+	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
 	{
-		ReGIRSettings::rehash_hash_cell_data_static(hash_grid, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, shading_normal, primitive_index);
+		ReGIRSettings::insert_hash_cell_data_static(hash_grid, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, shading_normal, primitive_index);
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;

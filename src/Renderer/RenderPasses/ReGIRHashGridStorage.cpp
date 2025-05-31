@@ -164,7 +164,7 @@ void ReGIRHashGridStorage::reset()
 	std::vector<int> primitive_reset(m_total_number_of_cells, ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
 	m_hash_cell_data.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().upload_data(primitive_reset);
 
-	std::vector<unsigned int> hash_keys_reset(m_total_number_of_cells, ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
+	std::vector<unsigned int> hash_keys_reset(m_total_number_of_cells, HashGrid::UNDEFINED_HASH_KEY);
 	m_hash_cell_data.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
 }
 

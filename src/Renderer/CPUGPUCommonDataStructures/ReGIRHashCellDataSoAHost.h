@@ -48,10 +48,10 @@ struct ReGIRHashCellDataSoAHost
 
 		m_hash_cell_data.resize(new_number_of_cells);
 
-		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>(ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
+		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>(HashGrid::UNDEFINED_HASH_KEY);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>(0u);
-		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>(ReGIRHashCellDataSoADevice::UNDEFINED_HASH_KEY);
+		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>(HashGrid::UNDEFINED_HASH_KEY);
 
 		// resize and memset_buffer static call
 		GenericSoAHelpers::resize<DataContainer>(m_grid_cells_alive_count, 1);
