@@ -15,7 +15,6 @@ struct ReGIRHashCellDataSoADevice
 	static constexpr unsigned int UNDEFINED_POINT = 0xFFFFFFFF;
 	static constexpr float3 UNDEFINED_NORMAL = { 0.0f, 0.0f, 0.0f };
 	static constexpr int UNDEFINED_PRIMITIVE = -1;
-	static constexpr unsigned int UNDEFINED_HASH_KEY = 0xFFFFFFFF;
 
 	static constexpr unsigned int CELL_LOCKED_SENTINEL_VALUE = 0u;
 
