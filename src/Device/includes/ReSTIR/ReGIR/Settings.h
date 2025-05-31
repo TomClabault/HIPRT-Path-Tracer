@@ -91,7 +91,7 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE float3 get_cell_size(float3 world_position, const HIPRTCamera& current_camera) const
 	{
-		float cell_size = hash_grid.compute_adaptive_cell_size(world_position, current_camera);
+		float cell_size = compute_adaptive_cell_size(world_position, current_camera, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size);
 
 		return make_float3(cell_size, cell_size, cell_size);
 	}
@@ -194,7 +194,7 @@ struct ReGIRSettings
         else
             neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, current_camera, do_jittering, jittering_radius, rng);
 
-		if (neighbor_cell_index != HashGrid::UNDEFINED_HASH_KEY)
+		if (neighbor_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
 			// Advancing the RNG simulating the random reservoir pick within the grid cell
 			if (replay_canonical)
@@ -221,7 +221,7 @@ struct ReGIRSettings
 				jittered = world_position;
 
 			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, jittered, current_camera);
-			if (neighbor_grid_cell_index != HashGrid::UNDEFINED_HASH_KEY)
+			if (neighbor_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			{
 				// This part here is to avoid race concurrency issues from the Megakernel shader:
 				//
@@ -246,13 +246,13 @@ struct ReGIRSettings
 					UCW = initial_reservoirs_grid.reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell()];
 
 				if (UCW == ReGIRReservoir::UNDEFINED_UCW)
-					neighbor_grid_cell_index = HashGrid::UNDEFINED_HASH_KEY;
+					neighbor_grid_cell_index = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 			}
 
 			retry++;
-		} while (neighbor_grid_cell_index == HashGrid::UNDEFINED_HASH_KEY && retry < ReGIR_ShadingJitterTries);
+		} while (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && retry < ReGIR_ShadingJitterTries);
 
-		if (fallbackOnCenterCell && neighbor_grid_cell_index == HashGrid::UNDEFINED_HASH_KEY && retry == ReGIR_ShadingJitterTries)
+		if (fallbackOnCenterCell && neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && retry == ReGIR_ShadingJitterTries)
 			// We couldn't find a valid neighbor and the fallback on center cell is enabled: we're going to return the index of the center cell
 			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, world_position, current_camera);
 
@@ -363,7 +363,7 @@ struct ReGIRSettings
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, const HIPRTCamera& current_camera) const
 	{
 		unsigned int cell_index = hash_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(initial_reservoirs_grid, hash_cell_data, position, current_camera);
-		if (cell_index == HashGrid::UNDEFINED_HASH_KEY)
+		if (cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			return ColorRGB32F(0.0f);
 
 		return ColorRGB32F::random_color(cell_index);
@@ -492,13 +492,13 @@ struct ReGIRSettings
 #endif
 
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash_grid.hash(hash_grid_to_update.m_total_number_of_cells, world_position, current_camera, hash_key);
+		unsigned int hash_grid_cell_index = hash_position_camera(hash_grid_to_update.m_total_number_of_cells, world_position, current_camera, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size, hash_key);
 		
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 
-		unsigned int existing_hash_key = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], HashGrid::UNDEFINED_HASH_KEY, hash_key);
-		if (existing_hash_key != HashGrid::UNDEFINED_HASH_KEY)
+		unsigned int existing_hash_key = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, hash_key);
+		if (existing_hash_key != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
 			// We tried inserting in our cell but there is something else there already
 			
@@ -507,7 +507,7 @@ struct ReGIRSettings
 				// And it's not our hash so this is a collision
 
 				unsigned int new_hash_cell_index = hash_grid_cell_index;
-				if (!hash_grid.m_hash_grid.resolve_collision<ReGIR_LinearProbingSteps, true>(hash_cell_data_to_update.hash_keys, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, hash_key, existing_hash_key))
+				if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps, true>(hash_cell_data_to_update.hash_keys, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, hash_key, existing_hash_key))
 				{
 					// Could not resolve the collision
 

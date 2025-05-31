@@ -10,7 +10,7 @@
 
 struct HashGrid
 {
-	static constexpr unsigned int UNDEFINED_HASH_KEY = 0xFFFFFFFF;
+	static constexpr unsigned int UNDEFINED_CHECKSUM_OR_GRID_INDEX = 0xFFFFFFFF;
 
     /**
 	 * Returns true if the collision was resolved with success and the new hash
@@ -21,22 +21,24 @@ struct HashGrid
 	 * aborted because too many iterations
 	 */
 	template <int maxLinearProbingSteps, bool isInsertion = false>
-	HIPRT_DEVICE bool resolve_collision(AtomicType<unsigned int>* hash_keys, unsigned int total_number_of_cells, unsigned int& in_out_hash_cell_index, unsigned int hash_key, unsigned int opt_existing_hash_key = HashGrid::UNDEFINED_HASH_KEY) const
+	HIPRT_DEVICE static bool resolve_collision(AtomicType<unsigned int>* checksum_buffer, unsigned int total_number_of_cells, unsigned int& in_out_hash_cell_index, unsigned int checksum, unsigned int opt_existing_checksum = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 	{
 		unsigned int existing_hash_key;
-		if (opt_existing_hash_key != HashGrid::UNDEFINED_HASH_KEY)
+		if (opt_existing_checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// The current hash key was passed as an argument, no need to fetch from memory
-			existing_hash_key = opt_existing_hash_key;
+			existing_hash_key = opt_existing_checksum;
 		else
-			existing_hash_key = hash_keys[in_out_hash_cell_index];
+			existing_hash_key = checksum_buffer[in_out_hash_cell_index];
 
-		if (existing_hash_key == HashGrid::UNDEFINED_HASH_KEY)
+		if (existing_hash_key == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
 			// This is refering to a hash cell that hasn't been populated yet
 
 			if (!isInsertion)
+			{
 				// If we're not inserting, this means that we're querrying an empty cell
 				return false;
+			}
 			else
 			{
 				// This is refering to a hash cell that hasn't been populated yet and we're
@@ -44,15 +46,15 @@ struct HashGrid
 				// 
 				// Let's try to insert atomically into it
 
-				unsigned int previous_hash_key = hippt::atomic_compare_exchange(&hash_keys[in_out_hash_cell_index], HashGrid::UNDEFINED_HASH_KEY, hash_key);
-				if (previous_hash_key == HashGrid::UNDEFINED_HASH_KEY)
+				unsigned int previous_hash_key = hippt::atomic_compare_exchange(&checksum_buffer[in_out_hash_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
+				if (previous_hash_key == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 				{
 					// (and we made sure sure through an atomic CAS that someone else wasn't
 					// also competing for that empty cell)
 
 					return true;
 				}
-				else if (previous_hash_key == hash_key)
+				else if (previous_hash_key == checksum)
 				{
 					// Another thread just inserted the same hash key at the same time but this
 					// current thread here wasn't fast enough on the atomic compare exchange above
@@ -69,7 +71,7 @@ struct HashGrid
 			}
 		}
 
-		if (existing_hash_key != hash_key)
+		if (existing_hash_key != checksum)
 		{
 			// This is a collision
 
@@ -83,8 +85,8 @@ struct HashGrid
 					// We looped on the whole hash table. Couldn't find an empty cell
 					return false;
 
-				unsigned int next_cell_hash_key = hash_keys[next_hash_cell_index];
-				if (next_cell_hash_key == hash_key)
+				unsigned int next_cell_checksum = checksum_buffer[next_hash_cell_index];
+				if (next_cell_checksum == checksum)
 				{
 					// Stopping if we found our proper cell (with our hash).
 					//
@@ -94,14 +96,14 @@ struct HashGrid
 
 					return true;
 				}
-				else if (next_cell_hash_key == HashGrid::UNDEFINED_HASH_KEY)
+				else if (next_cell_checksum == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 				{
 					if (isInsertion)
 					{
 						// Stopping if we found an empty cell for insertion
 
-						unsigned int previous_hash_key = hippt::atomic_compare_exchange(&hash_keys[next_hash_cell_index], HashGrid::UNDEFINED_HASH_KEY, hash_key);
-						if (previous_hash_key == HashGrid::UNDEFINED_HASH_KEY)
+						unsigned int previous_hash_key = hippt::atomic_compare_exchange(&checksum_buffer[next_hash_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
+						if (previous_hash_key == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 						{
 							// (and we made sure sure through an atomic CAS that someone else wasn't
 							// also competing for that empty cell)
@@ -110,7 +112,7 @@ struct HashGrid
 
 							return true;
 						}
-						else if (previous_hash_key == hash_key)
+						else if (previous_hash_key == checksum)
 						{
 							// Another thread just inserted the same hash key at the same time but this
 							// current thread here wasn't fast enough on the atomic compare exchange

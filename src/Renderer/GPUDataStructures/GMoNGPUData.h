@@ -30,7 +30,6 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 	void resize_sets(unsigned int render_width, unsigned int render_height, unsigned int number_of_sets)
 	{
 		sets.resize(render_width * render_height * number_of_sets);
-		sets.memset_whole_buffer(0);
 
 		current_resolution = make_int2(render_width, render_height);
 		current_number_of_sets = number_of_sets;

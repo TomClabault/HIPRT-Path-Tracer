@@ -37,7 +37,7 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
         float3 point_in_neighbor_cell = point_in_cell + offset * regir_settings.get_cell_size(point_in_cell, render_data.current_camera);
         
         neighbor_hash_grid_cell_index_in_grid = regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(point_in_neighbor_cell, render_data.current_camera);
-        if (neighbor_hash_grid_cell_index_in_grid == HashGrid::UNDEFINED_HASH_KEY)
+        if (neighbor_hash_grid_cell_index_in_grid == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
             // Neighbor is outside of the grid
             neighbor_invalid = true;
         else if (regir_settings.hash_cell_data.grid_cells_alive[neighbor_hash_grid_cell_index_in_grid] == 0)
@@ -51,7 +51,7 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
 
     if (neighbor_invalid)
         // We couldn't find a good neighbor
-        return HashGrid::UNDEFINED_HASH_KEY;
+        return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
     return neighbor_hash_grid_cell_index_in_grid;
 }
@@ -80,7 +80,7 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
         else
         {
             neighbor_hash_grid_cell_index_in_grid = get_random_neighbor_hash_grid_cell_index_with_retries(render_data, point_in_cell, spatial_neighbor_rng);
-            if (neighbor_hash_grid_cell_index_in_grid == HashGrid::UNDEFINED_HASH_KEY)
+            if (neighbor_hash_grid_cell_index_in_grid == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
                 // Could not find a valid neighbor
                 continue;
         }
@@ -172,7 +172,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
             else
             {
                 neighbor_hash_grid_cell_index_in_grid = get_random_neighbor_hash_grid_cell_index_with_retries(render_data, point_in_cell, spatial_neighbor_rng);
-                if (neighbor_hash_grid_cell_index_in_grid == HashGrid::UNDEFINED_HASH_KEY)
+                if (neighbor_hash_grid_cell_index_in_grid == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
                     // Could not find a valid neighbor
                     continue;
             }

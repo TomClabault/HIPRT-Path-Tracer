@@ -1984,7 +1984,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		}
 			
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.hash_grid.m_grid_cell_target_projected_size_ratio, 25, 250))
+		if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.hash_grid.m_grid_cell_target_projected_size, 25, 250))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
 			"This has the effect of making the grid cells larger in the distance so that the projected size stays approximately constant.");
@@ -2706,14 +2706,12 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 		{
 			ImGui::TreePush("NEE++ Settings Tree");
 
+			ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_NEE_plus_plus_render_pass()->get_vram_usage_bytes() / 1000000.0f);
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 			static unsigned int max_cell_records = 0;
 
 			{
-				ImGui::Text("Visiblity map update in: %.3fs", m_renderer->get_nee_plus_plus_data().milliseconds_before_finalizing_accumulation / 1000.0f);
-				ImGui::SameLine();
-				if (ImGui::Button("Refresh##vis_map"))
-					m_renderer->get_nee_plus_plus_data().milliseconds_before_finalizing_accumulation = 0.0f;
-
 				unsigned int traced = 0;
 				unsigned int total = 0;
 
@@ -2728,12 +2726,20 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 
 			{
+				if (ImGui::SliderFloat("Grid cell target projected size", &render_data.nee_plus_plus.m_grid_cell_target_projected_size, 25, 250))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
+					"This has the effect of making the grid cells larger in the distance so that the projected size stays approximately constant.");
 
-				if (ImGui::Checkbox("Update visibility map", &render_data.nee_plus_plus.update_visibility_map))
+				if (ImGui::SliderFloat("Grid cell minimum size", &render_data.nee_plus_plus.m_grid_cell_min_size, 0.005, 0.5))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
+
+				if (ImGui::Checkbox("Update visibility map", &render_data.nee_plus_plus.m_update_visibility_map))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If checked, the visibility map will continue accumulating visibility "
 					"information as the rendering progresses");
-				ImGui::SliderInt("Update max samples", &m_renderer->get_nee_plus_plus_data().stop_update_samples, 1, 96);
+				ImGui::SliderInt("Update max samples", &render_data.nee_plus_plus.m_stop_update_samples, 1, 96);
 				ImGuiRenderer::show_help_marker("After this many samples, the update of the visibility will automatically "
 					"stop to save some performance because accumulating forever isn't necessary.");
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -2755,10 +2761,10 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				{
 					ImGui::TreePush("NEE++ RR options tree");
 
-					if (ImGui::Checkbox("Use NEE++ RR for emissives", &render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_emissives))
+					if (ImGui::Checkbox("Use NEE++ RR for emissives", &render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_emissives))
 						m_render_window->set_render_dirty(true);
 
-					if (ImGui::Checkbox("Use NEE++ RR for envmap", &render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_envmap))
+					if (ImGui::Checkbox("Use NEE++ RR for envmap", &render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_envmap))
 						m_render_window->set_render_dirty(true);
 
 					ImGui::TreePop();
@@ -2768,44 +2774,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			}
 
 			{
-				static bool use_cube_grid = true;
-				ImGui::Checkbox("Use cubic grid", &use_cube_grid);
-				bool size_changed = false;
-				if (use_cube_grid)
-				{
-					static int grid_size = m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x;
-					if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 32))
-					{
-						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x = grid_size;
-						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.y = grid_size;
-						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.z = grid_size;
-
-						size_changed = true;
-					}
-				}
-				else
-				{
-					ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-					size_changed |= ImGui::SliderInt("##Grid_sizeX", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x, 2, 32);
-					ImGui::SameLine();
-					size_changed |= ImGui::SliderInt("##Grid_sizeY", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.y, 2, 32);
-					ImGui::SameLine();
-					size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.z, 2, 32);
-
-					// Back to default size
-					ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-				}
-
-				if (size_changed)
-				{
-					// Clamping
-					m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap = hippt::clamp(make_int3(2, 2, 2), make_int3(30, 30, 30), m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap);
-
-					m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
-					m_render_window->set_render_dirty(true);
-				}
-
-				if (ImGui::SliderFloat("Confidence threshold", &render_data.nee_plus_plus.confidence_threshold, 0.0f, 1.0f))
+				if (ImGui::SliderFloat("Confidence threshold", &render_data.nee_plus_plus.m_confidence_threshold, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If a voxel-to-voxel unocclusion probability is higher than that, "
 					"the voxel will be considered unoccluded and so a shadow ray will be traced. This is to "
@@ -2816,12 +2785,17 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					"Higher values yield higher performance but also higher variance (and the tradeoff doesn't seem "
 					"worth it, hence the very low default value which means that we only allow ourselves "
 					"to save shadow rays when we have a very high probability that the two voxels are occluded.");
-				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_nee_plus_plus_data().get_vram_usage_bytes() / 1000000.0f);
+
+				if (ImGui::SliderFloat("Minimum unoccluded proba", &render_data.nee_plus_plus.m_minimum_unoccluded_proba, 0.0f, 0.1f))
+					m_render_window->set_render_dirty(true);
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
 
+			if (ImGui::CollapsingHeader("Debug"))
 			{
+				ImGui::TreePush("NEE++ debug tree");
+
 				bool display_shadow_rays = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED);
 				if (ImGui::Checkbox("Display shadow rays discarded", &display_shadow_rays))
 				{
@@ -2847,11 +2821,21 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					ImGui::TreePop();
 				}
 
+				int nee_plus_plus_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE);
+				const char* items[] = { "- No debug", "- Grid cells" };
+				if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
+				{
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
 				if (ImGui::Button("Clear visibility map"))
 				{
 					m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
 					m_render_window->set_render_dirty(true);
 				}
+
+				ImGui::TreePop();
 			}
 
 			ImGui::TreePop();

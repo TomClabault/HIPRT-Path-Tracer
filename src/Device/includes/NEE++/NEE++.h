@@ -6,6 +6,9 @@
 #ifndef DEVICE_INCLUDES_NEE_PLUS_PLUS
 #define DEVICE_INCLUDES_NEE_PLUS_PLUS
 
+#include "Device/includes/HashGrid.h"
+#include "Device/includes/HashGridHash.h"
+
 #include "HostDeviceCommon/Math.h"
 
 /**
@@ -15,6 +18,7 @@ struct NEEPlusPlusContext
 {
 	float3 shaded_point;
 	float3 point_on_light;
+
 	// After passing this context to a call to 'evaluate_shadow_ray_nee_plus_plus',
 	// this member will be filled with the probability that the points 'shaded_point'
 	// and 'point_on_light' are mutually visible.
@@ -33,6 +37,17 @@ struct NEEPlusPlusContext
 	bool envmap = false;
 };
 
+struct NEEPlusPlusEntry
+{
+	AtomicType<unsigned int>* total_unoccluded_rays = nullptr;
+	AtomicType<unsigned int>* total_num_rays = nullptr;
+
+	AtomicType<unsigned int>* num_rays_staging = nullptr;
+	AtomicType<unsigned int>* unoccluded_rays_staging = nullptr;
+
+	AtomicType<unsigned int>* checksum_buffer = nullptr;
+};
+
 /**
  * Structure that contains the data for the implementation of NEE++.
  * 
@@ -41,30 +56,30 @@ struct NEEPlusPlusContext
  */
 struct NEEPlusPlusDevice
 {
-	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 16;
-
 	// If true, the next camera rays kernel call will reset the visibility map
-	bool reset_visibility_map = false;
+	bool m_reset_visibility_map = false;
 	// If true, the grid visibility will be updated this frame (new visibility values will be accumulated)
-	bool update_visibility_map = true;
+	bool m_update_visibility_map = true;
 	// Whether or not to do russian roulette with NEE++ on emissive lights
-	bool enable_nee_plus_plus_RR_for_emissives = true;
+	bool m_enable_nee_plus_plus_RR_for_emissives = true;
 	// Whether or not to do russian roulette with NEE++ on envmap samples
-	bool enable_nee_plus_plus_RR_for_envmap = true;
+	bool m_enable_nee_plus_plus_RR_for_envmap = false;
 
-	int3 grid_dimensions = make_int3(NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
+	unsigned int m_total_number_of_cells = 0;
+	float m_grid_cell_min_size = 0.25f;
+	float m_grid_cell_target_projected_size = 25.0f;
 
-	// Bottom left corner of the 3D grid in world space
-	float3 grid_min_point = make_float3(0.0f, 0.0f, 0.0f);
-	//  corner of the 3D grid in world space
-	float3 grid_max_point = make_float3(0.0f, 0.0f, 0.0f);
+	// After how many samples to stop updating the visibility map
+	// (because it's probably converged enough)
+	int m_stop_update_samples = 64000000;
 
 	enum BufferNames : unsigned int
 	{
-		VISIBILITY_MAP = 0,
-		VISIBILITY_MAP_COUNT = 1,
-		ACCUMULATION_BUFFER = 2,
-		ACCUMULATION_BUFFER_COUNT = 3,
+		VISIBILITY_MAP_UNOCCLUDED_COUNT = 0,
+		VISIBILITY_MAP_TOTAL_COUNT = 1,
+
+		ACCUMULATION_BUFFER_UNOCCLUDED_COUNT = 2,
+		ACCUMULATION_BUFFER_TOTAL_COUNT = 3,
 	};
 
 	// Linear buffer that is a packing of 4 buffers:
@@ -108,7 +123,7 @@ struct NEEPlusPlusDevice
 	// The data is stored such that the first unsigned int contains the 4 buffers at index 0 of the matrix
 	// The second unsigned int contains the 4 buffers at index 1
 	// ...
-	AtomicType<unsigned int>* packed_buffers = nullptr;
+	NEEPlusPlusEntry m_entries_buffer;
 
 	// TODO deallocate accumulation buffers if not updating the vis map anymore
 
@@ -117,7 +132,8 @@ struct NEEPlusPlusDevice
 	// being unoccluded
 	//
 	// 0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray
-	float confidence_threshold = 0.025f;
+	float m_confidence_threshold = 0.025f;
+	float m_minimum_unoccluded_proba = 0.025f;
 
 	// Whether or not to count the number of shadow rays actually traced vs. the number of shadow
 	// queries made. This is used in 'evaluate_shadow_ray_nee_plus_plus()'
@@ -126,27 +142,26 @@ struct NEEPlusPlusDevice
 	AtomicType<unsigned long long int>* total_shadow_ray_queries = nullptr;
 	AtomicType<unsigned long long int>* shadow_rays_actually_traced = nullptr;
 
-	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, int matrix_index)
+	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, unsigned int hash_grid_index)
 	{
-		if (matrix_index == -1)
+		if (hash_grid_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// One of the two points was outside the scene, cannot cache this
 			return;
-
-		if (read_buffer<BufferNames::ACCUMULATION_BUFFER_COUNT>(matrix_index) > 220)
-			// We're at the limit of unsigned chars, cannot accumulate anymore
+		
+		if (read_buffer<BufferNames::ACCUMULATION_BUFFER_TOTAL_COUNT>(hash_grid_index) >= 255)
 			return;
 
 		if (visible)
-			increment_buffer<BufferNames::ACCUMULATION_BUFFER>(matrix_index, 1);
-		increment_buffer<BufferNames::ACCUMULATION_BUFFER_COUNT>(matrix_index, 1);
+			increment_buffer<BufferNames::ACCUMULATION_BUFFER_UNOCCLUDED_COUNT>(hash_grid_index, 1);
+		increment_buffer<BufferNames::ACCUMULATION_BUFFER_TOTAL_COUNT>(hash_grid_index, 1);
 	}
 
 	/**
 	 * Updates the visibility map with one additional entry: whether or not the two given world points are visible
 	 */
-	HIPRT_HOST_DEVICE void accumulate_visibility(const NEEPlusPlusContext& context, bool visible)
+	HIPRT_HOST_DEVICE void accumulate_visibility(const NEEPlusPlusContext& context, HIPRTCamera& current_camera, bool visible)
 	{
-		return accumulate_visibility(visible, get_visibility_map_index(context));
+		return accumulate_visibility(visible, get_visibility_map_index<true>(context, current_camera));
 	}
 
 	/**
@@ -159,18 +174,18 @@ struct NEEPlusPlusDevice
 	 * that value on its own even though the world points given may be the same and thus, the matrix
 	 * index is the same)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, int& out_matrix_index) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_hash_grid_index) const
 	{
-		out_matrix_index = get_visibility_map_index(context);
-		if (out_matrix_index == -1)
+		out_hash_grid_index = get_visibility_map_index<true>(context, current_camera);
+		if (out_hash_grid_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// One of the two points was outside the scene, cannot read the cache for this
 			// 
 	 		// Returning 1.0f indicating that the two points are not occluded such that the caller
 			// tests for a shadow ray
 			return 1.0f;
 
-		unsigned char map_count = read_buffer<BufferNames::VISIBILITY_MAP_COUNT>(out_matrix_index);
-		if (map_count == 0)
+		unsigned int total_map_count = read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(out_hash_grid_index);
+		if (total_map_count == 0)
 			// No information for these two points
 			// 
 			// Returning 1.0f indicating that the two points are not occluded such that the caller
@@ -178,11 +193,13 @@ struct NEEPlusPlusDevice
 			return 1.0f;
 		else
 		{
-			float unoccluded_proba = read_buffer<BufferNames::VISIBILITY_MAP>(out_matrix_index) / static_cast<float>(map_count);
-			if (unoccluded_proba >= confidence_threshold)
+			unsigned int unoccluded_count = read_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(out_hash_grid_index);
+			
+			float unoccluded_proba = unoccluded_count / static_cast<float>(total_map_count);
+			if (unoccluded_proba >= m_confidence_threshold)
 				return 1.0f;
 			else
-				return unoccluded_proba;
+				return hippt::max(m_minimum_unoccluded_proba, unoccluded_proba);
 		}
 	}
 
@@ -190,31 +207,45 @@ struct NEEPlusPlusDevice
 	 * Returns the estimated probability that a ray between the two given world points
 	 * is going to be unoccluded (i.e. the two points are mutually visible)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera) const
 	{
-		int trash_matrix_index;
-		return estimate_visibility_probability(context, trash_matrix_index);
-	}
+		unsigned int trash_matrix_index;
 
-	HIPRT_HOST_DEVICE unsigned int get_visibility_matrix_element_count() const
-	{
-		unsigned int grid_elements_count = grid_dimensions.x * grid_dimensions.y * grid_dimensions.z;
-		unsigned half_matrix_size = grid_elements_count * (grid_elements_count + 1) * 0.5f;
-
-		return half_matrix_size;
+		return estimate_visibility_probability(context, current_camera, trash_matrix_index);
 	}
 
 	/**
 	 * Copies the accumulation buffers to the visibility map (all in the packed buffers)
 	 */
-	HIPRT_HOST_DEVICE void copy_accumulation_buffers(unsigned int matrix_index)
+	HIPRT_HOST_DEVICE void copy_accumulation_buffers(unsigned int hash_grid_index)
 	{
-		unsigned char accumulation_buffer = read_buffer<BufferNames::ACCUMULATION_BUFFER>(matrix_index);
-		unsigned char accumulation_buffer_count = read_buffer<BufferNames::ACCUMULATION_BUFFER_COUNT>(matrix_index);
+		unsigned int accumulation_buffer = read_buffer<BufferNames::ACCUMULATION_BUFFER_UNOCCLUDED_COUNT>(hash_grid_index);
+		unsigned int accumulation_buffer_count = read_buffer<BufferNames::ACCUMULATION_BUFFER_TOTAL_COUNT>(hash_grid_index);
 
-		set_buffer<BufferNames::VISIBILITY_MAP>(matrix_index, accumulation_buffer);
-		set_buffer<BufferNames::VISIBILITY_MAP_COUNT>(matrix_index, accumulation_buffer_count);
+		set_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(hash_grid_index, accumulation_buffer);
+		set_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, accumulation_buffer_count);
+
 		return;
+	}
+
+	HIPRT_HOST_DEVICE unsigned int hash_context(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_checksum) const
+	{
+		float3 second_point = context.envmap ? (context.shaded_point + context.point_on_light * 1.0e20f) : context.point_on_light;
+
+		return hash_double_position_camera(m_total_number_of_cells, context.shaded_point, second_point, current_camera, m_grid_cell_target_projected_size, m_grid_cell_min_size, out_checksum);
+	}
+
+	template <bool isInsertion = false>
+	HIPRT_HOST_DEVICE unsigned int get_visibility_map_index(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera) const
+	{
+		unsigned int checksum;
+		unsigned int hash_grid_index = hash_context(context, current_camera, checksum);
+		if (!HashGrid::resolve_collision<NEEPlusPlus_LinearProbingSteps, isInsertion>(m_entries_buffer.checksum_buffer, m_total_number_of_cells, hash_grid_index, checksum))
+		{
+			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+		}
+
+		return hash_grid_index;
 	}
 
 	// TODO compare with the alpha learning rate and the ground truth to see the behavior of a single float buffer
@@ -225,19 +256,34 @@ private:
 	 * buffer name from the BufferNames enum
 	 */
 	template <unsigned int bufferName>
-	HIPRT_HOST_DEVICE unsigned char read_buffer(int matrix_index) const
+	HIPRT_HOST_DEVICE unsigned int read_buffer(unsigned int hash_grid_index) const
 	{
-		return (packed_buffers[matrix_index] >> (bufferName * 8)) & 0xFF;
+		if constexpr (bufferName == 0)
+			return m_entries_buffer.total_unoccluded_rays[hash_grid_index];
+		else if constexpr (bufferName == 1)
+			return m_entries_buffer.total_num_rays[hash_grid_index];
+		else if constexpr (bufferName == 2)
+			return m_entries_buffer.unoccluded_rays_staging[hash_grid_index];
+		else if constexpr (bufferName == 3)
+			return m_entries_buffer.num_rays_staging[hash_grid_index];
 	}
 
 	/**
 	 * Increments the packed value in the packed buffer 'bufferName' at the given matrix index
+	 * 
 	 * There is no protection against overflows in this function
 	 */
 	template <unsigned int bufferName>
-	HIPRT_HOST_DEVICE void increment_buffer(int matrix_index, unsigned char value)
+	HIPRT_HOST_DEVICE void increment_buffer(unsigned int hash_grid_index, unsigned int value)
 	{
-		hippt::atomic_fetch_add(&packed_buffers[matrix_index], static_cast<unsigned int>(value) << (8 * bufferName));
+		if constexpr (bufferName == 0)
+			hippt::atomic_fetch_add(&m_entries_buffer.total_unoccluded_rays[hash_grid_index], value);
+		if constexpr (bufferName == 1)
+			hippt::atomic_fetch_add(&m_entries_buffer.total_num_rays[hash_grid_index], value);
+		if constexpr (bufferName == 2)
+			hippt::atomic_fetch_add(&m_entries_buffer.unoccluded_rays_staging[hash_grid_index], value);
+		if constexpr (bufferName == 3)
+			hippt::atomic_fetch_add(&m_entries_buffer.num_rays_staging[hash_grid_index], value);
 	}
 
 	/**
@@ -247,132 +293,16 @@ private:
 	 * This function is non-atomic
 	 */
 	template <unsigned int bufferName>
-	HIPRT_HOST_DEVICE void set_buffer(int matrix_index, unsigned char value)
+	HIPRT_HOST_DEVICE void set_buffer(unsigned int hash_grid_index, unsigned int value)
 	{
-		// Clearing
-		packed_buffers[matrix_index] &= ~(0x000000FF << (bufferName * 8));
-
-		// Setting
-		packed_buffers[matrix_index] |= value << (bufferName * 8);
-	}
-
-	/**
-	 * Returns the index of the voxel of the given position in [grid_dimensions.x - 1, grid_dimensions.y - 1, grid_dimensions.z - 1]
-	 */
-	HIPRT_HOST_DEVICE int3 get_voxel_3D_index(float3 position) const
-	{
-		float3 position_grid_space = position - grid_min_point;
-		float3 voxel_index_float = position_grid_space / (grid_max_point - grid_min_point);
-
-		if (voxel_index_float.x > 1.0f || voxel_index_float.y > 1.0f || voxel_index_float.z > 1.0f)
-			// The point is outside the grid
-			return make_int3(-1, -1, -1);
-
-		voxel_index_float = hippt::min(0.99999f, voxel_index_float);
-
-		int3 voxel_index_int = make_int3(static_cast<int>(voxel_index_float.x * grid_dimensions.x),
-			static_cast<int>(voxel_index_float.y * grid_dimensions.y),
-			static_cast<int>(voxel_index_float.z * grid_dimensions.z));
-
-		return voxel_index_int;
-	}
-
-	/**
-	 * This function returns the point at the very boundary of the voxel grid (i.e. a point in the envmap layer)
-	 * given a point and a direction.
-	 * 
-	 * This is basically an intersection test between a ray(shaded_point, direction) and the envmap boundary planes
-	 */
-	HIPRT_HOST_DEVICE float3 compute_voxel_grid_exit_point_from_direction(float3 shaded_point, float3 direction) const
-	{
-		// Finding the times in X/Y/Z for the ray to escape the voxel grid (the voxel grid accounting
-		// for the envmap layer, hence why we add 'one_voxel_size' because that extra voxel layer is out
-		// of all the geometry of the scene so it doesn't contain the envmap layer)
-		float tx = 1.0e35f, ty = 1.0e35f, tz = 1.0e35f;
-		if (hippt::abs(direction.x) > 1.0e-5f)
-			tx = (direction.x < 0.0f ? (grid_min_point.x - shaded_point.x) : (grid_max_point.x - shaded_point.x)) / direction.x;
-		if (hippt::abs(direction.y) > 1.0e-5f)
-			ty = (direction.y < 0.0f ? (grid_min_point.y - shaded_point.y) : (grid_max_point.y - shaded_point.y)) / direction.y;
-		if (hippt::abs(direction.z) > 1.0e-5f)
-			tz = (direction.z < 0.0f ? (grid_min_point.z - shaded_point.z) : (grid_max_point.z - shaded_point.z)) / direction.z;
-
-		float min_t = hippt::min(tx, hippt::min(ty, tz));
-		
-		// Subtracting 1.0e-3f to be sure to avoid precision issues 
-		float3 exit_point = shaded_point + direction * (min_t - 1.0e-3f);
-
-		return exit_point;
-	}
-
-	HIPRT_HOST_DEVICE int3 get_voxel_3D_index_envmap(float3 shaded_point, float3 direction) const
-	{
-		// The visibility for the envmap is cached in the very outer layer of the voxel grid
-		// 
-		// This is a layer that is outside of any geometry of the scene (there is no geometry in
-		// this "layer" of the voxel grid)
-		//
-		// The goal here is to find which voxel of that outer layer the direction is pointing to
-		// and this will give us the envmap voxel for that direction.
-		//
-		// This is the same as looking for the voxel at the boundaries of the grid when a ray
-		// with direction 'direction' tries to escape the grid
-		
-		float3 exit_point = compute_voxel_grid_exit_point_from_direction(shaded_point, direction);
-
-		// Once that we have the point in the envmap layer of the voxel grid corresponding to
-		// the direction, we just need its index
-		return get_voxel_3D_index(exit_point);
-	}
-
-	HIPRT_HOST_DEVICE int get_visibility_map_index(const NEEPlusPlusContext& context) const
-	{
-		int3 shaded_point_voxel_3D_index = get_voxel_3D_index(context.shaded_point);
-		int3 second_pos_voxel_3D_index;
-
-		if (context.envmap)
-			second_pos_voxel_3D_index = get_voxel_3D_index_envmap(context.shaded_point, context.point_on_light);
-		else
-			second_pos_voxel_3D_index = get_voxel_3D_index(context.point_on_light);
-
-		if (shaded_point_voxel_3D_index.x == -1 || second_pos_voxel_3D_index.x == -1)
-			// One of the two points is outside the scene, cannot cache this
-			return -1;
-
-		int first_voxel_index = shaded_point_voxel_3D_index.x + shaded_point_voxel_3D_index.y * grid_dimensions.x + shaded_point_voxel_3D_index.z * grid_dimensions.y * grid_dimensions.x;
-		int second_voxel_index = second_pos_voxel_3D_index.x + second_pos_voxel_3D_index.y * grid_dimensions.x + second_pos_voxel_3D_index.z * grid_dimensions.y * grid_dimensions.x;
-
-		// Just renaming
-		int column = first_voxel_index;
-		int row = second_voxel_index;
-
-		if (column > row)
-		{
-			// We're past the diagonal, flipping to bring it back in the lower left triangle of the matrix
-			int temp = column;
-			column = row;
-			row = temp;
-		}
-
-		// Because the visibility matrix is symmetrical, we're only using half of it to save half the VRAM
-		// Thus we need to find the index in the lower half of the visiblity matrix
-		//
-		// We know that our matrix is N*N
-		// Because we only consider the lower half (lower triangle) of the matrix:
-		// 
-		// - The first row contains  1 element   : (0, 0)
-		// - The second row contains 2 elements : (1, 0), (1, 1)
-		// - The third row contains  3 elements  : (2, 0), (2, 1), (2, 2)
-		//
-		// The starting index of a row R is then given by the sum of the number of elements
-		// of all rows coming before row N. So for row 3, that would be 1 + 2 + 3 = 6
-		//
-		// In general, this gives us starting_index = N * (N + 1) / 2
-	
-		int starting_index = row * (row + 1) * 0.5f;
-		// We then just need to index our item inside that row
-		int final_index = starting_index + column;
-
-		return final_index;
+		if constexpr (bufferName == 0)
+			m_entries_buffer.total_unoccluded_rays[hash_grid_index] = value;
+		if constexpr (bufferName == 1)
+			m_entries_buffer.total_num_rays[hash_grid_index] = value;
+		if constexpr (bufferName == 2)
+			m_entries_buffer.unoccluded_rays_staging[hash_grid_index] = value;
+		if constexpr (bufferName == 3)
+			m_entries_buffer.num_rays_staging[hash_grid_index] = value;
 	}
 };
 

@@ -339,7 +339,7 @@ void GMoNRenderPass::reset(bool reset_by_camera_movement)
 		m_next_set_to_accumulate = 0;
 
 		if (buffers_allocated())
-			m_gmon.sets.memset_whole_buffer(0);
+			m_gmon.sets.memset_whole_buffer(ColorRGB32F(0.0f));
 
 		// Requesting a computation on reset just so that we copy the very
 		// first sample to the framebuffer to avoid having a black viewport

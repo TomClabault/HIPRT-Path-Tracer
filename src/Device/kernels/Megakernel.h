@@ -111,7 +111,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 
                 // TODO REMOVE THE DEBUG IF
                 if (bounce > 0 || render_data.render_settings.enable_direct)
+                {
                     ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+
+                    sanity_check<true>(render_data, ray_payload.ray_color, x, y);
+                }
 
                 BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF sampled
                 bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &sampled_light_info);
@@ -123,6 +127,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
             {
                 ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, pixel_index);
                 ray_payload.next_ray_state = RayState::MISSED;
+
+                sanity_check<true>(render_data, ray_payload.ray_color, x, y);
             }
         }
         else if (ray_payload.next_ray_state == RayState::MISSED)
