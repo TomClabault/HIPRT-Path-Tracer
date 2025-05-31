@@ -30,7 +30,7 @@ public:
 
 	void operator=(OrochiBuffer<T>&& other) noexcept;
 
-	void memset_whole_buffer(int value);
+	void memset_whole_buffer(T value);
 
 	void resize(int new_element_count, size_t type_size_override = 0);
 	void resize_host_pinned_mem(int new_element_count, size_t type_size_override = 0);
@@ -159,7 +159,7 @@ void OrochiBuffer<T>::operator=(OrochiBuffer&& other) noexcept
 }
 
 template<typename T>
-inline void OrochiBuffer<T>::memset_whole_buffer(int value)
+inline void OrochiBuffer<T>::memset_whole_buffer(T value)
 {
 	if (m_data_pointer == nullptr)
 	{
@@ -167,7 +167,9 @@ inline void OrochiBuffer<T>::memset_whole_buffer(int value)
 		return;
 	}
 
-	OROCHI_CHECK_ERROR(oroMemset(m_data_pointer, value, m_element_count * sizeof(T)));
+	std::vector<T> data(m_element_count, value);
+	upload_data(data);
+	//OROCHI_CHECK_ERROR(oroMemset(m_data_pointer, value, m_element_count * sizeof(T)));
 }
 
 template <typename T>

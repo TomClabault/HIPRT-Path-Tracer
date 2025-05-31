@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
+#include "HostDeviceCommon/KernelOptions/NEEPlusPlusOptions.h"
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
@@ -233,7 +234,7 @@
  * that overrides the color of the framebuffer
  */
 #define ViewportColorOverriden (												\
-	DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE ||	\
+	(NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG || DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE) ||	\
 	(DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG))
 
 #endif

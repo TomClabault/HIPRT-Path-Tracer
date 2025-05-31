@@ -26,9 +26,6 @@ void TestCopyKernelSimple()
     OrochiBuffer<TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE> buffer_a(BUFFER_SIZE);
     OrochiBuffer<TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE> buffer_b(BUFFER_SIZE);
 
-    buffer_a.memset_whole_buffer(1);
-    buffer_b.memset_whole_buffer(1);
-
     TestCopyKernelSimpleInputData input_data;
     input_data.buffer_a = buffer_a.get_device_pointer();
     input_data.buffer_b = buffer_b.get_device_pointer();

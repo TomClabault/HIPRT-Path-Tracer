@@ -28,7 +28,7 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 	bool grid_not_allocated = m_total_number_of_cells == 0;
-	bool grid_res_changed = m_current_grid_min_cell_size != regir_settings.hash_grid.m_grid_cell_min_size || m_grid_cell_target_projected_size_ratio != regir_settings.hash_grid.m_grid_cell_target_projected_size_ratio;
+	bool grid_res_changed = m_current_grid_min_cell_size != regir_settings.hash_grid.m_grid_cell_min_size || m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
 	bool reservoirs_per_cell_changed = regir_settings.get_number_of_reservoirs_per_cell() != m_grid_buffers.m_reservoirs_per_cell;
 
 	bool needs_grid_resize = grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed;
@@ -39,7 +39,7 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 			m_total_number_of_cells = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT; // Default grid size
 
 		m_current_grid_min_cell_size = regir_settings.hash_grid.m_grid_cell_min_size;
-		m_grid_cell_target_projected_size_ratio = regir_settings.hash_grid.m_grid_cell_target_projected_size_ratio;
+		m_grid_cell_target_projected_size = regir_settings.hash_grid.m_grid_cell_target_projected_size;
 
 		m_grid_buffers.resize(m_total_number_of_cells, regir_settings.get_number_of_reservoirs_per_cell());
 		m_hash_cell_data.resize(m_total_number_of_cells);
@@ -164,7 +164,7 @@ void ReGIRHashGridStorage::reset()
 	std::vector<int> primitive_reset(m_total_number_of_cells, ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
 	m_hash_cell_data.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().upload_data(primitive_reset);
 
-	std::vector<unsigned int> hash_keys_reset(m_total_number_of_cells, HashGrid::UNDEFINED_HASH_KEY);
+	std::vector<unsigned int> hash_keys_reset(m_total_number_of_cells, HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 	m_hash_cell_data.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().upload_data(hash_keys_reset);
 }
 

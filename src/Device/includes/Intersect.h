@@ -328,7 +328,6 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render
  * This function also uses NEE++ if enabled in the kernel options and this
  * function can update the visibility map of NEE++ if enabled in 'render_data.nee_plus_plus'
  */
-#include "Device/includes/Hash.h"
 HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator, int bounce)
 {
 #if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
@@ -339,8 +338,8 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
         // Updating the statistics
         hippt::atomic_fetch_add(render_data.nee_plus_plus.total_shadow_ray_queries, 1ull);
 
-    bool nee_plus_plus_envmap_rr_disabled = nee_plus_plus_context.envmap && !render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_envmap;
-    bool nee_plus_plus_emissives_rr_disabled = !nee_plus_plus_context.envmap && !render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_emissives;
+    bool nee_plus_plus_envmap_rr_disabled = nee_plus_plus_context.envmap && !render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_envmap;
+    bool nee_plus_plus_emissives_rr_disabled = !nee_plus_plus_context.envmap && !render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_emissives;
     if (nee_plus_plus_envmap_rr_disabled || nee_plus_plus_emissives_rr_disabled)
     {
         // This is NEE++ RR for envmap sampling but envmap NEE++ RR is disabled
@@ -348,7 +347,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
 
         if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
             // Updating the statistics
-            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 0ull);
+            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1ull);
 
         shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
         shadow_ray_discarded = false;
@@ -358,22 +357,24 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
     // visibility in the visibility map with 'accumulate_visibility'. If we do need to do that,
     // then that matrix index can be reused instead of being recomputed automatically by 'accumulate_visibility'
     // to save a little bit of computations
-    int nee_plus_plus_voxel_matrix_index;
-    float visible_probability = nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, nee_plus_plus_voxel_matrix_index);
+    unsigned int seed_before = random_number_generator.m_state.seed;
+
+    unsigned int nee_plus_plus_hash_grid_cell_index;
+    float visible_probability = nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, render_data.current_camera, nee_plus_plus_hash_grid_cell_index);
     bool likely_visible = random_number_generator() < visible_probability;
 
     if (likely_visible)
     {
         if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
             // Updating the statistics
-            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 0ull);
+            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1ull);
 
         // The shadow ray is likely visible, testing with a shadow ray
         shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
         shadow_ray_discarded = false;
 
-        if (render_data.nee_plus_plus.update_visibility_map)
-            render_data.nee_plus_plus.accumulate_visibility(!shadow_ray_occluded, nee_plus_plus_voxel_matrix_index);
+        if (render_data.nee_plus_plus.m_update_visibility_map)
+            render_data.nee_plus_plus.accumulate_visibility(!shadow_ray_occluded, nee_plus_plus_hash_grid_cell_index);
     }
     else
     {

@@ -80,32 +80,7 @@
 *		Uses ReGIR to sample lights
 *		Implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021]
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_REGIR
-
-/**
-* Whether or not to use NEE++ features at all
-*/
-#define DirectLightUseNEEPlusPlus KERNEL_OPTION_FALSE
-
-/**
-* Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility
-* information of NEE++
-*/
-#define DirectLightUseNEEPlusPlusRR KERNEL_OPTION_TRUE
-
-/**
-* This a debug option to visualize shadow rays discarded by the NEE++ russian roulette
-*/
-#define DirectLightNEEPlusPlusDisplayShadowRaysDiscarded KERNEL_OPTION_FALSE
-
-/**
-* When using the 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded' kernel options
-* for displaying in the viewport where shadow rays were discarded, this parameter is used
-* to determine at what bounce in the scene we should display the shadow ray discarded or not
-*
-* 0 is the first hit
-*/
-#define DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce 0
+#define DirectLightSamplingBaseStrategy LSS_BASE_POWER
 
 /**
 * If this is true, light sampling with NEE (emissive geometry & envmap) will not even

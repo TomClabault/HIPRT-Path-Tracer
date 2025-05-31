@@ -54,7 +54,7 @@ private:
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data;
 
 	float m_current_grid_min_cell_size = 0.0f;
-	float m_grid_cell_target_projected_size_ratio = 0.0f;
+	float m_grid_cell_target_projected_size = 0.0f;
 
 	unsigned int m_total_number_of_cells = 0;
 };

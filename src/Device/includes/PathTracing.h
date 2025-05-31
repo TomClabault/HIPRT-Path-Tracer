@@ -126,6 +126,8 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 
     if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM || render_data.bsdfs_data.white_furnace_mode)
         skysphere_color = render_data.world_settings.uniform_light_color;
+    else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && render_data.world_settings.envmap_intensity == 0.0f)
+        return ColorRGB32F(0.0f);
     else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
     {
 #if EnvmapSamplingStrategy != ESS_NO_SAMPLING
@@ -218,6 +220,24 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 
 #if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
     // Nothing to do, the debug is already handled in the shadow ray NEE function
+#elif NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+    if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+    {
+        // We have a first hit
+        float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+        float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+        float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+        
+        unsigned int trash_checksum;
+        NEEPlusPlusContext context;
+        context.envmap = false;
+        context.point_on_light = make_float3(0, 0, 0);
+        context.shaded_point = primary_hit;
+
+        ray_payload.ray_color = ColorRGB32F::random_color(render_data.nee_plus_plus.hash_context(context, render_data.current_camera, trash_checksum));
+        ray_payload.ray_color *= (render_data.render_settings.sample_number + 1);
+        ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
+    }
 #elif ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG
 #if ReGIR_DebugMode  == REGIR_DEBUG_MODE_GRID_CELLS
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
@@ -227,7 +247,8 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
         float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
-        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, render_data.current_camera) * (render_data.render_settings.sample_number + 1);
+        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, render_data.current_camera);
+        ray_payload.ray_color *= (render_data.render_settings.sample_number + 1);
         ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
     }
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION

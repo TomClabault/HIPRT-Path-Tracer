@@ -53,8 +53,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 404
-#define DEBUG_PIXEL_Y 222
+#define DEBUG_PIXEL_X 247
+#define DEBUG_PIXEL_Y 239
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -184,14 +184,22 @@ void CPURenderer::setup_nee_plus_plus()
 #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     // Only doing if using NEE++ 
     
-    // + (2, 2, 2) for envmap NEE++
-    m_render_data.nee_plus_plus.grid_dimensions = m_nee_plus_plus.grid_dimensions_no_envmap + make_int3(2, 2, 2);
+    m_nee_plus_plus.total_num_rays = std::vector<AtomicType<unsigned int>>(1000000);
+    m_nee_plus_plus.total_unoccluded_rays = std::vector<AtomicType<unsigned int>>(1000000);
+    m_nee_plus_plus.num_rays_staging = std::vector<AtomicType<unsigned int>>(1000000);
+    m_nee_plus_plus.unoccluded_rays_staging = std::vector<AtomicType<unsigned int>>(1000000);
+    m_nee_plus_plus.checksum_buffer = std::vector<AtomicType<unsigned int>>(1000000);
+    for (AtomicType<unsigned int>& checksum : m_nee_plus_plus.checksum_buffer)
+        checksum.store(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
-    // Dividing by 2 because the visibility map is symmetrical so we only need half of the matrix
-    int half_matrix_size = m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions);
-    m_nee_plus_plus.packed_buffer = std::vector<AtomicType<unsigned int>>(half_matrix_size);
+    m_render_data.nee_plus_plus.m_entries_buffer.total_num_rays = m_nee_plus_plus.total_num_rays.data();
+    m_render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = m_nee_plus_plus.total_unoccluded_rays.data();
+    m_render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = m_nee_plus_plus.num_rays_staging.data();
+    m_render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = m_nee_plus_plus.unoccluded_rays_staging.data();
+    m_render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = m_nee_plus_plus.checksum_buffer.data();
 
-    m_render_data.nee_plus_plus.packed_buffers = m_nee_plus_plus.packed_buffer.data();
+    m_render_data.nee_plus_plus.m_total_number_of_cells = 1000000;
+
     m_render_data.nee_plus_plus.total_shadow_ray_queries = &m_nee_plus_plus.total_shadow_ray_queries;
     m_render_data.nee_plus_plus.shadow_rays_actually_traced = &m_nee_plus_plus.shadow_rays_actually_traced;
 #endif
@@ -214,18 +222,23 @@ void CPURenderer::nee_plus_plus_memcpy_accumulation(int frame_number)
 {
 #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     bool enough_frames_passed = frame_number % m_nee_plus_plus.frame_timer_before_visibility_map_update == 0;
-    bool not_updating_vis_map_anymore = !m_render_data.nee_plus_plus.update_visibility_map;
+    bool not_updating_vis_map_anymore = !m_render_data.nee_plus_plus.m_update_visibility_map;
     if (!enough_frames_passed || not_updating_vis_map_anymore)
         return;
 
     // Only doing if using NEE++
-    unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count(m_nee_plus_plus.get_grid_dimensions_with_envmap());
-
-    for (int x = 0; x < matrix_element_count; x++)
+    for (int x = 0; x < m_render_data.nee_plus_plus.m_total_number_of_cells; x++)
         NEEPlusPlusFinalizeAccumulation(m_render_data.nee_plus_plus, x);
 #else
     // Otherwise, it's a no-op
 #endif
+
+    int counter = 0;
+    for (AtomicType<unsigned int>& ato : m_nee_plus_plus.checksum_buffer)
+        if (ato.load() != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+            counter++;
+
+    printf("Alive: %d\n", counter);
 }
 
 void CPURenderer::gmon_check_for_sets_accumulation()
@@ -328,7 +341,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-
     m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.initial_reservoirs_grid);
     m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.spatial_output_grid);
     m_regir_state.supersampling_grid.to_device(m_render_data.render_settings.regir_settings.supersampling.supersampling_grid);
@@ -356,13 +368,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius = m_restir_gi_state.per_pixel_spatial_reuse_radius.data();
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_gi_state.spatial_reuse_hit_rate_total;
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
-
-    float3 grid_min_point_with_envmap, grid_max_point_with_envmap;
-    m_nee_plus_plus.base_grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;
-    m_nee_plus_plus.base_grid_max_point = parsed_scene.metadata.scene_bounding_box.maxi;
-    m_nee_plus_plus.get_grid_extents(m_nee_plus_plus.grid_dimensions_no_envmap, grid_min_point_with_envmap, grid_max_point_with_envmap);
-    m_render_data.nee_plus_plus.grid_min_point = grid_min_point_with_envmap;
-    m_render_data.nee_plus_plus.grid_max_point = grid_max_point_with_envmap;
 
     ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
     m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_indices.size();
@@ -526,6 +531,8 @@ void CPURenderer::render()
 
         post_sample_update(frame_number);
 
+        printf("%.3f\n", m_nee_plus_plus.shadow_rays_actually_traced.load() / (float)m_nee_plus_plus.total_shadow_ray_queries.load());
+
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
 
@@ -541,8 +548,8 @@ void CPURenderer::pre_render_update(int frame_number)
     // Resetting the counter of pixels converged to 0
     m_render_data.aux_buffers.pixel_count_converged_so_far->store(0);
 
-    if (frame_number > m_nee_plus_plus.stop_update_samples)
-        m_render_data.nee_plus_plus.update_visibility_map = false;
+    if (frame_number > m_render_data.nee_plus_plus.m_stop_update_samples)
+        m_render_data.nee_plus_plus.m_update_visibility_map = false;
 }
 
 void CPURenderer::post_sample_update(int frame_number)

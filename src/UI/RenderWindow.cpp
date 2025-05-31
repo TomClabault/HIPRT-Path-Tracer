@@ -54,8 +54,8 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Trry to disable canonical and see if it converges quicker
-//		- It does
-// - Try to downweigjt canonical MIS weight instead of 1 / M
+//		- It does -----> We need to find some better MIS weights for the canonical sample
+//		- Try to downweigjt canonical MIS weight instead of 1 / M
 // - Can we compact the cell alive buffer to 1 / 32 of its size ? 1 bit per cell alive flag
 // - Lambertian BRDF goes through lampshade in white room but principled BSDF doesn't
 // - Can we keep the grid of reservoirs from the last frame to pick them during shading to reduce correlations? Only memory cost but it's ok
@@ -101,7 +101,7 @@ extern ImGuiLogger g_imgui_logger;
 // - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
 // - Is the grid fill bottleneck by random light sampling? Try on the class white room to see if perf improves
 //		A little bit yeah. Maybe we can do something with light presampling per cell
-// - Shared mem ray tracing helps a ton for ReGIR grid fill & spatial reuse ----> maybe have them in a separate kernel to be able to use max shared mem without destroying the L1?
+// - Shared mem ray tracing helps a ton for ReGIR grid fill & spatial reuse ----> maybe have them in a separate kernel to be able to use max shared mem without destroying the L1 for the rest of the kernels?
 // - Can we add the canonical sample at the end of the spatial pass instead of in the shading pass?
 // - The idea to fix the bad ReGIR target function that may prioritze occluded samples is to use NEE with a visibility weight
 // - Maybe we can just swap the buffers for ReGIR staging buffers instead of copying
@@ -125,7 +125,9 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
+// - Have a look at reweghing fireflies for Monte Carlo instead of Gmon so we can remove fireflies unbiasedly without the darkening
 // - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
+//		- Do that after wavefront because wavefront may solve the issue
 // - also reuse BSDF mis ray of envmap MIS
 // - We do not need the nested dielecttrics stack management in the camera rays kernel
 // - In the material packing, pack major material properties together: coat, metallic, specular_transmission, diffuse_transmission, ... so that we can, in a single memory access, determine whether or not we need to read the rest of the coat, specular transmission ,...

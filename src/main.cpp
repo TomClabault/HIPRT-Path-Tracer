@@ -90,8 +90,13 @@ int main(int argc, char* argv[])
     CPURenderer cpu_renderer(width, height);
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
+    cpu_renderer.get_render_settings().output_debug_sample_N = cmd_arguments.render_samples - 1;
     cpu_renderer.set_envmap(envmap_image);
     cpu_renderer.set_camera(parsed_scene.camera);
+
+    for (float3& pos : parsed_scene.vertices_positions)
+        pos += make_float3(0, 0.1, 0);
+
     cpu_renderer.set_scene(parsed_scene);
 
     ThreadManager::join_all_threads();
