@@ -84,7 +84,7 @@
 #define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
- * Wehther or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during
+ * Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during
  * shading such that reservoirs that are likely to be occluded will have a lower resampling probability
  * 
  * This option is exclusive with ReGIR_ShadingResamplingTargetFunctionVisibility, the latter taking precedence.
