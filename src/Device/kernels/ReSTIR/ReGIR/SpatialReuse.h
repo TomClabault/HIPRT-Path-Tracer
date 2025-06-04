@@ -123,13 +123,13 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
             {
                 // Never using the template visibility/cosine terms arguments for canonical reservoirs
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false, false>(render_data, hash_grid_cell_index,
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false, false, false>(render_data, hash_grid_cell_index,
                     emission, light_source_normal, point_on_light,
                     random_number_generator);
             }
             else
             {
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true, true>(render_data, hash_grid_cell_index,
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true, true, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, hash_grid_cell_index,
                     emission, light_source_normal, point_on_light,
                     random_number_generator);
             }

@@ -39,7 +39,7 @@
 * Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility
 * information of NEE++
 */
-#define DirectLightUseNEEPlusPlusRR KERNEL_OPTION_TRUE
+#define DirectLightUseNEEPlusPlusRR KERNEL_OPTION_FALSE
 
 /**
 * This a debug option to visualize shadow rays discarded by the NEE++ russian roulette

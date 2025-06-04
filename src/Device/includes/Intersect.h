@@ -390,6 +390,14 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
     nee_plus_plus_context.unoccluded_probability = 1.0f;
 
     bool shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
+
+    // We may still want to update the visibility map
+    if (render_data.nee_plus_plus.m_update_visibility_map && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE)
+    {
+        unsigned int nee_plus_plus_hash_grid_cell_index = render_data.nee_plus_plus.get_visibility_map_index<true>(nee_plus_plus_context, render_data.current_camera);
+        
+        render_data.nee_plus_plus.accumulate_visibility(!shadow_ray_occluded, nee_plus_plus_hash_grid_cell_index);
+    }
 #endif
 
 #if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
