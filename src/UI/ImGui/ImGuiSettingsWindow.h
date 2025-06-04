@@ -52,6 +52,7 @@ private:
 	template <bool IsReSTIRGI>
 	void draw_ReSTIR_bias_correction_panel();
 	void draw_next_event_estimation_plus_plus_panel();
+	bool use_next_event_estimation_checkbox();
 	void draw_principled_bsdf_energy_conservation();
 	void display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options);
 
@@ -62,7 +63,6 @@ private:
 
 	void toggle_gmon();
 
-	void draw_lighting_settings_panel();
 	void draw_performance_settings_panel();
 	void draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label);
 	template <class... Args>

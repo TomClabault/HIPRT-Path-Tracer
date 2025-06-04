@@ -14,7 +14,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-template <bool includeVisibility, bool withCosineTerm, bool withCosineTermLightSource>
+template <bool includeVisibility, bool withCosineTerm, bool withCosineTermLightSource, bool withNeePlusPlusVisibilityEstimation>
 HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderData& render_data, int hash_grid_cell_index, 
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
 {
@@ -40,11 +40,20 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
 			// No need to visibility test if the target function is already 0
 			target_function *= ReGIR_grid_cell_visibility_test(render_data, cell_point, cell_primitive_index, sample_position, rng);
 	}
+	else if constexpr (withNeePlusPlusVisibilityEstimation && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE)
+	{
+		NEEPlusPlusContext context;
+		context.envmap = false;
+		context.point_on_light = sample_position;
+		context.shaded_point = cell_point;
+
+		target_function *= render_data.nee_plus_plus.estimate_visibility_probability(context, render_data.current_camera);
+	}
 
 	return target_function;
 }
 
-template <bool withVisibility>
+template <bool withVisibility, bool withNeePlusPlusVisibilityEstimation>
 HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
 	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
@@ -82,29 +91,28 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 				target_function = 0.0f;
 		}
 	}
+	else if constexpr (withNeePlusPlusVisibilityEstimation && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE)
+	{
+		NEEPlusPlusContext context;
+		context.envmap = false;
+		context.point_on_light = point_on_light;
+		context.shaded_point = shading_point;
+
+		target_function *= render_data.nee_plus_plus.estimate_visibility_probability(context, render_data.current_camera);
+	}
 	
 	return target_function;
 }
-
-//template <bool withVisibility>
-//HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
-//	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
-//	int last_hit_primitive_index, RayPayload& ray_payload,
-//	const ReGIRReservoir& reservoir,
-//	Xorshift32Generator& rng)
-//{
-//	return ReGIR_shading_evaluate_target_function<withVisibility>(render_data, 
-//		shading_point, view_direction, shading_normal, geometric_normal,
-//		last_hit_primitive_index, ray_payload,
-//		reservoir.sample.point_on_light, reservoir.sample.light_source_normal.unpack(),
-//		reservoir.sample.emission.unpack(), rng);
-//}
 
 HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by_internal(const HIPRTRenderData& render_data, 
 	ColorRGB32F sample_emission, float3 sample_normal, float3 point_on_light,
 	int hash_grid_cell_index, Xorshift32Generator& rng)
 {
-	return ReGIR_non_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource>(
+	return ReGIR_non_shading_evaluate_target_function<
+		ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, 
+		ReGIR_GridFillTargetFunctionCosineTerm, 
+		ReGIR_GridFillTargetFunctionCosineTermLightSource,
+		ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
 		render_data, hash_grid_cell_index, 
 		sample_emission, sample_normal, point_on_light, 
 		rng) > 0.0f;
@@ -117,13 +125,5 @@ HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData&
 		light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, 
 		hash_grid_cell_index, rng);
 }
-
-//HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const ReGIRSample& light_sample, int hash_grid_cell_index,
-//	Xorshift32Generator& rng)
-//{
-//	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, 
-//		light_sample.emission.unpack(), light_sample.light_source_normal.unpack(), light_sample.point_on_light,
-//		hash_grid_cell_index, rng);
-//}
 
 #endif
