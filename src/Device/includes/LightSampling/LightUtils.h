@@ -286,7 +286,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 continue;
                 
             ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
-            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+            float target_function = ReGIR_shading_evaluate_target_function<
+                ReGIR_ShadingResamplingTargetFunctionVisibility, 
+                ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
                 point_on_light, light_source_normal,

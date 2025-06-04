@@ -22,7 +22,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusFinalizeAccumulation(NEEPlusPlus
     if (x >= nee_plus_plus_data.m_total_number_of_cells)
         return;
 
-    nee_plus_plus_data.copy_accumulation_buffers(pixel_index);
+    // nee_plus_plus_data.copy_accumulation_buffers(pixel_index);
 }
 
 #endif
