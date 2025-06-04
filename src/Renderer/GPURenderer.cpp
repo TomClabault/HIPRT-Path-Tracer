@@ -878,19 +878,9 @@ void GPURenderer::compute_render_pass_times()
 		// Note that we check for 'has_been_compiled()' because if the debug kernel isn't in use,
 		// then the kernel (m_render_thread.get_debug_trace_kernel()) is empty, and if it's empty, then it hasn't
 		// been compiled yet
-		m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY] = m_render_thread.get_debug_trace_kernel().get_last_execution_time();
+		m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY] = m_render_thread.get_debug_trace_kernel().compute_execution_time();
 
-	// The total frame time is the sum of every passes
-	float sum = 0.0f;
-	for (auto pair : m_render_pass_times)
-	{
-		if (pair.first == GPURenderer::ALL_RENDER_PASSES_TIME_KEY)
-			continue;
-
-		sum += pair.second;
-	}
-
-	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = sum;
+	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = m_render_thread.get_render_graph().get_full_frame_time();
 }
 
 std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()

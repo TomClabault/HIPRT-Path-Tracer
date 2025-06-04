@@ -187,7 +187,7 @@ bool GPUKernel::uses_macro(const std::string& name) const
 	return m_used_option_macros.find(name) != m_used_option_macros.end();
 }
 
-float GPUKernel::get_last_execution_time()
+float GPUKernel::compute_execution_time()
 {
 	if (!m_launched_at_least_once)
 		return 0.0f;
@@ -195,7 +195,14 @@ float GPUKernel::get_last_execution_time()
 	float out;
 	OROCHI_CHECK_ERROR(oroEventElapsedTime(&out, m_execution_start_event, m_execution_stop_event));
 
+	m_last_execution_time = out;
+
 	return out;
+}
+
+float GPUKernel::get_last_execution_time()
+{
+	return m_last_execution_time;
 }
 
 bool GPUKernel::has_been_compiled() const
