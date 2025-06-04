@@ -58,7 +58,7 @@
 /**
  * Maximum number of steps for the linear probing of the NEE++ hash grid
  */
-#define NEEPlusPlus_LinearProbingSteps 40
+#define NEEPlusPlus_LinearProbingSteps 4
 
 /**
  * Debug mode for displaying some debug infos about NEE++

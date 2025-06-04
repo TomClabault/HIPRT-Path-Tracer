@@ -42,9 +42,6 @@ struct NEEPlusPlusEntry
 	AtomicType<unsigned int>* total_unoccluded_rays = nullptr;
 	AtomicType<unsigned int>* total_num_rays = nullptr;
 
-	AtomicType<unsigned int>* num_rays_staging = nullptr;
-	AtomicType<unsigned int>* unoccluded_rays_staging = nullptr;
-
 	AtomicType<unsigned int>* checksum_buffer = nullptr;
 };
 
@@ -77,9 +74,6 @@ struct NEEPlusPlusDevice
 	{
 		VISIBILITY_MAP_UNOCCLUDED_COUNT = 0,
 		VISIBILITY_MAP_TOTAL_COUNT = 1,
-
-		ACCUMULATION_BUFFER_UNOCCLUDED_COUNT = 2,
-		ACCUMULATION_BUFFER_TOTAL_COUNT = 3,
 	};
 
 	// Linear buffer that is a packing of 4 buffers:
@@ -146,12 +140,12 @@ struct NEEPlusPlusDevice
 			// One of the two points was outside the scene, cannot cache this
 			return;
 		
-		if (read_buffer<BufferNames::ACCUMULATION_BUFFER_TOTAL_COUNT>(hash_grid_index) >= 255)
+		if (read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index) >= 255)
 			return;
 
 		if (visible)
-			increment_buffer<BufferNames::ACCUMULATION_BUFFER_UNOCCLUDED_COUNT>(hash_grid_index, 1);
-		increment_buffer<BufferNames::ACCUMULATION_BUFFER_TOTAL_COUNT>(hash_grid_index, 1);
+			increment_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(hash_grid_index, 1);
+		increment_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, 1);
 	}
 
 	/**
@@ -212,19 +206,19 @@ struct NEEPlusPlusDevice
 		return estimate_visibility_probability(context, current_camera, trash_matrix_index);
 	}
 
-	/**
-	 * Copies the accumulation buffers to the visibility map (all in the packed buffers)
-	 */
-	HIPRT_HOST_DEVICE void copy_accumulation_buffers(unsigned int hash_grid_index)
-	{
-		unsigned int accumulation_buffer = read_buffer<BufferNames::ACCUMULATION_BUFFER_UNOCCLUDED_COUNT>(hash_grid_index);
-		unsigned int accumulation_buffer_count = read_buffer<BufferNames::ACCUMULATION_BUFFER_TOTAL_COUNT>(hash_grid_index);
+	///**
+	// * Copies the accumulation buffers to the visibility map (all in the packed buffers)
+	// */
+	//HIPRT_HOST_DEVICE void copy_accumulation_buffers(unsigned int hash_grid_index)
+	//{
+	//	unsigned int accumulation_buffer = read_buffer<BufferNames::ACCUMULATION_BUFFER_UNOCCLUDED_COUNT>(hash_grid_index);
+	//	unsigned int accumulation_buffer_count = read_buffer<BufferNames::ACCUMULATION_BUFFER_TOTAL_COUNT>(hash_grid_index);
 
-		set_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(hash_grid_index, accumulation_buffer);
-		set_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, accumulation_buffer_count);
+	//	set_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(hash_grid_index, accumulation_buffer);
+	//	set_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, accumulation_buffer_count);
 
-		return;
-	}
+	//	return;
+	//}
 
 	HIPRT_HOST_DEVICE unsigned int hash_context(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_checksum) const
 	{
@@ -260,10 +254,6 @@ private:
 			return m_entries_buffer.total_unoccluded_rays[hash_grid_index];
 		else if constexpr (bufferName == 1)
 			return m_entries_buffer.total_num_rays[hash_grid_index];
-		else if constexpr (bufferName == 2)
-			return m_entries_buffer.unoccluded_rays_staging[hash_grid_index];
-		else if constexpr (bufferName == 3)
-			return m_entries_buffer.num_rays_staging[hash_grid_index];
 	}
 
 	/**
@@ -278,10 +268,6 @@ private:
 			hippt::atomic_fetch_add(&m_entries_buffer.total_unoccluded_rays[hash_grid_index], value);
 		if constexpr (bufferName == 1)
 			hippt::atomic_fetch_add(&m_entries_buffer.total_num_rays[hash_grid_index], value);
-		if constexpr (bufferName == 2)
-			hippt::atomic_fetch_add(&m_entries_buffer.unoccluded_rays_staging[hash_grid_index], value);
-		if constexpr (bufferName == 3)
-			hippt::atomic_fetch_add(&m_entries_buffer.num_rays_staging[hash_grid_index], value);
 	}
 
 	/**
@@ -297,10 +283,6 @@ private:
 			m_entries_buffer.total_unoccluded_rays[hash_grid_index] = value;
 		if constexpr (bufferName == 1)
 			m_entries_buffer.total_num_rays[hash_grid_index] = value;
-		if constexpr (bufferName == 2)
-			m_entries_buffer.unoccluded_rays_staging[hash_grid_index] = value;
-		if constexpr (bufferName == 3)
-			m_entries_buffer.num_rays_staging[hash_grid_index] = value;
 	}
 };
 
