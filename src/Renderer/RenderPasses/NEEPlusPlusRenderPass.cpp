@@ -91,16 +91,6 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 		// is probably converged enough that it doesn't make a difference anymore
 		render_data.nee_plus_plus.m_update_visibility_map = false;
 
-	/////////////////////
-	/*unsigned int counter = 0;
-	auto checksums = m_nee_plus_plus.checksum_buffer.download_data();
-	for (unsigned int check : checksums)
-		if (check != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-			counter++;
-	
-	printf("Alive GPU: %u | Traced: %llu / %llu, %.3f\n", counter, m_nee_plus_plus.shadow_rays_actually_traced.download_data()[0], m_nee_plus_plus.total_shadow_ray_queries.download_data()[0], m_nee_plus_plus.shadow_rays_actually_traced.download_data()[0] / (float)m_nee_plus_plus.total_shadow_ray_queries.download_data()[0]);*/
-	/////////////////////
-
     return updated;
 }
  
@@ -133,14 +123,13 @@ void NEEPlusPlusRenderPass::update_render_data()
 	}
 }
 
-bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) { return false; }
+bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) { return m_render_pass_used_this_frame; }
 
 void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) 
 { 
 	if (!m_render_pass_used_this_frame)
 		return;
 		
-	// if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f && m_nee_plus_plus.total_num_rays.size() > 0)
 	if (m_nee_plus_plus.total_num_rays.size() > 0)
 	{
 		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
