@@ -53,8 +53,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 247
-#define DEBUG_PIXEL_Y 239
+#define DEBUG_PIXEL_X 166
+#define DEBUG_PIXEL_Y 380
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -232,13 +232,6 @@ void CPURenderer::nee_plus_plus_memcpy_accumulation(int frame_number)
 #else
     // Otherwise, it's a no-op
 #endif
-
-    int counter = 0;
-    for (AtomicType<unsigned int>& ato : m_nee_plus_plus.checksum_buffer)
-        if (ato.load() != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-            counter++;
-
-    printf("Alive: %d\n", counter);
 }
 
 void CPURenderer::gmon_check_for_sets_accumulation()
@@ -530,8 +523,6 @@ void CPURenderer::render()
 #endif
 
         post_sample_update(frame_number);
-
-        printf("%.3f\n", m_nee_plus_plus.shadow_rays_actually_traced.load() / (float)m_nee_plus_plus.total_shadow_ray_queries.load());
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }

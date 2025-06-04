@@ -102,6 +102,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float nb_pdf_a, float pdf_b, float nb_pdf_b)
 {
+    if (pdf_a == 0.0f)
+        return 0.0f;
+
     // Note that we should have a multiplication by nb_pdf_a in the
     // numerator but because we're going to divide by nb_pdf_a in the
     // function evaluation that use this MIS weight according to the
