@@ -1904,6 +1904,17 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
 				"shading a point at path tracing time. This reduces visibility noise.");
 
+			static bool use_nee_plus_plus_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility;
+			if (ImGui::Checkbox("Use NEE++ visibility estimation in target function", &use_nee_plus_plus_vis_shading_resampling))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY, use_nee_plus_plus_vis_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::add_warning("Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during "
+				"shading such that reservoirs that are likely to be occluded will have a lower resampling probability");
+
 			static bool include_bsdf_shading_resampling = ReGIR_ShadingResamplingIncludeBSDF;
 			if (ImGui::Checkbox("Include BSDF in target function", &include_bsdf_shading_resampling))
 			{
