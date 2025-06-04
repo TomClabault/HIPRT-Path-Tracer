@@ -269,6 +269,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
 
                 float mis_weight = balance_heuristic(light_pdf_solid_angle_for_MIS, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_pdf_area_measure;
+                sanity_check<true>(render_data, ColorRGB32F(candidate_weight), 0, 0);
 
                 light_sample.target_function = target_function;
             }
