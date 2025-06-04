@@ -92,13 +92,13 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 		render_data.nee_plus_plus.m_update_visibility_map = false;
 
 	/////////////////////
-	unsigned int counter = 0;
+	/*unsigned int counter = 0;
 	auto checksums = m_nee_plus_plus.checksum_buffer.download_data();
 	for (unsigned int check : checksums)
-	if (check != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-	counter++;
+		if (check != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+			counter++;
 	
-	printf("Alive GPU: %u | Traced: %llu / %llu, %.3f\n", counter, m_nee_plus_plus.shadow_rays_actually_traced.download_data()[0], m_nee_plus_plus.total_shadow_ray_queries.download_data()[0], m_nee_plus_plus.shadow_rays_actually_traced.download_data()[0] / (float)m_nee_plus_plus.total_shadow_ray_queries.download_data()[0]);
+	printf("Alive GPU: %u | Traced: %llu / %llu, %.3f\n", counter, m_nee_plus_plus.shadow_rays_actually_traced.download_data()[0], m_nee_plus_plus.total_shadow_ray_queries.download_data()[0], m_nee_plus_plus.shadow_rays_actually_traced.download_data()[0] / (float)m_nee_plus_plus.total_shadow_ray_queries.download_data()[0]);*/
 	/////////////////////
 
     return updated;

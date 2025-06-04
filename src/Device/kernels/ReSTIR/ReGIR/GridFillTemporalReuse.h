@@ -34,11 +34,15 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 
         float target_function;
         if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
-            target_function = ReGIR_non_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource>(render_data, hash_grid_cell_index,
+            target_function = ReGIR_non_shading_evaluate_target_function<
+            ReGIR_GridFillTargetFunctionVisibility, 
+            ReGIR_GridFillTargetFunctionCosineTerm, 
+            ReGIR_GridFillTargetFunctionCosineTermLightSource,
+            ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, hash_grid_cell_index,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         else
             // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-            target_function = ReGIR_non_shading_evaluate_target_function<false, false, false>(render_data, hash_grid_cell_index, 
+            target_function = ReGIR_non_shading_evaluate_target_function<false, false, false, false>(render_data, hash_grid_cell_index, 
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
 
         float source_pdf = light_sample.area_measure_pdf;

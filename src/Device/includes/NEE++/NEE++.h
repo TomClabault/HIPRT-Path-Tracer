@@ -71,7 +71,7 @@ struct NEEPlusPlusDevice
 
 	// After how many samples to stop updating the visibility map
 	// (because it's probably converged enough)
-	int m_stop_update_samples = 64000000;
+	int m_stop_update_samples = 256;
 
 	enum BufferNames : unsigned int
 	{
@@ -125,15 +125,13 @@ struct NEEPlusPlusDevice
 	// ...
 	NEEPlusPlusEntry m_entries_buffer;
 
-	// TODO deallocate accumulation buffers if not updating the vis map anymore
-
 	// If a voxel-to-voxel unocclusion probability is higher than that, the voxel will be considered unoccluded
 	// and so a shadow ray will be traced. This is to avoid trusting voxel that have a low probability of
 	// being unoccluded
 	//
 	// 0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray
 	float m_confidence_threshold = 0.025f;
-	float m_minimum_unoccluded_proba = 0.025f;
+	float m_minimum_unoccluded_proba = 0.0f;
 
 	// Whether or not to count the number of shadow rays actually traced vs. the number of shadow
 	// queries made. This is used in 'evaluate_shadow_ray_nee_plus_plus()'

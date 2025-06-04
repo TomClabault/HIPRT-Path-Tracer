@@ -1798,6 +1798,21 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"Probably too expensive to be efficient.");
 
+			static bool nee_plus_plus_visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation;
+			if (ImGui::Checkbox("Use NEE++ visibility in target function", &nee_plus_plus_visibility_grid_fill_target_function))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION, nee_plus_plus_visibility_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.");
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+			{
+				ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
+				use_next_event_estimation_checkbox();
+			}
+
 			static bool cosine_term_grid_fill_target_function = ReGIR_GridFillTargetFunctionCosineTerm;
 			if (ImGui::Checkbox("Use cosine term in target function", &cosine_term_grid_fill_target_function))
 			{
@@ -2692,17 +2707,10 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 	{
 		ImGui::TreePush("Use NEE++ Tree");
 
-		bool use_nee_plus_plus = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS);
-		if (ImGui::Checkbox("Use NEE++", &use_nee_plus_plus))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS, use_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
+		use_next_event_estimation_checkbox();
 		ImGuiRenderer::show_help_marker("Whether or not to use NEE++ [Guo et al., 2020] features at all.");
 
-		if (use_nee_plus_plus)
+		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		{
 			ImGui::TreePush("NEE++ Settings Tree");
 
@@ -2843,6 +2851,26 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 		ImGui::TreePop();
 	}
+}
+
+bool ImGuiSettingsWindow::use_next_event_estimation_checkbox()
+{
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	bool use_nee_plus_plus = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS);
+	if (ImGui::Checkbox("Use NEE++", &use_nee_plus_plus))
+	{
+		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS, use_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+		m_renderer->recompile_kernels();
+		m_render_window->set_render_dirty(true);
+
+		return true;
+	}
+
+	return false;
 }
 
 void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()

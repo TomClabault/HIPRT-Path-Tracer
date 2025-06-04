@@ -73,10 +73,23 @@
 #define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
 
 /**
+ * Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.
+ */
+#define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_TRUE
+
+/**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */
 #define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_FALSE
+
+/**
+ * Wehther or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during
+ * shading such that reservoirs that are likely to be occluded will have a lower resampling probability
+ * 
+ * This option is exclusive with ReGIR_ShadingResamplingTargetFunctionVisibility, the latter taking precedence.
+ */
+#define ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to include the BSDF at the shading point in the resampling target function when
