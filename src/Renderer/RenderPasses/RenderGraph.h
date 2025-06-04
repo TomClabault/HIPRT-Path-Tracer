@@ -38,6 +38,8 @@ public:
 	virtual void compute_render_times() override;
 	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;
 
+	virtual float get_full_frame_time() override;
+
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
