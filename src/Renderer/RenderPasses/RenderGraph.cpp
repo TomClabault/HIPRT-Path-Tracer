@@ -145,6 +145,17 @@ void RenderGraph::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 			render_pass.second->update_perf_metrics(perf_metrics);
 }
 
+float RenderGraph::get_full_frame_time()
+{
+	float frame_time_sum = 0.0f;
+
+	for (auto& render_pass : m_render_passes)
+		if (m_render_pass_effectively_launched_this_frame[render_pass.second.get()])
+			frame_time_sum += render_pass.second->get_full_frame_time();
+
+	return frame_time_sum;
+}
+
 std::map<std::string, std::shared_ptr<GPUKernel>> RenderGraph::get_all_kernels() 
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> out;

@@ -102,6 +102,7 @@ public:
 	/**
 	 * Returns the time taken for the last execution of this kernel in milliseconds
 	 */
+	float compute_execution_time();
 	float get_last_execution_time();
 
 	/**
@@ -142,7 +143,7 @@ private:
 	// GPU events to time the execution time
 	oroEvent_t m_execution_start_event = nullptr;
 	oroEvent_t m_execution_stop_event = nullptr;
-	float m_last_execution_time = -1.0f;
+	float m_last_execution_time = 0.0f;
 
 	// Whether or not the macros used by this kernel have been modified recently.
 	// Only adding new macros / removing macros invalidate the macros.

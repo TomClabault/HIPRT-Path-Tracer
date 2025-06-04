@@ -687,13 +687,12 @@ void ReSTIRDIRenderPass::compute_render_times()
 	ReSTIRDISettings& restir_di_settings = render_data.render_settings.restir_di_settings;
 
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
-		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_last_execution_time();
+		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->compute_execution_time();
 
 	ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->get_last_execution_time();
-
 	if (restir_di_settings.do_fused_spatiotemporal)
 	{
-		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_last_execution_time();
+		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->compute_execution_time();
 
 		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes > 1 && m_spatial_reuse_events_recorded)
 			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start, m_spatial_reuse_time_stop));
@@ -701,7 +700,7 @@ void ReSTIRDIRenderPass::compute_render_times()
 	else
 	{
 		if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-			ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->get_last_execution_time();
+			ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->compute_execution_time();
 
 		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes > 1 && m_spatial_reuse_events_recorded)
 			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start, m_spatial_reuse_time_stop));

@@ -229,7 +229,7 @@ public:
 	 * and then the execution time of this render pass should be set in the 'ms_time_per_pass' map of the renderer.
 	 * 
 	 * For example, for the light presampling pass of ReSTIR DI: 
-	 * ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_last_execution_time();
+	 * ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].compute_execution_time();
 	 * 
 	 * The key used in the map can be arbitrary but should be unique. The practice used in this
 	 * codebase is to define the keys in the render pass itself as "static const std::string" and
@@ -255,6 +255,12 @@ public:
 	 * is properly written (i.e. only returns the kernels actually being used by the render pass)
 	 */
 	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
+
+	/**
+	 * Loops over all the kernels of this render pass and sums the kernel times of all the kernels and
+	 * returns the sum
+	 */
+	virtual float get_full_frame_time();
 
 	/**
 	 * Returns a map of all the kernels of this render pass

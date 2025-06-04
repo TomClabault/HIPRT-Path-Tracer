@@ -42,7 +42,7 @@ void RenderPass::compute_render_times()
 	// render pass times of the renderer
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
 	for (auto& name_to_kernel : get_all_kernels())
-		render_pass_times[name_to_kernel.first] = m_kernels[name_to_kernel.first]->get_last_execution_time();
+		render_pass_times[name_to_kernel.first] = m_kernels[name_to_kernel.first]->compute_execution_time();
 }
 
 void RenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
@@ -56,6 +56,16 @@ void RenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer>
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
 	for (auto& name_to_kernel : get_all_kernels())
 		perf_metrics->add_value(name_to_kernel.first, render_pass_times[name_to_kernel.first]);
+}
+
+float RenderPass::get_full_frame_time()
+{
+	float sum = 0.0f;
+
+	for (auto& name_to_kernel : get_all_kernels())
+		sum += name_to_kernel.second->get_last_execution_time();
+
+	return sum;
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> RenderPass::get_all_kernels()
