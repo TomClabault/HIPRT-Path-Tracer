@@ -1912,7 +1912,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			ImGuiRenderer::add_warning("Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during "
+			ImGuiRenderer::show_help_marker("Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during "
 				"shading such that reservoirs that are likely to be occluded will have a lower resampling probability");
 
 			static bool include_bsdf_shading_resampling = ReGIR_ShadingResamplingIncludeBSDF;
