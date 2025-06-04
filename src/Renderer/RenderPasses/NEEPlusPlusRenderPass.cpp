@@ -102,8 +102,8 @@ void NEEPlusPlusRenderPass::update_render_data()
     {
 	    render_data.nee_plus_plus.m_entries_buffer.total_num_rays = m_nee_plus_plus.total_num_rays.get_atomic_device_pointer();
 	    render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = m_nee_plus_plus.total_unoccluded_rays.get_atomic_device_pointer();
-	    render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = m_nee_plus_plus.num_rays_staging.get_atomic_device_pointer();
-	    render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = m_nee_plus_plus.unoccluded_rays_staging.get_atomic_device_pointer();
+	    //render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = m_nee_plus_plus.num_rays_staging.get_atomic_device_pointer();
+	    //render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = m_nee_plus_plus.unoccluded_rays_staging.get_atomic_device_pointer();
 	    render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = m_nee_plus_plus.checksum_buffer.get_atomic_device_pointer();
 		render_data.nee_plus_plus.m_total_number_of_cells = 80000000;
 
@@ -114,8 +114,8 @@ void NEEPlusPlusRenderPass::update_render_data()
     {
 		render_data.nee_plus_plus.m_entries_buffer.total_num_rays = nullptr;
 	    render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = nullptr;
-	    render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = nullptr;
-	    render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = nullptr;
+	    //render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = nullptr;
+	    //render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = nullptr;
 	    render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = nullptr;
 
 		render_data.nee_plus_plus.shadow_rays_actually_traced = nullptr;
@@ -125,19 +125,11 @@ void NEEPlusPlusRenderPass::update_render_data()
 
 bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) { return m_render_pass_used_this_frame; }
 
-void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) 
-{ 
+void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+{
 	if (!m_render_pass_used_this_frame)
 		return;
 		
-	if (m_nee_plus_plus.total_num_rays.size() > 0)
-	{
-		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
-		// buffers to the visibilit map, we have to use a kernel that the does unpacking-copy
-		void* launch_args[] = { &render_data.nee_plus_plus };
-		m_kernels[NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID]->launch_asynchronous(256, 1, m_nee_plus_plus.total_num_rays.size(), 1, launch_args, m_renderer->get_main_stream());
-	}
-
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.total_shadow_ray_queries_cpu, m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 }

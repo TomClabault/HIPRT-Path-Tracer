@@ -1444,8 +1444,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						}
 
 						ImGui::TreePop();
-
-						break;
 					}
 
 					ImGui::TreePop(); // ReSTIR DI Settings tree
@@ -1807,7 +1805,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.");
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION) == KERNEL_OPTION_TRUE)
 			{
 				ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
 				use_next_event_estimation_checkbox();
