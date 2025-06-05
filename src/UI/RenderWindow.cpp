@@ -53,9 +53,13 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - We deallocate the emissive triangle index of the ReGIR reservoir if not using ReSTIR DI
+// - Should we have something to limit the life length of an NEE++ grid cell? So that we can remove cells unused and keep the grid size in check
 // - Trry to disable canonical and see if it converges quicker
 //		- It does -----> We need to find some better MIS weights for the canonical sample
 //		- Try to downweigjt canonical MIS weight instead of 1 / M
+// - Interrupt target function evaluation in ReGIR if the cosine term drops to zero such that we don't fill the NEE hash grid if the light is back facing for example
+// - Try to add a BRDF sample in the shading resampling to have proper MIS
 // - Can we compact the cell alive buffer to 1 / 32 of its size ? 1 bit per cell alive flag
 // - Lambertian BRDF goes through lampshade in white room but principled BSDF doesn't
 // - Can we keep the grid of reservoirs from the last frame to pick them during shading to reduce correlations? Only memory cost but it's ok
