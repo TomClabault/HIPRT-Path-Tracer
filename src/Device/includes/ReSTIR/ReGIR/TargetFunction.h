@@ -34,6 +34,9 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
 	if constexpr (withCosineTermLightSource)
 		target_function *= compute_cosine_term_at_light_source(sample_normal, -to_light_direction);
 
+	if (target_function <= 0.0f)
+		return 0.0f;
+
 	if constexpr (includeVisibility)
 	{
 		if (target_function > 0.0f)
@@ -78,6 +81,8 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 	float geometry_term = compute_cosine_term_at_light_source(light_source_normal, -to_light_direction) / hippt::square(distance_to_light);
 
 	float target_function = (bsdf_color * light_emission * cosine_term * geometry_term).luminance();
+	if (target_function <= 0.0f)
+		return 0.0f;
 
 	if constexpr (withVisibility)
 	{
