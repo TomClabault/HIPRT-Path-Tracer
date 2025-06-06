@@ -9,15 +9,11 @@
 #include "Threads/ThreadFunctions.h"
  
 const std::string NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME = "NEE++ Render Pass";
-const std::string NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID = "NEE++ Finalize accumulation";
 
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass() : NEEPlusPlusRenderPass(nullptr) {}
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer) : NEEPlusPlusRenderPass(renderer, NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME) {}
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, const std::string& name) : RenderPass(renderer, name) 
 {
-    m_kernels[NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID] = std::make_shared<GPUKernel>();
-	m_kernels[NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/NEE++/NEEPlusPlusFinalizeAccumulation.h");
-    m_kernels[NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID]->set_kernel_function_name("NEEPlusPlusFinalizeAccumulation");
 }
 
 bool NEEPlusPlusRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -25,11 +21,7 @@ bool NEEPlusPlusRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOr
 	if (!is_render_pass_used())
 		return false;
 
-	bool finalize_accumulation_kernel_compiled = m_kernels[NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID]->has_been_compiled();
-	if (!finalize_accumulation_kernel_compiled)
-		m_kernels[NEEPlusPlusRenderPass::FINALIZE_ACCUMULATION_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-
-	return !finalize_accumulation_kernel_compiled;
+	return false;
 }
  
 bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
@@ -46,8 +38,6 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 		{
 			m_nee_plus_plus.total_num_rays.free();
 			m_nee_plus_plus.total_unoccluded_rays.free();
-			m_nee_plus_plus.num_rays_staging.free();
-			m_nee_plus_plus.unoccluded_rays_staging.free();
 			m_nee_plus_plus.checksum_buffer.free();
 
 			m_nee_plus_plus.total_shadow_ray_queries.free();
@@ -58,13 +48,11 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 	}
 
 	// Allocating / deallocating buffers
-	if (m_nee_plus_plus.total_num_rays.size() != 80000000)
+	if (m_nee_plus_plus.total_num_rays.size() != 300000001)
 	{
-		m_nee_plus_plus.total_num_rays.resize(80000000);
-		m_nee_plus_plus.total_unoccluded_rays.resize(80000000);
-		m_nee_plus_plus.num_rays_staging.resize(80000000);
-		m_nee_plus_plus.unoccluded_rays_staging.resize(80000000);
-		m_nee_plus_plus.checksum_buffer.resize(80000000);
+		m_nee_plus_plus.total_num_rays.resize(300000001);
+		m_nee_plus_plus.total_unoccluded_rays.resize(300000001);
+		m_nee_plus_plus.checksum_buffer.resize(300000001);
 		
 		m_nee_plus_plus.shadow_rays_actually_traced.resize(1);
 		m_nee_plus_plus.total_shadow_ray_queries.resize(1);
@@ -78,8 +66,6 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 		// Clearing the visibility map by memseting everything to 0
 		m_nee_plus_plus.total_num_rays.memset_whole_buffer(0);
 		m_nee_plus_plus.total_unoccluded_rays.memset_whole_buffer(0);
-		m_nee_plus_plus.num_rays_staging.memset_whole_buffer(0);
-		m_nee_plus_plus.unoccluded_rays_staging.memset_whole_buffer(0);
 		m_nee_plus_plus.checksum_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
 		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(0);
@@ -102,10 +88,8 @@ void NEEPlusPlusRenderPass::update_render_data()
     {
 	    render_data.nee_plus_plus.m_entries_buffer.total_num_rays = m_nee_plus_plus.total_num_rays.get_atomic_device_pointer();
 	    render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = m_nee_plus_plus.total_unoccluded_rays.get_atomic_device_pointer();
-	    //render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = m_nee_plus_plus.num_rays_staging.get_atomic_device_pointer();
-	    //render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = m_nee_plus_plus.unoccluded_rays_staging.get_atomic_device_pointer();
 	    render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = m_nee_plus_plus.checksum_buffer.get_atomic_device_pointer();
-		render_data.nee_plus_plus.m_total_number_of_cells = 80000000;
+		render_data.nee_plus_plus.m_total_number_of_cells = 300000001;
 
 	    render_data.nee_plus_plus.shadow_rays_actually_traced = m_nee_plus_plus.shadow_rays_actually_traced.get_atomic_device_pointer();
     	render_data.nee_plus_plus.total_shadow_ray_queries = m_nee_plus_plus.total_shadow_ray_queries.get_atomic_device_pointer();
@@ -114,8 +98,6 @@ void NEEPlusPlusRenderPass::update_render_data()
     {
 		render_data.nee_plus_plus.m_entries_buffer.total_num_rays = nullptr;
 	    render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = nullptr;
-	    //render_data.nee_plus_plus.m_entries_buffer.num_rays_staging = nullptr;
-	    //render_data.nee_plus_plus.m_entries_buffer.unoccluded_rays_staging = nullptr;
 	    render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = nullptr;
 
 		render_data.nee_plus_plus.shadow_rays_actually_traced = nullptr;
@@ -132,6 +114,17 @@ void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_dat
 		
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.total_shadow_ray_queries_cpu, m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
+
+	if (render_data.render_settings.sample_number % 50 == 0) 
+	{
+		std::size_t counter = 0;
+		auto vec = m_nee_plus_plus.checksum_buffer.download_data();
+		for (auto check : vec)
+			if (check != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+				counter++;
+
+		printf("NEE++: %zu cells have been updated this frame.\n", counter);
+	}
 }
  
 void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
@@ -168,5 +161,5 @@ NEEPlusPlusGPUData& NEEPlusPlusRenderPass::get_nee_plus_plus_data()
 
 std::size_t NEEPlusPlusRenderPass::get_vram_usage_bytes() const
 {
-	return m_nee_plus_plus.total_unoccluded_rays.get_byte_size() + m_nee_plus_plus.total_num_rays.get_byte_size() + m_nee_plus_plus.num_rays_staging.get_byte_size() + m_nee_plus_plus.unoccluded_rays_staging.get_byte_size();
+	return m_nee_plus_plus.total_unoccluded_rays.get_byte_size() + m_nee_plus_plus.total_num_rays.get_byte_size();
 }

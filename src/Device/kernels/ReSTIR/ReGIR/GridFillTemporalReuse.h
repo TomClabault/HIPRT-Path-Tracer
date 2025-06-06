@@ -108,7 +108,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index);
         
         // TODO do we need this since we're only dispatching for alive grid cells anyways with the compaction?
-        if (regir_settings.hash_cell_data.grid_cells_alive[hash_grid_cell_index] == 0)
+        if (regir_settings.hash_cell_data.grid_cell_alive[hash_grid_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             

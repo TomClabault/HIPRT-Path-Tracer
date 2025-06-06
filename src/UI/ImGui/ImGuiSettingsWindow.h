@@ -52,7 +52,7 @@ private:
 	template <bool IsReSTIRGI>
 	void draw_ReSTIR_bias_correction_panel();
 	void draw_next_event_estimation_plus_plus_panel();
-	bool use_next_event_estimation_checkbox();
+	bool use_next_event_estimation_checkbox(const std::string& text = "Use NEE++");
 	void draw_principled_bsdf_energy_conservation();
 	void display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options);
 

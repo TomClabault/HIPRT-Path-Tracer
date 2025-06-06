@@ -418,11 +418,11 @@ struct ReGIRSettings
 
 		// Because we just inserted into that grid cell, it is now alive
 		// Only go through all that atomic stuff if the cell isn't alive
-		if (hash_cell_data_to_update.grid_cells_alive[hash_grid_cell_index] == 0)
+		if (hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index] == 0)
 		{
 			// TODO is this atomic needed since we can only be here if the cell was unoccoupied?
 
-			if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.grid_cells_alive[hash_grid_cell_index], 0u, 1u) == 0u)
+			if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index], 0u, 1u) == 0u)
 			{
 				unsigned int cell_alive_index = hippt::atomic_fetch_add(hash_cell_data_to_update.grid_cells_alive_count, 1u);
 

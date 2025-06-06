@@ -6,6 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_LIGHT_SAMPLE_INFORMATION_H
 #define HOST_DEVICE_COMMON_LIGHT_SAMPLE_INFORMATION_H
 
+#include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
 #include "Device/includes/LightSampling/PDFConversion.h"
 
 #include "HostDeviceCommon/Color.h"
@@ -22,6 +23,10 @@ struct LightSampleInformation
     float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
 
     float area_measure_pdf = 0.0f;
+
+    // The light sample may come from BSDF sampling (with ReGIR mostly) and so we may have
+	// information about the lobe that was sampled.
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 };
 
 #endif

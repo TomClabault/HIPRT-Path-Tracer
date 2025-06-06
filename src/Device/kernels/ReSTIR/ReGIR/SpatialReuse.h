@@ -40,7 +40,7 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
         if (neighbor_hash_grid_cell_index_in_grid == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
             // Neighbor is outside of the grid
             neighbor_invalid = true;
-        else if (regir_settings.hash_cell_data.grid_cells_alive[neighbor_hash_grid_cell_index_in_grid] == 0)
+        else if (regir_settings.hash_cell_data.grid_cell_alive[neighbor_hash_grid_cell_index_in_grid] == 0)
             // Neighbor cell isn't alive, let's not reuse it
             neighbor_invalid = true;
         else
@@ -270,7 +270,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
 
         float3 point_in_cell = regir_settings.hash_cell_data.world_points[hash_grid_cell_index];
 
-        if (regir_settings.hash_cell_data.grid_cells_alive[hash_grid_cell_index] == 0)
+        if (regir_settings.hash_cell_data.grid_cell_alive[hash_grid_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             

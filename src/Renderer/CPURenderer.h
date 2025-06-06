@@ -184,7 +184,7 @@ private:
         ReGIRHashGridSoAHost<std::vector> supersampling_grid;
         ReGIRHashCellDataSoAHost<std::vector> hash_cell_data;
 
-        std::vector<AtomicType<unsigned int>> grid_cells_alive;
+        std::vector<AtomicType<unsigned int>> grid_cell_alive;
 	    // std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
         std::vector<unsigned int> grid_cells_alive_list;
         AtomicType<unsigned int> grid_cells_alive_count;

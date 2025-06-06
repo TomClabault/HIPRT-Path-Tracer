@@ -15,9 +15,6 @@ struct NEEPlusPlusGPUData
 	OrochiBuffer<unsigned int> total_unoccluded_rays;
 	OrochiBuffer<unsigned int> total_num_rays;
 
-	OrochiBuffer<unsigned int> num_rays_staging;
-	OrochiBuffer<unsigned int> unoccluded_rays_staging;
-
 	OrochiBuffer<unsigned int> checksum_buffer;
 	
 	// Counters on the GPU for tracking 
