@@ -164,7 +164,7 @@
  * below isn't reached by that light that is reflected by the specular layer), it is the specular layer
  * that will be sampled more often.
  */
-#define PrincipledBSDFSampleGlossyBasedOnFresnel KERNEL_OPTION_TRUE
+#define PrincipledBSDFSampleGlossyBasedOnFresnel KERNEL_OPTION_FALSE
 
 /**
  * Same PrincipledBSDFSampleGlossyBasedOnFresnel but for the coat layer

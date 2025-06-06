@@ -12,14 +12,8 @@
 
 struct ReGIRSample
 {
-	//Float3xLengthUint10bPacked emission;
 	int emissive_triangle_index = -1; // Only needed for ReSTIR DI
 	unsigned int random_seed = 0;
-
-	/*float light_area = 0.0f;
-	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
-
-	Octahedral24BitNormalPadded32b light_source_normal;*/
 
 	// Note: the target function isn't stored in the sample SoA, it's just there during the sampling process
 	float target_function = 0.0f;
@@ -38,10 +32,6 @@ struct ReGIRReservoir
 
 		if (rng() < resampling_weight / weight_sum)
 		{
-			//sample.light_source_normal = Octahedral24BitNormalPadded32b::pack_static(light_sample.light_source_normal);
-			//sample.point_on_light = light_sample.point_on_light;
-			//sample.emission.pack(light_sample.emission);
-			//sample.light_area = light_sample.light_area;
 			sample.emissive_triangle_index = light_sample.emissive_triangle_index;
 			sample.random_seed = random_seed;
 

@@ -1808,7 +1808,11 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION) == KERNEL_OPTION_TRUE)
 			{
 				ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
-				use_next_event_estimation_checkbox();
+
+				ImGui::TreePush("Use NEE++ ReGIR Tree");
+				use_next_event_estimation_checkbox("Enable NEE++");
+				ImGuiRenderer::show_help_marker("Shortcut for enabling for enabling NEE++");
+				ImGui::TreePop();
 			}
 
 			static bool cosine_term_grid_fill_target_function = ReGIR_GridFillTargetFunctionCosineTerm;
@@ -2862,14 +2866,14 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 	}
 }
 
-bool ImGuiSettingsWindow::use_next_event_estimation_checkbox()
+bool ImGuiSettingsWindow::use_next_event_estimation_checkbox(const std::string& text)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	bool use_nee_plus_plus = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS);
-	if (ImGui::Checkbox("Use NEE++", &use_nee_plus_plus))
+	if (ImGui::Checkbox(text.c_str(), &use_nee_plus_plus))
 	{
 		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS, use_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
