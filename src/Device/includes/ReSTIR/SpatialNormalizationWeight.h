@@ -145,7 +145,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsRe
 
 		for (int neighbor = 0; neighbor < ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).reuse_neighbor_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, center_pixel_coords, cos_sin_theta_rotation);
+			int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, center_pixel_coords, cos_sin_theta_rotation, random_number_generator);
 			if (neighbor_pixel_index == -1)
 				// Invalid neighbor
 				continue;
