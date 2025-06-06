@@ -410,11 +410,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         F += ColorRGB32F(hippt::square(1.0f - F.r) * F.r / (1.0f - hippt::square(F.r)));
 
     float f_reflect_proba = F.luminance();
-    if (bsdf_context.current_bounce == 0)
-        // On the first bounce, we're giving reflection a minimum of 25% chance
-        // to reduce variance on glass surfaces whose color is dominated by reflection
-        // (a window reflecting the envmap for example)
-        f_reflect_proba = hippt::max(0.25f, f_reflect_proba);
 
     ColorRGB32F color;
     if (reflecting)
@@ -549,11 +544,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const HIPRTRenderD
         F += ColorRGB32F(hippt::square(1.0f - F.r) * F.r / (1.0f - hippt::square(F.r)));
 
     float f_reflect_proba = F.luminance();
-    if (bsdf_context.current_bounce == 0)
-        // On the first bounce, we're giving reflection a minimum of 25% chance
-        // to reduce variance on glass surfaces whose color is dominated by reflection
-        // (a window reflecting the envmap for example)
-        f_reflect_proba = hippt::max(0.25f, f_reflect_proba);
 
     float rand_1 = random_number_generator();
 

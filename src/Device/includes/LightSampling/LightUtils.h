@@ -15,6 +15,25 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
+HIPRT_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)
+{
+    int triangle_index_start = triangle_index * 3;
+
+    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 0]];
+    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 1]];
+    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 2]];
+
+    float3 AB = vertex_B - vertex_A;
+    float3 AC = vertex_C - vertex_A;
+
+    return hippt::cross(AB, AC);
+}
+
+HIPRT_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
+{
+    return render_data.buffers.triangles_areas[triangle_index];
+}
+
 HIPRT_DEVICE ColorRGB32F get_emission_of_triangle_from_index(const HIPRTRenderData& render_data, int triangle_index)
 {
     return render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[triangle_index]);
@@ -242,7 +261,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
     float3 selected_point_on_light;
     float3 selected_light_source_normal;
-    float selected_light_source_area;
+    float selected_light_source_area = 0.0f;
+    BSDFIncidentLightInfo selected_incident_light_info = BSDFIncidentLightInfo::NO_INFO;
     ColorRGB32F selected_emission;
 
     ReGIRReservoir out_reservoir;
@@ -293,6 +313,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 last_hit_primitive_index, ray_payload,
                 point_on_light, light_source_normal,
                 emission, random_number_generator);
+
             float mis_weight = 1.0f;
 
             if (out_reservoir.stream_reservoir(mis_weight, target_function, non_canonical_reservoir, random_number_generator))
@@ -363,6 +384,58 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 }
             }
         }
+
+        //out_need_fallback_sampling = false;
+
+        //float bsdf_sample_pdf;
+        //float3 sampled_bsdf_direction;
+        //BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+
+        //unsigned int SEED_BEFORE = random_number_generator.m_state.seed;
+        //random_number_generator.m_state.seed = SEED_BEFORE;
+
+        //BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+        //ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+
+        //bool intersection_found = false;
+        //ShadowLightRayHitInfo shadow_light_ray_hit_info;
+        //if (bsdf_sample_pdf > 0.0f)
+        //{
+        //    hiprtRay new_ray;
+        //    new_ray.origin = shading_point;
+        //    new_ray.direction = sampled_bsdf_direction;
+
+        //    intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
+
+        //    // Checking that we did hit something and if we hit something,
+        //    // it needs to be emissive
+        //    if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+        //    {
+        //        float cosine_term = hippt::abs(hippt::dot(shading_normal, sampled_bsdf_direction));
+        //        float mis_weight = 1.0f;
+        //        float target_function = (bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission).luminance();
+        //        float bsdf_sample_pdf_area_measure = solid_angle_to_area_pdf(bsdf_sample_pdf, shadow_light_ray_hit_info.hit_distance, compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction));
+
+        //        LightSampleInformation light_sample;
+        //        light_sample.area_measure_pdf = bsdf_sample_pdf_area_measure;
+        //        light_sample.emission = shadow_light_ray_hit_info.hit_emission;
+        //        light_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
+        //        light_sample.light_area = triangle_area(render_data, shadow_light_ray_hit_info.hit_prim_index);
+        //        light_sample.light_source_normal = shadow_light_ray_hit_info.hit_geometric_normal;
+        //        light_sample.point_on_light = shading_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+
+        //        if (out_reservoir.stream_sample(mis_weight, target_function, bsdf_sample_pdf_area_measure, 0, light_sample, random_number_generator))
+        //        {
+        //            selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors;
+
+        //            selected_point_on_light = light_sample.point_on_light;
+        //            selected_light_source_normal = shadow_light_ray_hit_info.hit_geometric_normal;
+        //            selected_light_source_area = light_sample.light_area;
+        //            selected_emission = shadow_light_ray_hit_info.hit_emission;
+        //            selected_incident_light_info = incident_light_info;
+        //        }
+        //    }
+        //}
     }
 
     if (out_reservoir.weight_sum == 0.0f || out_need_fallback_sampling)
@@ -416,13 +489,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
     LightSampleInformation out_sample;
 
-    // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF, so we invert it
+    // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF (UCW), so we invert it
     out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
     out_sample.emissive_triangle_index = out_reservoir.sample.emissive_triangle_index;
-    out_sample.emission = selected_emission;// out_reservoir.sample.emission.unpack();
-    out_sample.light_area = selected_light_source_area;// out_reservoir.sample.light_area;
-    out_sample.light_source_normal = selected_light_source_normal;// out_reservoir.sample.light_source_normal.unpack();
-    out_sample.point_on_light = selected_point_on_light;// out_reservoir.sample.point_on_light;
+    out_sample.emission = selected_emission;
+    out_sample.light_area = selected_light_source_area;
+    out_sample.light_source_normal = selected_light_source_normal;
+    out_sample.point_on_light = selected_point_on_light;
+    out_sample.incident_light_info = selected_incident_light_info;
 
     return out_sample;
 }
@@ -484,25 +558,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(co
         make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f),
         -1, dummy_ray_payload,
         random_number_generator);
-}
-
-HIPRT_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)
-{
-    int triangle_index_start = triangle_index * 3;
-
-    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 0]];
-    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 1]];
-    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 2]];
-
-    float3 AB = vertex_B - vertex_A;
-    float3 AC = vertex_C - vertex_A;
-
-    return hippt::cross(AB, AC);
-}
-
-HIPRT_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
-{
-	return render_data.buffers.triangles_areas[triangle_index];
 }
 
 /**

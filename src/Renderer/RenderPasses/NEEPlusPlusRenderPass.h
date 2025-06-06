@@ -13,7 +13,6 @@ class NEEPlusPlusRenderPass : public RenderPass
 {
 public:
     static const std::string NEE_PLUS_PLUS_RENDER_PASS_NAME;
-    static const std::string FINALIZE_ACCUMULATION_KERNEL_ID;
  
     NEEPlusPlusRenderPass();
     NEEPlusPlusRenderPass(GPURenderer* renderer);

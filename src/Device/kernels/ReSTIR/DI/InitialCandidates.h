@@ -252,7 +252,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
                     // (same measure for the BSDF PDF and the light PDF)
                     //
                     // Removing the envmap proba to avoid double counting it below in
-                    // 'light_pdf_solid_angle_for_MIS *= (1.0f - envmap_candidate_probability)'
                     float light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure / (1.0f - envmap_candidate_probability), distance_to_light, compute_cosine_term_at_light_source(light_normal, -to_light_direction));
 
                     ColorRGB32F light_emission = ReSTIR_DI_get_light_sample_emission(render_data, light_sample, to_light_direction);

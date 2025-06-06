@@ -85,7 +85,7 @@ struct ReGIRHashCellDataSoAHost
 		hash_cell_data.world_normals = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();
 		hash_cell_data.hash_keys = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>();
 
-		hash_cell_data.grid_cells_alive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>();
+		hash_cell_data.grid_cell_alive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>();
 		hash_cell_data.grid_cells_alive_list = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 
 		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)

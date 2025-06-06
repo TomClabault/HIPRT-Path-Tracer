@@ -58,7 +58,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& r
         {
             float bsdf_pdf;
 
-            BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+            BSDFIncidentLightInfo incident_light_info = light_sample.incident_light_info;
             BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
             ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
@@ -83,7 +83,6 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& r
 
 HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
-
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
