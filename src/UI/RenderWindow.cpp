@@ -53,7 +53,14 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - We deallocate the emissive triangle index of the ReGIR reservoir if not using ReSTIR DI
+// - Only need 1 bit per cell here for 'grid cells alive': whether or not a given grid cell is alive
+// - Quantize ahsh grid cell data .sum_points: we don't need the precision since this is just an average for getting an approximate center of cell
+// - Light to light grid cells should be cached in the same hash cell entry
+// - Reintroduce temporal reuse but maybe with a small M-cap, should be worth it on difficult scenes, the many lights bistro for example
+// - Limit the grid cell life length of NEE++ if it hasn't been hit in a long time
+// - Limit the grid cell life length of ReGIR if it hasn't been hit in a long time
+// - Multiple spatial reuse passes
+// - We can deallocate the emissive triangle index of the ReGIR reservoir if not using ReSTIR DI
 // - Should we have something to limit the life length of an NEE++ grid cell? So that we can remove cells unused and keep the grid size in check
 // - Trry to disable canonical and see if it converges quicker
 //		- It does -----> We need to find some better MIS weights for the canonical sample
