@@ -454,6 +454,14 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 									"convergence.\n"
 									"\n"
 									"0 for no clamping.");
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 1.0f));        // Red
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.2f, 0.2f, 1.0f)); // Lighter red when hovered
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));  // Darker red when clicked
+	if (ImGui::Button("Reset render"))
+		m_render_window->set_render_dirty(true);
+	ImGui::PopStyleColor(3);
 }
 
 void ImGuiSettingsWindow::display_view_selector()
@@ -1777,7 +1785,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR grid build tree");
 
-			if (ImGui::SliderInt("Samples per reservoir", &regir_settings.grid_fill.sample_count_per_cell_reservoir, 1, 64))
+			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill.light_sample_count_per_cell_reservoir, 0, 64))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("BSDF samples per reservoir", &regir_settings.grid_fill.bsdf_sample_count_per_cell_reservoir, 0, 8))
 				m_render_window->set_render_dirty(true);
 			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
 				m_render_window->set_render_dirty(true);
@@ -1850,6 +1860,18 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Discards reservoirs whose light samples are occluded at grid fill time.\n\n"
 				""
 				"This is  expensive but can also lead to substantial gains in quality.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::SliderInt("Frame skip", &regir_settings.frame_skip, 0, 8))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("How many frames to skip before running the grid fill and spatial reuse passes again.\n\n"
+				""
+				"A value of 1 for example means that the grid fill and spatial reuse will be ran at frame 0 "
+				"but not at frame 1. And ran at frame 2 but not at frame 3. ...\n\n"
+				""
+				"This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell "
+				"contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used "
+				"and new samples are necessary");
 
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1972,6 +1994,38 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
+		if (ImGui::CollapsingHeader("Hash grid"))
+		{
+			ImGui::TreePush("ReGIR hash grid tree");
+
+			if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.hash_grid.m_grid_cell_target_projected_size, 5, 25))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
+				"This has the effect of making the grid cells larger in the distance so that the projected size stays approximately constant.");
+
+			if (ImGui::SliderFloat("Grid cell minimum size", &regir_settings.hash_grid.m_grid_cell_min_size, 0.005, 0.5))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
+
+			static int linear_probing_steps = ReGIR_LinearProbingSteps;
+			ImGui::SliderInt("Linear probing max. steps", &linear_probing_steps, 1, 32);
+			if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS))
+			{
+				ImGui::TreePush("ReGIR linear probing steps apply button");
+				if (ImGui::Button("Apply"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS, linear_probing_steps);
+
+					m_render_window->set_render_dirty(true);
+					m_renderer->recompile_kernels();
+				}
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
 		if (ImGui::CollapsingHeader("Debug"))
 		{
 			ImGui::TreePush("ReGIR Settings debug tree");
@@ -1998,54 +2052,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 					m_render_window->set_render_dirty(true);
 			}
 
-			/*ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			static bool freeze_allocations = ReGIR_FreezeGridAllocations;
-			if (ImGui::Checkbox("Freeze grid allocations", &freeze_allocations))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_FREEZE_GRID_ALLOCATIONS, freeze_allocations ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_render_window->set_render_dirty(true);
-				m_renderer->recompile_kernels();
-			}*/
-
 			ImGui::TreePop();
 		}
-			
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.hash_grid.m_grid_cell_target_projected_size, 25, 250))
-			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
-			"This has the effect of making the grid cells larger in the distance so that the projected size stays approximately constant.");
-
-		if (ImGui::SliderFloat("Grid cell minimum size", &regir_settings.hash_grid.m_grid_cell_min_size, 0.005, 0.5))
-			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
-
-		static int linear_probing_steps = ReGIR_LinearProbingSteps;
-		ImGui::SliderInt("Linear probing max. steps", &linear_probing_steps, 1, 32);
-		if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS))
-		{
-			ImGui::TreePush("ReGIR linear probing steps apply button");
-			if (ImGui::Button("Apply"))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS, linear_probing_steps);
-
-				m_render_window->set_render_dirty(true);
-				m_renderer->recompile_kernels();
-			}
-			ImGui::TreePop();
-		}
-
-		if (ImGui::SliderInt("Frame skip", &regir_settings.frame_skip, 0, 8))
-			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("How many frames to skip before running the grid fill and spatial reuse passes again.\n\n"
-			""
-			"A value of 1 for example means that the grid fill and spatial reuse will be ran at frame 0 "
-			"but not at frame 1. And ran at frame 2 but not at frame 3. ...\n\n"
-			""
-			"This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell "
-			"contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used "
-			"and new samples are necessary");
 
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -4293,6 +4301,9 @@ void ImGuiSettingsWindow::draw_debug_panel()
 			m_render_window->set_render_dirty(true);
 		ImGui::TreePop();
 	}
+
+	if (ImGui::Checkbox("ReGIR BRDF grid fill", &render_settings.USE_REGIR_BRDF_GRID_FILL))
+		m_render_window->set_render_dirty(true);
 
 	static bool display_only_sample = DisplayOnlySampleN;
 	if (ImGui::Checkbox("Display only sample N", &display_only_sample))

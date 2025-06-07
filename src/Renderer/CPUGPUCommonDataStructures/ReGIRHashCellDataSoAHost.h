@@ -20,6 +20,9 @@ using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
 	GenericAtomicType<int, DataContainer>,  // primitive index
 	float3, // world points
 	Octahedral24BitNormalPadded32b,  // world normals
+	float,  // roughness
+	float,  // metallic
+	float,  // specular
 	GenericAtomicType<unsigned int, DataContainer>, // hash keys
 	GenericAtomicType<unsigned int, DataContainer>, // grid cells alive
 	unsigned int // grid cells alive list
@@ -33,6 +36,9 @@ enum ReGIRHashCellDataSoAHostBuffers
 	REGIR_HASH_CELL_PRIM_INDEX,
 	REGIR_HASH_CELL_POINTS,
 	REGIR_HASH_CELL_NORMALS,
+	REGIR_HASH_CELL_ROUGHNESS,
+	REGIR_HASH_CELL_METALLIC,
+	REGIR_HASH_CELL_SPECULAR,
 	REGIR_HASH_CELL_HASH_KEYS,
 
 	REGIR_HASH_CELLS_ALIVE,
@@ -83,6 +89,9 @@ struct ReGIRHashCellDataSoAHost
 		hash_cell_data.hit_primitive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>();
 		hash_cell_data.world_points = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_POINTS>();
 		hash_cell_data.world_normals = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();
+		hash_cell_data.roughness = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_ROUGHNESS>();
+		hash_cell_data.metallic = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_METALLIC>();
+		hash_cell_data.specular = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_SPECULAR>();
 		hash_cell_data.hash_keys = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>();
 
 		hash_cell_data.grid_cell_alive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>();

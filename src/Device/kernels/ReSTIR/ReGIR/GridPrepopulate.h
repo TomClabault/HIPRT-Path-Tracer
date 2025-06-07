@@ -74,7 +74,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
             {
                 if (bounce > 0)
                     // Storing data for ReGIR representative points
-                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, render_data.current_camera, closest_hit_info.shading_normal, closest_hit_info.primitive_index);
+                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, render_data.current_camera, closest_hit_info.shading_normal, closest_hit_info.primitive_index, render_data.g_buffer.materials[pixel_index].unpack());
 
                 BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF sampled
                 bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &sampled_light_info);

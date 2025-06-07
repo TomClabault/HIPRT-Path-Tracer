@@ -115,7 +115,7 @@ void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_dat
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.total_shadow_ray_queries_cpu, m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 
-	if (render_data.render_settings.sample_number % 50 == 0) 
+	/*if (render_data.render_settings.sample_number % 50 == 0) 
 	{
 		std::size_t counter = 0;
 		auto vec = m_nee_plus_plus.checksum_buffer.download_data();
@@ -124,7 +124,7 @@ void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_dat
 				counter++;
 
 		printf("NEE++: %zu cells have been updated this frame.\n", counter);
-	}
+	}*/
 }
  
 void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)

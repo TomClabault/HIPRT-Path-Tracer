@@ -25,17 +25,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int ReGIR_get_cell_primitive_index(const HIPRTRen
 	return render_data.render_settings.regir_settings.hash_cell_data.hit_primitive[hash_grid_cell_index];
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReGIR_get_cell_roughness(const HIPRTRenderData& render_data, int hash_grid_cell_index)
+{
+	return render_data.render_settings.regir_settings.hash_cell_data.roughness[hash_grid_cell_index];
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReGIR_get_cell_metallic(const HIPRTRenderData& render_data, int hash_grid_cell_index)
+{
+	return render_data.render_settings.regir_settings.hash_cell_data.metallic[hash_grid_cell_index];
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReGIR_get_cell_specular(const HIPRTRenderData& render_data, int hash_grid_cell_index)
+{
+	return render_data.render_settings.regir_settings.hash_cell_data.specular[hash_grid_cell_index];
+}
+
 /**
  *	Updates the representative point and normal (and other data) of the cell at the given shading point
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 {
 	if (DirectLightSamplingBaseStrategy != LSS_BASE_REGIR)
 		return;
 	else if (primitive_index == -1)
 		return;
 
-	render_data.render_settings.regir_settings.insert_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, current_camera, shading_normal, primitive_index);
+	render_data.render_settings.regir_settings.insert_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, current_camera, shading_normal, primitive_index, material);
 }
 
 #endif

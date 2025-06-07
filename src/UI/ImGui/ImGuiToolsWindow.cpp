@@ -412,6 +412,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		static Image32Bit reference_image;
 		static Image32Bit subject_image;
 
+		ImGui::SeparatorText("Reference image");
 		if (ImGui::Button("Select reference image"))
 		{
 			reference_image_path = Utils::open_file_dialog(filters, 2);
@@ -430,6 +431,8 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			ImGui::TreePop();
 		}
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Subject image");
 		static std::string subject_image_text = "";
 		if (ImGui::Button("Select subject image"))
 		{
@@ -530,6 +533,14 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (status_text != "")
+		{
+			if (ImGui::Button("C"))
+				ImGui::SetClipboardText(std::to_string(error_value).c_str());
+
+			ImGuiRenderer::show_help_marker("Copies the error value to the clipboard");
+			ImGui::SameLine();
+		}
 		ImGui::Text("%s", status_text.c_str());
 
 		ImGui::TreePop();
