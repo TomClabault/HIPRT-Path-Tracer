@@ -1787,8 +1787,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill.light_sample_count_per_cell_reservoir, 0, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("BSDF samples per reservoir", &regir_settings.grid_fill.bsdf_sample_count_per_cell_reservoir, 0, 8))
-				m_render_window->set_render_dirty(true);
 			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
 				m_render_window->set_render_dirty(true);
 			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
@@ -1938,6 +1936,15 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 			ImGuiRenderer::show_help_marker("Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during "
 				"shading such that reservoirs that are likely to be occluded will have a lower resampling probability");
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY) == KERNEL_OPTION_TRUE)
+			{
+				ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
+
+				ImGui::TreePush("Use NEE++ ReGIR Tree");
+				use_next_event_estimation_checkbox("Enable NEE++");
+				ImGuiRenderer::show_help_marker("Shortcut for enabling for enabling NEE++");
+				ImGui::TreePop();
+			}
 
 			static bool include_bsdf_shading_resampling = ReGIR_ShadingResamplingIncludeBSDF;
 			if (ImGui::Checkbox("Include BSDF in target function", &include_bsdf_shading_resampling))
@@ -4264,6 +4271,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug regir force cano", &render_settings.regir_settings.DEBUG_FORCE_REGIR8CANONICAL))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
 			m_render_window->set_render_dirty(true);

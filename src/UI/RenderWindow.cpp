@@ -53,6 +53,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Decoupled shading and reuse ReGIR: add visibility rays during the shading so that we have visiblity resampling which is very good and on top of that, we can totally shade the reservoir because the visibility has been computed so the rest of the shading isn't super expensive: maybe use NEE++ in there to reduce shadow rays? Or the visibility caching thing that is biased?
+// - Better MIS weights for the canonical candidate somehow?
 // - Can we maybe add BRDF samples in the grid fill for rough BRDFs? This will enable perfect MIS for diffuse BRDFs which should be good for the bistro many light with the light close for example. This could also be enough for rough-ish specular BRDFs
 //		- We can probably trace the BRDF rays in a light-only BVH here and then if an intersection point is found, use NEE++ visibility estimation there
 //		- Maybe have some form of roughness threshold when using ReGIR with MIS to use MIS only on specular surfaces where the grid fill BRDF rays didn't help
@@ -139,6 +141,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
+// - Option for terminating rays on emissive hits? --> this is going to be biased but may help performance
 // - Have a look at reweghing fireflies for Monte Carlo instead of Gmon so we can remove fireflies unbiasedly without the darkening
 // - There seems be some scratch store on the RNG state? Try to offload that to shared mem?
 //		- Do that after wavefront because wavefront may solve the issue
@@ -149,7 +152,6 @@ extern ImGuiLogger g_imgui_logger;
 // - When doing MIS, if we sampled a BSDF sample on a delta distribution, we shouldn't bother sampling lights because we know that the BSDF sample is going to overweight everything else and the light sample is going to have a MIS weight of 0 anyways
 // - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?
 // - texture compression
-// - Try to use __restrict__ somehow because there seems to be a lot of performance left on the table
 // - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect fetch?
 // - limit  number of bounces based on material type
 // - use material SoA in GBuffer and only load what's necessary (i.e. not the thin film and all of that if the material isn't using thin-film, ...)

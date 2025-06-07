@@ -121,7 +121,12 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 		context.point_on_light = point_on_light;
 		context.shaded_point = shading_point;
 
-		target_function *= render_data.nee_plus_plus.estimate_visibility_probability(context, render_data.current_camera);
+		float visibility_proba = render_data.nee_plus_plus.estimate_visibility_probability(context, render_data.current_camera);
+		if (visibility_proba > 0.005f)
+			visibility_proba = 1.0f;
+		visibility_proba = hippt::max(0.1f, visibility_proba);
+			
+		target_function *= visibility_proba;
 	}
 	
 	return target_function;

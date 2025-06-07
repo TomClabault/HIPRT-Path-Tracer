@@ -13,7 +13,8 @@
 struct ReGIRSample
 {
 	int emissive_triangle_index = -1; // Only needed for ReSTIR DI
-	unsigned int random_seed = 0;
+	// unsigned int random_seed = 0;
+	float3 point_on_light;
 
 	// Note: the target function isn't stored in the sample SoA, it's just there during the sampling process
 	float target_function = 0.0f;
@@ -33,7 +34,8 @@ struct ReGIRReservoir
 		if (rng() < resampling_weight / weight_sum)
 		{
 			sample.emissive_triangle_index = light_sample.emissive_triangle_index;
-			sample.random_seed = random_seed;
+			// sample.random_seed = random_seed;
+			sample.point_on_light = light_sample.point_on_light;
 
 			sample.target_function = target_function;
 
