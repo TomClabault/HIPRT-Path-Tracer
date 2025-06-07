@@ -56,7 +56,6 @@ const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATE
 const std::string GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS = "ReGIR_LinearProbingSteps";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES = "ReGIR_ShadingJitterTries";
 const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIR_DebugMode";
-const std::string GPUKernelCompilerOptions::REGIR_FREEZE_GRID_ALLOCATIONS = "ReGIR_FreezeGridAllocations";
 
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY = "DirectLightSamplingBaseStrategy";
@@ -135,7 +134,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS,
 	GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES,
 	GPUKernelCompilerOptions::REGIR_DEBUG_MODE,
-	GPUKernelCompilerOptions::REGIR_FREEZE_GRID_ALLOCATIONS,
 
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY,
@@ -218,7 +216,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS] = std::make_shared<int>(ReGIR_LinearProbingSteps);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES] = std::make_shared<int>(ReGIR_ShadingJitterTries);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DEBUG_MODE] = std::make_shared<int>(ReGIR_DebugMode);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FREEZE_GRID_ALLOCATIONS] = std::make_shared<int>(ReGIR_FreezeGridAllocations);
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY] = std::make_shared<int>(DirectLightSamplingBaseStrategy);

@@ -43,6 +43,8 @@ struct HIPRTRenderSettings
 	bool DEBUG_QUICK_ALIAS_TABLE = false;
 	bool DEBUG_CORRELATE_LIGHTS = false;
 
+	bool USE_REGIR_BRDF_GRID_FILL = false;
+
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 
@@ -100,7 +102,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 10;
+	int nb_bounces = 0;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?

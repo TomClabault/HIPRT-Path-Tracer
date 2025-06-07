@@ -34,7 +34,6 @@ struct BSDFContext
 
 	// Whether or not to regularize the BSDF when sampling/evaluating it
 	MicrofacetRegularization::RegularizationMode bsdf_regularization_mode = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION;
-	//bool regularize_bsdf = false;
 
 	/**
 	 * 'to_light_direction' is only needed if evaluating the BSDF // TODO create a separate eval context and sampling context

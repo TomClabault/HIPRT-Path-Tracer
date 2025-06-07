@@ -53,6 +53,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Can we maybe add BRDF samples in the grid fill for rough BRDFs? This will enable perfect MIS for diffuse BRDFs which should be good for the bistro many light with the light close for example. This could also be enough for rough-ish specular BRDFs
+//		- We can probably trace the BRDF rays in a light-only BVH here and then if an intersection point is found, use NEE++ visibility estimation there
+//		- Maybe have some form of roughness threshold when using ReGIR with MIS to use MIS only on specular surfaces where the grid fill BRDF rays didn't help
 // - Only need 1 bit per cell here for 'grid cells alive': whether or not a given grid cell is alive
 // - Quantize ahsh grid cell data .sum_points: we don't need the precision since this is just an average for getting an approximate center of cell
 // - Light to light grid cells should be cached in the same hash cell entry
@@ -567,6 +570,8 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	glewInit();
 
 	TracyGpuContext;
+
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "GLFW Initialized!");
 }
 
 void RenderWindow::init_gl(int width, int height)

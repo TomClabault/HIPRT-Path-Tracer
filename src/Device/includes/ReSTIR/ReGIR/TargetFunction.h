@@ -21,6 +21,9 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
     int cell_primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index);
     float3 cell_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
 	float3 cell_normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index);
+	float cell_roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index);
+	float cell_metallic = ReGIR_get_cell_metallic(render_data, hash_grid_cell_index);
+	float cell_specular = ReGIR_get_cell_specular(render_data, hash_grid_cell_index);
 
 	float3 to_light_direction = sample_position - cell_point;
 	float distance_to_light = hippt::length(to_light_direction);
@@ -36,6 +39,21 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
 
 	if (target_function <= 0.0f)
 		return 0.0f;
+
+	if (render_data.render_settings.USE_REGIR_BRDF_GRID_FILL)
+	{
+		float out_pdf;
+		RayVolumeState empty_volume_state;
+		BSDFIncidentLightInfo out_incident_light_info;
+		DeviceUnpackedEffectiveMaterial approximate_material;
+		approximate_material.roughness = cell_roughness;
+		approximate_material.metallic = cell_metallic;
+		approximate_material.specular = cell_specular;
+
+		BSDFContext bsdf_context = BSDFContext(hippt::normalize(render_data.current_camera.position - cell_point), cell_normal, cell_normal, to_light_direction, out_incident_light_info, empty_volume_state, false, approximate_material, 0, 0, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+		ColorRGB32F bsdf_radiance = bsdf_dispatcher_eval(render_data, bsdf_context, out_pdf, rng);
+		target_function *= bsdf_radiance.luminance();
+	}
 
 	if constexpr (includeVisibility)
 	{
