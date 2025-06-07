@@ -12,31 +12,26 @@ struct ReGIRSampleSoADevice
 {
 	HIPRT_HOST_DEVICE void store_sample(int linear_reservoir_index, const ReGIRSample& sample)
 	{
-		// emission[linear_reservoir_index] = sample.emission;
 		emissive_triangle_index[linear_reservoir_index] = sample.emissive_triangle_index;
-		random_seed[linear_reservoir_index] = sample.random_seed;
-		/*light_area[linear_reservoir_index] = sample.light_area;
+		// random_seed[linear_reservoir_index] = sample.random_seed;
 		point_on_light[linear_reservoir_index] = sample.point_on_light;
-		light_source_normal[linear_reservoir_index] = sample.light_source_normal;*/
 	}
 
 	HIPRT_HOST_DEVICE ReGIRSample read_sample(int linear_reservoir_index) const
 	{
 		ReGIRSample sample;
 
-		//sample.emission = emission[linear_reservoir_index];
 		sample.emissive_triangle_index = emissive_triangle_index[linear_reservoir_index];
-		sample.random_seed = random_seed[linear_reservoir_index];
-		//sample.light_area = light_area[linear_reservoir_index];
-		//sample.point_on_light = point_on_light[linear_reservoir_index];
-		//sample.light_source_normal = light_source_normal[linear_reservoir_index];
+		// sample.random_seed = random_seed[linear_reservoir_index];
+		sample.point_on_light = point_on_light[linear_reservoir_index];
 
 		return sample;
 	}
 
 	int* emissive_triangle_index = nullptr;
 	// Random seed for generating the point on the light
-	unsigned int* random_seed = nullptr;
+	// unsigned int* random_seed = nullptr;
+	float3* point_on_light = nullptr;
 };
 
 struct ReGIRReservoirSoADevice

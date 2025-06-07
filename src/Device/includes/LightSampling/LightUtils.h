@@ -218,6 +218,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
     if (render_data.render_settings.DEBUG_CORRELATE_LIGHTS)
         random_emissive_triangle_index = hippt::warp_shfl(random_emissive_triangle_index, first_active_thread_index_subgroup, render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE);
     
+    // random_emissive_triangle_index = 837;
     int triangle_index = render_data.buffers.emissive_triangles_indices[random_emissive_triangle_index];
 
     float sampled_triangle_area;
@@ -296,14 +297,19 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 continue;
 
             // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
-            float3 point_on_light;
+            /*float3 point_on_light;
             float3 light_source_normal;
 			float light_source_area;
             Xorshift32Generator rng_point_on_triangle(non_canonical_reservoir.sample.random_seed);
 			if (!sample_point_on_generic_triangle(non_canonical_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices, 
                 rng_point_on_triangle, 
                 point_on_light, light_source_normal, light_source_area))
-                continue;
+                continue;*/
+
+            float3 point_on_light = non_canonical_reservoir.sample.point_on_light;
+            float3 light_source_normal = get_triangle_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
+            float light_source_area = hippt::length(light_source_normal) * 0.5f;
+            light_source_normal /= light_source_area * 2.0f;
                 
             ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
             float target_function = ReGIR_shading_evaluate_target_function<
@@ -332,6 +338,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     // may cause the grid cell to produce no valid reservoir at all so we need canonical samples to
     // cover those cases for unbiased results
     bool need_canonical = (ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
+    need_canonical |= render_data.render_settings.regir_settings.DEBUG_FORCE_REGIR8CANONICAL;
     if (need_canonical)
     {
         // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
@@ -351,21 +358,27 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
             if (canonical_reservoir.UCW > 0.0f && canonical_reservoir.UCW != ReGIRReservoir::UNDEFINED_UCW)
             {
-                float3 point_on_light;
+                /*float3 point_on_light;
                 float3 light_source_normal;
-                float light_source_area;
+                float light_source_area;*/
 
                 ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_index);
-                Xorshift32Generator rng_point_on_triangle(canonical_reservoir.sample.random_seed);
+                /*Xorshift32Generator rng_point_on_triangle(canonical_reservoir.sample.random_seed);
                 if (sample_point_on_generic_triangle(canonical_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
-                    rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))
+                    rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))*/
+
+                float3 point_on_light = canonical_reservoir.sample.point_on_light;
+                float3 light_source_normal = get_triangle_normal_not_normalized(render_data, canonical_reservoir.sample.emissive_triangle_index);
+                float light_source_area = hippt::length(light_source_normal) * 0.5f;
+                light_source_normal /= light_source_area * 2.0f;
+
                 {
                     // Adding visibility in the canonical sample target function's if we have visibility reuse
                     // (or visibility in the grid fill target function) because otherwise this canonical sample
                     // will kill all the benefits of the visibility reuse
                     //
                     // TLDR is that this is pretty much necessary for good visibility reuse quality
-                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                         shading_point, view_direction, shading_normal, geometric_normal,
                         last_hit_primitive_index, ray_payload,
                         point_on_light, light_source_normal,

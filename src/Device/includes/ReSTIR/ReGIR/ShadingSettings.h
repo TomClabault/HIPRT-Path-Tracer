@@ -14,7 +14,7 @@ struct ReGIRShadingSettings
 	int reservoir_tap_count_per_neighbor = 4;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
-	bool do_cell_jittering = false;
+	bool do_cell_jittering = true;
 	// Radius of jittering when picking reservoirs from neighboring grid cells for shading
 	float jittering_radius = 0.75f;
 };
