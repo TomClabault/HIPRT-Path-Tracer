@@ -420,7 +420,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     }
     if (!mesh_material->Get(AI_MATKEY_SPECULAR_FACTOR, renderer_material.specular))
     {
-        // We sucessfully got the specular color so we're going to assume that we the specular and tin are 100%
+        // We sucessfully got the specular color so we're going to assume that we the specular and tint are 100%
         renderer_material.specular_tint = 1.0f;
         renderer_material.specular_color = ColorRGB32F(1.0f);
     }
@@ -433,6 +433,8 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
+    /*renderer_material.metallic = 1.0f;
+    renderer_material.roughness = 0.0f;*/
     /*renderer_material.specular = 1.0f;
     renderer_material.ior = 1.0f;
     renderer_material.roughness = 0.0f;

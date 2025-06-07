@@ -28,9 +28,11 @@ struct ReGIRHashCellDataSoADevice
 	AtomicType<unsigned int>* num_points = nullptr;
 
 	AtomicType<int>* hit_primitive = nullptr;
-
 	float3* world_points = nullptr;
 	Octahedral24BitNormalPadded32b* world_normals = nullptr;
+	float* roughness = nullptr;
+	float* specular = nullptr;
+	float* metallic = nullptr;
 	// The has for each entry of the table to check for collisions
 	AtomicType<unsigned int>* hash_keys = nullptr;
 

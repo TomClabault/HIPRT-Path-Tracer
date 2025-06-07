@@ -52,9 +52,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
     float3 shading_normal = old_hash_cell_data.world_normals[cell_alive_index].unpack();
     int primitive_index = old_hash_cell_data.hit_primitive[cell_alive_index];
 
+	DeviceUnpackedEffectiveMaterial material;
+	material.roughness = old_hash_cell_data.roughness[cell_alive_index];
+	material.metallic = old_hash_cell_data.metallic[cell_alive_index];
+	material.specular = old_hash_cell_data.specular[cell_alive_index];
+
     ReGIRSettings::insert_hash_cell_data_static(
         new_hash_grid, new_hash_grid_soa, new_hash_cell_data,
-        world_position, current_camera, shading_normal, primitive_index);
+        world_position, current_camera, shading_normal, primitive_index, material);
 }
 
 #endif

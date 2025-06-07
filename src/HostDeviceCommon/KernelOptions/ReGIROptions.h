@@ -64,13 +64,13 @@
  *
  * This has no effect is representative points are not being used
  */
-#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_FALSE
 
 /**
  * Takes the cosine term at the light source (i.e. the cosine term of the geometry term) into account when
  * evaluating the target function during grid fill
  */
-#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.
@@ -129,14 +129,6 @@
  * Debug option to color the scene with the grid cells
  */
 #define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
-
-/**
- * If true, new cells won't be created where rays hit unaffected cells.
- * 
- * This can be used for debugging the state of the grid by moving the camear without
- * new cells being allocated
- */
-#define ReGIR_FreezeGridAllocations KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

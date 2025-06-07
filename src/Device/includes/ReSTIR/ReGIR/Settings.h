@@ -11,13 +11,15 @@
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
 
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 struct ReGIRGridFillSettings
 {
 	// How many light samples are resampled into each reservoir of the grid cell
-	int sample_count_per_cell_reservoir = 32;
+	int light_sample_count_per_cell_reservoir = 1;
+	int bsdf_sample_count_per_cell_reservoir = 1;
 
 	HIPRT_DEVICE int get_non_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_DEVICE int get_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_canonical; }
@@ -55,10 +57,10 @@ private:
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = true;
+	bool do_spatial_reuse = false;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
-	bool do_coalesced_spatial_reuse = true;
+	bool do_coalesced_spatial_reuse = false;
 
 	int spatial_neighbor_count = 4;
 	int reuse_per_neighbor_count = 4;
@@ -404,13 +406,16 @@ struct ReGIRSettings
 	}
 
 	HIPRT_DEVICE static void insert_hash_cell_point_normal(ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
-		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index)
+		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
 		// TODO is this atomic needed since we can only be here if the cell was unoccupied?
 		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.hit_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
 		{
 			hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
 			hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
+			hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness;
+			hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic;
+			hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular;
 
 			hash_cell_data_to_update.sum_points[hash_grid_cell_index] = world_position;
 			hash_cell_data_to_update.num_points[hash_grid_cell_index] = 1;
@@ -432,7 +437,7 @@ struct ReGIRSettings
 	}
 
 	HIPRT_DEVICE static void update_hash_cell_point_normal(ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
-		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index)
+		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
 		unsigned int current_num_points = hash_cell_data_to_update.num_points[hash_grid_cell_index];
 
@@ -474,6 +479,9 @@ struct ReGIRSettings
 				hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
 				hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
 				hash_cell_data_to_update.hit_primitive[hash_grid_cell_index] = primitive_index;
+				hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness;
+				hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic;
+				hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular;
 			}
 
 			// Writing back the new sum of points
@@ -485,12 +493,8 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE static void insert_hash_cell_data_static(
 		const ReGIRHashGrid& hash_grid, ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
-		float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
+		float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
-#if ReGIR_FreezeGridAllocations == KERNEL_OPTION_TRUE
-		return;
-#endif
-
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = hash_position_camera(hash_grid_to_update.m_total_number_of_cells, world_position, current_camera, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size, hash_key);
 		
@@ -519,7 +523,7 @@ struct ReGIRSettings
 					hash_grid_cell_index = new_hash_cell_index;
 
 					insert_hash_cell_point_normal(hash_cell_data_to_update,
-						hash_grid_cell_index, world_position, shading_normal, primitive_index);
+						hash_grid_cell_index, world_position, shading_normal, primitive_index, material);
 				}
 			}
 			else
@@ -527,7 +531,7 @@ struct ReGIRSettings
 				// We're trying to insert in a cell that has the same hash as us so we're going to update
 				// that cell with our data
 				update_hash_cell_point_normal(hash_cell_data_to_update,
-					hash_grid_cell_index, world_position, shading_normal, primitive_index);
+					hash_grid_cell_index, world_position, shading_normal, primitive_index, material);
 			}
 		}
 		else
@@ -535,14 +539,14 @@ struct ReGIRSettings
 			// We just succeeded the insertion of our key in an empty cell
 			
 			insert_hash_cell_point_normal(hash_cell_data_to_update,
-				hash_grid_cell_index, world_position, shading_normal, primitive_index);
+				hash_grid_cell_index, world_position, shading_normal, primitive_index, material);
 		}
 
 	}
 
-	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index)
+	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
-		ReGIRSettings::insert_hash_cell_data_static(hash_grid, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, shading_normal, primitive_index);
+		ReGIRSettings::insert_hash_cell_data_static(hash_grid, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, shading_normal, primitive_index, material);
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
