@@ -75,7 +75,7 @@
 /**
  * Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.
  */
-#define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

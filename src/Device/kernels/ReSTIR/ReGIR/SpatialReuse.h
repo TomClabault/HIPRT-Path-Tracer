@@ -112,14 +112,16 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             float target_function_at_center;
 
             ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, neighbor_reservoir.sample.emissive_triangle_index);
-            float3 point_on_light;
-            float3 light_source_normal;
-            float light_source_area;
-            Xorshift32Generator rng_point_on_triangle(neighbor_reservoir.sample.random_seed);
+            float3 point_on_light = neighbor_reservoir.sample.point_on_light;
+            float3 light_source_normal = get_triangle_normal_not_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_index);
+            float light_source_area = hippt::length(light_source_normal) * 0.5f;
+            light_source_normal /= light_source_area * 2.0f;
+            // Xorshift32Generator rng_point_on_triangle(neighbor_reservoir.sample.random_seed);
 
-            if (!sample_point_on_generic_triangle(neighbor_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
+            /*if (!sample_point_on_generic_triangle(neighbor_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
                 rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))
-                continue;
+                continue;*/
+
             if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
             {
                 // Never using the template visibility/cosine terms arguments for canonical reservoirs
@@ -153,13 +155,19 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
 
     if (output_reservoir.weight_sum > 0.0f)
     {
-        float3 point_on_light;
+        /*float3 point_on_light;
         float3 light_source_normal;
-        float light_source_area;
+        float light_source_area;*/
+
         ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, output_reservoir.sample.emissive_triangle_index);
-        Xorshift32Generator rng_point_on_triangle(output_reservoir.sample.random_seed);
+        float3 point_on_light = output_reservoir.sample.point_on_light;
+        float3 light_source_normal = get_triangle_normal_not_normalized(render_data, output_reservoir.sample.emissive_triangle_index);
+        float light_source_area = hippt::length(light_source_normal) * 0.5f;
+        light_source_normal /= light_source_area * 2.0f;
+
+        /*Xorshift32Generator rng_point_on_triangle(output_reservoir.sample.random_seed);
         if (sample_point_on_generic_triangle(output_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
-            rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))
+            rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))*/
 
         for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
         {

@@ -144,7 +144,7 @@ struct ReGIRHashGrid
 
 	HashGrid m_hash_grid;
 
-	float m_grid_cell_min_size = 0.2f;
+	float m_grid_cell_min_size = 80.0f;
 	float m_grid_cell_target_projected_size = 25.0f;
 };
 

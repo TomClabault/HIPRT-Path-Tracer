@@ -4265,6 +4265,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
 			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug regir force cano", &render_settings.regir_settings.DEBUG_FORCE_REGIR8CANONICAL))
+			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug only one alias table", &render_settings.DEBUG_QUICK_ALIAS_TABLE))

@@ -21,7 +21,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 {
     ReGIRReservoir grid_fill_reservoir;
 
-    bool reservoir_is_canonical = reservoir_index_in_cell >= regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell();
+    bool reservoir_is_canonical = regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell);
     unsigned int light_sample_count = regir_settings.grid_fill.light_sample_count_per_cell_reservoir;
     unsigned int bsdf_sample_count = reservoir_is_canonical ? 0 : regir_settings.grid_fill.bsdf_sample_count_per_cell_reservoir;
  
@@ -31,33 +31,38 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 
     for (int light_sample_index = 0; light_sample_index < light_sample_count; light_sample_index++)
     {
-        Xorshift32Generator rng_point(rng.m_state.seed);
-        rng_point();
-        rng_point();
-        unsigned int random_seed_for_point_on_triangle = rng_point.m_state.seed;
-
         LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
         if (light_sample.emissive_triangle_index == -1)
             continue;
 
         float target_function;
-        if (reservoir_index_in_cell < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell())
+        if (reservoir_is_canonical)
+            // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
+            target_function = ReGIR_non_shading_evaluate_target_function<false, false, false, false>(render_data, hash_grid_cell_index,
+                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+        else
             target_function = ReGIR_non_shading_evaluate_target_function<
             ReGIR_GridFillTargetFunctionVisibility,
             ReGIR_GridFillTargetFunctionCosineTerm,
             ReGIR_GridFillTargetFunctionCosineTermLightSource,
             ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, hash_grid_cell_index,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
-        else
-            // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-            target_function = ReGIR_non_shading_evaluate_target_function<false, false, false, false>(render_data, hash_grid_cell_index,
-                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         
         float3 direction_to_light = light_sample.point_on_light - cell_point;
         float distance = hippt::length(direction_to_light);
         direction_to_light /= distance;
 
-        float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance, compute_cosine_term_at_light_source(light_sample.light_source_normal, -direction_to_light));
+        float solid_angle_light_pdf;
+        if (reservoir_is_canonical)
+            solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance, hippt::abs(hippt::dot(light_sample.light_source_normal, -direction_to_light)));
+        else
+        {
+            if (ReGIR_GridFillTargetFunctionCosineTermLightSource == KERNEL_OPTION_TRUE)
+                solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance, compute_cosine_term_at_light_source(light_sample.light_source_normal, -direction_to_light));
+            else
+                solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance, hippt::abs(hippt::dot(light_sample.light_source_normal, -direction_to_light)));
+        }
+
         float bsdf_pdf;
 
         {
@@ -78,7 +83,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
         float mis_weight = balance_heuristic(solid_angle_light_pdf, light_sample_count, bsdf_pdf, bsdf_sample_count);
 
         float source_pdf = light_sample.area_measure_pdf;
-        grid_fill_reservoir.stream_sample(mis_weight, target_function, source_pdf, random_seed_for_point_on_triangle, light_sample, rng);
+        grid_fill_reservoir.stream_sample(mis_weight, target_function, source_pdf, 0, light_sample, rng);
     }
 
     for (int bsdf_sample_index = 0; bsdf_sample_index < bsdf_sample_count; bsdf_sample_index++)
@@ -121,7 +126,11 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 				to_light_direction /= distance_to_light; // Normalizing the direction to light
 
                 LightSampleInformation light_sample;
-                light_sample.area_measure_pdf = solid_angle_to_area_pdf(bsdf_sample_pdf, distance_to_light, compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction));
+                if (ReGIR_GridFillTargetFunctionCosineTermLightSource == KERNEL_OPTION_TRUE)
+                    light_sample.area_measure_pdf = solid_angle_to_area_pdf(bsdf_sample_pdf, distance_to_light, compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction));
+                else
+                    light_sample.area_measure_pdf = solid_angle_to_area_pdf(bsdf_sample_pdf, distance_to_light, hippt::abs(hippt::dot(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction)));
+                //light_sample.area_measure_pdf = solid_angle_to_area_pdf(bsdf_sample_pdf, distance_to_light, compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction));
                 light_sample.emission = shadow_light_ray_hit_info.hit_emission;
                 light_sample.light_source_normal = shadow_light_ray_hit_info.hit_geometric_normal;
                 light_sample.point_on_light = bsdf_ray_inter_point;
@@ -135,10 +144,9 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
                         light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
 
                 float light_sampling_PDF = pdf_of_emissive_triangle_hit_solid_angle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, shadow_light_ray_hit_info, to_light_direction);
-
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, bsdf_sample_count, light_sampling_PDF, light_sample_count);
-
                 float bsdf_pdf_area_measure = light_sample.area_measure_pdf;
+
                 grid_fill_reservoir.stream_sample(mis_weight, target_function, bsdf_pdf_area_measure, rng.xorshift32(), light_sample, rng);
             }
         }
@@ -175,7 +183,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         
         ReGIRReservoir output_reservoir;
 
-        float normalization_weight = regir_settings.grid_fill.light_sample_count_per_cell_reservoir;
         unsigned int reservoir_index_in_cell = reservoir_index % regir_settings.get_number_of_reservoirs_per_cell();
         unsigned int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell();
         // If all cells are alive, the cell index is straightforward
@@ -214,7 +221,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         // Grid fill
         output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, hash_grid_cell_index, random_number_generator);
         
-        // Normalizing the reservoirs to 1
+        // Normalizing the reservoir
+        // float normalization_weight = regir_settings.grid_fill.light_sample_count_per_cell_reservoir;
         // output_reservoir.finalize_resampling(normalization_weight);
         output_reservoir.finalize_resampling(1.0f);
         

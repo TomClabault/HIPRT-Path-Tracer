@@ -19,7 +19,7 @@ struct ReGIRGridFillSettings
 {
 	// How many light samples are resampled into each reservoir of the grid cell
 	int light_sample_count_per_cell_reservoir = 1;
-	int bsdf_sample_count_per_cell_reservoir = 1;
+	int bsdf_sample_count_per_cell_reservoir = 10;
 
 	HIPRT_DEVICE int get_non_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_DEVICE int get_canonical_reservoir_count_per_cell() const { return reservoirs_count_per_grid_cell_canonical; }
@@ -28,7 +28,7 @@ struct ReGIRGridFillSettings
 	HIPRT_DEVICE int* get_non_canonical_reservoir_count_per_cell_ptr() { return &reservoirs_count_per_grid_cell_non_canonical; }
 	HIPRT_DEVICE int* get_canonical_reservoir_count_per_cell_ptr() { return &reservoirs_count_per_grid_cell_canonical; }
 
-	HIPRT_DEVICE bool reservoir_index_in_cell_is_canonical(int reservoir_index_in_cell) { return reservoir_index_in_cell >= get_non_canonical_reservoir_count_per_cell(); }
+	HIPRT_DEVICE bool reservoir_index_in_cell_is_canonical(int reservoir_index_in_cell) const { return reservoir_index_in_cell >= get_non_canonical_reservoir_count_per_cell(); }
 
 private:
 	// How many reservoirs are going to be produced per each cell of the grid.
@@ -550,6 +550,7 @@ struct ReGIRSettings
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
+	bool DEBUG_FORCE_REGIR8CANONICAL = true;
 	bool DEBUG_CORRELATE_rEGIR = true;
 	int DEBUG_CORRELATE_rEGIR_SIZE = 32;
 
