@@ -35,8 +35,7 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 
 	if (needs_grid_resize)
 	{
-		if (grid_not_allocated)
-			m_total_number_of_cells = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT; // Default grid size
+		m_total_number_of_cells = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT; // Default grid size
 
 		m_current_grid_min_cell_size = regir_settings.hash_grid.m_grid_cell_min_size;
 		m_grid_cell_target_projected_size = regir_settings.hash_grid.m_grid_cell_target_projected_size;
