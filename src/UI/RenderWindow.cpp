@@ -53,6 +53,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Have some reservoirs with the BRDF term in the target function during grid fill and have those reservoirs only for the first hit because it gets worse for the GI
+// - Can we pre integrate the ReGIR PDF normalization factor for each grid cell? And so to get the proper PDF of a light sample, all we need 
 // - Decoupled shading and reuse ReGIR: add visibility rays during the shading so that we have visiblity resampling which is very good and on top of that, we can totally shade the reservoir because the visibility has been computed so the rest of the shading isn't super expensive: maybe use NEE++ in there to reduce shadow rays? Or the visibility caching thing that is biased?
 // - Better MIS weights for the canonical candidate somehow?
 // - Can we maybe add BRDF samples in the grid fill for rough BRDFs? This will enable perfect MIS for diffuse BRDFs which should be good for the bistro many light with the light close for example. This could also be enough for rough-ish specular BRDFs

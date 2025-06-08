@@ -42,9 +42,11 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 
 			m_nee_plus_plus.total_shadow_ray_queries.free();
 			m_nee_plus_plus.shadow_rays_actually_traced.free();
+
+			return true;
 		}
 
-		return true;
+		return false;
 	}
 
 	// Allocating / deallocating buffers
