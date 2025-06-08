@@ -1172,7 +1172,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
 						m_render_window->set_render_dirty(true);
 
-					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp))
+					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 64, "%d", ImGuiSliderFlags_AlwaysClamp))
 					{
 						render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
 						if (render_settings.accumulate)
