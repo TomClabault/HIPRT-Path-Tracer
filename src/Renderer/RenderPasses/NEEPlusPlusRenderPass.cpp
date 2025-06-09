@@ -9,6 +9,7 @@
 #include "Threads/ThreadFunctions.h"
  
 const std::string NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME = "NEE++ Render Pass";
+const std::string NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE = "NEE++ Pre-population";
 
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass() : NEEPlusPlusRenderPass(nullptr) {}
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer) : NEEPlusPlusRenderPass(renderer, NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME) {}
@@ -53,7 +54,29 @@ bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 
 void NEEPlusPlusRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 {
+	//bool has_rehashed = false;
 
+	//do
+	//{
+	//	update_cell_alive_count();
+
+	//	void* launch_args[] = { &render_data };
+
+	//	// Only launching / 4 in each dimension because we don't need a super high precision for the grid pre-population.
+	//	// 
+	//	// We just need some rays bouncing around the scene but that's it
+	//	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->launch_asynchronous(
+	//		KernelBlockWidthHeight, KernelBlockWidthHeight,
+	//		m_renderer->m_render_resolution.x / ReGIR_GridPrepoluationResolutionDownscale, m_renderer->m_render_resolution.y / ReGIR_GridPrepoluationResolutionDownscale,
+	//		launch_args, m_renderer->get_main_stream());
+
+	//	update_cell_alive_count();
+
+	//	has_rehashed = rehash(render_data);
+	//	if (has_rehashed)
+	//		update_render_data();
+
+	//} while (has_rehashed);
 }
 
 void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)

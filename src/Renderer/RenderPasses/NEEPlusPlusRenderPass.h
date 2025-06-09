@@ -13,6 +13,7 @@ class NEEPlusPlusRenderPass : public RenderPass
 {
 public:
     static const std::string NEE_PLUS_PLUS_RENDER_PASS_NAME;
+    static const std::string NEE_PLUS_PLUS_PRE_POPULATE;
  
     NEEPlusPlusRenderPass();
     NEEPlusPlusRenderPass(GPURenderer* renderer);

@@ -25,6 +25,7 @@ bool NEEPlusPlusHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 
 		m_shadow_rays_actually_traced.resize(1);
 		m_total_shadow_ray_queries.resize(1);
+		m_total_cells_alive_count.resize(1);
 
 		updated = true;
 	}
@@ -39,6 +40,7 @@ bool NEEPlusPlusHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 
 		m_total_shadow_ray_queries.memset_whole_buffer(0);
 		m_shadow_rays_actually_traced.memset_whole_buffer(0);
+		m_total_cells_alive_count.memset_whole_buffer(0);
 	}
 
 	if (render_data.render_settings.sample_number > render_data.nee_plus_plus.m_stop_update_samples)
@@ -77,8 +79,9 @@ void NEEPlusPlusHashGridStorage::update_render_data()
 		render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = m_checksum_buffer.get_atomic_device_pointer();
 		render_data.nee_plus_plus.m_total_number_of_cells = NEEPlusPlusHashGridStorage::DEFAULT_GRID_SIZE;
 
-		render_data.nee_plus_plus.shadow_rays_actually_traced = m_shadow_rays_actually_traced.get_atomic_device_pointer();
-		render_data.nee_plus_plus.total_shadow_ray_queries = m_total_shadow_ray_queries.get_atomic_device_pointer();
+		render_data.nee_plus_plus.m_shadow_rays_actually_traced = m_shadow_rays_actually_traced.get_atomic_device_pointer();
+		render_data.nee_plus_plus.m_total_shadow_ray_queries = m_total_shadow_ray_queries.get_atomic_device_pointer();
+		render_data.nee_plus_plus.m_total_cells_alive_count = m_total_cells_alive_count.get_atomic_device_pointer();
 	}
 	else
 	{
@@ -86,8 +89,9 @@ void NEEPlusPlusHashGridStorage::update_render_data()
 		render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = nullptr;
 		render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = nullptr;
 
-		render_data.nee_plus_plus.shadow_rays_actually_traced = nullptr;
-		render_data.nee_plus_plus.total_shadow_ray_queries = nullptr;
+		render_data.nee_plus_plus.m_shadow_rays_actually_traced = nullptr;
+		render_data.nee_plus_plus.m_total_shadow_ray_queries = nullptr;
+		render_data.nee_plus_plus.m_total_cells_alive_count = nullptr;
 	}
 }
 
@@ -101,6 +105,7 @@ bool NEEPlusPlusHashGridStorage::free()
 
 		m_total_shadow_ray_queries.free();
 		m_shadow_rays_actually_traced.free();
+		m_total_cells_alive_count.free();
 
 		return true;
 	}
@@ -120,6 +125,7 @@ void NEEPlusPlusHashGridStorage::reset()
 	{
 		m_total_shadow_ray_queries.memset_whole_buffer(1);
 		m_shadow_rays_actually_traced.memset_whole_buffer(1);
+		m_total_cells_alive_count.memset_whole_buffer(0);
 	}
 
 	m_total_shadow_ray_queries_cpu = 1;
@@ -141,6 +147,8 @@ std::size_t NEEPlusPlusHashGridStorage::get_byte_size() const
 	return m_total_unoccluded_rays.get_byte_size() +
 		m_total_num_rays.get_byte_size() +
 		m_checksum_buffer.get_byte_size() +
+
 		m_total_shadow_ray_queries.get_byte_size() +
-		m_shadow_rays_actually_traced.get_byte_size();
+		m_shadow_rays_actually_traced.get_byte_size() +
+		m_total_cells_alive_count.get_byte_size();
 }

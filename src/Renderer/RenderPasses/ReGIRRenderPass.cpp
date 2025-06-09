@@ -157,23 +157,24 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 	do
 	{
 		update_cell_alive_count();
-		
+
 		void* launch_args[] = { &render_data };
 
 		// Only launching / 4 in each dimension because we don't need a super high precision for the grid pre-population.
 		// 
 		// We just need some rays bouncing around the scene but that's it
-		m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->launch_asynchronous(
-			KernelBlockWidthHeight, KernelBlockWidthHeight, 
-			m_renderer->m_render_resolution.x / ReGIR_GridPrepoluationResolutionDownscale, m_renderer->m_render_resolution.y / ReGIR_GridPrepoluationResolutionDownscale, 
-			launch_args, m_renderer->get_main_stream());
+		m_kernels[ReGIRRenderPass::REGIR_GRID_PRE_POPULATE]->launch_synchronous(
+			KernelBlockWidthHeight, KernelBlockWidthHeight,
+			m_renderer->m_render_resolution.x / ReGIR_GridPrepoluationResolutionDownscale, m_renderer->m_render_resolution.y / ReGIR_GridPrepoluationResolutionDownscale,
+			launch_args);
 
 		update_cell_alive_count();
 
 		has_rehashed = rehash(render_data);
 		if (has_rehashed)
+			// Also updating the "true" render data of the renderer which is not the same as
+			// the copy that we got here as the argument passed to this function
 			update_render_data();
-
 	} while (has_rehashed);
 }
 
