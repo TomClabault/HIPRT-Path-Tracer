@@ -6,7 +6,7 @@
  #ifndef NEE_PLUS_PLUS_RENDER_PASS_H
  #define NEE_PLUS_PLUS_RENDER_PASS_H
  
- #include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
+ #include "Renderer/RenderPasses/NEEPlusPlusHashGridStorage.h"
  #include "Renderer/RenderPasses/RenderPass.h"
  
 class NEEPlusPlusRenderPass : public RenderPass
@@ -23,6 +23,7 @@ public:
     virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
     virtual bool pre_render_update(float delta_time) override;
     virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
+    void launch_grid_pre_population(HIPRTRenderData& render_data);
     virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
     virtual void update_render_data() override;
@@ -30,13 +31,15 @@ public:
  
     virtual bool is_render_pass_used() const override;
 
-    NEEPlusPlusGPUData& get_nee_plus_plus_data();
+    NEEPlusPlusHashGridStorage& get_nee_plus_plus_storage();
 
     std::size_t get_vram_usage_bytes() const;
  
 private:
+	friend class NEEPlusPlusHashGridStorage;
+
     // Buffers and settings for NEE++
-	NEEPlusPlusGPUData m_nee_plus_plus;
+    NEEPlusPlusHashGridStorage m_nee_plus_plus_storage;
 };
  
 #endif

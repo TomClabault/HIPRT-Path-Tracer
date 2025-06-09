@@ -341,9 +341,9 @@ std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
 	return m_render_thread.get_ReSTIR_GI_render_pass();
 }
 
-NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
+NEEPlusPlusHashGridStorage& GPURenderer::get_nee_plus_plus_storage()
 {
-	return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_data();
+	return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage();
 }
 
 void GPURenderer::setup_filter_functions()
