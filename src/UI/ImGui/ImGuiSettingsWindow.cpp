@@ -2771,7 +2771,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 
 			{
-				if (ImGui::SliderFloat("Grid cell target projected size", &render_data.nee_plus_plus.m_grid_cell_target_projected_size, 25, 250))
+				if (ImGui::SliderFloat("Grid cell target projected size", &render_data.nee_plus_plus.m_grid_cell_target_projected_size, 5, 25))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
 					"This has the effect of making the grid cells larger in the distance so that the projected size stays approximately constant.");

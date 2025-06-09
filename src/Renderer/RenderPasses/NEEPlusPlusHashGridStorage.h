@@ -40,6 +40,7 @@ private:
 	// Counters on the GPU for tracking 
 	OrochiBuffer<unsigned long long int> m_total_shadow_ray_queries;
 	OrochiBuffer<unsigned long long int> m_shadow_rays_actually_traced;
+	OrochiBuffer<unsigned int> m_total_cells_alive_count;
 
 	// Same counters but on the CPU for displaying the stats in ImGui.
 	// These counters are updated 

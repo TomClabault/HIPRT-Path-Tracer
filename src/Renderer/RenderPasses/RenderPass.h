@@ -351,6 +351,8 @@ protected:
 
 	// Access to the renderer that holds the render pass
 	GPURenderer* m_renderer = nullptr;
+	// Access to the render window that holds the renderer
+	RenderWindow* m_render_window = nullptr;
 
 	// Other render passes which this render pass depends on.
 	// They will be launched before this render pass

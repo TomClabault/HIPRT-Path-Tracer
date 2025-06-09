@@ -119,6 +119,9 @@ struct NEEPlusPlusDevice
 	// ...
 	NEEPlusPlusEntry m_entries_buffer;
 
+	// Counter that keep tracks of how many cells are currently used in the hash grid
+	AtomicType<unsigned int>* m_total_cells_alive_count = nullptr;
+
 	// If a voxel-to-voxel unocclusion probability is higher than that, the voxel will be considered unoccluded
 	// and so a shadow ray will be traced. This is to avoid trusting voxel that have a low probability of
 	// being unoccluded
@@ -131,8 +134,8 @@ struct NEEPlusPlusDevice
 	// queries made. This is used in 'evaluate_shadow_ray_nee_plus_plus()'
 	bool do_update_shadow_rays_traced_statistics = true;
 
-	AtomicType<unsigned long long int>* total_shadow_ray_queries = nullptr;
-	AtomicType<unsigned long long int>* shadow_rays_actually_traced = nullptr;
+	AtomicType<unsigned long long int>* m_total_shadow_ray_queries = nullptr;
+	AtomicType<unsigned long long int>* m_shadow_rays_actually_traced = nullptr;
 
 	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, unsigned int hash_grid_index)
 	{
@@ -145,7 +148,11 @@ struct NEEPlusPlusDevice
 
 		if (visible)
 			increment_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(hash_grid_index, 1);
-		increment_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, 1);
+		unsigned int total_count_before = increment_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, 1);
+
+		if (total_count_before == 0)
+			// If we just inserted a new cell in the hash grid, that's one more cell alive
+			hippt::atomic_fetch_add(m_total_cells_alive_count, 1u);
 	}
 
 	/**
@@ -262,12 +269,12 @@ private:
 	 * There is no protection against overflows in this function
 	 */
 	template <unsigned int bufferName>
-	HIPRT_HOST_DEVICE void increment_buffer(unsigned int hash_grid_index, unsigned int value)
+	HIPRT_HOST_DEVICE unsigned int increment_buffer(unsigned int hash_grid_index, unsigned int value)
 	{
 		if constexpr (bufferName == 0)
-			hippt::atomic_fetch_add(&m_entries_buffer.total_unoccluded_rays[hash_grid_index], value);
+			return hippt::atomic_fetch_add(&m_entries_buffer.total_unoccluded_rays[hash_grid_index], value);
 		if constexpr (bufferName == 1)
-			hippt::atomic_fetch_add(&m_entries_buffer.total_num_rays[hash_grid_index], value);
+			return hippt::atomic_fetch_add(&m_entries_buffer.total_num_rays[hash_grid_index], value);
 	}
 
 	/**
