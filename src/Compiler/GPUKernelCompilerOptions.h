@@ -56,6 +56,7 @@ public:
 	static const std::string REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY;
 	static const std::string REGIR_LINEAR_PROBING_STEPS;
 	static const std::string REGIR_SHADING_JITTER_TRIES;
+	static const std::string REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION;
 	static const std::string REGIR_DEBUG_MODE;
 
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;

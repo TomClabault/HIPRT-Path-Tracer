@@ -180,7 +180,12 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
      int sampleIndex = render_data.render_settings.output_debug_sample_N;
 
      if (render_data.render_settings.sample_number == sampleIndex)
-         render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color * (sampleIndex + 1);
+     {
+         render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
+#if ViewportColorOverriden == 0
+         render_data.buffers.accumulated_ray_colors[pixel_index] *= (sampleIndex + 1);
+#endif
+     }
 
      return;
 #endif
@@ -246,8 +251,9 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
         float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
         float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+        float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
-        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, render_data.current_camera);
+        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, render_data.current_camera, primary_hit_roughness);
         ray_payload.ray_color *= (render_data.render_settings.sample_number + 1);
         ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
     }

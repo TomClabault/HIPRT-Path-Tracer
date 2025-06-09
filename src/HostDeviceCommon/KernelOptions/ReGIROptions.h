@@ -126,6 +126,13 @@
 #define ReGIR_ShadingJitterTries 4
 
 /**
+ * Whether or not to increase the hash grid precision on surfaces that have a lower roughness
+ * such that the BRDF term in the target function of the grid fill (if used at all) has a higher
+ * precision and gives better results
+ */
+#define ReGIR_AdaptiveRoughnessGridPrecision KERNEL_OPTION_TRUE
+
+/**
  * Debug option to color the scene with the grid cells
  */
 #define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG

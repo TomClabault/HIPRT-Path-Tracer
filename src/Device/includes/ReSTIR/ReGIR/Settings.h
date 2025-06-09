@@ -90,62 +90,62 @@ struct ReGIRSettings
 {
 	///////////////////// Delegating to the grid for these functions /////////////////////
 
-	HIPRT_DEVICE float3 get_cell_size(float3 world_position, const HIPRTCamera& current_camera) const
+	HIPRT_DEVICE float3 get_cell_size(float3 world_position, const HIPRTCamera& current_camera, float roughness) const
 	{
-		float cell_size = compute_adaptive_cell_size(world_position, current_camera, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size);
+		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size);
 
 		return make_float3(cell_size, cell_size, cell_size);
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator* rng = nullptr, bool jitter = false) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(float3 world_position, const HIPRTCamera& current_camera, float roughness, Xorshift32Generator* rng = nullptr, bool jitter = false) const
 	{
 		if (jitter)
-			world_position = hash_grid.jitter_world_position(world_position, current_camera, *rng);
+			world_position = hash_grid.jitter_world_position(world_position, current_camera, roughness, *rng);
 
-		return hash_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(initial_reservoirs_grid, world_position, current_camera);
+		return hash_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(initial_reservoirs_grid, world_position, current_camera, roughness);
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(float3 world_position, const HIPRTCamera& current_camera) const
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(float3 world_position, const HIPRTCamera& current_camera, float roughness) const
 	{
-		return hash_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(initial_reservoirs_grid, hash_cell_data, world_position, current_camera);
+		return hash_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, roughness);
 	}
 
 	
-	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid_from_world_pos(float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell) const
+	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid_from_world_pos(float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell) const
 	{
-		unsigned int hash_grid_cell_index = hash_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(initial_reservoirs_grid, world_position, current_camera);
+		unsigned int hash_grid_cell_index = hash_grid.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(initial_reservoirs_grid, world_position, current_camera, roughness);
 		
 		return hash_grid_cell_index * grid_fill.get_total_reservoir_count_per_cell() + reservoir_index_in_cell;
 	}
 
 	///////////////////// Delegating to the grid for these functions /////////////////////
 
-	HIPRT_DEVICE ReGIRReservoir get_random_cell_non_canonical_reservoir(float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
+	HIPRT_DEVICE ReGIRReservoir get_random_cell_non_canonical_reservoir(float3 world_position, const HIPRTCamera& current_camera, float roughness, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
 	{
 		int random_non_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 
-		return get_reservoir_for_shading_from_cell_indices(world_position, current_camera, random_non_canonical_reservoir_index_in_cell, out_invalid_sample);
+		return get_reservoir_for_shading_from_cell_indices(world_position, current_camera, roughness, random_non_canonical_reservoir_index_in_cell, out_invalid_sample);
 	}
 
-	HIPRT_DEVICE ReGIRReservoir get_random_cell_canonical_reservoir(float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
+	HIPRT_DEVICE ReGIRReservoir get_random_cell_canonical_reservoir(float3 world_position, const HIPRTCamera& current_camera, float roughness, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
 	{
 		int random_canonical_reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 
-		return get_reservoir_for_shading_from_cell_indices(world_position, current_camera, grid_fill.get_non_canonical_reservoir_count_per_cell() + random_canonical_reservoir_index_in_cell, out_invalid_sample);
+		return get_reservoir_for_shading_from_cell_indices(world_position, current_camera, roughness, grid_fill.get_non_canonical_reservoir_count_per_cell() + random_canonical_reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	/**
 	 * If 'out_invalid_sample' is set to true, then the given shading point (+ the jittering) was outside of the grid
 	 * and no reservoir has been gathered
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_reservoir_for_shading_from_cell_indices(float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
+	HIPRT_DEVICE ReGIRReservoir get_reservoir_for_shading_from_cell_indices(float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
 	{
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return hash_grid.read_full_reservoir(spatial_output_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, out_invalid_sample);
+			return hash_grid.read_full_reservoir(spatial_output_grid, hash_cell_data, world_position, current_camera, roughness, reservoir_index_in_cell, out_invalid_sample);
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, out_invalid_sample);
+			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, roughness, reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	/**
@@ -187,13 +187,13 @@ struct ReGIRSettings
 		}
 	}
 
-	HIPRT_DEVICE unsigned int get_neighbor_replay_hash_grid_cell_index_for_shading(float3 shading_point, const HIPRTCamera& current_camera, bool replay_canonical, bool do_jittering, float jittering_radius, Xorshift32Generator& rng) const
+	HIPRT_DEVICE unsigned int get_neighbor_replay_hash_grid_cell_index_for_shading(float3 shading_point, const HIPRTCamera& current_camera, float roughness, bool replay_canonical, bool do_jittering, float jittering_radius, Xorshift32Generator& rng) const
 	{
 		unsigned int neighbor_cell_index;
 		if (replay_canonical)
-			neighbor_cell_index = find_valid_jittered_neighbor_cell_index<true>(shading_point, current_camera, do_jittering, jittering_radius, rng);
+			neighbor_cell_index = find_valid_jittered_neighbor_cell_index<true>(shading_point, current_camera, roughness, do_jittering, jittering_radius, rng);
         else
-            neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, current_camera, do_jittering, jittering_radius, rng);
+            neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, current_camera, roughness, do_jittering, jittering_radius, rng);
 
 		if (neighbor_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
@@ -208,7 +208,7 @@ struct ReGIRSettings
 	}
 
 	template <bool fallbackOnCenterCell>
-	HIPRT_DEVICE unsigned int find_valid_jittered_neighbor_cell_index(float3 world_position, const HIPRTCamera& current_camera, bool do_jittering, float jittering_radius, Xorshift32Generator& rng) const
+	HIPRT_DEVICE unsigned int find_valid_jittered_neighbor_cell_index(float3 world_position, const HIPRTCamera& current_camera, float roughness, bool do_jittering, float jittering_radius, Xorshift32Generator& rng) const
 	{
 		unsigned int retry = 0;
 		unsigned int neighbor_grid_cell_index;
@@ -217,11 +217,11 @@ struct ReGIRSettings
 		{
 			float3 jittered;
 			if (do_jittering)
-				jittered = hash_grid.jitter_world_position(world_position, current_camera, rng, jittering_radius);
+				jittered = hash_grid.jitter_world_position(world_position, current_camera, roughness, rng, jittering_radius);
 			else
 				jittered = world_position;
 
-			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, jittered, current_camera);
+			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, jittered, current_camera, roughness);
 			if (neighbor_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			{
 				// This part here is to avoid race concurrency issues from the Megakernel shader:
@@ -255,7 +255,7 @@ struct ReGIRSettings
 
 		if (fallbackOnCenterCell && neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && retry == ReGIR_ShadingJitterTries)
 			// We couldn't find a valid neighbor and the fallback on center cell is enabled: we're going to return the index of the center cell
-			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, world_position, current_camera);
+			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, roughness);
 
 		return neighbor_grid_cell_index;
 	}
@@ -339,31 +339,31 @@ struct ReGIRSettings
 	 * will only be read if the UCW is > 0.0f.
 	 * If the UCW is <= 0.0f, the returned reservoir will have uninitialized values in all of its fields
 	 */
-	HIPRT_DEVICE ReGIRReservoir get_temporal_reservoir_opt(float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
+	HIPRT_DEVICE ReGIRReservoir get_temporal_reservoir_opt(float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
 	{
-		return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell, out_invalid_sample);
+		return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, roughness, reservoir_index_in_cell, out_invalid_sample);
 	}
 
-	HIPRT_DEVICE ReGIRReservoir get_grid_fill_output_reservoir_opt(float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
+	HIPRT_DEVICE ReGIRReservoir get_grid_fill_output_reservoir_opt(float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
 	{
 		// The output of the grid fill pass is in the current frame grid so we can call the temporal method with
 		// index -1
-		return get_temporal_reservoir_opt(world_position, current_camera, reservoir_index_in_cell, out_invalid_sample);
+		return get_temporal_reservoir_opt(world_position, current_camera, roughness, reservoir_index_in_cell, out_invalid_sample);
 	}
 
-	HIPRT_DEVICE void store_spatial_reservoir_opt(const ReGIRReservoir& reservoir, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell)
+	HIPRT_DEVICE void store_spatial_reservoir_opt(const ReGIRReservoir& reservoir, float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell)
 	{
-		hash_grid.store_reservoir_and_sample_opt(reservoir, spatial_output_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell);
+		hash_grid.store_reservoir_and_sample_opt(reservoir, spatial_output_grid, hash_cell_data, world_position, current_camera, roughness, reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, float3 world_position, const HIPRTCamera& current_camera, int reservoir_index_in_cell)
+	HIPRT_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell)
 	{
-		hash_grid.store_reservoir_and_sample_opt(reservoir, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, reservoir_index_in_cell);
+		hash_grid.store_reservoir_and_sample_opt(reservoir, initial_reservoirs_grid, hash_cell_data, world_position, current_camera, roughness, reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, const HIPRTCamera& current_camera) const
+	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 position, const HIPRTCamera& current_camera, float roughness) const
 	{
-		unsigned int cell_index = hash_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(initial_reservoirs_grid, hash_cell_data, position, current_camera);
+		unsigned int cell_index = hash_grid.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(initial_reservoirs_grid, hash_cell_data, position, current_camera, roughness);
 		if (cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			return ColorRGB32F(0.0f);
 
@@ -494,23 +494,23 @@ struct ReGIRSettings
 		const ReGIRHashGrid& hash_grid, ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
 		float3 world_position, const HIPRTCamera& current_camera, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
-		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = hash_position_camera(hash_grid_to_update.m_total_number_of_cells, world_position, current_camera, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size, hash_key);
+		unsigned int checksum;
+		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, current_camera, material.roughness, hash_grid_to_update.m_total_number_of_cells, checksum);
 		
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 
-		unsigned int existing_hash_key = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, hash_key);
-		if (existing_hash_key != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+		unsigned int existing_checksum = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
+		if (existing_checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
 			// We tried inserting in our cell but there is something else there already
 			
-			if (existing_hash_key != hash_key)
+			if (existing_checksum != checksum)
 			{
 				// And it's not our hash so this is a collision
 
 				unsigned int new_hash_cell_index = hash_grid_cell_index;
-				if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps, true>(hash_cell_data_to_update.hash_keys, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, hash_key, existing_hash_key))
+				if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps, true>(hash_cell_data_to_update.hash_keys, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, checksum, existing_checksum))
 				{
 					// Could not resolve the collision
 
