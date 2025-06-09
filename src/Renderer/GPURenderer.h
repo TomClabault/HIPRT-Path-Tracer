@@ -108,7 +108,7 @@ public:
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
 
-	NEEPlusPlusGPUData& get_nee_plus_plus_data();
+	NEEPlusPlusHashGridStorage& get_nee_plus_plus_storage();
 
 	/**
 	 * Initializes the filter function used by the kernels

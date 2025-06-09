@@ -2760,7 +2760,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				unsigned int traced = 0;
 				unsigned int total = 0;
 
-				ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_data().shadow_rays_actually_traced_cpu / (float)m_renderer->get_nee_plus_plus_data().total_shadow_ray_queries_cpu * 100.0f);
+				ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_storage().get_shadow_rays_actually_traced() / (float)m_renderer->get_nee_plus_plus_storage().get_total_shadow_rays_queries() * 100.0f);
 				ImGui::SameLine();
 				std::string button_text = render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics ? "Stop" : "Resume";
 				if (ImGui::Button(button_text.c_str()))
