@@ -18,6 +18,7 @@ class GPURenderer;
 #include <vector>
 
 class GPURenderer;
+class RenderWindow;
 struct HIPRTRenderData;
 
 /**
@@ -29,6 +30,8 @@ public:
 	RenderPass();
 	RenderPass(GPURenderer* renderer);
 	RenderPass(GPURenderer* renderer, const std::string& name);
+
+	void set_render_window(RenderWindow* render_window);
 
 	/**
 	 * This will be called once when the render pass is created.

@@ -108,6 +108,11 @@ void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 	m_imgui_log_window.set_render_window(render_window);
 }
 
+void ImGuiRenderer::set_status_text(const std::string& new_status_text)
+{
+	m_imgui_settings_window.set_status_text(new_status_text);
+}
+
 void ImGuiRenderer::draw_interface()
 {
 	ImGui_ImplOpenGL3_NewFrame();

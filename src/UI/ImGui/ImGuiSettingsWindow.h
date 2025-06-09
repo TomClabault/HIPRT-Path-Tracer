@@ -22,6 +22,7 @@ public:
 	static const float BASE_SIZE;
 
 	void set_render_window(RenderWindow* render_window);
+	void set_status_text(const std::string& new_status_text);
 
 	void draw();
 	static void draw_camera_panel_static(const std::string& panel_title, RenderWindow* render_window, std::shared_ptr<GPURenderer> renderer);
@@ -84,6 +85,13 @@ private:
 	std::shared_ptr<PerformanceMetricsComputer> m_render_window_perf_metrics = nullptr;
 
 	ImVec2 m_current_size;
+
+	// This is a status text that anyone can be modify (asynchronously = race conditions)
+	// to display a message in the settings window.
+	//
+	// This is mostly used by RenderPasses to indicate if some kind of preprocessing of the scene
+	// is currently running for example
+	std::string m_status_text = "";
 };
 
 #endif

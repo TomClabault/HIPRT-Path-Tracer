@@ -19,6 +19,8 @@ public:
 	RenderGraph();
 	RenderGraph(GPURenderer* renderer);
 
+	void set_render_window(RenderWindow* render_window);
+
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
 	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
 

@@ -43,6 +43,7 @@ public:
 	static bool ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips);
 
 	void set_render_window(RenderWindow* renderer);
+	void set_status_text(const std::string& new_status_text);
 
 	void draw_interface();
 	void rescale_ui();
