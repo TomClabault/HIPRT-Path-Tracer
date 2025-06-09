@@ -30,6 +30,8 @@ struct ReGIRHashCellDataSoADevice
 	AtomicType<int>* hit_primitive = nullptr;
 	float3* world_points = nullptr;
 	Octahedral24BitNormalPadded32b* world_normals = nullptr;
+
+	// TODO pack these to unsigned char
 	float* roughness = nullptr;
 	float* specular = nullptr;
 	float* metallic = nullptr;

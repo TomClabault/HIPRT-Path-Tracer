@@ -66,7 +66,7 @@ HIPRT_DEVICE HIPRT_INLINE float compute_adaptive_cell_size(float3 world_position
  * Returns the hash cell index of the given world position and camera position. Does not resolve collisions.
  * The hash key for resolving collision is given in 'out_checksum'
  */
-HIPRT_DEVICE HIPRT_INLINE unsigned int hash_position_camera(unsigned int total_number_of_cells, float3 world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
+HIPRT_DEVICE HIPRT_INLINE unsigned int hash_pos_distance_to_camera(unsigned int total_number_of_cells, float3 world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
 {
     float cell_size = compute_adaptive_cell_size(world_position, current_camera, target_projected_size, grid_cell_min_size);
 

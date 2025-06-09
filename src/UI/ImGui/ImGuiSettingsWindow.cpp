@@ -2029,6 +2029,15 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePop();
 			}
 
+			static bool adaptive_roughness_grid_precision = ReGIR_AdaptiveRoughnessGridPrecision;
+			if (ImGui::Checkbox("Adaptive roughness grid precision", &adaptive_roughness_grid_precision))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION, adaptive_roughness_grid_precision ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}

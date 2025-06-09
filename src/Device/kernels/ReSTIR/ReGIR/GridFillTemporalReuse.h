@@ -105,6 +105,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         
         float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
         float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index);
+        float roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index);
         
         // TODO do we need this since we're only dispatching for alive grid cells anyways with the compaction?
         if (regir_settings.hash_cell_data.grid_cell_alive[hash_grid_cell_index] == 0)
@@ -112,7 +113,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_reservoir_opt(ReGIRReservoir(), representative_point, render_data.current_camera, reservoir_index_in_cell);
+            regir_settings.store_reservoir_opt(ReGIRReservoir(), representative_point, render_data.current_camera, roughness, reservoir_index_in_cell);
             
             return;
         }
@@ -128,7 +129,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, hash_grid_cell_index, random_number_generator);
 
-        regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera, reservoir_index_in_cell);
+        regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera, roughness, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

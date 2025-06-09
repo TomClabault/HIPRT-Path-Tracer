@@ -32,8 +32,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
-// - distance rejection heuristic for reconnection
-// - Same random neighbors seed per warp for coaslescing even with directional spatial reuse
+// - distance rejection heuristic for GI reconnection
 // - Alpah tests darkening ReSTIR DI
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
@@ -53,6 +52,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - We only need the increase in precision for the BRDF sampling on the grid cells of the first hit
+// - Higher grid resolution on low roughness surfaces for better BRDF sampling precision
+// - Include normal in hash grid for low roughness surfaces to have better BRDF sampling precision
+// - Try reducing ReGIR grid precision at later bounces and see if this hurts quality a lot or not
 // - Have some reservoirs with the BRDF term in the target function during grid fill and have those reservoirs only for the first hit because it gets worse for the GI
 // - Can we pre integrate the ReGIR PDF normalization factor for each grid cell? And so to get the proper PDF of a light sample, all we need 
 // - Decoupled shading and reuse ReGIR: add visibility rays during the shading so that we have visiblity resampling which is very good and on top of that, we can totally shade the reservoir because the visibility has been computed so the rest of the shading isn't super expensive: maybe use NEE++ in there to reduce shadow rays? Or the visibility caching thing that is biased?

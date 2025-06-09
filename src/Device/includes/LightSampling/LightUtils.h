@@ -278,7 +278,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
     {
         unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-            shading_point, render_data.current_camera, 
+            shading_point, render_data.current_camera, ray_payload.material.roughness,
             render_data.render_settings.regir_settings.shading.do_cell_jittering,
             render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
         if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -343,7 +343,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     {
         // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
         unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(
-            shading_point, render_data.current_camera, 
+            shading_point, render_data.current_camera, ray_payload.material.roughness,
             render_data.render_settings.regir_settings.shading.do_cell_jittering,
             render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
 
@@ -462,7 +462,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         bool is_canonical = i == render_data.render_settings.regir_settings.shading.number_of_neighbors;
             
 		unsigned int neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
-            shading_point, render_data.current_camera,
+            shading_point, render_data.current_camera, ray_payload.material.roughness,
             is_canonical, 
             render_data.render_settings.regir_settings.shading.do_cell_jittering,
             render_data.render_settings.regir_settings.shading.jittering_radius,

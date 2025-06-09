@@ -55,6 +55,7 @@ const std::string GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE = "ReGIR_D
 const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS = "ReGIR_LinearProbingSteps";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES = "ReGIR_ShadingJitterTries";
+const std::string GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION = "ReGIR_AdaptiveRoughnessGridPrecision";
 const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIR_DebugMode";
 
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
@@ -133,6 +134,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS,
 	GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES,
+	GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION,
 	GPUKernelCompilerOptions::REGIR_DEBUG_MODE,
 
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
@@ -215,6 +217,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS] = std::make_shared<int>(ReGIR_LinearProbingSteps);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES] = std::make_shared<int>(ReGIR_ShadingJitterTries);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION] = std::make_shared<int>(ReGIR_AdaptiveRoughnessGridPrecision);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DEBUG_MODE] = std::make_shared<int>(ReGIR_DebugMode);
 
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
