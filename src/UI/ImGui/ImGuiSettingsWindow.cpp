@@ -32,6 +32,11 @@ void ImGuiSettingsWindow::set_render_window(RenderWindow* render_window)
 	m_render_window_perf_metrics = m_render_window->get_performance_metrics();
 }
 
+void ImGuiSettingsWindow::set_status_text(const std::string& new_status_text)
+{
+	m_status_text = new_status_text;
+}
+
 void ImGuiSettingsWindow::draw()
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
@@ -71,6 +76,9 @@ void ImGuiSettingsWindow::draw()
 void ImGuiSettingsWindow::draw_header()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	ImGui::Text("Status: %s", m_status_text.c_str());
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	if (render_settings.accumulate)
 		ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);

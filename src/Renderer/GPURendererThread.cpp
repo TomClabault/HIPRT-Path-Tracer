@@ -44,7 +44,7 @@ void GPURendererThread::render_thread_function()
 	}
 }
 
-void GPURendererThread::setup_render_passes()
+void GPURendererThread::setup_render_passes(RenderWindow* render_window)
 {
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = std::make_shared<FillGBufferRenderPass>(m_renderer);
 
@@ -83,6 +83,8 @@ void GPURendererThread::setup_render_passes()
 	m_render_graph.add_render_pass(gmon_render_pass);
 
 	m_render_graph.compile(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);
+
+	m_render_graph.set_render_window(render_window);
 }
 
 void GPURendererThread::request_frame()

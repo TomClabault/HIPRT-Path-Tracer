@@ -12,6 +12,11 @@ RenderPass::RenderPass() {}
 RenderPass::RenderPass(GPURenderer* renderer) : RenderPass(renderer, "Unnamed render pass") {}
 RenderPass::RenderPass(GPURenderer* renderer, const std::string& name) : m_renderer(renderer), m_name(name) {}
 
+void RenderPass::set_render_window(RenderWindow* render_window)
+{
+	m_render_window = render_window;
+}
+
 void RenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
 	if (!is_render_pass_used())

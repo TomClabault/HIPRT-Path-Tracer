@@ -6,6 +6,8 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
 
+#include "UI/RenderWindow.h"
+
 const std::string ReGIRRenderPass::REGIR_GRID_PRE_POPULATE = "ReGIR Pre-population";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID = "ReGIR Grid fill & temp. reuse";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID = "ReGIR Spatial reuse";
@@ -125,8 +127,13 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	if (render_data.render_settings.sample_number == 0)
 	{
+		m_render_window->set_ImGui_status_text("ReGIR Per-population pass...");
 		launch_grid_pre_population(render_data);
+
+		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
 		launch_supersampling_fill(render_data);
+
+		m_render_window->clear_ImGui_status_text();
 	}
 
 	// This needs to be called before the rehash because the 

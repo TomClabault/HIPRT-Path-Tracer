@@ -103,6 +103,12 @@ public:
 	 */
 	void set_force_viewport_refresh(bool force_viewport_refresh);
 
+	/**
+	 * Sets the status text of the ImGui UI to indicate some kind of information to the user.
+	 */
+	void set_ImGui_status_text(const std::string& status_text);
+	void clear_ImGui_status_text();
+
 	float get_current_render_time();
 	float get_samples_per_second();
 	/**

@@ -58,7 +58,7 @@ public:
 	 * Constructs a renderer that will be using the given HIPRT/Orochi
 	 * context for handling GPU acceleration structures, buffers, textures, etc...
 	 */
-	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings);
+	GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings);
 	~GPURenderer();
 
 	void start_render_thread();

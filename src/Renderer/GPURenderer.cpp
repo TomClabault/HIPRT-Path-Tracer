@@ -31,7 +31,7 @@ const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY = "FullFrameTime";
 const std::string GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY = "FullFrameTimeWithCPU";
 const std::string GPURenderer::DEBUG_KERNEL_TIME_KEY = "DebugKernelTime";
 
-GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings)
+GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings)
 {
 	// Creating buffers
 	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
@@ -56,7 +56,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 
 	setup_brdfs_data();
 	setup_filter_functions();
-	m_render_thread.setup_render_passes();
+	m_render_thread.setup_render_passes(render_window);
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 

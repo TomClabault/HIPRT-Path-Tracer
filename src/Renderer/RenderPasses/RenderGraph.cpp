@@ -10,6 +10,13 @@ RenderGraph::RenderGraph() : RenderGraph(nullptr) {}
 
 RenderGraph::RenderGraph(GPURenderer* renderer) : RenderPass(renderer) {}
 
+void RenderGraph::set_render_window(RenderWindow* render_window)
+{
+	// Setting the render window for all render passes
+	for (auto& name_to_render_pass : m_render_passes)
+		name_to_render_pass.second->set_render_window(render_window);
+}
+
 void RenderGraph::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
 	for (auto& name_to_render_pass : m_render_passes)

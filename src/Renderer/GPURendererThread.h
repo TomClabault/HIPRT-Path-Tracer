@@ -35,7 +35,7 @@ public:
 	/**
 	 * Initializes and compiles the kernels
 	 */
-	void setup_render_passes();
+	void setup_render_passes(RenderWindow* render_window);
 
 	void request_frame();
 	void request_exit();

@@ -452,7 +452,7 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 
 	m_application_state = std::make_shared<ApplicationState>();
 	m_application_settings = std::make_shared<ApplicationSettings>();
-	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx, m_application_settings);
+	m_renderer = std::make_shared<GPURenderer>(this, hiprt_oro_ctx, m_application_settings);
 	m_gpu_baker = std::make_shared<GPUBaker>(m_renderer);
 
 	// Disabling auto samples per frame is accumulation is OFF
@@ -846,6 +846,21 @@ void RenderWindow::set_render_dirty(bool render_dirty)
 void RenderWindow::set_force_viewport_refresh(bool force_viewport_refresh)
 {
 	m_application_state->force_viewport_refresh = force_viewport_refresh;
+}
+
+void RenderWindow::set_ImGui_status_text(const std::string& status_text)
+{
+	if (status_text == "")
+		// Do not call RenderWindow::set_ImGui_status_text with an empty text.
+		//
+		// To clear the status text, call clear_status_text()
+		Utils::debugbreak();
+	m_imgui_renderer->set_status_text(status_text);
+}
+
+void RenderWindow::clear_ImGui_status_text()
+{
+	set_ImGui_status_text("Rendering...");
 }
 
 float RenderWindow::get_current_render_time()
