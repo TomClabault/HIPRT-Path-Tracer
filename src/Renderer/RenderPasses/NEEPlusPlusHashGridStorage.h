@@ -18,20 +18,19 @@ public:
 
 	void set_nee_plus_plus_render_pass(NEEPlusPlusRenderPass* nee_plus_plus_render_pass);
 
-	bool pre_render_update(HIPRTRenderData& render_data);
-	void post_sample_update_async(HIPRTRenderData& render_data);
+	bool pre_render_update(HIPRTRenderData& render_data, bool is_interacting_camera);
 	
 	void update_render_data(HIPRTRenderData& render_data);
 	bool free();
 	void reset();
 
-	bool try_resize(HIPRTRenderData& render_data);
+	bool try_resize(HIPRTRenderData& render_data, float max_megabyte_size);
 
 	unsigned int update_cell_alive_count();
 	unsigned int get_cell_alive_count();
 
-	std::size_t get_shadow_rays_actually_traced() const;
-	std::size_t get_total_shadow_rays_queries() const;
+	std::size_t get_shadow_rays_actually_traced_from_GPU() const;
+	std::size_t get_total_shadow_rays_queries_from_GPU() const;
 	std::size_t get_byte_size() const;
 
 private:
@@ -45,13 +44,10 @@ private:
 	// Counters on the GPU for tracking 
 	OrochiBuffer<unsigned long long int> m_total_shadow_ray_queries;
 	OrochiBuffer<unsigned long long int> m_shadow_rays_actually_traced;
-	OrochiBuffer<unsigned int> m_total_cells_alive_count;
-	unsigned int m_total_cells_alive_count_cpu = 0;
 
-	// Same counters but on the CPU for displaying the stats in ImGui.
-	// These counters are updated 
-	unsigned long long int m_total_shadow_ray_queries_cpu = 1;
-	unsigned long long int m_shadow_rays_actually_traced_cpu = 1;
+	OrochiBuffer<unsigned int> m_total_cells_alive_count;
+	OrochiBuffer<unsigned int> m_total_cells_alive_count_cpu_host_pinned_buffer;
+	unsigned int m_total_cells_alive_count_cpu = 0;
 };
 
 #endif

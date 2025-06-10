@@ -40,10 +40,15 @@ public:
 
     NEEPlusPlusHashGridStorage& get_nee_plus_plus_storage();
 
+    float& get_max_vram_usage();
     std::size_t get_vram_usage_bytes() const;
  
 private:
 	friend class NEEPlusPlusHashGridStorage;
+
+
+    // Maximum VRAM usage in megabytes
+	float m_max_vram_usage_megabytes = 200.0f;
 
     // Buffers and settings for NEE++
     NEEPlusPlusHashGridStorage m_nee_plus_plus_storage;

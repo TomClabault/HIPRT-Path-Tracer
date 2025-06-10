@@ -2000,9 +2000,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::Checkbox("Do supersampling", &regir_settings.supersampling.do_supersampling))
+			if (ImGui::Checkbox("Correlation reduction", &regir_settings.supersampling.do_supersampling))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Supersampling factor", &regir_settings.supersampling.supersampling_factor, 1, 8))
+			if (ImGui::SliderInt("Correlation reduction factor", &regir_settings.supersampling.supersampling_factor, 1, 8))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePop();
@@ -2760,6 +2760,8 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			ImGui::TreePush("NEE++ Settings Tree");
 
 			ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_NEE_plus_plus_render_pass()->get_vram_usage_bytes() / 1000000.0f);
+			if (ImGui::InputFloat("Max VRAM usage (MB)", &m_renderer->get_NEE_plus_plus_render_pass()->get_max_vram_usage()))
+				m_render_window->set_render_dirty(true);
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			static unsigned int max_cell_records = 0;
@@ -2768,7 +2770,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				unsigned int traced = 0;
 				unsigned int total = 0;
 
-				ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_storage().get_shadow_rays_actually_traced() / (float)m_renderer->get_nee_plus_plus_storage().get_total_shadow_rays_queries() * 100.0f);
+				ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_storage().get_shadow_rays_actually_traced_from_GPU() / (float)m_renderer->get_nee_plus_plus_storage().get_total_shadow_rays_queries_from_GPU() * 100.0f);
 				ImGui::SameLine();
 				std::string button_text = render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics ? "Stop" : "Resume";
 				if (ImGui::Button(button_text.c_str()))

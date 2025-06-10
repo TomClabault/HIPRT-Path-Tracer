@@ -42,20 +42,21 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Uniform light sampling for direct lighting estimation + MIS
 	- Power-proportional light sampling
 	- ReGIR [\[Boksansky et al., 2021\]](https://cwyman.org/papers/rtg2-manyLightReGIR.pdf) augmented with:
-		- Approximated MIS for specular surfaces
-		- Spatial reuse
+		- Representative cell surface-data + integration with NEE++ for resampling according to the product **BRDF \* L_i \* G \* V**
 		- Visibility reuse
+		- Spatial reuse
 		- Hash grid
+		- Approximated MIS for specular surfaces
 - Next-event estimation strategies (built on-top of base techniques):
-	- ReSTIR DI
+	- MIS with BSDF sampling
 	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
+	- ReSTIR DI
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://graphics.tudelft.nl/Publications-new/2020/GEE20/GEE20-NEE++.pdf) + Custom envmap support
 	- HDR Environment map + Multiple Importance Sampling using
 		- CDF-inversion & binary search
 		- Alias Table (Vose's O(N) construction [\[Vose, 1991\]](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=f65bcde1fcf82e05388b31de80cba10bf65acc07))
 	
 - BSDF sampling:
-	- MIS
 	- GGX NDF Sampling:
 		- Visible Normal Distribution Function (VNDF) [\[Heitz, 2018\]](https://jcgt.org/published/0007/04/01/)
 		- Spherical caps VNDF Sampling [\[Dupuy, Benyoub, 2023\]](https://arxiv.org/abs/2306.05044)
