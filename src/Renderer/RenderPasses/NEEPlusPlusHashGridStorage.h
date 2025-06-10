@@ -14,16 +14,21 @@ class NEEPlusPlusRenderPass;
 class NEEPlusPlusHashGridStorage
 {
 public:
-	static constexpr unsigned int DEFAULT_GRID_SIZE = 10000;
+	static constexpr unsigned int DEFAULT_GRID_SIZE = 1000000;
 
 	void set_nee_plus_plus_render_pass(NEEPlusPlusRenderPass* nee_plus_plus_render_pass);
 
 	bool pre_render_update(HIPRTRenderData& render_data);
 	void post_sample_update_async(HIPRTRenderData& render_data);
 	
-	void update_render_data();
+	void update_render_data(HIPRTRenderData& render_data);
 	bool free();
 	void reset();
+
+	bool try_resize(HIPRTRenderData& render_data);
+
+	unsigned int update_cell_alive_count();
+	unsigned int get_cell_alive_count();
 
 	std::size_t get_shadow_rays_actually_traced() const;
 	std::size_t get_total_shadow_rays_queries() const;
@@ -41,6 +46,7 @@ private:
 	OrochiBuffer<unsigned long long int> m_total_shadow_ray_queries;
 	OrochiBuffer<unsigned long long int> m_shadow_rays_actually_traced;
 	OrochiBuffer<unsigned int> m_total_cells_alive_count;
+	unsigned int m_total_cells_alive_count_cpu = 0;
 
 	// Same counters but on the CPU for displaying the stats in ImGui.
 	// These counters are updated 

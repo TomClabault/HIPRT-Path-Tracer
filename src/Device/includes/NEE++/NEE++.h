@@ -213,20 +213,6 @@ struct NEEPlusPlusDevice
 		return estimate_visibility_probability(context, current_camera, trash_matrix_index);
 	}
 
-	///**
-	// * Copies the accumulation buffers to the visibility map (all in the packed buffers)
-	// */
-	//HIPRT_HOST_DEVICE void copy_accumulation_buffers(unsigned int hash_grid_index)
-	//{
-	//	unsigned int accumulation_buffer = read_buffer<BufferNames::ACCUMULATION_BUFFER_UNOCCLUDED_COUNT>(hash_grid_index);
-	//	unsigned int accumulation_buffer_count = read_buffer<BufferNames::ACCUMULATION_BUFFER_TOTAL_COUNT>(hash_grid_index);
-
-	//	set_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(hash_grid_index, accumulation_buffer);
-	//	set_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, accumulation_buffer_count);
-
-	//	return;
-	//}
-
 	HIPRT_HOST_DEVICE unsigned int hash_context(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_checksum) const
 	{
 		float3 second_point = context.envmap ? (context.shaded_point + context.point_on_light * 1.0e20f) : context.point_on_light;

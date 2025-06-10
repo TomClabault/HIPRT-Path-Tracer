@@ -27,7 +27,6 @@ public:
 	bool pre_render_update(HIPRTRenderData& render_data);
 	void post_sample_update_async(HIPRTRenderData& render_data);
 	void increment_supersampling_counters(HIPRTRenderData& render_data);
-	void DEBUG_PRINT(HIPRTRenderData& render_data);
 	bool try_rehash(HIPRTRenderData& render_data);
 	void reset();
 	bool free();

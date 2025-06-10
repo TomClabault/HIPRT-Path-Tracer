@@ -3,18 +3,13 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef KERNELS_MEGAKERNEL_H
-#define KERNELS_MEGAKERNEL_H
+#ifndef KERNELS_REGIR_GRID_PREPOPULATE_H
+#define KERNELS_REGIR_GRID_PREPOPULATE_H
 
-#include "Device/includes/AdaptiveSampling.h"
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/LightSampling/Lights.h"
-#include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/Material.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/RayPayload.h"
-#include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -41,17 +36,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
         seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
     Xorshift32Generator random_number_generator(seed);
-
-
-
-
-
-
-
-
-
-
-
 
     // Direction to the center of the pixel
     float x_ray_point_direction = (x + 0.5f);
@@ -95,10 +79,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
                     break;
             }
             else
-                ray_payload.next_ray_state = RayState::MISSED;
+                return;
         }
-        else if (ray_payload.next_ray_state == RayState::MISSED)
-            break;
     }
 }
 
