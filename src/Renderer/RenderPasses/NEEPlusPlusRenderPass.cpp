@@ -54,7 +54,7 @@ bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 
     HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	return m_nee_plus_plus_storage.pre_render_update(render_data);
+	return m_nee_plus_plus_storage.pre_render_update(render_data, m_render_window->is_interacting());
 }
  
 void NEEPlusPlusRenderPass::update_render_data()
@@ -67,14 +67,14 @@ bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	if (render_data.render_settings.sample_number == 0)
+	if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting())
 	{
 		m_render_window->set_ImGui_status_text("NEE++ Prepopulation pass...");
 		launch_grid_pre_population(render_data);
 		m_render_window->clear_ImGui_status_text();
 	}
 
-	if (m_nee_plus_plus_storage.try_resize(render_data))
+	if (m_nee_plus_plus_storage.try_resize(render_data, m_max_vram_usage_megabytes))
 		update_render_data();
 
 	return true;
@@ -93,20 +93,14 @@ void NEEPlusPlusRenderPass::launch_grid_pre_population(HIPRTRenderData& render_d
 			m_renderer->m_render_resolution.x / NEEPlusPlus_GridPrepoluationResolutionDownscale, m_renderer->m_render_resolution.y / NEEPlusPlus_GridPrepoluationResolutionDownscale,
 			launch_args, m_renderer->get_main_stream());
 
-		has_rehashed = m_nee_plus_plus_storage.try_resize(render_data);
+		has_rehashed = m_nee_plus_plus_storage.try_resize(render_data, m_max_vram_usage_megabytes);
 		if (has_rehashed)
 			update_render_data();
 
 	} while (has_rehashed);
 }
 
-void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
-{
-	if (!m_render_pass_used_this_frame)
-		return;
-	
-	m_nee_plus_plus_storage.post_sample_update_async(render_data);
-}
+void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) {}
  
 void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 {
@@ -126,6 +120,11 @@ bool NEEPlusPlusRenderPass::is_render_pass_used() const
 NEEPlusPlusHashGridStorage& NEEPlusPlusRenderPass::get_nee_plus_plus_storage()
 {
     return m_nee_plus_plus_storage;
+}
+
+float& NEEPlusPlusRenderPass::get_max_vram_usage()
+{
+	return m_max_vram_usage_megabytes;
 }
 
 std::size_t NEEPlusPlusRenderPass::get_vram_usage_bytes() const

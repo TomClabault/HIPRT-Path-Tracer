@@ -136,7 +136,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->clear_ImGui_status_text();
 	}
 
-	// This needs to be called before the rehash because the 
+	// This needs to be called before the rehash because the
 	// rehash needs the updated number of cells alive to function
 	update_cell_alive_count();
 
