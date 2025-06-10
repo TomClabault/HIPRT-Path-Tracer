@@ -127,7 +127,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	if (render_data.render_settings.sample_number == 0)
 	{
-		m_render_window->set_ImGui_status_text("ReGIR Per-population pass...");
+		m_render_window->set_ImGui_status_text("ReGIR Prepopulation pass...");
 		launch_grid_pre_population(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");

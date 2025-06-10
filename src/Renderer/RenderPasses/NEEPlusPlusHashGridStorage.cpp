@@ -55,29 +55,16 @@ void NEEPlusPlusHashGridStorage::post_sample_update_async(HIPRTRenderData& rende
 {
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_total_shadow_ray_queries_cpu, m_total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_shadow_rays_actually_traced_cpu, m_shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
-
-	if (render_data.render_settings.sample_number % 50 == 0)
-	{
-		std::size_t counter = 0;
-		auto vec = m_checksum_buffer.download_data();
-		for (auto check : vec)
-			if (check != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-				counter++;
-
-		printf("NEE++: %zu cells have been updated this frame.\n", counter);
-	}
 }
 
-void NEEPlusPlusHashGridStorage::update_render_data()
+void NEEPlusPlusHashGridStorage::update_render_data(HIPRTRenderData& render_data)
 {
-	HIPRTRenderData& render_data = m_nee_plus_plus_render_pass->m_renderer->get_render_data();
-
 	if (m_nee_plus_plus_render_pass->is_render_pass_used())
 	{
 		render_data.nee_plus_plus.m_entries_buffer.total_num_rays = m_total_num_rays.get_atomic_device_pointer();
 		render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = m_total_unoccluded_rays.get_atomic_device_pointer();
 		render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = m_checksum_buffer.get_atomic_device_pointer();
-		render_data.nee_plus_plus.m_total_number_of_cells = NEEPlusPlusHashGridStorage::DEFAULT_GRID_SIZE;
+		render_data.nee_plus_plus.m_total_number_of_cells = m_checksum_buffer.size();
 
 		render_data.nee_plus_plus.m_shadow_rays_actually_traced = m_shadow_rays_actually_traced.get_atomic_device_pointer();
 		render_data.nee_plus_plus.m_total_shadow_ray_queries = m_total_shadow_ray_queries.get_atomic_device_pointer();
@@ -130,6 +117,44 @@ void NEEPlusPlusHashGridStorage::reset()
 
 	m_total_shadow_ray_queries_cpu = 1;
 	m_shadow_rays_actually_traced_cpu = 1;
+}
+
+bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data)
+{
+	update_cell_alive_count();
+
+	if (m_total_cells_alive_count_cpu > m_checksum_buffer.size() * 0.75f)
+	{
+		unsigned int current_cell_count = m_checksum_buffer.size();
+		unsigned int new_cell_count = current_cell_count * 1.5;
+
+		m_total_unoccluded_rays.resize(new_cell_count);
+		m_total_num_rays.resize(new_cell_count);
+		m_checksum_buffer.resize(new_cell_count);
+
+		m_total_unoccluded_rays.memset_whole_buffer(0);
+		m_total_num_rays.memset_whole_buffer(0);
+		m_checksum_buffer.memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+		m_total_cells_alive_count.memset_whole_buffer(0);
+
+		update_render_data(render_data);
+
+		return true;
+	}
+
+	return false;
+}
+
+unsigned int NEEPlusPlusHashGridStorage::update_cell_alive_count()
+{
+	m_total_cells_alive_count_cpu = m_total_cells_alive_count.download_data()[0];
+
+	return get_cell_alive_count();
+}
+
+unsigned int NEEPlusPlusHashGridStorage::get_cell_alive_count()
+{
+	return m_total_cells_alive_count_cpu;
 }
 
 std::size_t NEEPlusPlusHashGridStorage::get_shadow_rays_actually_traced() const

@@ -6,7 +6,6 @@
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/Megakernel.h"
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
-#include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
 #include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
@@ -648,11 +647,11 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 
 void CPURenderer::nee_plus_plus_cache_visibility_pass()
 {
-    debug_render_pass([this](int x, int y) {
-        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, x, y);
-    });
+    //debug_render_pass([this](int x, int y) {
+    //    NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, x, y);
+    //});
 
-    nee_plus_plus_memcpy_accumulation(/* frame_number */ 0);
+    //nee_plus_plus_memcpy_accumulation(/* frame_number */ 0);
 }
 
 void CPURenderer::camera_rays_pass()
