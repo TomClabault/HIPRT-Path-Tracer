@@ -461,7 +461,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& 
         // Getting the shading normal
     else
         out_light_hit_info.hit_emission = render_data.buffers.materials_buffer.get_emission(material_index);
-    
+
     out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
     out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
     out_light_hit_info.hit_geometric_normal = hippt::normalize(shadow_ray_hit.normal);
@@ -515,7 +515,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& 
 
         if (emission_texture_index != MaterialConstants::NO_TEXTURE)
             out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
-        else
+        else 
             out_light_hit_info.hit_emission = render_data.buffers.materials_buffer.get_emission(material_index);
 
         out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;

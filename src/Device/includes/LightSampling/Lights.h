@@ -59,7 +59,11 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& r
             float bsdf_pdf;
 
             BSDFIncidentLightInfo incident_light_info = light_sample.incident_light_info;
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+#else
             BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+#endif
             ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
             if (bsdf_pdf != 0.0f)
@@ -103,7 +107,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderDat
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
-        if (intersection_found)
+        if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
         {
             float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf;
@@ -169,7 +173,9 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& rend
                         float light_pdf_for_mis = light_sample_pdf_for_MIS_solid_angle_measure(render_data,
                             light_sample_solid_angle_pdf,
                             light_sample.light_area, light_sample.emission, light_sample.light_source_normal,
-                            distance_to_light, shadow_ray_direction_normalized);
+                            distance_to_light, shadow_ray_direction_normalized,
+                            
+                            ray_payload.material.roughness, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, closest_hit_info.primitive_index, light_sample.point_on_light, random_number_generator);
                         float mis_weight = balance_heuristic(light_pdf_for_mis, bsdf_pdf);
 
                         float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
@@ -207,12 +213,16 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& rend
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
-        if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+        //
+        // We're also checking if the light is backfacing maybe with compute_cosine_term()
+        if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
         {
             float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
             float light_pdf_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, triangle_area(render_data, shadow_light_ray_hit_info.hit_prim_index), 
                 shadow_light_ray_hit_info.hit_emission, shadow_light_ray_hit_info.hit_geometric_normal, shadow_light_ray_hit_info.hit_distance, 
-                sampled_bsdf_direction);
+                sampled_bsdf_direction,
+                
+                ray_payload.material.roughness, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, closest_hit_info.primitive_index, shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction + closest_hit_info.inter_point, random_number_generator);
             float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf_for_MIS);
 
             // Using abs here because we want the dot product to be positive.

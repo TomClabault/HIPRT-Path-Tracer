@@ -67,6 +67,7 @@ public:
 
     void ReGIR_grid_fill_pass();
     void ReGIR_spatial_reuse_pass();
+    void ReGIR_pre_integration();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
@@ -181,8 +182,12 @@ private:
     {
         ReGIRHashGridSoAHost<std::vector> grid_buffer;
         ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
-        ReGIRHashGridSoAHost<std::vector> supersampling_grid;
+        ReGIRHashGridSoAHost<std::vector> correlation_reduction_grid;
         ReGIRHashCellDataSoAHost<std::vector> hash_cell_data;
+
+        std::vector<float> non_canonical_pre_integration_factors;
+        std::vector<float> canonical_pre_integration_factors;
+        std::vector<unsigned int> pre_integration_factors_DEBUG;
 
         std::vector<AtomicType<unsigned int>> grid_cell_alive;
 	    // std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;

@@ -75,15 +75,15 @@ struct ReGIRSpatialReuseSettings
 	bool DEBUG_oONLY_ONE_CENTER_CELL = true;
 };
 
-struct ReGIRSupersamplingSettings
+struct ReGIRCorrelationReductionSettings
 {
-	bool do_supersampling = false;
+	bool do_correlation_reduction = false;
 
-	int supersampling_factor = 4;
-	int supersampled_frames_available = 0;
-	unsigned int supersampling_current_grid = 0;
+	int correlation_reduction_factor = 8;
+	int correl_frames_available = 0;
+	unsigned int correl_reduction_current_grid = 0;
 
-	ReGIRHashGridSoADevice supersampling_grid;
+	ReGIRHashGridSoADevice correlation_reduction_grid;
 };
 
 struct ReGIRSettings
@@ -146,45 +146,6 @@ struct ReGIRSettings
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
 			return hash_grid.read_full_reservoir(initial_reservoirs_grid, hash_cell_data, world_position, current_camera, roughness, reservoir_index_in_cell, out_invalid_sample);
-	}
-
-	/**
-	 * If 'out_invalid_sample' is set to true, then the given shading point (+ the jittering) was outside of the grid
-	 * and no reservoir has been gathered
-	 */
-	template <bool getCanonicalReservoir>
-	HIPRT_DEVICE ReGIRReservoir get_reservoir_for_shading_from_world_pos(float3 world_position, const HIPRTCamera& current_camera, bool& out_invalid_sample, Xorshift32Generator& rng, bool jitter = false) const
-	{	
-		if constexpr (getCanonicalReservoir)
-		{
-			// This is just constructing a function pointer to pass to the function below for
-			// code factorization
-			auto get_reservoir_lambda = [this](float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample)
-			{
-				return this->get_random_cell_canonical_reservoir(world_position, current_camera, rng, out_invalid_sample);
-			};
-	
-			ReGIRReservoir reservoir = internal_get_reservoirs_with_retries<ReGIR_ShadingJitterTries>(world_position, current_camera, out_invalid_sample, rng, jitter, get_reservoir_lambda);
-			if (out_invalid_sample)
-				// We couldn't find a canonical neighbor with jittering, directly returning the center cell instead
-				//
-				// Only 1 retry + no jittering is guaranteed to just return a reservoir from the center cell
-				return internal_get_reservoirs_with_retries<1>(world_position, current_camera, out_invalid_sample, rng, false, get_reservoir_lambda);
-			else
-				// We could find a canonical reservoir in the neighborhood, all good
-				return reservoir;
-		}
-		else
-		{
-			// This is just constructing a function pointer to pass to the function below for
-			// code factorization
-			auto get_reservoir_lambda = [this](float3 world_position, const HIPRTCamera& current_camera, Xorshift32Generator& rng, bool* out_invalid_sample)
-			{
-				return this->get_random_cell_non_canonical_reservoir(world_position, current_camera, rng, out_invalid_sample);
-			};
-
-			return internal_get_reservoirs_with_retries<ReGIR_ShadingJitterTries>(world_position, current_camera, out_invalid_sample, rng, jitter, get_reservoir_lambda);
-		}
 	}
 
 	HIPRT_DEVICE unsigned int get_neighbor_replay_hash_grid_cell_index_for_shading(float3 shading_point, const HIPRTCamera& current_camera, float roughness, bool replay_canonical, bool do_jittering, float jittering_radius, Xorshift32Generator& rng) const
@@ -272,19 +233,19 @@ struct ReGIRSettings
 
 		if constexpr (getCanonicalReservoir)
 		{
-			if (supersampling.do_supersampling)
+			if (supersampling.do_correlation_reduction)
 			{
-				// If supersampling is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + supersampling reservoirs)
-				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell() * (supersampling.supersampled_frames_available + 1));
+				// If correlation reduction is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + correlation reduction reservoirs)
+				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell() * (supersampling.correl_frames_available + 1));
 			}
 			else
 				reservoir_index_in_cell = rng.random_index(grid_fill.get_canonical_reservoir_count_per_cell());
 		}
 		else
 		{
-			if (supersampling.do_supersampling)
-				// If supersampling is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + supersampling reservoirs)
-				reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell() * (supersampling.supersampled_frames_available + 1));
+			if (supersampling.do_correlation_reduction)
+				// If correlation reduction is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + correlation reduction reservoirs)
+				reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell() * (supersampling.correl_frames_available + 1));
 			else
 				reservoir_index_in_cell = rng.random_index(grid_fill.get_non_canonical_reservoir_count_per_cell());
 		}
@@ -320,7 +281,7 @@ struct ReGIRSettings
 			// so we have grid_index - 1
 			unsigned int reservoir_index_in_supersample_grid = reservoir_index_in_grid + (grid_index - 1) * get_number_of_reservoirs_per_grid();
 
-			return hash_grid.read_full_reservoir(supersampling.supersampling_grid, reservoir_index_in_supersample_grid);
+			return hash_grid.read_full_reservoir(supersampling.correlation_reduction_grid, reservoir_index_in_supersample_grid);
 		}
 	}
 
@@ -500,7 +461,7 @@ struct ReGIRSettings
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 
-		unsigned int existing_checksum = hippt::atomic_compare_exchange(&hash_cell_data_to_update.hash_keys[hash_grid_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
+		unsigned int existing_checksum = hippt::atomic_compare_exchange(&hash_cell_data_to_update.checksums[hash_grid_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
 		if (existing_checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
 			// We tried inserting in our cell but there is something else there already
@@ -510,7 +471,7 @@ struct ReGIRSettings
 				// And it's not our hash so this is a collision
 
 				unsigned int new_hash_cell_index = hash_grid_cell_index;
-				if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps, true>(hash_cell_data_to_update.hash_keys, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, checksum, existing_checksum))
+				if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps, true>(hash_cell_data_to_update.checksums, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, checksum, existing_checksum))
 				{
 					// Could not resolve the collision
 
@@ -551,6 +512,8 @@ struct ReGIRSettings
 	bool DEBUG_INCLUDE_CANONICAL = true;
 	bool DEBUG_FORCE_REGIR8CANONICAL = false;
 	bool DEBUG_CORRELATE_rEGIR = true;
+	bool DEBUG_DO_RIS_INTEGRAL_NORMALIZATION = true;
+	bool DEBUG_DO_BALANCE_HEURISTIC = true;
 	int DEBUG_CORRELATE_rEGIR_SIZE = 32;
 
 	// How many frames to skip before running the grid fill and spatial reuse passes again
@@ -577,38 +540,13 @@ struct ReGIRSettings
 	ReGIRGridFillSettings grid_fill;
 	ReGIRSpatialReuseSettings spatial_reuse;
 	ReGIRShadingSettings shading;
-	ReGIRSupersamplingSettings supersampling;
+	ReGIRCorrelationReductionSettings supersampling;
+
+	float* non_canonical_pre_integration_factors = nullptr;
+	float* canonical_pre_integration_factors = nullptr;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;
-
-private:
-	template <int retryCount, typename FunctionType>
-	HIPRT_DEVICE ReGIRReservoir internal_get_reservoirs_with_retries(float3 world_position, const HIPRTCamera& current_camera, bool& out_invalid_sample, Xorshift32Generator& rng, bool jitter, FunctionType get_reservoir_function) const
-	{
-		unsigned char retry = 0;
-		bool local_invalid_sample = false;
-
-		ReGIRReservoir reservoir;
-
-		float3 jittered = world_position;
-		do
-		{
-			if (jitter)
-				jittered = hash_grid.jitter_world_position(world_position, current_camera, rng);
-
-			reservoir = get_reservoir_function(jittered, current_camera, rng, &local_invalid_sample);
-			retry++;
-		} while (local_invalid_sample && retry < retryCount);
-
-		if (retry == retryCount && local_invalid_sample == true)
-			// We ran out of retries
-			out_invalid_sample = true;
-		else
-			out_invalid_sample = false;
-
-		return reservoir;
-	}
 };
 
 #endif

@@ -18,6 +18,7 @@ public:
 	static const std::string REGIR_GRID_PRE_POPULATE;
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_KERNEL_ID;
+	static const std::string REGIR_PRE_INTEGRATION_KERNEL_ID;
 	static const std::string REGIR_REHASH_KERNEL_ID;
 	static const std::string REGIR_SUPERSAMPLING_COPY_KERNEL_ID;
 
@@ -62,6 +63,7 @@ public:
 	void launch_spatial_reuse(HIPRTRenderData& render_data);
 	void launch_supersampling_fill(HIPRTRenderData& render_data);
 	void launch_supersampling_copy(HIPRTRenderData& render_data);
+	void launch_pre_integration(HIPRTRenderData& render_data);
 	void launch_rehashing_kernel(HIPRTRenderData& render_data, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data);
 
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
@@ -88,7 +90,7 @@ public:
 private:
 	unsigned int m_number_of_cells_alive = 0;
 
-	Xorshift32Generator m_supersampling_rng = Xorshift32Generator(42);
+	Xorshift32Generator m_local_rng = Xorshift32Generator(42);
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 
 	ReGIRHashGridStorage m_hash_grid_storage;

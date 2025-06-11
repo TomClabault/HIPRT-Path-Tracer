@@ -35,20 +35,14 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
         float target_function;
         if (reservoir_is_canonical)
             // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-            target_function = ReGIR_non_shading_evaluate_target_function<false, false, false, false>(render_data, hash_grid_cell_index,
-                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+            target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, hash_grid_cell_index, light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         else
-            target_function = ReGIR_non_shading_evaluate_target_function<
-            ReGIR_GridFillTargetFunctionVisibility,
-            ReGIR_GridFillTargetFunctionCosineTerm,
-            ReGIR_GridFillTargetFunctionCosineTermLightSource,
-            ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, hash_grid_cell_index,
-                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, hash_grid_cell_index, light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         
         float mis_weight = 1.0f / regir_settings.grid_fill.light_sample_count_per_cell_reservoir;
         float source_pdf = light_sample.area_measure_pdf;
 
-        grid_fill_reservoir.stream_sample(mis_weight, target_function, source_pdf, 0, light_sample, rng);
+        grid_fill_reservoir.stream_sample(mis_weight, target_function, source_pdf, light_sample, rng);
     }
 
     return grid_fill_reservoir;
@@ -122,7 +116,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, hash_grid_cell_index, random_number_generator);
         
         // Normalizing the reservoir
-        output_reservoir.finalize_resampling();
+        output_reservoir.finalize_resampling(1.0f, 1.0f);
         
         // Discarding occluded reservoirs with visibility reuse
         if (!regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))

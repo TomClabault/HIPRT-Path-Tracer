@@ -43,8 +43,6 @@ struct HIPRTRenderSettings
 	bool DEBUG_QUICK_ALIAS_TABLE = false;
 	bool DEBUG_CORRELATE_LIGHTS = false;
 
-	bool USE_REGIR_BRDF_GRID_FILL = false;
-
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 

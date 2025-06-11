@@ -80,7 +80,7 @@ struct ReGIRHashGrid
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
-		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.hash_keys, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
+		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
 			return;
 
 		int reservoir_index_in_grid = hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
@@ -93,7 +93,7 @@ struct ReGIRHashGrid
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
-		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.hash_keys, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || hash_cell_data.grid_cell_alive[hash_grid_cell_index] == 0u)
+		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || hash_cell_data.grid_cell_alive[hash_grid_cell_index] == 0u)
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
 		return hash_grid_cell_index;
@@ -178,7 +178,7 @@ struct ReGIRHashGrid
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
 
-		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.hash_keys, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
+		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		else
 			return hash_grid_cell_index;

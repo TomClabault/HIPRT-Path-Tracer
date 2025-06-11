@@ -14,8 +14,8 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-template <bool includeVisibility, bool withCosineTerm, bool withCosineTermLightSource, bool withNeePlusPlusVisibilityEstimation>
-HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderData& render_data, int hash_grid_cell_index, 
+template <bool includeVisibility, bool withCosineTerm, bool withCosineTermLightSource, bool includeBSDF, bool withNeePlusPlusVisibilityEstimation>
+HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, 
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
 {
     int cell_primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index);
@@ -40,7 +40,7 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
 	if (target_function <= 0.0f)
 		return 0.0f;
 
-	if (render_data.render_settings.USE_REGIR_BRDF_GRID_FILL)
+	if constexpr (includeBSDF)
 	{
 		float out_pdf;
 		RayVolumeState empty_volume_state;
@@ -50,7 +50,11 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
 		approximate_material.metallic = cell_metallic;
 		approximate_material.specular = cell_specular;
 
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+		BSDFContext bsdf_context = BSDFContext(hippt::normalize(render_data.current_camera.position - cell_point), cell_normal, cell_normal, to_light_direction, out_incident_light_info, empty_volume_state, false, approximate_material, 0, 0, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+#else
 		BSDFContext bsdf_context = BSDFContext(hippt::normalize(render_data.current_camera.position - cell_point), cell_normal, cell_normal, to_light_direction, out_incident_light_info, empty_volume_state, false, approximate_material, 0, 0, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+#endif
 		ColorRGB32F bsdf_radiance = bsdf_dispatcher_eval(render_data, bsdf_context, out_pdf, rng);
 		target_function *= bsdf_radiance.luminance();
 	}
@@ -74,13 +78,29 @@ HIPRT_DEVICE float ReGIR_non_shading_evaluate_target_function(const HIPRTRenderD
 	return target_function;
 }
 
-template <bool withVisibility, bool withNeePlusPlusVisibilityEstimation>
+HIPRT_DEVICE float ReGIR_grid_fill_evaluate_non_canonical_target_function(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index,
+	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
+{
+	return ReGIR_grid_fill_evaluate_target_function<
+		ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource, ReGIR_GridFillTargetFunctionBSDF, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
+		render_data, hash_grid_cell_index, sample_emission, sample_normal, sample_position, rng);
+}
+
+HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index,
+	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
+{
+	return ReGIR_grid_fill_evaluate_target_function<false, false, false, false, false>(
+		render_data, hash_grid_cell_index, sample_emission, sample_normal, sample_position, rng);
+}
+
+template <bool withVisibility, bool withNeePlusPlusVisibilityEstimation, bool withGeometryTerm = true>
 HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
 	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	const float3& point_on_light, const float3& light_source_normal,
 	const ColorRGB32F& light_emission,
-	Xorshift32Generator& rng)
+	Xorshift32Generator& rng,
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO)
 {
 	float3 to_light_direction = point_on_light - shading_point;
 	float distance_to_light = hippt::length(to_light_direction);
@@ -88,8 +108,11 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 
 #if ReGIR_ShadingResamplingIncludeBSDF == KERNEL_OPTION_TRUE
 	float bsdf_pdf;
-	BSDFIncidentLightInfo ili = BSDFIncidentLightInfo::NO_INFO;
-	BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, to_light_direction, ili, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+	BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+#else
+	BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+#endif
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng);
 #else
 	ColorRGB32F bsdf_color = ColorRGB32F(1.0f);
@@ -97,6 +120,8 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction));
 	float geometry_term = compute_cosine_term_at_light_source(light_source_normal, -to_light_direction) / hippt::square(distance_to_light);
+	if constexpr (!withGeometryTerm)
+		geometry_term = 1.0f;
 
 	float target_function = (bsdf_color * light_emission * cosine_term * geometry_term).luminance();
 	if (target_function <= 0.0f)
@@ -136,17 +161,18 @@ HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by_internal(const HIPRTRe
 	ColorRGB32F sample_emission, float3 sample_normal, float3 point_on_light,
 	int hash_grid_cell_index, Xorshift32Generator& rng)
 {
-	return ReGIR_non_shading_evaluate_target_function<
+	return ReGIR_grid_fill_evaluate_target_function<
 		ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility, 
 		ReGIR_GridFillTargetFunctionCosineTerm, 
 		ReGIR_GridFillTargetFunctionCosineTermLightSource,
+		ReGIR_GridFillTargetFunctionBSDF,
 		ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
 		render_data, hash_grid_cell_index, 
 		sample_emission, sample_normal, point_on_light, 
 		rng) > 0.0f;
 }
 
-HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, int hash_grid_cell_index,
+HIPRT_DEVICE bool ReGIR_shading_can_sample_be_produced_by(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, unsigned int hash_grid_cell_index,
 	Xorshift32Generator& rng)
 {
 	return ReGIR_shading_can_sample_be_produced_by_internal(render_data, 

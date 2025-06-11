@@ -1855,6 +1855,22 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Takes the cosine term at the light source (i.e. the cosine term of the geometry term) "
 				"into account when evaluating the target function during grid fill");
 
+			static bool bsdf_grid_fill_target_function = ReGIR_GridFillTargetFunctionBSDF;
+			if (ImGui::Checkbox("Use BSDF in target function", &bsdf_grid_fill_target_function))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_BSDF, bsdf_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to include the BSDF in the target function used for the resampling of the initial candidates "
+				"for the grid fill.\n\n"
+				""
+				"Helps a lot on glossy surfaces but at the first hit only");
+
+			if (ImGui::Checkbox("Balance heuristic", &regir_settings.DEBUG_DO_BALANCE_HEURISTIC))
+				m_render_window->set_render_dirty(true);
+
 			static bool do_visibility_reuse = ReGIR_DoVisibilityReuse;
 			if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 			{
@@ -1923,6 +1939,12 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR shading tree");
 
+			if (ImGui::SliderInt("Neighbors resampled", &regir_settings.shading.number_of_neighbors, 1, 8))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Resample per neighbor", &regir_settings.shading.reservoir_tap_count_per_neighbor, 1, 8))
+				m_render_window->set_render_dirty(true);
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 			static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;
 			if (ImGui::Checkbox("Use visibility in target function", &use_vis_shading_resampling))
 			{
@@ -1965,6 +1987,17 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Whether or not to include the BSDF at the shading point in the resampling target function when "
 				"shading a point at path tracing time. This reduces shading noise at an increased computational cost.");
 
+			static bool do_resampling_bsdf_mis = ReGIR_ShadingResamplingDoBSDFMIS;
+			if (ImGui::Checkbox("Do BSDF MIS during resampling", &do_resampling_bsdf_mis))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS, do_resampling_bsdf_mis ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to incorporate BSDF samples with MIS during shading resampling.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
 				m_render_window->set_render_dirty(true);
 			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering);
@@ -1994,15 +2027,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 			ImGui::EndDisabled();
 
-			if (ImGui::SliderInt("Neighbors resampled", &regir_settings.shading.number_of_neighbors, 1, 8))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Taps per neighbor", &regir_settings.shading.reservoir_tap_count_per_neighbor, 1, 8))
-				m_render_window->set_render_dirty(true);
-
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::Checkbox("Correlation reduction", &regir_settings.supersampling.do_supersampling))
+			if (ImGui::Checkbox("Correlation reduction", &regir_settings.supersampling.do_correlation_reduction))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Correlation reduction factor", &regir_settings.supersampling.supersampling_factor, 1, 8))
+			if (ImGui::SliderInt("Correlation reduction factor", &regir_settings.supersampling.correlation_reduction_factor, 1, 8))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePop();
@@ -4303,6 +4331,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 
 		if (ImGui::Checkbox("Correlate ReGIR", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR))
 			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Normalize RIS integral", &render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION))
+			m_render_window->set_render_dirty(true);
 
 		bool changed = false;
 		changed |= ImGui::RadioButton("32", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 32); ImGui::SameLine();
@@ -4329,9 +4359,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 			m_render_window->set_render_dirty(true);
 		ImGui::TreePop();
 	}
-
-	if (ImGui::Checkbox("ReGIR BRDF grid fill", &render_settings.USE_REGIR_BRDF_GRID_FILL))
-		m_render_window->set_render_dirty(true);
 
 	static bool display_only_sample = DisplayOnlySampleN;
 	if (ImGui::Checkbox("Display only sample N", &display_only_sample))
