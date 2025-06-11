@@ -49,7 +49,7 @@ void create_texture_from_array_cuda(void* m_texture_array, void* m_texture, void
 void OrochiTexture::create_texture_from_array(hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode, bool read_mode_float_normalized)
 {
 #ifndef OROCHI_ENABLE_CUEW
-	// Using native HIP here to access 'normalizedCoords' which isn't  exposed by Orochi
+	// Using native HIP here to access 'normalizedCoords' which isn't exposed by Orochi
 
 	hipResourceDesc resource_descriptor = {};
 	resource_descriptor.resType = hipResourceTypeArray;
@@ -86,6 +86,13 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 	width = image.width;
 	height = image.height;
 
+	if (width == 0 || height == 0)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Image given to OrochiTexture is 0 in width or height");
+
+		Utils::debugbreak();
+	}
+
 	int bits_channel_x = (channels >= 1) ? 8 : 0; // First channel (e.g., Red)
 	int bits_channel_y = (channels >= 2) ? 8 : 0; // Second channel (e.g., Green)
 	int bits_channel_z = (channels >= 3) ? 8 : 0; // Third channel (e.g., Blue)
@@ -116,7 +123,8 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 
 	if (width == 0 || height == 0)
 	{
-		std::cerr << "Image given to OrochiTexture is 0 in width or height" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Image given to OrochiTexture is 0 in width or height");
+
 		Utils::debugbreak();
 	}
 
@@ -129,7 +137,7 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
 	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), 
-		image.width * channels * sizeof(float), 
+		image.width * channels * sizeof(float),
 		image.width * sizeof(float) * channels, 
 		image.height, oroMemcpyHostToDevice));
 

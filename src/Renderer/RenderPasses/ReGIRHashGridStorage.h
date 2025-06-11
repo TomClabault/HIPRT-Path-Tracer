@@ -50,6 +50,10 @@ private:
 	int m_supersampling_frames_available = 0;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_supersample_grid;
 
+	// Stores the pre-integrated RIS integral for each cell in the grid
+	OrochiBuffer<float> m_non_canonical_pre_integration_factors;
+	OrochiBuffer<float> m_canonical_pre_integration_factors;
+
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data;
 
 	float m_current_grid_min_cell_size = 0.0f;

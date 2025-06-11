@@ -319,7 +319,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	//
 	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
 	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
-	if (render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index)
+	bool not_last_spatial_pass = render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index;
+	if (render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass || not_last_spatial_pass)
 		ReSTIR_DI_visibility_test_kill_reservoir(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.primitive_index, random_number_generator);
 #endif
 

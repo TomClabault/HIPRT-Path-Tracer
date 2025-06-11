@@ -2,7 +2,7 @@
 
 ![HIPRT path tracer cover](README_data/img/Bistro.jpg)
 
-Physically based unidirectional (backwards) monte carlo path tracer written with the [HIPRT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
+Physically based unidirectional (backwards) Monte Carlo path tracer written with the [HIPRT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
 
 HIPRT is AMD's equivalent to [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix). It allows the use of the ray tracing accelerators of RDNA2+ AMD GPUs and can run on NVIDIA devices as well (although it wouldn't take advatange of RT cores) as it is not AMD specific. 
 
@@ -46,7 +46,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Visibility reuse
 		- Spatial reuse
 		- Hash grid
-		- Approximated MIS for specular surfaces
+		- Per-cell RIS integral normalization factor pre-integration for multiple importance sampling support
 - Next-event estimation strategies (built on-top of base techniques):
 	- MIS with BSDF sampling
 	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)

@@ -127,13 +127,13 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             if (regir_settings.grid_fill.reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
             {
                 // Never using the template visibility/cosine terms arguments for canonical reservoirs
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, false, false, false>(render_data, hash_grid_cell_index,
+                target_function_at_center = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, hash_grid_cell_index,
                     emission, light_source_normal, point_on_light,
                     random_number_generator);
             }
             else
             {
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, hash_grid_cell_index,
+                target_function_at_center = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, hash_grid_cell_index,
                     emission, light_source_normal, point_on_light,
                     random_number_generator);
             }
@@ -309,7 +309,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
                 spatial_neighbor_rng, random_number_generator);
 
         // Normalizing the reservoirs to 1
-        output_reservoir.finalize_resampling(valid_neighbor_count);
+        output_reservoir.finalize_resampling(1.0f, valid_neighbor_count);
 
         regir_settings.store_spatial_reservoir_opt(output_reservoir, center_cell_point, render_data.current_camera, center_cell_roughness, reservoir_index_in_cell);
 

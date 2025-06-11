@@ -122,7 +122,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_LAMBERTIAN
+#define BSDFOverride BSDF_NONE
 
 /**
  * The stack size for handling nested dielectrics
@@ -233,7 +233,7 @@
  * This is a handy macro that tells us whether or not we have any other kernel option 
  * that overrides the color of the framebuffer
  */
-#define ViewportColorOverriden (												\
+#define ViewportColorOverriden (																												\
 	(NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG || DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE) ||	\
 	(DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG))
 

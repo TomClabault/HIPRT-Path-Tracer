@@ -31,6 +31,8 @@
  */
 #define ReGIR_GridPrepoluationResolutionDownscale 2
 
+#define REGIR_PRE_INTEGRATION_ITERATIONS 64
+
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -73,6 +75,14 @@
 #define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
 
 /**
+ * Whether or not to include the BSDF in the target function used for the resampling of the initial candidates
+ * for the grid fill.
+ * 
+ * Helps a lot on glossy surfaces but at the first hit only
+ */
+#define ReGIR_GridFillTargetFunctionBSDF KERNEL_OPTION_TRUE
+
+/**
  * Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.
  */
 #define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_TRUE
@@ -98,6 +108,11 @@
 #define ReGIR_ShadingResamplingIncludeBSDF KERNEL_OPTION_TRUE
 
 /**
+ * Whether or not to incorporate BSDF samples with MIS during shading resampling.
+ */
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
+
+/**
  * Discards reservoirs whose light samples are occluded at grid fill time.
  * 
  * This can be expensive but can also lead to substantial gains in quality
@@ -114,7 +129,7 @@
 /**
  * Maximum number of steps for the linear probing in the hash table to resolve collisions
  */
-#define ReGIR_LinearProbingSteps 4
+#define ReGIR_LinearProbingSteps 8
 
 /**
  * If using jittering, how many tries to perform to find a good neighbor at shading time?

@@ -206,7 +206,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             bsdf_ray.direction = sampled_bsdf_direction;
 
             hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
-            if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+            if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
             {
                 // If we intersected an emissive material, compute the weight. 
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it

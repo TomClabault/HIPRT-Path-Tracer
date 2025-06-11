@@ -36,7 +36,7 @@ struct ReGIRHashCellDataSoADevice
 	float* specular = nullptr;
 	float* metallic = nullptr;
 	// The has for each entry of the table to check for collisions
-	AtomicType<unsigned int>* hash_keys = nullptr;
+	AtomicType<unsigned int>* checksums = nullptr;
 
 	// The staging buffer is used to store the grid cells that are alive during shading: for each grid cell that a ray falls into during shading,
 	// we position the unsigned char to 1

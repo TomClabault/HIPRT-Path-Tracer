@@ -307,7 +307,9 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
-        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(primary_hit, render_data.current_camera.position);
+        float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
+
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_no_collision_resolve(primary_hit, render_data.current_camera, primary_hit_roughness);
 
         ColorRGB32F color;
         float3 rep_point = ReGIR_get_cell_world_point(render_data, cell_index);

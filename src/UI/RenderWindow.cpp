@@ -52,6 +52,21 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Fix not all lights working in bzd
+// - Fix fireflies in BZD: not coming from MIS and not even cosine terms. Just seems to be purely because of ReGIR
+// - Maybe not having the spatial reuse in the pre integration is ok still for normalization factor
+// - No need to read random reservoirs in the pre integration kernel, we can just read the reservoirs one by one of each grid cell and integrate them all. 
+//		- Opens up possibilities for coalescing the reads of the reservoirs in the pre integration kernel
+// - We can trace BSDF MIS rays only in the light BVH during ReGIR resampling
+// - Super large resolution on surfaces that do not allow light sampling for the hash grid since we do not need ReGIR here
+// - We need a special path for ReGIR, hard to use as a light sampling plug in, lots of opti to do with a special path
+// - Variable jitter radius basezd on cell size
+// - Pre integrating the RIS integral per cell is going to be approximated because this will not take into account the shading resampling that is done with tyhe BRD at shading time.
+//		- The better thing that we can do is still pre integrate the RIS integral per cell but then at shading time, we include a BSDF sample in RIS resampling and there, we will have the proper MIS weights for the BRDF samples because we're going to have the proper integral normalization factor for the ReGIR samples
+// - If we can successfully have BSDF samples during the shading resampling of ReGIR, trace BSDF rays only in the light BVH
+//		- and consider have more than 1 BSDF sample
+// - Different pre normalization for canonical candidates to be able to MIS correctly during shading between canonical and non canonical?
+// - BRDF in target function ReGIR sync with adaptive resolution in ImGui
 // - Have some reservoirs with the BRDF term in the target function during grid fill and have those reservoirs only for the first hit because it gets worse for the GI
 // - We only need the increase in precision for the BRDF sampling on the grid cells of the first hit
 // - Include normal in hash grid for low roughness surfaces to have better BRDF sampling precision
@@ -196,7 +211,8 @@ extern ImGuiLogger g_imgui_logger;
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Features:
-// Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
+// - Need something blocking inn "start thread with dependency" so that the main thread is blocked until the other thread actually started. This should solve the issue where sometilmes the main threds just joins everyone but everyone hasn't even started yet
+// - Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
 //		- And maybe we can spatial reuse on that
 //		- Issue with MIS weights though because the MIS weights here are going to be an integral over the scene surface of the grid cell
 //			- Maybe SMIS and MMIS have something to say about that
@@ -219,22 +235,9 @@ extern ImGuiLogger g_imgui_logger;
  // - DRMLT: https://joeylitalien.github.io/assets/drmlt/drmlt.pdf
  // - What's NEE-AT of RTXPT?
  // - Area ReSTIR just for the antialiasing part
- // - Not very happy with the quality of NEE++ right now but what if go for the prepass instead of progressive refinement? 
- //		We would trace rays recursuvely for the indirect very very simply and could be fast
- //		Or, for the indirect, we could distribute random points in the bounding boxes of the objects of the scene, same as in Disney cache points
- // - NEE++ some kind of hashmap that's centered on the camera + gets wider the further away from the camera + maybe try the importance sampling, may be good, especially for ReGIR grid fill
- // - NEE++ sparse voxel grid somehow? sparse something something
- //		Sparse voxel octrees? https://research.nvidia.com/sites/default/files/pubs/2010-02_Efficient-Sparse-Voxel/laine2010tr1_paper.pdf?utm_source=chatgpt.com
- // - RIS for sampling the BSDF? (maybe just for the specular+diffuse? or coat, since those are common options)
  // - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
  // - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
  // - Some MIS weights ideas in: https://momentsingraphics.de/ToyRenderer4RayTracing.html in "Combining diffuse and specular"
- // - ReGIR for light sampling
- //		- Introduce visibility to the center of the cell for ReGIR to eliminate obvious occluded lights? Or is that biased?
- //		- For MIS with BSDF, use some arbitrary roughness-MIS-weights?
- //			RTXPT 1.5 has some ideas in "PathTracerNEE.hlsli" for that MIS weights issue
- //			Does RTXDI also hase some ideas?
- //		- the standard NEE pdf as a proxy just for computing MIS weights
  // - Radiance caching for feeding russian roulette
  // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
  // - Some automatic metric to determine automatically what GMoN blend factor to use

@@ -52,7 +52,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			{
 				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, 
 					neighbor, temporal_neighbor_coords,
-					cos_sin_theta_rotation);
+					cos_sin_theta_rotation, random_number_generator);
 
 				if (neighbor_pixel_index == -1)
 					// Neighbor out of the viewport
@@ -121,7 +121,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
 				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data,
-					neighbor, temporal_neighbor_position, cos_sin_theta_rotation);
+					neighbor, temporal_neighbor_position, cos_sin_theta_rotation, random_number_generator);
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor

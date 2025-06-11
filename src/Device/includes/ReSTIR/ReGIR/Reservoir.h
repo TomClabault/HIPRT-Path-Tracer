@@ -25,7 +25,7 @@ struct ReGIRReservoir
 	static constexpr float VISIBILITY_REUSE_KILLED_UCW = -42.0f;
 	static constexpr float UNDEFINED_UCW = -4242.0f;
 	
-	HIPRT_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, unsigned int random_seed, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
+	HIPRT_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
 	{
 		float resampling_weight = mis_weight * target_function / source_pdf;
 
@@ -34,7 +34,6 @@ struct ReGIRReservoir
 		if (rng() < resampling_weight / weight_sum)
 		{
 			sample.emissive_triangle_index = light_sample.emissive_triangle_index;
-			// sample.random_seed = random_seed;
 			sample.point_on_light = light_sample.point_on_light;
 
 			sample.target_function = target_function;
@@ -65,12 +64,12 @@ struct ReGIRReservoir
 		return false;
 	}
 
-	HIPRT_DEVICE void finalize_resampling(float normalization_weight = 1.0f)
+	HIPRT_DEVICE void finalize_resampling(float normalization_numerator, float normalization_denominator)
 	{
-		if (weight_sum <= 0.0f || normalization_weight == 0.0f)
+		if (weight_sum <= 0.0f || normalization_denominator == 0.0f)
 			UCW = 0.0f;
 		else
-			UCW = 1.0f / sample.target_function * weight_sum / normalization_weight;
+			UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
 	}
 
 	ReGIRSample sample;
