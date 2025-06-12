@@ -133,7 +133,7 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             }
             else
             {
-                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, true, true, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, hash_grid_cell_index,
+                target_function_at_center = ReGIR_non_shading_evaluate_target_function<false, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(render_data, hash_grid_cell_index,
                     emission, light_source_normal, point_on_light,
                     random_number_generator);
             }
