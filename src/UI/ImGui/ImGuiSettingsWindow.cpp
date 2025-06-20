@@ -1868,9 +1868,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"Helps a lot on glossy surfaces but at the first hit only");
 
-			if (ImGui::Checkbox("Balance heuristic", &regir_settings.DEBUG_DO_BALANCE_HEURISTIC))
-				m_render_window->set_render_dirty(true);
-
 			static bool do_visibility_reuse = ReGIR_DoVisibilityReuse;
 			if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 			{
@@ -1996,6 +1993,12 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("Whether or not to incorporate BSDF samples with MIS during shading resampling.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::Checkbox("Balance heuristic", &regir_settings.DEBUG_DO_BALANCE_HEURISTIC))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::Checkbox("Pairwise MIS", &regir_settings.DEBUG_DO_PAIRWISE_MIS))
+				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))

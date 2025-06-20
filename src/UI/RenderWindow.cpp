@@ -52,8 +52,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - Fix not all lights working in bzd
-// - Fix fireflies in BZD: not coming from MIS and not even cosine terms. Just seems to be purely because of ReGIR
+// - Lower load factor threshold than 0.75?
+// - Add surface normal in ReGIR hash to increase precision and reduce "border of geometry" noise because the representative point isn't on the right side of the surface
 // - Maybe not having the spatial reuse in the pre integration is ok still for normalization factor
 // - No need to read random reservoirs in the pre integration kernel, we can just read the reservoirs one by one of each grid cell and integrate them all. 
 //		- Opens up possibilities for coalescing the reads of the reservoirs in the pre integration kernel

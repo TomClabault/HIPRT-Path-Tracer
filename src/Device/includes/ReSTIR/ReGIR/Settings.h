@@ -513,7 +513,8 @@ struct ReGIRSettings
 	bool DEBUG_FORCE_REGIR8CANONICAL = false;
 	bool DEBUG_CORRELATE_rEGIR = true;
 	bool DEBUG_DO_RIS_INTEGRAL_NORMALIZATION = true;
-	bool DEBUG_DO_BALANCE_HEURISTIC = true;
+	bool DEBUG_DO_BALANCE_HEURISTIC = false;
+	bool DEBUG_DO_PAIRWISE_MIS = true;
 	int DEBUG_CORRELATE_rEGIR_SIZE = 32;
 
 	// How many frames to skip before running the grid fill and spatial reuse passes again
