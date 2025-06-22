@@ -127,6 +127,13 @@
 #define ReGIR_FallbackLightSamplingStrategy LSS_BASE_POWER
 
 /**
+ * Whether or not to increase the hash grid precision on surfaces that have a lower roughness
+ * such that the BRDF term in the target function of the grid fill (if used at all) has a higher
+ * precision and gives better results
+ */
+#define ReGIR_AdaptiveRoughnessGridPrecision KERNEL_OPTION_TRUE
+
+/**
  * Maximum number of steps for the linear probing in the hash table to resolve collisions
  */
 #define ReGIR_LinearProbingSteps 8
@@ -139,13 +146,6 @@
  * to try and find a good neighbor
  */
 #define ReGIR_ShadingJitterTries 2
-
-/**
- * Whether or not to increase the hash grid precision on surfaces that have a lower roughness
- * such that the BRDF term in the target function of the grid fill (if used at all) has a higher
- * precision and gives better results
- */
-#define ReGIR_AdaptiveRoughnessGridPrecision KERNEL_OPTION_TRUE
 
 /**
  * Debug option to color the scene with the grid cells

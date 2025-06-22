@@ -2882,6 +2882,21 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			{
 				ImGui::TreePush("NEE++ debug tree");
 
+				int nee_plus_plus_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE);
+				const char* items[] = { "- No debug", "- Grid cells" };
+				if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
+				{
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::Button("Clear visibility map"))
+				{
+					m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				bool display_shadow_rays = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED);
 				if (ImGui::Checkbox("Display shadow rays discarded", &display_shadow_rays))
 				{
@@ -2905,20 +2920,6 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					}
 
 					ImGui::TreePop();
-				}
-
-				int nee_plus_plus_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE);
-				const char* items[] = { "- No debug", "- Grid cells" };
-				if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
-				{
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-
-				if (ImGui::Button("Clear visibility map"))
-				{
-					m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
-					m_render_window->set_render_dirty(true);
 				}
 
 				ImGui::TreePop();
