@@ -1999,16 +1999,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			if (ImGui::Checkbox("Pairwise MIS", &regir_settings.DEBUG_DO_PAIRWISE_MIS))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::Checkbox("Pairwise MIS do non-canonical main strategy", &regir_settings.DEBUG_DO_PAIRWISE_MIS_NON_CANONICAL_MAIN_STRATEGY))
-				m_render_window->set_render_dirty(true);
-			static bool dual_strategies = ReGIR_ShadingResamplingPairwiseMISDualStrategies;
-			if (ImGui::Checkbox("Do Pairwise Dual Strategies", &dual_strategies))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_PAIRWISE_DUAL_STATEGIES, dual_strategies ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))

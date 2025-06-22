@@ -53,7 +53,6 @@ const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNC
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF = "ReGIR_ShadingResamplingIncludeBSDF";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS = "ReGIR_ShadingResamplingDoBSDFMIS";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_PAIRWISE_DUAL_STATEGIES = "ReGIR_ShadingResamplingPairwiseMISDualStrategies";
 const std::string GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE = "ReGIR_DoVisibilityReuse";
 const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS = "ReGIR_LinearProbingSteps";
@@ -135,7 +134,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_PAIRWISE_DUAL_STATEGIES,
 	GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE,
 	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS,
@@ -221,7 +219,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF] = std::make_shared<int>(ReGIR_ShadingResamplingIncludeBSDF);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS] = std::make_shared<int>(ReGIR_ShadingResamplingDoBSDFMIS);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_PAIRWISE_DUAL_STATEGIES] = std::make_shared<int>(ReGIR_ShadingResamplingPairwiseMISDualStrategies);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE] = std::make_shared<int>(ReGIR_DoVisibilityReuse);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS] = std::make_shared<int>(ReGIR_LinearProbingSteps);

@@ -8,7 +8,7 @@
 
 struct ReGIRShadingSettings
 {
-	int number_of_neighbors = 1;
+	int number_of_neighbors = 4;
 	// At path tracing time, how many reservoirs of the grid cell of the point we're trying to shade
 	// are going to be resampled (with the BRDF term) to produce the final light sample used for NEE
 	int reservoir_tap_count_per_neighbor = 1;
@@ -16,7 +16,7 @@ struct ReGIRShadingSettings
 	// This helps eliminate grid discretization  artifacts
 	bool do_cell_jittering = true;
 	// Radius of jittering when picking reservoirs from neighboring grid cells for shading
-	float jittering_radius = 50.0f;
+	float jittering_radius = 0.75f;
 };
 
 #endif
