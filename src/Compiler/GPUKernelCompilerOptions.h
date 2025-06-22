@@ -54,7 +54,6 @@ public:
 	static const std::string REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY;
 	static const std::string REGIR_SHADING_RESAMPLING_INCLUDE_BSDF;
 	static const std::string REGIR_SHADING_RESAMPLING_DO_BSDF_MIS;
-	static const std::string REGIR_SHADING_RESAMPLING_PAIRWISE_DUAL_STATEGIES;
 	static const std::string REGIR_DO_VISIBILITY_REUSE;
 	static const std::string REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY;
 	static const std::string REGIR_LINEAR_PROBING_STEPS;

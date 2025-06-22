@@ -110,9 +110,7 @@
 /**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
  */
-#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
-
-#define ReGIR_ShadingResamplingPairwiseMISDualStrategies KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
 
 /**
  * Discards reservoirs whose light samples are occluded at grid fill time.
