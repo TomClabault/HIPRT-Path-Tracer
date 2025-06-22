@@ -53,9 +53,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
     int primitive_index = old_hash_cell_data.hit_primitive[cell_alive_index];
 
 	DeviceUnpackedEffectiveMaterial material;
-	material.roughness = old_hash_cell_data.roughness[cell_alive_index];
-	material.metallic = old_hash_cell_data.metallic[cell_alive_index];
-	material.specular = old_hash_cell_data.specular[cell_alive_index];
+	material.roughness = old_hash_cell_data.roughness[cell_alive_index] / 255.0f;
+	material.metallic = old_hash_cell_data.metallic[cell_alive_index] / 255.0f;
+	material.specular = old_hash_cell_data.specular[cell_alive_index] / 255.0f;
 
     ReGIRSettings::insert_hash_cell_data_static(
         new_hash_grid, new_hash_grid_soa, new_hash_cell_data,

@@ -27,17 +27,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int ReGIR_get_cell_primitive_index(const HIPRTRen
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReGIR_get_cell_roughness(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	return render_data.render_settings.regir_settings.hash_cell_data.roughness[hash_grid_cell_index];
+	// / 255.0f to convert from uchar [0, 255] to float [0, 1]
+	return render_data.render_settings.regir_settings.hash_cell_data.roughness[hash_grid_cell_index] / 255.0f;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReGIR_get_cell_metallic(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	return render_data.render_settings.regir_settings.hash_cell_data.metallic[hash_grid_cell_index];
+	// / 255.0f to convert from uchar [0, 255] to float [0, 1]
+	return render_data.render_settings.regir_settings.hash_cell_data.metallic[hash_grid_cell_index] / 255.0f;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReGIR_get_cell_specular(const HIPRTRenderData& render_data, int hash_grid_cell_index)
 {
-	return render_data.render_settings.regir_settings.hash_cell_data.specular[hash_grid_cell_index];
+	// / 255.0f to convert from uchar [0, 255] to float [0, 1]
+	return render_data.render_settings.regir_settings.hash_cell_data.specular[hash_grid_cell_index] / 255.0f;
 }
 
 /**

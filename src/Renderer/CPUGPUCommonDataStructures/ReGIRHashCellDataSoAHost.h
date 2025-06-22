@@ -20,9 +20,9 @@ using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
 	GenericAtomicType<int, DataContainer>,  // primitive index
 	float3, // world points
 	Octahedral24BitNormalPadded32b,  // world normals
-	float,  // roughness
-	float,  // metallic
-	float,  // specular
+	unsigned char,  // roughness
+	unsigned char,  // metallic
+	unsigned char,  // specular
 	GenericAtomicType<unsigned int, DataContainer>, // hash keys
 	GenericAtomicType<unsigned int, DataContainer>, // grid cells alive
 	unsigned int // grid cells alive list
