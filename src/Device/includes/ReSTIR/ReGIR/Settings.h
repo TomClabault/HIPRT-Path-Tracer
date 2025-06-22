@@ -373,9 +373,9 @@ struct ReGIRSettings
 		{
 			hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
 			hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
-			hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness;
-			hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic;
-			hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular;
+			hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness * 255.0f;
+			hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic * 255.0f;
+			hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular * 255.0f;
 
 			hash_cell_data_to_update.sum_points[hash_grid_cell_index] = world_position;
 			hash_cell_data_to_update.num_points[hash_grid_cell_index] = 1;
@@ -439,9 +439,9 @@ struct ReGIRSettings
 				hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
 				hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
 				hash_cell_data_to_update.hit_primitive[hash_grid_cell_index] = primitive_index;
-				hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness;
-				hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic;
-				hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular;
+				hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness * 255.0f;
+				hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic * 255.0f;
+				hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular * 255.0f;
 			}
 
 			// Writing back the new sum of points

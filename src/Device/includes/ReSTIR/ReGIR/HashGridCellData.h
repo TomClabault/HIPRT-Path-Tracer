@@ -24,18 +24,17 @@ struct ReGIRHashCellDataSoADevice
 	// Two buffers sum points and num points that we keep to compute the average of the points
 	// that hit each cell
 	float3* sum_points = nullptr;
-	// Can we have this as an unsigned char? Maybe even less: 4 bits per cell
+	// TODO: Can we have this as an unsigned char? Maybe even less: 4 bits per cell
 	AtomicType<unsigned int>* num_points = nullptr;
 
 	AtomicType<int>* hit_primitive = nullptr;
 	float3* world_points = nullptr;
 	Octahedral24BitNormalPadded32b* world_normals = nullptr;
 
-	// TODO pack these to unsigned char
-	float* roughness = nullptr;
-	float* specular = nullptr;
-	float* metallic = nullptr;
-	// The has for each entry of the table to check for collisions
+	unsigned char* roughness = nullptr;
+	unsigned char* specular = nullptr;
+	unsigned char* metallic = nullptr;
+	// The checksum for each entry of the table to check for collisions
 	AtomicType<unsigned int>* checksums = nullptr;
 
 	// The staging buffer is used to store the grid cells that are alive during shading: for each grid cell that a ray falls into during shading,

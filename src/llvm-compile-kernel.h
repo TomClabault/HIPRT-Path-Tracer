@@ -13,31 +13,10 @@
 #include "hiprt/impl/hiprt_device_impl.h"
 
 //#include "Device/kernels/Megakernel.h"
-//#include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
+#include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
 //#include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
 //#include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 //#include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
-
-__device__ void square_to_triangle(float& x, float& y)
-{
-    if (y > x)
-    {
-        x *= 0.5f;
-        y -= x;
-    }
-    else
-    {
-        y *= 0.5f;
-        x -= y;
-    }
-}
-
-__global__ void kernel(float* out_x, float* out_y)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-	square_to_triangle(out_x[idx], out_y[idx]);
-}
 
 __device__ bool filter_function(const hiprtRay& ray, const void* data, void* payload, const hiprtHit& hit);
 

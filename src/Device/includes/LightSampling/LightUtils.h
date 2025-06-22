@@ -418,9 +418,8 @@ struct ReGIRPairwiseMIS
 
         float non_canonical_RIS_integral_center_grid_cell, float canonical_RIS_integral_center_grid_cell,
 
-        const LightSampleInformation& light_sample, RayPayload& ray_payload,
-        Xorshift32Generator& random_number_generator,
-        unsigned int valid_non_canonical_neighbors)
+        const LightSampleInformation& light_sample,
+        Xorshift32Generator& random_number_generator)
     {
         float non_canonical_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, center_grid_cell_index, light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
         float non_canonical_PDF = non_canonical_PDF_unnormalized / non_canonical_RIS_integral_center_grid_cell;
@@ -440,9 +439,7 @@ struct ReGIRPairwiseMIS
         float mis_weight_normalization,
 
         float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload,
-        unsigned int center_grid_cell_index,
-        Xorshift32Generator& random_number_generator,
-        unsigned int valid_non_canonical_neighbors)
+        Xorshift32Generator& random_number_generator)
     {
         float BSDF_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_reservoir_1, view_direction, shading_point, shading_normal, geometric_normal, ray_payload, random_number_generator);
         m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (BSDF_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization);
@@ -457,9 +454,8 @@ struct ReGIRPairwiseMIS
         float canonical_technique_2_canonical_reservoir_1_pdf, float canonical_technique_2_canonical_reservoir_2_pdf,
         float mis_weight_normalization,
         
-        unsigned int neighbor_grid_cell_index, unsigned int center_grid_cell_index,
-        Xorshift32Generator& random_number_generator,
-        unsigned int valid_non_canonical_neighbors)
+        unsigned int neighbor_grid_cell_index,
+        Xorshift32Generator& random_number_generator)
     {
         float non_canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, random_number_generator);
         m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization);
@@ -684,7 +680,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_2_pdf,
                         mis_weight_normalization,
 
-                        neighbor_grid_cell_index, canonical_grid_cell_index, random_number_generator, valid_non_canonical_neighbors);
+                        neighbor_grid_cell_index, random_number_generator);
                     continue;
                 }
 
@@ -774,7 +770,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     canonical_grid_cell_index, area_measure_bsdf_pdf, mis_weight_normalization,
                     non_canonical_RIS_integral_center_grid_cell, canonical_RIS_integral_center_grid_cell,
 
-                    light_sample, ray_payload, random_number_generator, valid_non_canonical_neighbors);
+                    light_sample, random_number_generator);
 
                 float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
                     ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility, false>(render_data,
@@ -807,7 +803,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_2_pdf,
             mis_weight_normalization,
 
-            view_direction, shading_point, shading_normal, geometric_normal, ray_payload, canonical_grid_cell_index, random_number_generator, valid_non_canonical_neighbors);
+            view_direction, shading_point, shading_normal, geometric_normal, ray_payload, random_number_generator);
 #endif
 
         // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
