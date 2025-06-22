@@ -138,7 +138,7 @@
  * or in an empty cell, in which case we want to retry with a differently jittered position
  * to try and find a good neighbor
  */
-#define ReGIR_ShadingJitterTries 1
+#define ReGIR_ShadingJitterTries 2
 
 /**
  * Whether or not to increase the hash grid precision on surfaces that have a lower roughness
