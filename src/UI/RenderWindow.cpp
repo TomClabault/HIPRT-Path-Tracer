@@ -52,6 +52,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Can we just use the 32 reservoirs for shading as the input to the pre integration process? Is that enough for an accurate integral estimate?
+// - Have some kind of visualization process where we can see whether each grid cell has an accurate integral estimate by veryifying that it integrates to 1 or not
 // - Lower load factor threshold than 0.75?
 // - Add surface normal in ReGIR hash to increase precision and reduce "border of geometry" noise because the representative point isn't on the right side of the surface
 // - Maybe not having the spatial reuse in the pre integration is ok still for normalization factor

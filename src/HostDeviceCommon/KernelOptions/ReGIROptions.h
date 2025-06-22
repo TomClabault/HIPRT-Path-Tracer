@@ -110,7 +110,7 @@
 /**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
  */
-#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
 
 #define ReGIR_ShadingResamplingPairwiseMISDualStrategies KERNEL_OPTION_TRUE
 
@@ -140,7 +140,7 @@
  * or in an empty cell, in which case we want to retry with a differently jittered position
  * to try and find a good neighbor
  */
-#define ReGIR_ShadingJitterTries 4
+#define ReGIR_ShadingJitterTries 1
 
 /**
  * Whether or not to increase the hash grid precision on surfaces that have a lower roughness

@@ -733,9 +733,13 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
 template <>
 struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
 {
-    HIPRT_DEVICE float compute_MIS_weight_normalization(const HIPRTRenderData& render_data, bool need_canonical)
+    HIPRT_DEVICE float compute_MIS_weight_normalization(const HIPRTRenderData& render_data, bool need_canonical, unsigned int valid_non_canonical_neighbors)
     {
-        return 1.0f / (render_data.render_settings.regir_settings.shading.number_of_neighbors * render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor + need_canonical + ReGIR_ShadingResamplingDoBSDFMIS + render_data.render_settings.regir_settings.DEBUG_DO_PAIRWISE_MIS_NON_CANONICAL_MAIN_STRATEGY - 2);
+        float denom = (valid_non_canonical_neighbors * render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor + need_canonical + ReGIR_ShadingResamplingDoBSDFMIS + render_data.render_settings.regir_settings.DEBUG_DO_PAIRWISE_MIS_NON_CANONICAL_MAIN_STRATEGY - 2);
+        if (denom == 0.0f)
+            return 0.0f;
+
+        return 1.0f / denom;
     }
 
     HIPRT_DEVICE float compute_MIS_weight_for_BSDF_sample(const HIPRTRenderData& render_data,
@@ -743,7 +747,7 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
 
         const LightSampleInformation& light_sample, RayPayload& ray_payload,
         Xorshift32Generator& random_number_generator,
-        bool need_canonical)
+        bool need_canonical, unsigned int valid_non_canonical_neighbors)
     {
         float RIS_integral_non_canonical_center = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[center_grid_cell_index];
         if (RIS_integral_non_canonical_center == 0.0f)
@@ -764,7 +768,7 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
         if (!need_canonical)
             canonical_sample_PDF = 0.0f;
 
-        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical);
+        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical, valid_non_canonical_neighbors);
         float mis_weight = mis_weight_normalization * (bsdf_pdf_area_measure / (bsdf_pdf_area_measure + non_canonical_PDF * mis_weight_normalization + canonical_sample_PDF * mis_weight_normalization));
 
         return mis_weight;
@@ -776,11 +780,11 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
         float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload,
         unsigned int center_grid_cell_index,
         Xorshift32Generator& random_number_generator,
-        bool need_canonical)
+        bool need_canonical, unsigned int valid_non_canonical_neighbors)
     {
         if (need_canonical)
         {
-            float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical);
+            float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical, valid_non_canonical_neighbors);
 
             float canonical_technique_1_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, center_grid_cell_index, random_number_generator);
             float canonical_technique_1_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, center_grid_cell_index, random_number_generator);
@@ -875,11 +879,11 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
 
         unsigned int neighbor_grid_cell_index, unsigned int center_grid_cell_index,
         Xorshift32Generator& random_number_generator,
-        bool need_canonical)
+        bool need_canonical, unsigned int valid_non_canonical_neighbors)
     {
         if (need_canonical)
         {
-            float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical);
+            float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical, valid_non_canonical_neighbors);
 
             float canonical_technique_1_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, center_grid_cell_index, random_number_generator);
             float canonical_technique_1_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, center_grid_cell_index, random_number_generator);
@@ -973,7 +977,7 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
 
         float3 shading_point, ColorRGB32F light_sample_emission, float3 light_source_normal, float3 point_on_light, unsigned int neighbor_grid_cell_index,
         Xorshift32Generator& random_number_generator,
-        bool need_canonical)
+        bool need_canonical, unsigned int valid_non_canonical_neighbors)
     {        
         float RIS_integral_non_canonical_center = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[center_grid_cell_index];
         if (RIS_integral_non_canonical_center == 0.0f)
@@ -997,7 +1001,7 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
             canonical_sample_PDF = 0.0f;
 
 
-        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical);
+        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical, valid_non_canonical_neighbors);
         float mis_weight = mis_weight_normalization * (canonical_sample_PDF / (canonical_sample_PDF + non_canonical_PDF_for_canonical_sample * mis_weight_normalization + canonical_sample_PDF_at_center * mis_weight_normalization));
 
         // Summing the weights for the canonical MIS weight computation
@@ -1085,7 +1089,7 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
 
         float3 shading_point, ColorRGB32F light_sample_emission, float3 light_source_normal, float3 point_on_light, unsigned int neighbor_grid_cell_index, RayPayload& ray_payload,
         Xorshift32Generator& random_number_generator,
-        bool need_canonical)
+        bool need_canonical, unsigned int valid_non_canonical_neighbors)
     {
         float RIS_integral_non_canonical_center = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[center_grid_cell_index];
         if (RIS_integral_non_canonical_center == 0.0f)
@@ -1110,7 +1114,7 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
 
 
 
-        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical);
+        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical, valid_non_canonical_neighbors);
         float mis_weight = mis_weight_normalization * (non_canonical_sample_PDF / (non_canonical_sample_PDF + non_canonical_PDF_for_canonical_sample * mis_weight_normalization + canonical_sample_PDF * mis_weight_normalization));
 
         // Summing the weights for the canonical MIS weight computation
@@ -1131,16 +1135,40 @@ struct ReGIRPairwiseMIS<KERNEL_OPTION_TRUE>
         return mis_weight;
     }
 
-    HIPRT_DEVICE float get_canonical_MIS_weight_1(const HIPRTRenderData& render_data, bool need_canonical)
+    HIPRT_DEVICE float get_canonical_MIS_weight_1(const HIPRTRenderData& render_data,
+        const ReGIRReservoir& canonical_technique_reservoir_1,
+        unsigned int center_grid_cell_index,
+        Xorshift32Generator& random_number_generator,
+        bool need_canonical, unsigned int valid_non_canonical_neighbors)
     {
-        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical);
+        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical, valid_non_canonical_neighbors);
+        if (mis_weight_normalization == 0.0f)
+        {
+            // We only have the canonical techniques available, we're going to go for a balance heuristic between them
+            float canonical_technique_1_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, center_grid_cell_index, random_number_generator);
+            float canonical_technique_2_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_1, center_grid_cell_index, random_number_generator);
+
+            return canonical_technique_1_canonical_reservoir_1_pdf / (canonical_technique_1_canonical_reservoir_1_pdf + canonical_technique_2_canonical_reservoir_1_pdf);
+        }
 
         return m_sum_canonical_weight_1 * mis_weight_normalization;
     }
 
-    HIPRT_DEVICE float get_canonical_MIS_weight_2(const HIPRTRenderData& render_data, bool need_canonical)
+    HIPRT_DEVICE float get_canonical_MIS_weight_2(const HIPRTRenderData& render_data, 
+        const ReGIRReservoir& canonical_technique_reservoir_2,
+        unsigned int center_grid_cell_index, 
+        Xorshift32Generator& random_number_generator,
+        bool need_canonical, unsigned int valid_non_canonical_neighbors)
     {
-        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical);
+        float mis_weight_normalization = compute_MIS_weight_normalization(render_data, need_canonical, valid_non_canonical_neighbors);
+        if (mis_weight_normalization == 0.0f)
+        {
+            // We only have the canonical techniques available, we're going to go for a balance heuristic between them
+            float canonical_technique_1_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, center_grid_cell_index, random_number_generator);
+            float canonical_technique_2_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_2, center_grid_cell_index, random_number_generator);
+
+            return canonical_technique_2_canonical_reservoir_2_pdf / (canonical_technique_1_canonical_reservoir_2_pdf + canonical_technique_2_canonical_reservoir_2_pdf);
+        }
 
         return m_sum_canonical_weight_2 * mis_weight_normalization;
     }
@@ -1174,7 +1202,26 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     // XORing here because not XORing was causing RNG correlations issues...
     // not sure how that works but more randomness here seems to be getting rid of those correlations issues
     unsigned neighbor_rng_seed = random_number_generator.xorshift32() ^ random_number_generator.xorshift32();
+    unsigned non_cano_neighbor_rng_seed = neighbor_rng_seed ^ random_number_generator.xorshift32();
+    Xorshift32Generator non_canonical_neighbor_rng(non_cano_neighbor_rng_seed);
     Xorshift32Generator neighbor_rng(neighbor_rng_seed);
+
+    unsigned int valid_non_canonical_neighbors = 0;
+    for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
+    {
+        unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
+            shading_point, render_data.current_camera, ray_payload.material.roughness,
+            render_data.render_settings.regir_settings.shading.do_cell_jittering,
+            render_data.render_settings.regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
+        if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+            // Not a valid neighbor
+            continue;
+        else
+            valid_non_canonical_neighbors++;
+    }
+    // Resetting the seed after the counting of the neighbors
+    non_canonical_neighbor_rng.m_state.seed = non_cano_neighbor_rng_seed;
+
     int selected_neighbor = -1;
 
     if (render_data.render_settings.regir_settings.DEBUG_DO_PAIRWISE_MIS)
@@ -1209,13 +1256,20 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             else
                 canonical_technique_reservoir_1 = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(canonical_grid_cell_index, random_number_generator);
         }
+        else
+        {
+            // The center grid cell is invalid (must be because of hash grid collisions that couldn't be resolved)
+            out_need_fallback_sampling = true;
+
+            return LightSampleInformation();
+        }
 
         for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
         {
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
                 shading_point, render_data.current_camera, ray_payload.material.roughness,
                 render_data.render_settings.regir_settings.shading.do_cell_jittering,
-                render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
+                render_data.render_settings.regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
             if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
                 // Couldn't find a valid neighbor
                 continue;
@@ -1231,7 +1285,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 {
                     // No valid sample in that reservoir
 
-                    pairwise.sum_non_canonical_sample_to_canonical_weight(render_data, canonical_technique_reservoir_1, canonical_technique_reservoir_2, neighbor_grid_cell_index, canonical_grid_cell_index, random_number_generator, need_canonical);
+                    pairwise.sum_non_canonical_sample_to_canonical_weight(render_data, canonical_technique_reservoir_1, canonical_technique_reservoir_2, neighbor_grid_cell_index, canonical_grid_cell_index, random_number_generator, need_canonical, valid_non_canonical_neighbors);
                     continue;
                 }
 
@@ -1268,7 +1322,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_grid_cell_index, emission, light_source_normal, point_on_light, random_number_generator);
                 float non_canonical_sample_PDF = non_canonical_sample_PDF_unnormalized / RIS_integral;
                 float mis_weight = pairwise.compute_MIS_weight_for_non_canonical_sample(render_data, canonical_technique_reservoir_1, canonical_technique_reservoir_2, canonical_grid_cell_index, non_canonical_sample_PDF,
-                    shading_point, emission, light_source_normal, point_on_light, neighbor_grid_cell_index, ray_payload, random_number_generator, need_canonical);
+                    shading_point, emission, light_source_normal, point_on_light, neighbor_grid_cell_index, ray_payload, random_number_generator, need_canonical, valid_non_canonical_neighbors);
 
                 if (out_reservoir.stream_reservoir(mis_weight, target_function, non_canonical_reservoir, random_number_generator))
                 {
@@ -1406,7 +1460,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         if (render_data.render_settings.regir_settings.DEBUG_DO_PAIRWISE_MIS_NON_CANONICAL_MAIN_STRATEGY)
                         {
 #if ReGIR_ShadingResamplingPairwiseMISDualStrategies == KERNEL_OPTION_TRUE
-                            mis_weight = pairwise.get_canonical_MIS_weight_2(render_data, need_canonical);
+                            mis_weight = pairwise.get_canonical_MIS_weight_2(render_data, canonical_technique_reservoir_2, canonical_grid_cell_index, random_number_generator, need_canonical, valid_non_canonical_neighbors);
 #else
                             mis_weight = pairwise.compute_MIS_weight_for_canonical_sample(render_data, canonical_technique_reservoir_1, canonical_technique_reservoir_2, canonical_grid_cell_index, canonical_sample_PDF,
                                 shading_point, emission, light_source_normal, point_on_light, canonical_grid_cell_index, random_number_generator, need_canonical);
@@ -1523,7 +1577,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         float non_canonical_sample_PDF = non_canonical_sample_PDF_unnormalized / RIS_integral;
 
 #if ReGIR_ShadingResamplingPairwiseMISDualStrategies == KERNEL_OPTION_TRUE
-                        float mis_weight = pairwise.get_canonical_MIS_weight_1(render_data, need_canonical);
+                        float mis_weight = pairwise.get_canonical_MIS_weight_1(render_data, canonical_technique_reservoir_1, canonical_grid_cell_index, random_number_generator, need_canonical, valid_non_canonical_neighbors);
 #else
                         float mis_weight = pairwise.get_canonical_MIS_weight(render_data, need_canonical);
 #endif
