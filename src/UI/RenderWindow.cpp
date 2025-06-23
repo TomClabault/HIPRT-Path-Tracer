@@ -37,6 +37,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
+// - Can we do something for restir that has a hash grid for the first hits of the rays and then for spatial reuse, each pixel looks up its cell and reuse paths from the same cell (and thus same geometry if we include the normals in the hash grid). This would basically be a more accurate version of the directional spatial reuse
 // - For the spatial reuse buffer, we don't have to store a whole grid at all, we can just store the index of the cell the reservoir reused from --> massive VRAM saves
 // - Using the indirect index for the spatial output buffer, can we double buffer the initial candidates grid and run the spatial reuse of ReGIR async of the path tracing too?
 // - There is bias in ReSTIR DI
@@ -52,6 +53,12 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Spatial reuse seems to introduce quite a bit of correlations so we would be better off improving the base sampling to not have to rely on spatial reuse for good samples quality
+// - NEE++ maximum load factor to avoid the hash grid being totally filled and performance dying because of that
+// - Can we randomize the hash of grid cells to avoid correlations? Basically subdivide each grid cell into 2/3/4/... grid cells and randomly assign the space of the main grid cell to either 1/2/3/... of the sub such that correlation aretifacts are basically randomized and do not look bad
+// - Can we build a different light CDF per each grid cell of ReGIR to massively improve the base sampling by using that CDF instead of the basic power sampling?
+//		- I think to do that we would need to normalization integral for each grid cell and then based on that we know what's the PDF of sampling each light and we can build the CDF on that
+//		- We could have something that like samples from the CDF 80% of the time and the other 20% is just basic power light sampling
 // - Can we compute the "gradient" of cell occupancy of the grid to adjust the factor by which we resize the grid every time? To avoid overshooting too much and having a resized grid that is too large
 // - Can we just use the 32 reservoirs for shading as the input to the pre integration process? Is that enough for an accurate integral estimate?
 // - Have some kind of visualization process where we can see whether each grid cell has an accurate integral estimate by veryifying that it integrates to 1 or not

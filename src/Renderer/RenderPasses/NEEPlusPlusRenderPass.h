@@ -42,6 +42,7 @@ public:
 
     float& get_max_vram_usage();
     std::size_t get_vram_usage_bytes() const;
+    float get_load_factor() const;
  
 private:
 	friend class NEEPlusPlusHashGridStorage;

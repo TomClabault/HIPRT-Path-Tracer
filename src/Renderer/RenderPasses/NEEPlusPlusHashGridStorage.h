@@ -27,11 +27,12 @@ public:
 	bool try_resize(HIPRTRenderData& render_data, float max_megabyte_size);
 
 	unsigned int update_cell_alive_count();
-	unsigned int get_cell_alive_count();
+	unsigned int get_cell_alive_count() const;
 
 	std::size_t get_shadow_rays_actually_traced_from_GPU() const;
 	std::size_t get_total_shadow_rays_queries_from_GPU() const;
 	std::size_t get_byte_size() const;
+	float get_load_factor() const;
 
 private:
 	NEEPlusPlusRenderPass* m_nee_plus_plus_render_pass;

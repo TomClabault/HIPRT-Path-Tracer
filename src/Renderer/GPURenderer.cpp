@@ -1000,7 +1000,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	m_hiprt_scene.geometry.upload_triangle_indices(scene.triangles_indices);
 	m_hiprt_scene.geometry.upload_vertices_positions(scene.vertices_positions);
 	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
-	rebuild_renderer_bvh(hiprtBuildFlagBitPreferHighQualityBuild, true);
+	rebuild_renderer_bvh(hiprtBuildFlagBitPreferHighQualityBuild, true, true);
 
 	m_hiprt_scene.has_vertex_normals.resize(scene.has_vertex_normals.size());
 	m_hiprt_scene.has_vertex_normals.upload_data(scene.has_vertex_normals.data());
@@ -1103,9 +1103,9 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	});
 }
 
-void GPURenderer::rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction)
+void GPURenderer::rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM)
 {
-	m_hiprt_scene.geometry.build_bvh(build_flags, do_compaction, m_main_stream);
+	m_hiprt_scene.geometry.build_bvh(build_flags, do_compaction, disable_spatial_splits_on_OOM, m_main_stream);
 }
 
 void GPURenderer::set_scene(const Scene& scene)

@@ -1995,10 +1995,22 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Whether or not to incorporate BSDF samples with MIS during shading resampling.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::Checkbox("Balance heuristic", &regir_settings.DEBUG_DO_BALANCE_HEURISTIC))
+			static bool do_balance_heuristic = ReGIR_ShadingResamplingDoMISBalanceHeuristic;
+			if (ImGui::Checkbox("Balance heuristic", &do_balance_heuristic))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_BALANCE_HEURISTIC, do_balance_heuristic ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
-			if (ImGui::Checkbox("Pairwise MIS", &regir_settings.DEBUG_DO_PAIRWISE_MIS))
+			}
+			static bool do_pairwise_MIS = ReGIR_ShadingResamplingDoMISPairwiseMIS;
+			if (ImGui::Checkbox("Pairwise MIS", &do_pairwise_MIS))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS, do_pairwise_MIS ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
@@ -2791,24 +2803,20 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			ImGui::TreePush("NEE++ Settings Tree");
 
 			ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_NEE_plus_plus_render_pass()->get_vram_usage_bytes() / 1000000.0f);
+			static bool display_load_factor = false;
+			if (display_load_factor)
+			{
+				m_renderer->get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage().update_cell_alive_count();
+				ImGui::Text("Load factor: %.3f%%", m_renderer->get_NEE_plus_plus_render_pass()->get_load_factor() * 100.0f);
+			}
+			else
+				ImGui::Text("Load factor: ---");
+			ImGui::SameLine(); 
+			ImGui::Checkbox("Display load factor", &display_load_factor);
+
 			if (ImGui::InputFloat("Max VRAM usage (MB)", &m_renderer->get_NEE_plus_plus_render_pass()->get_max_vram_usage()))
 				m_render_window->set_render_dirty(true);
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			static unsigned int max_cell_records = 0;
-
-			{
-				unsigned int traced = 0;
-				unsigned int total = 0;
-
-				ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_storage().get_shadow_rays_actually_traced_from_GPU() / (float)m_renderer->get_nee_plus_plus_storage().get_total_shadow_rays_queries_from_GPU() * 100.0f);
-				ImGui::SameLine();
-				std::string button_text = render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics ? "Stop" : "Resume";
-				if (ImGui::Button(button_text.c_str()))
-					render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics = !render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics;
-
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			}
 
 
 			{
@@ -2842,6 +2850,8 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					"If checked, the voxel-to-voxel visibility estimate of NEE++ will be used to "
 					"stochastically determine whether or not attempt at all to trace a shadow at "
 					"a light during next-event-estimation.");
+				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE) == KERNEL_OPTION_TRUE)
+					ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_storage().get_shadow_rays_actually_traced_from_GPU() / (float)m_renderer->get_nee_plus_plus_storage().get_total_shadow_rays_queries_from_GPU() * 100.0f);
 
 				if (use_nee_plus_plus_rr)
 				{
@@ -2852,6 +2862,18 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 					if (ImGui::Checkbox("Use NEE++ RR for envmap", &render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_envmap))
 						m_render_window->set_render_dirty(true);
+
+					{
+						unsigned int traced = 0;
+						unsigned int total = 0;
+
+						ImGui::SameLine();
+						std::string button_text = render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics ? "Stop" : "Resume";
+						if (ImGui::Button(button_text.c_str()))
+							render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics = !render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics;
+
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					}
 
 					ImGui::TreePop();
 				}
