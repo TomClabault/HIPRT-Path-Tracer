@@ -318,6 +318,8 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 	unsigned int nb_cells_alive = update_cell_alive_count();
 	unsigned int nb_threads = hippt::min(nb_cells_alive, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 
+	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors();
+
 	for (int i = 0; i < REGIR_PRE_INTEGRATION_ITERATIONS; i++)
 	{
 		render_data.random_number = m_local_rng.xorshift32();

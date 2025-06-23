@@ -236,6 +236,12 @@ bool ReGIRHashGridStorage::free()
 	return updated;
 }
 
+void ReGIRHashGridStorage::clear_pre_integrated_RIS_integral_factors()
+{
+	m_canonical_pre_integration_factors.memset_whole_buffer(0.0f);
+	m_non_canonical_pre_integration_factors.memset_whole_buffer(0.0f);
+}
+
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
 	m_grid_buffers.to_device(render_data.render_settings.regir_settings.initial_reservoirs_grid);

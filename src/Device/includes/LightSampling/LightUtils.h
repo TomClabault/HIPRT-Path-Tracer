@@ -718,19 +718,16 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         emission, random_number_generator);
 
                 float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_grid_cell_index, emission, light_source_normal, point_on_light, random_number_generator);
-                float non_canonical_sample_PDF = non_canonical_sample_PDF_unnormalized / neighbor_RIS_integral;
+                float current_sample_PDF = non_canonical_sample_PDF_unnormalized / neighbor_RIS_integral;
                 float mis_weight = pairwise.compute_MIS_weight_for_non_canonical_sample(render_data, 
                     canonical_technique_reservoir_1, canonical_technique_reservoir_2,
                     center_cell_surface,
-
                     canonical_technique_1_canonical_reservoir_1_pdf, canonical_technique_1_canonical_reservoir_2_pdf,
                     canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_2_pdf,
 
                     mis_weight_normalization,
 
-                    non_canonical_RIS_integral_center_grid_cell, canonical_RIS_integral_center_grid_cell,
-
-                    non_canonical_sample_PDF,
+                    non_canonical_RIS_integral_center_grid_cell, canonical_RIS_integral_center_grid_cell, current_sample_PDF,
                     shading_point, emission, light_source_normal, point_on_light, neighbor_grid_cell_index, ray_payload, random_number_generator, valid_non_canonical_neighbors);
 
                 if (out_reservoir.stream_reservoir(mis_weight, target_function, non_canonical_reservoir, random_number_generator))

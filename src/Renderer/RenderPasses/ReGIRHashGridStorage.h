@@ -31,6 +31,8 @@ public:
 	void reset();
 	bool free();
 
+	void clear_pre_integrated_RIS_integral_factors();
+
 	void to_device(HIPRTRenderData& render_data);
 
 	ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa();
