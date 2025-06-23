@@ -110,7 +110,7 @@
 /**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
  */
-#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
 
 #define ReGIR_ShadingResamplingDoMISBalanceHeuristic KERNEL_OPTION_FALSE
 
