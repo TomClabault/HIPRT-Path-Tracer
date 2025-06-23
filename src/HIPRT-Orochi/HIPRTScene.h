@@ -74,7 +74,7 @@ struct HIPRTGeometry
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compiling BVH building kernels & building scene BVH...");
 	}
 
-	void build_bvh(hiprtBuildFlags build_flags, bool do_compaction, oroStream_t build_stream)
+	void build_bvh(hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM, oroStream_t build_stream)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 
@@ -95,6 +95,7 @@ struct HIPRTGeometry
 		hiprtDevicePtr geometry_temp;
 
 		build_options.buildFlags = build_flags;
+
 		geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
 		geometry_build_input.primitive.triangleMesh = m_mesh;
 		// Geom type 0 here 
@@ -103,7 +104,29 @@ struct HIPRTGeometry
 		log_bvh_building(build_options.buildFlags);
 		// Getting the buffer sizes for the construction of the BVH
 		HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
-		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size));
+
+		oroError_t error = oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size);
+		if (error != oroSuccess && error == oroErrorOutOfMemory && disable_spatial_splits_on_OOM)
+		{
+			if (error == oroErrorOutOfMemory && disable_spatial_splits_on_OOM)
+			{
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Out of memory while trying to build the BVH... Retrying without spatial splits. Tracing performance may suffer...");
+
+				build_options.buildFlags |= hiprtBuildFlagBitDisableSpatialSplits;
+
+				HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
+				error = oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size);
+
+				if (error != oroSuccess)
+				{
+					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Error while trying to build the BVH even without spatial splits... Aborting...");
+
+					OROCHI_CHECK_ERROR(error);
+				}
+			}
+		}
+		else
+			OROCHI_CHECK_ERROR(error);
 
 		HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry));
 		HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, build_stream, m_geometry));

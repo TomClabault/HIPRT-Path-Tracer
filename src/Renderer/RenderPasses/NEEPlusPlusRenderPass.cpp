@@ -131,3 +131,8 @@ std::size_t NEEPlusPlusRenderPass::get_vram_usage_bytes() const
 {
 	return m_nee_plus_plus_storage.get_byte_size();
 }
+
+float NEEPlusPlusRenderPass::get_load_factor() const
+{
+	return m_nee_plus_plus_storage.get_load_factor();
+}

@@ -596,7 +596,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
     int selected_neighbor = -1;
 
-    if (render_data.render_settings.regir_settings.DEBUG_DO_PAIRWISE_MIS)
+#if ReGIR_ShadingResamplingDoMISPairwiseMIS
     {
         ReGIRPairwiseMIS pairwise;
 
@@ -924,7 +924,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
         out_reservoir.finalize_resampling(1.0f, 1.0f);
     }
-    else if (render_data.render_settings.regir_settings.DEBUG_DO_BALANCE_HEURISTIC)
+#elif ReGIR_ShadingResamplingDoMISBalanceHeuristic == KERNEL_OPTION_TRUE
     {
         for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
         {
@@ -1219,7 +1219,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
         out_reservoir.finalize_resampling(1.0f, 1.0f);
     }
-    else
+#else
     {
         for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
         {
@@ -1532,6 +1532,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
         out_reservoir.finalize_resampling(normalization_numerator, normalization_denominator);
     }
+#endif
 
     LightSampleInformation out_sample;
 

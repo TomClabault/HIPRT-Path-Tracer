@@ -112,6 +112,10 @@
  */
 #define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
 
+#define ReGIR_ShadingResamplingDoMISBalanceHeuristic KERNEL_OPTION_FALSE
+
+#define ReGIR_ShadingResamplingDoMISPairwiseMIS KERNEL_OPTION_TRUE
+
 /**
  * Discards reservoirs whose light samples are occluded at grid fill time.
  * 

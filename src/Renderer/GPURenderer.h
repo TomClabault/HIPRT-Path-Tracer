@@ -230,7 +230,11 @@ public:
 	RenderGraph& get_render_graph();
 
 	void set_scene(const Scene& scene);
-	void rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction);
+	/**
+	 * The 'disable_spatial_splits_on_OOM' parameter will try to rebuild the BVH without spatial splits if the first try
+	 * failed because of not enough VRAM
+	 */
+	void rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM = false);
 	void set_camera(const Camera& camera);
 	void set_envmap(const Image32Bit& envmap, const std::string& envmap_filepath);
 	bool has_envmap();

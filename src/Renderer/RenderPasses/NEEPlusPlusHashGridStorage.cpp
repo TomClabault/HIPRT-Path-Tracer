@@ -161,7 +161,7 @@ unsigned int NEEPlusPlusHashGridStorage::update_cell_alive_count()
 	return get_cell_alive_count();
 }
 
-unsigned int NEEPlusPlusHashGridStorage::get_cell_alive_count()
+unsigned int NEEPlusPlusHashGridStorage::get_cell_alive_count() const
 {
 	return m_total_cells_alive_count_cpu;
 }
@@ -193,4 +193,9 @@ std::size_t NEEPlusPlusHashGridStorage::get_byte_size() const
 		m_total_shadow_ray_queries.get_byte_size() +
 		m_shadow_rays_actually_traced.get_byte_size() +
 		m_total_cells_alive_count.get_byte_size();
+}
+
+float NEEPlusPlusHashGridStorage::get_load_factor() const
+{
+	return get_cell_alive_count() / (float)m_total_num_rays.size();
 }
