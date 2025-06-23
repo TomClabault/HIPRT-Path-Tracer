@@ -594,8 +594,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     // Resetting the seed after the counting of the neighbors
     non_canonical_neighbor_rng.m_state.seed = non_cano_neighbor_rng_seed;
 
-    int selected_neighbor = -1;
-
 #if ReGIR_ShadingResamplingDoMISPairwiseMIS
     {
         ReGIRPairwiseMIS pairwise;
@@ -723,8 +721,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 if (out_reservoir.stream_reservoir(mis_weight, target_function, non_canonical_reservoir, random_number_generator))
                 {
-                    selected_neighbor = neighbor;
-
                     selected_point_on_light = point_on_light;
                     selected_light_source_normal = light_source_normal;
                     selected_light_source_area = light_source_area;
@@ -786,8 +782,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 if (out_reservoir.stream_sample(mis_weight, target_function, area_measure_bsdf_pdf, light_sample, random_number_generator))
                 {
-                    selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors;
-
                     selected_point_on_light = light_sample.point_on_light;
                     selected_light_source_normal = shadow_light_ray_hit_info.hit_geometric_normal;
                     selected_light_source_area = light_sample.light_area;
@@ -855,8 +849,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                     if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_reservoir, random_number_generator))
                     {
-                        selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors + ReGIR_ShadingResamplingDoBSDFMIS;
-
                         selected_point_on_light = point_on_light;
                         selected_light_source_normal = light_source_normal;
                         selected_light_source_area = light_source_area;
@@ -908,8 +900,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                     if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_technique_reservoir_1, random_number_generator))
                     {
-                        selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors + ReGIR_ShadingResamplingDoBSDFMIS;
-
                         selected_point_on_light = point_on_light;
                         selected_light_source_normal = light_source_normal;
                         selected_light_source_area = light_source_area;
@@ -1008,8 +998,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 if (out_reservoir.stream_reservoir(mis_weight, target_function, non_canonical_reservoir, random_number_generator))
                 {
-                    selected_neighbor = neighbor;
-
                     selected_point_on_light = point_on_light;
                     selected_light_source_normal = light_source_normal;
                     selected_light_source_area = light_source_area;
@@ -1103,8 +1091,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 if (out_reservoir.stream_sample(mis_weight, target_function, area_measure_bsdf_pdf, light_sample, random_number_generator))
                 {
-                    selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors;
-
                     selected_point_on_light = light_sample.point_on_light;
                     selected_light_source_normal = shadow_light_ray_hit_info.hit_geometric_normal;
                     selected_light_source_area = light_sample.light_area;
@@ -1202,8 +1188,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                         if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_reservoir, random_number_generator))
                         {
-                            selected_neighbor = render_data.render_settings.regir_settings.shading.number_of_neighbors + ReGIR_ShadingResamplingDoBSDFMIS;
-
                             selected_point_on_light = point_on_light;
                             selected_light_source_normal = light_source_normal;
                             selected_light_source_area = light_source_area;
@@ -1221,6 +1205,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     }
 #else
     {
+        int selected_neighbor = -1;
+
         for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
         {
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
