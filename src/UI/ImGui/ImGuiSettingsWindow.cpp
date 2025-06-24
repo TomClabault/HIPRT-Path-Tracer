@@ -2065,14 +2065,33 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
 
-			static int linear_probing_steps = ReGIR_LinearProbingSteps;
+			static bool include_normals_in_hash = ReGIR_HashGridHashSurfaceNormal;
+			if (ImGui::Checkbox("Use surface normal in hash", &include_normals_in_hash))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL, include_normals_in_hash ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to use the surface normal in the hash function of the hash grid. Increases quality but also significantly increases memory usage");
+			/*if (include_normals_in_hash)
+			{
+				ImGui::TreePush("ReGIR surface normal discretization tree");
+
+				ImGui::SliderInt("Discretization precision", &regir_settings.hash_grid.m_normal_quantization_steps, 2, 4);
+				ImGuiRenderer::show_help_marker("Higher values mean more precision for the discretization but also more computational and VRAM usage for filling the grid as well as a potentially decreased spatial reuse efficiency.");
+
+				ImGui::TreePop();
+			}*/
+
+			static int linear_probing_steps = ReGIR_HashGridLinearProbingSteps;
 			ImGui::SliderInt("Linear probing max. steps", &linear_probing_steps, 1, 32);
-			if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS))
+			if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_LINEAR_PROBING_STEPS))
 			{
 				ImGui::TreePush("ReGIR linear probing steps apply button");
 				if (ImGui::Button("Apply"))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS, linear_probing_steps);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_LINEAR_PROBING_STEPS, linear_probing_steps);
 
 					m_render_window->set_render_dirty(true);
 					m_renderer->recompile_kernels();
@@ -2488,6 +2507,14 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				{
 					ImGui::TreePush("Directional spatial reuse tree");
 
+					if (!render_settings.accumulate)
+					{
+						ImGuiRenderer::add_warning("Disabled because not accumulating");
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					}
+
+					ImGui::BeginDisabled(!render_settings.accumulate);
+
 					if (ImGui::Checkbox("Use adaptive-directional spatial reuse", &restir_settings.use_adaptive_directional_spatial_reuse))
 						m_render_window->set_render_dirty(true);
 					ImGuiRenderer::show_help_marker("Precomputes the best per-pixel spatial reuse radius to use as "
@@ -2525,6 +2552,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						if (ImGui::Checkbox("Compute spatial reuse hit rate", &restir_settings.compute_spatial_reuse_hit_rate))
 							m_render_window->set_render_dirty(true);
 					}
+
+					ImGui::EndDisabled();
 
 					ImGui::TreePop();
 				}
@@ -4350,8 +4379,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug only one alias table", &render_settings.DEBUG_QUICK_ALIAS_TABLE))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug only one center cell", &render_settings.regir_settings.spatial_reuse.DEBUG_oONLY_ONE_CENTER_CELL))
 			m_render_window->set_render_dirty(true);
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 

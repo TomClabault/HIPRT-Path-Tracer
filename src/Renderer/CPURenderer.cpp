@@ -9,7 +9,9 @@
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
 #include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
+#include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
 #include "Device/kernels/ReSTIR/ReGIR/PreIntegration.h"
+#include "Device/kernels/ReSTIR/ReGIR/Rehash.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/ReGIR/SupersamplingCopy.h"
 
@@ -39,7 +41,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.

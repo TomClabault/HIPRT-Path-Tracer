@@ -62,6 +62,17 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Correlate regir grid fill sampling for secondary cells for higher performance
+// - Disable cell jittering at later bounces for higher performance?
+// - We should separate the first hit grid cells from the second hits grid cells such that we can give less reservoirs per grid cell to the secondary grid cells because correlations aren't as bad for secondary grid cells
+//		- We could also re-fill the secondary grid cells only every N frames but the first grid cells every frame
+//		- We can really go super low on the quality for the GI and it still has good integration quality and the correlations aren't visible
+//			- As low reservoirs 6/2, 4 frame skip on the bistro many lights
+// 
+// - For the grid fill pass, we can probably use a single point on the sampled light to do the calculations and store only the light index in the reservoir and then defer the actual point-on-the-light sampling to the shading pass. We're probably going to lose a bit in quality for large light sources where choosing the point to sample is critical but this could save quite a bit of time by having to fetch only one light vertex in the grid fill pass (and use that vertex as the reference point on the light) insteaad of having the fetch the three vertices of the light
+// - To reduce correlations, can we increase the number of reservoirs but only for the first hit cells? To save on VRAM compared to increasing reservoir count in all cells but still reduce most of the visible correlations 
+// - Cleanup 'light_sample_pdf_for_MIS_solid_angle_measure' function
+// - Only allows RIS and ReSTIR DI sampling function for ReGIR in ImGui
 // - Spatial reuse seems to introduce quite a bit of correlations so we would be better off improving the base sampling to not have to rely on spatial reuse for good samples quality
 // - NEE++ maximum load factor to avoid the hash grid being totally filled and performance dying because of that
 // - Can we randomize the hash of grid cells to avoid correlations? Basically subdivide each grid cell into 2/3/4/... grid cells and randomly assign the space of the main grid cell to either 1/2/3/... of the sub such that correlation aretifacts are basically randomized and do not look bad
@@ -70,7 +81,7 @@ extern ImGuiLogger g_imgui_logger;
 //		- We could have something that like samples from the CDF 80% of the time and the other 20% is just basic power light sampling
 // 
 //		//////////////////////////////////////////////////////////////////////////////////
-//		- We're going to have an issue if the CDF is only size 128/256 with meshes that contains thousands of emissives lights
+//		- We're going to have an issue if the CDF is only size 128/256 with meshes that contains thousands of emissives lights because that single mesh is going to completely fill the CDF
 //		//////////////////////////////////////////////////////////////////////////////////
 // 
 // 
@@ -79,7 +90,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we just use the 32 reservoirs for shading as the input to the pre integration process? Is that enough for an accurate integral estimate?
 // - Have some kind of visualization process where we can see whether each grid cell has an accurate integral estimate by veryifying that it integrates to 1 or not
 // - Lower load factor threshold than 0.75?
-// - Add surface normal in ReGIR hash to increase precision and reduce "border of geometry" noise because the representative point isn't on the right side of the surface
 // - Maybe not having the spatial reuse in the pre integration is ok still for normalization factor
 // - No need to read random reservoirs in the pre integration kernel, we can just read the reservoirs one by one of each grid cell and integrate them all. 
 //		- Opens up possibilities for coalescing the reads of the reservoirs in the pre integration kernel
@@ -87,18 +97,11 @@ extern ImGuiLogger g_imgui_logger;
 // - Super large resolution on surfaces that do not allow light sampling for the hash grid since we do not need ReGIR here
 // - We need a special path for ReGIR, hard to use as a light sampling plug in, lots of opti to do with a special path
 // - Variable jitter radius basezd on cell size
-// - Pre integrating the RIS integral per cell is going to be approximated because this will not take into account the shading resampling that is done with tyhe BRD at shading time.
-//		- The better thing that we can do is still pre integrate the RIS integral per cell but then at shading time, we include a BSDF sample in RIS resampling and there, we will have the proper MIS weights for the BRDF samples because we're going to have the proper integral normalization factor for the ReGIR samples
-// - If we can successfully have BSDF samples during the shading resampling of ReGIR, trace BSDF rays only in the light BVH
-//		- and consider have more than 1 BSDF sample
-// - Different pre normalization for canonical candidates to be able to MIS correctly during shading between canonical and non canonical?
 // - BRDF in target function ReGIR sync with adaptive resolution in ImGui
 // - Have some reservoirs with the BRDF term in the target function during grid fill and have those reservoirs only for the first hit because it gets worse for the GI
 // - We only need the increase in precision for the BRDF sampling on the grid cells of the first hit
 // - Include normal in hash grid for low roughness surfaces to have better BRDF sampling precision
-// - Can we pre integrate the ReGIR PDF normalization factor for each grid cell? And so to get the proper PDF of a light sample, all we need 
 // - Decoupled shading and reuse ReGIR: add visibility rays during the shading so that we have visiblity resampling which is very good and on top of that, we can totally shade the reservoir because the visibility has been computed so the rest of the shading isn't super expensive: maybe use NEE++ in there to reduce shadow rays? Or the visibility caching thing that is biased?
-// - Better MIS weights for the canonical candidate somehow?
 // - Can we maybe add BRDF samples in the grid fill for rough BRDFs? This will enable perfect MIS for diffuse BRDFs which should be good for the bistro many light with the light close for example. This could also be enough for rough-ish specular BRDFs
 //		- We can probably trace the BRDF rays in a light-only BVH here and then if an intersection point is found, use NEE++ visibility estimation there
 //		- Maybe have some form of roughness threshold when using ReGIR with MIS to use MIS only on specular surfaces where the grid fill BRDF rays didn't help
@@ -115,8 +118,6 @@ extern ImGuiLogger g_imgui_logger;
 //		- It does -----> We need to find some better MIS weights for the canonical sample
 //		- Try to downweigjt canonical MIS weight instead of 1 / M
 // - Interrupt target function evaluation in ReGIR if the cosine term drops to zero such that we don't fill the NEE hash grid if the light is back facing for example
-// - Try to add a BRDF sample in the shading resampling to have proper MIS
-// - Can we compact the cell alive buffer to 1 / 32 of its size ? 1 bit per cell alive flag
 // - Lambertian BRDF goes through lampshade in white room but principled BSDF doesn't
 // - Can we keep the grid of reservoirs from the last frame to pick them during shading to reduce correlations? Only memory cost but it's ok
 //		- Maybe only that for primary hit reservoirs because those are the only one to be correlated hard?
@@ -126,7 +127,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Scalarization of the hash grid fetches for the camera rays?
 // - We can optimize the grid cell aliv ecounter atomic increment by incrementing by the number of threads in the wavefront instead of 1 per thread
 // - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
-// - rename hash keys as checksum
 // - Update hash cell data point normal seems to be very expensive
 // - Deduplicate hash grid cell idnex calculations in fetch reservoirs functions mainly for performance reasons
 // - To profile the hash grid, may be useful to, for example, store everything from the camera rays pass into some buffers and then run a separate hash grid cell data fill kernel just to be able to profile that kernel in isolation
@@ -794,6 +794,11 @@ bool RenderWindow::is_rendering_done()
 	// If we are at 0 samples, this means that the render got resetted and so
 	// the render is not done
 	rendering_done &= render_settings.sample_number > 0;
+
+	if (rendering_done)
+		set_ImGui_status_text("Finished!");
+	else
+		clear_ImGui_status_text();
 
 	return rendering_done;
 }

@@ -59,7 +59,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
 
     ReGIRSettings::insert_hash_cell_data_static(
         new_hash_grid, new_hash_grid_soa, new_hash_cell_data,
-        world_position, current_camera, shading_normal, primitive_index, material);
+        world_position, shading_normal, current_camera, primitive_index, material);
 }
 
 #endif

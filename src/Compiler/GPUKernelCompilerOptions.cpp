@@ -57,7 +57,8 @@ const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_BALA
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS = "ReGIR_ShadingResamplingDoMISPairwiseMIS";
 const std::string GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE = "ReGIR_DoVisibilityReuse";
 const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
-const std::string GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS = "ReGIR_LinearProbingSteps";
+const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_LINEAR_PROBING_STEPS = "ReGIR_HashGridLinearProbingSteps";
+const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL = "ReGIR_HashGridHashSurfaceNormal";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES = "ReGIR_ShadingJitterTries";
 const std::string GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION = "ReGIR_AdaptiveRoughnessGridPrecision";
 const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIR_DebugMode";
@@ -140,7 +141,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS,
 	GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE,
 	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
-	GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS,
+	GPUKernelCompilerOptions::REGIR_HASH_GRID_LINEAR_PROBING_STEPS,
+	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL,
 	GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES,
 	GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION,
 	GPUKernelCompilerOptions::REGIR_DEBUG_MODE,
@@ -227,7 +229,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS] = std::make_shared<int>(ReGIR_ShadingResamplingDoMISPairwiseMIS);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE] = std::make_shared<int>(ReGIR_DoVisibilityReuse);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_LINEAR_PROBING_STEPS] = std::make_shared<int>(ReGIR_LinearProbingSteps);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_LINEAR_PROBING_STEPS] = std::make_shared<int>(ReGIR_HashGridLinearProbingSteps);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormal);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES] = std::make_shared<int>(ReGIR_ShadingJitterTries);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION] = std::make_shared<int>(ReGIR_AdaptiveRoughnessGridPrecision);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DEBUG_MODE] = std::make_shared<int>(ReGIR_DebugMode);

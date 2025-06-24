@@ -39,7 +39,7 @@ enum ReGIRHashCellDataSoAHostBuffers
 	REGIR_HASH_CELL_ROUGHNESS,
 	REGIR_HASH_CELL_METALLIC,
 	REGIR_HASH_CELL_SPECULAR,
-	REGIR_HASH_CELL_HASH_KEYS,
+	REGIR_HASH_CELL_CHECKSUMS,
 
 	REGIR_HASH_CELLS_ALIVE,
 	REGIR_HASH_CELLS_ALIVE_LIST
@@ -54,7 +54,7 @@ struct ReGIRHashCellDataSoAHost
 
 		m_hash_cell_data.resize(new_number_of_cells);
 
-		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_CHECKSUMS>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>(0u);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
@@ -92,7 +92,7 @@ struct ReGIRHashCellDataSoAHost
 		hash_cell_data.roughness = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_ROUGHNESS>();
 		hash_cell_data.metallic = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_METALLIC>();
 		hash_cell_data.specular = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_SPECULAR>();
-		hash_cell_data.checksums = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_HASH_KEYS>();
+		hash_cell_data.checksums = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_CHECKSUMS>();
 
 		hash_cell_data.grid_cell_alive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>();
 		hash_cell_data.grid_cells_alive_list = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();

@@ -60,7 +60,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
         for (int i = 0; i < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell() / 2; i++)
         {
             bool invalid_sample = false;
-            ReGIRReservoir non_canonical_reservoir = regir_settings.get_random_cell_non_canonical_reservoir(representative_point, render_data.current_camera, roughness, random_number_generator, &invalid_sample);
+            ReGIRReservoir non_canonical_reservoir = regir_settings.get_random_cell_non_canonical_reservoir(representative_point, normal, render_data.current_camera, roughness, random_number_generator, &invalid_sample);
             if (invalid_sample || non_canonical_reservoir.UCW <= 0.0f)
                 continue;
 
@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
         for (int i = 0; i < regir_settings.grid_fill.get_canonical_reservoir_count_per_cell() / 2; i++)
         {
             bool invalid_sample = false;
-            ReGIRReservoir canonical_reservoir = regir_settings.get_random_cell_canonical_reservoir(representative_point, render_data.current_camera, roughness, random_number_generator, &invalid_sample);
+            ReGIRReservoir canonical_reservoir = regir_settings.get_random_cell_canonical_reservoir(representative_point, normal, render_data.current_camera, roughness, random_number_generator, &invalid_sample);
             if (invalid_sample || canonical_reservoir.UCW <= 0.0f)
                 continue;
 
