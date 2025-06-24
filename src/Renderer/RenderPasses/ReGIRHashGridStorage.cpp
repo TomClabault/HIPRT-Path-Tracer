@@ -182,7 +182,7 @@ void ReGIRHashGridStorage::reset()
 	get_hash_cell_data_soa().m_grid_cells_alive_count.upload_data(&zero);
 
 	m_hash_cell_data.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-	m_hash_cell_data.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_HASH_KEYS>().memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+	m_hash_cell_data.m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_CHECKSUMS>().memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 }
 
 bool ReGIRHashGridStorage::free()

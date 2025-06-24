@@ -107,7 +107,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_reservoir_opt(ReGIRReservoir(), representative_point, render_data.current_camera, roughness, reservoir_index_in_cell);
+            regir_settings.store_reservoir_opt(ReGIRReservoir(), representative_point, normal, render_data.current_camera, roughness, reservoir_index_in_cell);
             
             return;
         }
@@ -123,7 +123,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, hash_grid_cell_index, random_number_generator);
 
-        regir_settings.store_reservoir_opt(output_reservoir, representative_point, render_data.current_camera, roughness, reservoir_index_in_cell);
+        regir_settings.store_reservoir_opt(output_reservoir, representative_point, normal, render_data.current_camera, roughness, reservoir_index_in_cell);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

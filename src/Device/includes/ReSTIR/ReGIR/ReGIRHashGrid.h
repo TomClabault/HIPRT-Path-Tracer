@@ -51,7 +51,7 @@ struct ReGIRHashGrid
 		return hippt::max(grid_cell_min_size, grid_cell_min_size * exp2f(log_step));
 	}
 
-	HIPRT_DEVICE unsigned int custom_regir_hash(float3 world_position, const HIPRTCamera& current_camera, float roughness, unsigned int total_number_of_cells, unsigned int& out_checksum) const
+	HIPRT_DEVICE unsigned int custom_regir_hash(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, unsigned int total_number_of_cells, unsigned int& out_checksum) const
 	{
 		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, m_grid_cell_target_projected_size, m_grid_cell_min_size);
 
@@ -63,10 +63,17 @@ struct ReGIRHashGrid
 		unsigned int grid_coord_z = static_cast<int>(floorf(world_position.z / cell_size));
 
 		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
-		out_checksum = h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x))));
-
+#if ReGIR_HashGridHashSurfaceNormal == KERNEL_OPTION_TRUE
+		// And adding normal hasing from [World-Space Spatiotemporal Path Resampling for Path Tracing, 2023]
+		unsigned int quantized_normal = hash_quantize_normal(surface_normal, m_normal_quantization_steps);
+		unsigned int checksum = h2_xxhash32(quantized_normal + h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x)))));
+		unsigned int cell_hash = h1_pcg(quantized_normal + h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x))))) % total_number_of_cells;
+#else
+		unsigned int checksum = h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x))));
 		unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x)))) % total_number_of_cells;
+#endif
 
+		out_checksum = checksum;
 		return cell_hash;
 	}
 
@@ -79,11 +86,11 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashGridSoADevice& soa, ReGIRHashCellDataSoADevice& hash_cell_data, 
-		float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell)
+		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell)
 	{
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
-		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
+		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, surface_normal, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
+		if (!HashGrid::resolve_collision<ReGIR_HashGridLinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
 			return;
 
 		int reservoir_index_in_grid = hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
@@ -92,20 +99,20 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
-		float3 world_position, const HIPRTCamera& current_camera, float roughness) const
+		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness) const
 	{
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
-		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || hash_cell_data.grid_cell_alive[hash_grid_cell_index] == 0u)
+		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, surface_normal, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
+		if (!HashGrid::resolve_collision<ReGIR_HashGridLinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || hash_cell_data.grid_cell_alive[hash_grid_cell_index] == 0u)
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
 		return hash_grid_cell_index;
 	}
 
 	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
-		float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell) const
+		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell) const
 	{
-		unsigned int hash_grid_cell_index = get_hash_grid_cell_index(soa, hash_cell_data, world_position, current_camera, roughness);
+		unsigned int hash_grid_cell_index = get_hash_grid_cell_index(soa, hash_cell_data, world_position, surface_normal, current_camera, roughness);
 		if (hash_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
@@ -151,9 +158,9 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
-		float3 world_position, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
+		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
 	{
-		unsigned int reservoir_index_in_grid = get_reservoir_index_in_grid(soa, hash_cell_data, world_position, current_camera, roughness, reservoir_index_in_cell);
+		unsigned int reservoir_index_in_grid = get_reservoir_index_in_grid(soa, hash_cell_data, world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell);
 
 		if (out_invalid_sample)
 		{
@@ -167,21 +174,21 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_no_collision_resolve(const ReGIRHashGridSoADevice& soa, 
-		float3 world_position, const HIPRTCamera& current_camera, float roughness) const
+		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness) const
 	{
 		unsigned int hash_key;
-		unsigned int hash_cell_index = custom_regir_hash(world_position, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
+		unsigned int hash_cell_index = custom_regir_hash(world_position, surface_normal, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
 
 		return hash_cell_index;
 	}
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
-		float3 world_position, const HIPRTCamera& current_camera, float roughness) const
+		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness) const
 	{
 		unsigned int hash_key;
-		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
+		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, surface_normal, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
 
-		if (!HashGrid::resolve_collision<ReGIR_LinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
+		if (!HashGrid::resolve_collision<ReGIR_HashGridLinearProbingSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key))
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		else
 			return hash_grid_cell_index;
@@ -196,8 +203,9 @@ struct ReGIRHashGrid
 
 	HashGrid m_hash_grid;
 
-	float m_grid_cell_min_size = 0.3f;
+	float m_grid_cell_min_size = 0.5f;
 	float m_grid_cell_target_projected_size = 25.0f;
+	int m_normal_quantization_steps = 2;
 };
 
 #endif

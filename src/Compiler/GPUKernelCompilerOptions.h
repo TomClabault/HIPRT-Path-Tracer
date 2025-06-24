@@ -58,7 +58,8 @@ public:
 	static const std::string REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS;
 	static const std::string REGIR_DO_VISIBILITY_REUSE;
 	static const std::string REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY;
-	static const std::string REGIR_LINEAR_PROBING_STEPS;
+	static const std::string REGIR_HASH_GRID_LINEAR_PROBING_STEPS;
+	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL;
 	static const std::string REGIR_SHADING_JITTER_TRIES;
 	static const std::string REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION;
 	static const std::string REGIR_DEBUG_MODE;

@@ -61,6 +61,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 hash_periodic_shifting(float3 base_positio
         base_position.z + cosf(base_position.y / (grid_cell_size * frequency_per_grid_cell_inverse)) * scaling);
 }
 
+/**
+ * The 'precision' factor controls the discretization of the normal. 
+ * Higher values mean more discretization steps mean more precision.
+ * 
+ * 2 is a default good value for 'precision'
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int hash_quantize_normal(float3 normal, unsigned int precision)
+{
+    float precision_f = precision;
+
+    unsigned int x = static_cast<unsigned int>(normal.x * precision_f) << (2 * precision);
+    unsigned int y = static_cast<unsigned int>(normal.y * precision_f) << (1 * precision);
+    unsigned int z = static_cast<unsigned int>(normal.z * precision_f);
+
+    return x | y | z;
+}
+
  /**
  * Reference: [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
  */

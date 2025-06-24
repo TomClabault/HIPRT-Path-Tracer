@@ -140,7 +140,12 @@
 /**
  * Maximum number of steps for the linear probing in the hash table to resolve collisions
  */
-#define ReGIR_LinearProbingSteps 8
+#define ReGIR_HashGridLinearProbingSteps 8
+
+/**
+ * Whether or not to use the surface normal in the hash function of the hash grid
+ */
+#define ReGIR_HashGridHashSurfaceNormal KERNEL_OPTION_FALSE
 
 /**
  * If using jittering, how many tries to perform to find a good neighbor at shading time?

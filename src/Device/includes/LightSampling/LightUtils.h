@@ -625,7 +625,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
     {
         unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-            shading_point, render_data.current_camera, ray_payload.material.roughness,
+            shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
             render_data.render_settings.regir_settings.shading.do_cell_jittering,
             render_data.render_settings.regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
         if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -642,7 +642,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         ReGIRPairwiseMIS pairwise;
 
         unsigned int canonical_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(
-            shading_point, render_data.current_camera, ray_payload.material.roughness,
+            shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
             false,
             render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
         ReGIRReservoir canonical_technique_reservoir_1;
@@ -698,7 +698,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
         {
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-                shading_point, render_data.current_camera, ray_payload.material.roughness,
+                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
                 render_data.render_settings.regir_settings.shading.do_cell_jittering,
                 render_data.render_settings.regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
             if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -1263,7 +1263,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
         {
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-                shading_point, render_data.current_camera, ray_payload.material.roughness,
+                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
                 render_data.render_settings.regir_settings.shading.do_cell_jittering,
                 render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
             if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -1384,7 +1384,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         {
             // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(
-                shading_point, render_data.current_camera, ray_payload.material.roughness,
+                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
                 false, // render_data.render_settings.regir_settings.shading.do_cell_jittering,
                 render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
 
@@ -1456,7 +1456,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             if (is_bsdf_sample)
             {
                 neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
-                    shading_point, render_data.current_camera, ray_payload.material.roughness,
+                    shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
                     false,
                     false,
                     render_data.render_settings.regir_settings.shading.jittering_radius,
@@ -1465,7 +1465,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             else
             {
                 neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
-                    shading_point, render_data.current_camera, ray_payload.material.roughness,
+                    shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
                     is_canonical,
                     is_canonical ? false : render_data.render_settings.regir_settings.shading.do_cell_jittering,
                     render_data.render_settings.regir_settings.shading.jittering_radius,
@@ -1718,7 +1718,7 @@ HIPRT_DEVICE HIPRT_INLINE float light_sample_pdf_for_MIS_solid_angle_measure(con
             point_on_light, light_surface_normal,
             light_emission, random_number_generator);
 
-        unsigned int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(shading_point, render_data.current_camera, roughness);
+        unsigned int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(shading_point, surface_shading_normal, render_data.current_camera, roughness);
         if (hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
         {
             float normalization = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[hash_grid_cell_index];
