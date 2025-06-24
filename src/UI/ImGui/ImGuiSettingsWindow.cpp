@@ -4359,6 +4359,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Normalize RIS integral", &render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION))
 			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("ReGIR BSDF PDF use shading TG", &render_settings.regir_settings.DEBUG_DO_BSDF_PDF_AS_SHADING_TG))
+			m_render_window->set_render_dirty(true);
 
 		bool changed = false;
 		changed |= ImGui::RadioButton("32", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 32); ImGui::SameLine();
