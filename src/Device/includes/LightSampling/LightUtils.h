@@ -349,15 +349,20 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(co
  */
 
 template <bool canonicalPDF>
-HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRReservoir& reservoir, unsigned int grid_cell_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float PDF_normalization, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, Xorshift32Generator& random_number_generator)
 {
-    if (reservoir.UCW <= 0.0f)
-        return 0.0f;
+    float sample_PDF_unnormalized;
+    if constexpr (canonicalPDF)
+        sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, emission, light_source_normal, point_on_light, random_number_generator);
+    else
+        sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, emission, light_source_normal, point_on_light, random_number_generator);
 
-    float3 point_on_light = reservoir.sample.point_on_light;
-    float3 light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_index));
-    ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, reservoir.sample.emissive_triangle_index);
+    return sample_PDF_unnormalized / PDF_normalization;
+}
 
+template <bool canonicalPDF>
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, unsigned int grid_cell_index, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, Xorshift32Generator& random_number_generator)
+{
     float RIS_integral;
     if constexpr (canonicalPDF)
         RIS_integral = render_data.render_settings.regir_settings.canonical_pre_integration_factors[grid_cell_index];
@@ -368,17 +373,21 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
         RIS_integral = 1.0f;
 
-    float sample_PDF_unnormalized;
-    if constexpr (canonicalPDF)
-        sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, grid_cell_index, emission, light_source_normal, point_on_light, random_number_generator);
-    else
-        sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, grid_cell_index, emission, light_source_normal, point_on_light, random_number_generator);
-
-    return sample_PDF_unnormalized / RIS_integral;
+    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, surface, RIS_integral, point_on_light, light_source_normal, emission, random_number_generator);
 }
 
-HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& render_data, const ReGIRReservoir& reservoir,
-    float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
+template <bool canonicalPDF>
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, unsigned int grid_cell_index, Xorshift32Generator& random_number_generator)
+{
+    if (emission.is_black())
+        return 0.0f;
+
+    ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, grid_cell_index);
+    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, surface, grid_cell_index, point_on_light, light_source_normal, emission, random_number_generator);
+}
+
+template <bool canonicalPDF>
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRReservoir& reservoir, unsigned int grid_cell_index, Xorshift32Generator& random_number_generator)
 {
     if (reservoir.UCW <= 0.0f)
         return 0.0f;
@@ -387,14 +396,41 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
     float3 light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_index));
     ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, reservoir.sample.emissive_triangle_index);
 
-    BSDFIncidentLightInfo no_info = BSDFIncidentLightInfo::NO_INFO;
-    float bsdf_pdf;
-    BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, hippt::normalize(point_on_light - shading_point), no_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-    ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, random_number_generator);
+}
 
-    bsdf_pdf = solid_angle_to_area_pdf(bsdf_pdf, hippt::length(point_on_light - shading_point), compute_cosine_term_at_light_source(light_source_normal, -hippt::normalize(point_on_light - shading_point)));
-    if constexpr (ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_FALSE)
-        bsdf_pdf = 0.0f;
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& render_data, const ReGIRReservoir& reservoir,
+    float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+{
+    if (reservoir.UCW <= 0.0f)
+        return 0.0f;
+
+    float bsdf_pdf;
+
+    float3 point_on_light = reservoir.sample.point_on_light;
+    float3 light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_index));
+    ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, reservoir.sample.emissive_triangle_index);
+
+    if (!render_data.render_settings.regir_settings.DEBUG_DO_BSDF_PDF_AS_SHADING_TG)
+    {
+        BSDFIncidentLightInfo no_info = BSDFIncidentLightInfo::NO_INFO;
+        BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, hippt::normalize(point_on_light - shading_point), no_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+        ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
+        bsdf_pdf = solid_angle_to_area_pdf(bsdf_pdf, hippt::length(point_on_light - shading_point), compute_cosine_term_at_light_source(light_source_normal, -hippt::normalize(point_on_light - shading_point)));
+        if constexpr (ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_FALSE)
+            bsdf_pdf = 0.0f;
+    }
+	else
+	{
+		BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+
+		bsdf_pdf = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
+			ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility, false>(render_data,
+				shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index,
+				ray_payload, point_on_light, light_source_normal, emission,
+				random_number_generator, incident_light_info);
+	}
 
     return bsdf_pdf;
 }
@@ -419,14 +455,23 @@ struct ReGIRPairwiseMIS
 
         float non_canonical_RIS_integral_center_grid_cell, float canonical_RIS_integral_center_grid_cell,
 
+		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, int last_hit_primitive_index,
+        BSDFIncidentLightInfo incident_light_info,
+
         const LightSampleInformation& light_sample,
         Xorshift32Generator& random_number_generator)
     {
-        float non_canonical_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, center_grid_cell_surface, light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
-        float non_canonical_PDF = non_canonical_PDF_unnormalized / non_canonical_RIS_integral_center_grid_cell;
+        float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, non_canonical_RIS_integral_center_grid_cell, light_sample.point_on_light, light_sample.light_source_normal, light_sample.emission, random_number_generator);
+        float canonical_sample_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, canonical_RIS_integral_center_grid_cell, light_sample.point_on_light, light_sample.light_source_normal, light_sample.emission, random_number_generator);
 
-        float canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, center_grid_cell_surface, light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
-        float canonical_sample_PDF = canonical_sample_PDF_unnormalized / canonical_RIS_integral_center_grid_cell;
+        if (render_data.render_settings.regir_settings.DEBUG_DO_BSDF_PDF_AS_SHADING_TG)
+        {
+            bsdf_pdf_area_measure = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
+                ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility, false>(render_data,
+                    shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index,
+                    ray_payload, light_sample.point_on_light, light_sample.light_source_normal, light_sample.emission,
+                    random_number_generator, incident_light_info);
+        }
 
         float mis_weight = mis_weight_normalization * (bsdf_pdf_area_measure / (bsdf_pdf_area_measure + non_canonical_PDF * mis_weight_normalization + canonical_sample_PDF * mis_weight_normalization));
 
@@ -439,13 +484,13 @@ struct ReGIRPairwiseMIS
         float canonical_technique_2_canonical_reservoir_1_pdf, float canonical_technique_2_canonical_reservoir_2_pdf,
         float mis_weight_normalization,
 
-        float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload,
+        float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, int last_hit_primitive_index,
         Xorshift32Generator& random_number_generator)
     {
-        float BSDF_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_reservoir_1, view_direction, shading_point, shading_normal, geometric_normal, ray_payload, random_number_generator);
+        float BSDF_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_reservoir_1, view_direction, shading_point, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index, random_number_generator);
         m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (BSDF_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization);
 
-        float BSDF_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_reservoir_2, view_direction, shading_point, shading_normal, geometric_normal, ray_payload, random_number_generator);
+        float BSDF_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_reservoir_2, view_direction, shading_point, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index, random_number_generator);
         m_sum_canonical_weight_2 += canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization / (BSDF_technique_canonical_reservoir_2_pdf + canonical_technique_1_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization);
     }
 
@@ -480,13 +525,10 @@ struct ReGIRPairwiseMIS
         Xorshift32Generator& random_number_generator,
         unsigned int valid_non_canonical_neighbors)
     {
-        float non_canonical_PDF_for_canonical_sample_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, center_grid_cell_surface, light_sample_emission, light_source_normal, point_on_light, random_number_generator);
-        float non_canonical_PDF_for_canonical_sample = non_canonical_PDF_for_canonical_sample_unnormalized / non_canonical_RIS_integral_center_grid_cell;
+        float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, non_canonical_RIS_integral_center_grid_cell, point_on_light, light_source_normal, light_sample_emission, random_number_generator);
+        float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, canonical_RIS_integral_center_grid_cell, point_on_light, light_source_normal, light_sample_emission, random_number_generator);
 
-        float canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, center_grid_cell_surface, light_sample_emission, light_source_normal, point_on_light, random_number_generator);
-        float canonical_sample_PDF_at_center = canonical_sample_PDF_unnormalized / canonical_RIS_integral_center_grid_cell;
-
-        float mis_weight = mis_weight_normalization * (canonical_sample_PDF / (canonical_sample_PDF + non_canonical_PDF_for_canonical_sample * mis_weight_normalization + canonical_sample_PDF_at_center * mis_weight_normalization));
+        float mis_weight = mis_weight_normalization * (canonical_sample_PDF / (canonical_sample_PDF + non_canonical_PDF * mis_weight_normalization + canonical_PDF * mis_weight_normalization));
 
         // Summing the weights for the canonical MIS weight computation
         float canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, random_number_generator);
@@ -513,13 +555,10 @@ struct ReGIRPairwiseMIS
         Xorshift32Generator& random_number_generator,
         unsigned int valid_non_canonical_neighbors)
     {
-        float non_canonical_PDF_for_canonical_sample_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, center_grid_cell_surface, light_sample_emission, light_source_normal, point_on_light, random_number_generator);
-        float non_canonical_PDF_for_canonical_sample = non_canonical_PDF_for_canonical_sample_unnormalized / non_canonical_RIS_integral_center_grid_cell;
+        float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, non_canonical_RIS_integral_center_grid_cell, point_on_light, light_source_normal, light_sample_emission, random_number_generator);
+        float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, canonical_RIS_integral_center_grid_cell, point_on_light, light_source_normal, light_sample_emission, random_number_generator);
 
-        float canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, center_grid_cell_surface, light_sample_emission, light_source_normal, point_on_light, random_number_generator);
-        float canonical_sample_PDF = canonical_sample_PDF_unnormalized / canonical_RIS_integral_center_grid_cell;
-
-        float mis_weight = mis_weight_normalization * (non_canonical_sample_PDF / (non_canonical_sample_PDF + non_canonical_PDF_for_canonical_sample * mis_weight_normalization + canonical_sample_PDF * mis_weight_normalization));
+        float mis_weight = mis_weight_normalization * (non_canonical_sample_PDF / (non_canonical_sample_PDF + non_canonical_PDF * mis_weight_normalization + canonical_PDF * mis_weight_normalization));
 
         // Summing the weights for the canonical MIS weight computation
         float non_canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, random_number_generator);
@@ -777,6 +816,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     center_cell_surface, area_measure_bsdf_pdf, mis_weight_normalization,
                     non_canonical_RIS_integral_center_grid_cell, canonical_RIS_integral_center_grid_cell,
 
+					shading_point, view_direction, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index,
+                    incident_light_info,
+
                     light_sample, random_number_generator);
 
                 float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
@@ -808,7 +850,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_2_pdf,
             mis_weight_normalization,
 
-            view_direction, shading_point, shading_normal, geometric_normal, ray_payload, random_number_generator);
+            view_direction, shading_point, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index, random_number_generator);
 #endif
 
         // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
