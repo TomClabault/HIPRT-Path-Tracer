@@ -15,9 +15,9 @@
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReGIR_Pre_integration(HIPRTRenderData render_data, unsigned int number_of_cells_alive)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReGIR_Pre_integration(HIPRTRenderData render_data, unsigned int number_of_cells_alive, bool primary_hit)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData render_data, unsigned int number_of_cells_alive, int thread_index)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData render_data, unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
 #endif
 {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -35,7 +35,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
     {
         int cell_alive_index = thread_index;
 
-        unsigned int hash_grid_cell_index = number_of_cells_alive == regir_settings.get_total_number_of_cells_per_grid() ? cell_alive_index : regir_settings.hash_cell_data.grid_cells_alive_list[cell_alive_index];
+        unsigned int hash_grid_cell_index = number_of_cells_alive == regir_settings.get_total_number_of_cells_per_grid(primary_hit) ? cell_alive_index : regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_alive_index];
 
         unsigned int seed;
         if (render_data.render_settings.freeze_random)
@@ -45,10 +45,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 
         Xorshift32Generator random_number_generator(seed);
 
-        int primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index);
-        float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index);
-        float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index);
-        float roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index);
+        int primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index, primary_hit);
+        float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
+        float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index, primary_hit);
+        float roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index, primary_hit);
 
 
 		// This kernel always uses a Lambertian BRDF where the view direction is not used so it can be set to zero
@@ -57,10 +57,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 		ray_payload.material.roughness = roughness;
 
         float non_canonical_cell_integration_sum = 0.0f;
-        for (int i = 0; i < regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell() / 2; i++)
+        for (int i = 0; i < regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() / 2; i++)
         {
             bool invalid_sample = false;
-            ReGIRReservoir non_canonical_reservoir = regir_settings.get_random_cell_non_canonical_reservoir(representative_point, normal, render_data.current_camera, roughness, random_number_generator, &invalid_sample);
+            ReGIRReservoir non_canonical_reservoir = regir_settings.get_random_cell_non_canonical_reservoir(representative_point, normal, render_data.current_camera, roughness, primary_hit, random_number_generator, &invalid_sample);
             if (invalid_sample || non_canonical_reservoir.UCW <= 0.0f)
                 continue;
 
@@ -76,7 +76,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
                 // Can happen for very small triangles
                 continue;
 
-            float non_canonical_target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, hash_grid_cell_index, light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
+            float non_canonical_target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
+                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
 
             if (non_canonical_target_function <= 0.0f)
                 continue;
@@ -84,13 +85,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
             non_canonical_cell_integration_sum += non_canonical_target_function * non_canonical_reservoir.UCW;
         }
 
-        regir_settings.non_canonical_pre_integration_factors[hash_grid_cell_index] += non_canonical_cell_integration_sum / (regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell() / 2) / REGIR_PRE_INTEGRATION_ITERATIONS;
+        regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index] += non_canonical_cell_integration_sum / (regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() / 2) / REGIR_PRE_INTEGRATION_ITERATIONS;
 
         float canonical_cell_integration_sum = 0.0f;
-        for (int i = 0; i < regir_settings.grid_fill.get_canonical_reservoir_count_per_cell() / 2; i++)
+        for (int i = 0; i < regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() / 2; i++)
         {
             bool invalid_sample = false;
-            ReGIRReservoir canonical_reservoir = regir_settings.get_random_cell_canonical_reservoir(representative_point, normal, render_data.current_camera, roughness, random_number_generator, &invalid_sample);
+            ReGIRReservoir canonical_reservoir = regir_settings.get_random_cell_canonical_reservoir(representative_point, normal, render_data.current_camera, roughness, primary_hit, random_number_generator, &invalid_sample);
             if (invalid_sample || canonical_reservoir.UCW <= 0.0f)
                 continue;
 
@@ -106,7 +107,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
                 // Can happen for very small triangles
                 continue;
 
-            float canonical_target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, hash_grid_cell_index, light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
+            float canonical_target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
+                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
 
             if (canonical_target_function <= 0.0f)
                 continue;
@@ -114,7 +116,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
             canonical_cell_integration_sum += canonical_target_function * canonical_reservoir.UCW;
         }
 
-        regir_settings.canonical_pre_integration_factors[hash_grid_cell_index] += canonical_cell_integration_sum / (regir_settings.grid_fill.get_canonical_reservoir_count_per_cell() / 2) / REGIR_PRE_INTEGRATION_ITERATIONS;
+        regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index] += canonical_cell_integration_sum / (regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() / 2) / REGIR_PRE_INTEGRATION_ITERATIONS;
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

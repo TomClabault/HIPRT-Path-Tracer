@@ -17,11 +17,11 @@ class ReGIRRenderPass;
 class ReGIRHashGridStorage
 {
 public:
-	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT = 10000;
+	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS = 50;
+	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS = 100;
 
 	void set_regir_render_pass(ReGIRRenderPass* regir_render_pass);
 
-	unsigned int get_total_number_of_cells() const;
 	std::size_t get_byte_size() const;
 
 	bool pre_render_update(HIPRTRenderData& render_data);
@@ -31,37 +31,54 @@ public:
 	void reset();
 	bool free();
 
-	void clear_pre_integrated_RIS_integral_factors();
+	void clear_pre_integrated_RIS_integral_factors(bool primary_hit);
 
 	void to_device(HIPRTRenderData& render_data);
 
-	ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa();
+	ReGIRHashGridSoAHost<OrochiBuffer>& get_initial_grid_buffers(bool primary_hit);
+	ReGIRHashGridSoAHost<OrochiBuffer>& get_spatial_grid_buffers(bool primary_hit);
+	ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa(bool primary_hit);
+	ReGIRHashCellDataSoADevice& get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit);
+	OrochiBuffer<float>& get_non_canonical_factors(bool primary_hit);
+	OrochiBuffer<float>& get_canonical_factors(bool primary_hit);
+	unsigned int& get_total_number_of_cells(bool primary_hit);
+	unsigned int get_total_number_of_cells(bool primary_hit) const;
+
 	unsigned int get_supersampling_current_frame() const;
 	unsigned int get_supersampling_frames_available() const;
 
-private:
+public:
+	bool pre_render_update_internal(ReGIRSettings& regir_settings, bool primary_hit);
+	bool try_rehash_internal(HIPRTRenderData& render_data, bool primary_hit);
+
 	ReGIRRenderPass* m_regir_render_pass = nullptr;
 
 	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,
 	// this buffer will contain one more than one grid worth of space to
 	// accomodate for the grid of the past frames for temporal reuse
-	ReGIRHashGridSoAHost<OrochiBuffer> m_grid_buffers;
-	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_reuse_output_grid_buffer;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_initial_reservoirs_primary_hits_grid;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_initial_reservoirs_secondary_hits_grid;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_output_primary_hits_grid;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_output_secondary_hits_grid;
 
 	int m_supersampling_curent_grid_offset = 0;
 	int m_supersampling_frames_available = 0;
-	ReGIRHashGridSoAHost<OrochiBuffer> m_supersample_grid;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_supersample_grid_primary_hits;
 
 	// Stores the pre-integrated RIS integral for each cell in the grid
-	OrochiBuffer<float> m_non_canonical_pre_integration_factors;
-	OrochiBuffer<float> m_canonical_pre_integration_factors;
+	OrochiBuffer<float> m_non_canonical_pre_integration_factors_primary_hits;
+	OrochiBuffer<float> m_non_canonical_pre_integration_factors_secondary_hits;
+	OrochiBuffer<float> m_canonical_pre_integration_factors_primary_hits;
+	OrochiBuffer<float> m_canonical_pre_integration_factors_secondary_hits;
 
-	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data;
+	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data_primary_hits;
+	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data_secondary_hits;
 
 	float m_current_grid_min_cell_size = 0.0f;
 	float m_grid_cell_target_projected_size = 0.0f;
 
-	unsigned int m_total_number_of_cells = 0;
+	unsigned int m_total_number_of_cells_primary_hits = 0;
+	unsigned int m_total_number_of_cells_secondary_hits = 0;
 };
 
 #endif

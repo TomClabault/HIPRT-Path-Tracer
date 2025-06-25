@@ -63,14 +63,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Correlate regir grid fill sampling for secondary cells for higher performance
-// - Disable cell jittering at later bounces for higher performance?
-// - We should separate the first hit grid cells from the second hits grid cells such that we can give less reservoirs per grid cell to the secondary grid cells because correlations aren't as bad for secondary grid cells
-//		- We could also re-fill the secondary grid cells only every N frames but the first grid cells every frame
-//		- We can really go super low on the quality for the GI and it still has good integration quality and the correlations aren't visible
-//			- As low reservoirs 6/2, 4 frame skip on the bistro many lights
-// 
 // - For the grid fill pass, we can probably use a single point on the sampled light to do the calculations and store only the light index in the reservoir and then defer the actual point-on-the-light sampling to the shading pass. We're probably going to lose a bit in quality for large light sources where choosing the point to sample is critical but this could save quite a bit of time by having to fetch only one light vertex in the grid fill pass (and use that vertex as the reference point on the light) insteaad of having the fetch the three vertices of the light
-// - To reduce correlations, can we increase the number of reservoirs but only for the first hit cells? To save on VRAM compared to increasing reservoir count in all cells but still reduce most of the visible correlations 
 // - Cleanup 'light_sample_pdf_for_MIS_solid_angle_measure' function
 // - Only allows RIS and ReSTIR DI sampling function for ReGIR in ImGui
 // - Spatial reuse seems to introduce quite a bit of correlations so we would be better off improving the base sampling to not have to rely on spatial reuse for good samples quality
