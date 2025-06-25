@@ -55,8 +55,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 358
-#define DEBUG_PIXEL_Y 414
+#define DEBUG_PIXEL_X 335
+#define DEBUG_PIXEL_Y 483
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -100,16 +100,25 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_pixel_squared_luminance.resize(width * height, 0.0f);
 
 
-    unsigned int new_cell_count = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT;
-    // ReGIR hash grid Overallocation factor
-    new_cell_count *= 10;
-    m_regir_state.grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
-    m_regir_state.spatial_grid_buffer.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell());
-    m_regir_state.correlation_reduction_grid.resize(new_cell_count, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell() * m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
-    m_regir_state.hash_cell_data.resize(new_cell_count);
-    m_regir_state.non_canonical_pre_integration_factors.resize(new_cell_count, 0.0f);
-    m_regir_state.canonical_pre_integration_factors.resize(new_cell_count, 0.0f);
-    m_regir_state.pre_integration_factors_DEBUG.resize(new_cell_count, 0u);
+    unsigned int new_cell_count_primary_hits = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS;
+    unsigned int new_cell_count_secondary_hits = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS;
+
+    m_regir_state.grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true));
+    m_regir_state.spatial_grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true));
+    m_regir_state.hash_cell_data_primary_hit.resize(new_cell_count_primary_hits);
+
+    m_regir_state.grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false));
+    m_regir_state.spatial_grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false));
+    m_regir_state.hash_cell_data_secondary_hit.resize(new_cell_count_secondary_hits);
+
+    m_regir_state.non_canonical_pre_integration_factors_primary_hit.resize(new_cell_count_primary_hits, 0.0f);
+    m_regir_state.canonical_pre_integration_factors_primary_hit.resize(new_cell_count_primary_hits, 0.0f);
+
+    m_regir_state.non_canonical_pre_integration_factors_primary_hit.resize(new_cell_count_secondary_hits, 0.0f);
+    m_regir_state.canonical_pre_integration_factors_primary_hit.resize(new_cell_count_secondary_hits, 0.0f);
+
+    if (m_render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
+        m_regir_state.correlation_reduction_grid.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) * m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
 
 
 
@@ -261,17 +270,20 @@ void CPURenderer::ReGIR_post_render_update()
     return;
 #endif
 
-#pragma omp parallel for
-    for (int x = 0; x < *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); x++)
+    if (m_render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
     {
-        ReGIR_Supersampling_Copy(m_render_data, x);
+#pragma omp parallel for
+        for (int x = 0; x < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true); x++)
+        {
+            ReGIR_Supersampling_Copy(m_render_data, x);
+        }
+
+        m_render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid++;
+        m_render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid %= m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor;
+
+        m_render_data.render_settings.regir_settings.supersampling.correl_frames_available++;
+        m_render_data.render_settings.regir_settings.supersampling.correl_frames_available = hippt::min(m_render_data.render_settings.regir_settings.supersampling.correl_frames_available, m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
     }
-
-    m_render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid++;
-    m_render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid %= m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor;
-
-    m_render_data.render_settings.regir_settings.supersampling.correl_frames_available++;
-    m_render_data.render_settings.regir_settings.supersampling.correl_frames_available = hippt::min(m_render_data.render_settings.regir_settings.supersampling.correl_frames_available, m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -339,12 +351,21 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
-    m_regir_state.grid_buffer.to_device(m_render_data.render_settings.regir_settings.initial_reservoirs_grid);
-    m_regir_state.spatial_grid_buffer.to_device(m_render_data.render_settings.regir_settings.spatial_output_grid);
+    m_regir_state.grid_buffer_primary_hit.to_device(m_render_data.render_settings.regir_settings.initial_reservoirs_primary_hits_grid);
+    m_regir_state.spatial_grid_buffer_primary_hit.to_device(m_render_data.render_settings.regir_settings.spatial_output_primary_hits_grid);
+    m_render_data.render_settings.regir_settings.hash_cell_data_primary_hits = m_regir_state.hash_cell_data_primary_hit.to_device();
+
+    m_regir_state.grid_buffer_secondary_hit.to_device(m_render_data.render_settings.regir_settings.initial_reservoirs_secondary_hits_grid);
+    m_regir_state.spatial_grid_buffer_secondary_hit.to_device(m_render_data.render_settings.regir_settings.spatial_output_secondary_hits_grid);
+    m_render_data.render_settings.regir_settings.hash_cell_data_secondary_hits = m_regir_state.hash_cell_data_secondary_hit.to_device();
+
     m_regir_state.correlation_reduction_grid.to_device(m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_grid);
-    m_render_data.render_settings.regir_settings.hash_cell_data = m_regir_state.hash_cell_data.to_device();
-    m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors = m_regir_state.non_canonical_pre_integration_factors.data();
-    m_render_data.render_settings.regir_settings.canonical_pre_integration_factors = m_regir_state.canonical_pre_integration_factors.data();
+
+    m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = m_regir_state.non_canonical_pre_integration_factors_primary_hit.data();
+    m_render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = m_regir_state.canonical_pre_integration_factors_primary_hit.data();
+
+    m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = m_regir_state.non_canonical_pre_integration_factors_primary_hit.data();
+    m_render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = m_regir_state.canonical_pre_integration_factors_primary_hit.data();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -673,57 +694,66 @@ void CPURenderer::camera_rays_pass()
 
 void CPURenderer::ReGIR_pass()
 {
-    ReGIR_grid_fill_pass();
-    ReGIR_spatial_reuse_pass();
+    ReGIR_grid_fill_pass(true);
+    ReGIR_grid_fill_pass(false);
+
+    ReGIR_spatial_reuse_pass(true);
+    ReGIR_spatial_reuse_pass(false);
 
     if (m_render_data.render_settings.sample_number == 0)
         ReGIR_pre_integration();
 }
 
-void CPURenderer::ReGIR_grid_fill_pass()
+void CPURenderer::ReGIR_grid_fill_pass(bool primary_hit)
 {
     m_render_data.random_number = m_rng.xorshift32();
 
-#pragma omp parallel for
-    for (int index = 0; index < *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
+//#pragma omp parallel for
+    for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit); index++)
     {
-        ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count);
+        ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
     }
 }
 
-void CPURenderer::ReGIR_spatial_reuse_pass()
+void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
 {
     if (!m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
         return;
 
-#pragma omp parallel for
-    for (int index = 0; index < *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(); index++)
+//#pragma omp parallel for
+    for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit); index++)
     {
-        ReGIR_Spatial_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count);
+        ReGIR_Spatial_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
     }
 }
 
 void CPURenderer::ReGIR_pre_integration()
 {
-    unsigned int seed_backup = m_render_data.random_number;
-    unsigned int nb_cells_alive = *m_render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count;
-    unsigned int nb_threads = nb_cells_alive;
-
-    for (int i = 0; i < REGIR_PRE_INTEGRATION_ITERATIONS; i++)
+	// 2 iterations: 1 for the primary hits, 1 for the secondary hits
+    for (int i = 0; i < 2; i++)
     {
-        m_render_data.random_number = m_rng.xorshift32();
+		bool primary_hit = (i == 0);
 
-        ReGIR_grid_fill_pass();
-        ReGIR_spatial_reuse_pass();
+        unsigned int seed_backup = m_render_data.random_number;
+        unsigned int nb_cells_alive = *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count;
+        unsigned int nb_threads = nb_cells_alive;
+
+        for (int i = 0; i < REGIR_PRE_INTEGRATION_ITERATIONS; i++)
+        {
+            m_render_data.random_number = m_rng.xorshift32();
+
+            ReGIR_grid_fill_pass(primary_hit);
+            ReGIR_spatial_reuse_pass(primary_hit);
 
 #pragma omp parallel for
-        for (int thread_index = 0; thread_index < nb_threads; thread_index++)
-        {
-            ReGIR_Pre_integration(m_render_data, nb_cells_alive, thread_index);
-		}
-    }
+            for (int thread_index = 0; thread_index < nb_threads; thread_index++)
+            {
+                ReGIR_Pre_integration(m_render_data, nb_cells_alive, primary_hit, thread_index);
+            }
+        }
 
-    m_render_data.random_number = seed_backup;
+        m_render_data.random_number = seed_backup;
+    }
 }
 
 void CPURenderer::ReSTIR_DI_pass()
@@ -992,6 +1022,11 @@ void CPURenderer::launch_ReSTIR_DI_spatiotemporal_reuse_pass()
 
 void CPURenderer::tracing_pass()
 {
+    auto vec = m_regir_state.grid_buffer_primary_hit.reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>();
+    for (int i = 2382 * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true); i < 2382 * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) + m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true); i++)
+        std::cout << vec[i] << " ";
+    std::cout << std::endl;
+
     m_render_data.random_number = m_rng.xorshift32();
 
     debug_render_pass([this](int x, int y) {

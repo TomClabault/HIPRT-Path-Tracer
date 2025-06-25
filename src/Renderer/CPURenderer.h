@@ -65,8 +65,8 @@ public:
     void ReSTIR_DI_pass();
     void ReSTIR_GI_pass();
 
-    void ReGIR_grid_fill_pass();
-    void ReGIR_spatial_reuse_pass();
+    void ReGIR_grid_fill_pass(bool primary_hit);
+    void ReGIR_spatial_reuse_pass(bool primary_hit);
     void ReGIR_pre_integration();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
@@ -180,17 +180,23 @@ private:
 
     struct ReGIRState
     {
-        ReGIRHashGridSoAHost<std::vector> grid_buffer;
-        ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer;
-        ReGIRHashGridSoAHost<std::vector> correlation_reduction_grid;
-        ReGIRHashCellDataSoAHost<std::vector> hash_cell_data;
+        ReGIRHashGridSoAHost<std::vector> grid_buffer_primary_hit;
+        ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer_primary_hit;
+        ReGIRHashCellDataSoAHost<std::vector> hash_cell_data_primary_hit;
 
-        std::vector<float> non_canonical_pre_integration_factors;
-        std::vector<float> canonical_pre_integration_factors;
-        std::vector<unsigned int> pre_integration_factors_DEBUG;
+        ReGIRHashGridSoAHost<std::vector> grid_buffer_secondary_hit;
+        ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer_secondary_hit;
+        ReGIRHashCellDataSoAHost<std::vector> hash_cell_data_secondary_hit;
+
+        ReGIRHashGridSoAHost<std::vector> correlation_reduction_grid;
+
+        std::vector<float> non_canonical_pre_integration_factors_primary_hit;
+        std::vector<float> canonical_pre_integration_factors_primary_hit;
+
+        std::vector<float> non_canonical_pre_integration_factors_secondary_hit;
+        std::vector<float> canonical_pre_integration_factors_secondary_hit;
 
         std::vector<AtomicType<unsigned int>> grid_cell_alive;
-	    // std::vector<AtomicType<unsigned int>> grid_cells_alive_staging;
         std::vector<unsigned int> grid_cells_alive_list;
         AtomicType<unsigned int> grid_cells_alive_count;
     } m_regir_state;

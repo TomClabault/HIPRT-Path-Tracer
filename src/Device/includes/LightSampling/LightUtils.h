@@ -361,13 +361,14 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 }
 
 template <bool canonicalPDF>
-HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, unsigned int grid_cell_index, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, unsigned int grid_cell_index, bool primary_hit,
+    float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, Xorshift32Generator& random_number_generator)
 {
     float RIS_integral;
     if constexpr (canonicalPDF)
-        RIS_integral = render_data.render_settings.regir_settings.canonical_pre_integration_factors[grid_cell_index];
+        RIS_integral = render_data.render_settings.regir_settings.get_canonical_pre_integration_factor(grid_cell_index, primary_hit);
     else
-        RIS_integral = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[grid_cell_index];
+        RIS_integral = render_data.render_settings.regir_settings.get_non_canonical_pre_integration_factor(grid_cell_index, primary_hit);
     if (RIS_integral == 0.0f)
         RIS_integral = 1.0f;
     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
@@ -377,17 +378,17 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 }
 
 template <bool canonicalPDF>
-HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, unsigned int grid_cell_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, unsigned int grid_cell_index, bool primary_hit, Xorshift32Generator& random_number_generator)
 {
     if (emission.is_black())
         return 0.0f;
 
-    ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, grid_cell_index);
-    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, surface, grid_cell_index, point_on_light, light_source_normal, emission, random_number_generator);
+    ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, grid_cell_index, primary_hit);
+    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, surface, grid_cell_index, primary_hit, point_on_light, light_source_normal, emission, random_number_generator);
 }
 
 template <bool canonicalPDF>
-HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRReservoir& reservoir, unsigned int grid_cell_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRReservoir& reservoir, unsigned int grid_cell_index, bool primary_hit, Xorshift32Generator& random_number_generator)
 {
     if (reservoir.UCW <= 0.0f)
         return 0.0f;
@@ -396,7 +397,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     float3 light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_index));
     ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, reservoir.sample.emissive_triangle_index);
 
-    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, random_number_generator);
+    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, primary_hit, random_number_generator);
 }
 
 HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& render_data, const ReGIRReservoir& reservoir,
@@ -500,13 +501,13 @@ struct ReGIRPairwiseMIS
         float canonical_technique_2_canonical_reservoir_1_pdf, float canonical_technique_2_canonical_reservoir_2_pdf,
         float mis_weight_normalization,
         
-        unsigned int neighbor_grid_cell_index,
+        unsigned int neighbor_grid_cell_index, bool is_primary_hit,
         Xorshift32Generator& random_number_generator)
     {
-        float non_canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, random_number_generator);
+        float non_canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, is_primary_hit, random_number_generator);
         m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization);
 
-        float non_canonical_neighbor_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, neighbor_grid_cell_index, random_number_generator);
+        float non_canonical_neighbor_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, neighbor_grid_cell_index, is_primary_hit, random_number_generator);
         m_sum_canonical_weight_2 += canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_2_pdf + canonical_technique_1_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization);
     }
 
@@ -519,7 +520,7 @@ struct ReGIRPairwiseMIS
 
         float non_canonical_RIS_integral_center_grid_cell, float canonical_RIS_integral_center_grid_cell,
 
-        float canonical_sample_PDF,
+        float canonical_sample_PDF, bool is_primary_hit,
 
         float3 shading_point, ColorRGB32F light_sample_emission, float3 light_source_normal, float3 point_on_light, unsigned int neighbor_grid_cell_index,
         Xorshift32Generator& random_number_generator,
@@ -531,10 +532,10 @@ struct ReGIRPairwiseMIS
         float mis_weight = mis_weight_normalization * (canonical_sample_PDF / (canonical_sample_PDF + non_canonical_PDF * mis_weight_normalization + canonical_PDF * mis_weight_normalization));
 
         // Summing the weights for the canonical MIS weight computation
-        float canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, random_number_generator);
+        float canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, is_primary_hit, random_number_generator);
         m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (canonical_neighbor_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization);
 
-        float canonical_neighbor_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_2, neighbor_grid_cell_index, random_number_generator);
+        float canonical_neighbor_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_2, neighbor_grid_cell_index, is_primary_hit, random_number_generator);
         m_sum_canonical_weight_2 += canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization / (canonical_neighbor_technique_canonical_reservoir_2_pdf + canonical_technique_1_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization);
 
         return mis_weight;
@@ -561,10 +562,10 @@ struct ReGIRPairwiseMIS
         float mis_weight = mis_weight_normalization * (non_canonical_sample_PDF / (non_canonical_sample_PDF + non_canonical_PDF * mis_weight_normalization + canonical_PDF * mis_weight_normalization));
 
         // Summing the weights for the canonical MIS weight computation
-        float non_canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, random_number_generator);
+        float non_canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, neighbor_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
         m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization);
 
-        float non_canonical_neighbor_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, neighbor_grid_cell_index, random_number_generator);
+        float non_canonical_neighbor_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, neighbor_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
         m_sum_canonical_weight_2 += canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_2_pdf + canonical_technique_1_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization);
 
         return mis_weight;
@@ -625,8 +626,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
     {
         unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-            shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
-            render_data.render_settings.regir_settings.shading.do_cell_jittering,
+            shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
+            render_data.render_settings.regir_settings.shading.get_do_cell_jittering(ray_payload.bounce == 0),
             render_data.render_settings.regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
         if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
             // Not a valid neighbor
@@ -642,9 +643,10 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         ReGIRPairwiseMIS pairwise;
 
         unsigned int canonical_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(
-            shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
+            shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
             false,
             render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
+
         ReGIRReservoir canonical_technique_reservoir_1;
         ReGIRReservoir canonical_technique_reservoir_2;
         ReGIRGridFillSurface center_cell_surface;
@@ -665,27 +667,27 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             // We found at least one good sample so we're not going to need a fallback on another light sampling strategy than ReGIR
             out_need_fallback_sampling = false;
 
-            canonical_technique_reservoir_1 = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(canonical_grid_cell_index, random_number_generator);
-            canonical_technique_reservoir_2 = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(canonical_grid_cell_index, random_number_generator);
+            canonical_technique_reservoir_1 = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
+            canonical_technique_reservoir_2 = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
 
-            canonical_technique_1_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, canonical_grid_cell_index, random_number_generator);
-            canonical_technique_1_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, canonical_grid_cell_index, random_number_generator);
-            canonical_technique_2_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_1, canonical_grid_cell_index, random_number_generator);
-            canonical_technique_2_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_2, canonical_grid_cell_index, random_number_generator);
+            canonical_technique_1_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_1, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
+            canonical_technique_1_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_reservoir_2, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
+            canonical_technique_2_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_1, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
+            canonical_technique_2_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_reservoir_2, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
 
-            non_canonical_RIS_integral_center_grid_cell = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[canonical_grid_cell_index];
+            non_canonical_RIS_integral_center_grid_cell = render_data.render_settings.regir_settings.get_non_canonical_pre_integration_factor(canonical_grid_cell_index, ray_payload.bounce == 0);
             if (non_canonical_RIS_integral_center_grid_cell == 0.0f)
                 non_canonical_RIS_integral_center_grid_cell = 1.0f;
             if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                 non_canonical_RIS_integral_center_grid_cell = 1.0f;
 
-            canonical_RIS_integral_center_grid_cell = render_data.render_settings.regir_settings.canonical_pre_integration_factors[canonical_grid_cell_index];
+            canonical_RIS_integral_center_grid_cell = render_data.render_settings.regir_settings.get_canonical_pre_integration_factor(canonical_grid_cell_index, ray_payload.bounce == 0);
             if (canonical_RIS_integral_center_grid_cell == 0.0f)
                 canonical_RIS_integral_center_grid_cell = 1.0f;
             if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                 canonical_RIS_integral_center_grid_cell = 1.0f;
 
-			center_cell_surface = ReGIR_get_cell_surface(render_data, canonical_grid_cell_index);
+			center_cell_surface = ReGIR_get_cell_surface(render_data, canonical_grid_cell_index, ray_payload.bounce == 0);
         }
         else
         {
@@ -698,8 +700,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
         {
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
-                render_data.render_settings.regir_settings.shading.do_cell_jittering,
+                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
+                render_data.render_settings.regir_settings.shading.get_do_cell_jittering(ray_payload.bounce == 0),
                 render_data.render_settings.regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
             if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
                 // Couldn't find a valid neighbor
@@ -707,7 +709,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             else
                 out_need_fallback_sampling = false;
 
-            float neighbor_RIS_integral = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[neighbor_grid_cell_index];
+            float neighbor_RIS_integral = render_data.render_settings.regir_settings.get_non_canonical_pre_integration_factor(neighbor_grid_cell_index, ray_payload.bounce == 0);
             if (neighbor_RIS_integral == 0.0f)
                 neighbor_RIS_integral = 1.0f;
             if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
@@ -716,7 +718,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             for (int i = 0; i < render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor; i++)
             {
                 // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
-                ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(neighbor_grid_cell_index, neighbor_rng);
+                ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(neighbor_grid_cell_index, ray_payload.bounce == 0, neighbor_rng);
 
                 if (non_canonical_reservoir.UCW <= 0.0f)
                 {
@@ -728,7 +730,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_2_pdf,
                         mis_weight_normalization,
 
-                        neighbor_grid_cell_index, random_number_generator);
+                        neighbor_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
                     continue;
                 }
 
@@ -756,7 +758,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         point_on_light, light_source_normal,
                         emission, random_number_generator);
 
-                float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_grid_cell_index, emission, light_source_normal, point_on_light, random_number_generator);
+                float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_grid_cell_index, ray_payload.bounce == 0, 
+                    emission, light_source_normal, point_on_light, random_number_generator);
                 float current_sample_PDF = non_canonical_sample_PDF_unnormalized / neighbor_RIS_integral;
                 float mis_weight = pairwise.compute_MIS_weight_for_non_canonical_sample(render_data, 
                     canonical_technique_reservoir_1, canonical_technique_reservoir_2,
@@ -890,12 +893,13 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         point_on_light, light_source_normal,
                         emission, random_number_generator);
 
-                    float RIS_integral = render_data.render_settings.regir_settings.canonical_pre_integration_factors[canonical_grid_cell_index];
+                    float RIS_integral = render_data.render_settings.regir_settings.get_canonical_pre_integration_factor(canonical_grid_cell_index, ray_payload.bounce == 0);
                     if (RIS_integral == 0.0f)
                         RIS_integral = 1.0f;
                     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                         RIS_integral = 1.0f;
-                    float canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, canonical_grid_cell_index, emission, light_source_normal, point_on_light, random_number_generator);
+                    float canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, canonical_grid_cell_index, ray_payload.bounce == 0,
+                        emission, light_source_normal, point_on_light, random_number_generator);
                     float canonical_sample_PDF = canonical_sample_PDF_unnormalized / RIS_integral;
 
                     float mis_weight = pairwise.get_canonical_MIS_weight_2(canonical_technique_1_canonical_reservoir_2_pdf, canonical_technique_2_canonical_reservoir_2_pdf, mis_weight_normalization);
@@ -941,12 +945,13 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         point_on_light, light_source_normal,
                         emission, random_number_generator);
 
-                    float RIS_integral = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[canonical_grid_cell_index];
+                    float RIS_integral = render_data.render_settings.regir_settings.get_non_canonical_pre_integration_factor(canonical_grid_cell_index, ray_payload.bounce == 0);
                     if (RIS_integral == 0.0f)
                         RIS_integral = 1.0f;
                     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                         RIS_integral = 1.0f;
-                    float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, canonical_grid_cell_index, emission, light_source_normal, point_on_light, random_number_generator);
+                    float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, canonical_grid_cell_index, ray_payload.bounce == 0,
+                        emission, light_source_normal, point_on_light, random_number_generator);
                     float non_canonical_sample_PDF = non_canonical_sample_PDF_unnormalized / RIS_integral;
 
                     float mis_weight = pairwise.get_canonical_MIS_weight_1(canonical_technique_1_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_1_pdf, mis_weight_normalization);
@@ -1263,7 +1268,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         for (int neighbor = 0; neighbor < render_data.render_settings.regir_settings.shading.number_of_neighbors; neighbor++)
         {
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
+                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
                 render_data.render_settings.regir_settings.shading.do_cell_jittering,
                 render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
             if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -1275,7 +1280,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             for (int i = 0; i < render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor; i++)
             {
                 // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
-                ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(neighbor_grid_cell_index, neighbor_rng);
+                ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(neighbor_grid_cell_index, ray_payload.bounce == 0, neighbor_rng);
 
                 if (non_canonical_reservoir.UCW <= 0.0f)
                     // No valid sample in that reservoir
@@ -1384,7 +1389,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         {
             // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(
-                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
+                shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
                 false, // render_data.render_settings.regir_settings.shading.do_cell_jittering,
                 render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
 
@@ -1395,7 +1400,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 // We found at least one good sample so we're not going to need a fallback on another light sampling strategy than ReGIR
                 out_need_fallback_sampling = false;
 
-                ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(neighbor_grid_cell_index, neighbor_rng);
+                ReGIRReservoir canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(neighbor_grid_cell_index, ray_payload.bounce == 0, neighbor_rng);
 
                 if (canonical_reservoir.UCW > 0.0f && canonical_reservoir.UCW != ReGIRReservoir::UNDEFINED_UCW)
                 {
@@ -1456,7 +1461,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             if (is_bsdf_sample)
             {
                 neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
-                    shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
+                    shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
                     false,
                     false,
                     render_data.render_settings.regir_settings.shading.jittering_radius,
@@ -1465,7 +1470,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             else
             {
                 neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
-                    shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness,
+                    shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
                     is_canonical,
                     is_canonical ? false : render_data.render_settings.regir_settings.shading.do_cell_jittering,
                     render_data.render_settings.regir_settings.shading.jittering_radius,
@@ -1484,13 +1489,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             {
                 if (is_canonical)
                 {
-                    float RIS_integral = render_data.render_settings.regir_settings.canonical_pre_integration_factors[neighbor_cell_index];
+                    float RIS_integral = render_data.render_settings.regir_settings.get_canonical_pre_integration_factor(neighbor_cell_index, ray_payload.bounce == 0);
                     if (RIS_integral == 0.0f)
                         RIS_integral = 1.0f;
                     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                         RIS_integral = 1.0f;
 
-                    float light_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, neighbor_cell_index, selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
+                    float light_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, neighbor_cell_index, ray_payload.bounce == 0,
+                        selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
                     float light_sample_PDF = light_sample_PDF_unnormalized / RIS_integral;
 
                     normalization_numerator = light_sample_PDF;
@@ -1511,13 +1517,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 {
                     // Non-canonical sample
 
-                    float RIS_integral = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[neighbor_cell_index];
+                    float RIS_integral = render_data.render_settings.regir_settings.get_non_canonical_pre_integration_factor(neighbor_cell_index, ray_payload.bounce == 0);
                     if (RIS_integral == 0.0f)
                         RIS_integral = 1.0f;
                     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                         RIS_integral = 1.0f;
 
-                    float light_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_cell_index, selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
+                    float light_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_cell_index, ray_payload.bounce == 0,
+                        selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
                     float light_sample_PDF = light_sample_PDF_unnormalized / RIS_integral;
 
                     normalization_numerator = light_sample_PDF;
@@ -1530,13 +1537,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             {
                 if (is_canonical)
                 {
-                    float RIS_integral = render_data.render_settings.regir_settings.canonical_pre_integration_factors[neighbor_cell_index];
+                    float RIS_integral = render_data.render_settings.regir_settings.get_canonical_pre_integration_factor(neighbor_cell_index, ray_payload.bounce == 0);
                     if (RIS_integral == 0.0f)
                         RIS_integral = 1.0f;
                     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                         RIS_integral = 1.0f;
 
-                    float light_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, neighbor_cell_index, selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
+                    float light_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, neighbor_cell_index, ray_payload.bounce == 0,
+                        selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
                     float light_sample_PDF = light_sample_PDF_unnormalized / RIS_integral;
 
                     normalization_denominator += light_sample_PDF;
@@ -1555,13 +1563,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 {
                     // Non-canonical sample
 
-                    float RIS_integral = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[neighbor_cell_index];
+                    float RIS_integral = render_data.render_settings.regir_settings.get_non_canonical_pre_integration_factor(neighbor_cell_index, ray_payload.bounce == 0);
                     if (RIS_integral == 0.0f)
                         RIS_integral = 1.0f;
                     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                         RIS_integral = 1.0f;
 
-                    float light_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_cell_index, selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
+                    float light_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_cell_index, ray_payload.bounce == 0, 
+                        selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
                     float light_sample_PDF = light_sample_PDF_unnormalized / RIS_integral;
 
                     normalization_denominator += light_sample_PDF * render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor;
@@ -1707,44 +1716,47 @@ HIPRT_DEVICE HIPRT_INLINE float light_sample_pdf_for_MIS_solid_angle_measure(con
     int primitive_index = -1,
     float3 point_on_light = make_float3(0, 0, 0), Xorshift32Generator random_number_generator = Xorshift32Generator(42))
 {
-    if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
-    {
-        // Approximating the ReGIR light PDF for the given BSDF sample with the basic NEE PDF
-        RayPayload ray_payload;
-        ray_payload.material.roughness = roughness;
-        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
-            shading_point, view_direction, surface_shading_normal, surface_geometric_normal,
-            primitive_index, ray_payload,
-            point_on_light, light_surface_normal,
-            light_emission, random_number_generator);
+    // TODO this whole function should not be needed anymore
+    return original_pdf;
 
-        unsigned int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(shading_point, surface_shading_normal, render_data.current_camera, roughness);
-        if (hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-        {
-            float normalization = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[hash_grid_cell_index];
-            if (normalization == 0.0f)
-                // ReGIR cannot find a single good light sample for that cell so the integral is 0, no direct lighting
-                return pdf_of_emissive_triangle_hit_solid_angle<LSS_BASE_REGIR>(render_data, light_area, light_emission, light_surface_normal, hit_distance, to_light_direction);
-            
-            return target_function / normalization;
-        }
-        else
-        {
-            float fake_ReGIR_PDF = pdf_of_emissive_triangle_hit_solid_angle<LSS_BASE_REGIR>(render_data, light_area, light_emission, light_surface_normal, hit_distance, to_light_direction);
+    //if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
+    //{
+    //    // Approximating the ReGIR light PDF for the given BSDF sample with the basic NEE PDF
+    //    RayPayload ray_payload;
+    //    ray_payload.material.roughness = roughness;
+    //    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+    //        shading_point, view_direction, surface_shading_normal, surface_geometric_normal,
+    //        primitive_index, ray_payload,
+    //        point_on_light, light_surface_normal,
+    //        light_emission, random_number_generator);
 
-            // Multipliying by an arbitrary factor since ReGIR is supposed to produce better light samples
-            // This basically mimics the effect of resampling
-            //
-            // This is very arbitrary. Clamping at 100.0f. Very arbitrary
-            fake_ReGIR_PDF *= hippt::min(100.0f, render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor * sqrtf(render_data.render_settings.regir_settings.grid_fill.light_sample_count_per_cell_reservoir) * sqrtf(render_data.render_settings.regir_settings.spatial_reuse.spatial_neighbor_count));
+    //    unsigned int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(shading_point, surface_shading_normal, render_data.current_camera, roughness);
+    //    if (hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+    //    {
+    //        float normalization = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[hash_grid_cell_index];
+    //        if (normalization == 0.0f)
+    //            // ReGIR cannot find a single good light sample for that cell so the integral is 0, no direct lighting
+    //            return pdf_of_emissive_triangle_hit_solid_angle<LSS_BASE_REGIR>(render_data, light_area, light_emission, light_surface_normal, hit_distance, to_light_direction);
+    //        
+    //        return target_function / normalization;
+    //    }
+    //    else
+    //    {
+    //        float fake_ReGIR_PDF = pdf_of_emissive_triangle_hit_solid_angle<LSS_BASE_REGIR>(render_data, light_area, light_emission, light_surface_normal, hit_distance, to_light_direction);
 
-            return fake_ReGIR_PDF;
-        }
-    }
-    else
-        // If the light sampler does support the evaluation of the PDF, just returning the PDF unchanged
-        // because this is already the exact PDF
-        return original_pdf;
+    //        // Multipliying by an arbitrary factor since ReGIR is supposed to produce better light samples
+    //        // This basically mimics the effect of resampling
+    //        //
+    //        // This is very arbitrary. Clamping at 100.0f. Very arbitrary
+    //        fake_ReGIR_PDF *= hippt::min(100.0f, render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor * sqrtf(render_data.render_settings.regir_settings.grid_fill.light_sample_count_per_cell_reservoir) * sqrtf(render_data.render_settings.regir_settings.spatial_reuse.spatial_neighbor_count));
+
+    //        return fake_ReGIR_PDF;
+    //    }
+    //}
+    //else
+    //    // If the light sampler does support the evaluation of the PDF, just returning the PDF unchanged
+    //    // because this is already the exact PDF
+    //    return original_pdf;
 }
 
 /**

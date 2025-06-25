@@ -40,6 +40,8 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
 {
 	m_hash_grid_storage.set_regir_render_pass(this);
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_secondary_stream));
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_oro_event));
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 
@@ -154,26 +156,27 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
-	else if (render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip + 1) != 0)
-		return false;
 
 	if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting())
 	{
 		m_render_window->set_ImGui_status_text("ReGIR Prepopulation pass...");
 		launch_grid_pre_population(render_data);
+		oroStreamSynchronize(m_renderer->get_main_stream());
 
 		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
 		launch_supersampling_fill(render_data);
-		
+		oroStreamSynchronize(m_renderer->get_main_stream());
+
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
+		oroStreamSynchronize(m_renderer->get_main_stream());
 
 		m_render_window->clear_ImGui_status_text();
 	}
 
 	// This needs to be called before the rehash because the
 	// rehash needs the updated number of cells alive to function
-	update_cell_alive_count();
+	update_all_cell_alive_count();
 
 	if (rehash(render_data))
 	{
@@ -191,11 +194,18 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
 	render_data.render_settings.regir_settings.supersampling.correl_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
 
-	if (m_number_of_cells_alive > 0)
+	bool skip_frame_primary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
+	if (m_number_of_cells_alive_primary_hits > 0 && !skip_frame_primary_hits)
 	{
-		launch_grid_fill_temporal_reuse(render_data);
+		launch_grid_fill_temporal_reuse(render_data, true);
+		launch_spatial_reuse(render_data, true);
+	}
 
-		launch_spatial_reuse(render_data);
+	bool skip_frame_secondary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid + 1) != 0;
+	if (m_number_of_cells_alive_secondary_hits > 0 && !skip_frame_secondary_hits)
+	{
+		launch_grid_fill_temporal_reuse(render_data, false);
+		launch_spatial_reuse(render_data, false);
 	}
 
 	return true;
@@ -207,7 +217,7 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 
 	do
 	{
-		update_cell_alive_count();
+		update_all_cell_alive_count();
 
 		void* launch_args[] = { &render_data };
 
@@ -219,7 +229,7 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 			m_renderer->m_render_resolution.x / ReGIR_GridPrepoluationResolutionDownscale, m_renderer->m_render_resolution.y / ReGIR_GridPrepoluationResolutionDownscale,
 			launch_args);
 
-		update_cell_alive_count();
+		update_all_cell_alive_count();
 
 		has_rehashed = rehash(render_data);
 		if (has_rehashed)
@@ -245,11 +255,12 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 	return false;
 }
 
-void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data)
+void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream)
 {
-	void* launch_args[] = { &render_data, &m_number_of_cells_alive };
+	unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
+	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
 
-	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+	void* launch_args[] = { &render_data, &number_of_cells_alive, &primary_hit };
 
 	// Only launching a maximum of render_resolution.x * render_resolution.y thread at a time.
 	// Why? Because with visibility reuse, we're shooting rays from the kernel.
@@ -263,24 +274,25 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 	//
 	// To make sure one kernel launch still covers all the reservoirs that we have to cover, the kernel code
 	// uses a while loop such that a single thread potentially computes more than 1 reservoir
-	unsigned int nb_threads = hippt::min(m_number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+	unsigned int nb_threads = hippt::min(number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 	
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data)
+void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream)
 {
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		return;
 
-	void* launch_args[] = { &render_data, &m_number_of_cells_alive };
+	unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
+	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
 
-	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell();
+	void* launch_args[] = { &render_data, &number_of_cells_alive, &primary_hit };
 
 	// Same reason for nb_threads here as explained in the GridFill kernel launch
-	unsigned int nb_threads = hippt::min(m_number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+	unsigned int nb_threads = hippt::min(number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 	
-	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
 }
 
 void ReGIRRenderPass::launch_supersampling_fill(HIPRTRenderData& render_data)
@@ -294,8 +306,8 @@ void ReGIRRenderPass::launch_supersampling_fill(HIPRTRenderData& render_data)
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
-		launch_grid_fill_temporal_reuse(render_data);
-		launch_spatial_reuse(render_data);
+		launch_grid_fill_temporal_reuse(render_data, true);
+		launch_spatial_reuse(render_data, true);
 		launch_supersampling_copy(render_data);
 
 		m_hash_grid_storage.increment_supersampling_counters(render_data);
@@ -314,38 +326,62 @@ void ReGIRRenderPass::launch_supersampling_copy(HIPRTRenderData& render_data)
 
 	void* launch_args[] = { &render_data };
 
-	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->launch_asynchronous(64, 1, m_number_of_cells_alive * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(), 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->launch_asynchronous(64, 1, m_number_of_cells_alive_primary_hits * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true), 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 {
+	update_all_cell_alive_count();
+
+	// Important to launch the pre integration for the secondary hits first
+	// so that we can then 
+	launch_pre_integration_internal(render_data, true);
+	// The primary hit pre-integration is going to happen on the secondary stream so
+	// for everything to be in order we're going to have the main stream wait for the completion
+	// of the first hit pre-integration.
+	//
+	// Recording an event after the first pre-integration is over
+	OROCHI_CHECK_ERROR(oroEventRecord(m_oro_event, m_secondary_stream));
+
+	launch_pre_integration_internal(render_data, false);
+
+	// Waiting to be sure that the pre-integration for the first hits is over before continuing
+	OROCHI_CHECK_ERROR(oroStreamWaitEvent(m_renderer->get_main_stream(), m_oro_event, /* oroEventWaitDefault */ 0));
+}
+
+void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit)
+{
 	unsigned int seed_backup = render_data.random_number;
-	unsigned int nb_cells_alive = update_cell_alive_count();
+	unsigned int nb_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	unsigned int nb_threads = hippt::min(nb_cells_alive, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
 
-	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors();
+	if (nb_cells_alive == 0)
+		return;
 
+	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(primary_hit);
+
+	oroStream_t stream = primary_hit ? m_secondary_stream : m_renderer->get_main_stream();
 	for (int i = 0; i < REGIR_PRE_INTEGRATION_ITERATIONS; i++)
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
-		launch_grid_fill_temporal_reuse(render_data);
-		launch_spatial_reuse(render_data);
-		
-		void* launch_args[] = { &render_data, &m_number_of_cells_alive };
-		m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->launch_synchronous(64, 1, nb_threads, 1, launch_args);
+		launch_grid_fill_temporal_reuse(render_data, primary_hit, stream);
+		launch_spatial_reuse(render_data, primary_hit, stream);
+
+		void* launch_args[] = { &render_data, primary_hit ? &m_number_of_cells_alive_primary_hits : &m_number_of_cells_alive_secondary_hits, &primary_hit };
+
+		m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 	}
 
 	render_data.random_number = seed_backup;
 }
 
-void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, 
-	ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)
+void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)
 {
-	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa().m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
-	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa().size();
-	unsigned int old_cell_alive_count = m_number_of_cells_alive;
-	
+	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
+	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).size();
+	unsigned int old_cell_alive_count = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
+
 	// The old number of cells alive is the number of cells that we're going to have to rehash
 	
 	void* launch_args[] = { 
@@ -354,7 +390,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data,
 		&render_data.render_settings.regir_settings.hash_grid,
 		&new_hash_grid_soa, &new_hash_cell_data,
 		
-		&render_data.render_settings.regir_settings.hash_cell_data, // old hash cell data
+		&m_hash_grid_storage.get_hash_cell_data_device_soa(render_data.render_settings.regir_settings, primary_hit),
 		&cell_alive_list_ptr, // old cell alive list		
 		&old_cell_alive_count
 	};
@@ -380,10 +416,13 @@ void ReGIRRenderPass::update_render_data()
 		m_hash_grid_storage.to_device(render_data);
 	else
 	{
-		render_data.render_settings.regir_settings.initial_reservoirs_grid = ReGIRHashGridSoADevice();
-		render_data.render_settings.regir_settings.spatial_output_grid = ReGIRHashGridSoADevice();
+		render_data.render_settings.regir_settings.initial_reservoirs_primary_hits_grid = ReGIRHashGridSoADevice();
+		render_data.render_settings.regir_settings.initial_reservoirs_secondary_hits_grid = ReGIRHashGridSoADevice();
+		render_data.render_settings.regir_settings.spatial_output_primary_hits_grid = ReGIRHashGridSoADevice();
+		render_data.render_settings.regir_settings.spatial_output_secondary_hits_grid = ReGIRHashGridSoADevice();
 
-		render_data.render_settings.regir_settings.hash_cell_data = ReGIRHashCellDataSoADevice();
+		render_data.render_settings.regir_settings.hash_cell_data_primary_hits = ReGIRHashCellDataSoADevice();
+		render_data.render_settings.regir_settings.hash_cell_data_secondary_hits = ReGIRHashCellDataSoADevice();
 	}
 }
 
@@ -405,25 +444,26 @@ float ReGIRRenderPass::get_VRAM_usage() const
 	return (m_hash_grid_storage.get_byte_size()) / 1000000.0f;
 }
 
-unsigned int ReGIRRenderPass::get_number_of_cells() const
+unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const
 {
-	return m_hash_grid_storage.get_total_number_of_cells();
+	return primary_hit ? m_number_of_cells_alive_primary_hits  : m_number_of_cells_alive_secondary_hits;
 }
 
-unsigned int ReGIRRenderPass::get_number_of_cells_alive() const
+unsigned int ReGIRRenderPass::get_total_number_of_cells_alive(bool primary_hit) const
 {
-	return m_number_of_cells_alive;
+	return m_hash_grid_storage.get_total_number_of_cells(primary_hit);
 }
 
-unsigned int ReGIRRenderPass::update_cell_alive_count()
+void ReGIRRenderPass::update_all_cell_alive_count()
 {
-	m_hash_grid_storage.get_hash_cell_data_soa().m_grid_cells_alive_count.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
-	m_number_of_cells_alive = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
+	m_hash_grid_storage.get_hash_cell_data_soa(true).m_grid_cells_alive_count.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+	m_number_of_cells_alive_primary_hits = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 
-	return m_number_of_cells_alive;
+	m_hash_grid_storage.get_hash_cell_data_soa(false).m_grid_cells_alive_count.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
+	m_number_of_cells_alive_secondary_hits = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 }
 
-float ReGIRRenderPass::get_alive_cells_ratio() const
+float ReGIRRenderPass::get_alive_cells_ratio(bool primary_hit) const
 {
-	return m_number_of_cells_alive / static_cast<float>(m_hash_grid_storage.get_total_number_of_cells());
+	return get_number_of_cells_alive(primary_hit) / static_cast<float>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
 }

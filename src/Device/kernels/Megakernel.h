@@ -66,7 +66,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     // Initializing the ray with the information from the camera ray pass
     hiprtRay ray;
     ray.direction = hippt::normalize(-render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index));
-
     RayPayload ray_payload;
     ray_payload.next_ray_state = RayState::BOUNCE;
     ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
@@ -107,7 +106,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
                     store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
                 else if (bounce > 0)
                     // Storing data for ReGIR representative points
-                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, render_data.current_camera, closest_hit_info.primitive_index, ray_payload.material);
+                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, render_data.current_camera, closest_hit_info.primitive_index, false, ray_payload.material);
 
                 // TODO REMOVE THE DEBUG IF
                 if (bounce > 0 || render_data.render_settings.enable_direct)

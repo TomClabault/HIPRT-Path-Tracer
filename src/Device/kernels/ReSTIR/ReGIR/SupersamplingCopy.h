@@ -27,31 +27,31 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Supersampling_Copy(HIPRTRenderData re
 #endif
 
 #ifdef __KERNELCC__
-    if (thread_index >= *render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count * regir_settings.get_number_of_reservoirs_per_cell())
+    if (thread_index >= *render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count * regir_settings.get_number_of_reservoirs_per_cell(true))
 #else
-    if (thread_index >= render_data.render_settings.regir_settings.hash_cell_data.grid_cells_alive_count->load() * regir_settings.get_number_of_reservoirs_per_cell())
+    if (thread_index >= render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count->load() * regir_settings.get_number_of_reservoirs_per_cell(true))
 #endif
     {
         return;
     }
 
     unsigned int reservoir_index = thread_index;
-    unsigned int reservoir_index_in_cell = reservoir_index % regir_settings.get_number_of_reservoirs_per_cell();
-    unsigned int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell();
+    unsigned int reservoir_index_in_cell = reservoir_index % regir_settings.get_number_of_reservoirs_per_cell(true);
+    unsigned int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell(true);
     // If all cells are alive, the cell index is straightforward
     //
     // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
     // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
-    unsigned int hash_grid_cell_index = regir_settings.hash_cell_data.grid_cells_alive_list[cell_alive_index];
-    unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell() + reservoir_index_in_cell;
+    unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_list[cell_alive_index];
+    unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(true) + reservoir_index_in_cell;
 
     ReGIRReservoir reservoir_to_copy;
     if (regir_settings.spatial_reuse.do_spatial_reuse)
-        reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.spatial_output_grid, reservoir_index_in_grid);
+        reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.get_spatial_output_reservoirs_grid(true), reservoir_index_in_grid);
     else
-        reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.initial_reservoirs_grid, reservoir_index_in_grid);
+        reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.get_initial_reservoirs_grid(true), reservoir_index_in_grid);
 
-	unsigned int reservoir_index_in_supersampling_grid = reservoir_index_in_grid + regir_settings.supersampling.correl_reduction_current_grid * regir_settings.get_number_of_reservoirs_per_grid();
+	unsigned int reservoir_index_in_supersampling_grid = reservoir_index_in_grid + regir_settings.supersampling.correl_reduction_current_grid * regir_settings.get_number_of_reservoirs_per_grid(true);
 
     render_data.render_settings.regir_settings.hash_grid.store_full_reservoir(regir_settings.supersampling.correlation_reduction_grid, reservoir_to_copy, reservoir_index_in_supersampling_grid);
 }

@@ -56,10 +56,6 @@ void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_heig
 
 bool FillGBufferRenderPass::pre_render_update(float delta_time)
 {
-	// TODO do we need this below? Updatge cell alive count
-	/*if (m_renderer->get_ReGIR_render_pass()->is_render_pass_used())
-		m_renderer->get_ReGIR_render_pass()->update_cell_alive_count();*/
-
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	if (render_data.render_settings.use_prev_frame_g_buffer(m_renderer))

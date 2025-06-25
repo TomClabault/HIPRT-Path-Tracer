@@ -136,12 +136,8 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
         // Inserting texcoords if present, looking at set 0 because that's where "classical" texcoords are.
         // Other sets are assumed not interesting here.
         if (mesh->HasTextureCoords(0) && texture_per_mesh[material_index] > 0)
-        {
             for (int i = 0; i < mesh->mNumVertices; i++)
-            {
                 parsed_scene.texcoords.push_back(make_float2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y));
-            }
-        }
         else
             parsed_scene.texcoords.insert(parsed_scene.texcoords.end(), mesh->mNumVertices, float2{0.0f, 0.0f});
 
@@ -433,25 +429,10 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
-    /*renderer_material.metallic = 1.0f;
-    renderer_material.roughness = 0.0f;*/
-    /*renderer_material.specular = 1.0f;
-    renderer_material.ior = 1.0f;
-    renderer_material.roughness = 0.0f;
-    renderer_material.coat = 0.0f;*/
-
-    // renderer_material.base_color = ColorRGB32F(1.0f);
-    // *renderer_material.emission_strength = 0.0f;
-
     if (std::string(mesh_material->GetName().C_Str()).find("Curtain") != std::string::npos)
     {
         renderer_material.alpha_opacity = 1.0f;
     }
-
-    /*if (std::string(mesh_material->GetName().C_Str()).find("Rear") == std::string::npos && std::string(mesh_material->GetName().C_Str()).find("LightSphere") == std::string::npos)
-    {
-        renderer_material.emission_strength = 0.0f;
-    }*/
 
     renderer_material.make_safe();
 }

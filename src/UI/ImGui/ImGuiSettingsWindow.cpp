@@ -1762,12 +1762,13 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		std::shared_ptr<ReGIRRenderPass> regir_render_pass = m_renderer->get_ReGIR_render_pass();
 
-		ImGui::Text("# of hash cells occupied: %u", regir_render_pass->get_number_of_cells_alive());
-		ImGui::Text("Hash cells capacity: %u", regir_render_pass->get_number_of_cells());
-		ImGui::Text("Load Factor: %.3f%%", regir_render_pass->get_alive_cells_ratio() * 100.0f);
+		ImGui::SeparatorText("Grid stats (primary cells/secondary cells)");
+		ImGui::Text("# of hash cells occupied: %u/%u", regir_render_pass->get_number_of_cells_alive(true), regir_render_pass->get_number_of_cells_alive(false));
+		ImGui::Text("Hash cells capacity: %u/%u", regir_render_pass->get_total_number_of_cells_alive(true), regir_render_pass->get_total_number_of_cells_alive(false));
+		ImGui::Text("Load factor: %.3f%%/%.3f%%", regir_render_pass->get_alive_cells_ratio(true) * 100.0f, regir_render_pass->get_alive_cells_ratio(false) * 100.0f);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::Text("VRAM Usage: %.3fMB (%.1fB per cell)", regir_render_pass->get_VRAM_usage(), regir_render_pass->get_VRAM_usage() * 1000000.0f / (float)regir_render_pass->get_number_of_cells());
+		ImGui::Text("VRAM Usage: %.3fMB (avg. %.1fB per cell)", regir_render_pass->get_VRAM_usage(), regir_render_pass->get_VRAM_usage() * 1000000.0f / ((float)regir_render_pass->get_total_number_of_cells_alive(true) + regir_render_pass->get_total_number_of_cells_alive(false)));
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -1793,13 +1794,27 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR grid build tree");
 
-			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill.light_sample_count_per_cell_reservoir, 0, 64))
+			ImGui::SeparatorText("Primary hits grid cells");
+			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir, 0, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
+			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
+			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill_primary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
 				m_render_window->set_render_dirty(true);
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			ImGui::SeparatorText("Secondary hits grid cells");
+			if (ImGui::SliderInt("Light samples per reservoir##secondary", &regir_settings.grid_fill_secondary_hits.light_sample_count_per_cell_reservoir, 0, 64))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_secondary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_secondary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			ImGui::SeparatorText("Common to primary and secondary grid cells");
 			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;
 			if (ImGui::Checkbox("Use visibility in target function", &visibility_grid_fill_target_function))
 			{
@@ -1881,7 +1896,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"This is  expensive but can also lead to substantial gains in quality.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::SliderInt("Frame skip", &regir_settings.frame_skip, 0, 8))
+			if (ImGui::SliderInt("Frame skip (1st hits)", &regir_settings.frame_skip_primary_hit_grid, 0, 8))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("How many frames to skip before running the grid fill and spatial reuse passes again.\n\n"
 				""
@@ -1890,7 +1905,21 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell "
 				"contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used "
-				"and new samples are necessary");
+				"and new samples are necessary.\n\n"
+				""
+				"The frame skips can be different for filling the primary or secondary hits grid.");
+			if (ImGui::SliderInt("Frame skip (2nd hits)", &regir_settings.frame_skip_secondary_hit_grid, 0, 8))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("How many frames to skip before running the grid fill and spatial reuse passes again.\n\n"
+				""
+				"A value of 1 for example means that the grid fill and spatial reuse will be ran at frame 0 "
+				"but not at frame 1. And ran at frame 2 but not at frame 3. ...\n\n"
+				""
+				"This amortizes the overhead of ReGIR grid fill / spatial reuse by using the fact that each cell "
+				"contains many reservoirs so the same cell can be used multiple times before all reservoirs have been used "
+				"and new samples are necessary.\n\n"
+				""
+				"The frame skips can be different for filling the primary or secondary hits grid.");
 
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -2013,9 +2042,11 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::Checkbox("Do cell jittering", &regir_settings.shading.do_cell_jittering))
+			if (ImGui::Checkbox("Do cell jittering (first hits)", &regir_settings.shading.do_cell_jittering_first_hits))
 				m_render_window->set_render_dirty(true);
-			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering);
+			if (ImGui::Checkbox("Do cell jittering (secondary hits)", &regir_settings.shading.do_cell_jittering_secondary_hits))
+				m_render_window->set_render_dirty(true);
+			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering_first_hits && !regir_settings.shading.do_cell_jittering_secondary_hits);
 			if (ImGui::SliderFloat("Jittering radius", &regir_settings.shading.jittering_radius, 0.5f, 2.0f))
 				m_render_window->set_render_dirty(true);
 
