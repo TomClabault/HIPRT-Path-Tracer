@@ -16,8 +16,10 @@ class ReGIRRenderPass: public RenderPass
 {
 public:
 	static const std::string REGIR_GRID_PRE_POPULATE;
-	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_KERNEL_ID;
-	static const std::string REGIR_SPATIAL_REUSE_KERNEL_ID;
+	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID;
+	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID;
+	static const std::string REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID;
+	static const std::string REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID;
 	static const std::string REGIR_PRE_INTEGRATION_KERNEL_ID;
 	static const std::string REGIR_REHASH_KERNEL_ID;
 	static const std::string REGIR_SUPERSAMPLING_COPY_KERNEL_ID;
@@ -69,6 +71,13 @@ public:
 
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void update_render_data() override;
+
+	/**
+	 * These 2 functions are overriden just to allow a custom handling of the 'frame skip" feature
+	 * such that a frame skip of 3 really reflects that the grid fill pass takes 3 times less time
+	 */
+	virtual void compute_render_times() override;
+	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;
 
 	virtual void reset(bool reset_by_camera_movement) override;
 

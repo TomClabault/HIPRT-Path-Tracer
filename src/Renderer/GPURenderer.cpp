@@ -897,10 +897,6 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 {
 	compute_render_pass_times();
 
-	// Also adding the times of the various passes
-	/*for (const std::string& kernel_id : get_all_kernel_ids())
-		perf_metrics->add_value(kernel_id, m_render_pass_times[kernel_id]);*/
-
 	m_render_thread.get_render_graph().update_perf_metrics(perf_metrics);
 
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
