@@ -339,7 +339,6 @@ public:
 	void set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options = GPUKernelCompilerOptions());
 	bool is_using_debug_kernel();
 	oroStream_t get_main_stream();
-	oroStream_t get_async_stream_1();
 
 	std::unordered_map<std::string, float>& get_render_pass_times();
 	/**
