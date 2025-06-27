@@ -48,6 +48,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	m_hash_grid_storage.set_regir_render_pass(this);
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_secondary_stream));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_oro_event));
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_start));
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_stop));
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 
@@ -182,6 +184,13 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	return updated;
 }
 
+void callback_pre_integration_done(void* payload)
+{
+	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(payload);
+
+	render_window->clear_ImGui_status_text();
+}
+
 bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
@@ -198,7 +207,8 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
 
-		m_render_window->clear_ImGui_status_text();
+		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_pre_integration_done, m_render_window));
+		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 	}
 
 	// This needs to be called before the rehash because the
@@ -366,6 +376,9 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 {
 	update_all_cell_alive_count();
 
+	// Record the start of the overall pre integration process
+	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_start, m_renderer->get_main_stream()));
+
 	// Important to launch the pre integration for the secondary hits first
 	// so that we can then 
 	launch_pre_integration_internal(render_data, true);
@@ -380,6 +393,11 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 
 	// Waiting to be sure that the pre-integration for the first hits is over before continuing
 	OROCHI_CHECK_ERROR(oroStreamWaitEvent(m_renderer->get_main_stream(), m_oro_event, /* oroEventWaitDefault */ 0));
+
+	// Record the end of the overall pre integration process
+	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_stop, m_renderer->get_main_stream()));
+
+	m_pre_integration_executed = true;
 }
 
 void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit)
@@ -480,6 +498,21 @@ void ReGIRRenderPass::compute_render_times()
 			execution_time /= m_renderer->get_render_data().render_settings.regir_settings.frame_skip_primary_hit_grid + 1;
 		else if (kernel_name == ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID || kernel_name == ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID)
 			execution_time /= m_renderer->get_render_data().render_settings.regir_settings.frame_skip_secondary_hit_grid + 1;
+		else if (kernel_name == ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID && m_pre_integration_executed)
+		{
+			// Special case for the pre integration where we want to take into account the whole time
+			// including the grid fill / spatial reuse passes of the pre integration and all the
+			// pre integration passes at the same time.
+			//
+			// If we didn't override that behavior, the pre integration time would just be the time that the
+			// last pre integration kernel took which is clearly inaccurate
+
+			float duration;
+			OROCHI_CHECK_ERROR(oroEventElapsedTime(&duration, m_event_pre_integration_duration_start, m_event_pre_integration_duration_stop));
+			render_pass_times[name_to_kernel.first] = duration;
+
+			continue;
+		}
 
 		render_pass_times[name_to_kernel.first] = execution_time;
 	}
@@ -503,9 +536,43 @@ void ReGIRRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComp
 			execution_time /= m_renderer->get_render_data().render_settings.regir_settings.frame_skip_primary_hit_grid + 1;
 		else if (kernel_name == ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID || kernel_name == ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID)
 			execution_time /= m_renderer->get_render_data().render_settings.regir_settings.frame_skip_secondary_hit_grid + 1;
+		else if (kernel_name == ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID && m_pre_integration_executed)
+		{
+			// Special case for the pre integration where we want to take into account the whole time
+			// including the grid fill / spatial reuse passes of the pre integration and all the
+			// pre integration passes at the same time.
+			//
+			// If we didn't override that behavior, the pre integration time would just be the time that the
+			// last pre integration kernel took which is clearly inaccurate
+
+			float duration;
+			OROCHI_CHECK_ERROR(oroEventElapsedTime(&duration, m_event_pre_integration_duration_start, m_event_pre_integration_duration_stop));
+			perf_metrics->add_value(name_to_kernel.first, duration);
+
+			continue;
+		}
 
 		perf_metrics->add_value(name_to_kernel.first, execution_time);
 	}
+}
+
+float ReGIRRenderPass::get_full_frame_time()
+{
+	float sum = 0.0f;
+
+	for (auto& name_to_kernel : get_all_kernels())
+	{
+		if (name_to_kernel.first == ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID ||
+			name_to_kernel.first == ReGIRRenderPass::REGIR_GRID_PRE_POPULATE ||
+			name_to_kernel.first == ReGIRRenderPass::REGIR_REHASH_KERNEL_ID)
+			// Pre integration and pre population passes are a bit exceptional
+			// so we don't want to include them in the frame time
+			continue;
+
+		sum += name_to_kernel.second->get_last_execution_time();
+	}
+
+	return sum;
 }
 
 void ReGIRRenderPass::reset(bool reset_by_camera_movement)

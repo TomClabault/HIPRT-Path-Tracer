@@ -102,6 +102,24 @@ void NEEPlusPlusRenderPass::launch_grid_pre_population(HIPRTRenderData& render_d
 
 void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) {}
  
+float NEEPlusPlusRenderPass::get_full_frame_time()
+{
+	float sum = 0.0f;
+
+	for (auto& name_to_kernel : get_all_kernels())
+	{
+		if (name_to_kernel.first == NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE)
+			// Not counting the pre population pass in the frame time since this is only
+			// done on the very first frame of the render, not really reprensentative of the
+			// true frame time
+			continue;
+
+		sum += name_to_kernel.second->get_last_execution_time();
+	}
+
+	return sum;
+}
+
 void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 {
      if (!is_render_pass_used())
@@ -109,7 +127,8 @@ void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 
 	m_nee_plus_plus_storage.reset();
 }
- 
+
+
 bool NEEPlusPlusRenderPass::is_render_pass_used() const
 {
      // Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
