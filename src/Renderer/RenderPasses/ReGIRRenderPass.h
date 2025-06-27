@@ -78,6 +78,7 @@ public:
 	 */
 	virtual void compute_render_times() override;
 	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;
+	virtual float get_full_frame_time() override;
 
 	virtual void reset(bool reset_by_camera_movement) override;
 
@@ -108,6 +109,11 @@ private:
 
 	oroStream_t m_secondary_stream = nullptr;
 	oroEvent_t m_oro_event = nullptr;
+	oroEvent_t m_event_pre_integration_duration_start = nullptr;
+	oroEvent_t m_event_pre_integration_duration_stop = nullptr;
+	// Just a flag to make sure that the pre integration pass indeed ran otherwise,
+	// if it didn't run, we cannot compute the GPU events elapsed times
+	bool m_pre_integration_executed = false;
 };
 
 #endif
