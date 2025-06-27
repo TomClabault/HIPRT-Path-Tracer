@@ -45,22 +45,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 
         Xorshift32Generator random_number_generator(seed);
 
-        int primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index, primary_hit);
-        float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
-        float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index, primary_hit);
-        float roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index, primary_hit);
-
+		ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 
 		// This kernel always uses a Lambertian BRDF where the view direction is not used so it can be set to zero
         float3 view_direction = make_float3(0.0f, 0.0f, 0.0f);
-		RayPayload ray_payload;
-		ray_payload.material.roughness = roughness;
 
         float non_canonical_cell_integration_sum = 0.0f;
-        for (int i = 0; i < regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() / 2; i++)
+        for (int i = 0; i < regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell(); i++)
         {
             bool invalid_sample = false;
-            ReGIRReservoir non_canonical_reservoir = regir_settings.get_random_cell_non_canonical_reservoir(representative_point, normal, render_data.current_camera, roughness, primary_hit, random_number_generator, &invalid_sample);
+            ReGIRReservoir non_canonical_reservoir = regir_settings.get_cell_non_canonical_reservoir_from_index(hash_grid_cell_index, primary_hit, i, &invalid_sample);
             if (invalid_sample || non_canonical_reservoir.UCW <= 0.0f)
                 continue;
 
@@ -76,7 +70,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
                 // Can happen for very small triangles
                 continue;
 
-            float non_canonical_target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
+            float non_canonical_target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
 
             if (non_canonical_target_function <= 0.0f)
@@ -88,10 +82,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
         regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index] += non_canonical_cell_integration_sum / (regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() / 2) / REGIR_PRE_INTEGRATION_ITERATIONS;
 
         float canonical_cell_integration_sum = 0.0f;
-        for (int i = 0; i < regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() / 2; i++)
+        for (int i = 0; i < regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell(); i++)
         {
             bool invalid_sample = false;
-            ReGIRReservoir canonical_reservoir = regir_settings.get_random_cell_canonical_reservoir(representative_point, normal, render_data.current_camera, roughness, primary_hit, random_number_generator, &invalid_sample);
+            ReGIRReservoir canonical_reservoir = regir_settings.get_cell_canonical_reservoir_from_index(hash_grid_cell_index, primary_hit, i, &invalid_sample);
             if (invalid_sample || canonical_reservoir.UCW <= 0.0f)
                 continue;
 
@@ -107,7 +101,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
                 // Can happen for very small triangles
                 continue;
 
-            float canonical_target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
+            float canonical_target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
 
             if (canonical_target_function <= 0.0f)
