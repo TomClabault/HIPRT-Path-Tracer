@@ -62,7 +62,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - Have the performance metrics properly indicate the first hit and secondary hits grid fill apsses
+// - Can we do many many more samples per each reservoir during the pre integration pass (and thus have less reservoirs per cell) to improve the quality of the integral estimate with less reservoirs and less integration iterations?
 // - Correlate regir grid fill sampling for secondary cells for higher performance
 // - For the grid fill pass, we can probably use a single point on the sampled light to do the calculations and store only the light index in the reservoir and then defer the actual point-on-the-light sampling to the shading pass. We're probably going to lose a bit in quality for large light sources where choosing the point to sample is critical but this could save quite a bit of time by having to fetch only one light vertex in the grid fill pass (and use that vertex as the reference point on the light) insteaad of having the fetch the three vertices of the light
 // - Cleanup 'light_sample_pdf_for_MIS_solid_angle_measure' function

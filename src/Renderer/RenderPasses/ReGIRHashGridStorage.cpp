@@ -296,10 +296,10 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.hash_cell_data_primary_hits = m_hash_cell_data_primary_hits.to_device();
 	render_data.render_settings.regir_settings.hash_cell_data_secondary_hits = m_hash_cell_data_secondary_hits.to_device();
 
-	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = get_non_canonical_factors(true).get_device_pointer();
-	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_device_pointer();
-	render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = get_canonical_factors(true).get_device_pointer();
-	render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_device_pointer();
+	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = get_non_canonical_factors(true).get_atomic_device_pointer();
+	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_atomic_device_pointer();
+	render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = get_canonical_factors(true).get_atomic_device_pointer();
+	render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
 }
 
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid_buffers(bool primary_hit)

@@ -21,10 +21,10 @@ struct ReGIRGridFillSettings
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 32;
+		light_sample_count_per_cell_reservoir = 48;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
-		reservoirs_count_per_grid_cell_canonical = primary_hit ? 8 : 4;
+		reservoirs_count_per_grid_cell_canonical = primary_hit ? 24 : 4;
 	}
 
 	// How many light samples are resampled into each reservoir of the grid cell
@@ -85,9 +85,9 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = false;
+	bool do_correlation_reduction = true;
 
-	int correlation_reduction_factor = 8;
+	int correlation_reduction_factor = 4;
 	int correl_frames_available = 0;
 	unsigned int correl_reduction_current_grid = 0;
 
@@ -107,11 +107,11 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE const ReGIRGridFillSettings& get_grid_fill_settings(bool primary_hit) const { return primary_hit ? grid_fill_primary_hits : grid_fill_secondary_hits; }
 
-	HIPRT_DEVICE const float* get_non_canonical_pre_integration_factor_buffer(bool primary_hit) const { return primary_hit ? non_canonical_pre_integration_factors_primary_hits : non_canonical_pre_integration_factors_secondary_hits; }
-	HIPRT_DEVICE float* get_non_canonical_pre_integration_factor_buffer(bool primary_hit) { return primary_hit ? non_canonical_pre_integration_factors_primary_hits : non_canonical_pre_integration_factors_secondary_hits; }
+	HIPRT_DEVICE const AtomicType<float>* get_non_canonical_pre_integration_factor_buffer(bool primary_hit) const { return primary_hit ? non_canonical_pre_integration_factors_primary_hits : non_canonical_pre_integration_factors_secondary_hits; }
+	HIPRT_DEVICE AtomicType<float>* get_non_canonical_pre_integration_factor_buffer(bool primary_hit) { return primary_hit ? non_canonical_pre_integration_factors_primary_hits : non_canonical_pre_integration_factors_secondary_hits; }
 
-	HIPRT_DEVICE const float* get_canonical_pre_integration_factor_buffer(bool primary_hit) const { return primary_hit ? canonical_pre_integration_factors_primary_hits : canonical_pre_integration_factors_secondary_hits; }
-	HIPRT_DEVICE float* get_canonical_pre_integration_factor_buffer(bool primary_hit) { return primary_hit ? canonical_pre_integration_factors_primary_hits : canonical_pre_integration_factors_secondary_hits; }
+	HIPRT_DEVICE const AtomicType<float>* get_canonical_pre_integration_factor_buffer(bool primary_hit) const { return primary_hit ? canonical_pre_integration_factors_primary_hits : canonical_pre_integration_factors_secondary_hits; }
+	HIPRT_DEVICE AtomicType<float>* get_canonical_pre_integration_factor_buffer(bool primary_hit) { return primary_hit ? canonical_pre_integration_factors_primary_hits : canonical_pre_integration_factors_secondary_hits; }
 
 	HIPRT_DEVICE float get_non_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
 	HIPRT_DEVICE float get_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
@@ -611,11 +611,11 @@ struct ReGIRSettings
 	ReGIRShadingSettings shading;
 	ReGIRCorrelationReductionSettings supersampling;
 
-	float* non_canonical_pre_integration_factors_primary_hits = nullptr;
-	float* canonical_pre_integration_factors_primary_hits = nullptr;
+	AtomicType<float>* non_canonical_pre_integration_factors_primary_hits = nullptr;
+	AtomicType<float>* canonical_pre_integration_factors_primary_hits = nullptr;
 
-	float* non_canonical_pre_integration_factors_secondary_hits = nullptr;
-	float* canonical_pre_integration_factors_secondary_hits = nullptr;
+	AtomicType<float>* non_canonical_pre_integration_factors_secondary_hits = nullptr;
+	AtomicType<float>* canonical_pre_integration_factors_secondary_hits = nullptr;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;
