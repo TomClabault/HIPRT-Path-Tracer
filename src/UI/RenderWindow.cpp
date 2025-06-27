@@ -792,7 +792,10 @@ bool RenderWindow::is_rendering_done()
 	if (rendering_done)
 		set_ImGui_status_text("Finished!");
 	else
-		clear_ImGui_status_text();
+	{
+		if (m_imgui_renderer->get_status_text() == "Finished!")
+			clear_ImGui_status_text();
+	}
 
 	return rendering_done;
 }

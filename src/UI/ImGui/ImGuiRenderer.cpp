@@ -113,6 +113,11 @@ void ImGuiRenderer::set_status_text(const std::string& new_status_text)
 	m_imgui_settings_window.set_status_text(new_status_text);
 }
 
+std::string ImGuiRenderer::get_status_text() const
+{
+	return m_imgui_settings_window.get_status_text();
+}
+
 void ImGuiRenderer::draw_interface()
 {
 	ImGui_ImplOpenGL3_NewFrame();
