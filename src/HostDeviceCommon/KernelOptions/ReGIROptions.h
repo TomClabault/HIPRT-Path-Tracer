@@ -31,7 +31,7 @@
  */
 #define ReGIR_GridPrepoluationResolutionDownscale 2
 
-#define REGIR_PRE_INTEGRATION_ITERATIONS 64
+#define REGIR_PRE_INTEGRATION_ITERATIONS 32
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:

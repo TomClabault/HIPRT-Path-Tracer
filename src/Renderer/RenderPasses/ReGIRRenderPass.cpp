@@ -210,6 +210,8 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_pre_integration_done, m_render_window));
 	}
 
+	launch_pre_integration(render_data);
+
 	// This needs to be called before the rehash because the
 	// rehash needs the updated number of cells alive to function
 	update_all_cell_alive_count();

@@ -130,6 +130,14 @@ struct ReGIRHashGrid
 		return hash_grid_cell_index;
 	}
 
+	/**
+	 * Overload if you already the hash grid cell index
+	 */
+	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid(const ReGIRHashGridSoADevice& soa, unsigned int hash_grid_cell_index, int reservoir_index_in_cell) const
+	{
+		return hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
+	}
+
 	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
 		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell) const
 	{
@@ -137,7 +145,7 @@ struct ReGIRHashGrid
 		if (hash_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
-		return hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
+		return get_reservoir_index_in_grid(soa, hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
 	HIPRT_DEVICE void store_full_reservoir(ReGIRHashGridSoADevice& soa, const ReGIRReservoir& reservoir, int reservoir_index_in_grid)
@@ -176,6 +184,24 @@ struct ReGIRHashGrid
 		reservoir.sample = soa.samples.read_sample(reservoir_index_in_grid);
 
 		return reservoir;
+	}
+
+	/**
+	 * Override if you already have the hash grid cell index
+	 */
+	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, unsigned int hash_grid_cell_index, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
+	{
+		unsigned int reservoir_index_in_grid = get_reservoir_index_in_grid(soa, hash_grid_cell_index, reservoir_index_in_cell);
+
+		if (out_invalid_sample)
+		{
+			if (reservoir_index_in_grid == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+				*out_invalid_sample = true;
+			else
+				*out_invalid_sample = false;
+		}
+
+		return read_full_reservoir(soa, reservoir_index_in_grid);
 	}
 
 	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,

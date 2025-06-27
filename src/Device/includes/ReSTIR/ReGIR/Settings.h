@@ -132,6 +132,45 @@ struct ReGIRSettings
 
 	///////////////////// Delegating to the grid for these functions /////////////////////
 
+	/**
+	 * Returns a reservoir from the grid cell that corresponds to the given world position, surface normal.
+	 * The returned reservoir is a non-canonical reservoir given by the non_canonical_reservoir_number.
+	 *
+	 * That number must be in the range [0, get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell()[.
+	 */
+	HIPRT_DEVICE ReGIRReservoir get_cell_non_canonical_reservoir_from_index(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, unsigned int non_canonical_reservoir_number, bool* out_invalid_sample = nullptr) const
+	{
+		return get_reservoir_for_shading_from_cell_indices(world_position, surface_normal, current_camera, roughness, primary_hit, non_canonical_reservoir_number, out_invalid_sample);
+	}
+
+	/**
+	 * Overlaod if you already the hash grid cell index
+	 */
+	HIPRT_DEVICE ReGIRReservoir get_cell_non_canonical_reservoir_from_index(unsigned int hash_grid_cell_index, bool primary_hit, unsigned int non_canonical_reservoir_number, bool* out_invalid_sample = nullptr) const
+	{
+		return get_reservoir_for_shading_from_cell_indices(hash_grid_cell_index, primary_hit, non_canonical_reservoir_number, out_invalid_sample);
+	}
+
+	/**
+	 * Same as get_cell_non_canonical_reservoir_from_index() but for canonical reservoirs.
+	 */
+	HIPRT_DEVICE ReGIRReservoir get_cell_canonical_reservoir_from_index(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, unsigned int canonical_reservoir_number, bool* out_invalid_sample = nullptr) const
+	{
+		unsigned int non_canonical_reservoir_count = get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell();
+
+		return get_reservoir_for_shading_from_cell_indices(world_position, surface_normal, current_camera, roughness, primary_hit, non_canonical_reservoir_count + canonical_reservoir_number, out_invalid_sample);
+	}
+
+	/**
+	 * Overlaod if you already the hash grid cell index
+	 */
+	HIPRT_DEVICE ReGIRReservoir get_cell_canonical_reservoir_from_index(unsigned int hash_grid_cell_index, bool primary_hit, unsigned int canonical_reservoir_number, bool* out_invalid_sample = nullptr) const
+	{
+		unsigned int non_canonical_reservoir_count = get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell();
+
+		return get_reservoir_for_shading_from_cell_indices(hash_grid_cell_index, primary_hit, non_canonical_reservoir_count + canonical_reservoir_number, out_invalid_sample);
+	}
+
 	HIPRT_DEVICE ReGIRReservoir get_random_cell_non_canonical_reservoir(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, Xorshift32Generator& rng, bool* out_invalid_sample = nullptr) const
 	{
 		int random_non_canonical_reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell());
@@ -148,17 +187,27 @@ struct ReGIRSettings
 	}
 
 	/**
+	 * Overload if you already have the hash grid cell index
+	 */
+	HIPRT_DEVICE ReGIRReservoir get_reservoir_for_shading_from_cell_indices(unsigned int hash_grid_cell_index, bool primary_hit, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
+	{
+		if (spatial_reuse.do_spatial_reuse)
+			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
+			return hash_grid.read_full_reservoir(get_spatial_output_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell, out_invalid_sample);
+		else
+			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
+			return hash_grid.read_full_reservoir(get_initial_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell, out_invalid_sample);
+	}
+
+	/**
 	 * If 'out_invalid_sample' is set to true, then the given shading point (+ the jittering) was outside of the grid
 	 * and no reservoir has been gathered
 	 */
 	HIPRT_DEVICE ReGIRReservoir get_reservoir_for_shading_from_cell_indices(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
 	{
-		if (spatial_reuse.do_spatial_reuse)
-			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return hash_grid.read_full_reservoir(get_spatial_output_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell, out_invalid_sample);
-		else
-			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
-			return hash_grid.read_full_reservoir(get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell, out_invalid_sample);
+		unsigned int hash_grid_cell_index = hash_grid.get_hash_grid_cell_index(get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, roughness);
+
+		return get_reservoir_for_shading_from_cell_indices(hash_grid_cell_index, primary_hit, reservoir_index_in_cell, out_invalid_sample);
 	}
 
 	HIPRT_DEVICE unsigned int get_neighbor_replay_hash_grid_cell_index_for_shading(float3 shading_point, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, bool replay_canonical, bool do_jittering, float jittering_radius, Xorshift32Generator& rng) const
