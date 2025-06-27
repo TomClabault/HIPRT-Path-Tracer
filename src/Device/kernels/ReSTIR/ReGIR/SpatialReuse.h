@@ -222,6 +222,31 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
     return valid_neighbor_count;
 }
 
+template <bool accumulatePreIntegration>
+HIPRT_DEVICE HIPRT_INLINE void spatial_reuse_pre_integration_accumulation(HIPRTRenderData& render_data, const ReGIRReservoir& output_reservoir, bool reservoir_is_canonical, unsigned int hash_grid_cell_index, bool primary_hit)
+{
+    if constexpr (accumulatePreIntegration)
+    {
+        ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+        // Only doing the pre integration on the first sample of the frame
+        if (render_data.render_settings.sample_number == 0)
+        {
+            float normalization;
+            if (reservoir_is_canonical)
+                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
+            else
+                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
+            float integration_increment = hippt::max(0.0f, output_reservoir.sample.target_function * output_reservoir.UCW) / normalization;
+
+            if (reservoir_is_canonical)
+                hippt::atomic_fetch_add(&regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
+            else
+                hippt::atomic_fetch_add(&regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
+        }
+    }
+}
+
  /** 
   * This kernel is in charge of the spatial reuse on the ReGIR grid.
   * 
@@ -230,7 +255,8 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
  #ifdef __KERNELCC__
  GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Spatial_Reuse(HIPRTRenderData render_data, unsigned int number_of_cells_alive, bool primary_hit)
  #else
- GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data, int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
+template <bool accumulatePreIntegration>
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data, int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
  #endif
  {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -304,6 +330,12 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
         output_reservoir.finalize_resampling(1.0f, valid_neighbor_count);
 
         regir_settings.store_spatial_reservoir_opt(output_reservoir, center_cell_point, center_cell_normal, render_data.current_camera, center_cell_roughness, primary_hit, reservoir_index_in_cell);
+
+#ifdef __KERNELCC__
+        spatial_reuse_pre_integration_accumulation<ReGIR_GridFillSpatialReuse_AccumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
+#else
+        spatial_reuse_pre_integration_accumulation<accumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
+#endif
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

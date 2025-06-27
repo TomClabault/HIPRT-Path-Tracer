@@ -88,9 +88,6 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     m_render_data.render_settings.render_resolution = m_resolution;
 
-    m_DEBUG_SUMS = std::vector<AtomicType<float>>(1024);
-    m_DEBUG_SUM_COUNT = std::vector<AtomicType<unsigned long long int>>(1024);
-
     // Resizing buffers + initial value
     m_pixel_active_buffer.resize(width * height, 0);
     m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
@@ -111,11 +108,11 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_regir_state.spatial_grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false));
     m_regir_state.hash_cell_data_secondary_hit.resize(new_cell_count_secondary_hits);
 
-    m_regir_state.non_canonical_pre_integration_factors_primary_hit.resize(new_cell_count_primary_hits, 0.0f);
-    m_regir_state.canonical_pre_integration_factors_primary_hit.resize(new_cell_count_primary_hits, 0.0f);
+	m_regir_state.non_canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_primary_hit.end(), 0.0f);
+	m_regir_state.canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.canonical_pre_integration_factors_primary_hit.end(), 0.0f);
 
-    m_regir_state.non_canonical_pre_integration_factors_primary_hit.resize(new_cell_count_secondary_hits, 0.0f);
-    m_regir_state.canonical_pre_integration_factors_primary_hit.resize(new_cell_count_secondary_hits, 0.0f);
+	m_regir_state.non_canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
+	m_regir_state.canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
 
     if (m_render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
         m_regir_state.correlation_reduction_grid.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) * m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
@@ -331,9 +328,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.pixel_squared_luminance = m_pixel_squared_luminance.data();
     m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
     m_render_data.aux_buffers.pixel_count_converged_so_far = &m_stop_noise_threshold_count;
-
-    m_render_data.render_settings.DEBUG_SUMS = m_DEBUG_SUMS.data();
-    m_render_data.render_settings.DEBUG_SUM_COUNT = m_DEBUG_SUM_COUNT.data();
 
     m_render_data.g_buffer.materials = m_g_buffer.materials.data();
     m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.data();
@@ -694,16 +688,17 @@ void CPURenderer::camera_rays_pass()
 
 void CPURenderer::ReGIR_pass()
 {
-    ReGIR_grid_fill_pass(true);
-    ReGIR_grid_fill_pass(false);
+    ReGIR_grid_fill_pass<false>(true);
+    ReGIR_grid_fill_pass<false>(false);
 
-    ReGIR_spatial_reuse_pass(true);
-    ReGIR_spatial_reuse_pass(false);
+    ReGIR_spatial_reuse_pass<false>(true);
+    ReGIR_spatial_reuse_pass<false>(false);
 
     if (m_render_data.render_settings.sample_number == 0)
         ReGIR_pre_integration();
 }
 
+template <bool accumulatePreIntegration>
 void CPURenderer::ReGIR_grid_fill_pass(bool primary_hit)
 {
     m_render_data.random_number = m_rng.xorshift32();
@@ -711,10 +706,11 @@ void CPURenderer::ReGIR_grid_fill_pass(bool primary_hit)
 //#pragma omp parallel for
     for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit); index++)
     {
-        ReGIR_Grid_Fill_Temporal_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
+        ReGIR_Grid_Fill_Temporal_Reuse<accumulatePreIntegration>(m_render_data, index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
     }
 }
 
+template <bool accumulatePreIntegration>
 void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
 {
     if (!m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
@@ -723,7 +719,7 @@ void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
 //#pragma omp parallel for
     for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit); index++)
     {
-        ReGIR_Spatial_Reuse(m_render_data, index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
+        ReGIR_Spatial_Reuse<accumulatePreIntegration>(m_render_data, index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
     }
 }
 
@@ -738,12 +734,12 @@ void CPURenderer::ReGIR_pre_integration()
         unsigned int nb_cells_alive = *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count;
         unsigned int nb_threads = nb_cells_alive;
 
-        for (int i = 0; i < REGIR_PRE_INTEGRATION_ITERATIONS; i++)
+        for (int i = 0; i < ReGIR_PreIntegrationIterations; i++)
         {
             m_render_data.random_number = m_rng.xorshift32();
 
-            ReGIR_grid_fill_pass(primary_hit);
-            ReGIR_spatial_reuse_pass(primary_hit);
+            ReGIR_grid_fill_pass<true>(primary_hit);
+            ReGIR_spatial_reuse_pass<true>(primary_hit);
 
 #pragma omp parallel for
             for (int thread_index = 0; thread_index < nb_threads; thread_index++)

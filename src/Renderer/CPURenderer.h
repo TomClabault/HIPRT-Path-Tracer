@@ -65,7 +65,9 @@ public:
     void ReSTIR_DI_pass();
     void ReSTIR_GI_pass();
 
+    template <bool accumulatePreIntegration>
     void ReGIR_grid_fill_pass(bool primary_hit);
+    template <bool accumulatePreIntegration>
     void ReGIR_spatial_reuse_pass(bool primary_hit);
     void ReGIR_pre_integration();
 
@@ -103,9 +105,6 @@ public:
     void gmon_compute_median_of_means();
 
     void tonemap(float gamma, float exposure);
-
-    std::vector<AtomicType<float>> m_DEBUG_SUMS;
-    std::vector<AtomicType<unsigned long long int>> m_DEBUG_SUM_COUNT;
 
 private:
     int2 m_resolution;
@@ -190,11 +189,11 @@ private:
 
         ReGIRHashGridSoAHost<std::vector> correlation_reduction_grid;
 
-        std::vector<float> non_canonical_pre_integration_factors_primary_hit;
-        std::vector<float> canonical_pre_integration_factors_primary_hit;
+        std::vector<AtomicType<float>> non_canonical_pre_integration_factors_primary_hit;
+        std::vector<AtomicType<float>> canonical_pre_integration_factors_primary_hit;
 
-        std::vector<float> non_canonical_pre_integration_factors_secondary_hit;
-        std::vector<float> canonical_pre_integration_factors_secondary_hit;
+        std::vector<AtomicType<float>> non_canonical_pre_integration_factors_secondary_hit;
+        std::vector<AtomicType<float>> canonical_pre_integration_factors_secondary_hit;
 
         std::vector<AtomicType<unsigned int>> grid_cell_alive;
         std::vector<unsigned int> grid_cells_alive_list;

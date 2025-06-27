@@ -21,6 +21,8 @@ public:
 	static const std::string REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID;
 	static const std::string REGIR_PRE_INTEGRATION_KERNEL_ID;
+	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID;
+	static const std::string REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID;
 	static const std::string REGIR_REHASH_KERNEL_ID;
 	static const std::string REGIR_SUPERSAMPLING_COPY_KERNEL_ID;
 
@@ -61,8 +63,8 @@ public:
 	void launch_grid_pre_population(HIPRTRenderData& render_data);
 	bool rehash(HIPRTRenderData& render_data);
 
-	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream = nullptr);
-	void launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream = nullptr);
+	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream = nullptr);
+	void launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream = nullptr);
 	void launch_supersampling_fill(HIPRTRenderData& render_data);
 	void launch_supersampling_copy(HIPRTRenderData& render_data);
 	void launch_pre_integration(HIPRTRenderData& render_data);

@@ -29,9 +29,9 @@
  * 
  * The lower the downscale, the more effective the prepoluation but also the more costly
  */
-#define ReGIR_GridPrepoluationResolutionDownscale 2
+#define ReGIR_GridPrepopulationResolutionDownscale 2
 
-#define REGIR_PRE_INTEGRATION_ITERATIONS 32
+#define ReGIR_PreIntegrationIterations 128
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -86,6 +86,12 @@
  * Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.
  */
 #define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_TRUE
+
+/**
+ * This option must be set to true and a grid fill + spatial reuse kernels compiled with this option set
+ * to true for those passes to accumulate the RIS integral of the reservoirs (for use in MIS)
+ */
+#define ReGIR_GridFillSpatialReuse_AccumulatePreIntegration KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

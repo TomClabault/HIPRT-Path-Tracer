@@ -55,6 +55,33 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
     return grid_fill_reservoir;
 }
 
+template <bool accumulatePreIntegration>
+HIPRT_DEVICE void grid_fill_pre_integration_accumulation(HIPRTRenderData& render_data, const ReGIRReservoir& output_reservoir, bool reservoir_is_canonical, unsigned int hash_grid_cell_index, bool primary_hit)
+{
+    if constexpr (accumulatePreIntegration)
+    {
+        ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+        // Only doing the pre integration on the first sample of the frame
+        // and if we don't have spatial reuse. If we have the spatial reuse, it's
+        // the spatial reuse pass that will do the pre integration accumulation
+        if (!regir_settings.spatial_reuse.do_spatial_reuse)
+        {
+            float normalization;
+            if (reservoir_is_canonical)
+                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
+            else
+                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
+            float integration_increment = hippt::max(0.0f, output_reservoir.sample.target_function * output_reservoir.UCW) / normalization;
+
+            if (reservoir_is_canonical)
+                hippt::atomic_fetch_add(&regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
+            else
+                hippt::atomic_fetch_add(&regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
+        }
+    }
+}
+
 /** 
  * This kernel is in charge of resetting (when necessary) and filling the ReGIR grid.
  * 
@@ -63,6 +90,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, unsigned int number_of_cells_alive, bool primary_hit)
 #else
+template <bool accumulatePreIntegration>
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
 #endif
 {
@@ -132,6 +160,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
 
         // TODO store reservoir recomputes the hash grid cell index but we already have it
         regir_settings.store_reservoir_opt(output_reservoir, representative_point, normal, render_data.current_camera, roughness, primary_hit, reservoir_index_in_cell, (hash_grid_cell_index == 2382 && reservoir_index_in_cell == 0) ? 1 : 0);
+
+#ifdef __KERNELCC__
+        grid_fill_pre_integration_accumulation<ReGIR_GridFillSpatialReuse_AccumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
+#else
+        grid_fill_pre_integration_accumulation<accumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
+#endif
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

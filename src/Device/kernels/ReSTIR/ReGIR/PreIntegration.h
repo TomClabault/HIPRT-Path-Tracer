@@ -79,7 +79,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
             non_canonical_cell_integration_sum += non_canonical_target_function * non_canonical_reservoir.UCW;
         }
 
-        regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index] += non_canonical_cell_integration_sum / (regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() / 2) / REGIR_PRE_INTEGRATION_ITERATIONS;
+        regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index] += non_canonical_cell_integration_sum / (regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell()) / ReGIR_PreIntegrationIterations;
 
         float canonical_cell_integration_sum = 0.0f;
         for (int i = 0; i < regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell(); i++)
@@ -110,7 +110,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
             canonical_cell_integration_sum += canonical_target_function * canonical_reservoir.UCW;
         }
 
-        regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index] += canonical_cell_integration_sum / (regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() / 2) / REGIR_PRE_INTEGRATION_ITERATIONS;
+        regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index] += canonical_cell_integration_sum / (regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell()) / ReGIR_PreIntegrationIterations;
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need
