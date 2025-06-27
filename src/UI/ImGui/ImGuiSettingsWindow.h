@@ -23,6 +23,7 @@ public:
 
 	void set_render_window(RenderWindow* render_window);
 	void set_status_text(const std::string& new_status_text);
+	std::string get_status_text() const;
 
 	void draw();
 	static void draw_camera_panel_static(const std::string& panel_title, RenderWindow* render_window, std::shared_ptr<GPURenderer> renderer);

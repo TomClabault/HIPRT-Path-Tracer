@@ -37,6 +37,11 @@ void ImGuiSettingsWindow::set_status_text(const std::string& new_status_text)
 	m_status_text = new_status_text;
 }
 
+std::string ImGuiSettingsWindow::get_status_text() const
+{
+	return m_status_text;
+}
+
 void ImGuiSettingsWindow::draw()
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);

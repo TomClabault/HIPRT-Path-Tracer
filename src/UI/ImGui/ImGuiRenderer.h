@@ -44,6 +44,7 @@ public:
 
 	void set_render_window(RenderWindow* renderer);
 	void set_status_text(const std::string& new_status_text);
+	std::string get_status_text() const;
 
 	void draw_interface();
 	void rescale_ui();
