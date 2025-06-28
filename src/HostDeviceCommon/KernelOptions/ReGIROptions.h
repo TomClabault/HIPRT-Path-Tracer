@@ -31,7 +31,7 @@
  */
 #define ReGIR_GridPrepopulationResolutionDownscale 2
 
-#define ReGIR_PreIntegrationIterations 128
+#define ReGIR_PreIntegrationIterations 32
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:

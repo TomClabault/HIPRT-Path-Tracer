@@ -242,7 +242,7 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 	return updated;
 }
 
-void callback_pre_integration_done(void* payload)
+void callback_reset_imgui_status_text(void* payload)
 {
 	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(payload);
 
@@ -265,7 +265,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
 
-		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_pre_integration_done, m_render_window));
+		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
 
 	// launch_pre_integration(render_data);
@@ -284,7 +284,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
 
-		m_render_window->clear_ImGui_status_text();
+		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
 
 	render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
@@ -328,10 +328,6 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 		update_all_cell_alive_count();
 
 		has_rehashed = rehash(render_data);
-		if (has_rehashed)
-			// Also updating the "true" render data of the renderer which is not the same as
-			// the copy that we got here as the argument passed to this function
-			update_render_data();
 	} while (has_rehashed);
 }
 
@@ -447,12 +443,16 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 {
 	update_all_cell_alive_count();
 
-	// Record the start of the overall pre integration process
+	// --------------- Record the start of the overall pre integration process
 	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_start, m_renderer->get_main_stream()));
+	// --------------- Record the start of the overall pre integration process
+
+
+
 
 	// Important to launch the pre integration for the secondary hits first
 	// so that we can then 
-	launch_pre_integration_internal(render_data, true);
+	launch_pre_integration_internal(render_data, true, m_secondary_stream);
 	// The primary hit pre-integration is going to happen on the secondary stream so
 	// for everything to be in order we're going to have the main stream wait for the completion
 	// of the first hit pre-integration.
@@ -460,18 +460,24 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 	// Recording an event after the first pre-integration is over
 	OROCHI_CHECK_ERROR(oroEventRecord(m_oro_event, m_secondary_stream));
 
-	launch_pre_integration_internal(render_data, false);
+	// Launching the pre integration for the secondary hits on another stream such that the pre integration
+	// for primary and secondary hits can execute in parallell
+	launch_pre_integration_internal(render_data, false, m_renderer->get_main_stream());
 
 	// Waiting to be sure that the pre-integration for the first hits is over before continuing
 	OROCHI_CHECK_ERROR(oroStreamWaitEvent(m_renderer->get_main_stream(), m_oro_event, /* oroEventWaitDefault */ 0));
 
-	// Record the end of the overall pre integration process
+
+
+
+	// --------------- Record the end of the overall pre integration process
 	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_stop, m_renderer->get_main_stream()));
+	// --------------- Record the end of the overall pre integration process
 
 	m_pre_integration_executed = true;
 }
 
-void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit)
+void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream)
 {
 	unsigned int seed_backup = render_data.random_number;
 	unsigned int nb_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
@@ -482,13 +488,12 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 
 	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(primary_hit);
 
-	oroStream_t stream = primary_hit ? m_secondary_stream : m_renderer->get_main_stream();
 	for (int i = 0; i < ReGIR_PreIntegrationIterations; i++)
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
-		launch_grid_fill_temporal_reuse(render_data, primary_hit, true, stream);
-		launch_spatial_reuse(render_data, primary_hit, true, stream);
+		launch_grid_fill_temporal_reuse(render_data, primary_hit, true, stream ? stream : m_renderer->get_main_stream());
+		launch_spatial_reuse(render_data, primary_hit, true, stream ? stream : m_renderer->get_main_stream());
 	}
 
 	render_data.random_number = seed_backup;
@@ -509,7 +514,7 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool
 		&new_hash_grid_soa, &new_hash_cell_data,
 		
 		&m_hash_grid_storage.get_hash_cell_data_device_soa(render_data.render_settings.regir_settings, primary_hit),
-		&cell_alive_list_ptr, // old cell alive list		
+		&cell_alive_list_ptr, // old cell alive list
 		&old_cell_alive_count
 	};
 	

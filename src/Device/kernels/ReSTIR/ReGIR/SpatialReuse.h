@@ -230,20 +230,17 @@ HIPRT_DEVICE HIPRT_INLINE void spatial_reuse_pre_integration_accumulation(HIPRTR
         ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
         // Only doing the pre integration on the first sample of the frame
-        if (render_data.render_settings.sample_number == 0)
-        {
-            float normalization;
-            if (reservoir_is_canonical)
-                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
-            else
-                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
-            float integration_increment = hippt::max(0.0f, output_reservoir.sample.target_function * output_reservoir.UCW) / normalization;
+        float normalization;
+        if (reservoir_is_canonical)
+            normalization = regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
+        else
+            normalization = regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
+        float integration_increment = hippt::max(0.0f, output_reservoir.sample.target_function * output_reservoir.UCW) / normalization;
 
-            if (reservoir_is_canonical)
-                hippt::atomic_fetch_add(&regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
-            else
-                hippt::atomic_fetch_add(&regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
-        }
+        if (reservoir_is_canonical)
+            hippt::atomic_fetch_add(&regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
+        else
+            hippt::atomic_fetch_add(&regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
     }
 }
 

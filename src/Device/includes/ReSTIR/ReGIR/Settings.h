@@ -19,12 +19,20 @@ struct ReGIRGridFillSettings
 {
 	HIPRT_DEVICE ReGIRGridFillSettings() : ReGIRGridFillSettings(true) {}
 		
-	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
+	/*HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
 		light_sample_count_per_cell_reservoir = 48;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 24 : 4;
+	}*/
+
+	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
+	{
+		light_sample_count_per_cell_reservoir = 32;
+
+		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
+		reservoirs_count_per_grid_cell_canonical = primary_hit ? 8 : 4;
 	}
 
 	// How many light samples are resampled into each reservoir of the grid cell
@@ -85,7 +93,7 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = true;
+	bool do_correlation_reduction = false;
 
 	int correlation_reduction_factor = 4;
 	int correl_frames_available = 0;
