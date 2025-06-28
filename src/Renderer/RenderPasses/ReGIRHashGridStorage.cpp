@@ -143,7 +143,7 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 	// We don't need a full reset, instead checking if we need to dynamically grow the size of the hash
 	// table to keep the load factor in check
 	float cell_alive_ratio = m_regir_render_pass->get_alive_cells_ratio(primary_hit);	
-	if (cell_alive_ratio > 0.75f)
+	if (cell_alive_ratio > 0.60f)
 	{
 		m_regir_render_pass->update_all_cell_alive_count();
 
