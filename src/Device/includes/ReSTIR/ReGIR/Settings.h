@@ -71,7 +71,7 @@ struct ReGIRSpatialReuseSettings
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = false;
 
-	int spatial_reuse_pass_count = 2;
+	int spatial_reuse_pass_count = 1;
 	int spatial_reuse_pass_index = 0;
 
 	int spatial_neighbor_count = 4;
@@ -466,6 +466,7 @@ struct ReGIRSettings
 		// TODO is this atomic needed since we can only be here if the cell was unoccupied?
 		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.hit_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
 		{
+			// Insert the hash cell reprensentative data
 			hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
 			hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
 			hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness * 255.0f;
@@ -474,14 +475,9 @@ struct ReGIRSettings
 
 			hash_cell_data_to_update.sum_points[hash_grid_cell_index] = world_position;
 			hash_cell_data_to_update.num_points[hash_grid_cell_index] = 1;
-		}
 
-		// Because we just inserted into that grid cell, it is now alive
-		// Only go through all that atomic stuff if the cell isn't alive
-		if (hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index] == 0)
-		{
-			// TODO is this atomic needed since we can only be here if the cell was unoccoupied?
-
+			// Flagging that cell as alive
+			// Because we just inserted into that grid cell, it is now alive
 			if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index], 0u, 1u) == 0u)
 			{
 				unsigned int cell_alive_index = hippt::atomic_fetch_add(hash_cell_data_to_update.grid_cells_alive_count, 1u);
@@ -552,14 +548,6 @@ struct ReGIRSettings
 	{
 		unsigned int checksum;
 		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, hash_grid_to_update.m_total_number_of_cells, checksum);
-		/*if (DEBUG)
-		{
-			printf("Debug grid cell index: %u\n\n", hash_grid_cell_index);
-
-			printf("  world_position: %f %f %f\n", world_position.x, world_position.y, world_position.z);
-			printf("  shading_normal: %f %f %f\n", surface_normal.x, surface_normal.y, surface_normal.z);
-			printf("  roughness: %f\n", material.roughness);
-		}*/
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 
