@@ -4411,6 +4411,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 
 		if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
 			m_render_window->set_render_dirty(true);
+		if (ImGui::Checkbox("Debug do cell update", &render_settings.regir_settings.hash_grid.DEBUG_DO_CELL_UPDATE))
+			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Debug regir force cano", &render_settings.regir_settings.DEBUG_FORCE_REGIR8CANONICAL))
