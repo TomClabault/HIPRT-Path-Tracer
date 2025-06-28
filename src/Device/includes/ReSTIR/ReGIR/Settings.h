@@ -579,7 +579,8 @@ struct ReGIRSettings
 			{
 				// We're trying to insert in a cell that has the same hash as us so we're going to update
 				// that cell with our data
-				update_hash_cell_representative_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
+				if (hash_grid.DEBUG_DO_CELL_UPDATE)
+					update_hash_cell_representative_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
 			}
 		}
 		else
