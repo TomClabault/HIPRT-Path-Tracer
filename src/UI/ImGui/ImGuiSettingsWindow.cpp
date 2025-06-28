@@ -2153,7 +2153,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePush("ReGIR Settings debug tree");
 
 			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
-			const char* items[] = { "- No debug", "- Grid cells", "- Average non-canonical cell-reservoirs contrib", "- Average canonical cell-reservoirs contrib", "- Cell representative points" };
+			const char* items[] = { "- No debug", "- Grid cells", "- Average non-canonical cell-reservoirs contrib", "- Average canonical cell-reservoirs contrib", "- Cell representative points", "- RIS pre-integration check"};
 			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 			{
 				if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
@@ -4419,6 +4419,10 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 
 		if (ImGui::Checkbox("Correlate ReGIR", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("ReGIR Pre integration iterations", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS, 1, 64))
+			m_render_window->set_render_dirty(true);
+		if (ImGui::SliderInt("ReGIR Pre integration sample per res", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR, 1, 64	))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Normalize RIS integral", &render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION))
 			m_render_window->set_render_dirty(true);
