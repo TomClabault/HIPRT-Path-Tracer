@@ -310,10 +310,10 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
         float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
-        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness);
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness, true);
 
         ColorRGB32F color;
-        float3 rep_point = ReGIR_get_cell_world_point(render_data, cell_index);
+        float3 rep_point = ReGIR_get_cell_world_point(render_data, cell_index, true);
         // Interpreting debug_view_scale_factor as a distance
         if (hippt::length(rep_point - primary_hit) < render_data.render_settings.regir_settings.debug_view_scale_factor)
             color = ColorRGB32F::random_color(cell_index + 1);
