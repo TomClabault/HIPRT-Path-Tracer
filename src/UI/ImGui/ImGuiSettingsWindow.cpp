@@ -1940,7 +1940,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame\n."
 				"This has the effect of coalescing neighbors memory accesses which improves performance");
+			if (ImGui::SliderInt("Spatial reuse pass count", &regir_settings.spatial_reuse.spatial_reuse_pass_count, 1, 4))
+				m_render_window->set_render_dirty(true);
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_count, 0, 32))
 				m_render_window	->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("How many cells around the center cell to reuse from.");

@@ -19,20 +19,12 @@ struct ReGIRGridFillSettings
 {
 	HIPRT_DEVICE ReGIRGridFillSettings() : ReGIRGridFillSettings(true) {}
 		
-	/*HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
-	{
-		light_sample_count_per_cell_reservoir = 48;
-
-		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
-		reservoirs_count_per_grid_cell_canonical = primary_hit ? 24 : 4;
-	}*/
-
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
 		light_sample_count_per_cell_reservoir = 32;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
-		reservoirs_count_per_grid_cell_canonical = primary_hit ? 8 : 4;
+		reservoirs_count_per_grid_cell_canonical = primary_hit ? 24 : 4;
 	}
 
 	// How many light samples are resampled into each reservoir of the grid cell
@@ -79,6 +71,9 @@ struct ReGIRSpatialReuseSettings
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = false;
 
+	int spatial_reuse_pass_count = 2;
+	int spatial_reuse_pass_index = 0;
+
 	int spatial_neighbor_count = 4;
 	int reuse_per_neighbor_count = 4;
 	// When picking a random cell in the neighborhood for reuse, if that
@@ -107,8 +102,21 @@ struct ReGIRSettings
 	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) const { return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid; }
 	HIPRT_DEVICE ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) { return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid; }
 
-	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_spatial_output_reservoirs_grid(bool primary_hit) const { return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid; }
-	HIPRT_DEVICE ReGIRHashGridSoADevice& get_spatial_output_reservoirs_grid(bool primary_hit) { return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid; }
+	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_spatial_output_reservoirs_grid(bool primary_hit) const 
+	{
+		if (spatial_reuse.spatial_reuse_pass_count & 1)
+			return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid; 
+		else
+			return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid;
+	}
+
+	HIPRT_DEVICE ReGIRHashGridSoADevice& get_spatial_output_reservoirs_grid(bool primary_hit) 
+	{ 
+		if (spatial_reuse.spatial_reuse_pass_count & 1)
+			return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid;
+		else
+			return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid;
+	}
 
 	HIPRT_DEVICE const ReGIRHashCellDataSoADevice& get_hash_cell_data_soa(bool primary_hit) const { return primary_hit ? hash_cell_data_primary_hits : hash_cell_data_secondary_hits; }
 	HIPRT_DEVICE ReGIRHashCellDataSoADevice& get_hash_cell_data_soa(bool primary_hit) { return primary_hit ? hash_cell_data_primary_hits : hash_cell_data_secondary_hits; }
@@ -139,6 +147,14 @@ struct ReGIRSettings
 	}
 
 	///////////////////// Delegating to the grid for these functions /////////////////////
+
+	/**
+	 * Returns the given reservoir index in the given grid cell index in the given grid of reservoirs
+	 */
+	HIPRT_DEVICE ReGIRReservoir get_reservoir_from_grid_cell_index(ReGIRHashGridSoADevice reservoir_grid, unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell)
+	{
+		return hash_grid.read_full_reservoir(reservoir_grid, hash_grid.get_reservoir_index_in_grid(reservoir_grid, hash_grid_cell_index, reservoir_index_in_cell));
+	}
 
 	/**
 	 * Returns a reservoir from the grid cell that corresponds to the given world position, surface normal.
@@ -383,9 +399,14 @@ struct ReGIRSettings
 		return get_temporal_reservoir_opt(world_position, surface_normal, current_camera, roughness, primary_hit, reservoir_index_in_cell, out_invalid_sample);
 	}
 
+	HIPRT_DEVICE void store_spatial_reservoir_opt(ReGIRHashGridSoADevice& output_reservoirs_grid, ReGIRHashCellDataSoADevice& output_reservoirs_cell_data, const ReGIRReservoir& reservoir, float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, int reservoir_index_in_cell)
+	{
+		hash_grid.store_reservoir_and_sample_opt(reservoir, output_reservoirs_grid, output_reservoirs_cell_data, world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell);
+	}
+
 	HIPRT_DEVICE void store_spatial_reservoir_opt(const ReGIRReservoir& reservoir, float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell)
 	{
-		hash_grid.store_reservoir_and_sample_opt(reservoir, get_spatial_output_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell);
+		store_spatial_reservoir_opt(get_spatial_output_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), reservoir, world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell);
 	}
 
 	/**
