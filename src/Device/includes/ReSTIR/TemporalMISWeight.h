@@ -203,7 +203,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS,
 					// If this is an envmap path the jacobian is just 1 so this is not needed
 					if (!initial_candidates_reservoir.sample.is_envmap_path())
 					{
-						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal.unpack(), temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
@@ -299,7 +299,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_
 					// If this is an envmap path the jacobian is just 1 so this is not needed
 					if (!initial_candidates_reservoir.sample.is_envmap_path())
 					{
-						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal.unpack(), temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
@@ -525,7 +525,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RA
 					// If this is an envmap path the jacobian is just 1 so this is not needed
 					if (!initial_candidates_reservoir.sample.is_envmap_path())
 					{
-						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal, temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+						float jacobian = get_jacobian_determinant_reconnection_shift(initial_candidates_reservoir.sample.sample_point, initial_candidates_reservoir.sample.sample_point_geometric_normal.unpack(), temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold

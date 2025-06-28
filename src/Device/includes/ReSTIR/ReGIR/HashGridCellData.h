@@ -16,16 +16,8 @@ struct ReGIRHashCellDataSoADevice
 	static constexpr float3 UNDEFINED_NORMAL = { 0.0f, 0.0f, 0.0f };
 	static constexpr int UNDEFINED_PRIMITIVE = -1;
 
-	static constexpr unsigned int CELL_LOCKED_SENTINEL_VALUE = 0u;
-
 	// These three buffers are only allocated per each cell, not per each reservoir so they are
 	// 'number_cells' in size
-
-	// Two buffers sum points and num points that we keep to compute the average of the points
-	// that hit each cell
-	float3* sum_points = nullptr;
-	// TODO: Can we have this as an unsigned char? Maybe even less: 4 bits per cell
-	AtomicType<unsigned int>* num_points = nullptr;
 
 	AtomicType<int>* hit_primitive = nullptr;
 	float3* world_points = nullptr;
