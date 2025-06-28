@@ -483,17 +483,12 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(primary_hit);
 
 	oroStream_t stream = primary_hit ? m_secondary_stream : m_renderer->get_main_stream();
-	//oroStream_t stream = m_secondary_stream;
 	for (int i = 0; i < ReGIR_PreIntegrationIterations; i++)
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
 		launch_grid_fill_temporal_reuse(render_data, primary_hit, true, stream);
 		launch_spatial_reuse(render_data, primary_hit, true, stream);
-
-		/*void* launch_args[] = { &render_data, primary_hit ? &m_number_of_cells_alive_primary_hits : &m_number_of_cells_alive_secondary_hits, &primary_hit };
-
-		m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);*/
 	}
 
 	render_data.random_number = seed_backup;
