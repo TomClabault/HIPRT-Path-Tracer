@@ -17,16 +17,12 @@
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings,
-    int reservoir_index_in_cell, int hash_grid_cell_index, bool primary_hit,
+    int reservoir_index_in_cell, const ReGIRGridFillSurface& surface, bool primary_hit,
     Xorshift32Generator& rng)
 {
     ReGIRReservoir grid_fill_reservoir;
 
-    // TODO this has already been loaded before
     bool reservoir_is_canonical = regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell);
-    int cell_primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index, primary_hit);
-    float3 cell_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
-    float3 cell_normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index, primary_hit);
 
     for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
     {
@@ -37,13 +33,10 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
         float target_function;
         if (reservoir_is_canonical)
             // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-            // 
-            // TODO this loads the surface FOR EVERY SAMPLE but we already have it
-            target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
+            target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         else
-            // TODO this loads the surface FOR EVERY SAMPLE but we already have it
-            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
+            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         
         float mis_weight = 1.0f / regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir;
@@ -69,9 +62,9 @@ HIPRT_DEVICE void grid_fill_pre_integration_accumulation(HIPRTRenderData& render
         {
             float normalization;
             if (reservoir_is_canonical)
-                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
+                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS;
             else
-                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * ReGIR_PreIntegrationIterations;
+                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS;
             float integration_increment = hippt::max(0.0f, output_reservoir.sample.target_function * output_reservoir.UCW) / normalization;
 
             if (reservoir_is_canonical)
@@ -131,24 +124,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         Xorshift32Generator random_number_generator(seed);
         ReGIRReservoir output_reservoir;
 
-        float3 representative_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
-        float3 normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index, primary_hit);
-        float roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index, primary_hit);
-        
+        ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
+
         // TODO do we need this since we're only dispatching for alive grid cells anyways with the compaction?
         if (regir_settings.get_hash_cell_data_soa(primary_hit).grid_cell_alive[hash_grid_cell_index] == 0)
         {
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            // TODO store reservoir recomputes the hash grid cell index but we already have it
-            regir_settings.store_reservoir_opt(ReGIRReservoir(), representative_point, normal, render_data.current_camera, roughness, primary_hit, reservoir_index_in_cell);
+            regir_settings.store_reservoir_opt(ReGIRReservoir(), hash_grid_cell_index, primary_hit, reservoir_index_in_cell);
             
             return;
         }
         
         // Grid fill
-        output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, hash_grid_cell_index, primary_hit, random_number_generator);
+        output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, cell_surface, primary_hit, random_number_generator);
         
         // Normalizing the reservoir
         output_reservoir.finalize_resampling(1.0f, 1.0f);
@@ -159,7 +149,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             output_reservoir = visibility_reuse(render_data, output_reservoir, hash_grid_cell_index, random_number_generator);
 
         // TODO store reservoir recomputes the hash grid cell index but we already have it
-        regir_settings.store_reservoir_opt(output_reservoir, representative_point, normal, render_data.current_camera, roughness, primary_hit, reservoir_index_in_cell, (hash_grid_cell_index == 2382 && reservoir_index_in_cell == 0) ? 1 : 0);
+        regir_settings.store_reservoir_opt(output_reservoir, hash_grid_cell_index, primary_hit, reservoir_index_in_cell);
 
 #ifdef __KERNELCC__
         grid_fill_pre_integration_accumulation<ReGIR_GridFillSpatialReuse_AccumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);

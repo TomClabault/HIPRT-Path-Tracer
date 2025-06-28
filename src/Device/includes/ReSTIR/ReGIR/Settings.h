@@ -93,7 +93,7 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = false;
+	bool do_correlation_reduction = true;
 
 	int correlation_reduction_factor = 4;
 	int correl_frames_available = 0;
@@ -388,9 +388,17 @@ struct ReGIRSettings
 		hash_grid.store_reservoir_and_sample_opt(reservoir, get_spatial_output_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell, bool DEBUG=false)
+	/**
+	 * Overload if you already have the hash grid cell index
+	 */
+	HIPRT_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, unsigned int hash_grid_cell_index, bool primary_hit, int reservoir_index_in_cell)
 	{
-		hash_grid.store_reservoir_and_sample_opt(reservoir, get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell, DEBUG);
+		hash_grid.store_reservoir_and_sample_opt(reservoir, get_initial_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell);
+	}
+
+	HIPRT_DEVICE void store_reservoir_opt(ReGIRReservoir reservoir, float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell)
+	{
+		hash_grid.store_reservoir_and_sample_opt(reservoir, get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell);
 	}
 
 	HIPRT_DEVICE ColorRGB32F get_random_cell_color(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
@@ -519,10 +527,10 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE static void insert_hash_cell_data_static(
 		const ReGIRHashGrid& hash_grid, ReGIRHashGridSoADevice& hash_grid_to_update, ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
-		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, int primitive_index, const DeviceUnpackedEffectiveMaterial& material, unsigned int DEBUG=0)
+		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
 		unsigned int checksum;
-		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, hash_grid_to_update.m_total_number_of_cells, checksum, DEBUG);
+		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, hash_grid_to_update.m_total_number_of_cells, checksum);
 		/*if (DEBUG)
 		{
 			printf("Debug grid cell index: %u\n\n", hash_grid_cell_index);
@@ -574,9 +582,9 @@ struct ReGIRSettings
 
 	}
 
-	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, bool primary_hit, int primitive_index, const DeviceUnpackedEffectiveMaterial& material, unsigned int DEBUG=0)
+	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, bool primary_hit, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
-		ReGIRSettings::insert_hash_cell_data_static(hash_grid, get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, primitive_index, material, DEBUG);
+		ReGIRSettings::insert_hash_cell_data_static(hash_grid, get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, primitive_index, material);
 	}
 
 	bool DEBUG_INCLUDE_CANONICAL = true;

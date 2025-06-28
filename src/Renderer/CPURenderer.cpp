@@ -734,18 +734,12 @@ void CPURenderer::ReGIR_pre_integration()
         unsigned int nb_cells_alive = *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count;
         unsigned int nb_threads = nb_cells_alive;
 
-        for (int i = 0; i < ReGIR_PreIntegrationIterations; i++)
+        for (int i = 0; i < m_render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS; i++)
         {
             m_render_data.random_number = m_rng.xorshift32();
 
             ReGIR_grid_fill_pass<true>(primary_hit);
             ReGIR_spatial_reuse_pass<true>(primary_hit);
-
-#pragma omp parallel for
-            for (int thread_index = 0; thread_index < nb_threads; thread_index++)
-            {
-                ReGIR_Pre_integration(m_render_data, nb_cells_alive, primary_hit, thread_index);
-            }
         }
 
         m_render_data.random_number = seed_backup;

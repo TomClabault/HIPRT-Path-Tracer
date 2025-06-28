@@ -67,14 +67,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReGIRGridFillSurface ReGIR_get_cell_surface(const
 /**
  *	Updates the representative point and normal (and other data) of the cell at the given shading point
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material, unsigned int DEBUG=0)
+HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material)
 {
 	if (DirectLightSamplingBaseStrategy != LSS_BASE_REGIR)
 		return;
 	else if (primitive_index == -1)
 		return;
 
-	render_data.render_settings.regir_settings.insert_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, shading_normal, current_camera, primary_hit, primitive_index, material, DEBUG);
+	render_data.render_settings.regir_settings.insert_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, shading_normal, current_camera, primary_hit, primitive_index, material);
 }
 
 #endif

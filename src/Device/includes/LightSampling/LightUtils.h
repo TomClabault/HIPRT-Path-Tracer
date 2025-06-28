@@ -185,8 +185,9 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_trian
     float3 normal = hippt::cross(AB, AC);
 
     float length_normal = hippt::length(normal);
-    if (length_normal <= 1.0e-6f)
-        return false;
+    // TODO the normal length check used to be for some NaNs that occured on degenerate triangles but doesn't seem to happen anymore
+    /*if (length_normal <= 1.0e-6f)
+        return false;*/
 
     float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
     out_sample_point = random_point_on_triangle;
@@ -312,7 +313,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
     if (render_data.render_settings.DEBUG_CORRELATE_LIGHTS)
         random_emissive_triangle_index = hippt::warp_shfl(random_emissive_triangle_index, first_active_thread_index_subgroup, render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE);
     
-    // random_emissive_triangle_index = 837;
     int triangle_index = render_data.buffers.emissive_triangles_indices[random_emissive_triangle_index];
 
     float sampled_triangle_area;

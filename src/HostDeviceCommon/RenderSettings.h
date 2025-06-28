@@ -40,6 +40,9 @@ struct HIPRTRenderSettings
 	float DEBUG_GMON_DIVIDER = 3.0f;
 	int DEBUG_GMON_WINDOW_SIZE = 3;
 
+	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS = 1;
+	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
+
 	bool DEBUG_QUICK_ALIAS_TABLE = false;
 	bool DEBUG_CORRELATE_LIGHTS = false;
 
@@ -100,7 +103,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 5;
+	int nb_bounces = 0;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?

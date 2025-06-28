@@ -268,8 +268,6 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
 
-	// launch_pre_integration(render_data);
-
 	// This needs to be called before the rehash because the
 	// rehash needs the updated number of cells alive to function
 	update_all_cell_alive_count();
@@ -448,7 +446,9 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 	// --------------- Record the start of the overall pre integration process
 
 
-
+	unsigned int backup = render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir;
+	render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
+	render_data.render_settings.regir_settings.grid_fill_secondary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
 
 	// Important to launch the pre integration for the secondary hits first
 	// so that we can then 
@@ -474,6 +474,9 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_stop, m_renderer->get_main_stream()));
 	// --------------- Record the end of the overall pre integration process
 
+	render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir = backup;
+	render_data.render_settings.regir_settings.grid_fill_secondary_hits.light_sample_count_per_cell_reservoir = backup;
+
 	m_pre_integration_executed = true;
 }
 
@@ -488,7 +491,7 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 
 	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(primary_hit);
 
-	for (int i = 0; i < ReGIR_PreIntegrationIterations; i++)
+	for (int i = 0; i < render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS; i++)
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 

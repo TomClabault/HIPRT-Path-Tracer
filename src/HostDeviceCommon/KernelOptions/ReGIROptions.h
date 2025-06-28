@@ -13,6 +13,7 @@
 #define REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION 2
 #define REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION 3
 #define REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS 4
+#define REGIR_DEBUG_PRE_INTEGRATION_CHECK 5
 
  // This block is a security to make sure that we have everything defined otherwise this can lead
  // to weird behavior because of the compiler not knowing about some macros
@@ -30,8 +31,6 @@
  * The lower the downscale, the more effective the prepoluation but also the more costly
  */
 #define ReGIR_GridPrepopulationResolutionDownscale 2
-
-#define ReGIR_PreIntegrationIterations 32
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
