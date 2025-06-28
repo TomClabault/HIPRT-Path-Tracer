@@ -26,10 +26,8 @@ struct ReSTIRGISample
 
     int sample_point_primitive_index = -1;
 
-    // TOOD Pack this in RGBE
     RGBE9995Packed incoming_radiance_to_visible_point;
 
-    // float3 incident_light_direction_at_sample_point;
     BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 
     // TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?

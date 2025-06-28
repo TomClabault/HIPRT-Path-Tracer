@@ -93,7 +93,7 @@
 * 
 *		Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
 */
-#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO
+#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 
 /**
  * How many bits to use for the directional reuse masks

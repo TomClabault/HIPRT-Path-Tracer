@@ -466,79 +466,25 @@ struct ReGIRSettings
 		// TODO is this atomic needed since we can only be here if the cell was unoccupied?
 		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.hit_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
 		{
-			// Insert the hash cell reprensentative data
 			hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
 			hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
 			hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness * 255.0f;
 			hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic * 255.0f;
 			hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular * 255.0f;
+		}
 
-			hash_cell_data_to_update.sum_points[hash_grid_cell_index] = world_position;
-			hash_cell_data_to_update.num_points[hash_grid_cell_index] = 1;
+		// Because we just inserted into that grid cell, it is now alive
+		// Only go through all that atomic stuff if the cell isn't alive
+		if (hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index] == 0)
+		{
+			// TODO is this atomic needed since we can only be here if the cell was unoccoupied?
 
-			// Flagging that cell as alive
-			// Because we just inserted into that grid cell, it is now alive
 			if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index], 0u, 1u) == 0u)
 			{
 				unsigned int cell_alive_index = hippt::atomic_fetch_add(hash_cell_data_to_update.grid_cells_alive_count, 1u);
 
 				hash_cell_data_to_update.grid_cells_alive_list[cell_alive_index] = hash_grid_cell_index;
 			}
-		}
-	}
-
-	HIPRT_DEVICE static void update_hash_cell_representative_data(ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
-		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
-	{
-		unsigned int current_num_points = hash_cell_data_to_update.num_points[hash_grid_cell_index];
-
-		if (current_num_points >= 255)
-			// We've already accumulated enough points for that grid cell, not doing more to save on perf
-			return;
-		
-		// We're going to add our point to the sum of points for that grid cell.
-		// 
-		// We need to do that atomically in case many threads want to add to the same grid cell at the same time
-		// so we're going to lock that grid cell by setting the existing distance to CELL_LOCKED_DISTANCE, indicating that a thread is already
-		// incrementing the sum of points for that grid cell
-
-		unsigned int previous_num_points = hippt::atomic_compare_exchange(&hash_cell_data_to_update.num_points[hash_grid_cell_index], current_num_points, ReGIRHashCellDataSoADevice::CELL_LOCKED_SENTINEL_VALUE);
-
-		if (previous_num_points == current_num_points && previous_num_points != ReGIRHashCellDataSoADevice::CELL_LOCKED_SENTINEL_VALUE)
-		{
-			// We have access to the cell if the value of the distance wasn't ReGIRHashCellDataSoADevice::CELL_LOCKED_DISTANCE
-			// and if we are the one thread that swapped its value with the distance (previous_distance == existing_distance)
-
-			// We can increment everything atomically here
-
-			float3 current_sum_points = hash_cell_data_to_update.sum_points[hash_grid_cell_index];
-			// Adding our point
-			current_sum_points += world_position;
-
-			// Computing the average of the points that have been added to that grid cell so far
-			float3 average_cell_point = current_sum_points / (current_num_points + 1);
-
-			float existing_distance = hippt::length(hash_cell_data_to_update.world_points[hash_grid_cell_index] - average_cell_point);
-			float new_distance_to_average_point = hippt::length(world_position - average_cell_point);
-
-			if (new_distance_to_average_point < existing_distance)
-			{
-				// If our point is closer to the center of the cell (approximated by the average of all hit points in the cell)
-				// than the existing point, then our current hit (world pos, normal, primitive, ...) becomes the new
-				// representative hit for that grid cell
-
-				hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
-				hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
-				hash_cell_data_to_update.hit_primitive[hash_grid_cell_index] = primitive_index;
-				hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness * 255.0f;
-				hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic * 255.0f;
-				hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular * 255.0f;
-			}
-
-			// Writing back the new sum of points
-			hash_cell_data_to_update.sum_points[hash_grid_cell_index] = current_sum_points;
-			// Incrementing the number of points
-			hash_cell_data_to_update.num_points[hash_grid_cell_index] = current_num_points + 1;
 		}
 	}
 
@@ -574,13 +520,6 @@ struct ReGIRSettings
 
 					insert_hash_cell_point_normal(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
 				}
-			}
-			else
-			{
-				// We're trying to insert in a cell that has the same hash as us so we're going to update
-				// that cell with our data
-				if (hash_grid.DEBUG_DO_CELL_UPDATE)
-					update_hash_cell_representative_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
 			}
 		}
 		else

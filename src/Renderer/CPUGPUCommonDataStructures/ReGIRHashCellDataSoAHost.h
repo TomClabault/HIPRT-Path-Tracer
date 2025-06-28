@@ -15,8 +15,6 @@
 
 template <template <typename> typename DataContainer>
 using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer, 
-	float3, // sum points
-	GenericAtomicType<unsigned int, DataContainer>, // num points
 	GenericAtomicType<int, DataContainer>,  // primitive index
 	float3, // world points
 	Octahedral24BitNormalPadded32b,  // world normals
@@ -30,9 +28,6 @@ using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
 
 enum ReGIRHashCellDataSoAHostBuffers
 {
-	REGIR_HASH_CELL_SUM_POINTS,
-	REGIR_HASH_CELL_NUM_POINTS,
-
 	REGIR_HASH_CELL_PRIM_INDEX,
 	REGIR_HASH_CELL_POINTS,
 	REGIR_HASH_CELL_NORMALS,
@@ -82,9 +77,6 @@ struct ReGIRHashCellDataSoAHost
 	ReGIRHashCellDataSoADevice to_device()
 	{
 		ReGIRHashCellDataSoADevice hash_cell_data;
-
-		hash_cell_data.sum_points = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_SUM_POINTS>();
-		hash_cell_data.num_points = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_NUM_POINTS>();
 
 		hash_cell_data.hit_primitive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>();
 		hash_cell_data.world_points = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_POINTS>();

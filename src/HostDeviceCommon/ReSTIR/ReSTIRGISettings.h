@@ -48,7 +48,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 {
 	HIPRT_HOST_DEVICE ReSTIRGISettings() 
 	{
-		common_temporal_pass.do_temporal_reuse_pass = false;
+		common_temporal_pass.do_temporal_reuse_pass = true;
 		
 		common_temporal_pass.use_permutation_sampling = false;
 		common_temporal_pass.permutation_sampling_random_bits = 42;
@@ -109,7 +109,8 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		use_neighbor_sample_point_roughness_heuristic = true;
 		neighbor_sample_point_roughness_threshold = 0.1f;
 
-		m_cap = 3;
+		// Very very small m-cap to avoid correlations
+		m_cap = 1;
 		use_confidence_weights = true;
 
 		debug_view = ReSTIRGIDebugView::NO_DEBUG;
