@@ -171,7 +171,7 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 			get_initial_grid_buffers(primary_hit) = std::move(new_hash_grid_soa);
 			if (regir_settings.spatial_reuse.do_spatial_reuse)
 				get_spatial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
-			if (regir_settings.supersampling.do_correlation_reduction)
+			if (regir_settings.supersampling.do_correlation_reduction && primary_hit)
 			{
 				m_supersample_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.supersampling.correlation_reduction_factor);
 
