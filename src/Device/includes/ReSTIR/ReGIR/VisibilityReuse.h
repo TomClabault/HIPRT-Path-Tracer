@@ -13,25 +13,16 @@
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE ReGIRReservoir visibility_reuse(const HIPRTRenderData& render_data, const ReGIRReservoir& current_reservoir,
-    int hash_grid_cell_index, Xorshift32Generator& rng)
+    const ReGIRGridFillSurface& cell_surface, Xorshift32Generator& rng)
 {
     ReGIRReservoir out_reservoir = current_reservoir;
 
 #if ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE
     if (current_reservoir.UCW > 0.0f)
     {
-		/*Xorshift32Generator rng_point_on_triangle(current_reservoir.sample.random_seed);
-
-        float3 point_on_light;
-		float3 light_normal_trash;
-		float triangle_area_trash;
-        sample_point_on_generic_triangle(current_reservoir.sample.emissive_triangle_index,
-            render_data.buffers.vertices_positions, render_data.buffers.triangles_indices, rng_point_on_triangle,
-            point_on_light, light_normal_trash, triangle_area_trash);*/
-
         float3 point_on_light = current_reservoir.sample.point_on_light;
 
-        if (!ReGIR_grid_cell_visibility_test(render_data, hash_grid_cell_index, point_on_light, rng))
+        if (!ReGIR_grid_cell_visibility_test(render_data, cell_surface.cell_point, cell_surface.cell_primitive_index, point_on_light, rng))
             out_reservoir.UCW = ReGIRReservoir::VISIBILITY_REUSE_KILLED_UCW;
     }
 #endif
