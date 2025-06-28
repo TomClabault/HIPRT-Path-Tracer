@@ -63,8 +63,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
 
 #ifndef OROCHI_ENABLE_CUEW
-	/*compiler_options.push_back("-g");
-	compiler_options.push_back("-ggdb");*/
+	compiler_options.push_back("-g");
+	compiler_options.push_back("-ggdb");
 #endif
 	
 	// enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
