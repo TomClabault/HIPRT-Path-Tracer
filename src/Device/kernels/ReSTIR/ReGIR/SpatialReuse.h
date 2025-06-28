@@ -57,6 +57,7 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
 }
 
 HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
+    ReGIRHashGridSoADevice& input_reservoirs,
     int reservoir_index_in_cell, int hash_grid_cell_index, 
     bool primary_hit, float3 center_cell_point, float3 center_cell_normal, float center_cell_roughness,
     Xorshift32Generator& spatial_neighbor_rng, Xorshift32Generator& random_number_generator)
@@ -104,7 +105,7 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             ReGIRReservoir neighbor_reservoir;
             // Reading from the output of the grid fill buffer
 			// TODO the point, normal and roughness here are only to get the grid cell idnex but already have the grid cell index so we need an overload of this function that doesn't take these parameters
-            neighbor_reservoir = regir_settings.get_grid_fill_output_reservoir_opt(neighbor_cell_point, neighbor_cell_normal, render_data.current_camera, neighbor_cell_roughness, primary_hit, random_reservoir_index_in_cell);
+            neighbor_reservoir = regir_settings.get_reservoir_from_grid_cell_index(input_reservoirs, neighbor_hash_grid_cell_index_in_grid, random_reservoir_index_in_cell);
 
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
@@ -118,11 +119,6 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             float3 light_source_normal = get_triangle_normal_not_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_index);
             float light_source_area = hippt::length(light_source_normal) * 0.5f;
             light_source_normal /= light_source_area * 2.0f;
-            // Xorshift32Generator rng_point_on_triangle(neighbor_reservoir.sample.random_seed);
-
-            /*if (!sample_point_on_generic_triangle(neighbor_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
-                rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))
-                continue;*/
 
             if (regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
             {
@@ -227,20 +223,25 @@ HIPRT_DEVICE HIPRT_INLINE void spatial_reuse_pre_integration_accumulation(HIPRTR
 {
     if constexpr (accumulatePreIntegration)
     {
-        ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+        if (render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_index == render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_count - 1)
+        {
+			// Only accumulating pre-integration factors on the last spatial reuse pass
 
-        // Only doing the pre integration on the first sample of the frame
-        float normalization;
-        if (reservoir_is_canonical)
-            normalization = regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS;
-        else
-            normalization = regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS;
-        float integration_increment = hippt::max(0.0f, output_reservoir.sample.target_function * output_reservoir.UCW) / normalization;
+            ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-        if (reservoir_is_canonical)
-            hippt::atomic_fetch_add(&regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
-        else
-            hippt::atomic_fetch_add(&regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
+            // Only doing the pre integration on the first sample of the frame
+            float normalization;
+            if (reservoir_is_canonical)
+                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS;
+            else
+                normalization = regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS;
+            float integration_increment = hippt::max(0.0f, output_reservoir.sample.target_function * output_reservoir.UCW) / normalization;
+
+            if (reservoir_is_canonical)
+                hippt::atomic_fetch_add(&regir_settings.get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
+            else
+                hippt::atomic_fetch_add(&regir_settings.get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index], integration_increment);
+        }
     }
 }
 
@@ -250,10 +251,14 @@ HIPRT_DEVICE HIPRT_INLINE void spatial_reuse_pre_integration_accumulation(HIPRTR
   * Each cell reuses from random cells adjacent to it
   */
  #ifdef __KERNELCC__
- GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Spatial_Reuse(HIPRTRenderData render_data, unsigned int number_of_cells_alive, bool primary_hit)
+ GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Spatial_Reuse(HIPRTRenderData render_data, 
+     ReGIRHashGridSoADevice input_reservoirs_grid, ReGIRHashGridSoADevice output_reservoirs_grid, ReGIRHashCellDataSoADevice output_reservoirs_hash_cell_data,
+     unsigned int number_of_cells_alive, bool primary_hit)
  #else
 template <bool accumulatePreIntegration>
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data, int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data, 
+	ReGIRHashGridSoADevice input_reservoirs_grid, ReGIRHashGridSoADevice output_reservoirs_grid, ReGIRHashCellDataSoADevice output_reservoirs_hash_cell_data,
+    int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
  #endif
  {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -314,7 +319,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
             spatial_neighbor_rng_seed = wang_hash(seed);
 
         Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
-        ReGIRReservoir output_reservoir = spatial_reuse(render_data, reservoir_index_in_cell, hash_grid_cell_index, primary_hit, center_cell_point, center_cell_normal, center_cell_roughness, spatial_neighbor_rng, random_number_generator);
+        ReGIRReservoir output_reservoir = spatial_reuse(render_data, render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), reservoir_index_in_cell, hash_grid_cell_index, primary_hit, center_cell_point, center_cell_normal, center_cell_roughness, spatial_neighbor_rng, random_number_generator);
 
         spatial_neighbor_rng.m_state.seed = spatial_neighbor_rng_seed;
 
@@ -326,7 +331,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
         // Normalizing the reservoirs to 1
         output_reservoir.finalize_resampling(1.0f, valid_neighbor_count);
 
-        regir_settings.store_spatial_reservoir_opt(output_reservoir, center_cell_point, center_cell_normal, render_data.current_camera, center_cell_roughness, primary_hit, reservoir_index_in_cell);
+        regir_settings.store_spatial_reservoir_opt(output_reservoirs_grid, output_reservoirs_hash_cell_data, output_reservoir, center_cell_point, center_cell_normal, render_data.current_camera, center_cell_roughness, reservoir_index_in_cell);
 
 #ifdef __KERNELCC__
         spatial_reuse_pre_integration_accumulation<ReGIR_GridFillSpatialReuse_AccumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);

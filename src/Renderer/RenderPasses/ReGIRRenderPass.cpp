@@ -9,8 +9,8 @@
 #include "UI/RenderWindow.h"
 
 const std::string ReGIRRenderPass::REGIR_GRID_PRE_POPULATE = "ReGIR Pre-population";
-const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID = "ReGIR Grid fill & temp. reuse 1st hits";
-const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID = "ReGIR Grid fill & temp. reuse 2nd hits";
+const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID = "ReGIR Grid fill 1st hits";
+const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID = "ReGIR Grid fill 2nd hits";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID = "ReGIR Spatial reuse 1st hits";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID = "ReGIR Spatial reuse 2nd hits";
 const std::string ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration";
@@ -382,24 +382,36 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data, bool pr
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		return;
 
+	ReGIRHashGridSoADevice input_reservoirs = render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit);
+	ReGIRHashGridSoADevice output_reservoirs = render_data.render_settings.regir_settings.get_spatial_output_reservoirs_grid(primary_hit);
+	ReGIRHashCellDataSoADevice output_reservoirs_cell_data = render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit);
+	
 	unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
-
-	void* launch_args[] = { &render_data, &number_of_cells_alive, &primary_hit };
-
-	// Same reason for nb_threads here as explained in the GridFill kernel launch
-	unsigned int nb_threads = hippt::min(number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
-
-	if (for_pre_integration)
+	
+	for (int i = 0; i < render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_count; i++)
 	{
-		m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
-	}
-	else
-	{
-		if (primary_hit)
-			m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
+		render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_index = i;
+
+		void* launch_args[] = { &render_data, &input_reservoirs, &output_reservoirs, &output_reservoirs_cell_data, &number_of_cells_alive, &primary_hit };
+
+		// Same reason for nb_threads here as explained in the GridFill kernel launch
+		unsigned int nb_threads = hippt::min(number_of_cells_alive * reservoirs_per_cell, (unsigned int)(render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y));
+
+		if (for_pre_integration)
+		{
+			m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
+		}
 		else
-			m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
+		{
+			if (primary_hit)
+				m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
+			else
+				m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
+		}
+
+		// Swapping the input and output for the next spatial reuse apss (if any)
+		std::swap(input_reservoirs, output_reservoirs);
 	}
 }
 
