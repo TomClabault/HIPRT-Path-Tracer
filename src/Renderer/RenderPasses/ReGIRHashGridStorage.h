@@ -17,8 +17,8 @@ class ReGIRRenderPass;
 class ReGIRHashGridStorage
 {
 public:
-	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS = 50;
-	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS = 100;
+	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS = 2500;
+	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS = 10000;
 
 	void set_regir_render_pass(ReGIRRenderPass* regir_render_pass);
 

@@ -428,7 +428,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
  * 
  * Also, if a hit was found, outputs the emission of the material at the hit point in 'out_hit_emission'
  */
-HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, BSDFLightSampleRayHitInfo& out_light_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)

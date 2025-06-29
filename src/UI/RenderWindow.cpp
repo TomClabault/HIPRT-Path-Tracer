@@ -37,6 +37,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
+// - We shouldn't shoot a shadow ray in the light evaluation if the BSDF sample was chosen because this already has visibility
 // - Can we do something for restir that has a hash grid for the first hits of the rays and then for spatial reuse, each pixel looks up its cell and reuse paths from the same cell (and thus same geometry if we include the normals in the hash grid). This would basically be a more accurate version of the directional spatial reuse
 //		- One issue that we're going to have is: for a given pixel, we can compute it hash cell but then how do we know which other reservoirs (neighbors) are in the same hash cell?
 //			- Fix that by: counting how different hash cell the primary hits create
@@ -179,6 +180,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
+// - Thread is swizzling (reorder ray invocations) https://github.com/BoyBaykiller/IDKEngine/blob/95a15c1db02f11bd2f47bb81bcfccf0943d3e703/IDKEngine/Resource/Shaders/PathTracing/FirstHit/compute.glsl#L206
 // - Option for terminating rays on emissive hits? --> this is going to be biased but may help performance
 // - Have a look at reweghing fireflies for Monte Carlo instead of Gmon so we can remove fireflies unbiasedly without the darkening
 // - There seems be some scratch store on the RNG state? Try to offload that to shared mem?

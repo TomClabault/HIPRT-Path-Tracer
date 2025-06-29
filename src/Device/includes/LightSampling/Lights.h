@@ -95,7 +95,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderDat
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
     bool intersection_found = false;
-    ShadowLightRayHitInfo shadow_light_ray_hit_info;
+    BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
     ColorRGB32F bsdf_radiance = ColorRGB32F(0.0f);
     if (bsdf_sample_pdf > 0.0f)
     {
@@ -103,7 +103,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderDat
         new_ray.origin = closest_hit_info.inter_point;
         new_ray.direction = sampled_bsdf_direction;
 
-        intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+        intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
@@ -202,14 +202,14 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& rend
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
     bool intersection_found = false;
-    ShadowLightRayHitInfo shadow_light_ray_hit_info;
+    BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
     if (bsdf_sample_pdf > 0.0f)
     {
         hiprtRay new_ray;
         new_ray.origin = bsdf_shadow_ray_origin;
         new_ray.direction = sampled_bsdf_direction;
 
-        intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+        intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
