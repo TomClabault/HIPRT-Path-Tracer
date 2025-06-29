@@ -24,7 +24,8 @@ struct NEEPlusPlusCPUData
 	std::vector<AtomicType<unsigned int>> checksum_buffer;
 
 	AtomicType<unsigned long long int> total_shadow_ray_queries;
-	AtomicType<unsigned long long  int> shadow_rays_actually_traced;
+	AtomicType<unsigned long long int> shadow_rays_actually_traced;
+	AtomicType<unsigned int> total_cell_alive_count;
 };
 
 #endif
