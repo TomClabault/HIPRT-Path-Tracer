@@ -12,7 +12,7 @@
 
 struct MISBSDFRayReuse
 {
-	HIPRT_HOST_DEVICE void fill(ShadowLightRayHitInfo& shadow_light_ray,
+	HIPRT_HOST_DEVICE void fill(BSDFLightSampleRayHitInfo& shadow_light_ray,
 		float3 inter_point, float3 bsdf_sampled_direction, ColorRGB32F& bsdf_color, float bsdf_pdf,
 		RayState next_ray_state, BSDFIncidentLightInfo incident_light_info)
 	{

@@ -198,14 +198,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         bool hit_found = false;
         float cosine_at_evaluated_point = 0.0f;
         RISSample bsdf_RIS_sample;
-        ShadowLightRayHitInfo shadow_light_ray_hit_info;
+        BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
         if (bsdf_sample_pdf > 0.0f)
         {
             hiprtRay bsdf_ray;
             bsdf_ray.origin = closest_hit_info.inter_point;
             bsdf_ray.direction = sampled_bsdf_direction;
 
-            hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+            hit_found = evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
             if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
             {
                 // If we intersected an emissive material, compute the weight. 

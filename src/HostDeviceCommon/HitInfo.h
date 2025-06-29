@@ -26,11 +26,11 @@ struct HitInfo
 /**
  * Information returned by a shadow ray cast from a BSDF sample. 
  *
- * This structure is filled by the 'evaluate_shadow_light_ray()' 
+ * This structure is filled by the 'evaluate_bsdf_light_sample_ray()' 
  * function that is usually called for testing if a BSDF ray 
  * (used by MIS) sees some emissive geometry or not.
  */
-struct ShadowLightRayHitInfo
+struct BSDFLightSampleRayHitInfo
 {
     // TODO do we use this only for the area of the light? In which case we can just store the area of the light
     int hit_prim_index;
