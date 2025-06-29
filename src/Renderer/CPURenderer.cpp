@@ -41,7 +41,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -55,8 +55,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 335
-#define DEBUG_PIXEL_Y 483
+#define DEBUG_PIXEL_X 1090
+#define DEBUG_PIXEL_Y 502
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -213,6 +213,7 @@ void CPURenderer::setup_nee_plus_plus()
 
     m_render_data.nee_plus_plus.m_total_shadow_ray_queries = &m_nee_plus_plus.total_shadow_ray_queries;
     m_render_data.nee_plus_plus.m_shadow_rays_actually_traced = &m_nee_plus_plus.shadow_rays_actually_traced;
+    m_render_data.nee_plus_plus.m_total_cells_alive_count = &m_nee_plus_plus.total_cell_alive_count;
 #endif
 }
 
@@ -716,14 +717,24 @@ void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
     if (!m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
         return;
 
-#pragma omp parallel for
-    for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit); index++)
+    ReGIRHashGridSoADevice input_reservoirs = m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit);
+    ReGIRHashGridSoADevice output_reservoirs = m_render_data.render_settings.regir_settings.get_spatial_output_reservoirs_grid(primary_hit);
+
+    for (int i = 0; i < m_render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_count; i++)
     {
-        ReGIR_Spatial_Reuse<accumulatePreIntegration>(m_render_data,
-			m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit),
-			m_render_data.render_settings.regir_settings.get_spatial_output_reservoirs_grid(primary_hit),
-			m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit),
-            index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
+        m_render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_index = i;
+
+#pragma omp parallel for
+        for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit); index++)
+        {
+            ReGIR_Spatial_Reuse<accumulatePreIntegration>(m_render_data,
+                input_reservoirs,
+                output_reservoirs,
+                m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit),
+                index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
+        }
+         
+        std::swap(input_reservoirs, output_reservoirs);
     }
 }
 
@@ -1016,11 +1027,6 @@ void CPURenderer::launch_ReSTIR_DI_spatiotemporal_reuse_pass()
 
 void CPURenderer::tracing_pass()
 {
-    auto vec = m_regir_state.grid_buffer_primary_hit.reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>();
-    for (int i = 2382 * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true); i < 2382 * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) + m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true); i++)
-        std::cout << vec[i] << " ";
-    std::cout << std::endl;
-
     m_render_data.random_number = m_rng.xorshift32();
 
     debug_render_pass([this](int x, int y) {

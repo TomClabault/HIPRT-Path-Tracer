@@ -102,7 +102,7 @@
  * the outside. There will thus be no visual difference but a non negligeable boost in 
  * performance/sampling quality as backfacing lights will not be sampled anymore (depending on the sampling strategy)
  */
-#define DirectLightSamplingAllowBackfacingLights KERNEL_OPTION_FALSE
+#define DirectLightSamplingAllowBackfacingLights KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 

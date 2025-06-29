@@ -824,6 +824,12 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                     light_sample, random_number_generator);
 
+                static int counter = 0;
+                if (hippt::thread_idx_y() == render_data.render_settings.render_resolution.y - 1 - 492 && hippt::thread_idx_x() >= 1045 && hippt::thread_idx_x() <= 1140 && counter++ <= 1 && incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE)
+                {
+                    printf("BSDF MIS weight: %f\n", mis_weight);
+                }
+
                 float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
                     ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility, false>(render_data,
                         shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index,
@@ -1269,7 +1275,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         {
             unsigned int neighbor_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<false>(
                 shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
-                render_data.render_settings.regir_settings.shading.do_cell_jittering,
+                render_data.render_settings.regir_settings.shading.get_do_cell_jittering(ray_payload.bounce == 0),
                 render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
             if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
                 // Couldn't find a valid neighbor
@@ -1472,7 +1478,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 neighbor_cell_index = render_data.render_settings.regir_settings.get_neighbor_replay_hash_grid_cell_index_for_shading(
                     shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
                     is_canonical,
-                    is_canonical ? false : render_data.render_settings.regir_settings.shading.do_cell_jittering,
+                    render_data.render_settings.regir_settings.shading.get_do_cell_jittering(ray_payload.bounce == 0),
                     render_data.render_settings.regir_settings.shading.jittering_radius,
                     neighbor_rng);
             }
