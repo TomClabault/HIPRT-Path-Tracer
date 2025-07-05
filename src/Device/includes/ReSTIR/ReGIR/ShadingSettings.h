@@ -13,7 +13,7 @@ struct ReGIRShadingSettings
 		return primary_hit ? do_cell_jittering_first_hits : do_cell_jittering_secondary_hits;
 	}
 
-	int number_of_neighbors = 4;
+	int number_of_neighbors = 1;
 	// At path tracing time, how many reservoirs of the grid cell of the point we're trying to shade
 	// are going to be resampled (with the BRDF term) to produce the final light sample used for NEE
 	int reservoir_tap_count_per_neighbor = 1;
