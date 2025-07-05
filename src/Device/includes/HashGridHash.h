@@ -79,7 +79,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int hash_quantize_normal(float3 normal, 
 }
 
  /**
- * Reference: [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
+ * Reference: [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
  */
 HIPRT_DEVICE HIPRT_INLINE float compute_adaptive_cell_size(float3 world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size)
 {
@@ -115,7 +115,7 @@ HIPRT_DEVICE HIPRT_INLINE unsigned int hash_pos_distance_to_camera(unsigned int 
     unsigned int grid_coord_y = static_cast<int>(floorf(world_position.y / cell_size));
     unsigned int grid_coord_z = static_cast<int>(floorf(world_position.z / cell_size));
 
-    // Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
+    // Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
     out_checksum = h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x))));
     
     unsigned int cell_hash = h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x)))) % total_number_of_cells;
@@ -148,7 +148,7 @@ HIPRT_DEVICE HIPRT_INLINE unsigned int hash_double_position_camera(unsigned int 
     unsigned int grid_coord_y_2 = static_cast<int>(floorf(world_position_2.y / cell_size_2));
     unsigned int grid_coord_z_2 = static_cast<int>(floorf(world_position_2.z / cell_size_2));
 
-    // Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
+    // Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
     unsigned int hash_1 = h2_xxhash32(cell_size_1 + h2_xxhash32(grid_coord_z_1 + h2_xxhash32(grid_coord_y_1 + h2_xxhash32(grid_coord_x_1))));
     unsigned int hash_2 = h2_xxhash32(cell_size_2 + h2_xxhash32(grid_coord_z_2 + h2_xxhash32(grid_coord_y_2 + h2_xxhash32(grid_coord_x_2))));
     out_checksum = h2_xxhash32(hash_1 ^ hash_2);

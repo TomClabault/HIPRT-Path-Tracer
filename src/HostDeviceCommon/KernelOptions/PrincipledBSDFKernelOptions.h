@@ -105,9 +105,8 @@
 #define PrincipledBSDFDoEnergyCompensation KERNEL_OPTION_TRUE
 
 /**
- * If KERNEL_OPTION_TRUE, on-the-fly monte carlo integration of the clearcoat lobe
- * directional albedo will be performed to ensure energy conservation & preservation
- * of a material with a clearcoat lobe
+ * If KERNEL_OPTION_TRUE, on-the-fly monte carlo integration of the full BSDF directional 
+ * albedo will be performed to ensure perfect energy conservation & preservation
  */
 #define PrincipledBSDFEnforceStrongEnergyConservation KERNEL_OPTION_FALSE
 
@@ -164,7 +163,7 @@
  * below isn't reached by that light that is reflected by the specular layer), it is the specular layer
  * that will be sampled more often.
  */
-#define PrincipledBSDFSampleGlossyBasedOnFresnel KERNEL_OPTION_TRUE
+#define PrincipledBSDFSampleGlossyBasedOnFresnel KERNEL_OPTION_FALSE
 
 /**
  * Same PrincipledBSDFSampleGlossyBasedOnFresnel but for the coat layer

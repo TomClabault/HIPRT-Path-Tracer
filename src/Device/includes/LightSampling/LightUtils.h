@@ -418,7 +418,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
     hiprtRay shadow_ray;
     shadow_ray.origin = shading_point;
     shadow_ray.direction = to_light_direction;
-    // bsdf_pdf *= !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
+    // bsdf_pdf *= !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
 
     float area_measure_bsdf_pdf = solid_angle_to_area_pdf(bsdf_pdf, distance_to_light, compute_cosine_term_at_light_source(light_source_normal, -to_light_direction));
 
@@ -452,49 +452,6 @@ struct ReGIRPairwiseMIS
         return 1.0f / number_of_samples;
     }
 
-    /*HIPRT_DEVICE float compute_MIS_weight_for_BSDF_sample(const HIPRTRenderData& render_data,
-		const ReGIRGridFillSurface& center_grid_cell_surface,
-        float bsdf_pdf_area_measure,
-        float mis_weight_normalization,
-
-        float non_canonical_RIS_integral_center_grid_cell, float canonical_RIS_integral_center_grid_cell,
-
-		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, int last_hit_primitive_index,
-        BSDFIncidentLightInfo incident_light_info,
-
-        const LightSampleInformation& light_sample,
-        Xorshift32Generator& random_number_generator)
-    {
-        float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, non_canonical_RIS_integral_center_grid_cell, light_sample.point_on_light, light_sample.light_source_normal, light_sample.emission, random_number_generator);
-        float canonical_sample_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, canonical_RIS_integral_center_grid_cell, light_sample.point_on_light, light_sample.light_source_normal, light_sample.emission, random_number_generator);
-
-        float mis_weight = mis_weight_normalization * (bsdf_pdf_area_measure / (bsdf_pdf_area_measure + non_canonical_PDF * mis_weight_normalization + canonical_sample_PDF * mis_weight_normalization));
-
-        return mis_weight;
-    }*/
-
-    /*HIPRT_DEVICE void sum_BSDF_sample_to_canonical_weights(const HIPRTRenderData& render_data, 
-        const ReGIRReservoir& canonical_technique_1_reservoir, const ReGIRReservoir& canonical_technique_2_reservoir,
-        float3 canonical_technique_3_point_on_light, float3 canonical_technique_3_light_normal, ColorRGB32F canonical_technique_3_emission,
-
-        float canonical_technique_1_canonical_reservoir_1_pdf, float canonical_technique_1_canonical_reservoir_2_pdf, float canonical_technique_1_canonical_reservoir_3_pdf,
-        float canonical_technique_2_canonical_reservoir_1_pdf, float canonical_technique_2_canonical_reservoir_2_pdf, float canonical_technique_2_canonical_reservoir_3_pdf,
-        float canonical_technique_3_canonical_reservoir_1_pdf, float canonical_technique_3_canonical_reservoir_2_pdf, float canonical_technique_3_canonical_reservoir_3_pdf,
-        float mis_weight_normalization,
-
-        float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, BSDFIncidentLightInfo incident_light_info, RayPayload& ray_payload, int last_hit_primitive_index,
-        Xorshift32Generator& random_number_generator)
-    {
-        float BSDF_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_1_reservoir, view_direction, shading_point, shading_normal, geometric_normal, incident_light_info, ray_payload, last_hit_primitive_index, random_number_generator);
-        m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (BSDF_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_1_canonical_reservoir_3_pdf * mis_weight_normalization);
-
-        float BSDF_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_2_reservoir, view_direction, shading_point, shading_normal, geometric_normal, incident_light_info, ray_payload, last_hit_primitive_index, random_number_generator);
-        m_sum_canonical_weight_2 += canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization / (BSDF_technique_canonical_reservoir_2_pdf + canonical_technique_1_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_3_pdf * mis_weight_normalization);
-
-        float BSDF_technique_canonical_reservoir_3_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_3_point_on_light, canonical_technique_3_light_normal, canonical_technique_3_emission, view_direction, shading_point, shading_normal, geometric_normal, incident_light_info, ray_payload, last_hit_primitive_index, random_number_generator);
-        m_sum_canonical_weight_3 += canonical_technique_3_canonical_reservoir_3_pdf * mis_weight_normalization / (BSDF_technique_canonical_reservoir_3_pdf + canonical_technique_1_canonical_reservoir_3_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_3_pdf * mis_weight_normalization + canonical_technique_3_canonical_reservoir_3_pdf * mis_weight_normalization);
-    }*/
-
     HIPRT_DEVICE void sum_non_canonical_sample_to_canonical_weights(const HIPRTRenderData& render_data, 
         const ReGIRReservoir& canonical_technique_1_reservoir, const ReGIRReservoir& canonical_technique_2_reservoir,
         float3 canonical_technique_3_point_on_light, float3 canonical_technique_3_light_normal, ColorRGB32F canonical_technique_3_emission,
@@ -519,36 +476,6 @@ struct ReGIRPairwiseMIS
         //float non_canonical_neighbor_technique_canonical_reservoir_3_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_3_point_on_light, canonical_technique_3_light_normal, canonical_technique_3_emission, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index, random_number_generator);
         m_sum_canonical_weight_3 += canonical_technique_3_canonical_reservoir_3_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_3_pdf + canonical_technique_1_canonical_reservoir_3_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_3_pdf * mis_weight_normalization + canonical_technique_3_canonical_reservoir_3_pdf * mis_weight_normalization);
     }
-
-  //  HIPRT_DEVICE float compute_MIS_weight_for_canonical_sample(const HIPRTRenderData& render_data,
-  //      const ReGIRReservoir& canonical_technique_1_reservoir, const ReGIRReservoir& canonical_technique_2_reservoir,
-		//const ReGIRGridFillSurface& center_grid_cell_surface,
-  //      float canonical_technique_1_canonical_reservoir_1_pdf, float canonical_technique_1_canonical_reservoir_2_pdf,
-  //      float canonical_technique_2_canonical_reservoir_1_pdf, float canonical_technique_2_canonical_reservoir_2_pdf,
-  //      float mis_weight_normalization,
-
-  //      float non_canonical_RIS_integral_center_grid_cell, float canonical_RIS_integral_center_grid_cell,
-
-  //      float canonical_sample_PDF, bool is_primary_hit,
-
-  //      float3 shading_point, ColorRGB32F light_sample_emission, float3 light_source_normal, float3 point_on_light, unsigned int neighbor_grid_cell_index,
-  //      Xorshift32Generator& random_number_generator,
-  //      unsigned int valid_non_canonical_neighbors)
-  //  {
-  //      float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, non_canonical_RIS_integral_center_grid_cell, point_on_light, light_source_normal, light_sample_emission, random_number_generator);
-  //      float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, canonical_RIS_integral_center_grid_cell, point_on_light, light_source_normal, light_sample_emission, random_number_generator);
-
-  //      float mis_weight = mis_weight_normalization * (canonical_sample_PDF / (canonical_sample_PDF + non_canonical_PDF * mis_weight_normalization + canonical_PDF * mis_weight_normalization));
-
-  //      // Summing the weights for the canonical MIS weight computation
-  //      float canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_1_reservoir, neighbor_grid_cell_index, is_primary_hit, random_number_generator);
-  //      m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (canonical_neighbor_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization);
-
-  //      float canonical_neighbor_technique_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, canonical_technique_2_reservoir, neighbor_grid_cell_index, is_primary_hit, random_number_generator);
-  //      m_sum_canonical_weight_2 += canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization / (canonical_neighbor_technique_canonical_reservoir_2_pdf + canonical_technique_1_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization);
-
-  //      return mis_weight;
-  //  }
 
     HIPRT_DEVICE float compute_MIS_weight_for_non_canonical_sample(const HIPRTRenderData& render_data,
         float3 sample_point_on_light, float3 sample_light_source_normal, ColorRGB32F sample_emission,
@@ -693,10 +620,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         BSDFIncidentLightInfo canonical_technique_3_sample_ili = BSDFIncidentLightInfo::NO_INFO;
         ReGIRGridFillSurface center_cell_surface;
 
-        //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-        //ReGIRReservoir deb_g_reseriovir;
-        //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-
         float canonical_technique_1_canonical_reservoir_1_pdf = 0.0f;
         float canonical_technique_1_canonical_reservoir_2_pdf = 0.0f;
         float canonical_technique_1_canonical_reservoir_3_pdf = 0.0f;
@@ -728,8 +651,20 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     float bsdf_sample_pdf;
                     float3 sampled_bsdf_direction;
 
+                    //if (hippt::is_pixel_index(713, render_data.render_settings.render_resolution.y - 1 - 391))
+                    //{
+                    //    // printf("");
+                    //    ray_payload.material.anisotropy_rotation = 0.123456789f;
+                    //}
+
                     BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, make_float3(0.0f, 0.0f, 0.0f), canonical_technique_3_sample_ili, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-                    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+                    bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+
+                    //if (hippt::is_pixel_index(713, render_data.render_settings.render_resolution.y - 1 - 391))
+                    //{
+                    //    // printf("");
+                    //    ray_payload.material.anisotropy_rotation = 0.0f;
+                    //}
 
                     bool intersection_found = false;
                     BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
@@ -763,30 +698,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         }
                     }
                 }
-
-                //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-                //// deb_g_reseriovir = canonical_technique_2_reservoir;
-
-                //deb_g_reseriovir.sample.emissive_triangle_index = canonical_technique_3_sample.emissive_triangle_index;
-                //deb_g_reseriovir.sample.point_on_light = canonical_technique_3_sample.point_on_light;
-                //deb_g_reseriovir.UCW = canonical_technique_3_sample.area_measure_pdf == 0.0f ? 0.0f : 1.0f / canonical_technique_3_sample.area_measure_pdf;
-                //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-                //// 
-                //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-                //canonical_technique_1_reservoir = deb_g_reseriovir;
-                //canonical_technique_2_reservoir = deb_g_reseriovir;
-
-                //if (deb_g_reseriovir.UCW <= 0.0f)
-                //    return LightSampleInformation();
-
-                //canonical_technique_3_sample.emission = get_emission_of_triangle_from_index(render_data, deb_g_reseriovir.sample.emissive_triangle_index);
-                //canonical_technique_3_sample.emissive_triangle_index = deb_g_reseriovir.sample.emissive_triangle_index;
-                //canonical_technique_3_sample.light_area = triangle_area(render_data, deb_g_reseriovir.sample.emissive_triangle_index);
-                //canonical_technique_3_sample.light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, deb_g_reseriovir.sample.emissive_triangle_index));
-                //canonical_technique_3_sample.point_on_light = deb_g_reseriovir.sample.point_on_light;
-
-                //canonical_technique_3_canonical_reservoir_3_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_3_sample.point_on_light, canonical_technique_3_sample.light_source_normal, canonical_technique_3_sample.emission, view_direction, shading_point, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index, random_number_generator);
-                //// TODO DEBUG REMOVE THIS //////////////////
             }
 
             // Computing all the PDFs of the canonical techniques that we're going to need for pairwise MIS
@@ -880,10 +791,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
                 ReGIRReservoir non_canonical_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(neighbor_grid_cell_index, ray_payload.bounce == 0, neighbor_rng);
                 
-                //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-                //non_canonical_reservoir = deb_g_reseriovir;
-                //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-
                 if (non_canonical_reservoir.UCW <= 0.0f)
                 {
                     // No valid sample in that reservoir
@@ -936,18 +843,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     neighbor_grid_cell_index,
                     view_direction, shading_point, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index,
                     random_number_generator);
-
-                //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-                //float mis_weight_1 = pairwise.get_canonical_MIS_weight_1(canonical_technique_1_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_3_canonical_reservoir_1_pdf, mis_weight_normalization);
-                //float mis_weight_2 = pairwise.get_canonical_MIS_weight_2(canonical_technique_1_canonical_reservoir_2_pdf, canonical_technique_2_canonical_reservoir_2_pdf, canonical_technique_3_canonical_reservoir_2_pdf, mis_weight_normalization);
-                //float mis_weight_3 = pairwise.get_canonical_MIS_weight_3(canonical_technique_1_canonical_reservoir_3_pdf, canonical_technique_2_canonical_reservoir_3_pdf, canonical_technique_3_canonical_reservoir_3_pdf, mis_weight_normalization);
-                //// TODO DEBUG REMOVE THIS ////////////////// Everyone uses the _2
-
-                //if (hippt::abs((mis_weight + mis_weight_1 + mis_weight_2 + mis_weight_3 - 1.0f) > 1.0e-3f))
-                //{
-                //    std::cout << "Sum: " << mis_weight + mis_weight_1 + mis_weight_2 + mis_weight_3 << std::endl;
-                //    std::cout << std::endl;
-                //}
 
                 if (out_reservoir.stream_reservoir(mis_weight, target_function, non_canonical_reservoir, random_number_generator))
                 {
@@ -1058,76 +953,31 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         }
 
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
-        /*float bsdf_sample_pdf;
-        float3 sampled_bsdf_direction;
-        BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-
-        BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-        ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
-
-        bool intersection_found = false;
-        BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;*/
         if (canonical_technique_3_canonical_reservoir_3_pdf > 0.0f)
         {
-            /*hiprtRay new_ray;
-            new_ray.origin = shading_point;
-            new_ray.direction = sampled_bsdf_direction;
+            float mis_weight = pairwise.get_canonical_MIS_weight_3(canonical_technique_1_canonical_reservoir_3_pdf, canonical_technique_2_canonical_reservoir_3_pdf, canonical_technique_3_canonical_reservoir_3_pdf, mis_weight_normalization);
 
-            intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);*/
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
+                ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility, false>(render_data,
+                    shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index,
+                    ray_payload, canonical_technique_3_sample.point_on_light, canonical_technique_3_sample.light_source_normal, canonical_technique_3_sample.emission,
+                    random_number_generator, canonical_technique_3_sample_ili);
+            // Also converting the target function such that everything goes well when the target function is divided by the
+            // source PDF in the reservoir.stream_sample() procedure.
+            // 
+            // Without the target function conversion, we're going to run into issues because if dividing only by the area measure
+            // PDF, we're not going to recover the "true" BSDF contribution if it is not in area measure itself
+            target_function = solid_angle_to_area_pdf(target_function, hippt::length(canonical_technique_3_sample.point_on_light - shading_point), compute_cosine_term_at_light_source(canonical_technique_3_sample.light_source_normal, -hippt::normalize(canonical_technique_3_sample.point_on_light - shading_point)));
 
-            // Checking that we did hit something and if we hit something,
-            // it needs to be emissive
-            // if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+            if (out_reservoir.stream_sample(mis_weight, target_function, canonical_technique_3_canonical_reservoir_3_pdf, canonical_technique_3_sample, random_number_generator))
             {
-                /*LightSampleInformation light_sample;
-                light_sample.emission = shadow_light_ray_hit_info.hit_emission;
-                light_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
-                light_sample.light_area = triangle_area(render_data, shadow_light_ray_hit_info.hit_prim_index);
-                light_sample.light_source_normal = shadow_light_ray_hit_info.hit_geometric_normal;
-                light_sample.point_on_light = shading_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;*/
-
-                // We want ReGIR to produce PDFs that are in area measure so we're converting from solid angle to area measure here
-                // float area_measure_bsdf_pdf = solid_angle_to_area_pdf(bsdf_sample_pdf, shadow_light_ray_hit_info.hit_distance, compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction));
-                /*float mis_weight = pairwise.compute_MIS_weight_for_BSDF_sample(render_data,
-                    center_cell_surface, area_measure_bsdf_pdf, mis_weight_normalization,
-                    non_canonical_RIS_integral_center_grid_cell, canonical_RIS_integral_center_grid_cell,
-
-                    shading_point, view_direction, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index,
-                    incident_light_info,
-
-                    light_sample, random_number_generator);*/
-                float mis_weight = pairwise.get_canonical_MIS_weight_3(canonical_technique_1_canonical_reservoir_3_pdf, canonical_technique_2_canonical_reservoir_3_pdf, canonical_technique_3_canonical_reservoir_3_pdf, mis_weight_normalization);
-
-                float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
-                    ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility, false>(render_data,
-                        shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index,
-                        ray_payload, canonical_technique_3_sample.point_on_light, canonical_technique_3_sample.light_source_normal, canonical_technique_3_sample.emission,
-                        random_number_generator, canonical_technique_3_sample_ili);
-                // Also converting the target function such that everything goes well when the target function is divided by the
-                // source PDF in the reservoir.stream_sample() procedure.
-                // 
-                // Without the target function conversion, we're going to run into issues because if dividing only by the area measure
-                // PDF, we're not going to recover the "true" BSDF contribution if it is not in area measure itself
-                target_function = solid_angle_to_area_pdf(target_function, hippt::length(canonical_technique_3_sample.point_on_light - shading_point), compute_cosine_term_at_light_source(canonical_technique_3_sample.light_source_normal, -hippt::normalize(canonical_technique_3_sample.point_on_light - shading_point)));
-
-                if (out_reservoir.stream_sample(mis_weight, target_function, canonical_technique_3_canonical_reservoir_3_pdf, canonical_technique_3_sample, random_number_generator))
-                {
-                    selected_point_on_light = canonical_technique_3_sample.point_on_light;
-                    selected_light_source_normal = canonical_technique_3_sample.light_source_normal;
-                    selected_light_source_area = canonical_technique_3_sample.light_area;
-                    selected_emission = canonical_technique_3_sample.emission;
-                    selected_incident_light_info = canonical_technique_3_sample_ili;
-                }
+                selected_point_on_light = canonical_technique_3_sample.point_on_light;
+                selected_light_source_normal = canonical_technique_3_sample.light_source_normal;
+                selected_light_source_area = canonical_technique_3_sample.light_area;
+                selected_emission = canonical_technique_3_sample.emission;
+                selected_incident_light_info = canonical_technique_3_sample_ili;
             }
         }
-
-        /*pairwise.sum_BSDF_sample_to_canonical_weights(render_data,
-            canonical_technique_1_reservoir, canonical_technique_2_reservoir,
-            canonical_technique_1_canonical_reservoir_1_pdf, canonical_technique_1_canonical_reservoir_2_pdf,
-            canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_2_pdf,
-            mis_weight_normalization,
-
-            view_direction, shading_point, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index, random_number_generator);*/
 #endif
 
         if (out_reservoir.weight_sum == 0.0f || out_need_fallback_sampling)

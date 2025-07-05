@@ -47,7 +47,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_DI_visibility_test_kill_reservoir(con
 	shadow_ray.origin = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, last_primitive_hit_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
+	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, last_primitive_hit_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
 	if (!visible)
 	{
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
@@ -104,7 +104,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_GI_visibility_validation(const HIPRTR
 	shadow_ray.origin = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index, 
+	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index, 
 		/* bounce. Always 1 for ReSTIR GI from visible point to sample point */ 1, random_number_generator);
 
 	if (!visible)

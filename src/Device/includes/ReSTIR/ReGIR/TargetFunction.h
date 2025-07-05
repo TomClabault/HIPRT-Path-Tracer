@@ -163,7 +163,7 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 			shadow_ray.origin = shading_point;
 			shadow_ray.direction = to_light_direction;
 
-			if (evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, rng))
+			if (evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, rng))
 				target_function = 0.0f;
 		}
 	}

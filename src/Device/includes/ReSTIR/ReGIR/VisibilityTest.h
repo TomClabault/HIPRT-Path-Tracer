@@ -27,7 +27,7 @@ HIPRT_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_
     shadow_ray.origin = representative_point;
     shadow_ray.direction = to_light_direction;
 
-    return !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, representative_primitive_index, 0, rng);
+    return !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, representative_primitive_index, 0, rng);
 }
 
 HIPRT_DEVICE bool ReGIR_grid_cell_visibility_test(const HIPRTRenderData& render_data, int hash_grid_cell_index, bool primary_hit, float3 point_on_light, Xorshift32Generator& rng)

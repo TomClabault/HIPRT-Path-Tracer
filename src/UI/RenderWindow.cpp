@@ -233,6 +233,7 @@ extern ImGuiLogger g_imgui_logger;
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Features:
+// - Faster PNG loading: https://github.com/richgel999/fpng
 // - Need something blocking inn "start thread with dependency" so that the main thread is blocked until the other thread actually started. This should solve the issue where sometilmes the main threds just joins everyone but everyone hasn't even started yet
 // - Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?
 //		- And maybe we can spatial reuse on that

@@ -58,6 +58,17 @@
 #define PSS_RESTIR_GI 1
 
 /**
+ * Whether or not to use shared memory for the nested dielectrics stack
+ *
+ * This option is actually very experimental and should be KERNEL_OPTION_FALSE for
+ * correct results. Incorrect results are expected (with ReSTIR GI notably) if this option
+ * is KERNEL_OPTION_TRUE
+ *
+ * In practice, no performance difference was observed between KERNEL_OPTION_FALSE and KERNEL_OPTION_TRUE
+ */
+#define NestedDielectricsStackUseSharedMemory KERNEL_OPTION_FALSE
+
+/**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
  *		cannot override a #define statement. This means that if the #define statement are encountered by the compiler,
@@ -128,17 +139,6 @@
  * The stack size for handling nested dielectrics
  */
 #define NestedDielectricsStackSize NESTED_DIELECTRICS_STACK_SIZE
-
-/**
- * Whether or not to use shared memory for the nested dielectrics stack
- * 
- * This option is actually very experimental and should be KERNEL_OPTION_FALSE for
- * correct results. Incorrect results are expected (with ReSTIR GI notably) if this option
- * is KERNEL_OPTION_TRUE
- * 
- * In practice, no performance difference was observed between KERNEL_OPTION_FALSE and KERNEL_OPTION_TRUE
- */
-#define NestedDielectricsStackUseSharedMemory KERNEL_OPTION_FALSE
 
 /**
  * How to randomly sample a point on a triangle

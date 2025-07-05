@@ -88,7 +88,7 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = true;
+	bool do_correlation_reduction = false;
 
 	int correlation_reduction_factor = 4;
 	int correl_frames_available = 0;
@@ -531,7 +531,7 @@ struct ReGIRSettings
 
 	}
 
-	HIPRT_DEVICE void insert_hash_cell_data(ReGIRShadingSettings& shading_settings, float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, bool primary_hit, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
+	HIPRT_DEVICE void insert_hash_cell_data(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, bool primary_hit, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
 		ReGIRSettings::insert_hash_cell_data_static(hash_grid, get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, primitive_index, material);
 	}

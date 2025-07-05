@@ -40,7 +40,7 @@ struct BSDFContext
 	 * 'incident_light_info' should be passed as BSDFIncidentLightInfo::NO_INFO if you don't care about what lobe the BSDF sampled of if you don't have the information about
 	 * what lobe the 'to_light_direction' comes from (during NEE light sampling for example)
 	 */
-	HIPRT_HOST_DEVICE BSDFContext(const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, const float3& to_light_direction,
+	HIPRT_HOST_DEVICE BSDFContext(const float3& view_direction_, const float3& shading_normal, const float3& geometric_normal, const float3& to_light_direction,
 		BSDFIncidentLightInfo& incident_light_info,
 		RayVolumeState& ray_volume_state, bool update_ray_volume_state,
 		const DeviceUnpackedEffectiveMaterial& material,
@@ -48,7 +48,7 @@ struct BSDFContext
 		MicrofacetRegularization::RegularizationMode regularize_bsdf = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION) :
 
 		material(material), volume_state(ray_volume_state), 
-		view_direction(view_direction), shading_normal(shading_normal), geometric_normal(geometric_normal), to_light_direction(to_light_direction),
+		view_direction(view_direction_), shading_normal(shading_normal), geometric_normal(geometric_normal), to_light_direction(to_light_direction),
 		incident_light_info(incident_light_info), update_ray_volume_state(update_ray_volume_state),
 		current_bounce(current_bounce), accumulated_path_roughness(accumulated_path_roughness), bsdf_regularization_mode(regularize_bsdf) {}
 };
