@@ -25,7 +25,7 @@ struct ReGIRHashGrid
 		int height = current_camera.sensor_height;
 
 #if ReGIR_AdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
-		if (roughness >= 0.08 && roughness < 0.2)
+		if (roughness >= 0.08f && roughness < 0.2f)
 		{
 			float t = hippt::inverse_lerp(roughness, 0.08f, 0.2f);
 			float res_increase_factor = hippt::lerp(2.0f, 5.0f, 1.0f - t);
@@ -33,7 +33,7 @@ struct ReGIRHashGrid
 			target_projected_size /= res_increase_factor;
 			grid_cell_min_size /= res_increase_factor;
 		}
-		else if (roughness >= 0.2 && roughness < 0.35)
+		else if (roughness >= 0.2f && roughness < 0.35f)
 		{
 			float t = hippt::inverse_lerp(roughness, 0.2f, 0.35f);
 			float res_increase_factor = hippt::lerp(1.0f, 2.0f, 1.0f - t);
@@ -63,7 +63,7 @@ struct ReGIRHashGrid
 		unsigned int grid_coord_y = static_cast<int>(floorf(world_position.y / cell_size));
 		unsigned int grid_coord_z = static_cast<int>(floorf(world_position.z / cell_size));
 
-		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boissé, 2021]
+		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
 #if ReGIR_HashGridHashSurfaceNormal == KERNEL_OPTION_TRUE
 		// And adding normal hasing from [World-Space Spatiotemporal Path Resampling for Path Tracing, 2023]
 		unsigned int quantized_normal = hash_quantize_normal(surface_normal, m_normal_quantization_steps);
@@ -90,7 +90,7 @@ struct ReGIRHashGrid
 	 * Overload if you already the hash grid cell index
 	 */
 	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashGridSoADevice& soa,
-		unsigned int hash_grid_cell_index, int reservoir_index_in_cell, unsigned int DEBUG = 0)
+		unsigned int hash_grid_cell_index, int reservoir_index_in_cell)
 	{
 		int reservoir_index_in_grid = hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 

@@ -74,7 +74,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRender
 	else if (primitive_index == -1)
 		return;
 
-	render_data.render_settings.regir_settings.insert_hash_cell_data(render_data.render_settings.regir_settings.shading, shading_point, shading_normal, current_camera, primary_hit, primitive_index, material);
+	render_data.render_settings.regir_settings.insert_hash_cell_data(shading_point, shading_normal, current_camera, primary_hit, primitive_index, material);
 }
 
 #endif

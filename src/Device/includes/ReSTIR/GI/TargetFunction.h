@@ -61,7 +61,7 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 		visibility_ray.direction = incident_light_direction;
 
 		Xorshift32Generator random_number_generator_alpha_test(sample.visible_to_sample_point_alpha_test_random_seed);
-		bool sample_point_occluded = evaluate_shadow_ray(render_data, visibility_ray, distance_to_sample_point, surface.primitive_index, 0, random_number_generator_alpha_test);
+		bool sample_point_occluded = evaluate_shadow_ray_occluded(render_data, visibility_ray, distance_to_sample_point, surface.primitive_index, 0, random_number_generator_alpha_test);
 		if (sample_point_occluded)
 			return 0.0f;
 	}

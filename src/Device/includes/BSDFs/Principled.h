@@ -1113,6 +1113,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
         incident_medium_ior, specular_weight, refracting, specular_proba_norm, layers_throughput, out_cumulative_pdf);
     glossy_base_contribution += internal_eval_diffuse_layer(render_data, incident_medium_ior, bsdf_context.material, local_view_direction, local_to_light_direction, diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
 
+    //if (hippt::is_pixel_index(713, render_data.render_settings.render_resolution.y - 1 - 391) && render_data.render_settings.sample_number % 100 == 0)// && bsdf_context.material.anisotropy_rotation == 0.123456789f)
+    //    printf("%f\n", glossy_base_contribution.luminance());
+
     float glossy_base_energy_compensation = get_principled_energy_compensation_glossy_base(render_data, bsdf_context.material, incident_medium_ior, local_view_direction.z, bsdf_context.current_bounce);
     return glossy_base_contribution / glossy_base_energy_compensation;
 }
@@ -1163,7 +1166,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights(const Devi
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(const HIPRTRenderData& render_data,
     const DeviceUnpackedEffectiveMaterial& material,
-    const BSDFContext& bsdf_context,
     float NoV,
     float incident_medium_ior,
 
@@ -1263,7 +1265,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 
     float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;
     float specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba;
-    principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, bsdf_context, local_view_direction.z, incident_medium_ior,
+    principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior,
                                              coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
                                              specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight,
 
@@ -1325,6 +1327,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
+    /*if (hippt::is_pixel_index(713, render_data.render_settings.render_resolution.y - 1 - 391) && bsdf_context.material.anisotropy_rotation == 0.123456789f)
+        printf("%f / %f\n", bsdf_context.material.specular, bsdf_context.material.roughness);*/
+
     pdf = 0.0f;
 
     // Computing the weights for sampling the lobes
@@ -1349,12 +1354,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     float glass_sampling_proba, diffuse_transmission_sampling_proba;
     float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
     principled_bsdf_get_lobes_sampling_proba(render_data,
-        bsdf_context.material, bsdf_context, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior,
+        bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior,
         coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,
         specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
 
         coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba,
         specular_sampling_proba, diffuse_sampling_proba, glass_sampling_proba, diffuse_transmission_sampling_proba);
+
+    /*if (hippt::is_pixel_index(713, render_data.render_settings.render_resolution.y - 1 - 391) && bsdf_context.material.anisotropy_rotation == 0.123456789f)
+        printf("sampling proba: %f / %f\n", specular_sampling_proba, diffuse_sampling_proba);*/
 
     // Not using a float[] array here because array[] are super poorly handled 
     // in general by the HIP compiler on AMD
@@ -1450,6 +1458,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
 
     // Just copying the context to add the incident light info
     bsdf_context.to_light_direction = output_direction;
+
+    /*if (hippt::is_pixel_index(713, render_data.render_settings.render_resolution.y - 1 - 391) && bsdf_context.material.anisotropy_rotation == 0.123456789f)
+        printf("sampled: %d\n\n", bsdf_context.incident_light_info);*/
 
     return principled_bsdf_eval(render_data, bsdf_context, pdf);
 }

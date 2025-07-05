@@ -271,7 +271,7 @@ HIPRT_DEVICE HIPRT_INLINE bool trace_main_path_ray(const HIPRTRenderData& render
  * Returns true if in shadow (a hit was found before 't_max' distance)
  * Returns false if unoccluded
  */
-HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_occluded(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)
@@ -349,7 +349,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
             // Updating the statistics
             hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1ull);
 
-        shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
+        shadow_ray_occluded = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
         shadow_ray_discarded = false;
     }
 
@@ -370,7 +370,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
             hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1ull);
 
         // The shadow ray is likely visible, testing with a shadow ray
-        shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
+        shadow_ray_occluded = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
         shadow_ray_discarded = false;
 
         if (render_data.nee_plus_plus.m_update_visibility_map)
@@ -389,7 +389,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
     // divides by it
     nee_plus_plus_context.unoccluded_probability = 1.0f;
 
-    bool shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
+    bool shadow_ray_occluded = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
 
     // We may still want to update the visibility map
     if (render_data.nee_plus_plus.m_update_visibility_map && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE)

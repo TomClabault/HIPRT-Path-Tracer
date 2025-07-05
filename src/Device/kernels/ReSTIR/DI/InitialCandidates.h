@@ -285,7 +285,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             shadow_ray.origin = closest_hit_info.inter_point;
             shadow_ray.direction = to_light_direction;
 
-            bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
+            bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
             if (!visible)
             {
                 // Sample occluded, it is not going to be resampled anyways because it is

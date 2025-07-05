@@ -34,6 +34,7 @@ void enable_compilation_warnings(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ct
 
 		compiler_options.push_back("-Wall");
 		compiler_options.push_back("-Weverything");
+		compiler_options.push_back("-Wno-old-style-cast");
 		compiler_options.push_back("-Wno-reorder-ctor");
 		compiler_options.push_back("-Wno-c++98-compat");
 		compiler_options.push_back("-Wno-c++98-compat-pedantic");
@@ -67,7 +68,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	compiler_options.push_back("-ggdb");
 #endif
 	
-	// enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
+	enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
 
 	// Locking because neither NVIDIA or AMD cannot compile kernels on multiple threads so we may as well
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times
