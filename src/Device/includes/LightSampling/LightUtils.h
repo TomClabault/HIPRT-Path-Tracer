@@ -466,6 +466,7 @@ struct ReGIRPairwiseMIS
         unsigned int neighbor_grid_cell_index, bool is_primary_hit,
         Xorshift32Generator& random_number_generator)
     {
+        // TODO we already fetched the neighbor RIS integral outside of this function so we should pass it here otherwise it's fetched again
         float non_canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_1_reservoir, neighbor_grid_cell_index, is_primary_hit, random_number_generator);
         m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_3_canonical_reservoir_1_pdf * mis_weight_normalization);
 
@@ -473,7 +474,6 @@ struct ReGIRPairwiseMIS
         m_sum_canonical_weight_2 += canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_2_pdf + canonical_technique_1_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_2_pdf * mis_weight_normalization + canonical_technique_3_canonical_reservoir_2_pdf * mis_weight_normalization);
 
         float non_canonical_neighbor_technique_canonical_reservoir_3_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_3_point_on_light, canonical_technique_3_light_normal, canonical_technique_3_emission, neighbor_grid_cell_index, is_primary_hit, random_number_generator);
-        //float non_canonical_neighbor_technique_canonical_reservoir_3_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, canonical_technique_3_point_on_light, canonical_technique_3_light_normal, canonical_technique_3_emission, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index, random_number_generator);
         m_sum_canonical_weight_3 += canonical_technique_3_canonical_reservoir_3_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_3_pdf + canonical_technique_1_canonical_reservoir_3_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_3_pdf * mis_weight_normalization + canonical_technique_3_canonical_reservoir_3_pdf * mis_weight_normalization);
     }
 
@@ -513,6 +513,7 @@ struct ReGIRPairwiseMIS
 
         // Summing the weights for the canonical MIS weight computation
         // TODO all of these functions here reload the neighbor surface but we already have outside of this function call
+        // TODO we already fetched the neighbor RIS integral outside of this function so we should pass it here otherwise it's fetched again
         float non_canonical_neighbor_technique_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, canonical_technique_1_reservoir, neighbor_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
         m_sum_canonical_weight_1 += canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization / (non_canonical_neighbor_technique_canonical_reservoir_1_pdf + canonical_technique_1_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_2_canonical_reservoir_1_pdf * mis_weight_normalization + canonical_technique_3_canonical_reservoir_1_pdf * mis_weight_normalization);
 

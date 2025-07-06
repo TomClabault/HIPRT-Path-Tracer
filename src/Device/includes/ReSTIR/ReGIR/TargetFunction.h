@@ -74,17 +74,6 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderDat
 	return target_function;
 }
 
-//template <bool includeVisibility, bool withCosineTerm, bool withCosineTermLightSource, bool includeBSDF, bool withNeePlusPlusVisibilityEstimation>
-//HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderData& render_data, 
-//	unsigned int hash_grid_cell_index, 
-//	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
-//{
-//    ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index);
-//
-//	return ReGIR_grid_fill_evaluate_target_function<includeVisibility, withCosineTerm, withCosineTermLightSource, includeBSDF, withNeePlusPlusVisibilityEstimation>(render_data,
-//		surface, sample_emission, sample_normal, sample_position, rng);
-//}
-
 HIPRT_DEVICE float ReGIR_grid_fill_evaluate_non_canonical_target_function(const HIPRTRenderData& render_data, 
 	unsigned int hash_grid_cell_index, bool primary_hit,
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
