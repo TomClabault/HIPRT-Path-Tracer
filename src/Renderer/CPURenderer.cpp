@@ -718,7 +718,7 @@ void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
         return;
 
     ReGIRHashGridSoADevice input_reservoirs = m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit);
-    ReGIRHashGridSoADevice output_reservoirs = m_render_data.render_settings.regir_settings.get_spatial_output_reservoirs_grid(primary_hit);
+    ReGIRHashGridSoADevice output_reservoirs = m_render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit);
 
     for (int i = 0; i < m_render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_count; i++)
     {
@@ -731,7 +731,7 @@ void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
                 input_reservoirs,
                 output_reservoirs,
                 m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit),
-                index, *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit);
+                *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit, index);
         }
          
         std::swap(input_reservoirs, output_reservoirs);

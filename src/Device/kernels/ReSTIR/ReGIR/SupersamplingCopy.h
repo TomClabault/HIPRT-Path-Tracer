@@ -47,7 +47,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Supersampling_Copy(HIPRTRenderData re
 
     ReGIRReservoir reservoir_to_copy;
     if (regir_settings.spatial_reuse.do_spatial_reuse)
-        reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.get_spatial_output_reservoirs_grid(true), reservoir_index_in_grid);
+        reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.get_actual_spatial_output_reservoirs_grid(true), reservoir_index_in_grid);
     else
         reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.get_initial_reservoirs_grid(true), reservoir_index_in_grid);
 
