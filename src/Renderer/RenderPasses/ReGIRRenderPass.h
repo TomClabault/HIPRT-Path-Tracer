@@ -97,6 +97,8 @@ public:
 	unsigned int get_number_of_cells_alive(bool primary_hit) const;
 	unsigned int get_total_number_of_cells_alive(bool primary_hit) const;
 
+	GPURenderer* get_renderer();
+
 	void update_all_cell_alive_count();
 	float get_alive_cells_ratio(bool primary_hit) const;
 	

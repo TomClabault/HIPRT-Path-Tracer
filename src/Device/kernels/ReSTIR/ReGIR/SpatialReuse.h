@@ -102,10 +102,8 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             float3 neighbor_cell_normal = ReGIR_get_cell_world_shading_normal(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit);
             float neighbor_cell_roughness = ReGIR_get_cell_roughness(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit);
 
-            ReGIRReservoir neighbor_reservoir;
-            // Reading from the output of the grid fill buffer
 			// TODO the point, normal and roughness here are only to get the grid cell idnex but already have the grid cell index so we need an overload of this function that doesn't take these parameters
-            neighbor_reservoir = regir_settings.get_reservoir_from_grid_cell_index(input_reservoirs, neighbor_hash_grid_cell_index_in_grid, random_reservoir_index_in_cell);
+            ReGIRReservoir neighbor_reservoir = regir_settings.get_reservoir_from_grid_cell_index(input_reservoirs, neighbor_hash_grid_cell_index_in_grid, random_reservoir_index_in_cell);
 
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;

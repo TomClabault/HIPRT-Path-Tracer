@@ -516,6 +516,9 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 
 void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)
 {
+	if (render_data.render_settings.nb_bounces == 0 && !primary_hit)
+		// Rehashing for the secondary hits but we don't have secondary hit grid cells because the renderer is doing 0 bounces
+		return;
 	unsigned int* cell_alive_list_ptr = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 	unsigned int old_cell_count = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).size();
 	unsigned int old_cell_alive_count = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
@@ -688,6 +691,11 @@ unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const
 unsigned int ReGIRRenderPass::get_total_number_of_cells_alive(bool primary_hit) const
 {
 	return m_hash_grid_storage.get_total_number_of_cells(primary_hit);
+}
+
+GPURenderer* ReGIRRenderPass::get_renderer()
+{
+	return m_renderer;
 }
 
 void ReGIRRenderPass::update_all_cell_alive_count()
