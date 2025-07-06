@@ -71,11 +71,11 @@ struct ReGIRSpatialReuseSettings
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = false;
 
-	int spatial_reuse_pass_count = 1;
+	int spatial_reuse_pass_count = 4;
 	int spatial_reuse_pass_index = 0;
 
 	int spatial_neighbor_count = 4;
-	int reuse_per_neighbor_count = 4;
+	int reuse_per_neighbor_count = 16;
 	// When picking a random cell in the neighborhood for reuse, if that
 	// cell is out of the grid or if that cell is not alive etc..., we're
 	// going to retry another cell this many times

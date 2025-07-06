@@ -23,8 +23,8 @@ struct ReGIRHashGrid
 	{
 		int width = current_camera.sensor_width;
 		int height = current_camera.sensor_height;
-
-#if ReGIR_AdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
+		
+#if ReGIR_AdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE
 		if (roughness >= 0.08f && roughness < 0.2f)
 		{
 			float t = hippt::inverse_lerp(roughness, 0.08f, 0.2f);
