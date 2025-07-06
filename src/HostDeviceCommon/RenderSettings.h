@@ -46,6 +46,8 @@ struct HIPRTRenderSettings
 	bool DEBUG_QUICK_ALIAS_TABLE = false;
 	bool DEBUG_CORRELATE_LIGHTS = false;
 
+	unsigned int DEBUG_TRIANGLE_COUNT = 0;
+
 	static constexpr float MULTIPLIER = 100000.0f;
 	static constexpr int SAMPLE_STOP = 4096;
 

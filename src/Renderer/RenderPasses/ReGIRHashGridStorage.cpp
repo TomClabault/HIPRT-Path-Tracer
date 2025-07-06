@@ -3,6 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/ReGIRHashGridStorage.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
 
@@ -32,14 +33,22 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 {
 	bool updated = false;
 
-	updated |= pre_render_update_internal(render_data.render_settings.regir_settings, true);
-	updated |= pre_render_update_internal(render_data.render_settings.regir_settings, false);
+	updated |= pre_render_update_internal(render_data, true);
+	updated |= pre_render_update_internal(render_data, false);
 
 	return updated;
 }
 
-bool ReGIRHashGridStorage::pre_render_update_internal(ReGIRSettings& regir_settings, bool primary_hit)
+bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_data, bool primary_hit)
 {
+	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+	if (render_data.render_settings.nb_bounces == 0 && !primary_hit)
+	{
+		// For the special case of 0 bounces in the scene, we can free the secondary hits cells because
+		// they are never going to be used
+		return free_internal(false);
+	}
+
 	bool grid_not_allocated = get_total_number_of_cells(primary_hit) == 0;
 	bool grid_res_changed = m_current_grid_min_cell_size != regir_settings.hash_grid.m_grid_cell_min_size || m_grid_cell_target_projected_size != regir_settings.hash_grid.m_grid_cell_target_projected_size;
 	bool reservoirs_per_cell_changed = regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != get_initial_grid_buffers(primary_hit).m_reservoirs_per_cell;
@@ -196,42 +205,65 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 
 void ReGIRHashGridStorage::reset()
 {
+	reset_internal(true);
+
+	if (m_regir_render_pass->get_renderer()->get_render_data().render_settings.nb_bounces > 0)
+	{
+		// If the renderer has more than 0 bounce, then we actually have secondary grid cells to reset
+		reset_internal(false);
+	}
+}
+
+void ReGIRHashGridStorage::reset_internal(bool primary_hit)
+{
 	// Resetting the 'cell alive' buffers
-	get_hash_cell_data_soa(true).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().memset_whole_buffer(0);
-	get_hash_cell_data_soa(false).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().memset_whole_buffer(0);
+	get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>().memset_whole_buffer(0);
 
 	// Resetting the pre-integration factors buffer
-	get_non_canonical_factors(true).memset_whole_buffer(0.0f);
-	get_non_canonical_factors(false).memset_whole_buffer(0.0f);
-	get_canonical_factors(true).memset_whole_buffer(0.0f);
-	get_canonical_factors(false).memset_whole_buffer(0.0f);
+	get_non_canonical_factors(primary_hit).memset_whole_buffer(0.0f);
+	get_canonical_factors(primary_hit).memset_whole_buffer(0.0f);
 
 	// Resetting the count buffers
-	get_hash_cell_data_soa(true).m_grid_cells_alive_count.memset_whole_buffer(0);
-	get_hash_cell_data_soa(false).m_grid_cells_alive_count.memset_whole_buffer(0);
+	get_hash_cell_data_soa(primary_hit).m_grid_cells_alive_count.memset_whole_buffer(0);
 
-	get_hash_cell_data_soa(true).m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-	get_hash_cell_data_soa(false).m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-	get_hash_cell_data_soa(true).m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_CHECKSUMS>().memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
-	get_hash_cell_data_soa(false).m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_CHECKSUMS>().memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+	get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
+	get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_CHECKSUMS>().memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+
+	// Resetting the reservoirs
+	get_initial_grid_buffers(primary_hit).reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().memset_whole_buffer(ReGIRReservoir::UNDEFINED_UCW);
+	if (m_regir_render_pass->get_renderer()->get_render_data().render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
+	{
+		if (get_spatial_grid_buffers(primary_hit).reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().size() > 0)
+			// We need to check the size before the reset because the reset method is called before the pre_render_update method
+			// (where the buffer is allocated) so this reset call may try to reset a buffer that wasn't allocated
+			get_spatial_grid_buffers(primary_hit).reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().memset_whole_buffer(ReGIRReservoir::UNDEFINED_UCW);
+	}
 }
 
 bool ReGIRHashGridStorage::free()
 {
 	bool updated = false;
 
-	if (get_initial_grid_buffers(true).get_byte_size() > 0)
+	updated |= free_internal(true);
+	updated |= free_internal(false);
+
+	return updated;
+}
+
+bool ReGIRHashGridStorage::free_internal(bool primary_hit)
+{
+	bool updated = false;
+
+	if (get_initial_grid_buffers(primary_hit).get_byte_size() > 0)
 	{
-		get_initial_grid_buffers(true).free();
-		get_initial_grid_buffers(false).free();
+		get_initial_grid_buffers(primary_hit).free();
 
 		updated = true;
 	}
 
-	if (get_spatial_grid_buffers(true).get_byte_size() > 0)
+	if (get_spatial_grid_buffers(primary_hit).get_byte_size() > 0)
 	{
-		get_spatial_grid_buffers(true).free();
-		get_spatial_grid_buffers(false).free();
+		get_spatial_grid_buffers(primary_hit).free();
 
 		updated = true;
 	}
@@ -243,32 +275,32 @@ bool ReGIRHashGridStorage::free()
 		updated = true;
 	}
 
-	if (get_hash_cell_data_soa(true).get_byte_size() > 0)
+	if (get_hash_cell_data_soa(primary_hit).get_byte_size() > 0)
 	{
-		get_hash_cell_data_soa(true).free();
-		get_hash_cell_data_soa(false).free();
+		get_hash_cell_data_soa(primary_hit).free();
 
 		updated = true;
 	}
 
-	if (get_non_canonical_factors(true).get_byte_size() > 0)
+	if (get_non_canonical_factors(primary_hit).get_byte_size() > 0)
 	{
-		get_non_canonical_factors(true).free();
-		get_non_canonical_factors(false).free();
+		get_non_canonical_factors(primary_hit).free();
 
 		updated = true;
 	}
 
-	if (get_canonical_factors(true).get_byte_size() > 0)
+	if (get_canonical_factors(primary_hit).get_byte_size() > 0)
 	{
-		get_canonical_factors(true).free();
-		get_canonical_factors(false).free();
+		get_canonical_factors(primary_hit).free();
 
 		updated = true;
 	}
 
-	m_total_number_of_cells_primary_hits = 0;
-	m_total_number_of_cells_secondary_hits = 0;
+
+	if (primary_hit)
+		m_total_number_of_cells_primary_hits = 0;
+	else
+		m_total_number_of_cells_secondary_hits = 0;
 
 	return updated;
 }
@@ -281,25 +313,33 @@ void ReGIRHashGridStorage::clear_pre_integrated_RIS_integral_factors(bool primar
 
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
+	// Primary hits grid cells
 	m_initial_reservoirs_primary_hits_grid.to_device(render_data.render_settings.regir_settings.initial_reservoirs_primary_hits_grid);
-	m_initial_reservoirs_secondary_hits_grid.to_device(render_data.render_settings.regir_settings.initial_reservoirs_secondary_hits_grid);
 
 	if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-	{
 		m_spatial_output_primary_hits_grid.to_device(render_data.render_settings.regir_settings.spatial_output_primary_hits_grid);
-		m_spatial_output_secondary_hits_grid.to_device(render_data.render_settings.regir_settings.spatial_output_secondary_hits_grid);
-	}
 
 	if (render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
 		m_supersample_grid_primary_hits.to_device(render_data.render_settings.regir_settings.supersampling.correlation_reduction_grid);
 
 	render_data.render_settings.regir_settings.hash_cell_data_primary_hits = m_hash_cell_data_primary_hits.to_device();
-	render_data.render_settings.regir_settings.hash_cell_data_secondary_hits = m_hash_cell_data_secondary_hits.to_device();
 
 	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = get_non_canonical_factors(true).get_atomic_device_pointer();
-	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_atomic_device_pointer();
 	render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = get_canonical_factors(true).get_atomic_device_pointer();
-	render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
+
+	// Secondary hits grid cells
+	if (render_data.render_settings.nb_bounces > 0)
+	{
+		m_initial_reservoirs_secondary_hits_grid.to_device(render_data.render_settings.regir_settings.initial_reservoirs_secondary_hits_grid);
+
+		if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
+			m_spatial_output_secondary_hits_grid.to_device(render_data.render_settings.regir_settings.spatial_output_secondary_hits_grid);
+
+		render_data.render_settings.regir_settings.hash_cell_data_secondary_hits = m_hash_cell_data_secondary_hits.to_device();
+
+		render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_atomic_device_pointer();
+		render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
+	}
 }
 
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid_buffers(bool primary_hit)

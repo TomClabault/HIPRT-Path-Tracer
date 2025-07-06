@@ -48,8 +48,10 @@ public:
 	unsigned int get_supersampling_frames_available() const;
 
 public:
-	bool pre_render_update_internal(ReGIRSettings& regir_settings, bool primary_hit);
+	void reset_internal(bool primary_hit);
+	bool pre_render_update_internal(HIPRTRenderData& render_data, bool primary_hit);
 	bool try_rehash_internal(HIPRTRenderData& render_data, bool primary_hit);
+	bool free_internal(bool primary_hit);
 
 	ReGIRRenderPass* m_regir_render_pass = nullptr;
 
