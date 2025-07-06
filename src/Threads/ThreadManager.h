@@ -137,7 +137,8 @@ public:
 				//
 				// UPDATE: This seems to happen when we're calling join_all_threads() while
 				// we're are still starting some thread with dependencies: we end up in a situation where we're
-				// trying to join on a dependecy that has already been joined by join_all_threads()
+				// trying to join on a dependecy that has already been joined by join_all_threads() so we're going to need
+				// some kind of way for join_all_threads() to wait for all threads to at least have started
 				if (thread.native_handle() == 0)
 					Utils::debugbreak();
 
@@ -240,7 +241,8 @@ private:
 		else
 		{
 			// Starting a thread that will wait for the dependencies before calling the given function
-			m_threads_map[thread_key_to_start].push_back(std::thread([thread_key_to_start, dependencies, function, args...]() {
+			m_threads_map[thread_key_to_start].push_back(std::thread([thread_key_to_start, dependencies, function, args...]() 
+			{
 				wait_for_dependencies(dependencies);
 
 				std::thread function_thread(function, args...);

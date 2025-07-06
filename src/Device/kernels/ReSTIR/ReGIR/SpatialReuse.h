@@ -247,9 +247,9 @@ HIPRT_DEVICE HIPRT_INLINE void spatial_reuse_pre_integration_accumulation(HIPRTR
      unsigned int number_of_cells_alive, bool primary_hit)
  #else
 template <bool accumulatePreIntegration>
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data, 
-	ReGIRHashGridSoADevice input_reservoirs_grid, ReGIRHashGridSoADevice output_reservoirs_grid, ReGIRHashCellDataSoADevice output_reservoirs_hash_cell_data,
-    int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data,
+    ReGIRHashGridSoADevice input_reservoirs_grid, ReGIRHashGridSoADevice output_reservoirs_grid, ReGIRHashCellDataSoADevice output_reservoirs_hash_cell_data,
+    unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
  #endif
  {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)

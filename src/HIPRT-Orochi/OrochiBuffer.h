@@ -163,7 +163,7 @@ inline void OrochiBuffer<T>::memset_whole_buffer(T value)
 {
 	if (m_data_pointer == nullptr)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memset on an OrochiBuffer that hasn't been allocated yet!");
+ 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memset on an OrochiBuffer that hasn't been allocated yet!");
 		return;
 	}
 
@@ -336,7 +336,11 @@ template <typename T>
 std::vector<T> OrochiBuffer<T>::download_data() const
 {
 	if (!m_data_pointer)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to download data from a non-allocated buffer!");
+
 		return std::vector<T>();
+	}
 
 	std::vector<T> data(m_element_count);
 
@@ -349,7 +353,11 @@ template <typename T>
 void OrochiBuffer<T>::download_data_into(T* host_pointer) const
 {
 	if (!m_data_pointer)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to download data into a host pinned buffer from a non-allocated buffer!");
+
 		return;
+	}
 
 	OROCHI_CHECK_ERROR(oroMemcpyDtoH(host_pointer, reinterpret_cast<oroDeviceptr>(m_data_pointer), sizeof(T) * m_element_count));
 }
@@ -358,7 +366,11 @@ template<typename T>
 inline std::vector<T> OrochiBuffer<T>::download_data_partial(int start_element_index, int stop_element_index_excluded) const
 {
 	if (!m_data_pointer)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to download data from a non-allocated buffer!");
+
 		return std::vector<T>();
+	}
 
 	if (start_element_index == stop_element_index_excluded || stop_element_index_excluded < start_element_index)
 		return std::vector<T>();

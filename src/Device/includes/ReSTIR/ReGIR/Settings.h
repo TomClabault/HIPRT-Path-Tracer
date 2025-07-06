@@ -66,12 +66,12 @@ private:
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = false;
+	bool do_spatial_reuse = true;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = false;
 
-	int spatial_reuse_pass_count = 1;
+	int spatial_reuse_pass_count = 4;
 	int spatial_reuse_pass_index = 0;
 
 	int spatial_neighbor_count = 4;
@@ -102,7 +102,10 @@ struct ReGIRSettings
 	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) const { return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid; }
 	HIPRT_DEVICE ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) { return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid; }
 
-	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_spatial_output_reservoirs_grid(bool primary_hit) const 
+	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_raw_spatial_output_reservoirs_grid(bool primary_hit) const { return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid; }
+	HIPRT_DEVICE ReGIRHashGridSoADevice& get_raw_spatial_output_reservoirs_grid(bool primary_hit) { return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid; }
+
+	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_actual_spatial_output_reservoirs_grid(bool primary_hit) const 
 	{
 		if (spatial_reuse.spatial_reuse_pass_count & 1)
 			return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid; 
@@ -110,7 +113,7 @@ struct ReGIRSettings
 			return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid;
 	}
 
-	HIPRT_DEVICE ReGIRHashGridSoADevice& get_spatial_output_reservoirs_grid(bool primary_hit) 
+	HIPRT_DEVICE ReGIRHashGridSoADevice& get_actual_spatial_output_reservoirs_grid(bool primary_hit) 
 	{ 
 		if (spatial_reuse.spatial_reuse_pass_count & 1)
 			return primary_hit ? spatial_output_primary_hits_grid : spatial_output_secondary_hits_grid;
@@ -217,7 +220,7 @@ struct ReGIRSettings
 	{
 		if (spatial_reuse.do_spatial_reuse)
 			// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-			return hash_grid.read_full_reservoir(get_spatial_output_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell, out_invalid_sample);
+			return hash_grid.read_full_reservoir(get_actual_spatial_output_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell, out_invalid_sample);
 		else
 			// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
 			return hash_grid.read_full_reservoir(get_initial_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell, out_invalid_sample);
@@ -289,7 +292,7 @@ struct ReGIRSettings
 
 				float UCW;
 				if (spatial_reuse.do_spatial_reuse)
-					UCW = get_spatial_output_reservoirs_grid(primary_hit).reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell(primary_hit)];
+					UCW = get_actual_spatial_output_reservoirs_grid(primary_hit).reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell(primary_hit)];
 				else
 					UCW = get_initial_reservoirs_grid(primary_hit).reservoirs.UCW[neighbor_grid_cell_index * get_number_of_reservoirs_per_cell(primary_hit)];
 
@@ -357,7 +360,7 @@ struct ReGIRSettings
 
 			if (spatial_reuse.do_spatial_reuse)
 				// If spatial reuse is enabled, we're shading with the reservoirs from the output of the spatial reuse
-				return hash_grid.read_full_reservoir(get_spatial_output_reservoirs_grid(primary_hit), reservoir_index_in_grid);
+				return hash_grid.read_full_reservoir(get_actual_spatial_output_reservoirs_grid(primary_hit), reservoir_index_in_grid);
 			else
 				// No temporal reuse and no spatial reuse, reading from the output of the grid fill pass
 				return hash_grid.read_full_reservoir(get_initial_reservoirs_grid(primary_hit), reservoir_index_in_grid);
@@ -406,7 +409,7 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE void store_spatial_reservoir_opt(const ReGIRReservoir& reservoir, float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell)
 	{
-		store_spatial_reservoir_opt(get_spatial_output_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), reservoir, world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell);
+		store_spatial_reservoir_opt(get_actual_spatial_output_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), reservoir, world_position, surface_normal, current_camera, roughness, reservoir_index_in_cell);
 	}
 
 	/**
@@ -457,7 +460,7 @@ struct ReGIRSettings
 
 		// Also clearing the spatial reuse output buffers (grid) if spatial reuse is enabled
 		if (spatial_reuse.do_spatial_reuse)
-			hash_grid.reset_reservoir(get_spatial_output_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell);
+			hash_grid.reset_reservoir(get_actual_spatial_output_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
 	HIPRT_DEVICE static void insert_hash_cell_point_normal(ReGIRHashCellDataSoADevice& hash_cell_data_to_update,

@@ -706,9 +706,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 if (canonical_technique_1_reservoir.UCW > 0.0f)
                 {
                     float3 point_on_light_1 = canonical_technique_1_reservoir.sample.point_on_light;
-                    if (canonical_technique_1_reservoir.sample.emissive_triangle_index < 0 || canonical_technique_1_reservoir.sample.emissive_triangle_index >= render_data.render_settings.DEBUG_TRIANGLE_COUNT)
-                        printf("nope 1: %d | UCW = %f (%d)\n", canonical_technique_1_reservoir.sample.emissive_triangle_index, canonical_technique_1_reservoir.UCW, canonical_technique_1_reservoir.UCW <= 0.0f);
-
                     float3 light_source_normal_1 = hippt::normalize(get_triangle_normal_not_normalized(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_index));
                     ColorRGB32F emission_1 = get_emission_of_triangle_from_index(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_index);
 
@@ -723,9 +720,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 if (canonical_technique_2_reservoir.UCW > 0.0f)
                 {
                     float3 point_on_light_2 = canonical_technique_2_reservoir.sample.point_on_light;
-                    if (canonical_technique_2_reservoir.sample.emissive_triangle_index < 0 || canonical_technique_2_reservoir.sample.emissive_triangle_index >= render_data.render_settings.DEBUG_TRIANGLE_COUNT)
-                        printf("nope 2: %d | UCW = %f (%d)\n", canonical_technique_2_reservoir.sample.emissive_triangle_index, canonical_technique_2_reservoir.UCW, canonical_technique_2_reservoir.UCW <= 0.0f);
-
                     float3 light_source_normal_2 = hippt::normalize(get_triangle_normal_not_normalized(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_index));
                     ColorRGB32F emission_2 = get_emission_of_triangle_from_index(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_index);
 
@@ -817,9 +811,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 }
 
                 float3 point_on_light = non_canonical_reservoir.sample.point_on_light;
-                if (non_canonical_reservoir.sample.emissive_triangle_index < 0 || non_canonical_reservoir.sample.emissive_triangle_index >= render_data.render_settings.DEBUG_TRIANGLE_COUNT)
-                    printf("nope 3: %d | UCW = %f (%d)\n", non_canonical_reservoir.sample.emissive_triangle_index, non_canonical_reservoir.UCW, non_canonical_reservoir.UCW <= 0.0f);
-
                 float3 light_source_normal = get_triangle_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
                 float light_source_area = hippt::length(light_source_normal) * 0.5f;
                 light_source_normal /= light_source_area * 2.0f;
