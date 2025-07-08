@@ -47,8 +47,6 @@ bool MegaKernelRenderPass::pre_render_update(float delta_time)
 
 bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-	render_data.render_settings.DEBUG_TRIANGLE_COUNT = m_renderer->get_hiprt_scene().material_indices.size();
-
 	if (!m_render_pass_used_this_frame)
 		return false;
 		

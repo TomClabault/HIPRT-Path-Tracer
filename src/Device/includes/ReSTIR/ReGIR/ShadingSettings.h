@@ -22,7 +22,7 @@ struct ReGIRShadingSettings
 	//
 	// First hits are for the camera ray hits (i.e. the grid cells visible by the camera)
 	// Secondary hits are grid cells only found by bouncing around in the scene
-	bool do_cell_jittering_first_hits = false;
+	bool do_cell_jittering_first_hits = true;
 	bool do_cell_jittering_secondary_hits = false;
 	// Radius of jittering when picking reservoirs from neighboring grid cells for shading
 	float jittering_radius = 0.75f;

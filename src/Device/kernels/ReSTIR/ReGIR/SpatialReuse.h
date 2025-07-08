@@ -310,7 +310,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
             spatial_neighbor_rng_seed = wang_hash(seed);
 
         Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
-        ReGIRReservoir output_reservoir = spatial_reuse(render_data, render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), reservoir_index_in_cell, hash_grid_cell_index, primary_hit, center_cell_point, center_cell_normal, center_cell_roughness, spatial_neighbor_rng, random_number_generator);
+        ReGIRReservoir output_reservoir = spatial_reuse(render_data, input_reservoirs_grid, reservoir_index_in_cell, hash_grid_cell_index, primary_hit, center_cell_point, center_cell_normal, center_cell_roughness, spatial_neighbor_rng, random_number_generator);
 
         spatial_neighbor_rng.m_state.seed = spatial_neighbor_rng_seed;
 
