@@ -180,7 +180,6 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
             else
             {
                 // Non-canonical sample, we need to count how many neighbors could have produced it
-                // if (ReGIR_shading_can_sample_be_produced_by_internal(render_data,emission, light_source_normal, point_on_light, neighbor_hash_grid_cell_index_in_grid, primary_hit, random_number_generator))
                 if (ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit, emission, light_source_normal, point_on_light, random_number_generator) > 0.0f)
                     valid_neighbor_count += regir_settings.spatial_reuse.reuse_per_neighbor_count;
                 else

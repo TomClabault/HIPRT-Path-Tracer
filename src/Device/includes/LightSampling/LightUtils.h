@@ -349,13 +349,13 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(co
  */
 
 template <bool canonicalPDF>
-HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float PDF_normalization, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, bool primary_hit, float PDF_normalization, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, Xorshift32Generator& random_number_generator)
 {
     float sample_PDF_unnormalized;
     if constexpr (canonicalPDF)
-        sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, emission, light_source_normal, point_on_light, random_number_generator);
+        sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
     else
-        sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, emission, light_source_normal, point_on_light, random_number_generator);
+        sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
 
     return sample_PDF_unnormalized / PDF_normalization;
 }
@@ -374,7 +374,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
         RIS_integral = 1.0f;
 
-    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, surface, RIS_integral, point_on_light, light_source_normal, emission, random_number_generator);
+    return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, surface, primary_hit, RIS_integral, point_on_light, light_source_normal, emission, random_number_generator);
 }
 
 template <bool canonicalPDF>
@@ -482,7 +482,7 @@ struct ReGIRPairwiseMIS
 
         const ReGIRReservoir& canonical_technique_1_reservoir, const ReGIRReservoir& canonical_technique_2_reservoir,
         float3 canonical_technique_3_point_on_light, float3 canonical_technique_3_light_normal, ColorRGB32F canonical_technique_3_emission,
-        const ReGIRGridFillSurface& center_grid_cell_surface,
+        const ReGIRGridFillSurface& center_grid_cell_surface, bool primary_hit,
 
         float canonical_technique_1_canonical_reservoir_1_pdf, float canonical_technique_1_canonical_reservoir_2_pdf, float canonical_technique_1_canonical_reservoir_3_pdf,
         float canonical_technique_2_canonical_reservoir_1_pdf, float canonical_technique_2_canonical_reservoir_2_pdf, float canonical_technique_2_canonical_reservoir_3_pdf,
@@ -499,8 +499,8 @@ struct ReGIRPairwiseMIS
         Xorshift32Generator& random_number_generator)
     {
         // TODO these functions here recompute the grid fill target function but we already have it outside of this function call for streaming the reservoir weight
-        float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, non_canonical_RIS_integral_center_grid_cell, sample_point_on_light, sample_light_source_normal, sample_emission, random_number_generator);
-        float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, canonical_RIS_integral_center_grid_cell, sample_point_on_light, sample_light_source_normal, sample_emission, random_number_generator);
+        float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, primary_hit, non_canonical_RIS_integral_center_grid_cell, sample_point_on_light, sample_light_source_normal, sample_emission, random_number_generator);
+        float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, primary_hit, canonical_RIS_integral_center_grid_cell, sample_point_on_light, sample_light_source_normal, sample_emission, random_number_generator);
         // TODO do we have that PDF thanks to the evaluation of the target function at the shading point?
 
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
@@ -832,7 +832,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                     canonical_technique_1_reservoir, canonical_technique_2_reservoir,
                     canonical_technique_3_sample.point_on_light, canonical_technique_3_sample.light_source_normal, canonical_technique_3_sample.emission,
-                    center_cell_surface,
+					center_cell_surface, ray_payload.bounce == 0,
 
                     canonical_technique_1_canonical_reservoir_1_pdf, canonical_technique_1_canonical_reservoir_2_pdf, canonical_technique_1_canonical_reservoir_3_pdf,
                     canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_2_pdf, canonical_technique_2_canonical_reservoir_3_pdf,

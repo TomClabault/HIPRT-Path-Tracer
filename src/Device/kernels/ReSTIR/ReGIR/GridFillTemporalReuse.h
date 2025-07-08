@@ -33,10 +33,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
         float target_function;
         if (reservoir_is_canonical)
             // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-            target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface,
+            target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, 
+                surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         else
-            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface,
+            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, 
+                surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         
         float mis_weight = 1.0f / regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir;
