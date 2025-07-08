@@ -70,7 +70,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
                 // Can happen for very small triangles
                 continue;
 
-            float non_canonical_target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface,
+            float non_canonical_target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, 
+                surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
 
             if (non_canonical_target_function <= 0.0f)
@@ -101,7 +102,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
                 // Can happen for very small triangles
                 continue;
 
-            float canonical_target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface,
+            float canonical_target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, 
+                surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, random_number_generator);
 
             if (canonical_target_function <= 0.0f)

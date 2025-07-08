@@ -77,9 +77,20 @@
  * Whether or not to include the BSDF in the target function used for the resampling of the initial candidates
  * for the grid fill.
  * 
- * Helps a lot on glossy surfaces but at the first hit only
+ * Helps a lot on glossy surfaces.
+ * 
+ * This option applies to primary hits only and should generally be set to true for better sampling.
  */
-#define ReGIR_GridFillTargetFunctionBSDF KERNEL_OPTION_TRUE
+#define ReGIR_GridFillPrimaryHitsTargetFunctionBSDF KERNEL_OPTION_TRUE
+
+/**
+ * Same as 'ReGIR_GridFillPrimaryHitsTargetFunctionBSDF' but only applies to secondary hits
+ * 
+ * This option should be set to false in general as we cannot guess in advance what the view direction is going
+ * to be at secondary hits (since they can come from anywhere when the rays bounce around the scene) and thus we
+ * cannot properly evaluate the BRDF for sampling lights.
+ */
+#define ReGIR_GridFillSecondaryHitsTargetFunctionBSDF KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.

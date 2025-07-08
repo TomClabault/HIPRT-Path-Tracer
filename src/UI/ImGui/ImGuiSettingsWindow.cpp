@@ -1875,18 +1875,34 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Takes the cosine term at the light source (i.e. the cosine term of the geometry term) "
 				"into account when evaluating the target function during grid fill");
 
-			static bool bsdf_grid_fill_target_function = ReGIR_GridFillTargetFunctionBSDF;
-			if (ImGui::Checkbox("Use BSDF in target function", &bsdf_grid_fill_target_function))
+			static bool bsdf_grid_fill_target_function_first_hits = ReGIR_GridFillPrimaryHitsTargetFunctionBSDF;
+			if (ImGui::Checkbox("Use BSDF in target function (1st hits)", &bsdf_grid_fill_target_function_first_hits))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_BSDF, bsdf_grid_fill_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PRIMARY_HITS_TARGET_FUNCTION_BSDF, bsdf_grid_fill_target_function_first_hits ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			ImGuiRenderer::show_help_marker("Whether or not to include the BSDF in the target function used for the resampling of the initial candidates "
+			ImGuiRenderer::show_help_marker("Whether or not to include the BSDF in the target function used for the resampling of the initial candidates\n"
 				"for the grid fill.\n\n"
 				""
-				"Helps a lot on glossy surfaces but at the first hit only");
+				"Helps a lot on glossy surfaces.\n\n"
+				""
+				"This option applies to primary hits only and should generally be set to true for better sampling.");
+
+			static bool bsdf_grid_fill_target_function_secondary_hits = ReGIR_GridFillSecondaryHitsTargetFunctionBSDF;
+			if (ImGui::Checkbox("Use BSDF in target function (2nd hits)", &bsdf_grid_fill_target_function_secondary_hits))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_SECONDARY_HITS_TARGET_FUNCTION_BSDF, bsdf_grid_fill_target_function_secondary_hits ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Same as the option for the primary hits but only applies to secondary hits.\n\n"
+				""
+				"This option should be set to false in general as we cannot guess in advance what the view direction is going\n"
+				"to be at secondary hits(since they can come from anywhere when the rays bounce around the scene) and thus we\n"
+				"cannot properly evaluate the BRDF for sampling lights.");
 
 			static bool do_visibility_reuse = ReGIR_DoVisibilityReuse;
 			if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))

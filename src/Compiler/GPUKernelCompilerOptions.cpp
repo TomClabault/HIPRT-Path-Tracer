@@ -47,7 +47,8 @@ const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY = "ReGIR_GridFillTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM = "ReGIR_GridFillTargetFunctionCosineTerm";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM_LIGHT_SOURCE = "ReGIR_GridFillTargetFunctionCosineTermLightSource";
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_BSDF = "ReGIR_GridFillTargetFunctionBSDF";
+const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_PRIMARY_HITS_TARGET_FUNCTION_BSDF = "ReGIR_GridFillPrimaryHitsTargetFunctionBSDF";
+const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_SECONDARY_HITS_TARGET_FUNCTION_BSDF = "ReGIR_GridFillSecondaryHitsTargetFunctionBSDF";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION = "ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION = "ReGIR_GridFillSpatialReuse_AccumulatePreIntegration";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionVisibility";
@@ -132,7 +133,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM_LIGHT_SOURCE,
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_BSDF,
+	GPUKernelCompilerOptions::REGIR_GRID_FILL_PRIMARY_HITS_TARGET_FUNCTION_BSDF,
+	GPUKernelCompilerOptions::REGIR_GRID_FILL_SECONDARY_HITS_TARGET_FUNCTION_BSDF,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY,
@@ -221,7 +223,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReGIR_GridFillTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM] = std::make_shared<int>(ReGIR_GridFillTargetFunctionCosineTerm);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM_LIGHT_SOURCE] = std::make_shared<int>(ReGIR_GridFillTargetFunctionCosineTermLightSource);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_BSDF] = std::make_shared<int>(ReGIR_GridFillTargetFunctionBSDF);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_PRIMARY_HITS_TARGET_FUNCTION_BSDF] = std::make_shared<int>(ReGIR_GridFillPrimaryHitsTargetFunctionBSDF);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_SECONDARY_HITS_TARGET_FUNCTION_BSDF] = std::make_shared<int>(ReGIR_GridFillSecondaryHitsTargetFunctionBSDF);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY_ESTIMATION] = std::make_shared<int>(ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION] = std::make_shared<int>(ReGIR_GridFillSpatialReuse_AccumulatePreIntegration);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionVisibility);
