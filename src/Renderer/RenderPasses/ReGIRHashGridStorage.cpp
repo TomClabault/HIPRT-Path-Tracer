@@ -268,7 +268,7 @@ bool ReGIRHashGridStorage::free_internal(bool primary_hit)
 		updated = true;
 	}
 
-	if (m_supersample_grid_primary_hits.get_byte_size() > 0)
+	if (m_supersample_grid_primary_hits.get_byte_size() > 0 && primary_hit)
 	{
 		m_supersample_grid_primary_hits.free();
 
