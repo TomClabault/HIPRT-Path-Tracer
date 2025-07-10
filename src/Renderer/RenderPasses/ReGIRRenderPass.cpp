@@ -403,7 +403,7 @@ void ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data, bool pr
 	{
 		render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 		render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_index = i;
-
+		
 		void* launch_args[] = { &render_data, &input_reservoirs, &output_reservoirs, &output_reservoirs_cell_data, &number_of_cells_alive, &primary_hit };
 
 		// Same reason for nb_threads here as explained in the GridFill kernel launch
