@@ -24,7 +24,7 @@ struct ReGIRGridFillSettings
 		light_sample_count_per_cell_reservoir = 32;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
-		reservoirs_count_per_grid_cell_canonical = primary_hit ? 24 : 4;
+		reservoirs_count_per_grid_cell_canonical = primary_hit ? 8 : 4;
 	}
 
 	// How many light samples are resampled into each reservoir of the grid cell
@@ -75,7 +75,7 @@ struct ReGIRSpatialReuseSettings
 	int spatial_reuse_pass_index = 0;
 
 	int spatial_neighbor_count = 4;
-	int reuse_per_neighbor_count = 4;
+	int reuse_per_neighbor_count = 2;
 	// When picking a random cell in the neighborhood for reuse, if that
 	// cell is out of the grid or if that cell is not alive etc..., we're
 	// going to retry another cell this many times

@@ -118,6 +118,12 @@
 #define ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility KERNEL_OPTION_TRUE
 
 /**
+ * Whether or not to jitter canonical candidates during the shading resampling.
+ * This reduces grid artifacts but increases variance
+ */
+#define ReGIR_ShadingResamplingJitterCanonicalCandidates KERNEL_OPTION_FALSE
+
+/**
  * Whether or not to include the BSDF at the shading point in the resampling target function when
  * shading a point at path tracing time. This reduces shading noise at an increased computational cost.
  */
