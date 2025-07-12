@@ -626,7 +626,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
         unsigned int canonical_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(
             shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
-            false,
+            ReGIR_ShadingResamplingJitterCanonicalCandidates,
             render_data.render_settings.regir_settings.shading.jittering_radius, neighbor_rng);
 
         float UCW_1 = 0.0f, UCW_2 = 0.0f;

@@ -2066,10 +2066,20 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::Checkbox("Do cell jittering (first hits)", &regir_settings.shading.do_cell_jittering_first_hits))
+			if (ImGui::Checkbox("Do cell jittering (1st hits)", &regir_settings.shading.do_cell_jittering_first_hits))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::Checkbox("Do cell jittering (secondary hits)", &regir_settings.shading.do_cell_jittering_secondary_hits))
+			if (ImGui::Checkbox("Do cell jittering (2nd hits)", &regir_settings.shading.do_cell_jittering_secondary_hits))
 				m_render_window->set_render_dirty(true);
+			static bool jitter_canonical = ReGIR_ShadingResamplingJitterCanonicalCandidates;
+			if (ImGui::Checkbox("Jitter canonical candidates", &jitter_canonical))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES, jitter_canonical ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to jitter canonical candidates during the shading resampling.\n"
+				"This reduces grid artifacts but increases variance.");
 			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering_first_hits && !regir_settings.shading.do_cell_jittering_secondary_hits);
 			if (ImGui::SliderFloat("Jittering radius", &regir_settings.shading.jittering_radius, 0.5f, 2.0f))
 				m_render_window->set_render_dirty(true);
