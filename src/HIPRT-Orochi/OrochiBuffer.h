@@ -168,8 +168,8 @@ inline void OrochiBuffer<T>::memset_whole_buffer(T value)
 	}
 
 	std::vector<T> data(m_element_count, value);
+
 	upload_data(data);
-	//OROCHI_CHECK_ERROR(oroMemset(m_data_pointer, value, m_element_count * sizeof(T)));
 }
 
 template <typename T>

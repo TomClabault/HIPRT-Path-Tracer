@@ -270,7 +270,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	// This needs to be called before the rehash because the
 	// rehash needs the updated number of cells alive to function
-	update_all_cell_alive_count();
+	update_all_cell_alive_count(render_data);
 
 	if (rehash(render_data))
 	{
@@ -313,7 +313,7 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 
 	do
 	{
-		update_all_cell_alive_count();
+		update_all_cell_alive_count(render_data);
 
 		void* launch_args[] = { &render_data };
 
@@ -325,7 +325,7 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 			m_renderer->m_render_resolution.x / ReGIR_GridPrepopulationResolutionDownscale, m_renderer->m_render_resolution.y / ReGIR_GridPrepopulationResolutionDownscale,
 			launch_args);
 
-		update_all_cell_alive_count();
+		update_all_cell_alive_count(render_data);
 
 		has_rehashed = rehash(render_data);
 	} while (has_rehashed);
@@ -460,7 +460,7 @@ void ReGIRRenderPass::launch_supersampling_copy(HIPRTRenderData& render_data)
 
 void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 {
-	update_all_cell_alive_count();
+	update_all_cell_alive_count(render_data);
 
 	// --------------- Record the start of the overall pre integration process
 	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_start, m_renderer->get_main_stream()));
@@ -708,12 +708,12 @@ GPURenderer* ReGIRRenderPass::get_renderer()
 	return m_renderer;
 }
 
-void ReGIRRenderPass::update_all_cell_alive_count()
+void ReGIRRenderPass::update_all_cell_alive_count(HIPRTRenderData& render_data)
 {
 	m_hash_grid_storage.get_hash_cell_data_soa(true).m_grid_cells_alive_count.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 	m_number_of_cells_alive_primary_hits = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];
 
-	if (m_renderer->get_render_data().render_settings.nb_bounces > 0)
+	if (render_data.render_settings.nb_bounces > 0)
 	{
 		m_hash_grid_storage.get_hash_cell_data_soa(false).m_grid_cells_alive_count.download_data_into(m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer());
 		m_number_of_cells_alive_secondary_hits = m_grid_cells_alive_count_staging_host_pinned_buffer.get_host_pinned_pointer()[0];

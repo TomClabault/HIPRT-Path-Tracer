@@ -304,7 +304,6 @@ namespace hippt
 	 * 'warp_shfl': The thread reads the value from the lane specified in srcLane
 	 */
 	template <typename T>
-<<<<<<< HEAD
 	__device__ T warp_shfl(T var, int src_lane, int width = warpSize) 
 	{ 
 #ifdef __CUDACC__

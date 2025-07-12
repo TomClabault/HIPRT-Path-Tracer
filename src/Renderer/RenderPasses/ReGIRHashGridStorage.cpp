@@ -154,7 +154,7 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 	float cell_alive_ratio = m_regir_render_pass->get_alive_cells_ratio(primary_hit);	
 	if (cell_alive_ratio > 0.60f)
 	{
-		m_regir_render_pass->update_all_cell_alive_count();
+		m_regir_render_pass->update_all_cell_alive_count(render_data);
 
 		unsigned int m_grid_cells_alive = m_regir_render_pass->get_number_of_cells_alive(primary_hit);
 		if (m_grid_cells_alive > 0)
@@ -194,7 +194,7 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 
 			// We need to update the cell alive count because there may have possibly been collisions that couldn't be resolved during the rehashing
 			// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different (lower) --> need to update
-			m_regir_render_pass->update_all_cell_alive_count();
+			m_regir_render_pass->update_all_cell_alive_count(render_data);
 
 			return true;
 		}
@@ -207,7 +207,7 @@ void ReGIRHashGridStorage::reset()
 {
 	reset_internal(true);
 
-	if (m_regir_render_pass->get_renderer()->get_render_data().render_settings.nb_bounces > 0)
+	if (m_regir_render_pass->get_renderer()->get_render_data().render_settings.nb_bounces > 0 && get_initial_grid_buffers(false).get_byte_size() > 0)
 	{
 		// If the renderer has more than 0 bounce, then we actually have secondary grid cells to reset
 		reset_internal(false);

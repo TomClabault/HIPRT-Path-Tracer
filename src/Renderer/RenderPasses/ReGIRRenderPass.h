@@ -99,7 +99,7 @@ public:
 
 	GPURenderer* get_renderer();
 
-	void update_all_cell_alive_count();
+	void update_all_cell_alive_count(HIPRTRenderData& render_data);
 	float get_alive_cells_ratio(bool primary_hit) const;
 	
 private:

@@ -21,8 +21,6 @@ extern ImGuiLogger g_imgui_logger;
 
 void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
 {
-    ThreadManager::set_monothread(true);
-
     const aiScene* scene;
     scene = assimp_importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
     if (scene == nullptr)
