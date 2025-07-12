@@ -15,6 +15,7 @@
 
 template <template <typename> typename DataContainer>
 using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer, 
+	GenericAtomicType<int, DataContainer>,  // thread index
 	GenericAtomicType<int, DataContainer>,  // primitive index
 	float3, // world points
 	Octahedral24BitNormalPadded32b,  // world normals
@@ -28,6 +29,7 @@ using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
 
 enum ReGIRHashCellDataSoAHostBuffers
 {
+	REGIR_HASH_CELL_THREAD_INDEX,
 	REGIR_HASH_CELL_PRIM_INDEX,
 	REGIR_HASH_CELL_POINTS,
 	REGIR_HASH_CELL_NORMALS,
@@ -49,8 +51,9 @@ struct ReGIRHashCellDataSoAHost
 
 		m_hash_cell_data.resize(new_number_of_cells);
 
-		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_CHECKSUMS>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_THREAD_INDEX>(ReGIRHashCellDataSoADevice::UNDEFINED_THREAD_INDEX);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
+		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_CHECKSUMS>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>(0u);
 		m_hash_cell_data.template memset_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
@@ -78,6 +81,7 @@ struct ReGIRHashCellDataSoAHost
 	{
 		ReGIRHashCellDataSoADevice hash_cell_data;
 
+		hash_cell_data.thread_index = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_THREAD_INDEX>();
 		hash_cell_data.hit_primitive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>();
 		hash_cell_data.world_points = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_POINTS>();
 		hash_cell_data.world_normals = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();

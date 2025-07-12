@@ -226,8 +226,9 @@ void ReGIRHashGridStorage::reset_internal(bool primary_hit)
 	// Resetting the count buffers
 	get_hash_cell_data_soa(primary_hit).m_grid_cells_alive_count.memset_whole_buffer(0);
 
-	get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_PRIM_INDEX>().memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
-	get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<REGIR_HASH_CELL_CHECKSUMS>().memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+	get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_THREAD_INDEX>().memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_THREAD_INDEX);
+	get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>().memset_whole_buffer(ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE);
+	get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_CHECKSUMS>().memset_whole_buffer(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
 	// Resetting the reservoirs
 	get_initial_grid_buffers(primary_hit).reservoirs.get_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>().memset_whole_buffer(ReGIRReservoir::UNDEFINED_UCW);

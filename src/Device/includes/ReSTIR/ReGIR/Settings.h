@@ -473,6 +473,7 @@ struct ReGIRSettings
 			hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness * 255.0f;
 			hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic * 255.0f;
 			hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular * 255.0f;
+			hash_cell_data_to_update.thread_index[hash_grid_cell_index] = hippt::thread_idx_global();
 		}
 
 		// Because we just inserted into that grid cell, it is now alive
@@ -486,6 +487,45 @@ struct ReGIRSettings
 				unsigned int cell_alive_index = hippt::atomic_fetch_add(hash_cell_data_to_update.grid_cells_alive_count, 1u);
 
 				hash_cell_data_to_update.grid_cells_alive_list[cell_alive_index] = hash_grid_cell_index;
+			}
+		}
+	}
+
+	HIPRT_DEVICE static void update_hash_cell_representative_data(ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
+		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
+	{
+		unsigned int current_lane = hippt::current_warp_lane();
+		unsigned int active_mask = hippt::warp_activemask();
+		unsigned int first_active_thread_index_subgroup = hippt::ffs(active_mask) - 1;
+
+		int grid_cell_thread_index = hash_cell_data_to_update.thread_index[hash_grid_cell_index];
+
+		if (hippt::thread_idx_global() < grid_cell_thread_index)
+		{
+			// If our thread is smaller than the thread index of the grid cell, we're going to update the cell.
+			// The goal is, for each cell, to have the cell data of the smallest thread index for determinism
+
+			int current_grid_cell_thread_index = hippt::atomic_compare_exchange(&hash_cell_data_to_update.thread_index[hash_grid_cell_index], grid_cell_thread_index, ReGIRHashCellDataSoADevice::LOCKED_THREAD_INDEX);
+			if (current_lane == first_active_thread_index_subgroup && current_grid_cell_thread_index == grid_cell_thread_index)
+			{
+				static bool done = false;
+				if (!done)
+				{
+					// printf("here: %u\n", hash_grid_cell_index);
+					done = true;
+				}
+				// If this is the first active thread of the warp and we have access to the cell
+
+				hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
+				hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
+				hash_cell_data_to_update.hit_primitive[hash_grid_cell_index] = primitive_index;
+				hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness * 255.0f;
+				hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic * 255.0f;
+				hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular * 255.0f;
+
+				if (hash_grid_cell_index == 1686)
+					printf("Tidx: %d\n", hippt::thread_idx_global());
+				hash_cell_data_to_update.thread_index[hash_grid_cell_index] = hippt::thread_idx_global();
 			}
 		}
 	}
@@ -522,6 +562,12 @@ struct ReGIRSettings
 
 					insert_hash_cell_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
 				}
+			}
+			else
+			{
+				// We're trying to insert in a cell that has the same hash as us so we're going to update
+				// that cell with our data
+				update_hash_cell_representative_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
 			}
 		}
 		else

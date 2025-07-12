@@ -14,7 +14,9 @@ struct ReGIRHashCellDataSoADevice
 
 	static constexpr unsigned int UNDEFINED_POINT = 0xFFFFFFFF;
 	static constexpr float3 UNDEFINED_NORMAL = { 0.0f, 0.0f, 0.0f };
-	static constexpr int UNDEFINED_PRIMITIVE = -1;
+	static constexpr int32_t UNDEFINED_THREAD_INDEX = 0x7FFFFFFF;
+	static constexpr int32_t LOCKED_THREAD_INDEX = -1;
+	static constexpr int32_t UNDEFINED_PRIMITIVE = -1;
 
 	// These three buffers are only allocated per each cell, not per each reservoir so they are
 	// 'number_cells' in size
