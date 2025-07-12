@@ -65,13 +65,13 @@
  *
  * This has no effect is representative points are not being used
  */
-#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_FALSE
 
 /**
  * Takes the cosine term at the light source (i.e. the cosine term of the geometry term) into account when
  * evaluating the target function during grid fill
  */
-#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to include the BSDF in the target function used for the resampling of the initial candidates
@@ -81,7 +81,7 @@
  * 
  * This option applies to primary hits only and should generally be set to true for better sampling.
  */
-#define ReGIR_GridFillPrimaryHitsTargetFunctionBSDF KERNEL_OPTION_TRUE
+#define ReGIR_GridFillPrimaryHitsTargetFunctionBSDF KERNEL_OPTION_FALSE
 
 /**
  * Same as 'ReGIR_GridFillPrimaryHitsTargetFunctionBSDF' but only applies to secondary hits
