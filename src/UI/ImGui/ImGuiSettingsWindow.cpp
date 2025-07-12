@@ -1065,8 +1065,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			bool disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI;
 			ImGui::BeginDisabled(disabled);
-			if (ImGui::SliderInt("NEE Samples", &render_settings.number_of_nee_samples, 1, 8))
-				m_render_window->set_render_dirty(true);
+			static int nee_sample_count = DirectLightSamplingNEESampleCount;
+			ImGui::SliderInt("NEE Sample count", &nee_sample_count, 1, 8);
 			ImGuiRenderer::show_help_marker(std::string("How many light samples to take and shade per each vertex of the "
 				"ray's path.\n"
 				"\n"
@@ -1078,6 +1078,20 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"\n"
 				"With ReSTIR DI this only applies to the secondary bounces shading.") +
 				(disabled ? std::string("\n\nDisabled because not supported by ReSTIR DI") : ""));
+			if (nee_sample_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_NEE_SAMPLE_COUNT))
+			{
+				ImGui::TreePush("NEE Sample count apply button");
+				if (ImGui::Button("Apply"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_NEE_SAMPLE_COUNT, nee_sample_count);
+
+					m_render_window->set_render_dirty(true);
+					m_renderer->recompile_kernels();
+				}
+				ImGui::TreePop();
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			}
 			ImGui::EndDisabled();
 
 			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- ReGIR"};

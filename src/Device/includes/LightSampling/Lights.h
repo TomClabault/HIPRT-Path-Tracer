@@ -258,7 +258,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRen
 
     // Any of these light sampling strategy support sampling multiple lights
     // per each shading point, effectively "amortizing" camera and bounce rays
-    for (int i = 0; i < render_data.render_settings.number_of_nee_samples; i++)
+    for (int i = 0; i < DirectLightSamplingNEESampleCount; i++)
     {
 #if DirectLightSamplingStrategy == LSS_ONE_LIGHT
         direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
@@ -271,7 +271,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRen
 #endif
     }
 
-    return direct_light_contribution / render_data.render_settings.number_of_nee_samples;
+    return direct_light_contribution / DirectLightSamplingNEESampleCount;
 }
 
 HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
@@ -290,7 +290,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData
     {
         // ReSTIR DI isn't used for the secondary/tertiary/... bounces
         // so there we can take multiple light samples per path vertex
-        for (int i = 0; i < render_data.render_settings.number_of_nee_samples; i++)
+        for (int i = 0; i < DirectLightSamplingNEESampleCount; i++)
         {
 #if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
             direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
@@ -303,7 +303,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData
 #endif
         }
 
-        direct_light_contribution /= render_data.render_settings.number_of_nee_samples;
+        direct_light_contribution /= DirectLightSamplingNEESampleCount;
     }
 
     return direct_light_contribution;
