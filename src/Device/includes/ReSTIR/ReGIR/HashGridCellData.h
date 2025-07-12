@@ -19,10 +19,13 @@ struct ReGIRHashCellDataSoADevice
 	// These three buffers are only allocated per each cell, not per each reservoir so they are
 	// 'number_cells' in size
 
+	// Buffer that holds the index of the thread that inserted into that grid cell
+	AtomicType<int>* thread_index = nullptr;
 	AtomicType<int>* hit_primitive = nullptr;
 	float3* world_points = nullptr;
 	Octahedral24BitNormalPadded32b* world_normals = nullptr;
 
+	// TODO these guys in a single buffer to have only one memory access
 	unsigned char* roughness = nullptr;
 	unsigned char* specular = nullptr;
 	unsigned char* metallic = nullptr;

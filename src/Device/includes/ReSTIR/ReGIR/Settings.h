@@ -463,10 +463,9 @@ struct ReGIRSettings
 			hash_grid.reset_reservoir(get_actual_spatial_output_reservoirs_grid(primary_hit), hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE static void insert_hash_cell_point_normal(ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
+	HIPRT_DEVICE static void insert_hash_cell_data(ReGIRHashCellDataSoADevice& hash_cell_data_to_update,
 		unsigned int hash_grid_cell_index, float3 world_position, float3 shading_normal, int primitive_index, const DeviceUnpackedEffectiveMaterial& material)
 	{
-		// TODO is this atomic needed since we can only be here if the cell was unoccupied?
 		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.hit_primitive[hash_grid_cell_index], ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE, primitive_index) == ReGIRHashCellDataSoADevice::UNDEFINED_PRIMITIVE)
 		{
 			hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
@@ -521,7 +520,7 @@ struct ReGIRSettings
 					// We resolved the collision by finding an empty cell
 					hash_grid_cell_index = new_hash_cell_index;
 
-					insert_hash_cell_point_normal(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
+					insert_hash_cell_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
 				}
 			}
 		}
@@ -529,7 +528,7 @@ struct ReGIRSettings
 		{
 			// We just succeeded the insertion of our key in an empty cell
 			
-			insert_hash_cell_point_normal(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
+			insert_hash_cell_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
 		}
 
 	}
