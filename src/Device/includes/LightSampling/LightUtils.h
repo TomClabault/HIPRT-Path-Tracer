@@ -519,11 +519,8 @@ struct ReGIRPairwiseMIS
 
         Xorshift32Generator& random_number_generator)
     {
-        // TODO these functions here recompute the grid fill target function but we already have it outside of this function call for streaming the reservoir weight
         float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, primary_hit, non_canonical_RIS_integral_center_grid_cell, sample_point_on_light, sample_light_source_normal, sample_emission, random_number_generator);
         float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, primary_hit, canonical_RIS_integral_center_grid_cell, sample_point_on_light, sample_light_source_normal, sample_emission, random_number_generator);
-        // TODO do we have that PDF thanks to the evaluation of the target function at the shading point?
-
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
         float bsdf_PDF = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, sample_point_on_light, sample_light_source_normal, sample_emission, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index, random_number_generator);
 #else
