@@ -17,15 +17,6 @@
 GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
-// This variable will be initialized before the main function by the main thread
-std::thread::id g_priority_thread_id = std::this_thread::get_id();
-// Whether or not the main thread is currently compiling. Used in the condition variable.
-// If the main thread is currently compiling (very likely that his was asked by the user through the UI), 
-// other threads may not compile to give the user the priority for the compilation
-bool g_main_thread_compiling = false;
-bool g_background_shader_compilation_enabled = true;
-std::condition_variable g_condition_for_compilation;
-
 void enable_compilation_warnings(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, std::vector<std::string>& compiler_options)
 {
 	if (std::string(hiprt_orochi_ctx->device_properties.name).find("NVIDIA") == std::string::npos)
@@ -75,10 +66,6 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	// Locking because neither NVIDIA or AMD cannot compile kernels on multiple threads so we may as well
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times
 	std::unique_lock<std::mutex> lock(m_compile_mutex);
-
-	if (std::this_thread::get_id() != g_priority_thread_id)
-		// Other threads wait if the main thread is compiling
-		g_condition_for_compilation.wait(lock, []() { return !g_main_thread_compiling && g_background_shader_compilation_enabled; });
 
 	auto start = std::chrono::high_resolution_clock::now();
 

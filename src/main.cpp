@@ -61,8 +61,6 @@ int main(int argc, char* argv[])
     renderer->set_envmap(envmap_image, cmd_arguments.skysphere_file_path);
     renderer->set_camera(parsed_scene.camera);
     renderer->set_scene(parsed_scene);
-    // Launching the background kernel precompilation
-    renderer->precompile_kernels();
 
     // Joining everyone before starting the render except the precompilation threads
     ThreadManager::join_all_threads({ ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY, ThreadManager::RENDERER_PRECOMPILE_KERNELS, ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS });

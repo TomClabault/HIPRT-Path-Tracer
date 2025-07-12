@@ -40,10 +40,8 @@ bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& 
 	m_renderer->synchronize_all_kernels();
 
 	bool recompiled = false;
-	m_renderer->take_kernel_compilation_priority();
 	for (auto& name_to_render_pass : m_render_passes)
 		recompiled |= name_to_render_pass.second->pre_render_compilation_check(hiprt_orochi_ctx, func_name_sets, silent, use_cache);
-	m_renderer->release_kernel_compilation_priority();
 
 	return recompiled;
 }

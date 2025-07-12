@@ -643,182 +643,13 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	// Notifying all threads that may be compiling that the main thread wants to
 	// compile. This will block threads other than the main thread from compiling
 	// and thus give the priority to the main thread
-	take_kernel_compilation_priority();
 
 	m_render_thread.get_render_graph().recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
-
-	// The main thread is done with the compilation, we can release the other threads
-	// so that they can continue compiling (background compilation of shaders most likely)
-	release_kernel_compilation_priority();
-}
-
-// Variables used to give the priority to the main thread when compiling shaders
-extern std::thread::id g_priority_thread_id;
-extern bool g_main_thread_compiling;
-extern std::condition_variable g_condition_for_compilation;
-void GPURenderer::take_kernel_compilation_priority()
-{
-	// Notifying all threads that may be compiling that the main thread wants to
-	// compile. This will block threads other than the main thread from compiling
-	// and thus give the priority to the main thread
-	g_main_thread_compiling = true;
-	g_condition_for_compilation.notify_all();
-	g_priority_thread_id = std::this_thread::get_id();
-}
-
-void GPURenderer::release_kernel_compilation_priority()
-{
-	// The main thread is done with the compilation, we can release the other threads
-	// so that they can continue compiling (background compilation of shaders most likely)
-	g_main_thread_compiling = false;
-	g_condition_for_compilation.notify_all();
-}
-
-void GPURenderer::precompile_kernels()
-{
-	return;
-
-	g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernel permutations in the background... [%d / %d]", 0, 1);
-	g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Compiling kernel permutations in the background... [%d / %d]", 0, 1);
-
-	// Launching all the threads actually takes some time
-	// so we're launching threads from a thread :D
-	// 
-	// We're not going to join the thread started right below
-	// so we can use a const char* for the key, we don't a constant
-	// defined in ThreadManager. Quick and dirty.
-	ThreadManager::start_thread(ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY, [this]() {
-		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
-
-		precompile_direct_light_sampling_kernels();
-		precompile_ReSTIR_DI_kernels();
-	});
-
-	ThreadManager::detach_threads(ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY);
-}
-
-extern bool g_background_shader_compilation_enabled;
-void GPURenderer::stop_background_shader_compilation()
-{
-	g_background_shader_compilation_enabled = false;
-	g_condition_for_compilation.notify_all();
-}
-
-void GPURenderer::resume_background_shader_compilation()
-{
-	g_background_shader_compilation_enabled = true;
-	g_condition_for_compilation.notify_all();
-}
-
-void GPURenderer::precompile_direct_light_sampling_kernels()
-{
-	for (int init_target_function_vis = 0; init_target_function_vis <= 1; init_target_function_vis++)
-	{
-		for (int use_envmap_mis = 0; use_envmap_mis <= 1; use_envmap_mis++)
-		{
-			for (int envmap_sampling_strategy = ESS_NO_SAMPLING; envmap_sampling_strategy < ESS_ALIAS_TABLE; envmap_sampling_strategy++)
-			{
-				for (int direct_light_sampling_strategy = LSS_NO_DIRECT_LIGHT_SAMPLING; direct_light_sampling_strategy <= LSS_RESTIR_DI - 1; direct_light_sampling_strategy++)
-				{
-					// Starting from what the renderer is currently using to ease our life a little
-					// (partials_options like USE_HWI, BVH_TRAVERSAL_STACK_SIZE, ... would have to be copied
-					// manually otherwise so just copying everything here is handy)
-					GPUKernelCompilerOptions partials_options;
-					// Clearing the default state of the partials_options added by the constructor
-					partials_options.clear();
-					partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, direct_light_sampling_strategy);
-					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, envmap_sampling_strategy);
-					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS, use_envmap_mis);
-
-					// Recompiling all the kernels with the new options
-					/*for (const std::string& kernel_id : get_all_kernel_ids())
-						precompile_kernel(kernel_id, partials_options);*/
-
-					/*for (auto& render_pass : m_render_passes)
-						render_pass.second->precompile_kernels();
-					m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);*/
-
-					if (direct_light_sampling_strategy == LSS_RIS_BSDF_AND_LIGHT)
-					{
-						// Additional compilation for RIS with the visibility in the target function
-						// for the value we haven't compiled yet
-						partials_options.set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, 1 - m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION));
-
-						// Recompiling all the kernels with the new options
-						/*for (const std::string& kernel_id : get_all_kernel_ids())
-							precompile_kernel(kernel_id, partials_options);*/
-						/*for (auto& render_pass : m_render_passes)
-							render_pass.second->precompile_kernels();
-						m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);*/
-					}
-				}
-			}
-		}
-	}
-}
-
-void GPURenderer::precompile_ReSTIR_DI_kernels()
-{
-	for (int init_target_function_vis = 0; init_target_function_vis <= 1; init_target_function_vis++)
-	{
-		for (int spatial_target_function_vis = 0; spatial_target_function_vis <= 1; spatial_target_function_vis++)
-		{
-			for (int do_light_presampling = 0; do_light_presampling <= 1; do_light_presampling++)
-			{
-				for (int visibility_bias_correction = 0; visibility_bias_correction <= 1; visibility_bias_correction++)
-				{
-					for (int do_visibility_reuse = 0; do_visibility_reuse <= 1; do_visibility_reuse++)
-					{
-						for (int bias_correction_weight = RESTIR_DI_BIAS_CORRECTION_1_OVER_M; bias_correction_weight <= RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE; bias_correction_weight++)
-						{
-							// Starting from what the renderer is currently using to ease our life a little
-							// (partials_options like USE_HWI, BVH_TRAVERSAL_STACK_SIZE, ... would have to be copied
-							// manually otherwise so just copying everything here is handy)
-							GPUKernelCompilerOptions partials_options;
-							// Clearing the default state of the partials_options added by the constructor
-							partials_options.clear();
-							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, init_target_function_vis);
-							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, spatial_target_function_vis);
-							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse);
-							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, visibility_bias_correction);
-							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, bias_correction_weight);
-							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, do_light_presampling);
-							partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
-
-							// Recompiling all the kernels with the new options
-							/*for (const std::string& kernel_id : get_all_kernel_ids())
-								precompile_kernel(kernel_id, partials_options);*/
-
-							/*for (auto& render_pass : m_render_passes)
-								render_pass.second->precompile_kernels();
-							m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);*/
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-void GPURenderer::precompile_kernel(const std::string& id, GPUKernelCompilerOptions partial_options)
-{
-	GPUKernelCompilerOptions options = m_kernels[id]->get_kernel_options().deep_copy();
-	partial_options.apply_onto(options);
-
-	ThreadManager::start_thread(ThreadManager::RENDERER_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
-		m_kernels[id]->get_kernel_function_name(),
-		m_kernels[id]->get_kernel_file_path(),
-		options, m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
-
-	ThreadManager::detach_threads(ThreadManager::RENDERER_PRECOMPILE_KERNELS);
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
-
-	for (auto& pair : m_kernels)
-		kernels[pair.first] = pair.second;
 
 	for (auto& name_to_kernel : m_render_thread.get_render_graph().get_all_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
@@ -829,9 +660,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kernels()
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
-
-	for (auto& pair : m_kernels)
-		kernels[pair.first] = pair.second;
 
 	for (auto& name_to_kernel : m_render_thread.get_render_graph().get_tracing_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;

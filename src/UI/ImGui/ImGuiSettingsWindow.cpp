@@ -4325,20 +4325,6 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 	if (ImGui::CollapsingHeader("Shaders/Kernels"))
 	{
 		ImGui::TreePush("Shaders kernels tree");
-		std::string background_shader_compilation_button_string;
-		if (g_background_shader_compilation_enabled)
-			background_shader_compilation_button_string = "Stop background shader compilation";
-		else
-			background_shader_compilation_button_string = "Resume background shader compilation";
-
-		if (ImGui::Button(background_shader_compilation_button_string.c_str()))
-		{
-			if (g_background_shader_compilation_enabled)
-				m_renderer->stop_background_shader_compilation();
-			else
-				m_renderer->resume_background_shader_compilation();
-		}
-		ImGuiRenderer::show_help_marker("Click to " + (g_background_shader_compilation_enabled ? std::string("stop") : std::string("resume")) + " background shaders precompilation");
 
 		if (ImGui::Button("Hard shaders reload"))
 		{

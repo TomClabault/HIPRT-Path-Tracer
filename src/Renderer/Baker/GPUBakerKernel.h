@@ -32,10 +32,6 @@ private:
 
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
 	oroStream_t m_bake_stream = nullptr;
-	// Mutex so that if we're baking multiple textures at the same time,
-	// we don't run into issue with the compilers wanting to take the priority
-	// (over background compiling kerneks) at the same time
-	std::shared_ptr<std::mutex> m_compiler_priority_mutex = nullptr;
 
 	// Filepath and function within this file that will be launched
 	// when the baking of the kernel starts

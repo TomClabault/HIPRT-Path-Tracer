@@ -12,7 +12,6 @@ GPUBakerKernel::GPUBakerKernel(std::shared_ptr<GPURenderer> renderer, oroStream_
 {
 	m_renderer = renderer;
 	m_bake_stream = bake_stream;
-	m_compiler_priority_mutex = compiler_priority_mutex;
 
 	m_kernel_filepath = kernel_filepath;
 	m_kernel_function = kernel_function;
@@ -50,18 +49,8 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 		{
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "%s", ("Compiling " + m_kernel_title + " kernel...").c_str());
 
-			// Taking the priority for the compilation as otherwise, the kernels
-			// precompiling in the background are going to have the hand and we'll
-			// never be able to compile our bake kernel and we'll never start baking
-			// (until all kernels are precompiled in background of course but that's
-			// going to take a long time)
-			std::lock_guard<std::mutex> lock(*m_compiler_priority_mutex);
-			m_renderer->take_kernel_compilation_priority();
-
 			m_bake_kernel = GPUKernel(m_kernel_filepath, m_kernel_function);
 			m_bake_kernel.compile(m_renderer->get_hiprt_orochi_ctx());
-
-			m_renderer->release_kernel_compilation_priority();
 		}
 
 		m_bake_buffer.resize(bake_resolution.x * bake_resolution.y * bake_resolution.z);

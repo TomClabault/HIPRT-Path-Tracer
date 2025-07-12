@@ -298,15 +298,6 @@ public:
 	std::shared_ptr<GPUKernelCompilerOptions> get_global_compiler_options();
 
 	void recompile_kernels(bool use_cache = true);
-	void take_kernel_compilation_priority();
-	void release_kernel_compilation_priority();
-	/**
-	 * Precompiles a variety of kernel option combinations to avoid
-	 * having to compile too many kernels at runtime
-	 */
-	void precompile_kernels();
-	void stop_background_shader_compilation();
-	void resume_background_shader_compilation();
 
 	/**
 	 * Returns a map of all the kernels of the renderer
@@ -399,20 +390,6 @@ private:
 	 */
 	void compute_render_pass_times();
 
-	/**
-	 * Precompiles direct lighting strategy kernels
-	 */
-	void precompile_direct_light_sampling_kernels();
-	/**
-	 * Precompiles ReSTIR DI kernels
-	 */
-	void precompile_ReSTIR_DI_kernels();
-	/**
-	 * Precompiles a single kernel given its ID and the options
-	 * that will be overriden when compiling the kernel
-	 */
-	void precompile_kernel(const std::string& id, GPUKernelCompilerOptions partial_options);
-
 	// ---- Functions called by the pre_render_update() method ----
 	//
 
@@ -500,7 +477,6 @@ private:
 	// and is 'synchronized' through the use of pointers with the options of the other kernels.
 	// See 'setup_render_passes' for more details on how that "synchronization" is setup
 	std::shared_ptr<GPUKernelCompilerOptions> m_global_compiler_options;
-	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 
 	// Additional functions called on hits when tracing rays (alpha testing for example)
 	std::vector<hiprtFuncNameSet> m_func_name_sets;
