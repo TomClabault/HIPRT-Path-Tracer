@@ -500,10 +500,6 @@ private:
 	// and is 'synchronized' through the use of pointers with the options of the other kernels.
 	// See 'setup_render_passes' for more details on how that "synchronization" is setup
 	std::shared_ptr<GPUKernelCompilerOptions> m_global_compiler_options;
-
-	// Render passes/kernels used for the ray tracing
-	// They are all organized in a map so that we can iterate over them. The key
-	// of this map is a "name"
 	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 
 	// Additional functions called on hits when tracing rays (alpha testing for example)

@@ -23,8 +23,6 @@
 // and maps it to the index to use in the shared memory array by using the threadIdx.
 // 
 // Note that the mapping is written to minimize shared memory bank conflicts
-//#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) ((blockDim.x * threadIdx.y + threadIdx.x) * NestedDielectricsStackSize + (index))
-//#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) (index * KernelWorkgroupThreadCount + (blockDim.x * threadIdx.y + threadIdx.x))
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
 
 #else
@@ -117,11 +115,6 @@ struct StackPriorityEntry
 	// - PRIO the dielectric priority 
 	unsigned int packed_data;
 };
-
-/* #ifdef __KERNELCC__
-// Only this shared memory stack_entries on the GPU
-__shared__ StackPriorityEntry stack_entries[NestedDielectricsStackSize * KernelWorkgroupThreadCount];
-#endif */
 
 struct NestedDielectricsInteriorStack
 {
@@ -252,10 +245,7 @@ struct NestedDielectricsInteriorStack
 	// We only need all of this if the stack size is actually > 0,
 	// otherwise, we're just not going to do the nested dielectrics handling at all
 
-//#ifndef __KERNELCC__
-	// Only using that stack on the CPU because the GPU uses shared memory
 	StackPriorityEntry stack_entries[NestedDielectricsStackSize];
-//#endif
 
 	static constexpr unsigned int MAX_MATERIAL_INDEX = StackPriorityEntry::MATERIAL_INDEX_MAXIMUM;
 

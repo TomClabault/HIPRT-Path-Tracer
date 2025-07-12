@@ -20,7 +20,7 @@
 #include <condition_variable>
 
 // List of partials_options that will be specific to each kernel. We don't want these partials_options
-	// to be synchronized between kernels
+// to be synchronized between kernels
 const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED =
 {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
@@ -490,7 +490,6 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 		// of all the render passes
 		m_render_thread.get_render_graph().prepass();
 
-	// m_render_pass_render_data = m_render_data;
 	m_render_thread.request_frame();
 }
 
@@ -645,9 +644,6 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	// compile. This will block threads other than the main thread from compiling
 	// and thus give the priority to the main thread
 	take_kernel_compilation_priority();
-
-	for (auto& name_to_kenel : m_kernels)
-		name_to_kenel.second->compile(m_hiprt_orochi_ctx, m_func_name_sets, use_cache, false);
 
 	m_render_thread.get_render_graph().recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
 

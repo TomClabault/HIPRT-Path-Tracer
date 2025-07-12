@@ -22,21 +22,13 @@ struct RayVolumeState
 	 */
 	HIPRT_HOST_DEVICE RayVolumeState()
 	{
-#ifdef __KERNELCC__
-		// On the CPU, the priority stack is a "global" variable because it is
-		// in shared memory
-#define stack_variable interior_stack.stack_entries
-#else
-#define stack_variable interior_stack.stack_entries
-#endif
-
 		for (int i = 0; i < NestedDielectricsStackSize; i++)
 		{
-			stack_variable[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_priority(0);
-			stack_variable[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_odd_parity(true);
-			stack_variable[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_topmost(true);
+			interior_stack.stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_priority(0);
+			interior_stack.stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_odd_parity(true);
+			interior_stack.stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_topmost(true);
 			// Setting the material index to the maximum
-			stack_variable[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_material_index(NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX);
+			interior_stack.stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].set_material_index(NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX);
 		}
 	}
 
