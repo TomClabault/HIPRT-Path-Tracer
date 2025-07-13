@@ -63,6 +63,10 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReS
 		float nume = 0.0f;
 		float denom = 0.0f;
 
+		unsigned int backup_seed = random_number_generator.m_state.seed;
+
+		random_number_generator.m_state.seed = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).spatial_neighbors_rng_seed;
+
 		for (int j = 0; j < ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).reuse_neighbor_count + 1; j++)
 		{
 			int neighbor_index_j = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, j, center_pixel_coords, random_number_generator);
@@ -106,6 +110,8 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReS
 			return 0.0f;
 		else
 			return nume / denom;
+
+		random_number_generator.m_state.seed = backup_seed;
 	}
 };
 
