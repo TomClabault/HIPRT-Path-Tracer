@@ -164,7 +164,7 @@ struct HIPRTScene
 		stream << "Scene statistics: " << std::endl;
 		stream << "\t" << whole_scene_BLAS.m_mesh.vertexCount << " vertices" << std::endl;
 		stream << "\t" << whole_scene_BLAS.m_mesh.triangleCount << " triangles" << std::endl;
-		stream << "\t" << emissive_triangles_indices.size() << " emissive triangles" << std::endl;
+		stream << "\t" << emissive_triangles_primitive_indices.size() << " emissive triangles" << std::endl;
 		stream << "\t" << materials_buffer.m_element_count << " materials" << std::endl;
 		stream << "\t" << orochi_materials_textures.size() << " textures" << std::endl;
 	}
@@ -187,7 +187,8 @@ struct HIPRTScene
 	OrochiBuffer<unsigned char> material_opaque;
 
 	int emissive_triangles_count = 0;
-	OrochiBuffer<int> emissive_triangles_indices;
+	OrochiBuffer<int> emissive_triangles_primitive_indices;
+	OrochiBuffer<int> emissive_triangles_indices_and_emissive_textures;
 	OrochiBuffer<float> emissive_power_alias_table_probas;
 	OrochiBuffer<int> emissive_power_alias_table_alias;
 	// This is a remnant of some tests and it was actually not worth it

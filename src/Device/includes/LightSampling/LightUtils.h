@@ -252,7 +252,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_un
     LightSampleInformation light_sample;
 
     int random_emissive_triangle_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
-    int triangle_index = render_data.buffers.emissive_triangles_indices[random_emissive_triangle_index];
+    int triangle_index = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
 
     float sampled_triangle_area;
     float3 sampled_triangle_normal;
@@ -313,7 +313,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
     if (render_data.render_settings.DEBUG_CORRELATE_LIGHTS)
         random_emissive_triangle_index = hippt::warp_shfl(random_emissive_triangle_index, first_active_thread_index_subgroup, render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE);
     
-    int triangle_index = render_data.buffers.emissive_triangles_indices[random_emissive_triangle_index];
+    int triangle_index = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
 
     float sampled_triangle_area;
     float3 sampled_triangle_normal;

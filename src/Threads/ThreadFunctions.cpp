@@ -180,22 +180,14 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
                     // Pushing the index of the current triangle if we're looping on an emissive mesh
                     // and if that mesh doesn't have an emissive texture because we're not importance
                     // sampling emissive textures
-                    parsed_scene.emissive_triangle_primitive_indices.push_back(current_emissive_triangle_index);
+                    parsed_scene.emissive_triangles_primitive_indices.push_back(current_emissive_triangle_index);
 
                 parsed_scene.emissive_triangle_vertex_indices.push_back(index_1 + global_indices_offset);
                 parsed_scene.emissive_triangle_vertex_indices.push_back(index_2 + global_indices_offset);
                 parsed_scene.emissive_triangle_vertex_indices.push_back(index_3 + global_indices_offset);
+                parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.push_back(current_emissive_triangle_index);
             }
-            /*else
-            {
-                current_emissive_triangle_index += mesh->mNumFaces;
-
-                break;
-            }*/
         }
-
-        /*if (!is_mesh_emissive)
-            current_emissive_triangle_index += mesh->mNumFaces;*/
 
 		global_indices_offset += max_emissive_mesh_index_offset + 1; // +1 because the indices start at 0 but 0 is already 1 index on its own so we need + 1
     }

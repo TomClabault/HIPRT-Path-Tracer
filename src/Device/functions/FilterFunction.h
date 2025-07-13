@@ -30,7 +30,7 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		//
 		// So we need to 'convert' the hit index in the light BVH to a hit index in the whole scene BVH and do
 		// the comparison against that
-		global_triangle_index_hit = payload->render_data->buffers.emissive_triangles_indices[hit.primID];
+		global_triangle_index_hit = payload->render_data->buffers.emissive_triangles_primitive_indices_and_emissive_textures[hit.primID];
 	else
 		global_triangle_index_hit = hit.primID;
 

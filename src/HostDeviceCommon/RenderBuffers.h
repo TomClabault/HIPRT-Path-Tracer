@@ -68,7 +68,12 @@ struct RenderBuffers
 	unsigned char* material_opaque = nullptr;
 
 	int emissive_triangles_count = 0;
-	int* emissive_triangles_indices = nullptr;
+	// A buffer that contains the primitive indices of the emissive triangles of the scene
+	// Does not contains the indices of the emissive triangles that have emissive textures
+	int* emissive_triangles_primitive_indices = nullptr;
+	// Same as 'emissive_triangles_primitive_indices' but does contain the indices of the emissive triangles
+	// that have emissive textures
+	int* emissive_triangles_primitive_indices_and_emissive_textures = nullptr;
 	// Alias table for sampling emissives lights according to power
 	DeviceAliasTable emissives_power_alias_table;
 

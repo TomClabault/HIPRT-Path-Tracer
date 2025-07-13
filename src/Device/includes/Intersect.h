@@ -450,7 +450,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_bsdf_light_sample_ray_simplified(const H
     // alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
 
     // Reading the emission of the material
-    int global_triangle_index = render_data.buffers.emissive_triangles_indices[shadow_ray_hit.primID];
+    int global_triangle_index = render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures[shadow_ray_hit.primID];
     int material_index = render_data.buffers.material_indices[global_triangle_index];
     int emission_texture_index = render_data.buffers.materials_buffer.get_emission_texture_index(material_index);
 
@@ -488,7 +488,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_bsdf_light_sample_ray_simplified(const H
         if (!shadow_ray_hit.hasHit())
             return false;
 
-        global_triangle_index_hit = render_data.buffers.emissive_triangles_indices[shadow_ray_hit.primID];
+        global_triangle_index_hit = render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures[shadow_ray_hit.primID];
 
         if (render_data.render_settings.do_alpha_testing)
             alpha = get_hit_base_color_alpha(render_data, global_triangle_index_hit, shadow_ray_hit.uv);
