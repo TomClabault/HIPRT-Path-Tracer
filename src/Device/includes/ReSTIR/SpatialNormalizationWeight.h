@@ -145,6 +145,8 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsRe
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 0.0f;
 
+		random_number_generator.m_state.seed = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).spatial_neighbors_rng_seed;
+
 		for (int neighbor = 0; neighbor < ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, center_pixel_coords, random_number_generator);
