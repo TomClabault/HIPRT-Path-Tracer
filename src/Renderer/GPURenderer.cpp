@@ -168,9 +168,9 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 void GPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 {
 	compute_emissives_power_alias_table(
-		scene.emissive_triangle_indices, 
+		scene.emissive_triangle_primitive_indices,
 		scene.vertices_positions, 
-		scene.triangles_indices, 
+		scene.triangles_vertex_indices,
 		scene.material_indices,
 		scene.materials,
 		
@@ -195,8 +195,8 @@ void GPURenderer::recompute_emissives_power_alias_table()
 	}
 
 	std::vector<int> emissive_triangle_indices = m_hiprt_scene.emissive_triangles_indices.download_data();
-	std::vector<float3> vertices_positions = m_hiprt_scene.geometry.download_vertices_positions();
-	std::vector<int> triangles_indices = m_hiprt_scene.geometry.download_triangle_indices();
+	std::vector<float3> vertices_positions = m_hiprt_scene.whole_scene_BLAS.download_vertices_positions();
+	std::vector<int> triangles_indices = m_hiprt_scene.whole_scene_BLAS.download_triangle_indices();
 	std::vector<int> material_indices = m_hiprt_scene.material_indices.download_data();
 
 	compute_emissives_power_alias_table(
@@ -763,13 +763,14 @@ void GPURenderer::update_render_data()
 {
 	if (m_render_data_buffers_invalidated)
 	{
-		m_render_data.GPU_BVH = m_hiprt_scene.geometry.m_geometry;
+		m_render_data.GPU_BVH = m_hiprt_scene.whole_scene_BLAS.m_geometry;
+		m_render_data.light_GPU_BVH = m_hiprt_scene.emissive_triangles_BLAS.m_geometry;
 
 		m_render_data.render_settings.DEBUG_SUMS = reinterpret_cast<AtomicType<float>*>(m_DEBUG_SUMS.get_device_pointer());
 		m_render_data.render_settings.DEBUG_SUM_COUNT = reinterpret_cast<AtomicType<unsigned long long int>*>(m_DEBUG_SUM_COUNT.get_device_pointer());
 
-		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
-		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
+		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
+		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
 		m_render_data.buffers.has_vertex_normals = m_hiprt_scene.has_vertex_normals.get_device_pointer();
 		m_render_data.buffers.vertex_normals = m_hiprt_scene.vertex_normals.get_device_pointer();
 		// m_render_data.buffers.precomputed_emissive_triangles_data = PrecomputedEmissiveTrianglesDataSoAHostHelpers::to_device(m_hiprt_scene.precomputed_emissive_triangles_data);
@@ -809,18 +810,21 @@ void GPURenderer::update_render_data()
 	}
 }
 
-#include "Renderer/CPUGPUCommonDataStructures/PrecomputedEmissiveTrianglesDataSoAHost.h"
-
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
-	if (scene.triangles_indices.size() == 0)
+	if (scene.triangles_vertex_indices.size() == 0)
 		// Empty scene, nothing todo
 		return;
 
-	m_hiprt_scene.geometry.upload_triangle_indices(scene.triangles_indices);
-	m_hiprt_scene.geometry.upload_vertices_positions(scene.vertices_positions);
-	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
-	rebuild_renderer_bvh(hiprtBuildFlagBitPreferHighQualityBuild, true, true);
+	m_hiprt_scene.whole_scene_BLAS.upload_triangle_indices(scene.triangles_vertex_indices);
+	m_hiprt_scene.whole_scene_BLAS.upload_vertices_positions(scene.vertices_positions);
+	m_hiprt_scene.whole_scene_BLAS.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
+	rebuild_bvh(m_hiprt_scene.whole_scene_BLAS, hiprtBuildFlagBitPreferHighQualityBuild, true, true);
+
+	m_hiprt_scene.emissive_triangles_BLAS.upload_triangle_indices(scene.emissive_triangle_vertex_indices);
+	m_hiprt_scene.emissive_triangles_BLAS.copy_vertices_positions_from(m_hiprt_scene.whole_scene_BLAS);
+	m_hiprt_scene.emissive_triangles_BLAS.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
+	rebuild_bvh(m_hiprt_scene.emissive_triangles_BLAS, hiprtBuildFlagBitPreferHighQualityBuild, true, true);
 
 	m_hiprt_scene.has_vertex_normals.resize(scene.has_vertex_normals.size());
 	m_hiprt_scene.has_vertex_normals.upload_data(scene.has_vertex_normals.data());
@@ -907,13 +911,13 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, [this, &scene]() 
 	{
-		m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
+		m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_primitive_indices.size();
 		if (m_hiprt_scene.emissive_triangles_count > 0)
 		{
 			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-			m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
-			m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
+			m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_primitive_indices.size());
+			m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_primitive_indices.data());
 		}
 
 		/*m_hiprt_scene.precomputed_emissive_triangles_data.resize(m_hiprt_scene.emissive_triangles_count);
@@ -923,9 +927,14 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	});
 }
 
-void GPURenderer::rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM)
+void GPURenderer::rebuild_bvh(HIPRTGeometry& geometry, hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM)
 {
-	m_hiprt_scene.geometry.build_bvh(build_flags, do_compaction, disable_spatial_splits_on_OOM, m_main_stream);
+	geometry.build_bvh(build_flags, do_compaction, disable_spatial_splits_on_OOM, m_main_stream);
+}
+
+void GPURenderer::rebuild_whole_scene_bvh(hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM)
+{
+	rebuild_bvh(m_hiprt_scene.whole_scene_BLAS, build_flags, do_compaction, disable_spatial_splits_on_OOM);
 }
 
 void GPURenderer::set_scene(const Scene& scene)

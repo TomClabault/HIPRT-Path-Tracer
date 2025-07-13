@@ -27,7 +27,7 @@ struct HIPRTGeometry
 		if (m_mesh.triangleIndices)
 			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_mesh.triangleIndices)));
 
-		if (m_mesh.vertices)
+		if (m_mesh.vertices && m_allow_free_mesh_vertices)
 			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_mesh.vertices)));
 
 		if (m_geometry)
@@ -59,6 +59,16 @@ struct HIPRTGeometry
 		m_mesh.vertexStride = sizeof(float3);
 		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_mesh.vertices), m_mesh.vertexCount * sizeof(float3)));
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_mesh.vertices), vertices_positions.data(), m_mesh.vertexCount * sizeof(float3), oroMemcpyHostToDevice));
+	}
+
+	void copy_vertices_positions_from(const HIPRTGeometry& other_geometry)
+	{
+		m_mesh.vertexCount = other_geometry.m_mesh.vertexCount;
+		m_mesh.vertexStride = other_geometry.m_mesh.vertexStride;
+		m_mesh.vertices = other_geometry.m_mesh.vertices;
+		// This structure is not going to free the mesh vertices because it is
+		// managed by another HIPRTGeometry
+		m_allow_free_mesh_vertices = false;
 	}
 
 	std::vector<float3> download_vertices_positions()
@@ -143,6 +153,8 @@ struct HIPRTGeometry
 	hiprtTriangleMeshPrimitive m_mesh = { nullptr };
 	// One geometry for the whole scene for now
 	hiprtGeometry m_geometry = nullptr;
+
+	bool m_allow_free_mesh_vertices = true;
 };
 
 struct HIPRTScene
@@ -150,14 +162,15 @@ struct HIPRTScene
 	void print_statistics(std::ostream& stream)
 	{
 		stream << "Scene statistics: " << std::endl;
-		stream << "\t" << geometry.m_mesh.vertexCount << " vertices" << std::endl;
-		stream << "\t" << geometry.m_mesh.triangleCount << " triangles" << std::endl;
+		stream << "\t" << whole_scene_BLAS.m_mesh.vertexCount << " vertices" << std::endl;
+		stream << "\t" << whole_scene_BLAS.m_mesh.triangleCount << " triangles" << std::endl;
 		stream << "\t" << emissive_triangles_indices.size() << " emissive triangles" << std::endl;
 		stream << "\t" << materials_buffer.m_element_count << " materials" << std::endl;
 		stream << "\t" << orochi_materials_textures.size() << " textures" << std::endl;
 	}
 
-	HIPRTGeometry geometry;
+	HIPRTGeometry whole_scene_BLAS;
+	HIPRTGeometry emissive_triangles_BLAS;
 
 	OrochiBuffer<float> triangle_areas;
 	OrochiBuffer<unsigned char> has_vertex_normals;

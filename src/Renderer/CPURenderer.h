@@ -208,7 +208,9 @@ private:
     Image32Bit3D m_GGX_thin_glass_directional_albedo;
 
     std::vector<Triangle> m_triangle_buffer;
+    std::vector<Triangle> m_emissive_triangles_buffer;
     std::shared_ptr<BVH> m_bvh;
+    std::shared_ptr<BVH> m_light_bvh;
 
     Camera m_camera;
     HIPRTRenderData m_render_data;

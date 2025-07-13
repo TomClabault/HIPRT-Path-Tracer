@@ -2062,14 +2062,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Whether or not to incorporate BSDF samples with MIS during shading resampling.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			static bool do_balance_heuristic = ReGIR_ShadingResamplingDoMISBalanceHeuristic;
-			if (ImGui::Checkbox("Balance heuristic", &do_balance_heuristic))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_BALANCE_HEURISTIC, do_balance_heuristic ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
 			static bool do_pairwise_MIS = ReGIR_ShadingResamplingDoMISPairwiseMIS;
 			if (ImGui::Checkbox("Pairwise MIS", &do_pairwise_MIS))
 			{
@@ -4012,7 +4004,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			if (!do_triangle_splits)
 				build_flags |= hiprtBuildFlagBitDisableSpatialSplits;
 
-			m_renderer->rebuild_renderer_bvh(build_flags, do_bvh_compaction);
+			m_renderer->rebuild_whole_scene_bvh(build_flags, do_bvh_compaction);
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

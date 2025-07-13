@@ -55,8 +55,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 268
-#define DEBUG_PIXEL_Y 455
+#define DEBUG_PIXEL_X 950
+#define DEBUG_PIXEL_Y 217
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -305,7 +305,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.material_opaque = m_material_opaque.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
     m_render_data.buffers.accumulated_ray_colors = m_framebuffer.get_data_as_ColorRGB32F();
-    m_render_data.buffers.triangles_indices = parsed_scene.triangles_indices.data();
+    m_render_data.buffers.triangles_indices = parsed_scene.triangles_vertex_indices.data();
     m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
@@ -386,13 +386,18 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
 
     ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-    m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_indices.size();
-    m_render_data.buffers.emissive_triangles_indices = parsed_scene.emissive_triangle_indices.data();
+    m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_primitive_indices.size();
+    m_render_data.buffers.emissive_triangles_indices = parsed_scene.emissive_triangle_primitive_indices.data();
 
     std::cout << "Building scene's BVH..." << std::endl;
-    m_triangle_buffer = parsed_scene.get_triangles();
+    m_triangle_buffer = parsed_scene.get_triangles(parsed_scene.triangles_vertex_indices);
+    m_emissive_triangles_buffer = parsed_scene.get_triangles(parsed_scene.emissive_triangle_vertex_indices);
+
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
+    m_light_bvh = std::make_shared<BVH>(&m_emissive_triangles_buffer);
+    
     m_render_data.cpu_only.bvh = m_bvh.get();
+    m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
 #if DirectLightSamplingBaseStrategy == LSS_BASE_POWER || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER)
     std::cout << "Building scene's power alias table" << std::endl;
@@ -407,17 +412,17 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
     {
         auto start = std::chrono::high_resolution_clock::now();
 
-        std::vector<float> power_list(scene.emissive_triangle_indices.size());
+        std::vector<float> power_list(scene.emissive_triangle_primitive_indices.size());
         float power_sum = 0.0f;
 
-        for (int i = 0; i < scene.emissive_triangle_indices.size(); i++)
+        for (int i = 0; i < scene.emissive_triangle_primitive_indices.size(); i++)
         {
-            int emissive_triangle_index = scene.emissive_triangle_indices[i];
+            int emissive_triangle_index = scene.emissive_triangle_primitive_indices[i];
 
             // Computing the area of the triangle
-            float3 vertex_A = scene.vertices_positions[scene.triangles_indices[emissive_triangle_index * 3 + 0]];
-            float3 vertex_B = scene.vertices_positions[scene.triangles_indices[emissive_triangle_index * 3 + 1]];
-            float3 vertex_C = scene.vertices_positions[scene.triangles_indices[emissive_triangle_index * 3 + 2]];
+            float3 vertex_A = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 0]];
+            float3 vertex_B = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 1]];
+            float3 vertex_C = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 2]];
 
             float3 AB = vertex_B - vertex_A;
             float3 AC = vertex_C - vertex_A;
@@ -440,7 +445,7 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
         m_render_data.buffers.emissives_power_alias_table.alias_table_alias = m_power_alias_table_alias.data();
         m_render_data.buffers.emissives_power_alias_table.alias_table_probas = m_power_alias_table_probas.data();
         m_render_data.buffers.emissives_power_alias_table.sum_elements = power_sum;
-        m_render_data.buffers.emissives_power_alias_table.size = scene.emissive_triangle_indices.size();
+        m_render_data.buffers.emissives_power_alias_table.size = scene.emissive_triangle_primitive_indices.size();
 
         auto stop = std::chrono::high_resolution_clock::now();
         std::cout << "Power alias table construction time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;

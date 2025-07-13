@@ -44,6 +44,8 @@ struct ReSTIRGISample
     // Also, because we do not re-evaluate the BSDF at the sample point, this would lead to some brightening
     // bias because this would be assuming that reconnecting to the mirror has non-zero energy, even with
     // the new view direction which is incorrect
+    //
+    // Is the bias bad if not using this?
     bool sample_point_rough_enough = false;
 
     Octahedral24BitNormalPadded32b sample_point_geometric_normal;

@@ -114,7 +114,7 @@ struct Scene
     // Material textures. Needs to be index by a material index. 
     std::vector<Image8Bit> textures;
 
-    std::vector<int> triangles_indices;
+    std::vector<int> triangles_vertex_indices;
     std::vector<float3> vertices_positions;
     std::vector<unsigned char> has_vertex_normals;
     std::vector<float3> vertex_normals;
@@ -125,7 +125,9 @@ struct Scene
     std::vector<float3> triangle_AB;
     std::vector<float3> triangle_AC;*/
 
-    std::vector<int> emissive_triangle_indices;
+    std::vector<int> emissive_triangle_primitive_indices;
+    std::vector<int> emissive_triangle_vertex_indices;
+
     std::vector<int> material_indices;
     std::vector<bool> material_has_opaque_base_color_texture;
 
@@ -144,15 +146,28 @@ struct Scene
         return sphere;
     }
 
-    std::vector<Triangle> get_triangles()
+    std::vector<Triangle> get_triangles(const std::vector<int> triangle_indices_to_get)
     {
         std::vector<Triangle> triangles;
+		triangles.reserve(triangle_indices_to_get.size() / 3);
 
-        for (int i = 0; i < triangles_indices.size(); i += 3)
+        for (int i = 0; i < triangle_indices_to_get.size(); i += 3)
         {
-            triangles.push_back(Triangle(*reinterpret_cast<float3*>(&vertices_positions[triangles_indices[i + 0]]),
-                                         *reinterpret_cast<float3*>(&vertices_positions[triangles_indices[i + 1]]),
-                                         *reinterpret_cast<float3*>(&vertices_positions[triangles_indices[i + 2]])));
+            triangles.push_back(Triangle(*reinterpret_cast<float3*>(&vertices_positions[triangle_indices_to_get[i + 0]]),
+                                         *reinterpret_cast<float3*>(&vertices_positions[triangle_indices_to_get[i + 1]]),
+                                         *reinterpret_cast<float3*>(&vertices_positions[triangle_indices_to_get[i + 2]])));
+        }
+
+        std::vector<Triangle> triangles_test;
+        for (int i = 0; i < emissive_triangle_primitive_indices.size(); i++)
+        {
+            int index_0 = triangles_vertex_indices[emissive_triangle_primitive_indices[i] * 3 + 0];
+            int index_1 = triangles_vertex_indices[emissive_triangle_primitive_indices[i] * 3 + 1];
+            int index_2 = triangles_vertex_indices[emissive_triangle_primitive_indices[i] * 3 + 2];
+
+            triangles_test.push_back(Triangle(*reinterpret_cast<float3*>(&vertices_positions[index_0]),
+                                              *reinterpret_cast<float3*>(&vertices_positions[index_1]),
+                                              *reinterpret_cast<float3*>(&vertices_positions[index_2])));
         }
 
         return triangles;

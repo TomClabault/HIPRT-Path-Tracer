@@ -22,7 +22,19 @@
 HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
 {
 	FilterFunctionPayload* payload = reinterpret_cast<FilterFunctionPayload*>(payld);
-	if (hit.primID == payload->last_hit_primitive_index)
+
+	int global_triangle_index_hit;
+	if (payload->simplified_light_ray)
+		// If the ray is shot in the BVH containg only the emissive triangles, the hit.primID is the index of the emissive triangle in that BVH,
+		// not the index of the emissive triangle in the whole scene, which 'payload->last_hit_primitive_index' is
+		//
+		// So we need to 'convert' the hit index in the light BVH to a hit index in the whole scene BVH and do
+		// the comparison against that
+		global_triangle_index_hit = payload->render_data->buffers.emissive_triangles_indices[hit.primID];
+	else
+		global_triangle_index_hit = hit.primID;
+
+	if (global_triangle_index_hit == payload->last_hit_primitive_index)
 		// This is a self-intersection, filtering it out
 		//
 		// Triangles are planar so one given triangle can
@@ -42,14 +54,14 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		// Returning false to indicate an intersection
 		return false;
 
-	int material_index = payload->render_data->buffers.material_indices[hit.primID];
+	int material_index = payload->render_data->buffers.material_indices[global_triangle_index_hit];
 	if (payload->render_data->buffers.material_opaque[material_index])
 		// The material is fully opaque, no need to test further, accept the intersection
 		return false;
 
 	// Composition both the alpha of the base color texture and the material
 	unsigned short int base_color_texture_index = payload->render_data->buffers.materials_buffer.get_base_color_texture_index(material_index);
-	float base_color_alpha = get_hit_base_color_alpha(*payload->render_data, base_color_texture_index, hit);
+	float base_color_alpha = get_hit_base_color_alpha(*payload->render_data, base_color_texture_index, global_triangle_index_hit, hit.uv);
 	float alpha_opacity = payload->render_data->buffers.materials_buffer.get_alpha_opacity(material_index);
 	float composited_alpha = alpha_opacity * base_color_alpha;
 

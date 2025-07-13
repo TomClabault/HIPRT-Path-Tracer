@@ -163,9 +163,9 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
             // Accumulating the maximum index of this mesh, this is to know
             max_mesh_index_offset = std::max(max_mesh_index_offset, std::max(index_1, std::max(index_2, index_3)));
 
-            parsed_scene.triangles_indices.push_back(index_1 + global_indices_offset);
-            parsed_scene.triangles_indices.push_back(index_2 + global_indices_offset);
-            parsed_scene.triangles_indices.push_back(index_3 + global_indices_offset);
+            parsed_scene.triangles_vertex_indices.push_back(index_1 + global_indices_offset);
+            parsed_scene.triangles_vertex_indices.push_back(index_2 + global_indices_offset);
+            parsed_scene.triangles_vertex_indices.push_back(index_3 + global_indices_offset);
         }
 
         // We're pushing the same material index for all the faces of this mesh

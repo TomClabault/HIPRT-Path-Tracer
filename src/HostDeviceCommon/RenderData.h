@@ -78,7 +78,11 @@ struct AuxiliaryBuffers
 class BVH;
 struct CPUData
 {
+	// BVH built over all the triangles of the scene
 	BVH* bvh = nullptr;
+
+	// BVH built over the emissive triangles of the scene only
+	BVH* light_bvh = nullptr;
 };
 
 /*
@@ -92,8 +96,10 @@ struct HIPRTRenderData
 	// random seed on the GPU for the random number generator to get started
 	unsigned int random_number = 42;
 
-	// HIPRT BVH
+	// HIPRT BVH built over all the triangles of the scene
 	hiprtGeometry GPU_BVH = nullptr;
+	// HIPRT BVH built over the emissive triangles of the scene only
+	hiprtGeometry light_GPU_BVH = nullptr;
 	// GPU Intersection functions (for alpha testing for example)
 	hiprtFuncTable hiprt_function_table = nullptr;
 

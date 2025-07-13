@@ -103,7 +103,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderDat
         new_ray.origin = closest_hit_info.inter_point;
         new_ray.direction = sampled_bsdf_direction;
 
-        intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+        intersection_found = evaluate_bsdf_light_sample_ray_simplified(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
