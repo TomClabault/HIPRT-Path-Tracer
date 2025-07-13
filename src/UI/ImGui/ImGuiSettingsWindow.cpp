@@ -2696,12 +2696,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				}
 
 				ImGui::BeginDisabled(restir_settings.use_adaptive_directional_spatial_reuse);
-				if (ImGui::Checkbox("Use Hammersley", &restir_settings.use_hammersley))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("Whether or not to use a Hammersley point set for generating the position of the "
-					"spatial neighbors.\n\n"
-					""
-					"If not using Hammersely, uncorrelated random numbers will be used.");
 
 				if (ImGui::Checkbox("Spatial neighbors random rotation", &restir_settings.do_neighbor_rotation))
 					m_render_window->set_render_dirty(true);

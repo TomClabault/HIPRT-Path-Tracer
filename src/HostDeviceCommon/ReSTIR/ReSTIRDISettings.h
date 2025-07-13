@@ -60,7 +60,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 {
 	HIPRT_HOST_DEVICE ReSTIRDISettings() 
 	{
-		common_temporal_pass.do_temporal_reuse_pass = true;
+		common_temporal_pass.do_temporal_reuse_pass = false;
 
 		common_temporal_pass.use_permutation_sampling = false;
 		common_temporal_pass.permutation_sampling_random_bits = 42;
@@ -88,10 +88,9 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 		common_spatial_pass.debug_neighbor_location_direction = 0;
 
 		common_spatial_pass.do_neighbor_rotation = false;
-		common_spatial_pass.use_hammersley = false;
 		common_spatial_pass.spatial_neighbors_rng_seed = 42;
 		common_spatial_pass.coalesced_spatial_reuse = true;
-		common_spatial_pass.use_adaptive_directional_spatial_reuse = true;
+		common_spatial_pass.use_adaptive_directional_spatial_reuse = false;
 
 		common_spatial_pass.allow_converged_neighbors_reuse = false;
 		common_spatial_pass.converged_neighbor_reuse_probability = 0.5f;

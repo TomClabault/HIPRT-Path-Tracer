@@ -21,8 +21,8 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		float final_reservoir_weight_sum, int initial_candidates_reservoir_M,
 		const ReSTIRSurface& center_pixel_surface,
-		int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords, 
-		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
+		int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords,
+		float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
 		if (final_reservoir_weight_sum <= 0.0f)
@@ -50,9 +50,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			int neighbor_pixel_index;
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, 
-					neighbor, temporal_neighbor_coords,
-					cos_sin_theta_rotation, random_number_generator);
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, temporal_neighbor_coords, random_number_generator);
 
 				if (neighbor_pixel_index == -1)
 					// Neighbor out of the viewport
@@ -94,8 +92,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
 		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
-		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_position,
-		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
+		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_position, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
 		if (final_reservoir_weight_sum <= 0)
@@ -120,8 +117,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			int neighbor_pixel_index;
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data,
-					neighbor, temporal_neighbor_position, cos_sin_theta_rotation, random_number_generator);
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, temporal_neighbor_position, random_number_generator);
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor
@@ -188,7 +184,6 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIK
 		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		int selected_neighbor,
 		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords,
-		float2 cos_sin_theta_rotation,
 		float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
@@ -212,7 +207,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIK
 			int neighbor_pixel_index;
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, temporal_neighbor_coords, cos_sin_theta_rotation, random_number_generator);
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, temporal_neighbor_coords, random_number_generator);
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor

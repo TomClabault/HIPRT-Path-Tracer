@@ -60,7 +60,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 
 		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		int current_neighbor, int initial_candidates_M, int temporal_neighbor_M,
-		int center_pixel_index, int2 temporal_neighbor_coords, float2 cos_sin_theta_rotation,
+		int center_pixel_index, int2 temporal_neighbor_coords,
 		Xorshift32Generator& random_number_generator)
 	{
 		if (reservoir_being_resampled_UCW <= 0.0f)
@@ -79,7 +79,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 			int neighbor_index_j;
 			if (j != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_index_j = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, j, temporal_neighbor_coords, cos_sin_theta_rotation, random_number_generator);
+				neighbor_index_j = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, j, temporal_neighbor_coords, random_number_generator);
 				if (neighbor_index_j == -1)
 					// Invalid neighbor, skipping
 					continue;

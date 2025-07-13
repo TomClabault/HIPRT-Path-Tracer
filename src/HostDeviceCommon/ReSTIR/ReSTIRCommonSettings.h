@@ -68,11 +68,6 @@ struct ReSTIRCommonSpatialPassSettings
 	// Pretty much mandatory when using Hammersley points otherwise the neighbors
 	// will always be the exact same
 	bool do_neighbor_rotation;
-	// Whether or not to use a Hammersley point set for generating the position of the
-	// spatial neighbors
-	//
-	// If not using Hammersely, uncorrelated random numbers will be used
-	bool use_hammersley;
 	// This seed is used to generate the spatial neighbors positions if not using Hammersley
 	unsigned int spatial_neighbors_rng_seed;
 	// Reuses the same random numbers for all the pixels in the image for picking the spatial neighbors
