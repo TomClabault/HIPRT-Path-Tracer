@@ -117,7 +117,7 @@
 * 
 *		Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
 */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 
 /**
 * What direct lighting sampling strategy to use for secondary bounces when ReSTIR DI is used for sampling the first bounce

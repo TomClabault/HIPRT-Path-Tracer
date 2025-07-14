@@ -499,7 +499,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RAT
 			float center_reservoir_M = use_confidence_weights ? center_pixel_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? valid_neighbors_M_sum : valid_neighbors_count;
 
-			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
+			// Eq. 16 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
 			float difference_function = symmetric_ratio_MIS_weights_difference_function(target_function_neighbor_sample_at_center, target_function_neighbor_sample_at_neighbor, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
 			float nume_mi, denom_mi;

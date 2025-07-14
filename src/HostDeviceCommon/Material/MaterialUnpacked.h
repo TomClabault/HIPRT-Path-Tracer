@@ -211,6 +211,9 @@ struct DeviceUnpackedEffectiveMaterial
     // 
     // See PrincipledBSDFDoEnergyCompensation in this codebase.
     bool enforce_strong_energy_conservation = false;
+    // This member is only ever set to true on the GPU when we have the simplified material
+    // that doesn't have texture indices anymore. Then we can manually fetch the emissive texture
+    // index of the material and sample the emissive texture
     bool emissive_texture_used = false;
 
     HIPRT_HOST_DEVICE void set_dielectric_priority(unsigned char priority) { dielectric_priority = priority; }

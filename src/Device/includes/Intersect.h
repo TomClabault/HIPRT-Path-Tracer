@@ -460,7 +460,7 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_bsdf_light_sample_ray_simplified(const H
 
     if (emission_texture_index != MaterialConstants::NO_TEXTURE)
         out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
-    // Getting the shading normal
+        // Getting the shading normal
     else
         out_light_hit_info.hit_emission = render_data.buffers.materials_buffer.get_emission(material_index);
 

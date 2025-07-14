@@ -63,6 +63,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - E ONLY NEED THE BSDF PDF IK SOME PLAVES OF REGIR EIGHT. Not the evaluation
+// - Can we have a biased NEE++ where we clamp the normalization factor to avoid fireflies?
 // - Would it be possible to to resample like 1 single or a small amount of new samples into the supersampling grid such that this diversifies samples and avoids too much correlations even while accumulating ?
 // - Can we evaluate the ratio between the UCW and the final contribution? If the ratio is higher than a threshold then that's an outlier / Firefly and we may want to skip it attenuate it
 // - Can we do many many more samples per each reservoir during the pre integration pass (and thus have less reservoirs per cell) to improve the quality of the integral estimate with less reservoirs and less integration iterations?
@@ -225,6 +227,7 @@ extern ImGuiLogger g_imgui_logger;
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Features:
+// - Envmap with visibility sampling: https://static.chaos.com/documents/assets/000/000/377/original/adaptive_dome_abstract.pdf?1676455588
 // - Faster PNG loading: https://github.com/richgel999/fpng
 // - Need something blocking inn "start thread with dependency" so that the main thread is blocked until the other thread actually started. This should solve the issue where sometilmes the main threds just joins everyone but everyone hasn't even started yet
 // - Can we have something like sharc but for light sampling? We store reservoirs in the hash table and resample everytime we read into the hash grid with some initial candidates?

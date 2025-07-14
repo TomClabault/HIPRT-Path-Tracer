@@ -162,7 +162,8 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
         //
         // We are not importance sampling emissive texture so if the mesh has an emissive texture attached, we're
         // not adding its triangles to the list of emissive triangles
-        bool is_mesh_emissive = renderer_material.is_emissive() || renderer_material.emissive_texture_used;
+        bool emissive_texture_used = renderer_material.emission_texture_index != MaterialConstants::NO_TEXTURE && renderer_material.emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
+        bool is_mesh_emissive = renderer_material.is_emissive() || emissive_texture_used;
 
         int max_emissive_mesh_index_offset = 0;
         for (int face_index = 0; face_index < mesh->mNumFaces; face_index++, current_emissive_triangle_index++)
@@ -176,7 +177,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
             if (is_mesh_emissive)
             {
-                if (!renderer_material.emissive_texture_used)
+                if (!emissive_texture_used)
                     // Pushing the index of the current triangle if we're looping on an emissive mesh
                     // and if that mesh doesn't have an emissive texture because we're not importance
                     // sampling emissive textures
