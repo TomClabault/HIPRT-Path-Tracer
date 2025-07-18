@@ -211,9 +211,83 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(
     return single_scattering * ms_compensation_term;
 }
 
+/**
+ * Returns the PDF of the Torrance Sparrow BRDF 'FDG / 4.NoL.NoV' with the
+ * GGX as the microfacet distribution
+ *
+ * 'incident_light_direction_is_from_GGX_sample' should be true if the 'local_to_light_direction' given comes from
+ * sampling the microfacet distribution that is being evaluated by this function call
+ *
+ * false otherwise (if 'local_to_light_direction' comes from light sampling NEE, or sampling another lobe of the BSDF, ...).
+ * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialConstants::ROUGHNESS_CLAMP
+ *
+ * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
+ * Equation 15
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float torrance_sparrow_GGX_pdf_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy,
+    const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector,
+    MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
+{
+    if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
+    {
+        // Fast path for perfectly specular BRDF
+        if (incident_light_direction_is_from_GGX_sample == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
+            // For a perfectly smooth GGX distribution (a delta distribution), anything other than a
+            // perfectly sampled reflection direction is going to yield 0 contribution
+            return 0.0f;
+        else
+        {
+            if (hippt::dot(reflect_ray(local_view_direction, make_float3(0.0f, 0.0f, 1.0f)), local_to_light_direction) < MaterialConstants::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD)
+            {
+                // Just an additional check that we indeed have the incident light
+                // direction aligned with the perfect reflection direction
+                //
+                // This additional check is mainly useful for ReSTIR where we need
+                // to evaluate the BRDF with a sample that may have been sampled from
+                // a delta distribution at a neighbor (so it checks all the boxes for the shortcut
+                // and we could just quickly return MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE
+                // but because that sample wasn't sampled at the current pixel, there
+                // is a good chance that it doesn't actually align with the perfect
+                // reflection direction = it doesn't align with the specular peak = 0 contribution
+
+                return 0.0f;
+            }
+
+            return MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE;
+        }
+    }
+
+    if (local_to_light_direction.z < 0.0f)
+        // A direction that is below the surface is invalid for a microfacet ** BRDF **
+        return 0.0f;
+
+    float pdf = 0.0f;
+
+    float alpha_x;
+    float alpha_y;
+    MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
+
+    // GGX normal distribution
+    float D = GGX_anisotropic(alpha_x, alpha_y, local_halfway_vector);
+
+    // GGX visible normal distribution for evaluating the PDF
+    float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
+    float G1V = 1.0f / (1.0f + lambda_V);
+    float Dvisible = GGX_anisotropic_vndf(D, G1V, local_view_direction, local_halfway_vector);
+
+    // Because we're exactly sampling the visible normals distribution function,
+    // that's exactly our PDF.
+    // 
+    // Additionally, because we need to take into account the reflection operator
+    // that we're going to apply to get our final 'to light direction' and so the
+    // jacobian determinant of that reflection operator is the (4.0f * NoV) in the
+    // denominator
+    return Dvisible / (4.0f * hippt::dot(local_view_direction, local_halfway_vector));
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(const DeviceUnpackedEffectiveMaterial& material, float roughness, float relative_eta, ColorRGB32F fresnel_reflectance,
-                                                                             const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
-                                                                             float& out_pdf, BSDFIncidentLightInfo incident_light_info)
+    const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector,
+    float& out_pdf, BSDFIncidentLightInfo incident_light_info)
 {
     float NoL = local_to_light_direction.z;
     float NoV = local_view_direction.z;
@@ -275,6 +349,47 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(con
     color /= hippt::square(relative_eta);
 
     return color;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float torrance_sparrow_GGX_pdf_refract(const DeviceUnpackedEffectiveMaterial& material, float roughness, float relative_eta,
+    const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector,
+    BSDFIncidentLightInfo incident_light_info)
+{
+    float NoL = local_to_light_direction.z;
+    float NoV = local_view_direction.z;
+    float HoL = hippt::dot(local_to_light_direction, local_halfway_vector);
+    float HoV = hippt::dot(local_view_direction, local_halfway_vector);
+
+    ColorRGB32F color;
+    if (MaterialUtils::is_perfectly_smooth(roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
+    {
+        // Fast path for specular glass
+        bool incident_direction_is_perfect_refraction = hippt::dot(refract_ray(local_view_direction, make_float3(0.0f, 0.0f, 1.0f), relative_eta), local_to_light_direction) > MaterialConstants::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD;
+        if (incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE && incident_direction_is_perfect_refraction)
+            return MaterialConstants::DELTA_DISTRIBUTION_HIGH_VALUE;
+        else
+            return 0.0f;
+    }
+    else
+    {
+        float dot_prod = HoL + HoV / relative_eta;
+        float dot_prod2 = dot_prod * dot_prod;
+        float denom = dot_prod2 * NoL * NoV;
+
+        float alpha_x;
+        float alpha_y;
+        MaterialUtils::get_alphas(roughness, material.anisotropy, alpha_x, alpha_y);
+
+        float D = GGX_anisotropic(alpha_x, alpha_y, local_halfway_vector);
+        float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
+        float G1_L = G1_Smith(alpha_x, alpha_y, local_to_light_direction);
+        float G2 = G1_V * G1_L;
+
+        float dwm_dwi = hippt::abs(HoL) / dot_prod2;
+        float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
+ 
+        return dwm_dwi * D_pdf;
+    }
 }
 
 /**

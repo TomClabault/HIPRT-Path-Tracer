@@ -29,15 +29,33 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData
 		break;
 	}*/
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
-    return principled_bsdf_eval_energy_compensated(render_data, bsdf_context, pdf, random_number_generator);
+	return principled_bsdf_eval_energy_compensated(render_data, bsdf_context, pdf, random_number_generator);
 #else
-    return principled_bsdf_eval(render_data, bsdf_context, pdf);
+	return principled_bsdf_eval(render_data, bsdf_context, pdf);
 #endif
 
 #elif BSDFOverride == BSDF_LAMBERTIAN
 	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
 #elif BSDFOverride == BSDF_OREN_NAYAR
 	return oren_nayar_brdf_eval(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction, pdf);
+#endif
+}
+
+HIPRT_DEVICE HIPRT_INLINE float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data, BSDFContext& bsdf_context)
+{
+#if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
+	/*switch (brdf_type)
+	{
+	...
+	...
+	default:
+		break;
+	}*/
+	return principled_bsdf_pdf(render_data, bsdf_context);
+#elif BSDFOverride == BSDF_LAMBERTIAN
+	return lambertian_brdf_pdf(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal));
+#elif BSDFOverride == BSDF_OREN_NAYAR
+	return oren_nayar_brdf_pdf(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction);
 #endif
 }
 

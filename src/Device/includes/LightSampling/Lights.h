@@ -169,14 +169,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& rend
                     if (cos_theta_at_light_source > 1.0e-5f)
                     {
                         float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, cos_theta_at_light_source);
-
-                        float light_pdf_for_mis = light_sample_pdf_for_MIS_solid_angle_measure(render_data,
-                            light_sample_solid_angle_pdf,
-                            light_sample.light_area, light_sample.emission, light_sample.light_source_normal,
-                            distance_to_light, shadow_ray_direction_normalized,
-                            
-                            ray_payload.material.roughness, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, closest_hit_info.primitive_index, light_sample.point_on_light, random_number_generator);
-                        float mis_weight = balance_heuristic(light_pdf_for_mis, bsdf_pdf);
+                        float mis_weight = balance_heuristic(light_sample_solid_angle_pdf, bsdf_pdf);
 
                         float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
                         light_source_radiance_mis = bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
@@ -218,12 +211,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& rend
         if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
         {
             float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
-            float light_pdf_for_MIS = light_sample_pdf_for_MIS_solid_angle_measure(render_data, light_pdf_solid_angle, triangle_area(render_data, shadow_light_ray_hit_info.hit_prim_index), 
-                shadow_light_ray_hit_info.hit_emission, shadow_light_ray_hit_info.hit_geometric_normal, shadow_light_ray_hit_info.hit_distance, 
-                sampled_bsdf_direction,
-                
-                ray_payload.material.roughness, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, closest_hit_info.primitive_index, shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction + closest_hit_info.inter_point, random_number_generator);
-            float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf_for_MIS);
+            float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf_solid_angle);
 
             // Using abs here because we want the dot product to be positive.
             // You may be thinking that if we're doing this, then we're not going to discard BSDF

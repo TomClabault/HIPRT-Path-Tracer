@@ -18,14 +18,14 @@
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
     // sin(theta)^2 = 1.0 - cos(theta)^2
-	float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
-	float sin_theta_o = sqrt(1.0f - local_view_direction.z * local_view_direction.z);
+    float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
+    float sin_theta_o = sqrt(1.0f - local_view_direction.z * local_view_direction.z);
 
     // max_cos here is going to be cos(phi_to_light - phi_view_direction)
     // but computed as cos(phi_light) * cos(phi_view) + sin(phi_light) * sin(phi_view)
     // according to cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)
     float max_cos = 0;
-    if (sin_theta_i > 1.0e-4f && sin_theta_o > 1.0e-4f) 
+    if (sin_theta_i > 1.0e-4f && sin_theta_o > 1.0e-4f)
     {
         float sin_phi_i = local_to_light_direction.y / sin_theta_i;
         float cos_phi_i = local_to_light_direction.x / sin_theta_i;
@@ -39,12 +39,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpa
     }
 
     float sin_alpha, tan_beta;
-    if (hippt::abs(local_to_light_direction.z) > hippt::abs(local_view_direction.z)) 
+    if (hippt::abs(local_to_light_direction.z) > hippt::abs(local_view_direction.z))
     {
         sin_alpha = sin_theta_o;
         tan_beta = sin_theta_i / hippt::abs(local_to_light_direction.z);
     }
-    else 
+    else
     {
         sin_alpha = sin_theta_i;
         tan_beta = sin_theta_o / hippt::abs(local_view_direction.z);
@@ -56,6 +56,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpa
 
     pdf = local_to_light_direction.z * M_INV_PI;
     return material.base_color * M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction)
+{
+    if (local_to_light_direction.z <= 0.0f)
+        return 0.0f;
+
+    return local_to_light_direction.z * M_INV_PI;
 }
 
 /**

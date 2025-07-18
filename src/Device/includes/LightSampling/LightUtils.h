@@ -421,7 +421,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 
 HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& render_data,
 	float3 point_on_light, float3 light_source_normal, ColorRGB32F emission,
-    float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, BSDFIncidentLightInfo incident_light_info, RayPayload& ray_payload, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+    float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, BSDFIncidentLightInfo incident_light_info, RayPayload& ray_payload, int last_hit_primitive_index)
 {
     if (emission.is_black())
         return 0.0f;
@@ -430,13 +430,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
     float distance_to_light = hippt::length(to_light_direction);
     to_light_direction /= distance_to_light; // Normalization
 
-    float bsdf_pdf;
     BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-    ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
-
-    hiprtRay shadow_ray;
-    shadow_ray.origin = shading_point;
-    shadow_ray.direction = to_light_direction;
+    float bsdf_pdf = bsdf_dispatcher_pdf(render_data, bsdf_context);
 
     float area_measure_bsdf_pdf = solid_angle_to_area_pdf(bsdf_pdf, distance_to_light, compute_cosine_term_at_light_source(light_source_normal, -to_light_direction));
 
@@ -455,7 +450,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
 
     return ReGIR_get_reservoir_sample_BSDF_PDF(render_data,
         point_on_light, light_source_normal, emission, 
-        view_direction, shading_point, shading_normal, geometric_normal, incident_light_info, ray_payload, last_hit_primitive_index, random_number_generator);
+        view_direction, shading_point, shading_normal, geometric_normal, incident_light_info, ray_payload, last_hit_primitive_index);
 }
 
 struct ReGIRPairwiseMIS
@@ -520,7 +515,7 @@ struct ReGIRPairwiseMIS
         float non_canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, center_grid_cell_surface, primary_hit, non_canonical_RIS_integral_center_grid_cell, sample_point_on_light, sample_light_source_normal, sample_emission, random_number_generator);
         float canonical_PDF = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, center_grid_cell_surface, primary_hit, canonical_RIS_integral_center_grid_cell, sample_point_on_light, sample_light_source_normal, sample_emission, random_number_generator);
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
-        float bsdf_PDF = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, sample_point_on_light, sample_light_source_normal, sample_emission, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index, random_number_generator);
+        float bsdf_PDF = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, sample_point_on_light, sample_light_source_normal, sample_emission, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index);
 #else
         float bsdf_PDF = 0.0f;
 #endif
@@ -725,7 +720,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     canonical_technique_1_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, point_on_light_1, light_source_normal_1, emission_1, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
                     canonical_technique_2_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, point_on_light_1, light_source_normal_1, emission_1, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
-                    canonical_technique_3_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, point_on_light_1, light_source_normal_1, emission_1, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index, random_number_generator);
+                    canonical_technique_3_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, point_on_light_1, light_source_normal_1, emission_1, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index);
 #endif
                 }
 
@@ -734,7 +729,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     canonical_technique_1_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, point_on_light_2, light_source_normal_2, emission_2, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
                     canonical_technique_2_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, point_on_light_2, light_source_normal_2, emission_2, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
-                    canonical_technique_3_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, point_on_light_2, light_source_normal_2, emission_2, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index, random_number_generator);
+                    canonical_technique_3_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_BSDF_PDF(render_data, point_on_light_2, light_source_normal_2, emission_2, view_direction, shading_point, shading_normal, geometric_normal, BSDFIncidentLightInfo::NO_INFO, ray_payload, last_hit_primitive_index);
 #endif
                 }
 
@@ -1401,90 +1396,6 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F light
         light_contribution.clamp(-clamp_max_value, clamp_max_value);
 
     return light_contribution;
-}
-
-/**
- * This is the function that should always be called when you want the light PDF of a *light* sample for use in
- * MIS balance heurisitic (or power or whatever)
- * 
- * This function exists because some light samplers cannot be "point-evaluated" for a given BSDF sample. 
- * This is the case for ReGIR for example where we cannot compute the PDF of a given sample.
- * 
- * For these light samplers, the light PDF of a BSDF sample is approximated. 
- * This means that in a MIS weighting scheme, the light PDF of the BSDF sample is going to be approximated.
- * 
- * For MIS to stay correct, we also need to use that approximated light-PDF when computing the MIS weight in
- * the light sampling part of MIS, i.e. we cannot:
- * 
- * - Use the correct light PDF for computing the light sample MIS weight
- * - Use the approxmiated light PDF for computing the BSDF sample MIS weight
- * 
- * We need the approximated PDF in both places
- * 
- * This function computes the approximated PDF that should be used in the computation of all MIS weights (in the balance/power/... heuristic)
- * 
- * If the current light sampler is able to evaluate the correct light-PDF of a given BSDF sample, then this function will just return
- * 'original_pdf'. This is because is these cases, 'original_pdf' is already the perfect PDF so we don't to approximate anything
- * 
- * This function will do some computations for the approximated PDF only if the light sampler's PDF cannot be
- * evaluated for any given sample (case of ReGIR for example)
- */
-template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE float light_sample_pdf_for_MIS_solid_angle_measure(const HIPRTRenderData& render_data,
-    float original_pdf,
-    float light_area,
-    ColorRGB32F light_emission, float3 light_surface_normal,
-    float hit_distance, float3 to_light_direction,
-
-    float roughness = 0,
-	float3 shading_point = make_float3(0, 0, 0),
-    float3 view_direction = make_float3(0, 0, 0),
-	float3 surface_shading_normal = make_float3(0, 0, 0),
-	float3 surface_geometric_normal = make_float3(0, 0, 0),
-    int primitive_index = -1,
-    float3 point_on_light = make_float3(0, 0, 0), Xorshift32Generator random_number_generator = Xorshift32Generator(42))
-{
-    // TODO this whole function should not be needed anymore
-    return original_pdf;
-
-    //if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
-    //{
-    //    // Approximating the ReGIR light PDF for the given BSDF sample with the basic NEE PDF
-    //    RayPayload ray_payload;
-    //    ray_payload.material.roughness = roughness;
-    //    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
-    //        shading_point, view_direction, surface_shading_normal, surface_geometric_normal,
-    //        primitive_index, ray_payload,
-    //        point_on_light, light_surface_normal,
-    //        light_emission, random_number_generator);
-
-    //    unsigned int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(shading_point, surface_shading_normal, render_data.current_camera, roughness);
-    //    if (hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-    //    {
-    //        float normalization = render_data.render_settings.regir_settings.non_canonical_pre_integration_factors[hash_grid_cell_index];
-    //        if (normalization == 0.0f)
-    //            // ReGIR cannot find a single good light sample for that cell so the integral is 0, no direct lighting
-    //            return pdf_of_emissive_triangle_hit_solid_angle<LSS_BASE_REGIR>(render_data, light_area, light_emission, light_surface_normal, hit_distance, to_light_direction);
-    //        
-    //        return target_function / normalization;
-    //    }
-    //    else
-    //    {
-    //        float fake_ReGIR_PDF = pdf_of_emissive_triangle_hit_solid_angle<LSS_BASE_REGIR>(render_data, light_area, light_emission, light_surface_normal, hit_distance, to_light_direction);
-
-    //        // Multipliying by an arbitrary factor since ReGIR is supposed to produce better light samples
-    //        // This basically mimics the effect of resampling
-    //        //
-    //        // This is very arbitrary. Clamping at 100.0f. Very arbitrary
-    //        fake_ReGIR_PDF *= hippt::min(100.0f, render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor * sqrtf(render_data.render_settings.regir_settings.grid_fill.light_sample_count_per_cell_reservoir) * sqrtf(render_data.render_settings.regir_settings.spatial_reuse.spatial_neighbor_count));
-
-    //        return fake_ReGIR_PDF;
-    //    }
-    //}
-    //else
-    //    // If the light sampler does support the evaluation of the PDF, just returning the PDF unchanged
-    //    // because this is already the exact PDF
-    //    return original_pdf;
 }
 
 /**
