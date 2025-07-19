@@ -61,7 +61,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
     // Doing the conversion manually instead of using the hardware
     // because it's unavailable in Orochi (again) :(
     if (is_srgb)
-        return pow(rgba, 2.2f);
+        return intrin_pow(rgba, 2.2f);
     else
         return rgba;
 }

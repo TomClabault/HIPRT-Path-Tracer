@@ -766,8 +766,8 @@ void GPURenderer::update_render_data()
 		m_render_data.GPU_BVH = m_hiprt_scene.whole_scene_BLAS.m_geometry;
 		m_render_data.light_GPU_BVH = m_hiprt_scene.emissive_triangles_BLAS.m_geometry;
 
-		m_render_data.render_settings.DEBUG_SUMS = reinterpret_cast<AtomicType<float>*>(m_DEBUG_SUMS.get_device_pointer());
-		m_render_data.render_settings.DEBUG_SUM_COUNT = reinterpret_cast<AtomicType<unsigned long long int>*>(m_DEBUG_SUM_COUNT.get_device_pointer());
+		m_render_data.render_settings.DEBUG_SUM_TOTAL = m_DEBUG_SUMS.get_atomic_device_pointer();
+		m_render_data.render_settings.DEBUG_SUM_COUNT = m_DEBUG_SUM_COUNT.get_atomic_device_pointer();
 
 		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);

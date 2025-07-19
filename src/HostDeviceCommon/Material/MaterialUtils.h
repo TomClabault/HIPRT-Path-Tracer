@@ -86,7 +86,7 @@ struct MaterialUtils
         bool smooth_coat = material_coat == 0.0f || (material_coat > 0.0f && MaterialUtils::is_perfectly_smooth(material_coat_roughness, roughness_threshold));
         bool second_roughness_smooth = MaterialUtils::is_perfectly_smooth(material_second_roughness, roughness_threshold) || material_second_roughness_weight == 0.0f;
         if (smooth_base_layer && smooth_coat && second_roughness_smooth)
-            // Everything is smooth
+			// Everything is smooth, cannot do light sampling
             return false;
 
         return true;

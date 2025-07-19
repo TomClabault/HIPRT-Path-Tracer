@@ -53,7 +53,7 @@ struct HIPRTRenderSettings
 
 	bool enable_direct = true;
 	AtomicType<unsigned long long int>* DEBUG_SUM_COUNT = nullptr;
-	AtomicType<float>* DEBUG_SUMS = nullptr;
+	AtomicType<unsigned long long int>* DEBUG_SUM_TOTAL = nullptr;
 
 	////////////////////////////////////////////////////
 

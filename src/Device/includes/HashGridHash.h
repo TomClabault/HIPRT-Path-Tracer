@@ -56,9 +56,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 hash_periodic_shifting(float3 base_positio
     constexpr float frequency_per_grid_cell_inverse = 1.0f / frequency_per_grid_cell;
 
     return make_float3(
-        base_position.x + cosf(base_position.z / (grid_cell_size * frequency_per_grid_cell_inverse)) * scaling,
-        base_position.y + cosf(base_position.x / (grid_cell_size * frequency_per_grid_cell_inverse)) * scaling,
-        base_position.z + cosf(base_position.y / (grid_cell_size * frequency_per_grid_cell_inverse)) * scaling);
+        base_position.x + hippt::intrin_cosf(base_position.z / (grid_cell_size * frequency_per_grid_cell_inverse)) * scaling,
+        base_position.y + hippt::intrin_cosf(base_position.x / (grid_cell_size * frequency_per_grid_cell_inverse)) * scaling,
+        base_position.z + hippt::intrin_cosf(base_position.y / (grid_cell_size * frequency_per_grid_cell_inverse)) * scaling);
 }
 
 /**

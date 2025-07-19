@@ -353,7 +353,7 @@ public:
 	CameraAnimation m_camera_animation;
 
 	OrochiBuffer<unsigned long long int> m_DEBUG_SUM_COUNT;
-	OrochiBuffer<float> m_DEBUG_SUMS;
+	OrochiBuffer<unsigned long long int> m_DEBUG_SUMS;
 
 private:
 	// So that GPURendererThread can access the private members of GPURenderer without
