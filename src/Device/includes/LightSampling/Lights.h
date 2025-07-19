@@ -47,6 +47,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& r
     ColorRGB32F light_source_radiance;
     // abs() here to allow backfacing light sources
     float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
+
     if (dot_light_source > 0.0f)
     {
         NEEPlusPlusContext nee_plus_plus_context;
@@ -314,7 +315,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData
  * I think the better morale to remember is that the material being emissive doesn't matter at
  * all. As long as the material itself reflects light, then we should do NEE.
  */
-HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
+HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
     const float3& view_direction, 
     Xorshift32Generator& random_number_generator, int2 pixel_coords, MISBSDFRayReuse& mis_ray_reuse)
 {

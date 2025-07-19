@@ -150,7 +150,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
             // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
             output_reservoir = visibility_reuse(render_data, output_reservoir, cell_surface, random_number_generator);
 
-        // TODO store reservoir recomputes the hash grid cell index but we already have it
         regir_settings.store_reservoir_opt(output_reservoir, hash_grid_cell_index, primary_hit, reservoir_index_in_cell);
 
 #ifdef __KERNELCC__

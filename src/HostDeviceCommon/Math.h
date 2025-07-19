@@ -141,9 +141,11 @@ namespace hippt
 
 	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
 	__device__ float2 cos(float2 x) { return make_float2(cosf(x.x), cosf(x.y)); }
+	__device__ float intrin_cosf(float x) { return cosf(x); }
 
 	__device__ float3 sin(float3 x) { return make_float3(sinf(x.x), sinf(x.y), sinf(x.z)); }
 	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
+	__device__ float intrin_sinf(float x) { return __sinf(x); }
 
 	__device__ float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
 
@@ -162,6 +164,8 @@ namespace hippt
 	__device__ constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	__device__ constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
 	__device__ constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
+
+	__device__ float intrin_pow(float x, float y) { return __powf(x, y); }
 
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 
@@ -396,9 +400,11 @@ namespace hippt
 
 	inline float2 cos(float2 x) { return make_float2(std::cos(x.x), std::cos(x.y)); }
 	inline float3 cos(float3 x) { return make_float3(std::cos(x.x), std::cos(x.y), std::cos(x.z)); }
+	inline float intrin_cosf(float x) { return std::cos(x); }
 
 	inline float2 sin(float2 x) { return make_float2(std::sin(x.x), std::sin(x.y)); }
 	inline float3 sin(float3 x) { return make_float3(std::sin(x.x), std::sin(x.y), std::sin(x.z)); }
+	inline float intrin_sinf(float x) { return std::sin(x); }
 
 	inline float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
 
@@ -416,6 +422,8 @@ namespace hippt
 	inline constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	inline constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
 	inline constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
+
+	inline float intrin_pow(float x, float y) { return powf(x, y); }
 
 	inline float3 normalize(float3 u) { return hiprt::normalize(u); }
 

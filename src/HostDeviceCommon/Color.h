@@ -61,8 +61,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator/ (const float k, const Colo
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator/ (const ColorRGBA32F& c, const float k) { return ColorRGBA32F(c.r / k, c.g / k, c.b / k, c.a / k); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sqrt(const ColorRGBA32F& col) { return ColorRGBA32F(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b), sqrtf(col.a)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F exp(const ColorRGBA32F& col) { return ColorRGBA32F(expf(col.r), expf(col.g), expf(col.b), expf(col.a)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F exp2(const ColorRGBA32F& col) { return ColorRGBA32F(exp2f(col.r), exp2f(col.g), exp2f(col.b), exp2f(col.a)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F log(const ColorRGBA32F& col) { return ColorRGBA32F(logf(col.r), logf(col.g), logf(col.b), logf(col.a)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F pow(const ColorRGBA32F& col, float k) { return ColorRGBA32F(powf(col.r, k), powf(col.g, k), powf(col.b, k), powf(col.a, k)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F intrin_pow(ColorRGBA32F x, float y) { return ColorRGBA32F(hippt::intrin_pow(x.r, y), hippt::intrin_pow(x.g, y), hippt::intrin_pow(x.b, y), hippt::intrin_pow(x.a, y)); }
 
 struct ColorRGB32F
 {
@@ -130,8 +132,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator/ (const float k, const Color
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator/ (const ColorRGB32F& c, const float k) { return ColorRGB32F(c.r / k, c.g / k, c.b / k); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sqrt(const ColorRGB32F& col) { return ColorRGB32F(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F exp(const ColorRGB32F& col) { return ColorRGB32F(expf(col.r), expf(col.g), expf(col.b)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F exp2(const ColorRGB32F& col) { return ColorRGB32F(exp2f(col.r), exp2f(col.g), exp2f(col.b)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F log(const ColorRGB32F& col) { return ColorRGB32F(logf(col.r), logf(col.g), logf(col.b)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F pow(const ColorRGB32F& col, float k) { return ColorRGB32F(powf(col.r, k), powf(col.g, k), powf(col.b, k)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F intrin_pow(ColorRGB32F x, float y) { return ColorRGB32F(hippt::intrin_pow(x.r, y), hippt::intrin_pow(x.g, y), hippt::intrin_pow(x.b, y)); }
 
 #ifndef __KERNELCC__
 inline std::ostream& operator <<(std::ostream& os, const ColorRGB32F& color)

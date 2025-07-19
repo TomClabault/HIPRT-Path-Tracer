@@ -570,7 +570,6 @@ struct ReGIRPairwiseMIS
     float m_sum_canonical_weight_3 = 0.0f;
 };
 
-// TODO 215 FPS
 HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_regir(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
@@ -582,8 +581,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     // this will be set to false
     out_need_fallback_sampling = true;
 
-    float3 selected_point_on_light;
-    float3 selected_light_source_normal;
+    float3 selected_point_on_light = make_float3(0.0f, 0.0f, 0.0f);
+    float3 selected_light_source_normal = make_float3(0.0f, 0.0f, 0.0f);
     float selected_light_source_area = 0.0f;
     BSDFIncidentLightInfo selected_incident_light_info = BSDFIncidentLightInfo::NO_INFO;
     ColorRGB32F selected_emission;
@@ -716,7 +715,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             {
                 if (!emission_1.is_black())
                 {
-                    // TODO we already the canonical / non-canonical PDF normalization (fetched below) so we can use them because otherwise, that function fetches them again
+                    // TODO we already have the canonical / non-canonical PDF normalization (fetched below) so we can use them because otherwise, that function fetches them again
                     canonical_technique_1_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, point_on_light_1, light_source_normal_1, emission_1, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
                     canonical_technique_2_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, point_on_light_1, light_source_normal_1, emission_1, canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
@@ -1065,7 +1064,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             new_ray.origin = shading_point;
             new_ray.direction = sampled_bsdf_direction;
 
-            intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
+            intersection_found = evaluate_bsdf_light_sample_ray_simplified(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
 
             // Checking that we did hit something and if we hit something,
             // it needs to be emissive
