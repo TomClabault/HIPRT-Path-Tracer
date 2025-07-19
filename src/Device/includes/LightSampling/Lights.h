@@ -14,6 +14,7 @@
 #include "Device/includes/MISBSDFRayReuse.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/DI/FinalShading.h"
+#include "Device/includes/ReSTIR/ReGIR/FinalShading.h"
 #include "Device/includes/RIS/RIS.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
@@ -249,6 +250,12 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRen
     // per each shading point, effectively "amortizing" camera and bounce rays
     for (int i = 0; i < DirectLightSamplingNEESampleCount; i++)
     {
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+        // ReGIR has its own special path to optimize things a bit
+        direct_light_contribution += sample_one_light_ReGIR(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+
+#else // Not ReGIR
+
 #if DirectLightSamplingStrategy == LSS_ONE_LIGHT
         direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_BSDF
@@ -258,6 +265,8 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRen
 #elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
         direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #endif
+
+#endif // #if ReGIR
     }
 
     return direct_light_contribution / DirectLightSamplingNEESampleCount;

@@ -114,13 +114,32 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPR
 		render_data, surface, primary_hit, sample_emission, sample_normal, sample_position, rng);
 }
 
-template <bool withVisibility, bool withNeePlusPlusVisibilityEstimation, bool withGeometryTerm = true>
+template <bool withVisibility, bool withNeePlusPlusVisibilityEstimation>
 HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
 	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	const float3& point_on_light, const float3& light_source_normal,
 	const ColorRGB32F& light_emission,
 	Xorshift32Generator& rng,
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO)
+{
+	ColorRGB32F trash_radiance;
+	return ReGIR_shading_evaluate_target_function<withVisibility, withNeePlusPlusVisibilityEstimation>(render_data, 
+		shading_point, view_direction, shading_normal, geometric_normal,
+		last_hit_primitive_index, ray_payload, 
+		point_on_light, light_source_normal, 
+		light_emission, 
+		rng, trash_radiance, 
+		incident_light_info);
+}
+
+template <bool withVisibility, bool withNeePlusPlusVisibilityEstimation>
+HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
+	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
+	int last_hit_primitive_index, RayPayload& ray_payload,
+	const float3& point_on_light, const float3& light_source_normal,
+	const ColorRGB32F& light_emission,
+	Xorshift32Generator& rng, ColorRGB32F& sample_radiance,
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO)
 {
 	float3 to_light_direction = point_on_light - shading_point;
@@ -141,10 +160,10 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction));
 	float geometry_term = compute_cosine_term_at_light_source(light_source_normal, -to_light_direction) / hippt::square(distance_to_light);
-	if constexpr (!withGeometryTerm)
-		geometry_term = 1.0f;
 
-	float target_function = (bsdf_color * light_emission * cosine_term * geometry_term).luminance();
+	sample_radiance = bsdf_color * light_emission * cosine_term * geometry_term;
+
+	float target_function = sample_radiance.luminance();
 	if (target_function <= 0.0f)
 		return 0.0f;
 

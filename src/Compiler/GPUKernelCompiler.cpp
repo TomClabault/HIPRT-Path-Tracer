@@ -63,7 +63,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	// compiler_options.push_back("-g");
 	// compiler_options.push_back("-ggdb");
 
-	// Locking because neither NVIDIA or AMD cannot compile kernels on multiple threads so we may as well
+	// Locking because neither NVIDIA or AMD can compile kernels on multiple threads at the same time
+	// with their runtime API (but NVCC/HIPCC can compile in parallel with the commandline) so we may as well
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times
 	std::unique_lock<std::mutex> lock(m_compile_mutex);
 
