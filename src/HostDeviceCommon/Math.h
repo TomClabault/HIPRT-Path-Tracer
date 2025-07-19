@@ -74,6 +74,9 @@ namespace hippt
 #define M_TWO_PI_SQUARED	19.73920880217871723767f
 #define NEAR_ZERO	1.0e-10f
 
+	/**
+	 * Returns the 'warpSize' runtime constant of the GPU
+	 */
 	__device__ int warp_size() { return warpSize; }
 	__device__ int thread_idx_x() { return threadIdx.x + blockIdx.x * blockDim.x; }
 	__device__ int thread_idx_y() { return threadIdx.y + blockIdx.y * blockDim.y; }
@@ -141,7 +144,7 @@ namespace hippt
 
 	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
 	__device__ float2 cos(float2 x) { return make_float2(cosf(x.x), cosf(x.y)); }
-	__device__ float intrin_cosf(float x) { return cosf(x); }
+	__device__ float intrin_cosf(float x) { return cosf(x); } // Not using the intrinsic for now because of a compiler bug
 
 	__device__ float3 sin(float3 x) { return make_float3(sinf(x.x), sinf(x.y), sinf(x.z)); }
 	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
@@ -290,6 +293,9 @@ namespace hippt
 
 	// TODO these functions require __sync on modern NVIDIA GPUs. We should check that with __CUDACC__
 	__device__ bool warp_any(unsigned int thread_mask, bool predicate) { return __any(predicate); }
+	/**
+	 * Returns a bit mask whose bits are set to 1 for threads that evaluated the predicate to true.
+	 */
 	__device__ unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate) { return __ballot(predicate); }
 	__device__ unsigned int warp_activemask() { return hippt::warp_ballot(0xFFFFFFFF, true); }
 
@@ -337,6 +343,9 @@ namespace hippt
 #define M_TWO_PI_SQUARED	19.73920880217871723767f // 2.0f * pi^2
 #define NEAR_ZERO	1.0e-10f
 
+	/**
+	 * Returns the 'warpSize' runtime constant of the GPU
+	 */
 	inline int warp_size() { return 1; }
 	inline int thread_idx_x() { return 0; }
 	inline int thread_idx_y() { return 0; }
@@ -571,6 +580,9 @@ namespace hippt
 	}
 
 	inline bool warp_any(unsigned int thread_mask, bool predicate) { return predicate; }
+	/**
+	 * Returns a bit mask whose bits are set to 1 for threads that evaluated the predicate to true.
+	 */
 	inline unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate) { return predicate ? 1 : 0; }
 	inline unsigned int warp_activemask() { return 1; }
 

@@ -1123,7 +1123,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be changed in the ReSTIR DI settings."
 			};
 
-			if (ImGuiRenderer::ComboWithTooltips("NEE strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips))
+			const bool no_direct_light_sampling_disabled = false;
+			const bool uniform_one_light_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+			const bool bsdf_sampling_disabled = false;
+			const bool mis_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+			const bool ris_disabled = false;
+			const bool restir_di_disabled = false;
+			bool disabled_items[] = { no_direct_light_sampling_disabled, uniform_one_light_disabled, bsdf_sampling_disabled, mis_disabled, ris_disabled, restir_di_disabled };
+
+			if (ImGuiRenderer::ComboWithTooltips("NEE strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips, disabled_items))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1153,29 +1161,38 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					ImGui::TreePush("RIS Settings tree");
 
-					bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
-					if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
 					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-						m_renderer->recompile_kernels();
-
-						m_render_window->set_render_dirty(true);
+						ImGui::Text("The mix of BSDF/light samples is controlled\n"
+							"by the ReGIR settings.");
 					}
-
-					if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+					else
 					{
-						// Clamping to 0
-						render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+						bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
+						if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+							m_renderer->recompile_kernels();
 
-						m_render_window->set_render_dirty(true);
-					}
+							m_render_window->set_render_dirty(true);
+						}
 
-					if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
-					{
-						// Clamping to 0
-						render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
+						if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+						{
+							// Clamping to 0
+							render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
 
-						m_render_window->set_render_dirty(true);
+							m_render_window->set_render_dirty(true);
+						}
+
+						if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
+						{
+							// Clamping to 0
+							render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
+
+							m_render_window->set_render_dirty(true);
+						}
+
 					}
 
 					ImGui::TreePop();

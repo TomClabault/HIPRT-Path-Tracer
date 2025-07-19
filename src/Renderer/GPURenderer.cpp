@@ -49,6 +49,11 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
+	// Just "fixing" the ReGIR options to be in sync with the UI
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR &&
+		(m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_ONE_LIGHT || 
+		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_MIS_LIGHT_BSDF))
+		m_global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
 
 	m_render_thread.init(this);
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;

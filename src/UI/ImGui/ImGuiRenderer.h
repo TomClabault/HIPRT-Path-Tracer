@@ -40,7 +40,7 @@ public:
 	static void add_tooltip(const std::string& tooltip_text, ImGuiHoveredFlags flags = ImGuiHoveredFlags_AllowWhenDisabled);
 	static void add_warning(const std::string& warning_text);
 
-	static bool ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips);
+	static bool ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips, bool* disabled_items = nullptr);
 
 	void set_render_window(RenderWindow* renderer);
 	void set_status_text(const std::string& new_status_text);

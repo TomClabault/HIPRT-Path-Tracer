@@ -46,21 +46,28 @@ void ImGuiRenderer::add_warning(const std::string& warning_text)
 	ImGuiRenderer::show_help_marker(warning_text.c_str());
 }
 
-bool ImGuiRenderer::ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips)
+bool ImGuiRenderer::ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips, bool* disabled_items)
 {
 	if (ImGui::BeginCombo(combo_text.c_str(), items[*combo_value]))
 	{
 		for (int i = 0; i < items_count; i++)
 		{
+			ImGui::BeginDisabled(disabled_items && disabled_items[i]);
+
 			const bool is_selected = (*combo_value == i);
 
 			if (ImGui::Selectable(items[i], is_selected))
 			{
 				*combo_value = i;
 
+				ImGui::EndDisabled(); // disabled_items && disabled_items[i]
 				ImGui::EndCombo();
+
 				return true;
 			}
+
+			ImGui::EndDisabled(); // disabled_items && disabled_items[i]
+
 			ImGuiRenderer::add_tooltip(tooltips[i]);
 
 			if (is_selected)
