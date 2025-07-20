@@ -822,7 +822,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 ColorRGB32F sample_radiance;
                 float target_function = ReGIR_shading_evaluate_target_function<
-                    ReGIR_ShadingResamplingTargetFunctionVisibility,
+                    ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
                     ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                         shading_point, view_direction, shading_normal, geometric_normal,
                         last_hit_primitive_index, ray_payload,
@@ -858,8 +858,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     selected_light_source_area = light_source_area;
                     selected_emission = emission;
 
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
 					out_infos.sample_radiance = sample_radiance;
+#endif
                 }
+					
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
+                out_infos.sample_radiance += sample_radiance * non_canonical_reservoir.UCW * mis_weight;
+#endif
             }
         }
 
@@ -876,7 +882,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     //
                     // TLDR is that this is pretty much necessary for good visibility reuse quality
                     ColorRGB32F sample_radiance;
-                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                         shading_point, view_direction, shading_normal, geometric_normal,
                         last_hit_primitive_index, ray_payload,
                         point_on_light_1, light_source_normal_1, emission_1, random_number_generator, sample_radiance);
@@ -903,8 +909,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         selected_light_source_area = light_source_area;
                         selected_emission = emission_1;
 
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
                         out_infos.sample_radiance = sample_radiance;
+#endif
                     }
+
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
+                    out_infos.sample_radiance += sample_radiance * canonical_technique_1_reservoir.UCW * mis_weight;
+#endif
                 }
             }
         }
@@ -928,7 +940,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     //
                     // TLDR is that this is pretty much necessary for good visibility reuse quality
                     ColorRGB32F sample_radiance;
-                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                         shading_point, view_direction, shading_normal, geometric_normal,
                         last_hit_primitive_index, ray_payload,
                         point_on_light_2, light_source_normal_2, emission_2, random_number_generator, sample_radiance);
@@ -955,8 +967,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         selected_light_source_area = light_source_area;
                         selected_emission = emission_2;
 
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
                         out_infos.sample_radiance = sample_radiance;
+#endif
                     }
+
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
+                    out_infos.sample_radiance += sample_radiance * canonical_technique_2_reservoir.UCW * mis_weight;
+#endif
                 }
             }
         }
@@ -967,7 +985,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             float mis_weight = pairwise.get_canonical_MIS_weight_3(canonical_technique_1_canonical_reservoir_3_pdf, canonical_technique_2_canonical_reservoir_3_pdf, canonical_technique_3_canonical_reservoir_3_pdf, mis_weight_normalization);
 
             ColorRGB32F sample_radiance;
-            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
                 ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                     shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index,
                     ray_payload, point_on_light_3, light_source_normal_3, emission_3,
@@ -981,8 +999,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 selected_emission = emission_3;
                 selected_incident_light_info = canonical_technique_3_sample_ili;
 
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
                 out_infos.sample_radiance = sample_radiance;
+#endif
             }
+
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
+            out_infos.sample_radiance += sample_radiance / canonical_technique_3_canonical_reservoir_3_pdf * mis_weight;
+#endif
         }
 #endif
 

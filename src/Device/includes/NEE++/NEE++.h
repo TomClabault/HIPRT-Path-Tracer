@@ -173,7 +173,7 @@ struct NEEPlusPlusDevice
 	 * that value on its own even though the world points given may be the same and thus, the matrix
 	 * index is the same)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_hash_grid_index) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_hash_grid_index, unsigned int& out_cell_total_accumulation_count) const
 	{
 		out_hash_grid_index = get_visibility_map_index<true>(context, current_camera);
 		if (out_hash_grid_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -183,8 +183,8 @@ struct NEEPlusPlusDevice
 			// tests for a shadow ray
 			return 1.0f;
 
-		unsigned int total_map_count = read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(out_hash_grid_index);
-		if (total_map_count == 0)
+		out_cell_total_accumulation_count = read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(out_hash_grid_index);
+		if (out_cell_total_accumulation_count == 0)
 			// No information for these two points
 			// 
 			// Returning 1.0f indicating that the two points are not occluded such that the caller
@@ -194,7 +194,7 @@ struct NEEPlusPlusDevice
 		{
 			unsigned int unoccluded_count = read_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(out_hash_grid_index);
 			
-			float unoccluded_proba = unoccluded_count / static_cast<float>(total_map_count);
+			float unoccluded_proba = unoccluded_count / static_cast<float>(out_cell_total_accumulation_count);
 			if (unoccluded_proba >= m_confidence_threshold)
 				return 1.0f;
 			else
@@ -206,11 +206,19 @@ struct NEEPlusPlusDevice
 	 * Returns the estimated probability that a ray between the two given world points
 	 * is going to be unoccluded (i.e. the two points are mutually visible)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_cell_total_accumulation_count) const
 	{
 		unsigned int trash_matrix_index;
 
-		return estimate_visibility_probability(context, current_camera, trash_matrix_index);
+		return estimate_visibility_probability(context, current_camera, trash_matrix_index, out_cell_total_accumulation_count);
+	}
+
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera) const
+	{
+		unsigned int trash_matrix_index;
+		unsigned int trash_accumulation_count;
+
+		return estimate_visibility_probability(context, current_camera, trash_matrix_index, trash_accumulation_count);
 	}
 
 	HIPRT_HOST_DEVICE unsigned int hash_context(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_checksum) const

@@ -8,7 +8,7 @@
 
 struct ReGIRShadingAdditionalInfo
 {
-	ColorRGB32F sample_radiance;
+	ColorRGB32F sample_radiance = ColorRGB32F(0.0f);
 };
 
 #endif

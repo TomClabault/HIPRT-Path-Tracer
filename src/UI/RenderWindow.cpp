@@ -63,6 +63,9 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - Surface normal in hash only for the first hits?
+// - Bias with normal in hash + spatial reuse
+// - Remove obsolete visibility reuse - too expensive, never used
 // - Can we shade multiple reservoirs without shooting shadow rays by using NEE++ to make sure that the reservoir isn't shadowed? This may be biased but maybe not too bad?
 // - Can we have a biased NEE++ where we clamp the normalization factor to avoid fireflies?
 // - Would it be possible to to resample like 1 single or a small amount of new samples into the supersampling grid such that this diversifies samples and avoids too much correlations even while accumulating ?

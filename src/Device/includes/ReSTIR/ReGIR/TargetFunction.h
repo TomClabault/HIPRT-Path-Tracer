@@ -175,8 +175,10 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 			shadow_ray.origin = shading_point;
 			shadow_ray.direction = to_light_direction;
 
-			if (evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, rng))
-				target_function = 0.0f;
+			bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, rng);
+		
+			target_function *= !in_shadow;
+			sample_radiance *= !in_shadow;
 		}
 	}
 	else if constexpr (withNeePlusPlusVisibilityEstimation && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE)

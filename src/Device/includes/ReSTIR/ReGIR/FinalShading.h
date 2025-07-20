@@ -45,6 +45,11 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& re
             // Can happen for very small triangles
             return ColorRGB32F(0.0f);
 
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
+        // If we're shading all samples, we already have the perfectly computed
+        // radiance in additional_infos so we can just return that
+        return additional_infos.sample_radiance;
+#endif
         // ReGIR succeeded with sampling, just shooting a shadow ray to validate visibility
 
         bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
