@@ -89,8 +89,7 @@ struct ReGIRHashGrid
 	/**
 	 * Overload if you already the hash grid cell index
 	 */
-	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashGridSoADevice& soa,
-		unsigned int hash_grid_cell_index, int reservoir_index_in_cell)
+	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashGridSoADevice& soa, unsigned int hash_grid_cell_index, int reservoir_index_in_cell)
 	{
 		int reservoir_index_in_grid = hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 
@@ -209,7 +208,7 @@ struct ReGIRHashGrid
 		return read_full_reservoir(soa, reservoir_index_in_grid);
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos_with_collision_resolve(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
 		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness) const
 	{
 		unsigned int hash_key;

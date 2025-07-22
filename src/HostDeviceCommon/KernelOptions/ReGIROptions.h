@@ -147,7 +147,7 @@
  * This massively improves quality at the cost of performance and is very likely to be worth it for scenes that are not
  * too hard to trace (where shadow rays are expensive).
  */
-#define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_FALSE
 
 /**
  * Discards reservoirs whose light samples are occluded at grid fill time.
@@ -178,7 +178,7 @@
 /**
  * Whether or not to use the surface normal in the hash function of the hash grid
  */
-#define ReGIR_HashGridHashSurfaceNormal KERNEL_OPTION_FALSE
+#define ReGIR_HashGridHashSurfaceNormal KERNEL_OPTION_TRUE
 
 /**
  * If using jittering, how many tries to perform to find a good neighbor at shading time?

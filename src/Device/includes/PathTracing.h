@@ -262,7 +262,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 
-        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(primary_hit);
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(primary_hit);
 
         float average_contribution = 0.0f;
         for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.get_non_canonical_reservoir_count_per_cell(); i++)
@@ -285,7 +285,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 
-        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(primary_hit);
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(primary_hit);
 
         float average_contribution = 0.0f;
         for (int i = 0; i < render_data.render_settings.regir_settings.grid_fill.get_canonical_reservoir_count_per_cell(); i++)
@@ -310,7 +310,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
         float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
-        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness, true);
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness, true);
 
         ColorRGB32F color;
         float3 rep_point = ReGIR_get_cell_world_point(render_data, cell_index, true);
@@ -331,7 +331,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         float3 geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
         int prim_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
         float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
-        unsigned int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness, true);
+        unsigned int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness, true);
         if (hash_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
         {
             ray_payload.ray_color = ColorRGB32F(1.0f, 0.0f, 1.0f) * (render_data.render_settings.sample_number + 1);

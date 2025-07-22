@@ -36,14 +36,9 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
         float3 offset = make_float3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
         float3 point_in_neighbor_cell = point_in_center_cell + offset * regir_settings.get_cell_size(point_in_center_cell, render_data.current_camera, center_cell_roughness);
         
-        neighbor_hash_grid_cell_index_in_grid = regir_settings.get_hash_grid_cell_index_from_world_pos_with_collision_resolve(point_in_neighbor_cell, center_cell_normal, render_data.current_camera, center_cell_roughness, primary_hit);
-        if (neighbor_hash_grid_cell_index_in_grid == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-            // Neighbor is outside of the grid
-            neighbor_invalid = true;
-        else if (regir_settings.get_hash_cell_data_soa(primary_hit).grid_cell_alive[neighbor_hash_grid_cell_index_in_grid] == 0)
-            // Neighbor cell isn't alive, let's not reuse it
-            neighbor_invalid = true;
-        else
+        neighbor_hash_grid_cell_index_in_grid = regir_settings.get_hash_grid_cell_index_from_world_pos(point_in_neighbor_cell, center_cell_normal, render_data.current_camera, center_cell_roughness, primary_hit);
+        if (neighbor_hash_grid_cell_index_in_grid != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && regir_settings.get_hash_cell_data_soa(primary_hit).grid_cell_alive[neighbor_hash_grid_cell_index_in_grid])
+			// Neighbor is inside of the grid and alive, we can use it
             neighbor_invalid = false;
 
         retry++;
@@ -98,19 +93,10 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             else
                 random_reservoir_index_in_cell = random_number_generator() * regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell();
 
-            float3 neighbor_cell_point = ReGIR_get_cell_world_point(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit);
-            float3 neighbor_cell_normal = ReGIR_get_cell_world_shading_normal(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit);
-            float neighbor_cell_roughness = ReGIR_get_cell_roughness(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit);
-
 			// TODO the point, normal and roughness here are only to get the grid cell idnex but already have the grid cell index so we need an overload of this function that doesn't take these parameters
             ReGIRReservoir neighbor_reservoir = regir_settings.get_reservoir_from_grid_cell_index(input_reservoirs, neighbor_hash_grid_cell_index_in_grid, random_reservoir_index_in_cell);
-
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
-
-            // MIS weight is 1.0f because we're going to normalize at the end instead of during the resampling
-            float mis_weight = 1.0f;
-            float target_function_at_center;
 
             ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, neighbor_reservoir.sample.emissive_triangle_index);
             float3 point_on_light = neighbor_reservoir.sample.point_on_light;
@@ -118,20 +104,16 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             float light_source_area = hippt::length(light_source_normal) * 0.5f;
             light_source_normal /= light_source_area * 2.0f;
 
+            float target_function_at_center;
             if (regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
-            {
-                // Never using the template visibility/cosine terms arguments for canonical reservoirs
                 target_function_at_center = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
-                    emission, light_source_normal, point_on_light,
-                    random_number_generator);
-            }
+                    emission, light_source_normal, point_on_light, random_number_generator);
             else
-            {
                 target_function_at_center = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
-                    emission, light_source_normal, point_on_light,
-                    random_number_generator);
-            }
+                    emission, light_source_normal, point_on_light, random_number_generator);
 
+            // MIS weight is 1.0f because we're going to normalize at the end instead of during the resampling
+            float mis_weight = 1.0f;
             output_reservoir.stream_reservoir(mis_weight, target_function_at_center, neighbor_reservoir, random_number_generator);
         }
     }
@@ -295,7 +277,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_spatial_reservoir_opt(ReGIRReservoir(), center_cell_point, center_cell_normal, render_data.current_camera, center_cell_roughness, primary_hit, reservoir_index_in_cell);
+            regir_settings.store_spatial_reservoir_opt(output_reservoirs_grid,  ReGIRReservoir(), hash_grid_cell_index, reservoir_index_in_cell);
             
             return;
         }
@@ -321,7 +303,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
         // Normalizing the reservoirs to 1
         output_reservoir.finalize_resampling(1.0f, valid_neighbor_count);
 
-        regir_settings.store_spatial_reservoir_opt(output_reservoirs_grid, output_reservoirs_hash_cell_data, output_reservoir, center_cell_point, center_cell_normal, render_data.current_camera, center_cell_roughness, reservoir_index_in_cell);
+        regir_settings.store_spatial_reservoir_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
 
 #ifdef __KERNELCC__
         spatial_reuse_pre_integration_accumulation<ReGIR_GridFillSpatialReuse_AccumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
@@ -337,7 +319,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
         // We need to compute the next reservoir index for the next iteration
         thread_index += thread_count;
 #endif
-
     }
 }
 

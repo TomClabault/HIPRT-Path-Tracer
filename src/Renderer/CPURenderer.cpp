@@ -41,7 +41,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -55,8 +55,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 659
-#define DEBUG_PIXEL_Y 650
+#define DEBUG_PIXEL_X 794
+#define DEBUG_PIXEL_Y 433
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -695,14 +695,14 @@ void CPURenderer::camera_rays_pass()
 
 void CPURenderer::ReGIR_pass()
 {
+    if (m_render_data.render_settings.sample_number == 0)
+        ReGIR_pre_integration();
+
     ReGIR_grid_fill_pass<false>(true);
     ReGIR_grid_fill_pass<false>(false);
 
     ReGIR_spatial_reuse_pass<false>(true);
     ReGIR_spatial_reuse_pass<false>(false);
-
-    if (m_render_data.render_settings.sample_number == 0)
-        ReGIR_pre_integration();
 }
 
 template <bool accumulatePreIntegration>

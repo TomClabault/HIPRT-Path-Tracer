@@ -63,9 +63,12 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - We need something to fix the grid artifacts visible in mirrors because of low reservoirs count per grid cell at secondary bounces. Maybe we can insert in the hash grid in the megakernel by passing the 'first hit' flag to true if this is the first or a secondary hit with low path spreadcdrt
+// - Should we not pick reservoirs randomly in the neighbor cell during spatial reuse and instead each reservoir stays in its lane?
 // - Surface normal in hash only for the first hits?
 // - Bias with normal in hash + spatial reuse
-// - Remove obsolete visibility reuse - too expensive, never used
+// - Remove obsolete visibility reuse - too expensive, never used, code bloat
+// - Can we have pairwise MIS in the spatial reuse for increased quality?
 // - Can we shade multiple reservoirs without shooting shadow rays by using NEE++ to make sure that the reservoir isn't shadowed? This may be biased but maybe not too bad?
 // - Can we have a biased NEE++ where we clamp the normalization factor to avoid fireflies?
 // - Would it be possible to to resample like 1 single or a small amount of new samples into the supersampling grid such that this diversifies samples and avoids too much correlations even while accumulating ?
@@ -240,137 +243,135 @@ extern ImGuiLogger g_imgui_logger;
 // - Stochastic light culling: https://jcgt.org/published/0005/01/02/paper-lowres.pdf
 // - Disney adaptive sampling: https://la.disneyresearch.com/wp-content/uploads/Adaptive-Rendering-with-Linear-Predictions-Paper.pdf?utm_source=chatgpt.com
 // - flush to zero denormal float numbers compiler option?
-//		
- /*
- *
-	-fcuda-flush-denormals-to-zero
-	-fgpu-flush-denormals-to-zero
-
- */
- // - Eta scaling for russian roulette refractions
- // - Better adaptive sampling error metrics: https://theses.hal.science/tel-03675200v1/document, section 10.1.1, Heitz et al 2018 + Rigau et al 2003
- // - Projected solid angle light sampling https://momentsingraphics.de/ToyRenderer4RayTracing.html
- // - Disable back facing lights for performance because most of those lights, for correct meshes, are going to be occluded
- //		- Add an option to re-enable manually back facing lights in the material
- // - Efficient Image-Space Shape Splatting for Monte Carlo Rendering
- // - DRMLT: https://joeylitalien.github.io/assets/drmlt/drmlt.pdf
- // - What's NEE-AT of RTXPT?
- // - Area ReSTIR just for the antialiasing part
- // - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
- // - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
- // - Some MIS weights ideas in: https://momentsingraphics.de/ToyRenderer4RayTracing.html in "Combining diffuse and specular"
- // - Radiance caching for feeding russian roulette
- // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
- // - Some automatic metric to determine automatically what GMoN blend factor to use
- // - software opacity micromaps
- // - Add parameters to increase the strength of specular / coat darkening
- // - sample BSDF diffuse lobe proba based on its luminance?
- // - how to help with shaders combination compilation times?
- //		- Change some #if to if() where this does not increase register pressure also.
- //		- wavefront path tracing should help
- //		- Maybe have two sets of shaders:
- //			- One that uses the #if for performance
- //			- One that uses if() everywhere instead of #if for fast preview
- //				- to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
- // - next event estimation++? --> 2023 paper improvement with the octree
- // - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance
- // - envmap visibility cache? 
- // - If GMoN is enabled, it would be cool to be able to denoise the GMoN blend between GMoN and the default framebuffer but currently the denoiser only denoises the full GMoN and nothing else
- // - Exploiting Visibility Correlation in Direct Illumination
- // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
- // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
- // - for volumes, we don't have to use the same phase function at each bounce, for artistic control of the "blur shape"
- // - --help on the commandline
- // - Normal mapping seems broken again, light rays going under the surface... p1 env light
- // - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
- // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
- // - energy conserving Oren Nayar: https://mimosa-pudica.net/improved-oren-nayar.html#images
- // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
- //		sampling because it seems that very dark areas in the image are always flagged as very 
- //		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
- //		even though they are very dark regions and we don't even noise in them. If our eyes can't see 
- //		the noise, why bother? Same with very bright regions
- // - Reuse miss BSDF ray on the last bounce to sample envmap with MIS
- // - We're using an approximation of the clearcoated BSDF directional albedo for energy compensation right now. The approximation breaks down when what's below the coat is 0.0f roughness. We could potentially bake the directional albedo for a mirror-coated BSDF and interpolate between that mirror-coated LUT and the typical rough-coated BSDF LUT based on the roughness of what's below the coat. This mirror-coated LUT doesn't work very well if there's a smooth-dielectric-coated lambert below the coat so maybe we would need a third LUT for that case
- // - For/switch paradigm for instruction cache misses? https://youtu.be/lxRgmZTEBHM?si=FcaEYqAMVO_QyfwX&t=3061 
- //		- kind of need a good way to profile that to see the difference though
- // - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive ------> we're going to need another shadow ray though because if we're intersecting solely against the light BVH we don't have the rest of the geometry of the scene to occluded the lights. So we're going to need a shadow ray in case we do hit a light in the light BVH to make sure that light isn't occluded ----> Maybe collect statistics on how many BSDF rays light sample miss lights: this can help see what's going to be the benefit of a light BVH because the drawback of a light BVH is going to be only if we hit a light because then we need another BVH traversal to check for occlusion
- // - shadow terminator issue on sphere low smooth scene: [Taming the Shadow Terminator], Matt Jen-Yuan Chiang, https://github.com/aconty/aconty/blob/main/pdf/bump-terminator-nvidia2019.pdf
- // - use HIP/CUDA graphs to reduce launch overhead
- // - linear interpolation (spatial, object space, world space) function for the parameters of the BSDF
- // - compensated importance sampling of envmap
- // - Product importance sampling envmap: https://github.com/aconty/aconty/blob/main/pdf/fast-product-importance-abstract.pdf
- // - multiple GLTF, one GLB for different point of views per model
- // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
- // - clay render
- // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
- // - play with SBVH building parameters alpha/beta for memory/performance tradeoff + ImGui for that
- // - ability to change the color of the heatmap shader in ImGui
- // - do not store alpha from envmap
- // - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise? --> it probably is since we're probably memory lantency bound, not memory bandwidth
- // - look at blender cycles "medium contrast", "medium low constract", "medium high", ... --> filmic tonemapper does it?
- // - normal mapping strength
- // - blackbody light emitters
- // - ACES mapping --> filmic tonemapper may be more comprehensive
- // - better post processing: contrast, low, medium, high exposure curve --> filmic tonemapper
- // - bloom post processing
- // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
- // - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
- // - portal envmap sampling --> choose portals with ImGui
- // - find a way to not fill the texcoords buffer for meshes that don't have textures
- // - pack CPUMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
- // - use 8 bit textures for material properties instead of float
- // - use fixed point 8 bit for materials parameters in [0, 1], should be good enough
- // - log size of buffers used: vertices, indices, normals, ...
- // - log memory size of buffers used: vertices, indices, normals, ...
- // - able / disable normal mapping
- // - use only one channel for material property texture to save VRAM
- // - Remove vertex normals for meshes that have normal maps and save VRAM
- // - texture compression
- // - WUFFS for image loading?
- // - float compression for render buffers?
- // - Exporter (just serialize the scene to binary file and have a look at how to do backward compatibility)
- // - Allow material parameters textures manipulation with ImGui
- // - Disable material parameters in ImGui that have a texture associated (since the ImGui slider in this case has no effect)
- // - Upload grayscale texture (roughness, specular and other BSDF parameters basically) as one channel to the GPU instead of memory costly RGBA
- // - Emissive textures sampling: how to sample an object that has an emissive texture? How to know which triangles of the mesh are covered by the emissive parts of the texture?
- // - stream compaction / active thread compaction (ingo wald 2011)
- // - sample regeneration
- // - Spectral rendering / look at gemstone rendering because they quite a lot of interesting lighting effect to take into account (pleochroism, birefringent, dispersion, ...)
- // - structure of arrays instead of arrays of struct relevant for global buffers in terms of performance?
- // - data packing in buffer --> use one 32 bit buffer to store multiple information if not using all 32 bits
- //		- pack active pixel in same buffer as pixel sample count
- // - pack two texture indices in one int for register saving, 65536 (16 bit per index when packed) textures is enough
- // - hint shadow rays for better traversal perf on RDNA3?
- // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
- // - alias table for sampling env map instead of log(n) binary search
- // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
- // - thin materials
- // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
- // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated
- // - Ray differentials for texture mipampping (better bandwidth utilization since sampling potentially smaller texture --> fit better in cache)
- // - Visualizing ray depth (only 1 frame otherwise it would flicker a lot [or choose the option to have it flicker] )
- // - Visualizing pixel time with the clock() instruction. Pixel heatmap:
- //		- https://developer.nvidia.com/blog/profiling-dxr-shaders-with-timer-instrumentation/
- //		- https://github.com/libigl/libigl/issues/1388
- //		- https://github.com/libigl/libigl/issues/1534
- // - Visualizing russian roulette depth termination
- // - Statistics on russian roulette efficiency
- // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
- // - Realistic Camera Model
- // - Focus blur
- // - Flakes BRDF (maybe look at OSPRay implementation for a reference ?)
- // - ImGuizmo for moving objects in the scene
- // - choose denoiser quality in imgui
- // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
- // - write scene details to imgui (nb vertices, triangles, ...)
- // - choose env map at runtime imgui
- // - choose scene file at runtime imgui
- // - lock camera checkbox to avoid messing up when big render in progress
- // - PBRT v3 scene parser
- // - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
- // - Efficiency Aware Russian roulette and splitting
- // - ReSTIR PT
+//		// -fcuda-flush-denormals-to-zero
+//		// -fgpu-flush-denormals-to-zero
+// - Use a CPP preprocessor lib to preprocess shaders and see if some macro is used or not
+// - Eta scaling for russian roulette refractions
+// - Better adaptive sampling error metrics: https://theses.hal.science/tel-03675200v1/document, section 10.1.1, Heitz et al 2018 + Rigau et al 2003
+// - Projected solid angle light sampling https://momentsingraphics.de/ToyRenderer4RayTracing.html
+// - Disable back facing lights for performance because most of those lights, for correct meshes, are going to be occluded
+//		- Add an option to re-enable manually back facing lights in the material
+// - Efficient Image-Space Shape Splatting for Monte Carlo Rendering
+// - DRMLT: https://joeylitalien.github.io/assets/drmlt/drmlt.pdf
+// - What's NEE-AT of RTXPT?
+// - Area ReSTIR just for the antialiasing part
+// - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
+// - Russian roulette improvements: http://wscg.zcu.cz/wscg2003/Papers_2003/C29.pdf
+// - Some MIS weights ideas in: https://momentsingraphics.de/ToyRenderer4RayTracing.html in "Combining diffuse and specular"
+// - Radiance caching for feeding russian roulette
+// - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
+//		- Not for offline?
+// - Some automatic metric to determine automatically what GMoN blend factor to use
+// - software opacity micromaps
+// - Add parameters to increase the strength of specular / coat darkening
+// - sample BSDF diffuse lobe proba based on its luminance?
+// - how to help with shaders combination compilation times?
+//		RocFFT has some ideas for parallel compilation https://github.com/ROCm/rocFFT/blob/e9303acfb993de98b78358f3bf6fdd93f810f5fd/docs/design/runtime_compilation.rst#parallel-compilation
+//		- wavefront path tracing should help
+//		- Maybe have two sets of shaders:
+//			- One that uses the #if for performance
+//			- One that uses if() everywhere instead of #if for fast preview
+//				- to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
+//				----------- That's a good one too ^
+// - next event estimation++? --> 2023 paper improvement with the octree
+// - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance
+// - envmap visibility cache? 
+// - If GMoN is enabled, it would be cool to be able to denoise the GMoN blend between GMoN and the default framebuffer but currently the denoiser only denoises the full GMoN and nothing else
+// - Exploiting Visibility Correlation in Direct Illumination
+// - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
+// - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
+// - for volumes, we don't have to use the same phase function at each bounce, for artistic control of the "blur shape"
+// - --help on the commandline
+// - Normal mapping seems broken again, light rays going under the surface... p1 env light
+// - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
+// - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
+// - energy conserving Oren Nayar: https://mimosa-pudica.net/improved-oren-nayar.html#images
+// - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
+//		sampling because it seems that very dark areas in the image are always flagged as very 
+//		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
+//		even though they are very dark regions and we don't even noise in them. If our eyes can't see 
+//		the noise, why bother? Same with very bright regions
+// - Reuse miss BSDF ray on the last bounce to sample envmap with MIS
+// - We're using an approximation of the clearcoated BSDF directional albedo for energy compensation right now. The approximation breaks down when what's below the coat is 0.0f roughness. We could potentially bake the directional albedo for a mirror-coated BSDF and interpolate between that mirror-coated LUT and the typical rough-coated BSDF LUT based on the roughness of what's below the coat. This mirror-coated LUT doesn't work very well if there's a smooth-dielectric-coated lambert below the coat so maybe we would need a third LUT for that case
+// - For/switch paradigm for instruction cache misses? https://youtu.be/lxRgmZTEBHM?si=FcaEYqAMVO_QyfwX&t=3061 
+//		- kind of need a good way to profile that to see the difference though
+// - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive ------> we're going to need another shadow ray though because if we're intersecting solely against the light BVH we don't have the rest of the geometry of the scene to occluded the lights. So we're going to need a shadow ray in case we do hit a light in the light BVH to make sure that light isn't occluded ----> Maybe collect statistics on how many BSDF rays light sample miss lights: this can help see what's going to be the benefit of a light BVH because the drawback of a light BVH is going to be only if we hit a light because then we need another BVH traversal to check for occlusion
+// - shadow terminator issue on sphere low smooth scene: [Taming the Shadow Terminator], Matt Jen-Yuan Chiang, https://github.com/aconty/aconty/blob/main/pdf/bump-terminator-nvidia2019.pdf
+// - use HIP/CUDA graphs to reduce launch overhead
+// - linear interpolation (spatial, object space, world space) function for the parameters of the BSDF
+// - compensated importance sampling of envmap
+// - Product importance sampling envmap: https://github.com/aconty/aconty/blob/main/pdf/fast-product-importance-abstract.pdf
+// - multiple GLTF, one GLB for different point of views per model
+// - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
+// - clay render
+// - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
+// - play with SBVH building parameters alpha/beta for memory/performance tradeoff + ImGui for that
+// - ability to change the color of the heatmap shader in ImGui
+// - do not store alpha from envmap
+// - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise? --> it probably is since we're probably memory lantency bound, not memory bandwidth
+// - look at blender cycles "medium contrast", "medium low constract", "medium high", ... --> filmic tonemapper does it?
+// - normal mapping strength
+// - blackbody light emitters
+// - ACES mapping --> filmic tonemapper may be more comprehensive
+// - better post processing: contrast, low, medium, high exposure curve --> filmic tonemapper
+// - bloom post processing
+// - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
+// - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
+// - portal envmap sampling --> choose portals with ImGui
+// - find a way to not fill the texcoords buffer for meshes that don't have textures
+// - pack CPUMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
+// - use 8 bit textures for material properties instead of float
+// - use fixed point 8 bit for materials parameters in [0, 1], should be good enough
+// - log size of buffers used: vertices, indices, normals, ...
+// - log memory size of buffers used: vertices, indices, normals, ...
+// - able / disable normal mapping
+// - use only one channel for material property texture to save VRAM
+// - Remove vertex normals for meshes that have normal maps and save VRAM
+// - texture compression
+// - WUFFS for image loading?
+// - float compression for render buffers?
+// - Exporter (just serialize the scene to binary file and have a look at how to do backward compatibility)
+// - Allow material parameters textures manipulation with ImGui
+// - Disable material parameters in ImGui that have a texture associated (since the ImGui slider in this case has no effect)
+// - Upload grayscale texture (roughness, specular and other BSDF parameters basically) as one channel to the GPU instead of memory costly RGBA
+// - Emissive textures sampling: how to sample an object that has an emissive texture? How to know which triangles of the mesh are covered by the emissive parts of the texture?
+// - stream compaction / active thread compaction (ingo wald 2011)
+// - sample regeneration
+// - Spectral rendering / look at gemstone rendering because they quite a lot of interesting lighting effect to take into account (pleochroism, birefringent, dispersion, ...)
+// - structure of arrays instead of arrays of struct relevant for global buffers in terms of performance?
+// - data packing in buffer --> use one 32 bit buffer to store multiple information if not using all 32 bits
+//		- pack active pixel in same buffer as pixel sample count
+// - pack two texture indices in one int for register saving, 65536 (16 bit per index when packed) textures is enough
+// - hint shadow rays for better traversal perf on RDNA3?
+// - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
+// - alias table for sampling env map instead of log(n) binary search
+// - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
+// - thin materials
+// - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
+// - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated
+// - Ray differentials for texture mipampping (better bandwidth utilization since sampling potentially smaller texture --> fit better in cache)
+// - Visualizing ray depth (only 1 frame otherwise it would flicker a lot [or choose the option to have it flicker] )
+// - Visualizing pixel time with the clock() instruction. Pixel heatmap:
+//		- https://developer.nvidia.com/blog/profiling-dxr-shaders-with-timer-instrumentation/
+//		- https://github.com/libigl/libigl/issues/1388
+//		- https://github.com/libigl/libigl/issues/1534
+// - Visualizing russian roulette depth termination
+// - Statistics on russian roulette efficiency
+// - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
+// - Realistic Camera Model
+// - Focus blur
+// - Flakes BRDF (maybe look at OSPRay implementation for a reference ?)
+// - ImGuizmo for moving objects in the scene
+// - choose denoiser quality in imgui
+// - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
+// - write scene details to imgui (nb vertices, triangles, ...)
+// - choose env map at runtime imgui
+// - choose scene file at runtime imgui
+// - lock camera checkbox to avoid messing up when big render in progress
+// - PBRT v3 scene parser
+// - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+// - Efficiency Aware Russian roulette and splitting
+// - ReSTIR PT
 
 void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 {
