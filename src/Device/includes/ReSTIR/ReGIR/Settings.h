@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_REGIR_SETTINGS_H
 
 #include "Device/includes/Hash.h"
+#include "Device/includes/ReSTIR/ReGIR/PresampledLight.h"
 #include "Device/includes/ReSTIR/ReGIR/ReGIRHashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
@@ -15,13 +16,70 @@
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+struct ReGIRPresampledLightsSoADevice
+{
+	int* emissive_triangle_index = nullptr;
+
+	float* light_area = nullptr;
+
+	float3* point_on_light = nullptr;
+
+	Octahedral24BitNormalPadded32b* light_normal = nullptr;
+};
+
+struct ReGIRGridFillPresampledLights
+{
+	HIPRT_DEVICE ReGIRPresampledLight sample_one_presampled_light(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, unsigned int reservoir_count_per_grid_cell, float& out_pdf, Xorshift32Generator& rng) const
+	{
+		// Computing a subset index in [0, subset_count - 1]
+		unsigned int subset_index_seed = (hash_grid_cell_index * reservoir_count_per_grid_cell + reservoir_index_in_cell) / stratification_size;
+		unsigned int subset_index_random_seed = wang_hash(subset_index_seed) ^ rng.xorshift32();
+		unsigned int random_subset = Xorshift32Generator(subset_index_random_seed).xorshift32() % subset_count;
+
+		unsigned int index_in_subset = (hash_grid_cell_index * reservoir_count_per_grid_cell + reservoir_index_in_cell) % subset_size;
+
+		ReGIRPresampledLight sample;
+		sample.emissive_triangle_index = presampled_lights_soa.emissive_triangle_index[random_subset * subset_size + index_in_subset];
+		sample.triangle_area = presampled_lights_soa.light_area[random_subset * subset_size + index_in_subset];
+		sample.point_on_light = presampled_lights_soa.point_on_light[random_subset * subset_size + index_in_subset];
+		sample.normal = presampled_lights_soa.light_normal[random_subset * subset_size + index_in_subset];
+
+		out_pdf = 1.0f / subset_count;
+
+		return sample;
+	}
+
+	HIPRT_DEVICE void store_one_presampled_light(const ReGIRPresampledLight& presampled_light, unsigned int presampled_light_index)
+	{
+		presampled_lights_soa.light_area[presampled_light_index] = presampled_light.triangle_area;
+		presampled_lights_soa.light_normal[presampled_light_index] = presampled_light.normal;
+		presampled_lights_soa.emissive_triangle_index[presampled_light_index] = presampled_light.emissive_triangle_index;
+		presampled_lights_soa.point_on_light[presampled_light_index] = presampled_light.point_on_light;
+	}
+
+	HIPRT_DEVICE unsigned int get_presampled_light_count() const
+	{
+		return subset_count * subset_size;
+	}
+
+	ReGIRPresampledLightsSoADevice presampled_lights_soa;
+
+	// How many consecutive reservoirs in the ReGIR grid
+	// will sample from the same subset of presampled lights?
+	unsigned int stratification_size = 64;
+	// How many presampled lights per subset
+	unsigned int subset_size = 1024;
+	// How many subsets in total
+	unsigned int subset_count = 128;
+};
+
 struct ReGIRGridFillSettings
 {
 	HIPRT_DEVICE ReGIRGridFillSettings() : ReGIRGridFillSettings(true) {}
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 32;
+		light_sample_count_per_cell_reservoir = 1;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 8 : 4;
@@ -99,6 +157,11 @@ struct ReGIRCorrelationReductionSettings
 
 struct ReGIRSettings
 {
+	HIPRT_DEVICE ReGIRPresampledLight sample_one_presampled_light(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, bool primary_hit, float& out_pdf, Xorshift32Generator& rng) const
+	{
+		return presampled_lights.sample_one_presampled_light(hash_grid_cell_index, reservoir_index_in_cell, get_number_of_reservoirs_per_cell(primary_hit), out_pdf, rng);
+	}
+
 	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) const { return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid; }
 	HIPRT_DEVICE ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) { return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid; }
 
@@ -570,6 +633,7 @@ struct ReGIRSettings
 	ReGIRHashCellDataSoADevice hash_cell_data_primary_hits;
 	ReGIRHashCellDataSoADevice hash_cell_data_secondary_hits;
 
+	ReGIRGridFillPresampledLights presampled_lights;
 	ReGIRGridFillSettings grid_fill_primary_hits = ReGIRGridFillSettings(true);
 	ReGIRGridFillSettings grid_fill_secondary_hits = ReGIRGridFillSettings(false);
 

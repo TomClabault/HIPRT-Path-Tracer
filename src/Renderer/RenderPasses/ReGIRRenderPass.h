@@ -16,6 +16,7 @@ class ReGIRRenderPass: public RenderPass
 {
 public:
 	static const std::string REGIR_GRID_PRE_POPULATE;
+	static const std::string REGIR_GRID_FILL_LIGHT_PRESAMPLING;
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID;
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID;
@@ -63,6 +64,7 @@ public:
 	void launch_grid_pre_population(HIPRTRenderData& render_data);
 	bool rehash(HIPRTRenderData& render_data);
 
+	void launch_light_presampling(HIPRTRenderData& render_data);
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	void launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	void launch_supersampling_fill(HIPRTRenderData& render_data);

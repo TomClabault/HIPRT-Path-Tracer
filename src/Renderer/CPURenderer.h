@@ -22,6 +22,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/PrecomputedEmissiveTrianglesDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRPresampledLightsSoAHost.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -62,6 +63,7 @@ public:
     void nee_plus_plus_cache_visibility_pass();
     void camera_rays_pass();
     void ReGIR_pass();
+    void ReGIR_presample_lights();
     void ReSTIR_DI_pass();
     void ReSTIR_GI_pass();
 
@@ -179,6 +181,8 @@ private:
 
     struct ReGIRState
     {
+        ReGIRPresampledLightsSoAHost<std::vector> presampled_lights;
+
         ReGIRHashGridSoAHost<std::vector> grid_buffer_primary_hit;
         ReGIRHashGridSoAHost<std::vector> spatial_grid_buffer_primary_hit;
         ReGIRHashCellDataSoAHost<std::vector> hash_cell_data_primary_hit;

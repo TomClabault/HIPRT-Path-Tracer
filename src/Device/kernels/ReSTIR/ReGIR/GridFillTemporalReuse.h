@@ -16,8 +16,36 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
+HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, 
+    unsigned int hash_grid_cell_index, int reservoir_index_in_cell, bool primary_hit,
+    Xorshift32Generator& rng)
+{
+    float presampled_light_pdf;
+    ReGIRPresampledLight light_sample = regir_settings.sample_one_presampled_light(hash_grid_cell_index, reservoir_index_in_cell, primary_hit, presampled_light_pdf, rng);
+
+    LightSampleInformation full_sample_information;
+    full_sample_information.emissive_triangle_index = light_sample.emissive_triangle_index;
+    full_sample_information.light_source_normal = light_sample.normal.unpack();
+    full_sample_information.light_area = light_sample.triangle_area;
+    full_sample_information.emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[light_sample.emissive_triangle_index]);
+    full_sample_information.point_on_light = light_sample.point_on_light;
+
+    // PDF of that point on that triangle
+    full_sample_information.area_measure_pdf = 1.0f / full_sample_information.light_area;
+#if ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_UNIFORM
+    // PDF of sampling that triangle uniformly
+    full_sample_information.area_measure_pdf *= 1.0f / render_data.buffers.emissive_triangles_count;
+#elif ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER
+    // PDF of sampling that triangle according to its power
+    full_sample_information.area_measure_pdf *= (full_sample_information.emission.luminance() * full_sample_information.light_area) / render_data.buffers.emissives_power_alias_table.sum_elements;
+#endif
+
+    return full_sample_information;
+}
+
+template <bool accumulatePreIntegration>
 HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings,
-    int reservoir_index_in_cell, const ReGIRGridFillSurface& surface, bool primary_hit,
+    unsigned int hash_grid_cell_index, int reservoir_index_in_cell, const ReGIRGridFillSurface& surface, bool primary_hit,
     Xorshift32Generator& rng)
 {
     ReGIRReservoir grid_fill_reservoir;
@@ -26,7 +54,16 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 
     for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
     {
-        LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+        LightSampleInformation light_sample;
+
+        if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE)// && !accumulatePreIntegration)
+            // Never using presampling lights for pre integration because pre integration needs
+            // different samples to pre integrate properly and using presampled lights severely restricts
+            // the number of different samples we have available
+            light_sample = sample_one_presampled_light(render_data, regir_settings, hash_grid_cell_index, reservoir_index_in_cell, primary_hit, rng);
+        else
+            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+
         if (light_sample.emissive_triangle_index == -1)
             continue;
 
@@ -140,7 +177,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         }
         
         // Grid fill
-        output_reservoir = grid_fill(render_data, regir_settings, reservoir_index_in_cell, cell_surface, primary_hit, random_number_generator);
+#ifdef __KERNELCC__
+        constexpr bool ACCUMULATE_PRE_INTEGRATION_OPTION = ReGIR_GridFillSpatialReuse_AccumulatePreIntegration;
+#else
+        constexpr bool ACCUMULATE_PRE_INTEGRATION_OPTION = accumulatePreIntegration;
+#endif
+
+        output_reservoir = grid_fill<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, regir_settings, hash_grid_cell_index, reservoir_index_in_cell, cell_surface, primary_hit, random_number_generator);
         
         // Normalizing the reservoir
         output_reservoir.finalize_resampling(1.0f, 1.0f);
@@ -152,11 +195,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
 
         regir_settings.store_reservoir_opt(output_reservoir, hash_grid_cell_index, primary_hit, reservoir_index_in_cell);
 
-#ifdef __KERNELCC__
-        grid_fill_pre_integration_accumulation<ReGIR_GridFillSpatialReuse_AccumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
-#else
-        grid_fill_pre_integration_accumulation<accumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
-#endif
+        grid_fill_pre_integration_accumulation<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
 
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need

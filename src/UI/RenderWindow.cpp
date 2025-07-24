@@ -63,6 +63,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - For interacting with ReGIR, we can probably just shade with non canonical candidates and that's it. It will be biased but at least it won't be disgusting because of the lack of pre integration information
 // - We need something to fix the grid artifacts visible in mirrors because of low reservoirs count per grid cell at secondary bounces. Maybe we can insert in the hash grid in the megakernel by passing the 'first hit' flag to true if this is the first or a secondary hit with low path spreadcdrt
 // - Should we not pick reservoirs randomly in the neighbor cell during spatial reuse and instead each reservoir stays in its lane?
 // - Surface normal in hash only for the first hits?
@@ -180,6 +181,8 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
+// - Remove HIPRT INLINE everywhere
+// - Vertex cache optimization buffer arrangement for better triangle pairing and better tracing performance?
 // - Thread is swizzling (reorder ray invocations) https://github.com/BoyBaykiller/IDKEngine/blob/95a15c1db02f11bd2f47bb81bcfccf0943d3e703/IDKEngine/Resource/Shaders/PathTracing/FirstHit/compute.glsl#L206
 // - Option for terminating rays on emissive hits? --> this is going to be biased but may help performance
 // - Have a look at reweghing fireflies for Monte Carlo instead of Gmon so we can remove fireflies unbiasedly without the darkening

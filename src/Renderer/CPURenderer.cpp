@@ -10,6 +10,7 @@
 
 #include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
+#include "Device/kernels/ReSTIR/ReGIR/LightPresampling.h"
 #include "Device/kernels/ReSTIR/ReGIR/PreIntegration.h"
 #include "Device/kernels/ReSTIR/ReGIR/Rehash.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
@@ -55,8 +56,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 794
-#define DEBUG_PIXEL_Y 433
+#define DEBUG_PIXEL_X 871
+#define DEBUG_PIXEL_Y 429
     
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -99,6 +100,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     unsigned int new_cell_count_primary_hits = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS;
     unsigned int new_cell_count_secondary_hits = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS;
+
+    m_regir_state.presampled_lights.resize(m_render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count());
 
     m_regir_state.grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true));
     m_regir_state.spatial_grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true));
@@ -345,6 +348,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 
 
+
+    m_regir_state.presampled_lights.to_device(m_render_data.render_settings.regir_settings.presampled_lights.presampled_lights_soa);
 
     m_regir_state.grid_buffer_primary_hit.to_device(m_render_data.render_settings.regir_settings.initial_reservoirs_primary_hits_grid);
     m_regir_state.spatial_grid_buffer_primary_hit.to_device(m_render_data.render_settings.regir_settings.spatial_output_primary_hits_grid);
@@ -698,11 +703,21 @@ void CPURenderer::ReGIR_pass()
     if (m_render_data.render_settings.sample_number == 0)
         ReGIR_pre_integration();
 
+    ReGIR_presample_lights();
+
     ReGIR_grid_fill_pass<false>(true);
     ReGIR_grid_fill_pass<false>(false);
 
     ReGIR_spatial_reuse_pass<false>(true);
     ReGIR_spatial_reuse_pass<false>(false);
+}
+
+void CPURenderer::ReGIR_presample_lights()
+{
+    for (int index = 0; index < m_render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count(); index++)
+    {
+        ReGIR_Light_Presampling(m_render_data, index);
+    }
 }
 
 template <bool accumulatePreIntegration>
@@ -759,6 +774,7 @@ void CPURenderer::ReGIR_pre_integration()
         {
             m_render_data.random_number = m_rng.xorshift32();
 
+            ReGIR_presample_lights();
             ReGIR_grid_fill_pass<true>(primary_hit);
             ReGIR_spatial_reuse_pass<true>(primary_hit);
         }

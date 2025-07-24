@@ -331,7 +331,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
 
     // PDF of that point on that triangle
     out_sample.area_measure_pdf = 1.0f / sampled_triangle_area;
-    // PDF of sampling that triangle according to its luminance-area
+    // PDF of sampling that triangle according to its power
     out_sample.area_measure_pdf *= (out_sample.emission.luminance() * sampled_triangle_area) / render_data.buffers.emissives_power_alias_table.sum_elements;
 
     return out_sample;

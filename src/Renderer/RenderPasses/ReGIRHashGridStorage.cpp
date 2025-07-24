@@ -14,7 +14,9 @@ void ReGIRHashGridStorage::set_regir_render_pass(ReGIRRenderPass* regir_render_p
 
 std::size_t ReGIRHashGridStorage::get_byte_size() const
 {
-	return m_initial_reservoirs_primary_hits_grid.get_byte_size() +
+	return m_presampled_lights.get_byte_size() + 
+
+		m_initial_reservoirs_primary_hits_grid.get_byte_size() +
 		m_initial_reservoirs_secondary_hits_grid.get_byte_size() +
 
 		m_spatial_output_primary_hits_grid.get_byte_size() +
@@ -115,6 +117,14 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		{
 			if (m_supersample_grid_primary_hits.m_total_number_of_cells > 0)
 				m_supersample_grid_primary_hits.free();
+		}
+
+		if (m_regir_render_pass->get_renderer()->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING))
+		{
+			unsigned int presampled_lights_count_needed = render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count();
+			if (m_presampled_lights.size() != presampled_lights_count_needed)
+				// If the current presampled light buffer isn't the right size, resizing
+				m_presampled_lights.resize(presampled_lights_count_needed);
 		}
 	}
 
@@ -296,6 +306,9 @@ bool ReGIRHashGridStorage::free_internal(bool primary_hit)
 		updated = true;
 	}
 
+	if (primary_hit && m_presampled_lights.get_byte_size() > 0)
+		// Only freeing the presampled lights on the first hit by convention
+		m_presampled_lights.free();
 
 	if (primary_hit)
 		m_total_number_of_cells_primary_hits = 0;
@@ -313,6 +326,9 @@ void ReGIRHashGridStorage::clear_pre_integrated_RIS_integral_factors(bool primar
 
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
+	if (m_regir_render_pass->get_renderer()->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING))
+		m_presampled_lights.to_device(render_data.render_settings.regir_settings.presampled_lights.presampled_lights_soa);
+
 	// Primary hits grid cells
 	m_initial_reservoirs_primary_hits_grid.to_device(render_data.render_settings.regir_settings.initial_reservoirs_primary_hits_grid);
 
