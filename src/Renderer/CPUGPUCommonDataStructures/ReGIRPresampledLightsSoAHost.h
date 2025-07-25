@@ -15,7 +15,8 @@ using ReGIRPresampledLightsSoAHostInternal = GenericSoA<DataContainer,
 	int,  // primitive index
 	float, // light area
 	float3, // point on light
-	Octahedral24BitNormalPadded32b // light normals
+	Octahedral24BitNormalPadded32b, // light normals
+	Float3xLengthUint10bPacked // emission
 >;
 
 enum ReGIRPresampledLightsSoAHostBuffers
@@ -24,6 +25,7 @@ enum ReGIRPresampledLightsSoAHostBuffers
 	REGIR_PRESAMPLED_LIGHTS_LIGHT_AREA,
 	REGIR_PRESAMPLED_LIGHTS_POINT_ON_LIGHT,
 	REGIR_PRESAMPLED_LIGHTS_LIGHT_NORMAL,
+	REGIR_PRESAMPLED_LIGHTS_EMISSION
 };
 
 template <template <typename> typename DataContainer>
@@ -55,6 +57,7 @@ struct ReGIRPresampledLightsSoAHost
 		soa_device.light_area = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_LIGHT_AREA>();
 		soa_device.point_on_light = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_POINT_ON_LIGHT>();
 		soa_device.light_normal = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_LIGHT_NORMAL>();
+		soa_device.emission = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_EMISSION>();
 	}
 
 	ReGIRPresampledLightsSoAHostInternal<DataContainer> m_hash_cell_data;

@@ -403,7 +403,7 @@ struct Float3xLengthUint10bPacked
 		return packed;
 	}
 
-	HIPRT_DEVICE ColorRGB32F unpack() const
+	HIPRT_DEVICE ColorRGB32F unpack_color3x32f() const
 	{
 		float3 unpacked = unpack_float3();
 

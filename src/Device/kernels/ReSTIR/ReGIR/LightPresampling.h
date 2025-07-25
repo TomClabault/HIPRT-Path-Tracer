@@ -40,6 +40,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Light_Presampling(HIPRTRenderData ren
     presampled_light.point_on_light = light_sample.point_on_light;
     presampled_light.normal.pack(light_sample.light_source_normal);
     presampled_light.triangle_area = light_sample.light_area;
+    presampled_light.emission = light_sample.emission;
 
     render_data.render_settings.regir_settings.presampled_lights.store_one_presampled_light(presampled_light, thread_index);
 }

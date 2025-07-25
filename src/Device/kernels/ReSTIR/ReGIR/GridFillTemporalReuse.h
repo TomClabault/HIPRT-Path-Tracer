@@ -26,7 +26,10 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
     LightSampleInformation full_sample_information;
     full_sample_information.emissive_triangle_index = light_sample.emissive_triangle_index;
     full_sample_information.light_source_normal = light_sample.normal.unpack();
-    full_sample_information.light_area = light_sample.triangle_area;
+    //full_sample_information.light_source_normal = hippt::normalize(light_sample.normal);
+    //full_sample_information.light_area = hippt::length(light_sample.normal) * 0.5f;
+     full_sample_information.light_area = light_sample.triangle_area;
+    //full_sample_information.emission = light_sample.emission;
     full_sample_information.emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[light_sample.emissive_triangle_index]);
     full_sample_information.point_on_light = light_sample.point_on_light;
 
@@ -165,17 +168,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
 
         ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 
-        // TODO do we need this since we're only dispatching for alive grid cells anyways with the compaction?
-        if (regir_settings.get_hash_cell_data_soa(primary_hit).grid_cell_alive[hash_grid_cell_index] == 0)
-        {
-            // Grid cell wasn't used during shading in the last frame, let's not refill it
-            
-            // Storing an empty reservoir to clear the cell
-            regir_settings.store_reservoir_opt(ReGIRReservoir(), hash_grid_cell_index, primary_hit, reservoir_index_in_cell);
-            
-            return;
-        }
-        
         // Grid fill
 #ifdef __KERNELCC__
         constexpr bool ACCUMULATE_PRE_INTEGRATION_OPTION = ReGIR_GridFillSpatialReuse_AccumulatePreIntegration;

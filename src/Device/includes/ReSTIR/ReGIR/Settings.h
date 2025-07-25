@@ -25,6 +25,8 @@ struct ReGIRPresampledLightsSoADevice
 	float3* point_on_light = nullptr;
 
 	Octahedral24BitNormalPadded32b* light_normal = nullptr;
+
+	Float3xLengthUint10bPacked* emission = nullptr;
 };
 
 struct ReGIRGridFillPresampledLights
@@ -43,6 +45,7 @@ struct ReGIRGridFillPresampledLights
 		sample.triangle_area = presampled_lights_soa.light_area[random_subset * subset_size + index_in_subset];
 		sample.point_on_light = presampled_lights_soa.point_on_light[random_subset * subset_size + index_in_subset];
 		sample.normal = presampled_lights_soa.light_normal[random_subset * subset_size + index_in_subset];
+		// sample.emission = presampled_lights_soa.emission[random_subset * subset_size + index_in_subset].unpack_color3x32f();
 
 		out_pdf = 1.0f / subset_count;
 
@@ -51,10 +54,11 @@ struct ReGIRGridFillPresampledLights
 
 	HIPRT_DEVICE void store_one_presampled_light(const ReGIRPresampledLight& presampled_light, unsigned int presampled_light_index)
 	{
-		presampled_lights_soa.light_area[presampled_light_index] = presampled_light.triangle_area;
-		presampled_lights_soa.light_normal[presampled_light_index] = presampled_light.normal;
 		presampled_lights_soa.emissive_triangle_index[presampled_light_index] = presampled_light.emissive_triangle_index;
+		presampled_lights_soa.light_area[presampled_light_index] = presampled_light.triangle_area;
 		presampled_lights_soa.point_on_light[presampled_light_index] = presampled_light.point_on_light;
+		presampled_lights_soa.light_normal[presampled_light_index] = presampled_light.normal;
+		presampled_lights_soa.emission[presampled_light_index].pack(presampled_light.emission);
 	}
 
 	HIPRT_DEVICE unsigned int get_presampled_light_count() const
@@ -66,11 +70,11 @@ struct ReGIRGridFillPresampledLights
 
 	// How many consecutive reservoirs in the ReGIR grid
 	// will sample from the same subset of presampled lights?
-	unsigned int stratification_size = 64;
+	int stratification_size = 64;
 	// How many presampled lights per subset
-	unsigned int subset_size = 1024;
+	int subset_size = 128;
 	// How many subsets in total
-	unsigned int subset_count = 128;
+	int subset_count = 128;
 };
 
 struct ReGIRGridFillSettings
@@ -79,7 +83,7 @@ struct ReGIRGridFillSettings
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 1;
+		light_sample_count_per_cell_reservoir = 32;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 8 : 4;
@@ -124,7 +128,7 @@ private:
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = false;
+	bool do_spatial_reuse = true;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = false;
@@ -146,7 +150,7 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = false;
+	bool do_correlation_reduction = true;
 
 	int correlation_reduction_factor = 2;
 	int correl_frames_available = 0;

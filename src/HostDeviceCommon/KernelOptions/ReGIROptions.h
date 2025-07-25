@@ -195,7 +195,7 @@
 /**
  * Maximum number of steps for the linear probing in the hash table to resolve collisions
  */
-#define ReGIR_HashGridCollisionResolutionMaxSteps 16
+#define ReGIR_HashGridCollisionResolutionMaxSteps 32
 
 /**
  * Whether or not to use the surface normal in the hash function of the hash grid

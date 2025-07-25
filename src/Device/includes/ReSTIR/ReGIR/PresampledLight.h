@@ -21,6 +21,9 @@ struct ReGIRPresampledLight
 
 	// Packed normal of the sampled emissive triangle
 	Octahedral24BitNormalPadded32b normal;
+
+	// Emission strength of the triangle
+	ColorRGB32F emission;
 };
 
 #endif
