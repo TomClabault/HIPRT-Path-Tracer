@@ -62,7 +62,8 @@ public:
 	static const std::string REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES;
 	static const std::string REGIR_DO_VISIBILITY_REUSE;
 	static const std::string REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY;
-	static const std::string REGIR_HASH_GRID_LINEAR_PROBING_STEPS;
+	static const std::string REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE;
+	static const std::string REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS;
 	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL;
 	static const std::string REGIR_SHADING_JITTER_TRIES;
 	static const std::string REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION;

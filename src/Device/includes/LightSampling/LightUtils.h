@@ -648,6 +648,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         float non_canonical_RIS_integral_center_grid_cell;
         float canonical_RIS_integral_center_grid_cell;
 
+        if (hippt::is_pixel_index(1000, render_data.render_settings.render_resolution.y - 1 - 354))
+            printf("canonical grid index: %u\n", canonical_grid_cell_index);
+
         // Fetching the center cell should never fail because the center cell always exists but it may actually fail in case of collisions
         // that cannot be resolved
         if (canonical_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -659,6 +662,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             {
                 ReGIRReservoir canonical_technique_1_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
                 ReGIRReservoir canonical_technique_2_reservoir = render_data.render_settings.regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(canonical_grid_cell_index, ray_payload.bounce == 0, random_number_generator);
+                if (hippt::is_pixel_index(1000, render_data.render_settings.render_resolution.y - 1 - 354))
+                    printf("UCW cano / non-cano: %f / %f\n", canonical_technique_2_reservoir.UCW, canonical_technique_1_reservoir.UCW);
 
                 if constexpr (ReGIR_ShadingResamplingDoBSDFMIS)
                 {

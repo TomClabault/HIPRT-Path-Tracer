@@ -2192,14 +2192,30 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePop();
 			}*/
 
-			static int linear_probing_steps = ReGIR_HashGridLinearProbingSteps;
-			ImGui::SliderInt("Linear probing max. steps", &linear_probing_steps, 1, 32);
-			if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_LINEAR_PROBING_STEPS))
+			const char* items[] = { "- Linear probing", "- Rehashing" };
+			const char* tooltips[] = {
+				"If a collision is found, look up the next index in the hash\n"
+				"table and see if that location is empty. If not empty, continue\n"
+				"looking at the next location up to the maximum number of steps' times.",
+
+				"If a collision is found, hash the current cell index to get the\n"
+				"new candidate location. Continue doing so until an empty location\n"
+				"is found or the maximum number of steps is exceeded.",
+			};
+			if (ImGuiRenderer::ComboWithTooltips("Collision resolution mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE), items, IM_ARRAYSIZE(items), tooltips))
+			{
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			static int linear_probing_steps = ReGIR_HashGridCollisionResolutionMaxSteps;
+			ImGui::SliderInt("Collision resolution max. steps", &linear_probing_steps, 1, 32);
+			if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS))
 			{
 				ImGui::TreePush("ReGIR linear probing steps apply button");
 				if (ImGui::Button("Apply"))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_LINEAR_PROBING_STEPS, linear_probing_steps);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS, linear_probing_steps);
 
 					m_render_window->set_render_dirty(true);
 					m_renderer->recompile_kernels();

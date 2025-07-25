@@ -6,6 +6,7 @@
  #ifndef DEVICE_INCLUDES_HASH_GRID_H
  #define DEVICE_INCLUDES_HASH_GRID_H
 
+ #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/Math.h"
 
 struct HashGrid
@@ -20,7 +21,7 @@ struct HashGrid
 	 * allocated yet or if there was a collision but it couldn't be resolved and the collision resolution was
 	 * aborted because too many iterations
 	 */
-	template <int maxLinearProbingSteps, bool isInsertion = false>
+	template <int maxCollisionResolveSteps, bool isInsertion = false>
 	HIPRT_DEVICE static bool resolve_collision(AtomicType<unsigned int>* checksum_buffer, unsigned int total_number_of_cells, unsigned int& in_out_hash_cell_index, unsigned int checksum, unsigned int opt_existing_checksum = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 	{
 		unsigned int existing_checksum;
@@ -76,23 +77,24 @@ struct HashGrid
 			// This is a collision
 
 			unsigned int base_cell_index = in_out_hash_cell_index;
+			unsigned int current_cell_index_collision_resolution = base_cell_index;
 
-			// Linear probing
-			for (int i = 1; i <= maxLinearProbingSteps; i++)
+			// Collision resolution
+			for (int i = 1; i <= maxCollisionResolveSteps; i++)
 			{
-				unsigned int next_hash_cell_index = (base_cell_index + i) % total_number_of_cells;
-				if (next_hash_cell_index == base_cell_index)
+				current_cell_index_collision_resolution = collision_resolution_next_cell_index<ReGIR_HashGridCollisionResolutionMode>(current_cell_index_collision_resolution, total_number_of_cells);
+				if (current_cell_index_collision_resolution == base_cell_index)
 					// We looped on the whole hash table. Couldn't find an empty cell
 					return false;
 
-				unsigned int next_cell_checksum = checksum_buffer[next_hash_cell_index];
+				unsigned int next_cell_checksum = checksum_buffer[current_cell_index_collision_resolution];
 				if (next_cell_checksum == checksum)
 				{
 					// Stopping if we found our proper cell (with our hash).
 					//
 					// This means that we have resolved the collision 
 
-					in_out_hash_cell_index = next_hash_cell_index;
+					in_out_hash_cell_index = current_cell_index_collision_resolution;
 
 					return true;
 				}
@@ -102,13 +104,13 @@ struct HashGrid
 					{
 						// Stopping if we found an empty cell for insertion
 
-						unsigned int previous_checksum = hippt::atomic_compare_exchange(&checksum_buffer[next_hash_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
+						unsigned int previous_checksum = hippt::atomic_compare_exchange(&checksum_buffer[current_cell_index_collision_resolution], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
 						if (previous_checksum == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 						{
 							// (and we made sure sure through an atomic CAS that someone else wasn't
 							// also competing for that empty cell)
 
-							in_out_hash_cell_index = next_hash_cell_index;
+							in_out_hash_cell_index = current_cell_index_collision_resolution;
 
 							return true;
 						}
@@ -118,7 +120,7 @@ struct HashGrid
 							// current thread here wasn't fast enough on the atomic compare exchange
 							// above so the key was already inserted.
 
-							in_out_hash_cell_index = next_hash_cell_index;
+							in_out_hash_cell_index = current_cell_index_collision_resolution;
 
 							// This thread has nothing else to do.
 							return true;
@@ -140,6 +142,19 @@ struct HashGrid
 		else
 			// This is already our hash, no collision
 			return true;
+	}
+
+	template <unsigned int collisionResolutionMode>
+	HIPRT_DEVICE static unsigned int collision_resolution_next_cell_index(unsigned int current_cell_index_collision_resolution, unsigned int total_number_of_cells)
+	{
+		if constexpr (collisionResolutionMode == REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING)
+		{
+			return (current_cell_index_collision_resolution + 1) % total_number_of_cells;
+		}
+		else if constexpr(collisionResolutionMode == REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING)
+		{
+			return wang_hash(current_cell_index_collision_resolution) % total_number_of_cells;
+		}
 	}
 };
 

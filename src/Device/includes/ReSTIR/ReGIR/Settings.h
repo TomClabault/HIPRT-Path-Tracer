@@ -124,7 +124,7 @@ private:
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = true;
+	bool do_spatial_reuse = false;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = false;
@@ -146,7 +146,7 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = true;
+	bool do_correlation_reduction = false;
 
 	int correlation_reduction_factor = 2;
 	int correl_frames_available = 0;
@@ -572,7 +572,7 @@ struct ReGIRSettings
 				// And it's not our hash so this is a collision
 
 				unsigned int new_hash_cell_index = hash_grid_cell_index;
-				if (!HashGrid::resolve_collision<ReGIR_HashGridLinearProbingSteps, true>(hash_cell_data_to_update.checksums, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, checksum, existing_checksum))
+				if (!HashGrid::resolve_collision<ReGIR_HashGridCollisionResolutionMaxSteps, true>(hash_cell_data_to_update.checksums, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, checksum, existing_checksum))
 				{
 					// Could not resolve the collision
 

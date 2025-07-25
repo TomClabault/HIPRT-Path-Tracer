@@ -15,6 +15,9 @@
 #define REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS 4
 #define REGIR_DEBUG_PRE_INTEGRATION_CHECK 5
 
+#define REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING 0
+#define REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING 1
+
  // This block is a security to make sure that we have everything defined otherwise this can lead
  // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
@@ -177,9 +180,22 @@
 #define ReGIR_AdaptiveRoughnessGridPrecision KERNEL_OPTION_TRUE
 
 /**
+ *  How to resolve a collision found in the hash grid:
+ * 
+ * - REGIR_HASH_GRID_COLLISION_RESOLUTION_LINEAR_PROBING: If a collision is found, look up the next index in the hash
+ *      table and see if that location is empty. If not empty, continue looking at the next location
+ *      up to 'ReGIR_HashGridCollisionResolutionMaxSteps' times
+ * 
+ * - REGIR_HASH_GRID_COLLISION_RESOLUTION_REHASHING: If a collision is found, hash the current cell index to get the
+ *      new candidate location. Continue doing so until an empty location is found or 'ReGIR_HashGridCollisionResolutionMaxSteps'
+ *      steps is exceeded
+ */
+#define ReGIR_HashGridCollisionResolutionMode REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING
+
+/**
  * Maximum number of steps for the linear probing in the hash table to resolve collisions
  */
-#define ReGIR_HashGridLinearProbingSteps 16
+#define ReGIR_HashGridCollisionResolutionMaxSteps 16
 
 /**
  * Whether or not to use the surface normal in the hash function of the hash grid
