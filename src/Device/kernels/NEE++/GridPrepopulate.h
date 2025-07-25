@@ -25,7 +25,9 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data, const h
 
     for (int sample = 0; sample < 100; sample++)
     {
-        LightSampleInformation light_sample = sample_one_emissive_triangle<DirectLightSamplingBaseStrategy>(render_data,
+        constexpr int SAMPLING_STRATEGY = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategy : DirectLightSamplingBaseStrategy;
+
+        LightSampleInformation light_sample = sample_one_emissive_triangle<SAMPLING_STRATEGY>(render_data,
             closest_hit_info.inter_point, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
