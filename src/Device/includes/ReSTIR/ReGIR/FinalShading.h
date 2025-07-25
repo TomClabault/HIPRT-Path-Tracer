@@ -24,21 +24,6 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& re
         closest_hit_info.primitive_index, ray_payload, 
         point_outside_grid, random_number_generator, additional_infos);
 
-    // Preparing the shadow ray since this is common code
-    float3 shadow_ray_origin = closest_hit_info.inter_point;
-    float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
-    float distance_to_light = hippt::length(shadow_ray_direction);
-    float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
-    hiprtRay shadow_ray;
-    shadow_ray.origin = shadow_ray_origin;
-    shadow_ray.direction = shadow_ray_direction_normalized;
-
-    // NEE++ context for the shadow ray
-    NEEPlusPlusContext nee_plus_plus_context;
-    nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-    nee_plus_plus_context.shaded_point = shadow_ray_origin;
-
     if (!point_outside_grid)
     {
         if (light_sample.area_measure_pdf <= 0.0f)
@@ -52,6 +37,20 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& re
 #endif
         // ReGIR succeeded with sampling, just shooting a shadow ray to validate visibility
 
+        float3 shadow_ray_origin = closest_hit_info.inter_point;
+        float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
+        float distance_to_light = hippt::length(shadow_ray_direction);
+        float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+    
+        hiprtRay shadow_ray;
+        shadow_ray.origin = shadow_ray_origin;
+        shadow_ray.direction = shadow_ray_direction_normalized;
+    
+        // NEE++ context for the shadow ray
+        NEEPlusPlusContext nee_plus_plus_context;
+        nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+        nee_plus_plus_context.shaded_point = shadow_ray_origin;
+
         bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
 
         if (!in_shadow)
@@ -61,16 +60,30 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& re
     }
     else
     {
-#if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
+        #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
         // Invalid fallback strategy
         invalid ReGIR light sampling fallback strategy
-#endif
-
+        #endif
+        
         // Fallback method as the point was outside of the ReGIR grid
         light_sample = sample_one_emissive_triangle<ReGIR_FallbackLightSamplingStrategy>(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
+         
+        float3 shadow_ray_origin = closest_hit_info.inter_point;
+        float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
+        float distance_to_light = hippt::length(shadow_ray_direction);
+        float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+        hiprtRay shadow_ray;
+        shadow_ray.origin = shadow_ray_origin;
+        shadow_ray.direction = shadow_ray_direction_normalized;
+
+        // NEE++ context for the shadow ray
+        NEEPlusPlusContext nee_plus_plus_context;
+        nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+        nee_plus_plus_context.shaded_point = shadow_ray_origin;
 
         ColorRGB32F light_source_radiance;
         // abs() here to allow backfacing light sources

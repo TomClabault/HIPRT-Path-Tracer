@@ -114,19 +114,7 @@ struct ReGIRHashGrid
 		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, surface_normal, current_camera, roughness, soa.m_total_number_of_cells, hash_key);
 		unsigned int original = hash_grid_cell_index;
 		if (!HashGrid::resolve_collision<ReGIR_HashGridCollisionResolutionMaxSteps>(hash_cell_data.checksums, soa.m_total_number_of_cells, hash_grid_cell_index, hash_key) || hash_cell_data.grid_cell_alive[hash_grid_cell_index] == 0u)
-		{
-			if (hippt::is_pixel_index(1000, 699 - 1 - 354))
-			{
-		        printf("collision not resolved: ");
-				for (int i = 0; i < 32; i++)
-					printf("%u | ", hippt::atomic_load(&hash_cell_data.grid_cell_alive[original + i]));
-
-				printf("\n");
-			}
-
-
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-		}
 
 		return hash_grid_cell_index;
 	}

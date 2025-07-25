@@ -1827,9 +1827,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba,
         specular_sampling_proba, diffuse_sampling_proba, glass_sampling_proba, diffuse_transmission_sampling_proba);
 
-    /*if (hippt::is_pixel_index(713, render_data.render_settings.render_resolution.y - 1 - 391) && bsdf_context.material.anisotropy_rotation == 0.123456789f)
-        printf("sampling proba: %f / %f\n", specular_sampling_proba, diffuse_sampling_proba);*/
-
     // Not using a float[] array here because array[] are super poorly handled 
     // in general by the HIP compiler on AMD
     float cdf0 = coat_sampling_proba;
@@ -1924,9 +1921,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
 
     // Just copying the context to add the incident light info
     bsdf_context.to_light_direction = output_direction;
-
-    /*if (hippt::is_pixel_index(713, render_data.render_settings.render_resolution.y - 1 - 391) && bsdf_context.material.anisotropy_rotation == 0.123456789f)
-        printf("sampled: %d\n\n", bsdf_context.incident_light_info);*/
 
     return principled_bsdf_eval(render_data, bsdf_context, pdf);
 }
