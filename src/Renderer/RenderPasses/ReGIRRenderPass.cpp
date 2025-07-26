@@ -55,7 +55,8 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
 {
 	m_hash_grid_storage.set_regir_render_pass(this);
-	OROCHI_CHECK_ERROR(oroStreamCreate(&m_async_stream));
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_pre_integration_async_stream));
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_grid_fill_async_stream));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_oro_event));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_stop));
@@ -268,7 +269,9 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	//if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting())
+	synchronize_async_compute();
+
+	if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting())
 	{
 		m_render_window->set_ImGui_status_text("ReGIR Prepopulation pass...");
 		launch_grid_pre_population(render_data);
@@ -282,6 +285,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
 
+	bool full_grid_fill_needed = false;
 	if (rehash(render_data))
 	{
 		// A rehashing with supersampling enabled will empty the supersampling grid so we need to fill it again
@@ -293,11 +297,62 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		launch_pre_integration(render_data);
 
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
+
+		// If we rehashed the grid, we're going to need a full grid re-fill for this frame
+		full_grid_fill_needed = true;
 	}
 
 	render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
 	render_data.render_settings.regir_settings.supersampling.correl_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
 
+	// If this is the first sample, we have no frame before that that could fill the grid asynchronously
+	// so we're going to need to fully fill the grid now
+	full_grid_fill_needed |= render_data.render_settings.sample_number == 0;
+	// If we don't have spatial reuse enabled, asynchronous grid fill would be a race concurrency
+	// with the path tracing kernels. This means that asynchronous grid fill isn't run when spatial reuse
+	// is disabled. And if the asynchronous grid fill isn't run, we need a full grid fill now
+	full_grid_fill_needed |= !render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse;
+	full_grid_fill_needed |= !m_do_asynchronous_compute;
+	if (full_grid_fill_needed)
+		// At each frame, launch_async_grid_fill() is called which fills the grid asynchronously
+		// (at the same time as the path tracing kernels execute). This means that when we get here,
+		// the grid is already filled and we only need to launch spatial reuse.
+		//
+		// But the grid can somehow be resized (rehashed), which means that all the content of the grid
+		// is cleared and so all that was filled asynchronously is lost so we need a full grid refill here
+		launch_sync_grid_fill(render_data);
+	else
+	{
+		// If we don't need a full grid refill because the asynchronous grid fill launched
+		// last frame is available, then we only need to launch the spatial reuse
+		bool skip_frame_primary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
+		if (m_number_of_cells_alive_primary_hits > 0 && !skip_frame_primary_hits)
+			launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
+
+		bool skip_frame_secondary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid + 1) != 0;
+		if (m_number_of_cells_alive_secondary_hits > 0 && !skip_frame_secondary_hits)
+			launch_spatial_reuse(render_data, false, false, m_renderer->get_main_stream());
+	}
+
+	// Launching an synchronous grid fill such that the grid fill for *next* frame can execute
+	// while the path tracing kernels are running.
+	//
+	// This is not a concurrency issue with the path tracing kernels because the path tracing kernels
+	// only read from the spatial reuse output buffers, and we're only filling the grid fill output buffers
+	// here. The spatial reuse buffers are untouched.
+	//
+	// If spatial reuse is disabled, then this asynchronous grid fill is indeed a race concurrency with the
+	// path tracing kernels (and that's why the async grid fill isn't run if spatial reuse is disabled. The check
+	// for that is in the async grid fill function).
+	launch_async_grid_fill(render_data);
+
+	return true;
+}
+
+void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data)
+{
+	// Execute a full grid fill synchronously (from the point of view of the GPU
+	// CUDA/HIP streams, this is still asynchronous for the CPU: not blocking for the CPU)
 	launch_light_presampling(render_data, m_renderer->get_main_stream());
 
 	bool skip_frame_primary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
@@ -313,8 +368,37 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		launch_grid_fill_temporal_reuse(render_data, false, false, m_renderer->get_main_stream());
 		launch_spatial_reuse(render_data, false, false, m_renderer->get_main_stream());
 	}
+}
 
-	return true;
+void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
+{
+	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
+		// If we don't have spatial reuse, asynchronous grid fill is a race condition with the
+		// path tracing kernels so we can't do that
+		return;
+	else if (!m_do_asynchronous_compute)
+		// We don't want async compute
+		return;
+
+	oroStreamSynchronize(m_renderer->get_main_stream());
+	oroStreamSynchronize(m_pre_integration_async_stream);
+
+	// We're going to launch the grid fill for the next frame now on an async stream such
+	// that we can fill the grid of the *next* frame while the path tracing of the *current* frame
+	// is running
+
+	oroStream_t async_stream = m_grid_fill_async_stream;
+
+	launch_light_presampling(render_data, async_stream);
+
+	// Checking if the *next* frame (sample number + 1) needs a grid fill
+	bool skip_frame_primary_hits = (render_data.render_settings.sample_number + 1) % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
+	if (m_number_of_cells_alive_primary_hits > 0 && !skip_frame_primary_hits)
+		launch_grid_fill_temporal_reuse(render_data, true, false, async_stream);
+
+	bool skip_frame_secondary_hits = (render_data.render_settings.sample_number + 1) % (render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid + 1) != 0;
+	if (m_number_of_cells_alive_secondary_hits > 0 && !skip_frame_secondary_hits)
+		launch_grid_fill_temporal_reuse(render_data, false, false, async_stream);
 }
 
 void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
@@ -401,13 +485,13 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 		return;
 	
 	if (for_pre_integration)
-		m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
+		m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 	else
 	{
 		if (primary_hit)
-			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
+			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 		else
-			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
+			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 	}
 }
 
@@ -511,17 +595,18 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 
 	// Clearing the pre integration buffer before accumulating new pre integration data into them
 	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(true);
-	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(false);
+	if (m_number_of_cells_alive_secondary_hits > 0)
+		m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(false);
 
 	// Important to launch the pre integration for the secondary hits first
 	// so that we can then 
-	launch_pre_integration_internal(render_data, true, m_async_stream);
+	launch_pre_integration_internal(render_data, true, m_pre_integration_async_stream);
 	// The primary hit pre-integration is going to happen on the secondary stream so
 	// for everything to be in order we're going to have the main stream wait for the completion
 	// of the first hit pre-integration.
 	//
 	// Recording an event after the first pre-integration is over
-	OROCHI_CHECK_ERROR(oroEventRecord(m_oro_event, m_async_stream));
+	OROCHI_CHECK_ERROR(oroEventRecord(m_oro_event, m_pre_integration_async_stream));
 
 	// Launching the pre integration for the secondary hits on another stream such that the pre integration
 	// for primary and secondary hits can execute in parallell
@@ -557,9 +642,9 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
-		launch_light_presampling(render_data, stream ? stream : m_renderer->get_main_stream());
-		launch_grid_fill_temporal_reuse(render_data, primary_hit, true, stream ? stream : m_renderer->get_main_stream());
-		launch_spatial_reuse(render_data, primary_hit, true, stream ? stream : m_renderer->get_main_stream());
+		launch_light_presampling(render_data, stream);
+		launch_grid_fill_temporal_reuse(render_data, primary_hit, true, stream);
+		launch_spatial_reuse(render_data, primary_hit, true, stream);
 	}
 
 	render_data.random_number = seed_backup;
@@ -617,6 +702,13 @@ void ReGIRRenderPass::update_render_data()
 		render_data.render_settings.regir_settings.hash_cell_data_primary_hits = ReGIRHashCellDataSoADevice();
 		render_data.render_settings.regir_settings.hash_cell_data_secondary_hits = ReGIRHashCellDataSoADevice();
 	}
+}
+
+void ReGIRRenderPass::synchronize_async_compute()
+{
+	// Synchronizing and waiting for the asynchronous grid fill launched last frame (for this frame's grid)
+	// to finish
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_grid_fill_async_stream));
 }
 
 void ReGIRRenderPass::compute_render_times()
@@ -743,6 +835,11 @@ unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const
 unsigned int ReGIRRenderPass::get_total_number_of_cells_alive(bool primary_hit) const
 {
 	return m_hash_grid_storage.get_total_number_of_cells(primary_hit);
+}
+
+bool& ReGIRRenderPass::get_do_asynchronous_compute()
+{
+	return m_do_asynchronous_compute;
 }
 
 GPURenderer* ReGIRRenderPass::get_renderer()

@@ -1798,10 +1798,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		std::shared_ptr<ReGIRRenderPass> regir_render_pass = m_renderer->get_ReGIR_render_pass();
 
-		ImGui::SeparatorText("Grid stats (primary cells/secondary cells)");
-		ImGui::Text("# of hash cells occupied: %u/%u", regir_render_pass->get_number_of_cells_alive(true), regir_render_pass->get_number_of_cells_alive(false));
-		ImGui::Text("Hash cells capacity: %u/%u", regir_render_pass->get_total_number_of_cells_alive(true), regir_render_pass->get_total_number_of_cells_alive(false));
-		ImGui::Text("Load factor: %.3f%%/%.3f%%", regir_render_pass->get_alive_cells_ratio(true) * 100.0f, regir_render_pass->get_alive_cells_ratio(false) * 100.0f);
+		ImGui::SeparatorText("Grid stats (primary cells | secondary cells)");
+		ImGui::Text("# of hash cells occupied: %u | %u", regir_render_pass->get_number_of_cells_alive(true), regir_render_pass->get_number_of_cells_alive(false));
+		ImGui::Text("Hash cells capacity: %u | %u", regir_render_pass->get_total_number_of_cells_alive(true), regir_render_pass->get_total_number_of_cells_alive(false));
+		ImGui::Text("Load factor: %.3f%% | %.3f%%", regir_render_pass->get_alive_cells_ratio(true) * 100.0f, regir_render_pass->get_alive_cells_ratio(false) * 100.0f);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::Text("VRAM Usage: %.3fMB (avg. %.1fB per cell)", regir_render_pass->get_VRAM_usage(), regir_render_pass->get_VRAM_usage() * 1000000.0f / ((float)regir_render_pass->get_total_number_of_cells_alive(true) + regir_render_pass->get_total_number_of_cells_alive(false)));
@@ -2242,6 +2242,16 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
+		if (ImGui::CollapsingHeader("Performance"))
+		{
+			ImGui::TreePush("ReGIR Performance tree");
+
+			if (ImGui::Checkbox("Do asynchronous compute", &regir_render_pass->get_do_asynchronous_compute()))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::TreePop();
 		}
 
 		if (ImGui::CollapsingHeader("Debug"))

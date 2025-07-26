@@ -66,9 +66,9 @@ public:
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_output_primary_hits_grid;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_output_secondary_hits_grid;
 
-	int m_supersampling_curent_grid_offset = 0;
-	int m_supersampling_frames_available = 0;
-	ReGIRHashGridSoAHost<OrochiBuffer> m_supersample_grid_primary_hits;
+	int m_correlation_reduction_current_grid_offset = 0;
+	int m_correlation_reduction_frames_available = 0;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_correlation_reduction_grid_primary_hits;
 
 	// Stores the pre-integrated RIS integral for each cell in the grid
 	OrochiBuffer<float> m_non_canonical_pre_integration_factors_primary_hits;
