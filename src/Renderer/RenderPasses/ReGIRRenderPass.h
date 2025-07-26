@@ -114,7 +114,7 @@ private:
 	unsigned int m_number_of_cells_alive_secondary_hits = 0;
 
 	// If true
-	bool m_do_asynchronous_compute = false;
+	bool m_do_asynchronous_compute = true;
 
 	Xorshift32Generator m_local_rng = Xorshift32Generator(42);
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
