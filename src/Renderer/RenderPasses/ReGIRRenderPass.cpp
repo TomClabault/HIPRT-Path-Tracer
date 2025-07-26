@@ -240,6 +240,8 @@ bool ReGIRRenderPass::pre_render_update(float delta_time)
 
 	bool updated = false;
 
+	synchronize_async_compute();
+
 	if (is_render_pass_used())
 	{
 		bool storage_updated = m_hash_grid_storage.pre_render_update(render_data);
@@ -380,8 +382,8 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 		// We don't want async compute
 		return;
 
-	oroStreamSynchronize(m_renderer->get_main_stream());
-	oroStreamSynchronize(m_pre_integration_async_stream);
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_pre_integration_async_stream));
 
 	// We're going to launch the grid fill for the next frame now on an async stream such
 	// that we can fill the grid of the *next* frame while the path tracing of the *current* frame
@@ -812,6 +814,8 @@ float ReGIRRenderPass::get_full_frame_time()
 void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	synchronize_async_compute();
 
 	if (m_hash_grid_storage.get_byte_size() > 0)
 		m_hash_grid_storage.reset();
