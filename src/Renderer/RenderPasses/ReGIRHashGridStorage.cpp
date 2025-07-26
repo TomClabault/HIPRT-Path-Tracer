@@ -123,8 +123,12 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		{
 			unsigned int presampled_lights_count_needed = render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count();
 			if (m_presampled_lights.size() != presampled_lights_count_needed)
+			{
 				// If the current presampled light buffer isn't the right size, resizing
 				m_presampled_lights.resize(presampled_lights_count_needed);
+
+				updated = true;
+			}
 		}
 	}
 

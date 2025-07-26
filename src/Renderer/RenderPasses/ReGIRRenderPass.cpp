@@ -373,6 +373,7 @@ void ReGIRRenderPass::launch_light_presampling(HIPRTRenderData& render_data)
 	unsigned int nb_threads = render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count();
 
 	void* launch_args[] = { &render_data };
+
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
