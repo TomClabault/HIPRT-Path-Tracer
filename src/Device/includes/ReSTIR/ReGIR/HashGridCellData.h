@@ -20,7 +20,6 @@ struct ReGIRHashCellDataSoADevice
 	// 'number_cells' in size
 
 	// Buffer that holds the index of the thread that inserted into that grid cell
-	AtomicType<int>* thread_index = nullptr;
 	AtomicType<int>* hit_primitive = nullptr;
 	float3* world_points = nullptr;
 	Octahedral24BitNormalPadded32b* world_normals = nullptr;
