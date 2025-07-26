@@ -54,9 +54,10 @@ public:
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
 	virtual bool pre_render_update(float delta_time) override;
 
-
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
+	void launch_sync_grid_fill(HIPRTRenderData& render_data);
+	void launch_async_grid_fill(HIPRTRenderData& render_data);
 	/**
 	 * The prepass in ReGIR is used to shoot rays in every directions from the G-Buffer to discover how many grid cells
 	 * are going to be needed for the ReGIR grid.
@@ -70,11 +71,13 @@ public:
 	void launch_supersampling_fill(HIPRTRenderData& render_data);
 	void launch_supersampling_copy(HIPRTRenderData& render_data);
 	void launch_pre_integration(HIPRTRenderData& render_data);
-	void launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream = nullptr);
+	void launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream);
 	void launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data);
 
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void update_render_data() override;
+
+	void synchronize_async_compute();
 
 	/**
 	 * These 2 functions are overriden just to allow a custom handling of the 'frame skip" feature
@@ -99,6 +102,8 @@ public:
 	unsigned int get_number_of_cells_alive(bool primary_hit) const;
 	unsigned int get_total_number_of_cells_alive(bool primary_hit) const;
 
+	bool& get_do_asynchronous_compute();
+
 	GPURenderer* get_renderer();
 
 	void update_all_cell_alive_count(HIPRTRenderData& render_data);
@@ -108,12 +113,16 @@ private:
 	unsigned int m_number_of_cells_alive_primary_hits = 0;
 	unsigned int m_number_of_cells_alive_secondary_hits = 0;
 
+	// If true
+	bool m_do_asynchronous_compute = true;
+
 	Xorshift32Generator m_local_rng = Xorshift32Generator(42);
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 
 	ReGIRHashGridStorage m_hash_grid_storage;
 
-	oroStream_t m_async_stream = nullptr;
+	oroStream_t m_pre_integration_async_stream = nullptr;
+	oroStream_t m_grid_fill_async_stream = nullptr;
 	oroEvent_t m_oro_event = nullptr;
 	oroEvent_t m_event_pre_integration_duration_start = nullptr;
 	oroEvent_t m_event_pre_integration_duration_stop = nullptr;
