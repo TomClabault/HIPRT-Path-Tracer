@@ -428,6 +428,8 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData
 /**
  * This function shoots a BSDF ray in the BVH containing only the emissive triangles of the scene
  * This may be useful in some algorithms for increased performance
+ * 
+ * Returns true if a hit was found, false otherwise
  */
 HIPRT_DEVICE HIPRT_INLINE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, BSDFLightSampleRayHitInfo& out_light_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
