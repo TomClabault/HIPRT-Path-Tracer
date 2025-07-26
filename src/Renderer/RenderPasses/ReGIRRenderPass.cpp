@@ -401,12 +401,7 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 		return;
 	
 	if (for_pre_integration)
-	{
-		if (primary_hit)
-			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
-		else
-			m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
-	}
+		m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream ? stream : m_renderer->get_main_stream());
 	else
 	{
 		if (primary_hit)
@@ -514,6 +509,10 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
 	render_data.render_settings.regir_settings.grid_fill_secondary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
 
+	// Clearing the pre integration buffer before accumulating new pre integration data into them
+	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(true);
+	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(false);
+
 	// Important to launch the pre integration for the secondary hits first
 	// so that we can then 
 	launch_pre_integration_internal(render_data, true, m_async_stream);
@@ -534,6 +533,7 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 
 
 
+	
 	// --------------- Record the end of the overall pre integration process
 	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_stop, m_renderer->get_main_stream()));
 	// --------------- Record the end of the overall pre integration process
@@ -552,8 +552,6 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 
 	if (nb_cells_alive == 0)
 		return;
-
-	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(primary_hit);
 
 	for (int i = 0; i < render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS; i++)
 	{
