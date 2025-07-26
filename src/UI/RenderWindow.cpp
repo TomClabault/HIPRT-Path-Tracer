@@ -63,14 +63,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - Crash when checking shading all samples and then unchecking
-// - Crash when playing with the subset size / subset count of light presampling
 // - For interacting with ReGIR, we can probably just shade with non canonical candidates and that's it. It will be biased but at least it won't be disgusting because of the lack of pre integration information
 // - We need something to fix the grid artifacts visible in mirrors because of low reservoirs count per grid cell at secondary bounces. Maybe we can insert in the hash grid in the megakernel by passing the 'first hit' flag to true if this is the first or a secondary hit with low path spreadcdrt
 // - Should we not pick reservoirs randomly in the neighbor cell during spatial reuse and instead each reservoir stays in its lane?
 // - Surface normal in hash only for the first hits?
-// - Bias with normal in hash + spatial reuse
-// - Remove obsolete visibility reuse - too expensive, never used, code bloat
 // - Can we have pairwise MIS in the spatial reuse for increased quality?
 // - Can we shade multiple reservoirs without shooting shadow rays by using NEE++ to make sure that the reservoir isn't shadowed? This may be biased but maybe not too bad?
 // - Can we have a biased NEE++ where we clamp the normalization factor to avoid fireflies?
@@ -251,6 +247,7 @@ extern ImGuiLogger g_imgui_logger;
 //		// -fcuda-flush-denormals-to-zero
 //		// -fgpu-flush-denormals-to-zero
 // - Use a CPP preprocessor lib to preprocess shaders and see if some macro is used or not
+//		- Also uses a dead code removal library such that we only have relevant code in the shader and we can know for sure which macros are used or not
 // - Eta scaling for russian roulette refractions
 // - Better adaptive sampling error metrics: https://theses.hal.science/tel-03675200v1/document, section 10.1.1, Heitz et al 2018 + Rigau et al 2003
 // - Projected solid angle light sampling https://momentsingraphics.de/ToyRenderer4RayTracing.html

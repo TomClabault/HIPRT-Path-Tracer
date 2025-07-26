@@ -9,7 +9,6 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
-#include "Device/includes/ReSTIR/ReGIR/VisibilityReuse.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -164,25 +163,6 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
                 // Non-canonical sample, we need to count how many neighbors could have produced it
                 if (ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit, emission, light_source_normal, point_on_light, random_number_generator) > 0.0f)
                     valid_neighbor_count += regir_settings.spatial_reuse.reuse_per_neighbor_count;
-                else
-                {
-                    // The sample cannot be produced
-
-                    if (ReGIR_DoVisibilityReuse == KERNEL_OPTION_TRUE && is_center_cell && !regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
-                    {
-                        // And it is the center cell that cannot produce it.
-                        //
-                        // This means that the visibility reuse pass (if it is enabled)
-                        // will discard this sample so we can just discard it right now
-                        // and save us the visibility reuse cost
-                        //
-                        // Also, only doing this on non-canonical reservoirs because we do not want to visibility-kill canonical reservoirs 
-                        //
-                        // We're discarding the reservoir by returning a 0 normalization weight so that
-                        // the 'finalize_resampling()' computes an UCW of 0, effectively discarding the reservoir
-                        return 0;
-                    }
-                }
             }
         }
     }

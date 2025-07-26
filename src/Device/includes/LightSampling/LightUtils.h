@@ -876,13 +876,12 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 float light_source_area = hippt::length(get_triangle_normal_not_normalized(render_data, triangle_index_1)) * 0.5f;
 
                 {
-                    // Adding visibility in the canonical sample target function's if we have visibility reuse
-                    // (or visibility in the grid fill target function) because otherwise this canonical sample
-                    // will kill all the benefits of the visibility reuse
-                    //
-                    // TLDR is that this is pretty much necessary for good visibility reuse quality
+                    // Adding visibility in the canonical sample target function's if we have visibility in the grid fill target function
+                    // or if we wwant visibility in the target function during shading resampling
+                    // or if we're shading all candidates because then we want the target function to produce
+                    // the radiance towards the shading point directly which means that we need the visibility in the target function
                     ColorRGB32F sample_radiance;
-                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                         shading_point, view_direction, shading_normal, geometric_normal,
                         last_hit_primitive_index, ray_payload,
                         point_on_light_1, light_source_normal_1, emission_1, random_number_generator, sample_radiance);
@@ -934,13 +933,12 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 float light_source_area = hippt::length(get_triangle_normal_not_normalized(render_data, triangle_index_2)) * 0.5f;
 
                 {
-                    // Adding visibility in the canonical sample target function's if we have visibility reuse
-                    // (or visibility in the grid fill target function) because otherwise this canonical sample
-                    // will kill all the benefits of the visibility reuse
-                    //
-                    // TLDR is that this is pretty much necessary for good visibility reuse quality
+                    // Adding visibility in the canonical sample target function's if we have visibility in the grid fill target function
+                    // or if we wwant visibility in the target function during shading resampling
+                    // or if we're shading all candidates because then we want the target function to produce
+                    // the radiance towards the shading point directly which means that we need the visibility in the target function
                     ColorRGB32F sample_radiance;
-                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                    float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                         shading_point, view_direction, shading_normal, geometric_normal,
                         last_hit_primitive_index, ray_payload,
                         point_on_light_2, light_source_normal_2, emission_2, random_number_generator, sample_radiance);
@@ -1132,10 +1130,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         }
 #endif
 
-        // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
-        // may cause the grid cell to produce no valid reservoir at all so we need canonical samples to
-        // cover those cases for unbiased results
-        bool need_canonical = (ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
+        bool need_canonical = (ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
         need_canonical |= render_data.render_settings.regir_settings.DEBUG_FORCE_REGIR8CANONICAL;
         if (need_canonical)
         {
@@ -1171,12 +1166,11 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     light_source_normal /= light_source_area * 2.0f;
 
                     {
-                        // Adding visibility in the canonical sample target function's if we have visibility reuse
-                        // (or visibility in the grid fill target function) because otherwise this canonical sample
-                        // will kill all the benefits of the visibility reuse
-                        //
-                        // TLDR is that this is pretty much necessary for good visibility reuse quality
-                        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_DoVisibilityReuse || ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                        // Adding visibility in the canonical sample target function's if we have visibility in the grid fill target function
+                        // or if we wwant visibility in the target function during shading resampling
+                        // or if we're shading all candidates because then we want the target function to produce
+                        // the radiance towards the shading point directly which means that we need the visibility in the target function
+                        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                             shading_point, view_direction, shading_normal, geometric_normal,
                             last_hit_primitive_index, ray_payload,
                             point_on_light, light_source_normal,

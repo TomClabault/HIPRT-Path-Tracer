@@ -55,7 +55,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
 {
 	m_hash_grid_storage.set_regir_render_pass(this);
-	OROCHI_CHECK_ERROR(oroStreamCreate(&m_secondary_stream));
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_async_stream));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_oro_event));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_stop));
@@ -268,7 +268,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting())
+	//if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting())
 	{
 		m_render_window->set_ImGui_status_text("ReGIR Prepopulation pass...");
 		launch_grid_pre_population(render_data);
@@ -281,10 +281,6 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
-
-	// This needs to be called before the rehash because the
-	// rehash needs the updated number of cells alive to function
-	update_all_cell_alive_count(render_data);
 
 	if (rehash(render_data))
 	{
@@ -302,7 +298,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
 	render_data.render_settings.regir_settings.supersampling.correl_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
 
-	launch_light_presampling(render_data);
+	launch_light_presampling(render_data, m_renderer->get_main_stream());
 
 	bool skip_frame_primary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
 	if (m_number_of_cells_alive_primary_hits > 0 && !skip_frame_primary_hits)
@@ -341,14 +337,14 @@ void ReGIRRenderPass::launch_grid_pre_population(HIPRTRenderData& render_data)
 			m_renderer->m_render_resolution.x / ReGIR_GridPrepopulationResolutionDownscale, m_renderer->m_render_resolution.y / ReGIR_GridPrepopulationResolutionDownscale,
 			launch_args);
 
-		update_all_cell_alive_count(render_data);
-
 		has_rehashed = rehash(render_data);
 	} while (has_rehashed);
 }
 
 bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 {
+	update_all_cell_alive_count(render_data);
+
 	if (m_hash_grid_storage.try_rehash(render_data))
 	{
 		update_render_data();
@@ -363,7 +359,7 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 	return false;
 }
 
-void ReGIRRenderPass::launch_light_presampling(HIPRTRenderData& render_data)
+void ReGIRRenderPass::launch_light_presampling(HIPRTRenderData& render_data, oroStream_t stream)
 {
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_FALSE)
 		return;
@@ -374,7 +370,7 @@ void ReGIRRenderPass::launch_light_presampling(HIPRTRenderData& render_data)
 
 	void* launch_args[] = { &render_data };
 
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 }
 
 void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream)
@@ -471,7 +467,7 @@ void ReGIRRenderPass::launch_supersampling_fill(HIPRTRenderData& render_data)
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
-		launch_light_presampling(render_data);
+		launch_light_presampling(render_data, m_renderer->get_main_stream());
 		launch_grid_fill_temporal_reuse(render_data, true, false, m_renderer->get_main_stream());
 		launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
 		launch_supersampling_copy(render_data);
@@ -509,19 +505,24 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 	// --------------- Record the start of the overall pre integration process
 
 
+
+
+
+	// Adjusting the number of samples per reservoir just for the pre-integration pass.
+	// TODO: is this really integrating correctly? If we do not have the same number of samples per reservoir during pre-integratrion, are we really getting the correct PDF?
 	unsigned int backup = render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir;
 	render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
 	render_data.render_settings.regir_settings.grid_fill_secondary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
 
 	// Important to launch the pre integration for the secondary hits first
 	// so that we can then 
-	launch_pre_integration_internal(render_data, true, m_secondary_stream);
+	launch_pre_integration_internal(render_data, true, m_async_stream);
 	// The primary hit pre-integration is going to happen on the secondary stream so
 	// for everything to be in order we're going to have the main stream wait for the completion
 	// of the first hit pre-integration.
 	//
 	// Recording an event after the first pre-integration is over
-	OROCHI_CHECK_ERROR(oroEventRecord(m_oro_event, m_secondary_stream));
+	OROCHI_CHECK_ERROR(oroEventRecord(m_oro_event, m_async_stream));
 
 	// Launching the pre integration for the secondary hits on another stream such that the pre integration
 	// for primary and secondary hits can execute in parallell
@@ -558,7 +559,7 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
-		launch_light_presampling(render_data);
+		launch_light_presampling(render_data, stream ? stream : m_renderer->get_main_stream());
 		launch_grid_fill_temporal_reuse(render_data, primary_hit, true, stream ? stream : m_renderer->get_main_stream());
 		launch_spatial_reuse(render_data, primary_hit, true, stream ? stream : m_renderer->get_main_stream());
 	}

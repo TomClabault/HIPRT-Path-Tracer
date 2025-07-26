@@ -1955,18 +1955,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"to be at secondary hits(since they can come from anywhere when the rays bounce around the scene) and thus we\n"
 				"cannot properly evaluate the BRDF for sampling lights.");
 
-			static bool do_visibility_reuse = ReGIR_DoVisibilityReuse;
-			if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Discards reservoirs whose light samples are occluded at grid fill time.\n\n"
-				""
-				"This is  expensive but can also lead to substantial gains in quality.");
-
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::SliderInt("Frame skip (1st hits)", &regir_settings.frame_skip_primary_hit_grid, 0, 8))
 				m_render_window->set_render_dirty(true);

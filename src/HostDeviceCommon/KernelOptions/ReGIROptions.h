@@ -159,13 +159,6 @@
 #define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_FALSE
 
 /**
- * Discards reservoirs whose light samples are occluded at grid fill time.
- * 
- * This can be expensive but can also lead to substantial gains in quality
- */
-#define ReGIR_DoVisibilityReuse KERNEL_OPTION_FALSE
-
-/**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
  * 
  * All LSS_BASE_XXX strategies are allowed except LSS_BASE_REGIR

@@ -43,7 +43,6 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Power-proportional light sampling
 	- ReGIR [\[Boksansky et al., 2021\]](https://cwyman.org/papers/rtg2-manyLightReGIR.pdf) augmented with:
 		- Representative cell surface-data + integration with NEE++ for resampling according to the product **BRDF \* L_i \* G \* V**
-		- Visibility reuse
 		- Spatial reuse
 		- Hash grid
 		- Per-cell RIS integral normalization factor pre-integration for multiple importance sampling support

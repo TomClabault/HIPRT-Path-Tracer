@@ -11,7 +11,6 @@
 #include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
-#include "Device/includes/ReSTIR/ReGIR/VisibilityReuse.h"
 
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -180,11 +179,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         // Normalizing the reservoir
         output_reservoir.finalize_resampling(1.0f, 1.0f);
         
-        // Discarding occluded reservoirs with visibility reuse
-        if (!regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
-            // Only visibility-checking non-canonical reservoirs because canonical reservoirs are never visibility-reused so that they stay canonical
-            output_reservoir = visibility_reuse(render_data, output_reservoir, cell_surface, random_number_generator);
-
         regir_settings.store_reservoir_opt(output_reservoir, hash_grid_cell_index, primary_hit, reservoir_index_in_cell);
 
         grid_fill_pre_integration_accumulation<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);

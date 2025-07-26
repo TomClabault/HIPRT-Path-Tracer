@@ -40,7 +40,7 @@ struct HIPRTRenderSettings
 	float DEBUG_GMON_DIVIDER = 3.0f;
 	int DEBUG_GMON_WINDOW_SIZE = 3;
 
-	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS = 1;
+	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS = 4;
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
 	bool DEBUG_QUICK_ALIAS_TABLE = false;
@@ -174,7 +174,7 @@ struct HIPRTRenderSettings
 	// 
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 70.0f;
+	float stop_pixel_percentage_converged = 80.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.075f;

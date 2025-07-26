@@ -64,7 +64,7 @@ public:
 	void launch_grid_pre_population(HIPRTRenderData& render_data);
 	bool rehash(HIPRTRenderData& render_data);
 
-	void launch_light_presampling(HIPRTRenderData& render_data);
+	void launch_light_presampling(HIPRTRenderData& render_data, oroStream_t stream);
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	void launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	void launch_supersampling_fill(HIPRTRenderData& render_data);
@@ -113,7 +113,7 @@ private:
 
 	ReGIRHashGridStorage m_hash_grid_storage;
 
-	oroStream_t m_secondary_stream = nullptr;
+	oroStream_t m_async_stream = nullptr;
 	oroEvent_t m_oro_event = nullptr;
 	oroEvent_t m_event_pre_integration_duration_start = nullptr;
 	oroEvent_t m_event_pre_integration_duration_stop = nullptr;
