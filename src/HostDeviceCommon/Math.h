@@ -8,7 +8,6 @@
 
 #if defined( __KERNELCC__ )
 #include <hiprt/hiprt_device.h>
-#include <hip/hip_runtime.h>
 #else
 #include <hiprt/hiprt_vec.h>
 #endif

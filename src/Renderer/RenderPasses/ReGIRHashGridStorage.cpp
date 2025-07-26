@@ -230,10 +230,8 @@ void ReGIRHashGridStorage::reset()
 	reset_internal(true);
 
 	if (m_regir_render_pass->get_renderer()->get_render_data().render_settings.nb_bounces > 0 && get_initial_grid_buffers(false).get_byte_size() > 0)
-	{
 		// If the renderer has more than 0 bounce, then we actually have secondary grid cells to reset
 		reset_internal(false);
-	}
 }
 
 void ReGIRHashGridStorage::reset_internal(bool primary_hit)

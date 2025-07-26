@@ -141,7 +141,7 @@
 /**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
  */
-#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use Pairwise MIS weights for weighting the different samples at shading-resampling time.
