@@ -28,6 +28,8 @@ struct HIPRTOrochiCtx
 
 	void init(int device_index)
 	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Initializing Orochi...");
+
 		if (static_cast<oroError>(oroInitialize((oroApi)(ORO_API_HIP | ORO_API_CUDA), 0)) != oroSuccess)
 		{
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to initialize Orochi... Is CUDA/HIP installed?");
