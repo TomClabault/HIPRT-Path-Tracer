@@ -2252,6 +2252,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 
 		if (ImGui::CollapsingHeader("Debug"))
