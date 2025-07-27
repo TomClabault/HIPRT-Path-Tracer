@@ -12,11 +12,13 @@
 #include "clip.h"
 
 #include <deque>
+#include <format>
 #include <iostream>
 #include <iomanip> // get_current_date_string()
 #include <OpenImageDenoise/oidn.hpp>
-#include <string>
 #include <sstream>
+#include <string>
+#include <string_view>
 
 #if defined(_WIN32) || defined(_WIN32_WCE) || defined(__WIN32__)
 #include <Windows.h> // for is_file_on_SSD() and other functions
@@ -436,3 +438,103 @@ void Utils::debugbreak()
     ;
 #endif
 }
+
+#ifdef _WIN32
+// Code from @jpownby from the GraphicsProgramming Discord
+Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_name)
+{
+    // Get $CUDA_PATH
+    // (this code assumes that the path isn't longer than MAX_PATH;
+    // if you want to be robust against a machine configured for long paths
+    // you could use instead use two calls and dynamically allocate the string
+    // as shown below for $PATH)
+    wchar_t envVarBuffer[MAX_PATH] = { L'\0' };
+    DWORD envVarValueLength_notIncludingNull = 0;
+    {
+        const auto result = GetEnvironmentVariableW(env_var_name, envVarBuffer, MAX_PATH);
+        if (result != 0)
+        {
+            if (result < MAX_PATH)
+                envVarValueLength_notIncludingNull = result;
+            else
+                // $CUDA_PATH is longer than MAX_PATH; the machine must be configured for long paths
+                return AddEnvVarError::ADD_ENV_VAR_ERROR_VALUE_TOO_LONG;
+        }
+        else
+        {
+            const auto errorCode = GetLastError();
+            if (errorCode == ERROR_ENVVAR_NOT_FOUND)
+                // The given environment variable doesn't exist
+                return AddEnvVarError::ADD_ENV_VAR_ERROR_NOT_FOUND;
+            else
+                return AddEnvVarError::ADD_ENV_VAR_ERROR_UNKNOWN;
+        }
+    }
+
+    if (envVarValueLength_notIncludingNull > 0)
+    {
+        // You could statically allocate an array and hope that it's big enough,
+        // but this code instead makes two calls to GetEnvironmentVariableW() and dynamically allocates the exact amount
+
+        // Get the length of the current $PATH
+        constexpr auto* const environmentVariableName = L"PATH";
+        DWORD codeUnitCountOfExistingPath_includingTerminatingNull = 0;
+        {
+            constexpr DWORD returnRequiredSize = 0;
+            codeUnitCountOfExistingPath_includingTerminatingNull = GetEnvironmentVariableW(environmentVariableName, nullptr, returnRequiredSize);
+            if (codeUnitCountOfExistingPath_includingTerminatingNull == 0)
+            {
+                const auto errorCode = GetLastError();
+                if (errorCode == ERROR_ENVVAR_NOT_FOUND)
+                    // $PATH doesn't exist
+                    codeUnitCountOfExistingPath_includingTerminatingNull = 1; // 0 + NULL
+                else
+                    return AddEnvVarError::ADD_ENV_VAR_ERROR_UNKNOWN;
+            }
+        }
+        // Allocate enough space for the current $PATH and the extra path to add
+        const auto pathToAdd = std::format(L";{}\\bin;", std::wstring_view(envVarBuffer, envVarValueLength_notIncludingNull));
+        const auto codeUnitCountRequired_includingTerminatingNull = codeUnitCountOfExistingPath_includingTerminatingNull + pathToAdd.length();
+        std::wstring path((codeUnitCountRequired_includingTerminatingNull - 1), L'\0');   // std::wstring automatically deals with the terminating NULL
+        // Get the current $PATH
+        {
+            const auto result = GetEnvironmentVariableW(environmentVariableName, path.data(), codeUnitCountRequired_includingTerminatingNull);
+            if (result != 0)
+            {
+                if (result <= path.length())
+                {
+                    const auto codeUnitCountOfExistingPath_notIncludingTerminatingNull = result;
+                    path.resize(codeUnitCountOfExistingPath_notIncludingTerminatingNull);
+                }
+                else
+                {
+                    // Another process/thread must have changed $PATH to be larger? :/
+                    // const auto codeUnitCountOfExistingPath_includingTerminatingNull = result;
+
+                    return AddEnvVarError::ADD_ENV_VAR_ERROR_UNKNOWN;
+                }
+            }
+            else
+            {
+                // An error happened :(
+                // const auto errorCode = GetLastError();
+
+                return AddEnvVarError::ADD_ENV_VAR_ERROR_UNKNOWN;
+            }
+        }
+
+        // Append the new path
+        path.append(pathToAdd);
+        // Set the updated $PATH
+        if (!SetEnvironmentVariableW(environmentVariableName, path.c_str()))
+        {
+            // An error happened :(
+            // const auto errorCode = GetLastError();
+
+            return AddEnvVarError::ADD_ENV_VAR_ERROR_UNKNOWN;
+        }
+    }
+
+    return AddEnvVarError::ADD_ENV_VAR_ERROR_NONE;
+}
+#endif

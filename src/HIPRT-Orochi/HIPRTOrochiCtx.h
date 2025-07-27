@@ -14,6 +14,7 @@
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "UI/ImGui/ImGuiLogger.h"
+#include "Utils/Utils.h"
 
 extern ImGuiLogger g_imgui_logger;
 
@@ -26,9 +27,25 @@ struct HIPRTOrochiCtx
 		init(device_index);
 	}
 
+#ifdef _WIN32
+	Utils::AddEnvVarError add_CUDA_PATH_to_PATH()
+	{
+		// On Windows + NVIDIA, adding the CUDA_PATH to the PATH environment variable just to be sure
+		// that CUDA's DLLs are found in case the user indeed has installer the CUDA toolkit but their PATH
+		// environment variable is not set correctly.
+		return Utils::windows_add_ENV_var_to_PATH(L"CUDA_PATH");
+	}
+#endif
+
 	void init(int device_index)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Initializing Orochi...");
+
+#ifdef OROCHI_ENABLE_CUEW
+#ifdef _WIN32
+		Utils::AddEnvVarError error = add_CUDA_PATH_to_PATH();
+#endif
+#endif
 
 		if (static_cast<oroError>(oroInitialize((oroApi)(ORO_API_HIP | ORO_API_CUDA), 0)) != oroSuccess)
 		{
