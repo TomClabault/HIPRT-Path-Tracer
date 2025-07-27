@@ -441,7 +441,7 @@ void Utils::debugbreak()
 
 #ifdef _WIN32
 // Code from @jpownby from the GraphicsProgramming Discord
-Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_name)
+Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_name, std::wstring extra_string)
 {
     // Get $CUDA_PATH
     // (this code assumes that the path isn't longer than MAX_PATH;
@@ -493,7 +493,7 @@ Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_
             }
         }
         // Allocate enough space for the current $PATH and the extra path to add
-        const auto pathToAdd = std::format(L";{}\\bin;", std::wstring_view(envVarBuffer, envVarValueLength_notIncludingNull));
+        const auto pathToAdd = std::format(L";{}{}", std::wstring_view(envVarBuffer, envVarValueLength_notIncludingNull), extra_string);
         const auto codeUnitCountRequired_includingTerminatingNull = codeUnitCountOfExistingPath_includingTerminatingNull + pathToAdd.length();
         std::wstring path((codeUnitCountRequired_includingTerminatingNull - 1), L'\0');   // std::wstring automatically deals with the terminating NULL
         // Get the current $PATH

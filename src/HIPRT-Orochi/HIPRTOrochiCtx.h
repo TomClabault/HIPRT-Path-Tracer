@@ -33,7 +33,7 @@ struct HIPRTOrochiCtx
 		// On Windows + NVIDIA, adding the CUDA_PATH to the PATH environment variable just to be sure
 		// that CUDA's DLLs are found in case the user indeed has installer the CUDA toolkit but their PATH
 		// environment variable is not set correctly.
-		return Utils::windows_add_ENV_var_to_PATH(L"CUDA_PATH");
+		return Utils::windows_add_ENV_var_to_PATH(L"CUDA_PATH", L"\\bin;");
 	}
 #endif
 
@@ -47,9 +47,39 @@ struct HIPRTOrochiCtx
 #endif
 #endif
 
-		if (static_cast<oroError>(oroInitialize((oroApi)(ORO_API_HIP | ORO_API_CUDA), 0)) != oroSuccess)
+#ifdef OROCHI_ENABLE_CUEW
+		int error_initialize = oroInitialize((oroApi)(ORO_API_CUDA), 0);
+#else
+		int error_initialize = oroInitialize((oroApi)(ORO_API_HIP), 0);
+#endif
+		if (error_initialize != oroSuccess)
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to initialize Orochi... Is CUDA/HIP installed?");
+			switch (error_initialize)
+			{
+				// Unable to load HIP/CUDA
+				case ORO_API_HIPDRIVER:
+					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, 
+						"Unable to load HIP... Are your drivers up-to-date?");
+					break;
+
+				case ORO_API_CUDADRIVER:
+					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, 
+						"Unable to load CUDA... Are your drivers up-to-date?");
+					break;
+
+				// Unable to load HIP/CUDA
+				case ORO_API_HIPRTC:
+					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+						"Unable to load HIPRTC... Is the HIP SDK (Windows) or ROCm + HIP (Linux) installed?");
+					break;
+
+				case ORO_API_CUDARTC:
+					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, 
+						"Unable to load CUDARTC... Is the CUDA Toolkit installed + is the CUDA_PATH "
+						"environment variable set? (or have {CUDA_TOOLKIT_FOLDER/bin} in your "
+						"PATH environment variable)");
+					break;
+			}
 
 			int trash = std::getchar();
 			std::exit(1);
