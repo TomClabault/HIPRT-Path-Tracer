@@ -108,12 +108,17 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 ### Windows
 #### - AMD GPUs
 
-Nothing to do, go to the "[**Compiling**](#compiling)" step.
+1) Install the [HIP SDK](https://www.amd.com/en/developer/resources/rocm-hub/hip-sdk.html)
+
+2) Follow the "[**Compiling**](#compiling)" steps.
+
 #### - NVIDIA GPUs
 
-To build the project on NVIDIA hardware, you will need to install the NVIDIA CUDA SDK v12.2. It can be downloaded and installed from [here](https://developer.nvidia.com/cuda-12-2-0-download-archive).
+To build the project on NVIDIA hardware, you will need to install the NVIDIA CUDA SDK v12.2 (minimum). It can be downloaded and installed from [here](https://developer.nvidia.com/cuda-downloads).
 
-The CMake build then expects the `CUDA_PATH` environment variable to be defined. This should automatically be the case after installing the CUDA Toolkit but just in case, you can define it yourself such that `CUDA_PATH/include/cuda.h` is a valid file path.
+Your `CUDA_PATH` environment variable then needs to be defined. 
+This should automatically be the case after installing the CUDA Toolkit but just in case, 
+you can define it yourself such that `CUDA_PATH/include/cuda.h` is a valid file path.
 
 ### Linux
 
