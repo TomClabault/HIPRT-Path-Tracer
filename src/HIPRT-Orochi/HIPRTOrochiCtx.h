@@ -41,7 +41,7 @@ struct HIPRTOrochiCtx
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Initializing Orochi...");
 
-#ifdef OROCHO_ENABLE_CUEW
+#ifdef OROCHI_ENABLE_CUEW
 #ifdef _WIN32
 		Utils::AddEnvVarError error = add_CUDA_PATH_to_PATH();
 #endif
