@@ -153,8 +153,45 @@ HIPRT_DEVICE HIPRT_INLINE unsigned int hash_double_position_camera(unsigned int 
     unsigned int hash_1 = h2_xxhash32(cell_size_1 + h2_xxhash32(grid_coord_z_1 + h2_xxhash32(grid_coord_y_1 + h2_xxhash32(grid_coord_x_1))));
     unsigned int hash_2 = h2_xxhash32(cell_size_2 + h2_xxhash32(grid_coord_z_2 + h2_xxhash32(grid_coord_y_2 + h2_xxhash32(grid_coord_x_2))));
     out_checksum = h2_xxhash32(hash_1 ^ hash_2);
-    
+
     unsigned int cell_hash_1 = h1_pcg(cell_size_1 + h1_pcg(grid_coord_z_1 + h1_pcg(grid_coord_y_1 + h1_pcg(grid_coord_x_1))));
+    unsigned int cell_hash_2 = h1_pcg(cell_size_2 + h1_pcg(grid_coord_z_2 + h1_pcg(grid_coord_y_2 + h1_pcg(grid_coord_x_2))));
+    unsigned int cell_hash = h1_pcg(cell_hash_1 ^ cell_hash_2) % total_number_of_cells;
+
+    return cell_hash;
+}
+
+HIPRT_DEVICE HIPRT_INLINE unsigned int hash_double_position_normal_camera(unsigned int total_number_of_cells, float3 world_position_1, float3 surface_normal_1, float3 world_position_2, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
+{
+    float cell_size_1 = compute_adaptive_cell_size(world_position_1, current_camera, target_projected_size, grid_cell_min_size);
+    float cell_size_2 = compute_adaptive_cell_size(world_position_2, current_camera, target_projected_size, grid_cell_min_size);
+
+    // Periodic shifting to avoid float precision issues when, for example, rays hit a surface
+    // that is perfectly at Y=0 (the floor of the scene for example).
+    // 
+    // In that example, because of float imprecisions, rays hitting the floor will never have
+    // a y=0 hit coordinate but rather be slightly negative or slightly positive, depending
+    // on float imprecisions and this will actually create some noisy patterns where random rays access the hash 
+    // grid cell that has Y-negative and some other randoms rays access the Y-positive hash grid cell
+    //
+    // Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
+    world_position_1 = hash_periodic_shifting(world_position_1, cell_size_1);
+    world_position_2 = hash_periodic_shifting(world_position_2, cell_size_2);
+
+    unsigned int grid_coord_x_1 = static_cast<int>(floorf(world_position_1.x / cell_size_1));
+    unsigned int grid_coord_y_1 = static_cast<int>(floorf(world_position_1.y / cell_size_1));
+    unsigned int grid_coord_z_1 = static_cast<int>(floorf(world_position_1.z / cell_size_1));
+
+    unsigned int grid_coord_x_2 = static_cast<int>(floorf(world_position_2.x / cell_size_2));
+    unsigned int grid_coord_y_2 = static_cast<int>(floorf(world_position_2.y / cell_size_2));
+    unsigned int grid_coord_z_2 = static_cast<int>(floorf(world_position_2.z / cell_size_2));
+
+    // Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
+    unsigned int hash_1 = h2_xxhash32(cell_size_1 + h2_xxhash32(grid_coord_z_1 + h2_xxhash32(grid_coord_y_1 + h2_xxhash32(grid_coord_x_1))));
+    unsigned int hash_2 = h2_xxhash32(cell_size_2 + h2_xxhash32(grid_coord_z_2 + h2_xxhash32(grid_coord_y_2 + h2_xxhash32(grid_coord_x_2))));
+    out_checksum = h2_xxhash32(hash_1 ^ hash_2);
+
+    unsigned int cell_hash_1 = h1_pcg(hash_quantize_normal(surface_normal_1, 2) + h1_pcg(cell_size_1 + h1_pcg(grid_coord_z_1 + h1_pcg(grid_coord_y_1 + h1_pcg(grid_coord_x_1)))));
     unsigned int cell_hash_2 = h1_pcg(cell_size_2 + h1_pcg(grid_coord_z_2 + h1_pcg(grid_coord_y_2 + h1_pcg(grid_coord_x_2))));
     unsigned int cell_hash = h1_pcg(cell_hash_1 ^ cell_hash_2) % total_number_of_cells;
 

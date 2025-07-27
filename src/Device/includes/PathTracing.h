@@ -238,6 +238,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
         context.envmap = false;
         context.point_on_light = make_float3(0, 0, 0);
         context.shaded_point = primary_hit;
+        context.shaded_point_surface_normal = shading_normal;
 
         ray_payload.ray_color = ColorRGB32F::random_color(render_data.nee_plus_plus.hash_context(context, render_data.current_camera, trash_checksum));
         ray_payload.ray_color *= (render_data.render_settings.sample_number + 1);

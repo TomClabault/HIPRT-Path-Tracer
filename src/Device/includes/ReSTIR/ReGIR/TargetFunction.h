@@ -67,6 +67,7 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderDat
 		context.envmap = false;
 		context.point_on_light = sample_position;
 		context.shaded_point = surface.cell_point;
+		context.shaded_point_surface_normal = surface.cell_normal;
 
 		target_function *= render_data.nee_plus_plus.estimate_visibility_probability(context, render_data.current_camera);
 	}
@@ -187,6 +188,7 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 		context.envmap = false;
 		context.point_on_light = point_on_light;
 		context.shaded_point = shading_point;
+		context.shaded_point_surface_normal = shading_normal;
 
 		float visibility_proba = render_data.nee_plus_plus.estimate_visibility_probability(context, render_data.current_camera);
 		if (visibility_proba > 0.005f)

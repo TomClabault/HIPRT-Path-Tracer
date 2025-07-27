@@ -17,6 +17,7 @@
 struct NEEPlusPlusContext
 {
 	float3 shaded_point;
+	float3 shaded_point_surface_normal;
 	float3 point_on_light;
 
 	// After passing this context to a call to 'evaluate_shadow_ray_nee_plus_plus',
@@ -225,7 +226,7 @@ struct NEEPlusPlusDevice
 	{
 		float3 second_point = context.envmap ? (context.shaded_point + context.point_on_light * 1.0e20f) : context.point_on_light;
 
-		return hash_double_position_camera(m_total_number_of_cells, context.shaded_point, second_point, current_camera, m_grid_cell_target_projected_size, m_grid_cell_min_size, out_checksum);
+		return hash_double_position_normal_camera(m_total_number_of_cells, context.shaded_point, context.shaded_point_surface_normal, second_point, current_camera, m_grid_cell_target_projected_size, m_grid_cell_min_size, out_checksum);
 	}
 
 	template <bool isInsertion = false>

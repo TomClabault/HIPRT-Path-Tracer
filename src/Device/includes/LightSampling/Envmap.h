@@ -189,6 +189,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
 
             NEEPlusPlusContext nee_plus_plus_context;
             nee_plus_plus_context.shaded_point = closest_hit_info.inter_point;
+            nee_plus_plus_context.shaded_point_surface_normal = closest_hit_info.shading_normal;
             nee_plus_plus_context.point_on_light = sampled_direction;
             nee_plus_plus_context.envmap = true;
             bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);

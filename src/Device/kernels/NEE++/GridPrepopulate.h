@@ -53,6 +53,7 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data, const h
             NEEPlusPlusContext nee_plus_plus_context;
             nee_plus_plus_context.point_on_light = light_sample.point_on_light;
             nee_plus_plus_context.shaded_point = shadow_ray_origin;
+            nee_plus_plus_context.shaded_point_surface_normal = closest_hit_info.shading_normal;
             bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
         }
     }
