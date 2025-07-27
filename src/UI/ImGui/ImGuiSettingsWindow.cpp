@@ -19,7 +19,7 @@
 
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 
-const char* ImGuiSettingsWindow::TITLE = "Settings";
+const char* ImGuiSettingsWindow::TITLE = "Render settings";
 const float ImGuiSettingsWindow::BASE_SIZE = 630.0f;
 
 void ImGuiSettingsWindow::set_render_window(RenderWindow* render_window)

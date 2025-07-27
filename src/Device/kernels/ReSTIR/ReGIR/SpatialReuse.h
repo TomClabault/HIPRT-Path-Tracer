@@ -257,7 +257,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
             // Grid cell wasn't used during shading in the last frame, let's not refill it
             
             // Storing an empty reservoir to clear the cell
-            regir_settings.store_spatial_reservoir_opt(output_reservoirs_grid,  ReGIRReservoir(), hash_grid_cell_index, reservoir_index_in_cell);
+            regir_settings.store_reservoir_custom_buffer_opt(output_reservoirs_grid,  ReGIRReservoir(), hash_grid_cell_index, reservoir_index_in_cell);
             
             return;
         }
@@ -283,7 +283,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
         // Normalizing the reservoirs to 1
         output_reservoir.finalize_resampling(1.0f, valid_neighbor_count);
 
-        regir_settings.store_spatial_reservoir_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
+        regir_settings.store_reservoir_custom_buffer_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
 
 #ifdef __KERNELCC__
         spatial_reuse_pre_integration_accumulation<ReGIR_GridFillSpatialReuse_AccumulatePreIntegration>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);

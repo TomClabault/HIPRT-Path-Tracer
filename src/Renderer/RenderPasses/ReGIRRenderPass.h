@@ -66,9 +66,15 @@ public:
 	bool rehash(HIPRTRenderData& render_data);
 
 	void launch_light_presampling(HIPRTRenderData& render_data, oroStream_t stream);
+	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
-	void launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
+	/**
+	 * Returns the hash grid buffer into which the spatial reuse output the result
+	 */
+	ReGIRHashGridSoADevice launch_spatial_reuse(HIPRTRenderData& render_data, ReGIRHashGridSoADevice first_input_reservoirs, ReGIRHashGridSoADevice first_output_reservoirs, bool primary_hit, bool for_pre_integration, oroStream_t stream);
+	ReGIRHashGridSoADevice launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	void launch_supersampling_fill(HIPRTRenderData& render_data);
+	void launch_supersampling_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy);
 	void launch_supersampling_copy(HIPRTRenderData& render_data);
 	void launch_pre_integration(HIPRTRenderData& render_data);
 	void launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream);
@@ -120,6 +126,12 @@ private:
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 
 	ReGIRHashGridStorage m_hash_grid_storage;
+	// The grid that async compute last stored into
+	ReGIRHashGridSoADevice m_last_async_compute_store_buffers_first_hits;
+	ReGIRHashGridSoADevice m_last_async_compute_store_buffers_secondary_hits;
+	// Stores the pointers to the buffers that the last spatial reues output into
+	ReGIRHashGridSoADevice m_last_spatial_reuse_output_buffer_primary_hits;
+	ReGIRHashGridSoADevice m_last_spatial_reuse_output_buffer_secondary_hits;
 
 	oroStream_t m_pre_integration_async_stream = nullptr;
 	oroStream_t m_grid_fill_async_stream = nullptr;
