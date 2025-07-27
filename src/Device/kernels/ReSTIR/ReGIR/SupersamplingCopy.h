@@ -15,9 +15,9 @@
  * of the old (smaller) hash table into the new (larger) hash table
  */
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Supersampling_Copy(HIPRTRenderData render_data)
+GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Supersampling_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Supersampling_Copy(HIPRTRenderData render_data, int thread_index)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Supersampling_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy, int thread_index)
 #endif
 {
     ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
@@ -45,11 +45,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Supersampling_Copy(HIPRTRenderData re
     unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_list[cell_alive_index];
     unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(true) + reservoir_index_in_cell;
 
-    ReGIRReservoir reservoir_to_copy;
-    if (regir_settings.spatial_reuse.do_spatial_reuse)
-        reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.get_actual_spatial_output_reservoirs_grid(true), reservoir_index_in_grid);
-    else
-        reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(regir_settings.get_initial_reservoirs_grid(true), reservoir_index_in_grid);
+    ReGIRReservoir reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(input_reservoirs_to_copy, reservoir_index_in_grid);
 
 	unsigned int reservoir_index_in_supersampling_grid = reservoir_index_in_grid + regir_settings.supersampling.correl_reduction_current_grid * regir_settings.get_number_of_reservoirs_per_grid(true);
 

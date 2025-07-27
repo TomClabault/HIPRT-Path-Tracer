@@ -122,10 +122,10 @@ HIPRT_DEVICE void grid_fill_pre_integration_accumulation(HIPRTRenderData& render
  * This kernel also does the temporal reuse if enabled.
  */
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, unsigned int number_of_cells_alive, bool primary_hit)
+GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit)
 #else
 template <bool accumulatePreIntegration>
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
 #endif
 {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -152,10 +152,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_alive_index];
         unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(primary_hit) + reservoir_index_in_cell;
         
-        // Reset grid
-        if (render_data.render_settings.need_to_reset)
-            regir_settings.reset_reservoirs(hash_grid_cell_index, reservoir_index_in_cell, primary_hit);
-        
         unsigned int seed;
         if (render_data.render_settings.freeze_random)
             seed = wang_hash(reservoir_index_in_grid + 1);
@@ -179,7 +175,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         // Normalizing the reservoir
         output_reservoir.finalize_resampling(1.0f, 1.0f);
         
-        regir_settings.store_reservoir_opt(output_reservoir, hash_grid_cell_index, primary_hit, reservoir_index_in_cell);
+        regir_settings.store_reservoir_custom_buffer_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
 
         grid_fill_pre_integration_accumulation<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);
 
