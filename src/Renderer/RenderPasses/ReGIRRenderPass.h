@@ -108,8 +108,6 @@ public:
 	unsigned int get_number_of_cells_alive(bool primary_hit) const;
 	unsigned int get_total_number_of_cells_alive(bool primary_hit) const;
 
-	bool& get_do_asynchronous_compute();
-
 	GPURenderer* get_renderer();
 
 	void update_all_cell_alive_count(HIPRTRenderData& render_data);
@@ -119,22 +117,20 @@ private:
 	unsigned int m_number_of_cells_alive_primary_hits = 0;
 	unsigned int m_number_of_cells_alive_secondary_hits = 0;
 
-	// If true
-	bool m_do_asynchronous_compute = true;
-
 	Xorshift32Generator m_local_rng = Xorshift32Generator(42);
 	OrochiBuffer<unsigned int> m_grid_cells_alive_count_staging_host_pinned_buffer;
 
 	ReGIRHashGridStorage m_hash_grid_storage;
 	// The grid that async compute last stored into
-	ReGIRHashGridSoADevice m_last_async_compute_store_buffers_first_hits;
-	ReGIRHashGridSoADevice m_last_async_compute_store_buffers_secondary_hits;
+	/*ReGIRHashGridSoADevice m_last_async_compute_store_buffers_first_hits;
+	ReGIRHashGridSoADevice m_last_async_compute_store_buffers_secondary_hits;*/
 	// Stores the pointers to the buffers that the last spatial reues output into
 	ReGIRHashGridSoADevice m_last_spatial_reuse_output_buffer_primary_hits;
 	ReGIRHashGridSoADevice m_last_spatial_reuse_output_buffer_secondary_hits;
 
 	oroStream_t m_pre_integration_async_stream = nullptr;
-	oroStream_t m_grid_fill_async_stream = nullptr;
+	oroStream_t m_grid_fill_async_stream_primary_hits = nullptr;
+	oroStream_t m_grid_fill_async_stream_secondary_hits = nullptr;
 	oroEvent_t m_oro_event = nullptr;
 	oroEvent_t m_event_pre_integration_duration_start = nullptr;
 	oroEvent_t m_event_pre_integration_duration_stop = nullptr;

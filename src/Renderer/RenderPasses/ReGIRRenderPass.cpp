@@ -56,7 +56,8 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 {
 	m_hash_grid_storage.set_regir_render_pass(this);
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_pre_integration_async_stream));
-	OROCHI_CHECK_ERROR(oroStreamCreate(&m_grid_fill_async_stream));
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_grid_fill_async_stream_primary_hits));
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_grid_fill_async_stream_secondary_hits));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_oro_event));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_event_pre_integration_duration_stop));
@@ -268,10 +269,29 @@ void callback_reset_imgui_status_text(void* payload)
 	render_window->clear_ImGui_status_text();
 }
 
+/**
+ * Returns whichever of the two candidates isn't 'buffer'
+ */
 ReGIRHashGridSoADevice get_non_equal_buffer(ReGIRHashGridSoADevice candidate_A, ReGIRHashGridSoADevice candidate_B, ReGIRHashGridSoADevice buffer)
 {
-	// Returns whichever of the two candidates isn't 'buffer'
 	return buffer.reservoirs.UCW == candidate_A.reservoirs.UCW ? candidate_B : candidate_A;
+}
+
+/**
+ * Returns whichever of the three candidates isn't 'buffer1' and also isn't 'buffer2'
+ */
+ReGIRHashGridSoADevice get_non_equal_buffer(ReGIRHashGridSoADevice candidate_A, ReGIRHashGridSoADevice candidate_B, ReGIRHashGridSoADevice candidate_C, ReGIRHashGridSoADevice buffer1, ReGIRHashGridSoADevice buffer2)
+{
+	if (candidate_A.reservoirs.UCW != buffer1.reservoirs.UCW && candidate_A.reservoirs.UCW != buffer2.reservoirs.UCW)
+		return candidate_A;
+
+	if (candidate_B.reservoirs.UCW != buffer1.reservoirs.UCW && candidate_B.reservoirs.UCW != buffer2.reservoirs.UCW)
+		return candidate_B;
+
+	if (candidate_C.reservoirs.UCW != buffer1.reservoirs.UCW && candidate_C.reservoirs.UCW != buffer2.reservoirs.UCW)
+		return candidate_C;
+
+	return ReGIRHashGridSoADevice();
 }
 
 bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
@@ -319,11 +339,8 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	// If this is the first sample, we have no frame before that that could fill the grid asynchronously
 	// so we're going to need to fully fill the grid now
 	full_grid_fill_needed |= render_data.render_settings.sample_number == 0;
-	// If we don't have spatial reuse enabled, asynchronous grid fill would be a race concurrency
-	// with the path tracing kernels. This means that asynchronous grid fill isn't run when spatial reuse
-	// is disabled. And if the asynchronous grid fill isn't run, we need a full grid fill now
 	full_grid_fill_needed |= !render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse;
-	full_grid_fill_needed |= !m_do_asynchronous_compute;
+	full_grid_fill_needed |= !render_data.render_settings.regir_settings.do_asynchronous_compute;
 	if (full_grid_fill_needed)
 		// At each frame, launch_async_grid_fill() is called which fills the grid asynchronously
 		// (at the same time as the path tracing kernels execute). This means that when we get here,
@@ -332,36 +349,40 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		// But the grid can somehow be resized (rehashed), which means that all the content of the grid
 		// is cleared and so all that was filled asynchronously is lost so we need a full grid refill here
 		launch_sync_grid_fill(render_data);
-	else
-	{
-		// If we don't need a full grid refill because the asynchronous grid fill launched
-		// last frame is available, then we only need to launch the spatial reuse
+	//else
+	//{
+	//	// If we don't need a full grid refill because the asynchronous grid fill launched
+	//	// last frame is available, then we only need to launch the spatial reuse
 
-		// Two iterations for first hits and secondary hits
-		for (int i = 0; i < 2; i++)
-		{
-			bool primary_hit = i == 0;
+	//	// Two iterations for first hits and secondary hits
+	//	for (int i = 0; i < 2; i++)
+	//	{
+	//		bool primary_hit = i == 0;
 
-			// Checking if the *next* frame (sample number + 1) needs a grid fill
-			int frame_skip = primary_hit ? render_data.render_settings.regir_settings.frame_skip_primary_hit_grid : render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid;
-			bool skip_frame = (render_data.render_settings.sample_number + 1) % (frame_skip + 1) != 0;
-			unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
+	//		// Checking if the *next* frame (sample number + 1) needs a grid fill
+	//		int frame_skip = primary_hit ? render_data.render_settings.regir_settings.frame_skip_primary_hit_grid : render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid;
+	//		bool skip_frame = (render_data.render_settings.sample_number + 1) % (frame_skip + 1) != 0;
+	//		unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 
-			if (number_of_cells_alive > 0 && !skip_frame)
-			{
-				// The output grid is going to be whichever of our two grids (grid fill output & spatial reuse output) isn't
-				// the grid in which the async compute last filled data
-				ReGIRHashGridSoADevice last_async_compute_store = primary_hit ? m_last_async_compute_store_buffers_first_hits : m_last_async_compute_store_buffers_secondary_hits;
-				ReGIRHashGridSoADevice output_grid = get_non_equal_buffer(
-					render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), 
-					render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit), 
-					last_async_compute_store);
+	//		if (number_of_cells_alive > 0 && !skip_frame)
+	//		{
+	//			// The output grid is going to be whichever of our two grids (grid fill output & spatial reuse output) isn't
+	//			// the grid in which the async compute last filled data
+	//			ReGIRHashGridSoADevice last_async_compute_store = primary_hit ? m_last_async_compute_store_buffers_first_hits : m_last_async_compute_store_buffers_secondary_hits;
+	//			ReGIRHashGridSoADevice output_grid = get_non_equal_buffer(
+	//				render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), 
+	//				render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit), 
+	//				last_async_compute_store);
 
-				ReGIRHashGridSoADevice& last_spatial_output_buffer = primary_hit ? m_last_spatial_reuse_output_buffer_primary_hits : m_last_spatial_reuse_output_buffer_secondary_hits;
-				last_spatial_output_buffer = launch_spatial_reuse(render_data, last_async_compute_store, output_grid, primary_hit, false, m_renderer->get_main_stream());
-			}
-		}
-	}
+	//			ReGIRHashGridSoADevice& last_spatial_output_buffer = primary_hit ? m_last_spatial_reuse_output_buffer_primary_hits : m_last_spatial_reuse_output_buffer_secondary_hits;
+	//			last_spatial_output_buffer = launch_spatial_reuse(render_data, last_async_compute_store, output_grid, primary_hit, false, m_renderer->get_main_stream());
+	//		}
+	//	}
+	//}
+
+	// Positioning the actual spatial reuse output buffers
+	render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits = m_last_spatial_reuse_output_buffer_primary_hits;
+	render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits = m_last_spatial_reuse_output_buffer_secondary_hits;
 
 	// Launching an synchronous grid fill such that the grid fill for *next* frame can execute
 	// while the path tracing kernels are running.
@@ -374,10 +395,6 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	// path tracing kernels (and that's why the async grid fill isn't run if spatial reuse is disabled. The check
 	// for that is in the async grid fill function).
 	launch_async_grid_fill(render_data);
-
-	// Positioning the actual spatial reuse output buffers
-	render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits = m_last_spatial_reuse_output_buffer_primary_hits;
-	render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits = m_last_spatial_reuse_output_buffer_secondary_hits;
 
 	return true;
 }
@@ -406,13 +423,14 @@ void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data)
 void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 {
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-		// If we don't have spatial reuse, asynchronous grid fill is a race condition with the
-		// path tracing kernels so we can't do that
+		// Disabling async compute if we do not have spatial reuse enabled just for implementation
+		// simplicity
 		return;
-	else if (!m_do_asynchronous_compute)
+	else if (!render_data.render_settings.regir_settings.do_asynchronous_compute)
 		// We don't want async compute
 		return;
 
+	// TODO do this with events instead of CPU blocking stream synchronizations
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_renderer->get_main_stream()));
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_pre_integration_async_stream));
 
@@ -420,19 +438,20 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 	// that we can fill the grid of the *next* frame while the path tracing of the *current* frame
 	// is running
 
-	oroStream_t async_stream = m_grid_fill_async_stream;
-
-	launch_light_presampling(render_data, async_stream);
+	launch_light_presampling(render_data, m_grid_fill_async_stream_primary_hits);
 
 	// 2 iterations for first hits and secondary hits
 	for (int i = 0; i < 2; i++)
 	{
 		bool primary_hit = i == 0;
 
+		oroStream_t async_stream = primary_hit ? m_grid_fill_async_stream_primary_hits : m_grid_fill_async_stream_secondary_hits;
+
 		// Checking if the *next* frame (sample number + 1) needs a grid fill
 		int frame_skip = primary_hit ? render_data.render_settings.regir_settings.frame_skip_primary_hit_grid : render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid;
 		bool skip_frame = (render_data.render_settings.sample_number + 1) % (frame_skip + 1) != 0;
-		if (m_number_of_cells_alive_primary_hits > 0 && !skip_frame)
+		unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
+		if (number_of_cells_alive > 0 && !skip_frame)
 		{
 			// We need to be careful about which buffer we're going to use to store the async grid fill
 			// results because we don't to override the spatial reuse buffer that the path tracing kernels
@@ -447,17 +466,32 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 			//
 			// In any case, what we want to do is simple: the async compute should fill in the buffer that is not being used
 			// by the path tracing kernels which is the buffer that the spatial reuse passes did not fill at the end
-			
-			ReGIRHashGridSoADevice grid_fill_output_buffers = render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit);
-			ReGIRHashGridSoADevice raw_spatial_output_buffer = render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit);
-			ReGIRHashGridSoADevice output_reservoirs_grid_for_async_compute = get_non_equal_buffer(grid_fill_output_buffers, raw_spatial_output_buffer, primary_hit ? m_last_spatial_reuse_output_buffer_primary_hits : m_last_spatial_reuse_output_buffer_secondary_hits);
+			ReGIRHashGridSoADevice buffer_used_by_pt_kernels = primary_hit ? render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits : render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits;;
+			ReGIRHashGridSoADevice output_reservoirs_async_grid_fill = get_non_equal_buffer(
+				render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), 
+				render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit),
+				buffer_used_by_pt_kernels);
 
-			if (primary_hit)
-				m_last_async_compute_store_buffers_first_hits = output_reservoirs_grid_for_async_compute;
+			/*if (primary_hit)
+				m_last_async_compute_store_buffers_first_hits = output_reservoirs_async_grid_fill;
 			else
-				m_last_async_compute_store_buffers_secondary_hits = output_reservoirs_grid_for_async_compute;
+				m_last_async_compute_store_buffers_secondary_hits = output_reservoirs_async_grid_fill;*/
 
-			launch_grid_fill_temporal_reuse(render_data, output_reservoirs_grid_for_async_compute, primary_hit, false, async_stream);
+			launch_grid_fill_temporal_reuse(render_data, output_reservoirs_async_grid_fill, primary_hit, false, async_stream);
+
+			// Same for the sptial reuse as for the grid fill: we're going to use the buffer that is not being used by the path tracing kernels
+			// and that is not the buffer that is input to the spatial reuse (because we don't want to store into the buffer which we're reading
+			// from in the spatial reuse pass, that would be a race condition)
+			ReGIRHashGridSoADevice output_reservoirs_async_spatial_reuse = get_non_equal_buffer(
+				render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit),
+				render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit),
+				m_hash_grid_storage.get_async_compute_staging_buffer_device(primary_hit),
+
+				buffer_used_by_pt_kernels,
+				output_reservoirs_async_grid_fill);
+
+			ReGIRHashGridSoADevice& last_spatial_output_buffer = primary_hit ? m_last_spatial_reuse_output_buffer_primary_hits : m_last_spatial_reuse_output_buffer_secondary_hits;
+			last_spatial_output_buffer = launch_spatial_reuse(render_data, output_reservoirs_async_grid_fill, output_reservoirs_async_spatial_reuse, primary_hit, false, async_stream);
 		}
 	}
 }
@@ -798,7 +832,8 @@ void ReGIRRenderPass::synchronize_async_compute()
 {
 	// Synchronizing and waiting for the asynchronous grid fill launched last frame (for this frame's grid)
 	// to finish
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_grid_fill_async_stream));
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_grid_fill_async_stream_primary_hits));
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_grid_fill_async_stream_secondary_hits));
 }
 
 void ReGIRRenderPass::compute_render_times()
@@ -929,11 +964,6 @@ unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const
 unsigned int ReGIRRenderPass::get_total_number_of_cells_alive(bool primary_hit) const
 {
 	return m_hash_grid_storage.get_total_number_of_cells(primary_hit);
-}
-
-bool& ReGIRRenderPass::get_do_asynchronous_compute()
-{
-	return m_do_asynchronous_compute;
 }
 
 GPURenderer* ReGIRRenderPass::get_renderer()

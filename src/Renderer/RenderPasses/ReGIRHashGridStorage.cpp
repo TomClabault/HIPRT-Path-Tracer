@@ -22,6 +22,9 @@ std::size_t ReGIRHashGridStorage::get_byte_size() const
 		m_spatial_output_primary_hits_grid.get_byte_size() +
 		m_spatial_output_secondary_hits_grid.get_byte_size() +
 
+		m_async_compute_staging_buffer_primary_hits.get_byte_size() +
+		m_async_compute_staging_buffer_secondary_hits.get_byte_size() +
+
 		m_hash_cell_data_primary_hits.get_byte_size() +
 		m_hash_cell_data_secondary_hits.get_byte_size() +
 
@@ -70,6 +73,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		m_regir_render_pass->synchronize_async_compute();
 
 		get_initial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+
 		get_hash_cell_data_soa(primary_hit).resize(get_total_number_of_cells(primary_hit));
 
 		get_non_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
@@ -81,9 +85,8 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 	if (regir_settings.spatial_reuse.do_spatial_reuse)
 	{
 		bool spatial_grid_not_allocated = get_spatial_grid_buffers(primary_hit).m_total_number_of_cells == 0;
-		bool reservoirs_per_cell_spatial_changed = regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != get_spatial_grid_buffers(primary_hit).m_reservoirs_per_cell;
 
-		bool needs_spatial_grid_resize = spatial_grid_not_allocated || grid_res_changed || reservoirs_per_cell_spatial_changed;
+		bool needs_spatial_grid_resize = spatial_grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed;
 
 		if (needs_spatial_grid_resize)
 		{
@@ -97,6 +100,20 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 	{
 		if (get_spatial_grid_buffers(primary_hit).m_total_number_of_cells > 0)
 			get_spatial_grid_buffers(primary_hit).free();
+	}
+
+	if (regir_settings.do_asynchronous_compute)
+	{
+		bool async_grid_not_allocated = get_async_compute_staging_buffer(primary_hit).m_total_number_of_cells == 0;
+		bool needs_async_grid_resize = async_grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed;
+
+		if (needs_async_grid_resize)
+			get_async_compute_staging_buffer(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+	}
+	else
+	{
+		if (get_async_compute_staging_buffer(primary_hit).m_total_number_of_cells > 0)
+			get_async_compute_staging_buffer(primary_hit).free();
 	}
 
 	if (primary_hit)
@@ -209,6 +226,10 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 				m_correlation_reduction_current_grid_offset = 0;
 				m_correlation_reduction_frames_available = 0;
 			}
+
+			if (regir_settings.do_asynchronous_compute)
+				get_async_compute_staging_buffer(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+
 			get_hash_cell_data_soa(primary_hit) = std::move(new_hash_cell_data);
 
 			get_non_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
@@ -284,6 +305,13 @@ bool ReGIRHashGridStorage::free_internal(bool primary_hit)
 	if (get_spatial_grid_buffers(primary_hit).get_byte_size() > 0)
 	{
 		get_spatial_grid_buffers(primary_hit).free();
+
+		updated = true;
+	}
+
+	if (get_async_compute_staging_buffer(primary_hit).get_byte_size() > 0)
+	{
+		get_async_compute_staging_buffer(primary_hit).free();
 
 		updated = true;
 	}
@@ -376,6 +404,23 @@ ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid_buffe
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_spatial_grid_buffers(bool primary_hit)
 {
 	return primary_hit ? m_spatial_output_primary_hits_grid : m_spatial_output_secondary_hits_grid;
+}
+
+ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_async_compute_staging_buffer(bool primary_hit)
+{
+	return primary_hit ? m_async_compute_staging_buffer_primary_hits : m_async_compute_staging_buffer_secondary_hits;
+}
+
+ReGIRHashGridSoADevice ReGIRHashGridStorage::get_async_compute_staging_buffer_device(bool primary_hit)
+{
+	ReGIRHashGridSoADevice output_soa_device;
+
+	if (primary_hit)
+		m_async_compute_staging_buffer_primary_hits.to_device(output_soa_device);
+	else
+		m_async_compute_staging_buffer_secondary_hits.to_device(output_soa_device);
+
+	return output_soa_device;
 }
 
 ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data_soa(bool primary_hit)

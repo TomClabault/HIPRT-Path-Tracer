@@ -2248,7 +2248,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR Performance tree");
 
-			if (ImGui::Checkbox("Do asynchronous compute", &regir_render_pass->get_do_asynchronous_compute()))
+			if (ImGui::Checkbox("Do asynchronous compute", &regir_settings.do_asynchronous_compute))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::TreePop();

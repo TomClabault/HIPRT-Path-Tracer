@@ -581,6 +581,13 @@ struct ReGIRSettings
 		ReGIRSettings::insert_hash_cell_data_static(hash_grid, get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, primitive_index, material);
 	}
 
+	// If true, the ReGIR grid fill and spatial reuse will run in parallel of the
+	// path tracing kernels. This helps with performance a bit and helps amortize
+	// the grid fill/spatial reuse cost of ReGIR.
+	//
+	// Async compute is only supported with spatial reuse enabled though.
+	bool do_asynchronous_compute = true;
+
 	bool DEBUG_INCLUDE_CANONICAL = true;
 	bool DEBUG_FORCE_REGIR8CANONICAL = false;
 	bool DEBUG_CORRELATE_rEGIR = true;
