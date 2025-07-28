@@ -83,7 +83,7 @@ struct ReGIRGridFillSettings
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 1;
+		light_sample_count_per_cell_reservoir = 32;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 8 : 4;
