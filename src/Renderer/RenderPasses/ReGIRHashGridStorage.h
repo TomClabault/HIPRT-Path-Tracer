@@ -38,6 +38,8 @@ public:
 
 	ReGIRHashGridSoAHost<OrochiBuffer>& get_initial_grid_buffers(bool primary_hit);
 	ReGIRHashGridSoAHost<OrochiBuffer>& get_spatial_grid_buffers(bool primary_hit);
+	ReGIRHashGridSoAHost<OrochiBuffer>& get_async_compute_staging_buffer(bool primary_hit);
+	ReGIRHashGridSoADevice get_async_compute_staging_buffer_device(bool primary_hit);
 	ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa(bool primary_hit);
 	ReGIRHashCellDataSoADevice& get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit);
 	OrochiBuffer<float>& get_non_canonical_factors(bool primary_hit);
@@ -65,6 +67,12 @@ public:
 	ReGIRHashGridSoAHost<OrochiBuffer> m_initial_reservoirs_secondary_hits_grid;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_output_primary_hits_grid;
 	ReGIRHashGridSoAHost<OrochiBuffer> m_spatial_output_secondary_hits_grid;
+
+	// For filling the grid asynchronously, we sometimes (depending on the spatial reuse settings etc...)
+	// need another buffer to store the results of the async compute without overriding the buffers
+	// that the path tracing kernels are currently using to shade
+	ReGIRHashGridSoAHost<OrochiBuffer> m_async_compute_staging_buffer_primary_hits;
+	ReGIRHashGridSoAHost<OrochiBuffer> m_async_compute_staging_buffer_secondary_hits;
 
 	int m_correlation_reduction_current_grid_offset = 0;
 	int m_correlation_reduction_frames_available = 0;

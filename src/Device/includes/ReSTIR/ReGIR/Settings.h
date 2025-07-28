@@ -83,7 +83,7 @@ struct ReGIRGridFillSettings
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 1;
+		light_sample_count_per_cell_reservoir = 32;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 48 : 8;
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 8 : 4;
@@ -580,6 +580,13 @@ struct ReGIRSettings
 	{
 		ReGIRSettings::insert_hash_cell_data_static(hash_grid, get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, surface_normal, current_camera, primitive_index, material);
 	}
+
+	// If true, the ReGIR grid fill and spatial reuse will run in parallel of the
+	// path tracing kernels. This helps with performance a bit and helps amortize
+	// the grid fill/spatial reuse cost of ReGIR.
+	//
+	// Async compute is only supported with spatial reuse enabled though.
+	bool do_asynchronous_compute = true;
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
 	bool DEBUG_FORCE_REGIR8CANONICAL = false;

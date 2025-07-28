@@ -234,6 +234,9 @@ extern ImGuiLogger g_imgui_logger;
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Features:
+// - Vector valued monte carlo: https://suikasibyl.github.io/files/vvmc/paper.pdf
+// - Reweighting path guiding: https://zhiminfan.work/paper/mi_reweight_preprint.pdf
+// - Fixed balance heuristic: https://qingqin-hua.com/publication/2025-correct-balance/2025-correct-balance.pdf
 // - Envmap with visibility sampling: https://static.chaos.com/documents/assets/000/000/377/original/adaptive_dome_abstract.pdf?1676455588
 // - Faster PNG loading: https://github.com/richgel999/fpng
 // - Need something blocking inn "start thread with dependency" so that the main thread is blocked until the other thread actually started. This should solve the issue where sometilmes the main threds just joins everyone but everyone hasn't even started yet
