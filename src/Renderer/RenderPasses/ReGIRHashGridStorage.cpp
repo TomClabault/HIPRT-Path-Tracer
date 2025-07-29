@@ -140,7 +140,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 				m_correlation_reduction_grid_primary_hits.free();
 		}
 
-		if (m_regir_render_pass->get_renderer()->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING))
+		if (render_data.render_settings.regir_settings.do_light_presampling)
 		{
 			unsigned int presampled_lights_count_needed = render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count();
 			if (m_presampled_lights.size() != presampled_lights_count_needed)
@@ -364,7 +364,7 @@ void ReGIRHashGridStorage::clear_pre_integrated_RIS_integral_factors(bool primar
 
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
-	if (m_regir_render_pass->get_renderer()->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING))
+	if (render_data.render_settings.regir_settings.do_light_presampling)
 		m_presampled_lights.to_device(render_data.render_settings.regir_settings.presampled_lights.presampled_lights_soa);
 
 	// Primary hits grid cells

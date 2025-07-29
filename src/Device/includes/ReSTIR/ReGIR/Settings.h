@@ -133,7 +133,7 @@ struct ReGIRSpatialReuseSettings
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = false;
 
-	int spatial_reuse_pass_count = 2;
+	int spatial_reuse_pass_count = 1;
 	int spatial_reuse_pass_index = 0;
 
 	int spatial_neighbor_count = 8;
@@ -586,7 +586,8 @@ struct ReGIRSettings
 	// the grid fill/spatial reuse cost of ReGIR.
 	//
 	// Async compute is only supported with spatial reuse enabled though.
-	bool do_asynchronous_compute = true;
+	bool do_asynchronous_compute = false;
+	bool do_light_presampling = ReGIR_GridFillDoLightPresampling;
 
 	bool DEBUG_INCLUDE_CANONICAL = true;
 	bool DEBUG_FORCE_REGIR8CANONICAL = false;
