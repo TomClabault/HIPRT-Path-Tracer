@@ -25,8 +25,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
     LightSampleInformation full_sample_information;
     full_sample_information.emissive_triangle_index = light_sample.emissive_triangle_index;
     full_sample_information.light_source_normal = light_sample.normal.unpack();
-    //full_sample_information.light_source_normal = hippt::normalize(light_sample.normal);
-    //full_sample_information.light_area = hippt::length(light_sample.normal) * 0.5f;
      full_sample_information.light_area = light_sample.triangle_area;
     //full_sample_information.emission = light_sample.emission;
     full_sample_information.emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[light_sample.emissive_triangle_index]);
@@ -58,7 +56,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
     {
         LightSampleInformation light_sample;
 
-        if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE)// && !accumulatePreIntegration)
+        if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)
             // Never using presampling lights for pre integration because pre integration needs
             // different samples to pre integrate properly and using presampled lights severely restricts
             // the number of different samples we have available

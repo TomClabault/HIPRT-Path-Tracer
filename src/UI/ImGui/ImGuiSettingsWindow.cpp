@@ -1830,17 +1830,16 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR grid build tree");
 
-			static bool do_light_presampling = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING);
-			if (ImGui::Checkbox("Do light presampling", &do_light_presampling))
+			if (ImGui::Checkbox("Do light presampling", &render_data.render_settings.regir_settings.do_light_presampling))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING, do_light_presampling? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING, render_data.render_settings.regir_settings.do_light_presampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("Whether or not to enable light presampling to improve grid fill performance"
 				"on scenes with many many lights.");
-			ImGui::BeginDisabled(!do_light_presampling);
+			ImGui::BeginDisabled(!render_data.render_settings.regir_settings.do_light_presampling);
 			if (ImGui::SliderInt("Stratification size", &regir_settings.presampled_lights.stratification_size, 8, 64))
 				m_render_window->set_render_dirty(true);
 			if (ImGui::SliderInt("Subset size", &regir_settings.presampled_lights.subset_size, 128, 2048))

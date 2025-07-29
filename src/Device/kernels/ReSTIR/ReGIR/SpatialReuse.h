@@ -92,7 +92,6 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             else
                 random_reservoir_index_in_cell = random_number_generator() * regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell();
 
-			// TODO the point, normal and roughness here are only to get the grid cell idnex but already have the grid cell index so we need an overload of this function that doesn't take these parameters
             ReGIRReservoir neighbor_reservoir = regir_settings.get_reservoir_from_grid_cell_index(input_reservoirs, neighbor_hash_grid_cell_index_in_grid, random_reservoir_index_in_cell);
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
@@ -294,7 +293,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need
         // for the work queue style of things that is only needed on the GPU, we can just exit here
-        break;
+        //break;
 #else
         // We need to compute the next reservoir index for the next iteration
         thread_index += thread_count;

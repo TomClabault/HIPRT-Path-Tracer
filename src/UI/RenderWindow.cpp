@@ -234,6 +234,24 @@ extern ImGuiLogger g_imgui_logger;
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Features:
+// Inciteful graph to explore (started with Practical product sampling warping NVIDIA): https://inciteful.xyz/p?ids%5B%5D=W4220995884&ids%5B%5D=W3179788358&ids%5B%5D=W4403641440&ids%5B%5D=W4390345185&ids%5B%5D=W4388994411&ids%5B%5D=W4200187284&ids%5B%5D=W2885975589&ids%5B%5D=W3183450244&ids%5B%5D=W1893031899&ids%5B%5D=W3036883119&ids%5B%5D=W3044759327&ids%5B%5D=W4240396283&ids%5B%5D=W3110265079&ids%5B%5D=W2073976119&ids%5B%5D=W2988541899&ids%5B%5D=W2885239691&ids%5B%5D=W2964425571&ids%5B%5D=W2030242873&ids%5B%5D=W3044185278
+// - VisibilityCluster: Average Directional Visibility for Many-Light Rendering: https://ieeexplore.ieee.org/document/6464264
+// - Practical product sampling warping NVIDIA
+// - Sample specular/diffuse lobe with the luminance of the diffuse lobe
+// - Sample specular/diffuse by taking the thrioughput of the path into account?
+// - Sample by evaluating the contribution of both samples and choosing proportional to the contribution:
+//		- a next "clever way" would be to generate L with both diffuse and specular but using the sample random number, then compare their total "contributions" (whole specular+diffuse BRDF value divided by pdf of generator and multiplied by path prefix throughput), then depending on the luma of that you choose either the first or second sample.
+//		- so you're making decisions about what branch you take posteriori not a-priori.
+//
+//		- This has a few drawbacks :
+//		- you're computing the contribution twice (but you're not really doing double the work for generation because Low Discrepancy Sequences / random numbers->maximum divergence)
+//		- if you need the PDF for MIS or RIS for a given L you need to do far more work, your sampling routines must be invertible
+// 
+//		- The latter part is annoying because many BRDF sampling routines don't require you to find the xi which produce a given L when you want to query pdf(L).
+//		- However the issue is that for every 2D value of xi you have two values of L between which you've chosen based on the value of the whole BRDF, so to know the PDF of any of the L in the pair, you need to know exactly what the other L is.
+//
+//		This is why this method is not tractable / fun for more than 2 BRDFs.
+// 
 // - Vector valued monte carlo: https://suikasibyl.github.io/files/vvmc/paper.pdf
 // - Reweighting path guiding: https://zhiminfan.work/paper/mi_reweight_preprint.pdf
 // - Fixed balance heuristic: https://qingqin-hua.com/publication/2025-correct-balance/2025-correct-balance.pdf
