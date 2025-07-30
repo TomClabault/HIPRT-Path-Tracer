@@ -43,14 +43,6 @@ struct HIPRTRenderSettings
 	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS = 4;
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
-	bool DEBUG_QUICK_ALIAS_TABLE = false;
-	bool DEBUG_CORRELATE_LIGHTS = false;
-
-	unsigned int DEBUG_TRIANGLE_COUNT = 0;
-
-	static constexpr float MULTIPLIER = 100000.0f;
-	static constexpr int SAMPLE_STOP = 4096;
-
 	bool enable_direct = true;
 	AtomicType<unsigned long long int>* DEBUG_SUM_COUNT = nullptr;
 	AtomicType<unsigned long long int>* DEBUG_SUM_TOTAL = nullptr;

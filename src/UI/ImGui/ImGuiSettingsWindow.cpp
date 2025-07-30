@@ -4494,14 +4494,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 
 		if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
 			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug regir include cano", &render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug regir force cano", &render_settings.regir_settings.DEBUG_FORCE_REGIR8CANONICAL))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug power sampling correlate", &render_settings.DEBUG_CORRELATE_LIGHTS))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Debug only one alias table", &render_settings.DEBUG_QUICK_ALIAS_TABLE))
-			m_render_window->set_render_dirty(true);
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 
 		if (ImGui::Checkbox("Correlate ReGIR", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR))
@@ -4511,14 +4503,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::SliderInt("ReGIR Pre integration sample per res", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR, 1, 64	))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::Checkbox("Normalize RIS integral", &render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION))
-			m_render_window->set_render_dirty(true);
-
-		bool changed = false;
-		changed |= ImGui::RadioButton("32", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 32); ImGui::SameLine();
-		changed |= ImGui::RadioButton("16", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 16); ImGui::SameLine();
-		changed |= ImGui::RadioButton("8", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 8); ImGui::SameLine();
-		changed |= ImGui::RadioButton("4", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE, 4);
-		if (changed)
 			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

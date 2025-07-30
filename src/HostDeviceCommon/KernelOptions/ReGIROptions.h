@@ -110,7 +110,7 @@
  * Whether or not to enable light presampling to improve grid fill performance
  * on scenes with many many lights
  */
-#define ReGIR_GridFillDoLightPresampling KERNEL_OPTION_FALSE
+#define ReGIR_GridFillDoLightPresampling KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

@@ -63,6 +63,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
+// - We're missing the pre-integration for secondary hits? Relaucnh pre-integration from time to time?
 // - For interacting with ReGIR, we can probably just shade with non canonical candidates and that's it. It will be biased but at least it won't be disgusting because of the lack of pre integration information
 // - We need something to fix the grid artifacts visible in mirrors because of low reservoirs count per grid cell at secondary bounces. Maybe we can insert in the hash grid in the megakernel by passing the 'first hit' flag to true if this is the first or a secondary hit with low path spreadcdrt
 // - Should we not pick reservoirs randomly in the neighbor cell during spatial reuse and instead each reservoir stays in its lane? Better performance thanks to coalescing?

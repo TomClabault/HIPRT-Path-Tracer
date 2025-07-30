@@ -282,37 +282,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
         return LightSampleInformation();
 
     LightSampleInformation out_sample;
-
-    unsigned int current_lane = hippt::current_warp_lane();
-    unsigned int active_mask = hippt::warp_activemask();
-    unsigned int subgroup_mask = ((1u << (render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE - 1)) - 1) | (1u << render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE);
-    unsigned int subgroup_mask_shift = (current_lane / render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE) * render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE;
-    unsigned int active_mask_subgroup = (active_mask & (subgroup_mask << subgroup_mask_shift)) >> subgroup_mask_shift;
-
-    unsigned int current_lane_subgroup = current_lane % render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE;
-    unsigned int first_active_thread_index_subgroup = hippt::ffs(active_mask_subgroup) - 1;
     
-    int random_emissive_triangle_index = -1;
-    if (render_data.render_settings.DEBUG_QUICK_ALIAS_TABLE)
-    {
-        if (current_lane_subgroup == first_active_thread_index_subgroup)
-            random_emissive_triangle_index = render_data.buffers.emissives_power_alias_table.sample(random_number_generator);
-        else
-        {
-            if (!render_data.render_settings.DEBUG_CORRELATE_LIGHTS)
-                random_emissive_triangle_index = render_data.buffers.emissives_power_alias_table.sample(random_number_generator);
-            else
-            {
-                random_number_generator();
-                random_number_generator();
-            }
-        }
-    }
-    else
-        random_emissive_triangle_index = render_data.buffers.emissives_power_alias_table.sample(random_number_generator);
-    
-    if (render_data.render_settings.DEBUG_CORRELATE_LIGHTS)
-        random_emissive_triangle_index = hippt::warp_shfl(random_emissive_triangle_index, first_active_thread_index_subgroup, render_data.render_settings.regir_settings.DEBUG_CORRELATE_rEGIR_SIZE);
+    int random_emissive_triangle_index = render_data.buffers.emissives_power_alias_table.sample(random_number_generator);
     
     int triangle_index = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
 
