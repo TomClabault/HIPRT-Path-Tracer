@@ -72,7 +72,7 @@ struct ReGIRGridFillPresampledLights
 	// will sample from the same subset of presampled lights?
 	int stratification_size = 64;
 	// How many presampled lights per subset
-	int subset_size = 128;
+	int subset_size = 256;
 	// How many subsets in total
 	int subset_count = 128;
 };
@@ -131,13 +131,13 @@ struct ReGIRSpatialReuseSettings
 	bool do_spatial_reuse = true;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
-	bool do_coalesced_spatial_reuse = false;
+	bool do_coalesced_spatial_reuse = true;
 
-	int spatial_reuse_pass_count = 1;
+	int spatial_reuse_pass_count = 2;
 	int spatial_reuse_pass_index = 0;
 
-	int spatial_neighbor_count = 8;
-	int reuse_per_neighbor_count = 1;
+	int spatial_neighbor_count = 3;
+	int reuse_per_neighbor_count = 3;
 	// When picking a random cell in the neighborhood for reuse, if that
 	// cell is out of the grid or if that cell is not alive etc..., we're
 	// going to retry another cell this many times
@@ -586,16 +586,11 @@ struct ReGIRSettings
 	// the grid fill/spatial reuse cost of ReGIR.
 	//
 	// Async compute is only supported with spatial reuse enabled though.
-	bool do_asynchronous_compute = false;
+	bool do_asynchronous_compute = true;
 	bool do_light_presampling = ReGIR_GridFillDoLightPresampling;
 
-	bool DEBUG_INCLUDE_CANONICAL = true;
-	bool DEBUG_FORCE_REGIR8CANONICAL = false;
 	bool DEBUG_CORRELATE_rEGIR = true;
 	bool DEBUG_DO_RIS_INTEGRAL_NORMALIZATION = true;
-	bool DEBUG_DO_BALANCE_HEURISTIC = false;
-	bool DEBUG_DO_PAIRWISE_MIS = true;
-	int DEBUG_CORRELATE_rEGIR_SIZE = 32;
 
 	// How many frames to skip before running the grid fill and spatial reuse passes again
 	// 

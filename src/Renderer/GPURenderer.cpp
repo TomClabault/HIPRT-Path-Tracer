@@ -955,8 +955,6 @@ void GPURenderer::set_scene(const Scene& scene)
 	m_original_materials = scene.materials;
 	m_current_materials = scene.materials;
 	m_parsed_scene_metadata = scene.metadata;
-
-	m_render_data.render_settings.DEBUG_TRIANGLE_COUNT = get_hiprt_scene().material_indices.size();
 }
 
 void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& envmap_filepath)
