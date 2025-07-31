@@ -113,6 +113,14 @@
 #define ReGIR_GridFillDoLightPresampling KERNEL_OPTION_TRUE
 
 /**
+ * Whether or not to use pairwise MIS for weighting spatial neighbors during
+ * spatial reuse.
+ * 
+ * If this is false, 1/Z MIS weights will be used instead
+ */
+#define ReGIR_SpatialReuseDoPairwiseMIS KERNEL_OPTION_FALSE
+
+/**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */

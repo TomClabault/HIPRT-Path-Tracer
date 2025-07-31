@@ -1996,6 +1996,20 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"This has the effect of coalescing neighbors memory accesses which improves performance");
 			if (ImGui::SliderInt("Spatial reuse pass count", &regir_settings.spatial_reuse.spatial_reuse_pass_count, 1, 4))
 				m_render_window->set_render_dirty(true);
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			static bool do_pairwise_MIS = ReGIR_SpatialReuseDoPairwiseMIS;
+			if (ImGui::Checkbox("Do pairwise MIS weights", &do_pairwise_MIS))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SPATIAL_REUSE_DO_PAIRWISE_MIS, do_pairwise_MIS ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("* Whether or not to use pairwise MIS for weighting spatial neighbors during "
+				"spatial reuse.\n\n"
+				""
+				"If this is false, 1 / Z MIS weights will be used instead.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_count, 0, 32))

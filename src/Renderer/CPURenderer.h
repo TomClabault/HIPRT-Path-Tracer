@@ -70,7 +70,7 @@ public:
     template <bool accumulatePreIntegration>
     void ReGIR_grid_fill_pass(bool primary_hit);
     template <bool accumulatePreIntegration>
-    void ReGIR_spatial_reuse_pass(bool primary_hit);
+    ReGIRHashGridSoADevice ReGIR_spatial_reuse_pass(bool primary_hit);
     void ReGIR_pre_integration();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();

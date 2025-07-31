@@ -425,7 +425,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
         view_direction, shading_point, shading_normal, geometric_normal, incident_light_info, ray_payload, last_hit_primitive_index);
 }
 
-struct ReGIRPairwiseMIS
+struct ReGIRShadingPairwiseMIS
 {
     HIPRT_DEVICE float compute_MIS_weight_normalization(const HIPRTRenderData& render_data, unsigned int valid_non_canonical_neighbors)
     {
@@ -590,7 +590,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
 #if ReGIR_ShadingResamplingDoMISPairwiseMIS
     {
-        ReGIRPairwiseMIS pairwise;
+        ReGIRShadingPairwiseMIS pairwise;
 
         unsigned int canonical_grid_cell_index = render_data.render_settings.regir_settings.find_valid_jittered_neighbor_cell_index<true>(
             shading_point, shading_normal, render_data.current_camera, ray_payload.material.roughness, ray_payload.bounce == 0,
@@ -1103,8 +1103,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         }
 #endif
 
-        bool need_canonical = (ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
-        need_canonical |= render_data.render_settings.regir_settings.DEBUG_FORCE_REGIR8CANONICAL;
+        bool need_canonical = (ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource);
         if (need_canonical)
         {
             // Will be set to true if the jittering causes the current shading point to be jittered out of the scene

@@ -42,7 +42,7 @@
 // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
 // allowing for fast step into that pixel with the debugger to see what's happening.
 // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -714,8 +714,8 @@ void CPURenderer::ReGIR_pass()
     ReGIR_grid_fill_pass<false>(true);
     ReGIR_grid_fill_pass<false>(false);
 
-    ReGIR_spatial_reuse_pass<false>(true);
-    ReGIR_spatial_reuse_pass<false>(false);
+    m_render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits = ReGIR_spatial_reuse_pass<false>(true);
+    m_render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits = ReGIR_spatial_reuse_pass<false>(false);
 }
 
 void CPURenderer::ReGIR_presample_lights()
@@ -739,10 +739,10 @@ void CPURenderer::ReGIR_grid_fill_pass(bool primary_hit)
 }
 
 template <bool accumulatePreIntegration>
-void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
+ReGIRHashGridSoADevice CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
 {
     if (!m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-        return;
+        return ReGIRHashGridSoADevice();
 
     ReGIRHashGridSoADevice input_reservoirs = m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit);
     ReGIRHashGridSoADevice output_reservoirs = m_render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit);
@@ -763,6 +763,11 @@ void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
          
         std::swap(input_reservoirs, output_reservoirs);
     }
+
+    // Returning the reservoirs into which the spatial reuse pass last output the result
+    //
+    // This is the 'input' buffer and not 'output' because of the std::swap that happens on the last iteration
+    return input_reservoirs;
 }
 
 void CPURenderer::ReGIR_pre_integration()
