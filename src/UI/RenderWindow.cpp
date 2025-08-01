@@ -63,9 +63,20 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - We're missing the pre-integration for secondary hits? Relaucnh pre-integration from time to time?
+// - Remove BSDF MIS ray reuse feature, not maintained
+// Remove runtime monte carlo integration, not maintained
+// 
+// - Crash when turning all the emissive to 0 power + 1 bounce + uniforlm sky
+// - Crash when increasing the number of bounces at runtime
+// 
+// 
+// 
+// - Can we shade only the 4 non canonical neighbors + the final reservoir instead of shading everyone?
+//		-  For the MIS weights, we can use the unnormalized target functions for everyone and it should be fine?
+// - Surface normal sith more precision but not far away from the camera and bit for secondary hits?
+// 		- Surface normal using geometric or shading ?
 // - For interacting with ReGIR, we can probably just shade with non canonical candidates and that's it. It will be biased but at least it won't be disgusting because of the lack of pre integration information
-// - We need something to fix the grid artifacts visible in mirrors because of low reservoirs count per grid cell at secondary bounces. Maybe we can insert in the hash grid in the megakernel by passing the 'first hit' flag to true if this is the first or a secondary hit with low path spreadcdrt
+// - We need something to fix the grid artifacts visible in mirrors because of low reservoirs count per grid cell at secondary bounces. Maybe we can insert in the hash grid in the megakernel by passing the 'first hit' flag to true if this is the first or a secondary hit with low path spread
 // - Should we not pick reservoirs randomly in the neighbor cell during spatial reuse and instead each reservoir stays in its lane? Better performance thanks to coalescing?
 // - Surface normal in hash only for the first hits?
 // - Can we have pairwise MIS in the spatial reuse for increased quality?

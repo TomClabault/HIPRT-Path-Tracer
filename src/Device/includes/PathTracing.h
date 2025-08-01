@@ -26,6 +26,11 @@ HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData
 		return trace_main_path_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, out_ray_payload.bounce, random_number_generator);
 }
 
+/**
+ * If sampleDirectionOnly is 'true', only the direction for the next bounce will be computed
+ * but without evaluating the contribution of the BSDF or the PDF.
+ */
+template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, ColorRGB32F& out_bsdf_color, float3& out_bounce_direction, float& out_bsdf_pdf, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
 {
     if (mis_reuse.has_ray())
@@ -33,7 +38,8 @@ HIPRT_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& rend
     else
     {
         BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), *out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
-        out_bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
+
+        out_bsdf_color = bsdf_dispatcher_sample<sampleDirectionOnly>(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
     }
 
     ray_payload.accumulate_roughness(*out_sampled_light_info);
@@ -78,20 +84,24 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
 /**
  * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
+ * 
+ * If sampleDirectionOnly is 'true', only the direction for the next bounce will be computed
+ * but without evaluating the contribution of the BSDF or the PDF.
  */
+template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr)
 {
     ColorRGB32F bsdf_color;
     float3 bounce_direction;
     float bsdf_pdf;
-    path_tracing_sample_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, mis_reuse, random_number_generator, incident_light_info);
+    path_tracing_sample_next_indirect_bounce<sampleDirectionOnly>(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, mis_reuse, random_number_generator, incident_light_info);
 
     // Terminate ray if bad sampling
-    if (bsdf_pdf <= 0.0f)
+    if (bsdf_pdf <= 0.0f && !sampleDirectionOnly)
         return false;
 
     ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, ray_payload.throughput, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator);
-    if (ray_payload.throughput.is_black())
+    if (ray_payload.throughput.is_black() && !sampleDirectionOnly)
         // Killed by russian roulette
         return false;
 

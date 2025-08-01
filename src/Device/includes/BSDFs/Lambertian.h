@@ -32,6 +32,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float lambertian_brdf_pdf(const DeviceUnpackedEff
     return NoL * M_INV_PI;
 }
 
+/**
+ * If sampleDirectionOnly is 'true',, this function samples only the BSDF without
+ * evaluating the contribution or the PDF of the BSDF. This function will then always return
+ * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
+ */
+template <bool sampleDirectionOnly = false>
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_sample(
     const DeviceUnpackedEffectiveMaterial& material, 
     const float3& shading_normal, float3& sampled_direction, 
@@ -41,7 +47,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_sample(
     
     out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
 
-    return lambertian_brdf_eval(material, hippt::dot(shading_normal, sampled_direction), pdf);
+    if constexpr (sampleDirectionOnly)
+    {
+        pdf = 0.0f;
+
+        return ColorRGB32F(0.0f);
+    }
+    else
+        return lambertian_brdf_eval(material, hippt::dot(shading_normal, sampled_direction), pdf);
 }
 
 #endif

@@ -6,6 +6,7 @@
 #ifndef DEVICE_RAY_PAYLOAD_H
 #define DEVICE_RAY_PAYLOAD_H
 
+#include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
 #include "Device/includes/RayVolumeState.h"
 
 #include "HostDeviceCommon/Color.h"

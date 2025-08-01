@@ -81,6 +81,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpa
     return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
 }
 
+/**
+ * If sampleDirectionOnly is 'true',, this function samples only the BSDF without
+ * evaluating the contribution or the PDF of the BSDF. This function will then always return
+ * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
+ */
+template <bool sampleDirectionOnly = false>
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material, 
     const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction, 
     float& pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
@@ -89,7 +95,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const DeviceUn
     if (out_sampled_light_info != nullptr)
         *out_sampled_light_info = BSDFIncidentLightInfo::NO_INFO;
 
-    return oren_nayar_brdf_eval(material, world_space_view_direction, shading_normal, out_sampled_direction, pdf);
+    if constexpr (sampleDirectionOnly)
+    {
+        pdf = 0.0f;
+
+        return ColorRGB32F(0.0f);
+    }
+    else
+        return oren_nayar_brdf_eval(material, world_space_view_direction, shading_normal, out_sampled_direction, pdf);
 }
 
 #endif

@@ -62,7 +62,12 @@ HIPRT_DEVICE HIPRT_INLINE float bsdf_dispatcher_pdf(const HIPRTRenderData& rende
 /**
  * If the 'ray_volume_state' argument is passed as nullptr, the volume state of the ray won't
  * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)
+ * 
+ * If sampleDirectionOnly is 'true',, this function samples only the BSDF without 
+ * evaluating the contribution or the PDF of the BSDF. This function will then always return
+ * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
+template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
@@ -78,13 +83,13 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderDa
 													 view_direction, surface_normal, geometric_normal, sampled_direction, 
 													 pdf, random_number_generator, current_bounce);
 #else
-    return principled_bsdf_sample(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
+    return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
 #endif
 
 #elif BSDFOverride == BSDF_LAMBERTIAN
-	return lambertian_brdf_sample(bsdf_context.material, bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator, bsdf_context.incident_light_info);
+	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator, bsdf_context.incident_light_info);
 #elif BSDFOverride == BSDF_OREN_NAYAR
-	return oren_nayar_brdf_sample(material, view_direction, surface_normal, sampled_direction, pdf, random_number_generator, out_sampled_light_info);
+	return oren_nayar_brdf_sample<sampleDirectionOnly>(material, view_direction, surface_normal, sampled_direction, pdf, random_number_generator, out_sampled_light_info);
 #endif
 }
 

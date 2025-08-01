@@ -39,10 +39,10 @@
 #include <chrono>
 #include <omp.h>
 
-// If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
-// allowing for fast step into that pixel with the debugger to see what's happening.
-// Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+ // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
+ // allowing for fast step into that pixel with the debugger to see what's happening.
+ // Otherwise if 0, all pixels of the image are rendered
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -58,7 +58,7 @@
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
 #define DEBUG_PIXEL_X 871
 #define DEBUG_PIXEL_Y 429
-    
+
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
 
@@ -111,11 +111,11 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_regir_state.spatial_grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false));
     m_regir_state.hash_cell_data_secondary_hit.resize(new_cell_count_secondary_hits);
 
-	m_regir_state.non_canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_primary_hit.end(), 0.0f);
-	m_regir_state.canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.canonical_pre_integration_factors_primary_hit.end(), 0.0f);
+    m_regir_state.non_canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_primary_hit.end(), 0.0f);
+    m_regir_state.canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.canonical_pre_integration_factors_primary_hit.end(), 0.0f);
 
-	m_regir_state.non_canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
-	m_regir_state.canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
+    m_regir_state.non_canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
+    m_regir_state.canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
 
     if (m_render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
         m_regir_state.correlation_reduction_grid.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) * m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
@@ -197,7 +197,7 @@ void CPURenderer::setup_nee_plus_plus()
 {
 #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     // Only doing if using NEE++ 
-    
+
     m_nee_plus_plus.total_num_rays = std::vector<AtomicType<unsigned int>>(1000000);
     m_nee_plus_plus.total_unoccluded_rays = std::vector<AtomicType<unsigned int>>(1000000);
     m_nee_plus_plus.num_rays_staging = std::vector<AtomicType<unsigned int>>(1000000);
@@ -274,8 +274,8 @@ void CPURenderer::ReGIR_post_render_update()
     if (m_render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
     {
         ReGIRHashGridSoADevice to_copy;
-	    if (m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-    		to_copy = m_render_data.render_settings.regir_settings.get_actual_spatial_output_reservoirs_grid(true);
+        if (m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
+            to_copy = m_render_data.render_settings.regir_settings.get_actual_spatial_output_reservoirs_grid(true);
         else
             to_copy = m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(true);
 
@@ -407,7 +407,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
     m_light_bvh = std::make_shared<BVH>(&m_emissive_triangles_buffer);
-    
+
     m_render_data.cpu_only.bvh = m_bvh.get();
     m_render_data.cpu_only.light_bvh = m_light_bvh.get();
 
@@ -421,47 +421,47 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 {
     ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
     ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, [this, &scene]()
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-
-        std::vector<float> power_list(scene.emissive_triangles_primitive_indices.size());
-        float power_sum = 0.0f;
-
-        for (int i = 0; i < scene.emissive_triangles_primitive_indices.size(); i++)
         {
-            int emissive_triangle_index = scene.emissive_triangles_primitive_indices[i];
+            auto start = std::chrono::high_resolution_clock::now();
 
-            // Computing the area of the triangle
-            float3 vertex_A = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 0]];
-            float3 vertex_B = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 1]];
-            float3 vertex_C = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 2]];
+            std::vector<float> power_list(scene.emissive_triangles_primitive_indices.size());
+            float power_sum = 0.0f;
 
-            float3 AB = vertex_B - vertex_A;
-            float3 AC = vertex_C - vertex_A;
+            for (int i = 0; i < scene.emissive_triangles_primitive_indices.size(); i++)
+            {
+                int emissive_triangle_index = scene.emissive_triangles_primitive_indices[i];
 
-            float3 normal = hippt::cross(AB, AC);
-            float length_normal = hippt::length(normal);
-            float triangle_area = 0.5f * length_normal;
+                // Computing the area of the triangle
+                float3 vertex_A = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 0]];
+                float3 vertex_B = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 1]];
+                float3 vertex_C = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 2]];
 
-            int mat_index = scene.material_indices[emissive_triangle_index];
-            float emission_luminance = scene.materials[mat_index].emission.luminance() * scene.materials[mat_index].emission_strength * scene.materials[mat_index].global_emissive_factor;
+                float3 AB = vertex_B - vertex_A;
+                float3 AC = vertex_C - vertex_A;
 
-            float area_power = emission_luminance * triangle_area;
+                float3 normal = hippt::cross(AB, AC);
+                float length_normal = hippt::length(normal);
+                float triangle_area = 0.5f * length_normal;
 
-            power_list[i] = area_power;
-            power_sum += area_power;
-        }
+                int mat_index = scene.material_indices[emissive_triangle_index];
+                float emission_luminance = scene.materials[mat_index].emission.luminance() * scene.materials[mat_index].emission_strength * scene.materials[mat_index].global_emissive_factor;
 
-        Utils::compute_alias_table(power_list, power_sum, m_power_alias_table_probas, m_power_alias_table_alias);
+                float area_power = emission_luminance * triangle_area;
 
-        m_render_data.buffers.emissives_power_alias_table.alias_table_alias = m_power_alias_table_alias.data();
-        m_render_data.buffers.emissives_power_alias_table.alias_table_probas = m_power_alias_table_probas.data();
-        m_render_data.buffers.emissives_power_alias_table.sum_elements = power_sum;
-        m_render_data.buffers.emissives_power_alias_table.size = scene.emissive_triangles_primitive_indices.size();
+                power_list[i] = area_power;
+                power_sum += area_power;
+            }
 
-        auto stop = std::chrono::high_resolution_clock::now();
-        std::cout << "Power alias table construction time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
-    });
+            Utils::compute_alias_table(power_list, power_sum, m_power_alias_table_probas, m_power_alias_table_alias);
+
+            m_render_data.buffers.emissives_power_alias_table.alias_table_alias = m_power_alias_table_alias.data();
+            m_render_data.buffers.emissives_power_alias_table.alias_table_probas = m_power_alias_table_probas.data();
+            m_render_data.buffers.emissives_power_alias_table.sum_elements = power_sum;
+            m_render_data.buffers.emissives_power_alias_table.size = scene.emissive_triangles_primitive_indices.size();
+
+            auto stop = std::chrono::high_resolution_clock::now();
+            std::cout << "Power alias table construction time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+        });
 }
 
 void CPURenderer::set_envmap(Image32Bit& envmap_image)
@@ -531,7 +531,7 @@ Image32Bit& CPURenderer::get_framebuffer()
         return m_framebuffer;
 }
 
-void CPURenderer::render()  
+void CPURenderer::render()
 {
     std::cout << "CPU rendering..." << std::endl;
 
@@ -564,7 +564,7 @@ void CPURenderer::render()
 
         post_sample_update(frame_number);
 
-        std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
+        std::cout << "Frame " << frame_number << ": " << frame_number / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
@@ -681,7 +681,7 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 
             render_pass_function(x, y);
         }
-}
+    }
 
 #endif // DEBUG_PIXEL
 }
@@ -701,7 +701,7 @@ void CPURenderer::camera_rays_pass()
 
     debug_render_pass([this](int x, int y) {
         CameraRays(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::ReGIR_pass()
@@ -714,8 +714,8 @@ void CPURenderer::ReGIR_pass()
     ReGIR_grid_fill_pass<false>(true);
     ReGIR_grid_fill_pass<false>(false);
 
-    ReGIR_spatial_reuse_pass<false>(true);
-    ReGIR_spatial_reuse_pass<false>(false);
+    m_render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits = ReGIR_spatial_reuse_pass<false>(true);
+    m_render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits = ReGIR_spatial_reuse_pass<false>(false);
 }
 
 void CPURenderer::ReGIR_presample_lights()
@@ -739,10 +739,10 @@ void CPURenderer::ReGIR_grid_fill_pass(bool primary_hit)
 }
 
 template <bool accumulatePreIntegration>
-void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
+ReGIRHashGridSoADevice CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
 {
     if (!m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-        return;
+        return ReGIRHashGridSoADevice();
 
     ReGIRHashGridSoADevice input_reservoirs = m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit);
     ReGIRHashGridSoADevice output_reservoirs = m_render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit);
@@ -760,17 +760,22 @@ void CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
                 m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit),
                 *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit, index);
         }
-         
+
         std::swap(input_reservoirs, output_reservoirs);
     }
+
+    // Returning the reservoirs into which the spatial reuse pass last output the result
+    //
+    // This is the 'input' buffer and not 'output' because of the std::swap that happens on the last iteration
+    return input_reservoirs;
 }
 
 void CPURenderer::ReGIR_pre_integration()
 {
-	// 2 iterations: 1 for the primary hits, 1 for the secondary hits
+    // 2 iterations: 1 for the primary hits, 1 for the secondary hits
     for (int i = 0; i < 2; i++)
     {
-		bool primary_hit = (i == 0);
+        bool primary_hit = (i == 0);
 
         unsigned int seed_backup = m_render_data.random_number;
         unsigned int nb_cells_alive = *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count;
@@ -891,7 +896,7 @@ void CPURenderer::launch_ReSTIR_DI_initial_candidates_pass()
 
     debug_render_pass([this](int x, int y) {
         ReSTIR_DI_InitialCandidates(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::configure_ReSTIR_DI_temporal_pass()
@@ -1032,7 +1037,7 @@ void CPURenderer::launch_ReSTIR_DI_temporal_reuse_pass()
 
     debug_render_pass([this](int x, int y) {
         ReSTIR_DI_TemporalReuse(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::launch_ReSTIR_DI_spatial_reuse_pass(int spatial_reuse_pass_index)
@@ -1041,7 +1046,7 @@ void CPURenderer::launch_ReSTIR_DI_spatial_reuse_pass(int spatial_reuse_pass_ind
 
     debug_render_pass([this](int x, int y) {
         ReSTIR_DI_SpatialReuse(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::launch_ReSTIR_DI_spatiotemporal_reuse_pass()
@@ -1050,7 +1055,7 @@ void CPURenderer::launch_ReSTIR_DI_spatiotemporal_reuse_pass()
 
     debug_render_pass([this](int x, int y) {
         ReSTIR_DI_SpatiotemporalReuse(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::tracing_pass()
@@ -1059,7 +1064,7 @@ void CPURenderer::tracing_pass()
 
     debug_render_pass([this](int x, int y) {
         MegaKernel(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::compute_ReSTIR_GI_optimal_spatial_reuse_radii()
@@ -1071,7 +1076,7 @@ void CPURenderer::compute_ReSTIR_GI_optimal_spatial_reuse_radii()
             m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u,
             m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
             m_render_data.render_settings.restir_gi_settings.common_spatial_pass.per_pixel_spatial_reuse_radius);
-    });
+        });
 }
 
 void CPURenderer::configure_ReSTIR_GI_initial_candidates_pass()
@@ -1091,7 +1096,7 @@ void CPURenderer::launch_ReSTIR_GI_initial_candidates_pass()
     {
         debug_render_pass([this](int x, int y) {
             ReSTIR_GI_InitialCandidates(m_render_data, x, y);
-        });
+            });
     }
 }
 
@@ -1119,7 +1124,7 @@ void CPURenderer::launch_ReSTIR_GI_temporal_reuse_pass()
     {
         debug_render_pass([this](int x, int y) {
             ReSTIR_GI_TemporalReuse(m_render_data, x, y);
-        });
+            });
     }
 }
 
@@ -1165,7 +1170,7 @@ void CPURenderer::launch_ReSTIR_GI_spatial_reuse_pass()
 {
     debug_render_pass([this](int x, int y) {
         ReSTIR_GI_SpatialReuse(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::configure_ReSTIR_GI_shading_pass()
@@ -1184,14 +1189,14 @@ void CPURenderer::launch_ReSTIR_GI_shading_pass()
 {
     debug_render_pass([this](int x, int y) {
         ReSTIR_GI_Shading(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::gmon_compute_median_of_means()
 {
     debug_render_pass([this](int x, int y) {
         GMoNComputeMedianOfMeans(m_render_data, x, y);
-    });
+        });
 }
 
 void CPURenderer::tonemap(float gamma, float exposure)

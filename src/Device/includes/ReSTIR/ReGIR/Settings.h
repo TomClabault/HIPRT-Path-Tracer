@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_REGIR_SETTINGS_H
 
 #include "Device/includes/Hash.h"
+#include "Device/includes/RayPayload.h"
 #include "Device/includes/ReSTIR/ReGIR/PresampledLight.h"
 #include "Device/includes/ReSTIR/ReGIR/ReGIRHashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
@@ -161,6 +162,22 @@ struct ReGIRCorrelationReductionSettings
 
 struct ReGIRSettings
 {
+	HIPRT_DEVICE bool compute_is_primary_hit(const RayPayload& ray_payload) const
+	{
+		// We're going to assume that this is still a primary hit grid cell if the path spread is low enough.
+		// This is because a low number of reservoirs are usually used for secondary hit grid cells to lower the cost
+		// of the grid fill while still maintaining good quality because a low number of reservoirs is usually enough
+		// for diffuse bounces. Issues happen when we're looking through a mirror and that mirror is going
+		// to reflect directly the scene lit by a low number of reservoirs and that will show as grid artifacts and correlations.
+		//
+		// So what we need to do here is to still use a high number of reservoirs when looking through mirrors (or
+		// low path spread in general) to avoid those artifacts. We can do that very easily by just assuming that this grid
+		// cell (hit by the mirror bounce) is a first hit grid cell and by assuming that it is a primary hit grid cell,
+		// a higher number of reservoirs will be used for the grid fill and we'll avoid the artifacts.
+
+		return ray_payload.bounce == 0 || ray_payload.accumulated_roughness < 0.1f;
+	}
+
 	HIPRT_DEVICE ReGIRPresampledLight sample_one_presampled_light(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, bool primary_hit, float& out_pdf, Xorshift32Generator& rng) const
 	{
 		return presampled_lights.sample_one_presampled_light(hash_grid_cell_index, reservoir_index_in_cell, get_number_of_reservoirs_per_cell(primary_hit), out_pdf, rng);

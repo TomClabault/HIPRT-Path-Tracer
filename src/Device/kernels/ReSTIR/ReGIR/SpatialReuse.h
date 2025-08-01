@@ -293,7 +293,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
 #ifndef __KERNELCC__
         // We're dispatching exactly one thread per reservoir to compute on the CPU so no need
         // for the work queue style of things that is only needed on the GPU, we can just exit here
-        //break;
+        break;
 #else
         // We need to compute the next reservoir index for the next iteration
         thread_index += thread_count;

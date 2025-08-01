@@ -69,11 +69,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
             if (intersection_found)
             {
                 if (bounce > 0)
+                {
+                    bool ReGIR_primary_hit = render_data.render_settings.regir_settings.compute_is_primary_hit(ray_payload);
+
                     // Storing data for ReGIR representative points
-                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, render_data.current_camera, closest_hit_info.primitive_index, false, ray_payload.material);
+                    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, render_data.current_camera, closest_hit_info.primitive_index, ReGIR_primary_hit, ray_payload.material);
+                }
 
                 BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF sampled
-                bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -camera_ray.direction, camera_ray, mis_reuse, random_number_generator, &sampled_light_info);
+                bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce<true>(render_data, ray_payload, closest_hit_info, -camera_ray.direction, camera_ray, mis_reuse, random_number_generator, &sampled_light_info);
                 if (!valid_indirect_bounce)
                     // Bad BSDF sample (under the surface), killed by russian roulette, ...
                     break;

@@ -1794,6 +1794,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float principled_bsdf_pdf(const HIPRTRenderData& 
     return pdf;
 }
 
+/**
+ * If sampleDirectionOnly is 'true',, this function samples only the BSDF without 
+ * evaluating the contribution or the PDF of the BSDF. This function will then always return
+ * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
+ */
+template <bool sampleDirectionOnly = false>
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
@@ -1922,7 +1928,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     // Just copying the context to add the incident light info
     bsdf_context.to_light_direction = output_direction;
 
-    return principled_bsdf_eval(render_data, bsdf_context, pdf);
+    if constexpr (sampleDirectionOnly)
+    {
+        pdf = 0.0f;
+
+        return ColorRGB32F(0.0f);
+    }
+    else
+        return principled_bsdf_eval(render_data, bsdf_context, pdf);
 }
 
 #endif
