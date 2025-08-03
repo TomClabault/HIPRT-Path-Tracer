@@ -37,7 +37,7 @@ public:
 	 */
 	void setup_render_passes(RenderWindow* render_window);
 
-	void request_frame();
+	void request_frame(HIPRTRenderData& render_data_for_frame, GPUKernelCompilerOptions& compiler_options_for_frame);
 	void request_exit();
 	/**
 	 * If a frame is currently being computed, this function blocks until the frame has been rendered
@@ -130,8 +130,21 @@ private:
 	void launch_debug_kernel(HIPRTRenderData& render_data);	
 
 	GPURenderer* m_renderer = nullptr;
-	HIPRTRenderData* m_render_data = nullptr;
+	// This is the render data structure that is going to be used for all
+	// render pass dispatches to avoid concurrency races with the ImGui UI
+	//
+	// The render data structure of the renderer (which is the structure that the UI modifies)
+	// is copied into this structure when a frame is requested and this copied structure is then
+	// used for all render pass dispatches.
+	//
+	// Doing the copy and only using the copy ensures that the structure isn't modified by the UI
+	// while some render passes are doing their rendering (which could happen if render passes were
+	// reading directly from the render data structure of the renderer which the UI modifies)
+	HIPRTRenderData m_render_data_for_frame;
+	// Same for the compiler options
+	GPUKernelCompilerOptions m_compiler_options_for_frame;
 	RenderGraph m_render_graph;
+
 
 	// Whether or not the frame queued on the GPU by the last call to render() 
 	// is done rendering or not

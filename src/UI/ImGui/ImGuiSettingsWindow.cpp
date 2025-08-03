@@ -2259,7 +2259,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePush("ReGIR Settings debug tree");
 
 			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
-			const char* items[] = { "- No debug", "- Grid cells", "- Average non-canonical cell-reservoirs contrib", "- Average canonical cell-reservoirs contrib", "- Cell representative points", "- Cell representative normals", "Sampling fallback"};
+			const char* items[] = { "- No debug", "- Grid cells", "- Average non-canonical cell-reservoirs contrib", "- Average canonical cell-reservoirs contrib", "- Cell representative points", "- Cell representative normals", "- Sampling fallback"};
 			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 			{
 				if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)

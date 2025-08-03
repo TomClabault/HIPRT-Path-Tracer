@@ -64,13 +64,16 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Remove BSDF MIS ray reuse feature, not maintained
-// Remove runtime monte carlo integration, not maintained
+// - Remove runtime monte carlo integration, not maintained
 // 
 // - Crash when turning all the emissive to 0 power + 1 bounce + uniforlm sky
 // - Crash when increasing the number of bounces at runtime
 // 
-// 
-// 
+// - Stochastic light culling harada et al to improve base candidate sampling
+// - Pixel deinterleaving for reducing correlations in light presampling ? Segovia 2006
+// - Can we have a lightweight light rejection (russian roulette) method in the grid fill? So even if we have 32 candidates per grid fill cell, if a light is evidently too far away to contribute, we can reject it and not count that as a try from our 32 tries. The rejection test needs to be lightweight such that it is significantly less expensive than doing a full candidate
+//		- To make the rejection lightweight, can we have a luminance of emission baked into our materials such that we can simply check the luminance of the light (one float fetch) instead of the full RGB color which would be 3 float fetchtes. Maybe that would be faster
+// - Increased the number of shading retries?
 // - Can we shade only the 4 non canonical neighbors + the final reservoir instead of shading everyone?
 //		-  For the MIS weights, we can use the unnormalized target functions for everyone and it should be fine?
 // - Surface normal sith more precision but not far away from the camera and bit for secondary hits?
@@ -246,7 +249,7 @@ extern ImGuiLogger g_imgui_logger;
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Features:
-// Inciteful graph to explore (started with Practical product sampling warping NVIDIA): https://inciteful.xyz/p?ids%5B%5D=W4220995884&ids%5B%5D=W3179788358&ids%5B%5D=W4403641440&ids%5B%5D=W4390345185&ids%5B%5D=W4388994411&ids%5B%5D=W4200187284&ids%5B%5D=W2885975589&ids%5B%5D=W3183450244&ids%5B%5D=W1893031899&ids%5B%5D=W3036883119&ids%5B%5D=W3044759327&ids%5B%5D=W4240396283&ids%5B%5D=W3110265079&ids%5B%5D=W2073976119&ids%5B%5D=W2988541899&ids%5B%5D=W2885239691&ids%5B%5D=W2964425571&ids%5B%5D=W2030242873&ids%5B%5D=W3044185278
+// - Inciteful graph to explore (started with Practical product sampling warping NVIDIA): https://inciteful.xyz/p?ids%5B%5D=W4220995884&ids%5B%5D=W3179788358&ids%5B%5D=W4403641440&ids%5B%5D=W4390345185&ids%5B%5D=W4388994411&ids%5B%5D=W4200187284&ids%5B%5D=W2885975589&ids%5B%5D=W3183450244&ids%5B%5D=W1893031899&ids%5B%5D=W3036883119&ids%5B%5D=W3044759327&ids%5B%5D=W4240396283&ids%5B%5D=W3110265079&ids%5B%5D=W2073976119&ids%5B%5D=W2988541899&ids%5B%5D=W2885239691&ids%5B%5D=W2964425571&ids%5B%5D=W2030242873&ids%5B%5D=W3044185278
 // - VisibilityCluster: Average Directional Visibility for Many-Light Rendering: https://ieeexplore.ieee.org/document/6464264
 // - Practical product sampling warping NVIDIA
 // - Sample specular/diffuse lobe with the luminance of the diffuse lobe

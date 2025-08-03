@@ -104,9 +104,13 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 if (WIN32)
 	# "version" is a library from the Windows SDK
 	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02004 TracyClient clip version)
+	target_compile_options(HIPRTPathTracer PRIVATE -fsanitize=address)
+	target_link_options(HIPRTPathTracer PRIVATE -fsanitize=address)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
 	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02004 clip TracyClient)
+	target_compile_options(HIPRTPathTracer PRIVATE -fsanitize=address)
+	target_link_options(HIPRTPathTracer PRIVATE -fsanitize=address)
 endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")

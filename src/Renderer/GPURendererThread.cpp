@@ -14,7 +14,6 @@ void GPURendererThread::init(GPURenderer* renderer)
 	// Configuring the render passes
 	m_renderer = renderer;
 	m_render_graph = RenderGraph(renderer);
-	m_render_data = &renderer->m_render_data;
 }
 
 void GPURendererThread::start()
@@ -88,9 +87,12 @@ void GPURendererThread::setup_render_passes(RenderWindow* render_window)
 	m_render_graph.set_render_window(render_window);
 }
 
-void GPURendererThread::request_frame()
+void GPURendererThread::request_frame(HIPRTRenderData& render_data_for_frame, GPUKernelCompilerOptions& compiler_options_for_frame)
 {
 	std::lock_guard<std::mutex> lock(m_render_mutex);
+
+	m_render_data_for_frame = render_data_for_frame;
+	m_compiler_options_for_frame = compiler_options_for_frame.deep_copy();
 
 	m_currently_rendering = true;
 	m_frame_rendered = false;
@@ -143,7 +145,7 @@ void GPURendererThread::internal_pre_render_update_clear_device_status_buffers()
 
 void GPURendererThread::internal_pre_render_update_adaptive_sampling_buffers()
 {
-	bool buffers_needed = m_render_data->render_settings.has_access_to_adaptive_sampling_buffers();
+	bool buffers_needed = m_renderer->get_render_data().render_settings.has_access_to_adaptive_sampling_buffers();
 
 	if (buffers_needed)
 	{
@@ -186,20 +188,20 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 	{
 		bool buffer_needs_update = false;
 		// Buffer isn't allocated
-		buffer_needs_update |= m_render_data->global_traversal_stack_buffer.stackData == nullptr;
+		buffer_needs_update |= m_renderer->get_render_data().global_traversal_stack_buffer.stackData == nullptr;
 		// Buffer is allocated but the stack size has been changed (through ImGui probably)
-		buffer_needs_update |= m_render_data->global_traversal_stack_buffer_size != m_render_data->global_traversal_stack_buffer.stackSize;
+		buffer_needs_update |= m_renderer->get_render_data().global_traversal_stack_buffer_size != m_renderer->get_render_data().global_traversal_stack_buffer.stackSize;
 
 		if (buffer_needs_update)
 			m_renderer->recreate_global_bvh_stack_buffer();
 	}
 	else
 	{
-		if (m_render_data->global_traversal_stack_buffer.stackData != nullptr)
+		if (m_renderer->get_render_data().global_traversal_stack_buffer.stackData != nullptr)
 		{
 			// Freeing if the buffer already exists
-			HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_renderer->m_hiprt_orochi_ctx->hiprt_ctx, m_render_data->global_traversal_stack_buffer));
-			m_render_data->global_traversal_stack_buffer.stackData = nullptr;
+			HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_renderer->m_hiprt_orochi_ctx->hiprt_ctx, m_renderer->get_render_data().global_traversal_stack_buffer));
+			m_renderer->get_render_data().global_traversal_stack_buffer.stackData = nullptr;
 		}
 	}
 }
@@ -209,19 +211,19 @@ void GPURendererThread::post_sample_update(HIPRTRenderData& render_data, GPUKern
 	m_render_graph.post_sample_update_async(render_data, compiler_options);
 
 	render_data.render_settings.sample_number++;
-	m_render_data->render_settings.sample_number++;
+	m_renderer->get_render_data().render_settings.sample_number++;
 
 	render_data.render_settings.denoiser_AOV_accumulation_counter++;
-	m_render_data->render_settings.denoiser_AOV_accumulation_counter++;
+	m_renderer->get_render_data().render_settings.denoiser_AOV_accumulation_counter++;
 
 	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
 	// so we're setting the flag to false (it will be set to true again if we need to reset the render
 	// again)
 	render_data.render_settings.need_to_reset = false;
-	m_render_data->render_settings.need_to_reset = false;
+	m_renderer->get_render_data().render_settings.need_to_reset = false;
 
 	render_data.nee_plus_plus.m_reset_visibility_map = false;
-	m_render_data->nee_plus_plus.m_reset_visibility_map = false;
+	m_renderer->get_render_data().nee_plus_plus.m_reset_visibility_map = false;
 }
 
 void GPURendererThread::post_frame_update()
@@ -302,7 +304,7 @@ void GPURendererThread::launch_debug_kernel(HIPRTRenderData& render_data)
 {
 	void* launch_args[] = { &render_data, &m_renderer->m_render_resolution };
 
-	m_render_data->random_number = m_renderer->m_rng.xorshift32();
+	m_renderer->get_render_data().random_number = m_renderer->m_rng.xorshift32();
 	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
@@ -310,25 +312,21 @@ void GPURendererThread::render_path_tracing()
 {
 	m_frame_rendered = false;
 
-	GPUKernelCompilerOptions compiler_options_copy = m_renderer->m_global_compiler_options->deep_copy();
-	// Copying the render data here to avoid race concurrency issues with
-	// the asynchronous ImGui UI which may also modifiy the render data
-	HIPRTRenderData render_data_copy = m_renderer->get_render_data();
 	// Updating the previous and current camera
-	render_data_copy.current_camera = m_renderer->m_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
-	render_data_copy.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
+	m_render_data_for_frame.current_camera = m_renderer->m_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
+	m_render_data_for_frame.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 
-	for (int i = 1; i <= m_render_data->render_settings.samples_per_frame; i++)
+	for (int i = 1; i <= m_render_data_for_frame.render_settings.samples_per_frame; i++)
 	{
-		if (i == m_render_data->render_settings.samples_per_frame)
+		if (i == m_render_data_for_frame.render_settings.samples_per_frame)
 			// Last sample of the frame so we are going to enable the update 
 			// of the status buffers (number of pixels converged, how many rays still
 			// active, ...)
-			render_data_copy.render_settings.do_update_status_buffers = true;
+			m_render_data_for_frame.render_settings.do_update_status_buffers = true;
 
-		m_render_graph.launch_async(render_data_copy, compiler_options_copy);
+		m_render_graph.launch_async(m_render_data_for_frame, m_compiler_options_for_frame);
 
-		post_sample_update(render_data_copy, compiler_options_copy);
+		post_sample_update(m_render_data_for_frame, m_compiler_options_for_frame);
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
@@ -354,7 +352,7 @@ void GPURendererThread::render_path_tracing()
 		delete payload_struct;
 	}, payload));
 
-	m_renderer->m_was_last_frame_low_resolution = m_render_data->render_settings.do_render_low_resolution();
+	m_renderer->m_was_last_frame_low_resolution = m_renderer->get_render_data().render_settings.do_render_low_resolution();
 	// We just rendered a new frame so we're setting this flag to true
 	// such that the animated components of the scene are not allowed to step
 	// their animations until the render window signals the renderer the the

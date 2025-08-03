@@ -34,7 +34,7 @@
  * 
  * The lower the downscale, the more effective the prepoluation but also the more costly
  */
-#define ReGIR_GridPrepopulationResolutionDownscale 2
+#define ReGIR_GridPrepopulationResolutionDownscale 1
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:

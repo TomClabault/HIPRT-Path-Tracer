@@ -495,7 +495,9 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 		// of all the render passes
 		m_render_thread.get_render_graph().prepass();
 
-	m_render_thread.request_frame();
+	HIPRTRenderData render_data_for_frame = m_render_data;
+	GPUKernelCompilerOptions compiler_options_for_frame = m_global_compiler_options->deep_copy();
+	m_render_thread.request_frame(render_data_for_frame, compiler_options_for_frame);
 }
 
 void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window)

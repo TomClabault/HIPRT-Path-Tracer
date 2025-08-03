@@ -318,7 +318,6 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		launch_pre_integration(render_data);
 
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
-
 	}
 
 	bool full_grid_fill_needed = false;
@@ -446,11 +445,6 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 				render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), 
 				render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit),
 				buffer_used_by_pt_kernels);
-
-			/*if (primary_hit)
-				m_last_async_compute_store_buffers_first_hits = output_reservoirs_async_grid_fill;
-			else
-				m_last_async_compute_store_buffers_secondary_hits = output_reservoirs_async_grid_fill;*/
 
 			launch_grid_fill_temporal_reuse(render_data, output_reservoirs_async_grid_fill, primary_hit, false, async_stream);
 
