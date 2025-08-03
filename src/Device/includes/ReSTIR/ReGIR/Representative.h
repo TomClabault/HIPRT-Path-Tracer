@@ -11,7 +11,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_world_shading_normal(const HIPRTRenderData& render_data, int hash_grid_cell_index, bool primary_hit)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReGIR_get_cell_world_normal(const HIPRTRenderData& render_data, int hash_grid_cell_index, bool primary_hit)
 {
 	return render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).world_normals[hash_grid_cell_index].unpack();
 }
@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReGIRGridFillSurface ReGIR_get_cell_surface(const
 {
 	int cell_primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index, primary_hit);
 	float3 cell_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
-	float3 cell_normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index, primary_hit);
+	float3 cell_normal = ReGIR_get_cell_world_normal(render_data, hash_grid_cell_index, primary_hit);
 	float cell_roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index, primary_hit);
 	float cell_metallic = ReGIR_get_cell_metallic(render_data, hash_grid_cell_index, primary_hit);
 	float cell_specular = ReGIR_get_cell_specular(render_data, hash_grid_cell_index, primary_hit);
@@ -67,14 +67,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReGIRGridFillSurface ReGIR_get_cell_surface(const
 /**
  *	Updates the representative point and normal (and other data) of the cell at the given shading point
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material)
+HIPRT_HOST_DEVICE HIPRT_INLINE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 surface_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material)
 {
 	if (DirectLightSamplingBaseStrategy != LSS_BASE_REGIR)
 		return;
 	else if (primitive_index == -1)
 		return;
 
-	render_data.render_settings.regir_settings.insert_hash_cell_data(shading_point, shading_normal, current_camera, primary_hit, primitive_index, material);
+	// We're using the packed-unpacked surface normal here because
+	// packing/unpacking (as used in the G-Buffer) normals introduces
+	// small differences that are enough to shift us from one cell to
+	// another.
+	//
+	// In practice this leads to the cell being inserted into the hash grid
+	// with non-packed normals but then when the cell is queried at the first
+	// during the path tracing kernels (and thus with the packed + unpacked normal
+	// from the G-Buffer we get different hashing results and we can't find our cells
+	// back)
+	surface_normal = Octahedral24BitNormalPadded32b(surface_normal).unpack();
+
+	render_data.render_settings.regir_settings.insert_hash_cell_data(shading_point, surface_normal, current_camera, primary_hit, primitive_index, material);
 }
 
 #endif

@@ -201,7 +201,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     render_data.g_buffer.first_hit_prim_index[pixel_index] = intersection_found ? closest_hit_info.primitive_index : -1;
     render_data.aux_buffers.pixel_active[pixel_index] = true;
 
-    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, render_data.current_camera, closest_hit_info.primitive_index, true, ray_payload.material);
+    ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera, closest_hit_info.primitive_index, true, ray_payload.material);
 
     // If we got here, this means that we still have at least one ray active
     if (render_data.render_settings.do_update_status_buffers)

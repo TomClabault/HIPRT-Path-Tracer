@@ -259,13 +259,13 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
     {
         // We have a first hit
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
-        float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+        float3 normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
         float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
         float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
-        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness, true);
+        ray_payload.ray_color = render_data.render_settings.regir_settings.get_random_cell_color(primary_hit, normal, render_data.current_camera, primary_hit_roughness, true);
         ray_payload.ray_color *= (render_data.render_settings.sample_number + 1);
-        ray_payload.ray_color *= hippt::dot(shading_normal, view_direction);
+        ray_payload.ray_color *= hippt::dot(normal, view_direction);
     }
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
@@ -317,10 +317,10 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
     if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
     {
         float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
-        float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+        float3 normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
         float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
-        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness, true);
+        unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(primary_hit, normal, render_data.current_camera, primary_hit_roughness, true);
 
         ColorRGB32F color;
         float3 rep_point = ReGIR_get_cell_world_point(render_data, cell_index, true);
@@ -333,70 +333,22 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 
         ray_payload.ray_color = ColorRGB32F(color);
     }
-#elif ReGIR_DebugMode == REGIR_DEBUG_PRE_INTEGRATION_CHECK
-    if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
-    {
-        float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
-        float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
-        float3 geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
-        int prim_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
-        float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
-        unsigned int hash_grid_cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(primary_hit, shading_normal, render_data.current_camera, primary_hit_roughness, true);
-        if (hash_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
-        {
-            ray_payload.ray_color = ColorRGB32F(1.0f, 0.0f, 1.0f) * (render_data.render_settings.sample_number + 1);
-            return;
-        }
+#elif ReGIR_DebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_NORMALS
+if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
+{
+    float3 primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+    float3 normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+    float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
-        RayPayload local_ray_payload;
-        local_ray_payload.next_ray_state = RayState::BOUNCE;
-        local_ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
+    unsigned int cell_index = render_data.render_settings.regir_settings.get_hash_grid_cell_index_from_world_pos(primary_hit, normal, render_data.current_camera, primary_hit_roughness, true);
 
-        // Because this is the camera hit (and assuming the camera isn't inside volumes for now),
-        // the ray volume state after the camera hit is just an empty interior stack but with
-        // the material index that we hit pushed onto the stack. That's it. Because it is that
-        // simple, we don't have the ray volume state in the GBuffer but rather we can
-        // reconstruct the ray volume state on the fly
-        local_ray_payload.volume_state.reconstruct_first_hit(
-            local_ray_payload.material,
-            render_data.buffers.material_indices,
-            prim_index,
-            rng);
+    ColorRGB32F color = (ColorRGB32F(ReGIR_get_cell_world_normal(render_data, cell_index, true)) + ColorRGB32F(1.0f)) * 0.5f;
 
-        ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, true);
+    // Scaling by SPP so that the visualization doesn't get darker and darker with increasing number of SPP
+    color *= render_data.render_settings.sample_number + 1;
 
-        float integral = 0.0f;
-        constexpr unsigned int iterations = 500;
-        for (int i = 0; i < iterations; i++)
-        {
-            LightSampleInformation light_sample = sample_one_emissive_triangle_power(render_data, rng);
-            if (light_sample.area_measure_pdf <= 0.0f)
-            {
-                ray_payload.ray_color = ColorRGB32F(1.0f, 0.0f, 1.0f) * (render_data.render_settings.sample_number + 1);
-                return;
-            }
-
-            float target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
-            float RIS_integral = render_data.render_settings.regir_settings.get_non_canonical_pre_integration_factor(hash_grid_cell_index, true);
-            if (RIS_integral == 0.0f)
-                RIS_integral = 1.0f;
-            if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
-                RIS_integral = 1.0f;
-
-            float PDF = target_function / RIS_integral;
-            integral += PDF / iterations;
-        }
-
-        ColorRGB32F color;
-        if (integral >= 0.0f && integral <= 1.0f)
-            color = hippt::lerp(ColorRGB32F(1.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 1.0f, 0.0f), integral);
-        else if (integral > 1.0f)
-            color = hippt::lerp(ColorRGB32F(0.0f, 1.0f, 0.0f), ColorRGB32F(1.0f, 0.0f, 0.0f), hippt::min(1.0f, integral - 1.0f));
-
-        // Scaling by SPP so that the visualization doesn't get darker and darker with increasing number of SPP
-        color *= render_data.render_settings.sample_number + 1;
-        ray_payload.ray_color = ColorRGB32F(color);
-    }
+    ray_payload.ray_color = ColorRGB32F(color);
+}
 #endif
 #endif
 #endif

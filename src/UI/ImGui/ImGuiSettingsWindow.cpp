@@ -2259,7 +2259,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePush("ReGIR Settings debug tree");
 
 			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
-			const char* items[] = { "- No debug", "- Grid cells", "- Average non-canonical cell-reservoirs contrib", "- Average canonical cell-reservoirs contrib", "- Cell representative points", "- RIS pre-integration check"};
+			const char* items[] = { "- No debug", "- Grid cells", "- Average non-canonical cell-reservoirs contrib", "- Average canonical cell-reservoirs contrib", "- Cell representative points", "- Cell representative normals", "Sampling fallback"};
 			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 			{
 				if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
@@ -2994,13 +2994,9 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
 
-				if (ImGui::Checkbox("Update visibility map", &render_data.nee_plus_plus.m_update_visibility_map))
-					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("If checked, the visibility map will continue accumulating visibility "
-					"information as the rendering progresses");
 				ImGui::SliderInt("Update max samples", &render_data.nee_plus_plus.m_stop_update_samples, 1, 96);
 				ImGuiRenderer::show_help_marker("After this many samples, the update of the visibility will automatically "
-					"stop to save some performance because accumulating forever isn't necessary.");
+					"stop to save some performance because accumulating forever isn't necessary for visibility caching precision.");
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 				bool use_nee_plus_plus_rr = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE);

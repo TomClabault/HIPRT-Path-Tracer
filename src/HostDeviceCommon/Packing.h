@@ -237,6 +237,12 @@ private:
 struct GPU_CPU_ALIGN(4) Octahedral24BitNormalPadded32b
 {
 public:
+	HIPRT_DEVICE Octahedral24BitNormalPadded32b() {}
+	HIPRT_DEVICE Octahedral24BitNormalPadded32b(float3 normal)
+	{
+		pack(normal);
+	}
+
 	HIPRT_DEVICE static Octahedral24BitNormalPadded32b pack_static(float3 normal)
 	{
 		Octahedral24BitNormalPadded32b packed;

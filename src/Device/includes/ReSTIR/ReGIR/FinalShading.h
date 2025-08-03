@@ -60,10 +60,14 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& re
     }
     else
     {
-        #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
+#if ReGIR_DebugMode == REGIR_DEBUG_MODE_SAMPLING_FALLBACK
+        return ColorRGB32F(1.0e10f, 0.0f, 1.0e10f);
+#endif
+
+#if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
         // Invalid fallback strategy
         invalid ReGIR light sampling fallback strategy
-        #endif
+#endif
         
         // Fallback method as the point was outside of the ReGIR grid
         light_sample = sample_one_emissive_triangle<ReGIR_FallbackLightSamplingStrategy>(render_data,

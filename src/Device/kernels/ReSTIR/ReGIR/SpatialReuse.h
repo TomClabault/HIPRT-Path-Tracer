@@ -248,7 +248,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
         Xorshift32Generator random_number_generator(seed);
 
         float3 center_cell_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
-        float3 center_cell_normal = ReGIR_get_cell_world_shading_normal(render_data, hash_grid_cell_index, primary_hit);
+        float3 center_cell_normal = ReGIR_get_cell_world_normal(render_data, hash_grid_cell_index, primary_hit);
         float center_cell_roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index, primary_hit);
 
         if (regir_settings.get_hash_cell_data_soa(primary_hit).grid_cell_alive[hash_grid_cell_index] == 0)
