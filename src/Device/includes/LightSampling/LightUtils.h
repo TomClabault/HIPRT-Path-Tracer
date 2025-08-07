@@ -1103,8 +1103,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         }
 #endif
 
-        bool need_canonical = (ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource) && render_data.render_settings.regir_settings.DEBUG_INCLUDE_CANONICAL;
-        need_canonical |= render_data.render_settings.regir_settings.DEBUG_FORCE_REGIR8CANONICAL;
+        bool need_canonical = (ReGIR_GridFillTargetFunctionVisibility || ReGIR_GridFillTargetFunctionCosineTerm || ReGIR_GridFillTargetFunctionCosineTermLightSource);
         if (need_canonical)
         {
             // Will be set to true if the jittering causes the current shading point to be jittered out of the scene

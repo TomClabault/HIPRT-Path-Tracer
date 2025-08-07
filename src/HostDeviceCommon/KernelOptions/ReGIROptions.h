@@ -134,15 +134,9 @@
 #define ReGIR_ShadingResamplingJitterCanonicalCandidates KERNEL_OPTION_FALSE
 
 /**
- * Whether or not to include the BSDF at the shading point in the resampling target function when
- * shading a point at path tracing time. This reduces shading noise at an increased computational cost.
- */
-#define ReGIR_ShadingResamplingIncludeBSDF KERNEL_OPTION_TRUE
-
-/**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
  */
-#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use Pairwise MIS weights for weighting the different samples at shading-resampling time.
@@ -157,7 +151,7 @@
  * This massively improves quality at the cost of performance and is very likely to be worth it for scenes that are not
  * too hard to trace (where shadow rays are expensive).
  */
-#define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_TRUE
 
 /**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid

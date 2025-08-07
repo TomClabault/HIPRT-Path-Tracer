@@ -55,7 +55,6 @@ const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMU
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES = "ReGIR_ShadingResamplingJitterCanonicalCandidates";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF = "ReGIR_ShadingResamplingIncludeBSDF";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS = "ReGIR_ShadingResamplingDoBSDFMIS";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS = "ReGIR_ShadingResamplingDoMISPairwiseMIS";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES = "ReGIR_ShadingResamplingShadeAllSamples";
@@ -144,7 +143,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES,
@@ -237,7 +235,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES] = std::make_shared<int>(ReGIR_ShadingResamplingJitterCanonicalCandidates);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF] = std::make_shared<int>(ReGIR_ShadingResamplingIncludeBSDF);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS] = std::make_shared<int>(ReGIR_ShadingResamplingDoBSDFMIS);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS] = std::make_shared<int>(ReGIR_ShadingResamplingDoMISPairwiseMIS);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES] = std::make_shared<int>(ReGIR_ShadingResamplingShadeAllSamples);

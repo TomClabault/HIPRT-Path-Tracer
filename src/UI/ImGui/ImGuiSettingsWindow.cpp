@@ -2064,17 +2064,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePop();
 			}
 
-			static bool include_bsdf_shading_resampling = ReGIR_ShadingResamplingIncludeBSDF;
-			if (ImGui::Checkbox("Include BSDF in target function", &include_bsdf_shading_resampling))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_BSDF, include_bsdf_shading_resampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to include the BSDF at the shading point in the resampling target function when "
-				"shading a point at path tracing time. This reduces shading noise at an increased computational cost.");
-
 			static bool do_resampling_bsdf_mis = ReGIR_ShadingResamplingDoBSDFMIS;
 			if (ImGui::Checkbox("Do BSDF MIS during resampling", &do_resampling_bsdf_mis))
 			{

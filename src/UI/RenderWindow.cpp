@@ -69,6 +69,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Crash when turning all the emissive to 0 power + 1 bounce + uniforlm sky
 // - Crash when increasing the number of bounces at runtime
 // 
+// - Disable roughness adaptive precision if not on the first hit
 // - Stochastic light culling harada et al to improve base candidate sampling
 // - Pixel deinterleaving for reducing correlations in light presampling ? Segovia 2006
 // - Can we have a lightweight light rejection (russian roulette) method in the grid fill? So even if we have 32 candidates per grid fill cell, if a light is evidently too far away to contribute, we can reject it and not count that as a try from our 32 tries. The rejection test needs to be lightweight such that it is significantly less expensive than doing a full candidate
@@ -76,39 +77,26 @@ extern ImGuiLogger g_imgui_logger;
 // - Increased the number of shading retries?
 // - Can we shade only the 4 non canonical neighbors + the final reservoir instead of shading everyone?
 //		-  For the MIS weights, we can use the unnormalized target functions for everyone and it should be fine?
-// - Surface normal sith more precision but not far away from the camera and bit for secondary hits?
+// - Surface normal with more precision but not far away from the camera and bit for secondary hits?
 // 		- Surface normal using geometric or shading ?
 // - For interacting with ReGIR, we can probably just shade with non canonical candidates and that's it. It will be biased but at least it won't be disgusting because of the lack of pre integration information
-// - We need something to fix the grid artifacts visible in mirrors because of low reservoirs count per grid cell at secondary bounces. Maybe we can insert in the hash grid in the megakernel by passing the 'first hit' flag to true if this is the first or a secondary hit with low path spread
-// - Should we not pick reservoirs randomly in the neighbor cell during spatial reuse and instead each reservoir stays in its lane? Better performance thanks to coalescing?
-// - Surface normal in hash only for the first hits?
-// - Can we have pairwise MIS in the spatial reuse for increased quality?
+// - Surface normal in hash only for the first hits? Do we loose a lot of quality? Would be nice if we didn't so that we can crank things up for the first hit without paying the price of high normal resolution at secondary hits
 // - Can we shade multiple reservoirs without shooting shadow rays by using NEE++ to make sure that the reservoir isn't shadowed? This may be biased but maybe not too bad?
 // - Can we have a biased NEE++ where we clamp the normalization factor to avoid fireflies?
 // - Would it be possible to to resample like 1 single or a small amount of new samples into the supersampling grid such that this diversifies samples and avoids too much correlations even while accumulating ?
 // - Can we evaluate the ratio between the UCW and the final contribution? If the ratio is higher than a threshold then that's an outlier / Firefly and we may want to skip it attenuate it
 // - Can we do many many more samples per each reservoir during the pre integration pass (and thus have less reservoirs per cell) to improve the quality of the integral estimate with less reservoirs and less integration iterations?
-// - Correlate regir grid fill sampling for secondary cells for higher performance
-// - For the grid fill pass, we can probably use a single point on the sampled light to do the calculations and store only the light index in the reservoir and then defer the actual point-on-the-light sampling to the shading pass. We're probably going to lose a bit in quality for large light sources where choosing the point to sample is critical but this could save quite a bit of time by having to fetch only one light vertex in the grid fill pass (and use that vertex as the reference point on the light) insteaad of having the fetch the three vertices of the light
-// - Cleanup 'light_sample_pdf_for_MIS_solid_angle_measure' function
-// - Only allows RIS and ReSTIR DI sampling function for ReGIR in ImGui
 // - Spatial reuse seems to introduce quite a bit of correlations so we would be better off improving the base sampling to not have to rely on spatial reuse for good samples quality
 // - NEE++ maximum load factor to avoid the hash grid being totally filled and performance dying because of that
 // - Can we randomize the hash of grid cells to avoid correlations? Basically subdivide each grid cell into 2/3/4/... grid cells and randomly assign the space of the main grid cell to either 1/2/3/... of the sub such that correlation aretifacts are basically randomized and do not look bad
 // - Can we compute the "gradient" of cell occupancy of the grid to adjust the factor by which we resize the grid every time? To avoid overshooting too much and having a resized grid that is too large
 // - Can we just use the 32 reservoirs for shading as the input to the pre integration process? Is that enough for an accurate integral estimate?
-// - Have some kind of visualization process where we can see whether each grid cell has an accurate integral estimate by veryifying that it integrates to 1 or not
-// - Lower load factor threshold than 0.75?
 // - Maybe not having the spatial reuse in the pre integration is ok still for normalization factor
 // - No need to read random reservoirs in the pre integration kernel, we can just read the reservoirs one by one of each grid cell and integrate them all. 
 //		- Opens up possibilities for coalescing the reads of the reservoirs in the pre integration kernel
-// - We can trace BSDF MIS rays only in the light BVH during ReGIR resampling
 // - Super large resolution on surfaces that do not allow light sampling for the hash grid since we do not need ReGIR here
 // - We need a special path for ReGIR, hard to use as a light sampling plug in, lots of opti to do with a special path
 // - Variable jitter radius basezd on cell size
-// - BRDF in target function ReGIR sync with adaptive resolution in ImGui
-// - Have some reservoirs with the BRDF term in the target function during grid fill and have those reservoirs only for the first hit because it gets worse for the GI
-// - We only need the increase in precision for the BRDF sampling on the grid cells of the first hit
 // - Include normal in hash grid for low roughness surfaces to have better BRDF sampling precision
 // - Decoupled shading and reuse ReGIR: add visibility rays during the shading so that we have visiblity resampling which is very good and on top of that, we can totally shade the reservoir because the visibility has been computed so the rest of the shading isn't super expensive: maybe use NEE++ in there to reduce shadow rays? Or the visibility caching thing that is biased?
 // - Can we maybe add BRDF samples in the grid fill for rough BRDFs? This will enable perfect MIS for diffuse BRDFs which should be good for the bistro many light with the light close for example. This could also be enough for rough-ish specular BRDFs
@@ -135,8 +123,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Scalarization of hash grid fill because we know that consecutive threads are in the same cell
 // - Scalarization of the hash grid fetches for the camera rays?
 // - We can optimize the grid cell aliv ecounter atomic increment by incrementing by the number of threads in the wavefront instead of 1 per thread
-// - Maybe we can just have a prepass that spams rehashing such that we have the proper grid size for rendering to avoid bad variance at the start?
-// - Update hash cell data point normal seems to be very expensive
 // - Deduplicate hash grid cell idnex calculations in fetch reservoirs functions mainly for performance reasons
 // - To profile the hash grid, may be useful to, for example, store everything from the camera rays pass into some buffers and then run a separate hash grid cell data fill kernel just to be able to profile that kernel in isolation
 // - For the spatial reuse output grid buffer, we don't have to store the rservoirs, we can just store the indices of the cell which we resample from so let's save some VRAM there
@@ -148,7 +134,6 @@ extern ImGuiLogger g_imgui_logger;
 // - When computing the MIS weights by counting the neighbors, we actually don't need the full target function with the emission and everything, we just need the cosine term and shadow ray probably
 // - De-duplicate BSDF computations during shading: we evaluate the BRDF during the reservoir resampling and again during the light sampling
 //		May be exclusive with the BSDF simplifications that can be done in the target function because then we wouldn't be evaluating the proper full BSDF in the target function
-// - Only rebuild the ReGIR grid every N frames?
 // - Can we have some kind of visibility percentage grid that we can use during the resampling to help with visibility noise? 
 //		- We would have a voxel grid on top of the ReGIR grid. 
 //		- That grid would contain as many floats per cell as there are reservoirs per cell in ReGIR
