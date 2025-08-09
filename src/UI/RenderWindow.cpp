@@ -69,6 +69,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Crash when turning all the emissive to 0 power + 1 bounce + uniforlm sky
 // - Crash when increasing the number of bounces at runtime
 // 
+// - Store target function in reservoir to avoid recomputing it during pairwise MIS?
 // - Disable roughness adaptive precision if not on the first hit
 // - Stochastic light culling harada et al to improve base candidate sampling
 // - Pixel deinterleaving for reducing correlations in light presampling ? Segovia 2006
@@ -141,20 +142,11 @@ extern ImGuiLogger g_imgui_logger;
 //		- The visibility percentage would be computed by averaging the successful visibility rays traced during shading
 //			- The issue is that the reservoirs aren't persistent so any data accumulated will be discarded at the next frame when
 //			- the grid is rebuilt
-//		
 //			- We would need a prepass at lower resolution, same as for radiance caching?
 //			- Maybe we can keep the grids of past frames to help with that?
-// - For the visibility reuse of ReGIR, maybe we can just trace from the center of the cell and if at shading time, the reservoir is 0, we know that this must be because the reservoir is occluded for that sample so we can just draw a canonical candidate instead there
-//		- Always tracing from the center of the cell may be always broken depending on the geometry of the scene so maybe we want to trace from the center of the cell as a default but as path tracing progresses, we want to save one point on the surface of geometry in that cell and use that point to trace shadow rays from onwards, that way we're always tracing from a valid surface in the grid cell
-//		- And with that new "representative point" for each cell, we can also have the normal to evaluate the cosine term
 // - For performance, at shading time when resampling the reservoirs, there may be only a few materials that benefit from the BSDF in the resampling target function because lambertian doesn't care, mirrors don't care, specular don't care, really it's only materials at like 0.3 roughness ish
 // - Looking at the average contribution of cells seems to be giving some good metric on the performance of the sampling per cell no? What can we do with that info? Adaptive sampling somehow?
 //		Maybe we can adaptively adapt the number of samples per grid cell during grid fill with that
-// - Cull lights that have too low a contribution during grid fill. Maybe some power function or something to keep things unbiased, not just plain reject
-// - NEE++ mix up to help with visibility sampling?
-// - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
-// - Is the grid fill bottleneck by random light sampling? Try on the class white room to see if perf improves
-//		A little bit yeah. Maybe we can do something with light presampling per cell
 // - Shared mem ray tracing helps a ton for ReGIR grid fill & spatial reuse ----> maybe have them in a separate kernel to be able to use max shared mem without destroying the L1 for the rest of the kernels?
 // - Can we add the canonical sample at the end of the spatial pass instead of in the shading pass?
 // - The idea to fix the bad ReGIR target function that may prioritze occluded samples is to use NEE with a visibility weight

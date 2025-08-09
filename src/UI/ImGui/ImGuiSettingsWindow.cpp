@@ -2151,6 +2151,14 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"This massively improves quality at the cost of performance and is very likely to be worth it for scenes that are not\n"
 				"too hard to trace (where shadow rays are expensive).");
+			static bool optimized_shade_all_samples = ReGIR_ShadingResamplingOptimizedShadeAllSamples;
+			if (ImGui::Checkbox("Optimized shade all samples", &optimized_shade_all_samples))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_OPTIMIZED_SHADE_ALL_SAMPLES, optimized_shade_all_samples ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
 
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

@@ -281,6 +281,8 @@ HIPRT_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_occluded(const HIPRTRenderDat
         return false;
 #endif
 
+	hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUM_COUNT[0], 1ull);
+
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 

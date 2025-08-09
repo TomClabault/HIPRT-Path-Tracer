@@ -316,6 +316,15 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(co
     Xorshift32Generator& random_number_generator);
 
 template <bool canonicalPDF>
+HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF_non_normalized(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, bool primary_hit, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, Xorshift32Generator& random_number_generator)
+{
+    if constexpr (canonicalPDF)
+        return ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
+    else
+        return ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
+}
+
+template <bool canonicalPDF>
 HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, bool primary_hit, float PDF_normalization, float3 point_on_light, float3 light_source_normal, ColorRGB32F emission, Xorshift32Generator& random_number_generator)
 {
     float sample_PDF_unnormalized;
@@ -543,6 +552,62 @@ struct ReGIRPairwiseMIS
     float m_sum_canonical_weight_3 = 0.0f;
 };
 
+struct OptimizedShadingPairwiseMIS
+{
+    HIPRT_DEVICE float compute_MIS_weight_normalization(const HIPRTRenderData& render_data, unsigned int valid_non_canonical_neighbors)
+    {
+        if (valid_non_canonical_neighbors * render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor == 0)
+            return 0.0f;
+
+        return 1.0f / (valid_non_canonical_neighbors * render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor);
+	}
+
+    HIPRT_DEVICE float compute_MIS_weight_for_non_canonical_sample(float mis_weight_normalization, float non_canonical_sample_PDF_non_normalized, float target_function_sample_at_center)
+    {
+        float mis_weight = mis_weight_normalization * (non_canonical_sample_PDF_non_normalized / (non_canonical_sample_PDF_non_normalized + target_function_sample_at_center * mis_weight_normalization));
+
+        return mis_weight;
+    }
+
+    HIPRT_DEVICE float get_canonical_MIS_weight(const HIPRTRenderData& render_data,
+        float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, int last_hit_primitive_index,
+		ColorRGB32F selected_emission, float3 selected_point_on_light, float3 selected_light_source_normal, float selected_target_function,
+
+        float mis_weight_normalization, unsigned int non_canonical_neighbor_rng_seed,
+        Xorshift32Generator& random_number_generator)
+    {
+        if (mis_weight_normalization == 0.0f)
+            return 1.0f;
+        else if (selected_target_function == 0.0f)
+            return 0.0f;
+
+        float canonical_MIS_weight = 0.0;
+
+		const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+        Xorshift32Generator non_canonical_neighbor_rng(non_canonical_neighbor_rng_seed);
+
+		// Replaying all the neighbors to sum into the canonical MIS weight
+        for (int neighbor = 0; neighbor < regir_settings.shading.number_of_neighbors; neighbor++)
+        {
+            unsigned int neighbor_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<false>(
+                shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
+                regir_settings.shading.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
+                regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
+            if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+                // Couldn't find a valid neighbor
+                continue;
+
+            ReGIRGridFillSurface neighbor_surface = ReGIR_get_cell_surface(render_data, neighbor_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
+
+            float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_surface, regir_settings.compute_is_primary_hit(ray_payload), selected_emission, selected_light_source_normal, selected_point_on_light, random_number_generator);
+
+            canonical_MIS_weight += selected_target_function * mis_weight_normalization / (selected_target_function * mis_weight_normalization + non_canonical_sample_PDF_unnormalized) * regir_settings.shading.reservoir_tap_count_per_neighbor;
+        }
+
+		return canonical_MIS_weight * mis_weight_normalization;
+    }
+};
+
 HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_regir_with_info(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
@@ -560,6 +625,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     float selected_light_source_area = 0.0f;
     BSDFIncidentLightInfo selected_incident_light_info = BSDFIncidentLightInfo::NO_INFO;
     ColorRGB32F selected_emission;
+#if ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_TRUE
+    float selected_target_function = 0.0f;
+#endif
 
     ReGIRReservoir out_reservoir;
 
@@ -592,6 +660,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 #if ReGIR_ShadingResamplingDoMISPairwiseMIS
     {
         ReGIRPairwiseMIS pairwise;
+        OptimizedShadingPairwiseMIS optimized_shading_pairwise;
 
         unsigned int canonical_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<true>(
             shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
@@ -618,6 +687,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
         float canonical_technique_3_canonical_reservoir_2_pdf = 0.0f;
         float canonical_technique_3_canonical_reservoir_3_pdf = 0.0f;
         float mis_weight_normalization = pairwise.compute_MIS_weight_normalization(render_data, valid_non_canonical_neighbors);
+        float mis_weight_normalization_optimized_shading = optimized_shading_pairwise.compute_MIS_weight_normalization(render_data, valid_non_canonical_neighbors);
 
         float non_canonical_RIS_integral_center_grid_cell;
         float canonical_RIS_integral_center_grid_cell;
@@ -795,7 +865,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 ColorRGB32F sample_radiance;
                 float target_function = ReGIR_shading_evaluate_target_function<
-                    ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+                    ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples || ReGIR_ShadingResamplingOptimizedShadeAllSamples,
                     ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                         shading_point, view_direction, shading_normal, geometric_normal,
                         last_hit_primitive_index, ray_payload,
@@ -831,13 +901,20 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     selected_light_source_area = light_source_area;
                     selected_emission = emission;
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE && ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_FALSE
 					out_infos.sample_radiance = sample_radiance;
+#elif ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_TRUE
+					selected_target_function = target_function;
 #endif
                 }
 					
 #if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
                 out_infos.sample_radiance += sample_radiance * non_canonical_reservoir.UCW * mis_weight;
+#elif ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_TRUE
+                float optimized_shading_mis_weight = optimized_shading_pairwise.compute_MIS_weight_for_non_canonical_sample(
+                    mis_weight_normalization_optimized_shading, non_canonical_sample_PDF_unnormalized, target_function);
+
+                out_infos.sample_radiance += sample_radiance * non_canonical_reservoir.UCW * optimized_shading_mis_weight;
 #endif
             }
         }
@@ -881,8 +958,10 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         selected_light_source_area = light_source_area;
                         selected_emission = emission_1;
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE && ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_FALSE
                         out_infos.sample_radiance = sample_radiance;
+#elif ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_TRUE
+                        selected_target_function = target_function;
 #endif
                     }
 
@@ -938,8 +1017,10 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                         selected_light_source_area = light_source_area;
                         selected_emission = emission_2;
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE && ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_FALSE
                         out_infos.sample_radiance = sample_radiance;
+#elif ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_TRUE
+                        selected_target_function = target_function;
 #endif
                     }
 
@@ -970,8 +1051,10 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 selected_emission = emission_3;
                 selected_incident_light_info = canonical_technique_3_sample_ili;
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE && ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_FALSE
                 out_infos.sample_radiance = sample_radiance;
+#elif ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_TRUE
+                selected_target_function = target_function;
 #endif
             }
 
@@ -985,6 +1068,67 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             return LightSampleInformation();
 
         out_reservoir.finalize_resampling(1.0f, 1.0f);
+
+#if ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_TRUE
+        ColorRGB32F final_sample_radiance;
+
+        float3 shadow_ray_origin = shading_point;
+        float3 shadow_ray_direction = selected_point_on_light - shadow_ray_origin;
+        float distance_to_light = hippt::length(shadow_ray_direction);
+        float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+        hiprtRay shadow_ray;
+        shadow_ray.origin = shadow_ray_origin;
+        shadow_ray.direction = shadow_ray_direction_normalized;
+
+        // NEE++ context for the shadow ray
+        NEEPlusPlusContext nee_plus_plus_context;
+        nee_plus_plus_context.point_on_light = selected_point_on_light;
+        nee_plus_plus_context.shaded_point = shadow_ray_origin;
+
+        ColorRGB32F light_source_radiance = selected_emission;
+        // abs() here to allow backfacing light sources
+        float dot_light_source = compute_cosine_term_at_light_source(selected_light_source_normal , -shadow_ray.direction);
+
+        if (dot_light_source > 0.0f && selected_target_function > 0.0f)
+        {
+            bool in_shadow = evaluate_shadow_ray_nee_plus_plus(const_cast<HIPRTRenderData&>(render_data), shadow_ray, distance_to_light, last_hit_primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+
+            if (!in_shadow)
+            {
+                float bsdf_pdf;
+
+                BSDFIncidentLightInfo incident_light_info = selected_incident_light_info;
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+#else
+                BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+#endif
+                ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
+                if (bsdf_pdf != 0.0f)
+                {
+                    // Conversion to solid angle from surface area measure
+                    float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(1.0f / out_reservoir.UCW, distance_to_light, dot_light_source);
+                    if (light_sample_solid_angle_pdf > 0.0f)
+                    {
+                        float cosine_term = hippt::abs(hippt::dot(shading_normal, shadow_ray.direction));
+                        final_sample_radiance = selected_emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+                    }
+                }
+            }
+        }
+
+        // non_cano_neighbor_rng_seed
+        float canonical_MIS_weight = optimized_shading_pairwise.get_canonical_MIS_weight(render_data,
+			view_direction, shading_point, shading_normal, geometric_normal, ray_payload,
+            last_hit_primitive_index,
+			selected_emission, selected_point_on_light, selected_light_source_normal, selected_target_function,
+            mis_weight_normalization_optimized_shading, non_cano_neighbor_rng_seed,
+			random_number_generator);
+
+		out_infos.sample_radiance += final_sample_radiance * canonical_MIS_weight;
+#endif
     }
 #else
     {

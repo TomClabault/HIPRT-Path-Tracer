@@ -30,7 +30,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& re
             // Can happen for very small triangles
             return ColorRGB32F(0.0f);
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE || ReGIR_ShadingResamplingOptimizedShadeAllSamples == KERNEL_OPTION_TRUE
         // If we're shading all samples, we already have the perfectly computed
         // radiance in additional_infos so we can just return that
         return additional_infos.sample_radiance;
