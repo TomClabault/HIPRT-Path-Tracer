@@ -28,12 +28,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData
 	default:
 		break;
 	}*/
-#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
-	return principled_bsdf_eval_energy_compensated(render_data, bsdf_context, pdf, random_number_generator);
-#else
 	return principled_bsdf_eval(render_data, bsdf_context, pdf);
-#endif
-
 #elif BSDFOverride == BSDF_LAMBERTIAN
 	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
 #elif BSDFOverride == BSDF_OREN_NAYAR
@@ -78,14 +73,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderDa
 	default:
 		break;
 	}*/
-#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
-    return principled_bsdf_sample_energy_compensated(render_data, material, ray_volume_state, update_ray_volume_state, 
-													 view_direction, surface_normal, geometric_normal, sampled_direction, 
-													 pdf, random_number_generator, current_bounce);
-#else
     return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
-#endif
-
 #elif BSDFOverride == BSDF_LAMBERTIAN
 	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator, bsdf_context.incident_light_info);
 #elif BSDFOverride == BSDF_OREN_NAYAR

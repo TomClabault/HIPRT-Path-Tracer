@@ -105,12 +105,6 @@
 #define PrincipledBSDFDoEnergyCompensation KERNEL_OPTION_TRUE
 
 /**
- * If KERNEL_OPTION_TRUE, on-the-fly monte carlo integration of the full BSDF directional 
- * albedo will be performed to ensure perfect energy conservation & preservation
- */
-#define PrincipledBSDFEnforceStrongEnergyConservation KERNEL_OPTION_FALSE
-
-/**
  * Whether or not to perform energy compensation for the glass layer of the Principled BSDF
  */
 #define PrincipledBSDFDoGlassEnergyCompensation KERNEL_OPTION_TRUE

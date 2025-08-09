@@ -25,7 +25,6 @@ const std::string GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N = "DisplayOnly
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE = "PrincipledBSDFDiffuseLobe";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION = "PrincipledBSDFDoEnergyCompensation";
-const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION = "PrincipledBSDFEnforceStrongEnergyConservation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION = "PrincipledBSDFDoGlassEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION = "PrincipledBSDFDoClearcoatEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION = "PrincipledBSDFDoMetallicEnergyCompensation";
@@ -112,7 +111,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::BSDF_OVERRIDE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION,
-	GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION,
@@ -203,7 +201,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = std::make_shared<int>(BSDFOverride);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE] = std::make_shared<int>(PrincipledBSDFDiffuseLobe);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoEnergyCompensation);
-	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION] = std::make_shared<int>(PrincipledBSDFEnforceStrongEnergyConservation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoGlassEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoClearcoatEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoMetallicEnergyCompensation);

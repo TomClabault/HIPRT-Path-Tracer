@@ -10,10 +10,6 @@
 
 #include "HostDeviceCommon/Color.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, BSDFContext& context, float& pdf);
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, BSDFContext& context, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator);
-
 HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior);
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_base(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV, int current_bounce)
@@ -130,91 +126,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoa
 #endif
 
     return ms_compensation;
-}
-
- /**
-  * On-the-fly integration of the directional albedo of the clearcoat layer
-  * (which is basically the whole BSDF since the clearcoat lobe is the topmost lobe of the BSDF)
-  *
-  * The directional albedo for the given view direction is returned
-  *
-  * This returned directional albedo can then be used to ensure energy conservation & preservation
-  * of the BSDF
-  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_monte_carlo_directional_albedo(const HIPRTRenderData& render_data, BSDFContext bsdf_context,
-                                                                                     Xorshift32Generator& random_number_generator)
-{
-    ColorRGB32F directional_albedo = ColorRGB32F(0.0f);
-
-    // TODO use fresnel simplifications in there to accelerate integration?
-    // TODO disable some lobes in the integration for faster integration at the cost of error?
-    // TODO only integrate on one color channel instead of 3 since directional albedo is just a float
-
-    DeviceUnpackedEffectiveMaterial white_material = bsdf_context.material;
-    white_material.base_color = ColorRGB32F(1.0f);
-    white_material.absorption_color = ColorRGB32F(1.0f);
-    white_material.coat_medium_absorption = ColorRGB32F(1.0f);
-    white_material.metallic_F82 = ColorRGB32F(1.0f);
-    white_material.metallic_F90 = ColorRGB32F(1.0f);
-    white_material.sheen_color = ColorRGB32F(1.0f);
-    white_material.specular_color = ColorRGB32F(1.0f);
-
-
-    unsigned char samples = bsdf_context.material.energy_preservation_monte_carlo_samples;
-    for (int i = 0; i < samples; i++)
-    {
-        float pdf;
-        float3 sampled_direction;
-        BSDFContext white_material_context(bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.geometric_normal, bsdf_context.to_light_direction, bsdf_context.incident_light_info, bsdf_context.volume_state, bsdf_context.update_ray_volume_state, white_material, bsdf_context.current_bounce, bsdf_context.accumulated_path_roughness);
-        ColorRGB32F bsdf_directional_albedo_sample = principled_bsdf_sample(render_data, white_material_context, sampled_direction, pdf, random_number_generator);
-        if (pdf != 0.0f)
-            // Correct sampled direction
-            // 
-            // Incorrect sampled direction can happen when the GGX sampled direction is below the surface
-            // (can happen because GGX sampling is not 100% perfect) 
-
-            // abs() of the cosine term here because we may be sampling refractions
-            directional_albedo += bsdf_directional_albedo_sample / pdf * hippt::abs(hippt::dot(sampled_direction, bsdf_context.shading_normal));
-    }
-
-    directional_albedo /= samples;
-    if (directional_albedo.is_black())
-        // No valid samples were found, no compensation could be computed,
-        // returning 1.0f such that dividing by that compensation term does nothing
-        directional_albedo = ColorRGB32F(1.0f);
-
-    return directional_albedo;
-}
-
-/**
- * Evaluates the BSDF with strong energy conservation & preservation
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensated(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& random_number_generator)
-{
-    ColorRGB32F final_color = principled_bsdf_eval(render_data, bsdf_context, pdf);
-
-    ColorRGB32F principled_directional_albedo(1.0f);
-    if (bsdf_context.material.enforce_strong_energy_conservation && bsdf_context.material.thin_film == 0.0f)
-        // Only computing the compensation if we actually want it for this material
-        principled_directional_albedo = principled_monte_carlo_directional_albedo(render_data, bsdf_context, random_number_generator);
-
-    return final_color / principled_directional_albedo;
-}
-
-/**
- * Samples the BSDF with energy conservation & preservation
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compensated(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3& sampled_direction,
-                                                                                     float& pdf, Xorshift32Generator& random_number_generator)
-{
-    ColorRGB32F color = principled_bsdf_sample(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
-
-    ColorRGB32F clearcoat_directional_albedo(1.0f);
-    if (bsdf_context.material.enforce_strong_energy_conservation && bsdf_context.material.thin_film == 0.0f)
-        // Only computing the compensation if we actually want it for this material
-        clearcoat_directional_albedo = principled_monte_carlo_directional_albedo(render_data, bsdf_context, random_number_generator);
-
-    return color / clearcoat_directional_albedo;
 }
 
 #endif

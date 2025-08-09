@@ -63,9 +63,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - Remove BSDF MIS ray reuse feature, not maintained
-// - Remove runtime monte carlo integration, not maintained
-// 
 // - Store target function in reservoir to avoid recomputing it during pairwise MIS?
 // - Disable roughness adaptive precision if not on the first hit
 // - Stochastic light culling harada et al to improve base candidate sampling

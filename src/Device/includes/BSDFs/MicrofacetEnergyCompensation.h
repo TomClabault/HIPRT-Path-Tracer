@@ -645,8 +645,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
 	//
 	// Also not doing compensation if we already have full compensation on the material
 	// because the energy compensation of the glass lobe here is then redundant
-	bool bsdf_already_compensated = material.enforce_strong_energy_conservation && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE;
-	if (material.thin_film < 1.0f && !bsdf_already_compensated)
+	if (material.thin_film < 1.0f)
 	{
 		float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
 		float exponent_correction = 2.5f;

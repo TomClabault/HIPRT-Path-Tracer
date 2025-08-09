@@ -547,25 +547,6 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
         // Nested dielectric parameter
         out.set_dielectric_priority(this->get_dielectric_priority(material_index));
 
-#if PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
-        // If true, 'energy_preservation_monte_carlo_samples' will be used
-        // to compute the directional albedo of this material.
-        // This computed directional albedo is then used to ensure perfect energy conservation
-        // and preservation. 
-        // 
-        // This is however very expensive.
-        // This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
-        // the clearcoat layer and the BSDF below may be acceptable).
-        // 
-        // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
-        // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
-        // 
-        // See PrincipledBSDFDoEnergyCompensation in this codebase.
-        out.set_enforce_strong_energy_conservation(this->get_enforce_strong_energy_conservation(material_index));
-        if (out.get_enforce_strong_energy_conservation())
-            out.set_energy_preservation_monte_carlo_samples(this->get_energy_preservation_monte_carlo_samples(material_index));
-#endif
-
         return out;
     }
 

@@ -3146,32 +3146,6 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 	{
 		ImGui::TreePush("Energy conservation options tree");
 
-		bool do_bsdf_energy_conservation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION);
-		if (ImGui::Checkbox("Enforce BSDF strong energy conservation", &do_bsdf_energy_conservation))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION, do_bsdf_energy_conservation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("If checked, this will enable the strong energy conservation & preservation "
-			"of the BSDF such that materials using this option neither lose or gain any amount of energy.\n\n"
-
-			"This is however very computationally expensive and must also be enabled on a per material basis.\n"
-			"The per-material option can be found in the \"Other properties\" tab of the material editor.\n"
-			"This is usually only needed on clearcoated materials (but even then, the energy loss\n"
-			"due to the absence of multiple scattering between the clearcoat layer and the BSDF below "
-			"may be acceptable).\n\n"
-
-			"Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy "
-			"conservation/preservation with the precomputed LUTs [Turquin, 2019] "
-			"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n"
-
-			"Note that even if no materials use the option in your scene, disabling this option may"
-			" still be benefitial for performance as it adds quite a bit of register pressure. Disabling "
-			" the option has the effect of literally removing all the code of this option from the shaders.");
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
 		{
 			bool do_glass_energy_compensation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION);
 			if (ImGui::Checkbox("Do glass lobe energy compensation", &do_glass_energy_compensation))

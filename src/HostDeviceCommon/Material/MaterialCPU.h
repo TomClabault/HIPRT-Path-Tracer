@@ -138,22 +138,6 @@ struct CPUMaterial
         // Nested dielectric parameter
         mat.set_dielectric_priority(dielectric_priority);
 
-        mat.set_energy_preservation_monte_carlo_samples(energy_preservation_monte_carlo_samples);
-        // If true, 'energy_preservation_monte_carlo_samples' will be used
-        // to compute the directional albedo of this material.
-        // This computed directional albedo is then used to ensure perfect energy conservation
-        // and preservation. 
-        // 
-        // This is however very expensive.
-        // This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
-        // the clearcoat layer and the BSDF below may be acceptable).
-        // 
-        // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
-        // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
-        // 
-        // See PrincipledBSDFDoEnergyCompensation in this codebase.
-        mat.set_enforce_strong_energy_conservation(enforce_strong_energy_conservation);
-
         return mat;
     }
 
@@ -321,22 +305,6 @@ struct CPUMaterial
 
     // Nested dielectric parameter
     int dielectric_priority = 0;
-
-    int energy_preservation_monte_carlo_samples = 12;
-    // If true, 'energy_preservation_monte_carlo_samples' will be used
-    // to compute the directional albedo of this material.
-    // This computed directional albedo is then used to ensure perfect energy conservation
-    // and preservation. 
-    // 
-    // This is however very expensive.
-    // This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
-    // the clearcoat layer and the BSDF below may be acceptable).
-    // 
-    // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
-    // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
-    // 
-    // See PrincipledBSDFDoEnergyCompensation in this codebase.
-    bool enforce_strong_energy_conservation = false;
 
 
 

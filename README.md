@@ -18,7 +18,6 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 
 ### Layered Principled BSDF:
 - Coat Microfacet GGX Layer + Anisotropy, Anisotropy Rotation, Medium Absorption & Thickness
-- On-the-fly Monte Carlo integration for energy compensation of interlayer clearcoat multiple scattering
 - SGGX Volumetric Sheen Lobe LTC Fit [\[Zeltner, Burley, Chiang, 2022\]](https://tizianzeltner.com/projects/Zeltner2022Practical/)
 - Specular Microfacet GGX Layer
 - Diffuse BRDF lobe. Support for:
