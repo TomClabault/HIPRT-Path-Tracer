@@ -10,20 +10,14 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightUtils.h"
-#include "Device/includes/MISBSDFRayReuse.h"
 #include "Device/includes/RussianRoulette.h"
 #include "Device/includes/WarpDirectionReuse.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData& render_data, hiprtRay ray, RayPayload& out_ray_payload, HitInfo& out_closest_hit_info, MISBSDFRayReuse mis_reuse, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData& render_data, hiprtRay ray, RayPayload& out_ray_payload, HitInfo& out_closest_hit_info, Xorshift32Generator& random_number_generator)
 {
-	if (mis_reuse.has_ray())
-		// Reusing a BSDF MIS ray if there is one available
-		return reuse_mis_ray(render_data, -ray.direction, out_ray_payload, out_closest_hit_info, mis_reuse);
-	else
-		// Not tracing for the primary ray because this has already been done in the camera ray pass
-		return trace_main_path_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, out_ray_payload.bounce, random_number_generator);
+	return trace_main_path_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, out_ray_payload.bounce, random_number_generator);
 }
 
 /**
@@ -31,20 +25,15 @@ HIPRT_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRenderData
  * but without evaluating the contribution of the BSDF or the PDF.
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, ColorRGB32F& out_bsdf_color, float3& out_bounce_direction, float& out_bsdf_pdf, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
+HIPRT_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, ColorRGB32F& out_bsdf_color, float3& out_bounce_direction, float& out_bsdf_pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
 {
-    if (mis_reuse.has_ray())
-        out_bsdf_color = reuse_mis_bsdf_sample(out_bounce_direction, out_bsdf_pdf, ray_payload, mis_reuse, out_sampled_light_info);
-    else
-    {
-        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), *out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
+    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), *out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
 
-        out_bsdf_color = bsdf_dispatcher_sample<sampleDirectionOnly>(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
-    }
+    out_bsdf_color = bsdf_dispatcher_sample<sampleDirectionOnly>(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
 
     ray_payload.accumulate_roughness(*out_sampled_light_info);
 
-#if DoFirstBounceWarpDirectionReuse
+#if DoFirstBounceWarpDirectionReuse == KERNEL_OPTION_TRUE
     warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);
 #endif
 }
@@ -89,12 +78,12 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
  * but without evaluating the contribution of the BSDF or the PDF.
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr)
+HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr)
 {
     ColorRGB32F bsdf_color;
     float3 bounce_direction;
     float bsdf_pdf;
-    path_tracing_sample_next_indirect_bounce<sampleDirectionOnly>(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, mis_reuse, random_number_generator, incident_light_info);
+    path_tracing_sample_next_indirect_bounce<sampleDirectionOnly>(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator, incident_light_info);
 
     // Terminate ray if bad sampling
     if (bsdf_pdf <= 0.0f && !sampleDirectionOnly)

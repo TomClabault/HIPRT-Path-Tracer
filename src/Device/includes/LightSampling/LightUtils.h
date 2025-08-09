@@ -600,8 +600,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
         float UCW_1 = 0.0f, UCW_2 = 0.0f;
         int triangle_index_1 = -1, triangle_index_2 = -1, triangle_index_3 = -1;
-        float3 point_on_light_1, point_on_light_2, point_on_light_3;
-        float3 light_source_normal_1, light_source_normal_2, light_source_normal_3;
+        float3 point_on_light_1, point_on_light_2, point_on_light_3 = make_float3(0.0f, 0.0f, 0.0f);
+        float3 light_source_normal_1, light_source_normal_2, light_source_normal_3 = make_float3(0.0f, 0.0f, 0.0f);
         ColorRGB32F emission_1, emission_2, emission_3;
 
         BSDFIncidentLightInfo canonical_technique_3_sample_ili = BSDFIncidentLightInfo::NO_INFO;
@@ -1011,16 +1011,6 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     // No valid sample in that reservoir
                     continue;
 
-                // TODO we evaluate the BSDF in there and then we're going to evaluate the BSDF again in the light sampling routine, that's double BSDF :(
-                /*float3 point_on_light;
-                float3 light_source_normal;
-                float light_source_area;
-                Xorshift32Generator rng_point_on_triangle(non_canonical_reservoir.sample.random_seed);
-                if (!sample_point_on_generic_triangle(non_canonical_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
-                    rng_point_on_triangle,
-                    point_on_light, light_source_normal, light_source_area))
-                    continue;*/
-
                 float3 point_on_light = non_canonical_reservoir.sample.point_on_light;
                 float3 light_source_normal = get_triangle_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
                 float light_source_area = hippt::length(light_source_normal) * 0.5f;
@@ -1123,14 +1113,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 if (canonical_reservoir.UCW > 0.0f && canonical_reservoir.UCW != ReGIRReservoir::UNDEFINED_UCW)
                 {
-                    /*float3 point_on_light;
-                    float3 light_source_normal;
-                    float light_source_area;*/
-
                     ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_index);
-                    /*Xorshift32Generator rng_point_on_triangle(canonical_reservoir.sample.random_seed);
-                    if (sample_point_on_generic_triangle(canonical_reservoir.sample.emissive_triangle_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices,
-                        rng_point_on_triangle, point_on_light, light_source_normal, light_source_area))*/
 
                     float3 point_on_light = canonical_reservoir.sample.point_on_light;
                     float3 light_source_normal = get_triangle_normal_not_normalized(render_data, canonical_reservoir.sample.emissive_triangle_index);

@@ -91,15 +91,6 @@
 #define SharedStackBVHTraversalSize 16
 
 /**
- * If true, the BSDF ray shot for BSDF MIS during the evaluation of NEE will be reused
- * for the next bounce. 
- * 
- * There is virtually no point in disabling that option. This options i there only for
- * performance comparisons with and without reuse
- */
-#define ReuseBSDFMISRay KERNEL_OPTION_FALSE
-
-/**
  * Partial and (very) experimental implementation of [Generate Coherent Rays Directly, Liu et al., 2024]
  * for reuse sampled directions on the first hit accross the threads of warps
  */

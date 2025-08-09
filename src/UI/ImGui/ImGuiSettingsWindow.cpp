@@ -3912,20 +3912,6 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		draw_russian_roulette_options();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		bool reuse_bsdf_mis_ray = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY);
-		if (ImGui::Checkbox("Reuse MIS BSDF ray", &reuse_bsdf_mis_ray))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY, reuse_bsdf_mis_ray ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("If checked, the BSDF ray shot for BSDF MIS during the evaluation of NEE will be reused "
-			"for the next bounce.\n\n"
-			""
-			"There is virtually no point in disabling that option. This options i there only for "
-			"performance comparisons with and without reuse");
-
 		bool do_direction_reuse = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE);
 		if (ImGui::Checkbox("Warp BSDF sampled directions reuse", &do_direction_reuse))
 		{

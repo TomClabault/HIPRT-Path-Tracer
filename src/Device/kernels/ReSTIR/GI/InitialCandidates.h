@@ -77,14 +77,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
         closest_hit_info.primitive_index,
         random_number_generator);
 
-    // This structure is going to contain the information for reusing the
-    // BSDF ray when doing NEE with MIS: as a matter of fact, when doing
-    // NEE with MIS, we're shooting a BSDF ray. If that ray doesn't hit
-    // an emissive triangle, we can just reuse that ray for our indirect
-    // bounce ray. That structure contains all that is necessary to reuse
-    // the ray. This structure is filled by the emissive light sampling
-    // or the envmap sampling function
-    MISBSDFRayReuse mis_reuse;
     bool intersection_found = closest_hit_info.primitive_index != -1;
 
     ReSTIRSurface initial_surface;
@@ -117,7 +109,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     // alpha tests
                     restir_gi_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
 
-                intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, mis_reuse, random_number_generator);
+                intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
             }
 
             if (intersection_found)
@@ -143,14 +135,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                 if (bounce > 0)
                 {
                     // Estimating with a throughput of 1.0f here because we're going to apply the throughput ourselves
-                    ColorRGB32F direct_lighting_estimation = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+                    ColorRGB32F direct_lighting_estimation = estimate_direct_lighting(render_data, ray_payload, ColorRGB32F(1.0f), closest_hit_info, -ray.direction, x, y, random_number_generator);
                     // Updating the cumulated outgoing radiance of our path to the visible point
                     incoming_radiance_to_visible_point += clamp_direct_lighting_estimation(direct_lighting_estimation * throughput_to_visible_point, render_data.render_settings.indirect_contribution_clamp, bounce);
                 }
 
                 float bsdf_pdf;
                 BSDFIncidentLightInfo incident_light_info;
-                bool valid_indirect_bounce = restir_gi_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info, &bsdf_pdf);
+                bool valid_indirect_bounce = restir_gi_compute_next_indirect_bounce(render_data, ray_payload, throughput_to_visible_point, closest_hit_info, -ray.direction, ray, random_number_generator, &incident_light_info, &bsdf_pdf);
                 if (!valid_indirect_bounce)
                     // Bad BSDF sample (under the surface), killed by russian roulette, ...
                     break;

@@ -110,12 +110,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
     float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
-    // Dummy mis_reuse variable
-    MISBSDFRayReuse mis_reuse;
     ColorRGB32F camera_outgoing_radiance;
     if (render_data.render_settings.enable_direct)
         // Adding the direct lighting contribution at the first hit in the direction of the camera
-        camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
+        camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, random_number_generator);
 
     ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index];
     if (render_data.render_settings.nb_bounces > 0)

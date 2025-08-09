@@ -80,7 +80,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(HIPRTRender
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
@@ -192,17 +192,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
         ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
-        bool hit_found = false;
-        float cosine_at_evaluated_point = 0.0f;
         RISSample bsdf_RIS_sample;
-        BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
         if (bsdf_sample_pdf > 0.0f)
         {
             hiprtRay bsdf_ray;
             bsdf_ray.origin = closest_hit_info.inter_point;
             bsdf_ray.direction = sampled_bsdf_direction;
 
-            hit_found = evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+            BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
+            bool hit_found = evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+
             if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
             {
                 // If we intersected an emissive material, compute the weight. 
@@ -217,7 +216,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // correct for the BSDF. Even if the direction is correct, the dot product may be
                 // negative in the case of refractions / total internal reflections and so in this case,
                 // we'll need to abs() the dot product for it to be positive
-                cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
+                float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
 
                 // Our target function does not include the geometry term because we're integrating
                 // in solid angle. The geometry term in the target function ( / in the integrand) is only
@@ -242,29 +241,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             }
         }
 
-        // Fill the MIS BSDF ray reuse structure
-        // 
-        // Note that the structure is also filled even if the BSDF sample is incorrect i.e. the BSDF sampled 
-        // a * reflection * below the surface
-        // 
-        // But an incorrect BSDF (sampled a reflection that goes below the surface for example)
-        // sample should also be considered otherwise this is biased.
-        // 
-        // This is biased because if we do not indicate anything about the MIS BSDF sample, then
-        // the main path tracing loop is going to assume that there is no BSDF MIS ray to
-        // reuse and so it's going to sample the BSDF for a bounce direction. But that's where the bias is.
-        // By doing this (re-sampling the BSDF again because the first sample we got from MIS was incorrect),
-        // we're eseentially doing rejection sampling on the BSDF. If the BSDF has a GGX lobe 
-        // (which it very much likely has) then we're doing rejection sampling on the GGX distribution. 
-        // We're rejecting samples from the GGX that are below the surface. That's biased. 
-        // Rejection sampling on the GGX distribution cannot be naively done:
-        // 
-        // See this a derivation on why this is biased (leads to energy gains): 
-        // https://computergraphics.stackexchange.com/questions/14123/lots-of-bad-samples-below-the-hemisphere-when-sampling-the-ggx-vndf
-        float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-        mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
-            hit_found ? RayState::BOUNCE : RayState::MISSED, incident_light_info);
-
         reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
         reservoir.sanity_check();
     }
@@ -273,12 +249,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
     return reservoir;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         return ColorRGB32F(0.0f);
 
-    RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
+    RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
     return evaluate_reservoir_sample(render_data, ray_payload, 
         closest_hit_info, view_direction, 

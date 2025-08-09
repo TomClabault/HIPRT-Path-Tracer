@@ -81,14 +81,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
         closest_hit_info.primitive_index,
         random_number_generator);
 
-    // This structure is going to contain the information for reusing the
-    // BSDF ray when doing NEE with MIS: as a matter of fact, when doing
-    // NEE with MIS, we're shooting a BSDF ray. If that ray doesn't hit
-    // an emissive triangle, we can just reuse that ray for our indirect
-    // bounce ray. That structure contains all that is necessary to reuse
-    // the ray. This structure is filled by the emissive light sampling
-    // or the envmap sampling function
-    MISBSDFRayReuse mis_reuse;
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
     bool intersection_found = closest_hit_info.primitive_index != -1;
@@ -98,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
         if (ray_payload.next_ray_state != RayState::MISSED)
         {
             if (bounce > 0)
-                intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, mis_reuse, random_number_generator);
+                intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
 
             if (intersection_found)
             {
@@ -115,13 +107,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
                 // TODO REMOVE THE DEBUG IF
                 if (bounce > 0 || render_data.render_settings.enable_direct)
                 {
-                    ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+                    ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, random_number_generator);
 
                     sanity_check<true>(render_data, ray_payload.ray_color, x, y);
                 }
 
                 BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF sampled
-                bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &sampled_light_info);
+                bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, random_number_generator, &sampled_light_info);
                 if (!valid_indirect_bounce)
                     // Bad BSDF sample (under the surface), killed by russian roulette, ...
                     break;

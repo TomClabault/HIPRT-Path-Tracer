@@ -66,9 +66,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove BSDF MIS ray reuse feature, not maintained
 // - Remove runtime monte carlo integration, not maintained
 // 
-// - Crash when turning all the emissive to 0 power + 1 bounce + uniforlm sky
-// - Crash when increasing the number of bounces at runtime
-// 
+// - Store target function in reservoir to avoid recomputing it during pairwise MIS?
 // - Disable roughness adaptive precision if not on the first hit
 // - Stochastic light culling harada et al to improve base candidate sampling
 // - Pixel deinterleaving for reducing correlations in light presampling ? Segovia 2006

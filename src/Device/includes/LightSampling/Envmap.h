@@ -9,7 +9,6 @@
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/MISBSDFRayReuse.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/Texture.h"
 #include "HostDeviceCommon/Color.h"
@@ -170,7 +169,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info,
     const float3& view_direction, 
-    Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+    Xorshift32Generator& random_number_generator)
 {
     float envmap_pdf;
     float3 sampled_direction;
@@ -218,38 +217,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
     ColorRGB32F bsdf_color;
     ColorRGB32F bsdf_mis_contribution;
 
-#if ReuseBSDFMISRay == KERNEL_OPTION_TRUE
-    if (mis_ray_reuse.has_ray())
-    {
-        // If we already have a BSDF ray to reuse from next-event estimation on the emissive lights,
-        // let's reuse it.
-
-        if (mis_ray_reuse.next_ray_state == RayState::MISSED)
-        {
-            // We only want to reuse rays that missed all geometry otherwise we can't see the envmap...
-            bsdf_sample_pdf = mis_ray_reuse.bsdf_pdf;
-            bsdf_sampled_dir = mis_ray_reuse.bsdf_sampled_direction;
-            bsdf_color = mis_ray_reuse.bsdf_color;
-        }
-        else
-            // If the ray that we're reusing doesn't see the envmap, let's just return
-            // the envmap sample contribution (because the BSDF sample contribution is going
-            // to be 0 anyways since this BSDF sample is occluded and can't see the envmap)
-            return envmap_mis_contribution;
-    }
-    else
-    {
-        // No BSDF MIS ray to reuse, let's sample the BSDF
-        BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-        BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
-        bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
-    }
-#else
-    // No BSDF MIS ray to reuse, let's sample the BSDF
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
     BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
     bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
-#endif
 
     // Sampling the BSDF with MIS
     float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
@@ -259,18 +229,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
         shadow_ray.origin = closest_hit_info.inter_point;
         shadow_ray.direction = bsdf_sampled_dir;
 
-#if ReuseBSDFMISRay == KERNEL_OPTION_TRUE
-        bool in_shadow;
-        if (mis_ray_reuse.has_ray() && mis_ray_reuse.next_ray_state == RayState::MISSED)
-            // If we've reused a ray, we already know that it is not occluded
-            in_shadow = false;
-        else
-            // No ray was reused, we have to check for visibility
-            in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
-#else
         bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
-#endif
-
         if (!in_shadow)
         {
             float envmap_eval_pdf;
@@ -291,7 +250,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
     const float3& view_direction, 
-    Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+    Xorshift32Generator& random_number_generator)
 {
     const WorldSettings& world_settings = render_data.world_settings;
 
