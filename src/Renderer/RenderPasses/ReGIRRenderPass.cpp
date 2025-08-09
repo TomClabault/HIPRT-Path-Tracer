@@ -763,7 +763,9 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool
 		
 		&m_hash_grid_storage.get_hash_cell_data_device_soa(render_data.render_settings.regir_settings, primary_hit),
 		&cell_alive_list_ptr, // old cell alive list
-		&old_cell_alive_count
+		&old_cell_alive_count,
+
+		&primary_hit
 	};
 	
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_synchronous(64, 1, old_cell_alive_count, 1, launch_args);

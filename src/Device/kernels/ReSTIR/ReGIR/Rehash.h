@@ -23,7 +23,9 @@ GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Rehash(
 
     ReGIRHashCellDataSoADevice old_hash_cell_data,
     unsigned int* old_grid_cells_alive_list,
-    unsigned int old_cell_count)
+    unsigned int old_cell_count, 
+    
+    bool primary_hit)
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
     HIPRTCamera current_camera,
@@ -33,7 +35,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
 
     ReGIRHashCellDataSoADevice old_hash_cell_data,
     unsigned int* old_grid_cells_alive_list, 
-    unsigned int old_cell_count,
+    unsigned int old_cell_count, 
+    
+    bool primary_hit,
 
     unsigned int cell_index
 )
@@ -59,7 +63,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
 
     ReGIRSettings::insert_hash_cell_data_static(
         new_hash_grid, new_hash_grid_soa, new_hash_cell_data,
-        world_position, shading_normal, current_camera, primitive_index, material);
+        world_position, shading_normal, current_camera, primitive_index, primary_hit, material);
 }
 
 #endif

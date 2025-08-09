@@ -196,7 +196,13 @@
  * The higher the number, the better the hash grid resolution but the higher the
  * memory cost of the grid and the computational cost of the grid fill
  */
-#define ReGIR_HashGridHashSurfaceNormalResolution 4
+#define ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits 4
+
+/**
+ * Same as above but for the secondary hits only. A lower setting here is usually enough and saves
+ * on perf and VRAM
+ */
+#define ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits 2
 
 /**
  * If using jittering, how many tries to perform to find a good neighbor at shading time?

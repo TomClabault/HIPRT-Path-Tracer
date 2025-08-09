@@ -2182,17 +2182,43 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			{
 				ImGui::TreePush("ReGIR surface normal discretization tree");
 
-				static int normal_discretization_precision = ReGIR_HashGridHashSurfaceNormalResolution;
+				static int normal_discretization_precision = ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits;
 				ImGui::SliderInt("Discretization precision", &normal_discretization_precision, 2, 4);
 				ImGuiRenderer::show_help_marker("Higher values mean more precision for the discretization but also more computational and VRAM usage for filling the grid as well as a potentially decreased spatial reuse efficiency.");
 
-				if (normal_discretization_precision != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION))
+				if (normal_discretization_precision != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS))
 				{
 					ImGui::TreePush("Apply button ReGIR normal discretization");
 
 					if (ImGui::Button("Apply"))
 					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION, normal_discretization_precision);
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS, normal_discretization_precision);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
+
+				ImGui::TreePop();
+			}
+
+			if (include_normals_in_hash)
+			{
+				ImGui::TreePush("ReGIR surface normal discretization 2nd hits tree");
+
+				static int normal_discretization_precision = ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits;
+				ImGui::SliderInt("Discretization precision 2dn hits", &normal_discretization_precision, 2, 4);
+				ImGuiRenderer::show_help_marker("Higher values mean more precision for the discretization but also more computational and VRAM usage for filling the grid as well as a potentially decreased spatial reuse efficiency.");
+
+				if (normal_discretization_precision != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS))
+				{
+					ImGui::TreePush("Apply button ReGIR normal discretization");
+
+					if (ImGui::Button("Apply"))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS, normal_discretization_precision);
 
 						m_renderer->recompile_kernels();
 						m_render_window->set_render_dirty(true);
@@ -2232,7 +2258,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 
 			static int linear_probing_steps = ReGIR_HashGridCollisionResolutionMaxSteps;
-			ImGui::SliderInt("Collision resolution max. steps", &linear_probing_steps, 1, 32);
+			ImGui::SliderInt("Max. steps", &linear_probing_steps, 1, 32);
 			if (linear_probing_steps != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS))
 			{
 				ImGui::TreePush("ReGIR linear probing steps apply button");
