@@ -196,7 +196,7 @@ struct ReGIRSettings
 	HIPRT_DEVICE const ReGIRHashCellDataSoADevice& get_hash_cell_data_soa(bool primary_hit) const { return primary_hit ? hash_cell_data_primary_hits : hash_cell_data_secondary_hits; }
 	HIPRT_DEVICE ReGIRHashCellDataSoADevice& get_hash_cell_data_soa(bool primary_hit) { return primary_hit ? hash_cell_data_primary_hits : hash_cell_data_secondary_hits; }
 
-	HIPRT_DEVICE const ReGIRGridFillSettings& get_grid_fill_settings(bool primary_hit) const { return primary_hit ? grid_fill_primary_hits : grid_fill_secondary_hits; }
+	HIPRT_DEVICE const ReGIRGridFillSettings& get_grid_fill_settings(bool primary_hit) const { return primary_hit ? grid_fill_settings_primary_hits : grid_fill_settings_secondary_hits; }
 
 	HIPRT_DEVICE const AtomicType<float>* get_non_canonical_pre_integration_factor_buffer(bool primary_hit) const { return primary_hit ? non_canonical_pre_integration_factors_primary_hits : non_canonical_pre_integration_factors_secondary_hits; }
 	HIPRT_DEVICE AtomicType<float>* get_non_canonical_pre_integration_factor_buffer(bool primary_hit) { return primary_hit ? non_canonical_pre_integration_factors_primary_hits : non_canonical_pre_integration_factors_secondary_hits; }
@@ -640,8 +640,8 @@ struct ReGIRSettings
 	ReGIRHashCellDataSoADevice hash_cell_data_secondary_hits;
 
 	ReGIRGridFillPresampledLights presampled_lights;
-	ReGIRGridFillSettings grid_fill_primary_hits = ReGIRGridFillSettings(true);
-	ReGIRGridFillSettings grid_fill_secondary_hits = ReGIRGridFillSettings(false);
+	ReGIRGridFillSettings grid_fill_settings_primary_hits = ReGIRGridFillSettings(true);
+	ReGIRGridFillSettings grid_fill_settings_secondary_hits = ReGIRGridFillSettings(false);
 
 	ReGIRSpatialReuseSettings spatial_reuse;
 	ReGIRShadingSettings shading;

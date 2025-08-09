@@ -56,7 +56,7 @@ public:
 
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
-	void launch_sync_grid_fill(HIPRTRenderData& render_data);
+	void launch_sync_grid_fill(HIPRTRenderData& render_data, bool bypass_skip_frame);
 	void launch_async_grid_fill(HIPRTRenderData& render_data);
 	/**
 	 * The prepass in ReGIR is used to shoot rays in every directions from the G-Buffer to discover how many grid cells

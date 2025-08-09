@@ -1850,21 +1850,21 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			ImGui::SeparatorText("Primary hits grid cells");
-			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir, 0, 64))
+			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir, 0, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
+			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill_primary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
+			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			ImGui::SeparatorText("Secondary hits grid cells");
-			if (ImGui::SliderInt("Light samples per reservoir##secondary", &regir_settings.grid_fill_secondary_hits.light_sample_count_per_cell_reservoir, 0, 64))
+			if (ImGui::SliderInt("Light samples per reservoir##secondary", &regir_settings.grid_fill_settings_secondary_hits.light_sample_count_per_cell_reservoir, 0, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_secondary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
+			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_settings_secondary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_secondary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
+			if (ImGui::SliderInt("Canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_settings_secondary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
 				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

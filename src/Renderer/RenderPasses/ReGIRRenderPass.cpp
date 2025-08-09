@@ -321,7 +321,8 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	}
 
 	bool full_grid_fill_needed = false;
-	if (rehash(render_data))
+	bool rehashed = rehash(render_data);
+	if (rehashed)
 	{
 		// A rehashing with supersampling enabled will empty the supersampling grid so we need to fill it again
 		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
@@ -352,7 +353,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		//
 		// But the grid can somehow be resized (rehashed), which means that all the content of the grid
 		// is cleared and so all that was filled asynchronously is lost so we need a full grid refill here
-		launch_sync_grid_fill(render_data);
+		launch_sync_grid_fill(render_data, rehashed);
 
 	// Positioning the actual spatial reuse output buffers
 	render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits = m_last_spatial_reuse_output_buffer_primary_hits;
@@ -373,21 +374,21 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	return true;
 }
 
-void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data)
+void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data, bool bypass_skip_frame)
 {
 	// Execute a full grid fill synchronously (from the point of view of the GPU
 	// CUDA/HIP streams, this is still asynchronous for the CPU: not blocking for the CPU)
 	launch_light_presampling(render_data, m_renderer->get_main_stream());
 
 	bool skip_frame_primary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
-	if (m_number_of_cells_alive_primary_hits > 0 && !skip_frame_primary_hits)
+	if (m_number_of_cells_alive_primary_hits > 0 && (!skip_frame_primary_hits || bypass_skip_frame))
 	{
 		launch_grid_fill_temporal_reuse(render_data, true, false, m_renderer->get_main_stream());
 		m_last_spatial_reuse_output_buffer_primary_hits = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
 	}
 
 	bool skip_frame_secondary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid + 1) != 0;
-	if (m_number_of_cells_alive_secondary_hits > 0 && !skip_frame_secondary_hits)
+	if (m_number_of_cells_alive_secondary_hits > 0 && (!skip_frame_secondary_hits || bypass_skip_frame))
 	{
 		launch_grid_fill_temporal_reuse(render_data, false, false, m_renderer->get_main_stream());
 		m_last_spatial_reuse_output_buffer_secondary_hits = launch_spatial_reuse(render_data, false, false, m_renderer->get_main_stream());
@@ -495,7 +496,7 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 
 	if (m_hash_grid_storage.try_rehash(render_data))
 	{
-		update_render_data();
+		m_hash_grid_storage.to_device(m_renderer->get_render_data());
 		
 		// We also want the local 'render_data' parameter here to be updated such
 		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
@@ -682,9 +683,9 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 
 	// Adjusting the number of samples per reservoir just for the pre-integration pass.
 	// TODO: is this really integrating correctly? If we do not have the same number of samples per reservoir during pre-integratrion, are we really getting the correct PDF?
-	unsigned int backup = render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir;
-	render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
-	render_data.render_settings.regir_settings.grid_fill_secondary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
+	unsigned int backup = render_data.render_settings.regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir;
+	render_data.render_settings.regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
+	render_data.render_settings.regir_settings.grid_fill_settings_secondary_hits.light_sample_count_per_cell_reservoir = render_data.render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR;
 
 	// Clearing the pre integration buffer before accumulating new pre integration data into them
 	m_hash_grid_storage.clear_pre_integrated_RIS_integral_factors(true);
@@ -716,8 +717,8 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_stop, m_renderer->get_main_stream()));
 	// --------------- Record the end of the overall pre integration process
 
-	render_data.render_settings.regir_settings.grid_fill_primary_hits.light_sample_count_per_cell_reservoir = backup;
-	render_data.render_settings.regir_settings.grid_fill_secondary_hits.light_sample_count_per_cell_reservoir = backup;
+	render_data.render_settings.regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir = backup;
+	render_data.render_settings.regir_settings.grid_fill_settings_secondary_hits.light_sample_count_per_cell_reservoir = backup;
 
 	m_pre_integration_executed = true;
 }
