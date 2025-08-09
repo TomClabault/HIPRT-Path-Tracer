@@ -19,31 +19,37 @@
 
 struct ReGIRHashGrid
 {
-	HIPRT_DEVICE static float compute_adaptive_cell_size_roughness(float3 world_position, const HIPRTCamera& current_camera, float roughness, float target_projected_size, float grid_cell_min_size)
+	HIPRT_DEVICE static float compute_adaptive_cell_size_roughness(float3 world_position, const HIPRTCamera& current_camera, float roughness, bool primary_hit, float target_projected_size, float grid_cell_min_size)
 	{
 		int width = current_camera.sensor_width;
 		int height = current_camera.sensor_height;
 		
 #if ReGIR_AdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
-		if (roughness >= 0.08f && roughness < 0.2f)
+		if (primary_hit)
 		{
-			float t = hippt::inverse_lerp(roughness, 0.08f, 0.2f);
-			float res_increase_factor = hippt::lerp(2.0f, 5.0f, 1.0f - t);
+			// Only increasing the resolution for the primary hit cells where
+			// we can actually use that resolution for resampling according to the BSDF
+			//
+			// For secondary grid cells, we cannot resample according to the BSDF because
+			// we do not have the view direction so there's no point increasing the resolution.
 
-			target_projected_size /= res_increase_factor;
-			grid_cell_min_size /= res_increase_factor;
-		}
-		else if (roughness >= 0.2f && roughness < 0.35f)
-		{
-			float t = hippt::inverse_lerp(roughness, 0.2f, 0.35f);
-			float res_increase_factor = hippt::lerp(1.0f, 2.0f, 1.0f - t);
+			if (roughness >= 0.08f && roughness < 0.2f)
+			{
+				float t = hippt::inverse_lerp(roughness, 0.08f, 0.2f);
+				float res_increase_factor = hippt::lerp(2.0f, 5.0f, 1.0f - t);
 
-			target_projected_size /= res_increase_factor;
-			grid_cell_min_size /= res_increase_factor;
+				target_projected_size /= res_increase_factor;
+				grid_cell_min_size /= res_increase_factor;
+			}
+			else if (roughness >= 0.2f && roughness < 0.35f)
+			{
+				float t = hippt::inverse_lerp(roughness, 0.2f, 0.35f);
+				float res_increase_factor = hippt::lerp(1.0f, 2.0f, 1.0f - t);
+
+				target_projected_size /= res_increase_factor;
+				grid_cell_min_size /= res_increase_factor;
+			}
 		}
-		// 0.1 roughness: 4.5 & 0.05
-		// 0.2 roughness: 12.5 & 0.2
-		// 0.35 roughness: 25.0 & 0.3
 #endif
 
 		float cell_size_step = hippt::length(world_position - current_camera.position) * tanf(target_projected_size * current_camera.vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
@@ -54,7 +60,7 @@ struct ReGIRHashGrid
 
 	HIPRT_DEVICE unsigned int custom_regir_hash(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, unsigned int total_number_of_cells, unsigned int& out_checksum) const
 	{
-		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, m_grid_cell_target_projected_size, m_grid_cell_min_size);
+		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size);
 
 		// Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
 		world_position = hash_periodic_shifting(world_position, cell_size);
@@ -221,11 +227,11 @@ struct ReGIRHashGrid
 			return hash_grid_cell_index;
 	}
 
-	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, const HIPRTCamera& current_camera, float roughness, Xorshift32Generator& rng, float jittering_radius = 0.5f) const
+	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, const HIPRTCamera& current_camera, float roughness, bool primary_hit, Xorshift32Generator& rng, float jittering_radius = 0.5f) const
 	{
 		float3 random_offset = make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f);
 
-		return original_world_position + random_offset * ReGIRHashGrid::compute_adaptive_cell_size_roughness(original_world_position, current_camera, roughness, m_grid_cell_target_projected_size, m_grid_cell_min_size) * jittering_radius;
+		return original_world_position + random_offset * ReGIRHashGrid::compute_adaptive_cell_size_roughness(original_world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size) * jittering_radius;
 	}
 
 	HashGrid m_hash_grid;

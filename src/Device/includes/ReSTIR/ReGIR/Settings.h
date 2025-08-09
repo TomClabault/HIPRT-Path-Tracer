@@ -209,9 +209,9 @@ struct ReGIRSettings
 
 	///////////////////// Delegating to the grid for these functions /////////////////////
 
-	HIPRT_DEVICE float3 get_cell_size(float3 world_position, const HIPRTCamera& current_camera, float roughness) const
+	HIPRT_DEVICE float3 get_cell_size(float3 world_position, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
 	{
-		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size);
+		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, primary_hit, hash_grid.m_grid_cell_target_projected_size, hash_grid.m_grid_cell_min_size);
 
 		return make_float3(cell_size, cell_size, cell_size);
 	}
@@ -339,7 +339,7 @@ struct ReGIRSettings
 		{
 			float3 jittered;
 			if (do_jittering)
-				jittered = hash_grid.jitter_world_position(world_position, current_camera, roughness, rng, jittering_radius);
+				jittered = hash_grid.jitter_world_position(world_position, current_camera, roughness, primary_hit, rng, jittering_radius);
 			else
 				jittered = world_position;
 

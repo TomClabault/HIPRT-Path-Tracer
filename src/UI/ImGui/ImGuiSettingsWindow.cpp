@@ -2183,7 +2183,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePush("ReGIR surface normal discretization tree");
 
 				static int normal_discretization_precision = ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits;
-				ImGui::SliderInt("Discretization precision", &normal_discretization_precision, 2, 4);
+				ImGui::SliderInt("Precision 1st hits", &normal_discretization_precision, 2, 4);
 				ImGuiRenderer::show_help_marker("Higher values mean more precision for the discretization but also more computational and VRAM usage for filling the grid as well as a potentially decreased spatial reuse efficiency.");
 
 				if (normal_discretization_precision != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS))
@@ -2209,7 +2209,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePush("ReGIR surface normal discretization 2nd hits tree");
 
 				static int normal_discretization_precision = ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits;
-				ImGui::SliderInt("Discretization precision 2dn hits", &normal_discretization_precision, 2, 4);
+				ImGui::SliderInt("Precision 2nd hits", &normal_discretization_precision, 2, 4);
 				ImGuiRenderer::show_help_marker("Higher values mean more precision for the discretization but also more computational and VRAM usage for filling the grid as well as a potentially decreased spatial reuse efficiency.");
 
 				if (normal_discretization_precision != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS))

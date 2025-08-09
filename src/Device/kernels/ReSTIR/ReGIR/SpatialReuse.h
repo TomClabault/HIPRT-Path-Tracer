@@ -33,7 +33,7 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
         float3 offset_float_radius_1 = random_neighbor * 2.0f - 1.0f;
         float3 offset_float_radius = offset_float_radius_1 * regir_settings.spatial_reuse.spatial_reuse_radius;
         float3 offset = make_float3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
-        float3 point_in_neighbor_cell = point_in_center_cell + offset * regir_settings.get_cell_size(point_in_center_cell, render_data.current_camera, center_cell_roughness);
+        float3 point_in_neighbor_cell = point_in_center_cell + offset * regir_settings.get_cell_size(point_in_center_cell, render_data.current_camera, center_cell_roughness, primary_hit);
         
         neighbor_hash_grid_cell_index_in_grid = regir_settings.get_hash_grid_cell_index_from_world_pos(point_in_neighbor_cell, center_cell_normal, render_data.current_camera, center_cell_roughness, primary_hit);
         if (neighbor_hash_grid_cell_index_in_grid != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && regir_settings.get_hash_cell_data_soa(primary_hit).grid_cell_alive[neighbor_hash_grid_cell_index_in_grid])
