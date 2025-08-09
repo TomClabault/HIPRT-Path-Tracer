@@ -2178,16 +2178,43 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("Whether or not to use the surface normal in the hash function of the hash grid. Increases quality but also significantly increases memory usage");
-			/*if (include_normals_in_hash)
+			if (include_normals_in_hash)
 			{
 				ImGui::TreePush("ReGIR surface normal discretization tree");
 
-				ImGui::SliderInt("Discretization precision", &regir_settings.hash_grid.m_normal_quantization_steps, 2, 4);
+				static int normal_discretization_precision = ReGIR_HashGridHashSurfaceNormalResolution;
+				ImGui::SliderInt("Discretization precision", &normal_discretization_precision, 2, 4);
 				ImGuiRenderer::show_help_marker("Higher values mean more precision for the discretization but also more computational and VRAM usage for filling the grid as well as a potentially decreased spatial reuse efficiency.");
 
-				ImGui::TreePop();
-			}*/
+				if (normal_discretization_precision != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION))
+				{
+					ImGui::TreePush("Apply button ReGIR normal discretization");
 
+					if (ImGui::Button("Apply"))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION, normal_discretization_precision);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
+
+				ImGui::TreePop();
+			}
+
+			static bool adaptive_roughness_grid_precision = ReGIR_AdaptiveRoughnessGridPrecision;
+			if (ImGui::Checkbox("Adaptive roughness grid precision", &adaptive_roughness_grid_precision))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION, adaptive_roughness_grid_precision ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Collision resolution");
 			const char* items[] = { "- Linear probing", "- Rehashing" };
 			const char* tooltips[] = {
 				"If a collision is found, look up the next index in the hash\n"
@@ -2198,7 +2225,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"new candidate location. Continue doing so until an empty location\n"
 				"is found or the maximum number of steps is exceeded.",
 			};
-			if (ImGuiRenderer::ComboWithTooltips("Collision resolution mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE), items, IM_ARRAYSIZE(items), tooltips))
+			if (ImGuiRenderer::ComboWithTooltips("Mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE), items, IM_ARRAYSIZE(items), tooltips))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -2217,15 +2244,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 					m_renderer->recompile_kernels();
 				}
 				ImGui::TreePop();
-			}
-
-			static bool adaptive_roughness_grid_precision = ReGIR_AdaptiveRoughnessGridPrecision;
-			if (ImGui::Checkbox("Adaptive roughness grid precision", &adaptive_roughness_grid_precision))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION, adaptive_roughness_grid_precision ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
 			}
 
 			ImGui::TreePop();

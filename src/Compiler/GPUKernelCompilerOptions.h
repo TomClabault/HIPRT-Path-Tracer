@@ -61,6 +61,7 @@ public:
 	static const std::string REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE;
 	static const std::string REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS;
 	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL;
+	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION;
 	static const std::string REGIR_SHADING_JITTER_TRIES;
 	static const std::string REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION;
 	static const std::string REGIR_DEBUG_MODE;

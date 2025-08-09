@@ -24,7 +24,7 @@ struct ReGIRHashGrid
 		int width = current_camera.sensor_width;
 		int height = current_camera.sensor_height;
 		
-#if ReGIR_AdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE
+#if ReGIR_AdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
 		if (roughness >= 0.08f && roughness < 0.2f)
 		{
 			float t = hippt::inverse_lerp(roughness, 0.08f, 0.2f);
@@ -66,7 +66,7 @@ struct ReGIRHashGrid
 		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
 #if ReGIR_HashGridHashSurfaceNormal == KERNEL_OPTION_TRUE
 		// And adding normal hasing from [World-Space Spatiotemporal Path Resampling for Path Tracing, 2023]
-		unsigned int quantized_normal = hash_quantize_normal(surface_normal, m_normal_quantization_steps);
+		unsigned int quantized_normal = hash_quantize_normal(surface_normal, ReGIR_HashGridHashSurfaceNormalResolution);
 		unsigned int checksum = h2_xxhash32(quantized_normal + h2_xxhash32(cell_size + h2_xxhash32(grid_coord_z + h2_xxhash32(grid_coord_y + h2_xxhash32(grid_coord_x)))));
 		unsigned int cell_hash = h1_pcg(quantized_normal + h1_pcg(cell_size + h1_pcg(grid_coord_z + h1_pcg(grid_coord_y + h1_pcg(grid_coord_x))))) % total_number_of_cells;
 #else
@@ -232,7 +232,6 @@ struct ReGIRHashGrid
 
 	float m_grid_cell_min_size = 0.2f;
 	float m_grid_cell_target_projected_size = 20.0f;
-	int m_normal_quantization_steps = 2;
 };
 
 #endif
