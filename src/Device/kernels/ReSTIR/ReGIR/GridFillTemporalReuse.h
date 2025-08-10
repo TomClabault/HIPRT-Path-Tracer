@@ -52,6 +52,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 
     bool reservoir_is_canonical = regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell);
 
+    int retries = 0;
     for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
     {
         LightSampleInformation light_sample;
@@ -66,6 +67,22 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 
         if (light_sample.emissive_triangle_index == -1)
             continue;
+
+        /*if (!reservoir_is_canonical)
+        {
+            float contribution = light_sample.emission.luminance() / hippt::length2(surface.cell_point - light_sample.point_on_light);
+            contribution = hippt::min(contribution, 1.0f);
+
+            if (rng() < contribution)
+                light_sample.area_measure_pdf *= contribution;
+            else
+            {
+                if (retries++ < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir)
+                    light_sample_index--;
+
+                continue;
+            }
+        }*/
 
         float target_function;
         if (reservoir_is_canonical)

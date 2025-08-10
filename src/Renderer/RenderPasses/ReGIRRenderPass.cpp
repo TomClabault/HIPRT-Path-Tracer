@@ -570,7 +570,7 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data, ReGIRHashGridSoADevice first_input_reservoirs, ReGIRHashGridSoADevice first_output_reservoirs, bool primary_hit, bool for_pre_integration, oroStream_t stream)
 {
 	if (!render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
-		return ReGIRHashGridSoADevice();
+		return first_input_reservoirs;
 
 	ReGIRHashCellDataSoADevice output_reservoirs_cell_data = render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit);
 	
@@ -631,8 +631,8 @@ void ReGIRRenderPass::launch_supersampling_fill(HIPRTRenderData& render_data)
 
 		launch_light_presampling(render_data, m_renderer->get_main_stream());
 		launch_grid_fill_temporal_reuse(render_data, true, false, m_renderer->get_main_stream());
-		ReGIRHashGridSoADevice spatial_outupt = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
-		launch_supersampling_copy(render_data, spatial_outupt);
+		ReGIRHashGridSoADevice spatial_output = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
+		launch_supersampling_copy(render_data, spatial_output);
 
 		m_hash_grid_storage.increment_supersampling_counters(render_data);
 
