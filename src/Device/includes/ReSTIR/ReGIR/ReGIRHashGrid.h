@@ -24,7 +24,7 @@ struct ReGIRHashGrid
 		int width = current_camera.sensor_width;
 		int height = current_camera.sensor_height;
 		
-#if ReGIR_AdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
+#if ReGIR_HashGridAdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
 		if (primary_hit)
 		{
 			// Only increasing the resolution for the primary hit cells where
@@ -52,10 +52,14 @@ struct ReGIRHashGrid
 		}
 #endif
 
+#if ReGIR_HashGridConstantGridCellSize == KERNEL_OPTION_TRUE
+		return grid_cell_min_size;
+#else
 		float cell_size_step = hippt::length(world_position - current_camera.position) * tanf(target_projected_size * current_camera.vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
 		float log_step = floorf(log2f(cell_size_step / grid_cell_min_size));
 
 		return hippt::max(grid_cell_min_size, grid_cell_min_size * exp2f(log_step));
+#endif
 	}
 
 	HIPRT_DEVICE unsigned int custom_regir_hash(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, unsigned int total_number_of_cells, unsigned int& out_checksum) const
@@ -236,8 +240,8 @@ struct ReGIRHashGrid
 
 	HashGrid m_hash_grid;
 
-	float m_grid_cell_min_size = 0.2f;
-	float m_grid_cell_target_projected_size = 20.0f;
+	float m_grid_cell_min_size = ReGIR_HashGridConstantGridCellSize ? 0.75f : 0.5f;
+	float m_grid_cell_target_projected_size = 10.0f;
 };
 
 #endif

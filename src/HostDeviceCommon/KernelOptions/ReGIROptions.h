@@ -165,7 +165,16 @@
  * such that the BRDF term in the target function of the grid fill (if used at all) has a higher
  * precision and gives better results
  */
-#define ReGIR_AdaptiveRoughnessGridPrecision KERNEL_OPTION_TRUE
+#define ReGIR_HashGridAdaptiveRoughnessGridPrecision KERNEL_OPTION_TRUE
+
+/**
+ * Whether or not to use constant grid cell size for the hash grid.
+ * 
+ * If this is false, the grid cell size will increase (cells gets bigger) the further away
+ * from the camera. This can help with performance and the number of resident cells
+ * in the hash grid but it tends to hurt quality because of the reduced grid cell resolution
+ */
+#define ReGIR_HashGridConstantGridCellSize KERNEL_OPTION_FALSE
 
 /**
  *  How to resolve a collision found in the hash grid:

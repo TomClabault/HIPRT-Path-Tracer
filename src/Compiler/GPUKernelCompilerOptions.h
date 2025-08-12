@@ -64,7 +64,8 @@ public:
 	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS;
 	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS;
 	static const std::string REGIR_SHADING_JITTER_TRIES;
-	static const std::string REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION;
+	static const std::string REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION;
+	static const std::string REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE;
 	static const std::string REGIR_DEBUG_MODE;
 
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;

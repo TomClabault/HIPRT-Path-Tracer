@@ -60,25 +60,23 @@ extern ImGuiLogger g_imgui_logger;
 // - Force albedo to white for spatial reuse? Because what's interesting to reuse is the shape of the BRDF and the incident radiance. Resampling from a black diffuse is still interesting. The albedo doesn't matter
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
-// - Now that we have proper MIS weights for approximate PDFs, retry the ReSTIR DI reprojection branch
 
 // TODO ReGIR
-// - Store target function in reservoir to avoid recomputing it during pairwise MIS?
-// - Disable roughness adaptive precision if not on the first hit
+// - Can we group light triangles by their meshes and pre-compute a CDF per each grid cell for which meshes are the best one for that grid cell.
+//		- We would then use that CDF during the grid fill to resample a good mesh and then resample a good triangle in that mesh
+//		- We'er going to have a similar "CDF per cell" situation as "Cache Points" from Disney some maybe there are going to be some ideas to pick from their CDF blending / visibility integration etc...
+// - Store target function in reservoir to avoid recomputing it during pairwise MIS shading resampling?
 // - Stochastic light culling harada et al to improve base candidate sampling
 // - Pixel deinterleaving for reducing correlations in light presampling ? Segovia 2006
 // - Can we have a lightweight light rejection (russian roulette) method in the grid fill? So even if we have 32 candidates per grid fill cell, if a light is evidently too far away to contribute, we can reject it and not count that as a try from our 32 tries. The rejection test needs to be lightweight such that it is significantly less expensive than doing a full candidate
 //		- To make the rejection lightweight, can we have a luminance of emission baked into our materials such that we can simply check the luminance of the light (one float fetch) instead of the full RGB color which would be 3 float fetchtes. Maybe that would be faster
 // - Increased the number of shading retries?
+// - NEE++ compaction: we only need uchar per value, not uint
 // - Can we shade only the 4 non canonical neighbors + the final reservoir instead of shading everyone?
 //		-  For the MIS weights, we can use the unnormalized target functions for everyone and it should be fine?
-// - Surface normal with more precision but not far away from the camera and bit for secondary hits?
-// 		- Surface normal using geometric or shading ?
 // - For interacting with ReGIR, we can probably just shade with non canonical candidates and that's it. It will be biased but at least it won't be disgusting because of the lack of pre integration information
-// - Surface normal in hash only for the first hits? Do we loose a lot of quality? Would be nice if we didn't so that we can crank things up for the first hit without paying the price of high normal resolution at secondary hits
 // - Can we shade multiple reservoirs without shooting shadow rays by using NEE++ to make sure that the reservoir isn't shadowed? This may be biased but maybe not too bad?
 // - Can we have a biased NEE++ where we clamp the normalization factor to avoid fireflies?
-// - Would it be possible to to resample like 1 single or a small amount of new samples into the supersampling grid such that this diversifies samples and avoids too much correlations even while accumulating ?
 // - Can we evaluate the ratio between the UCW and the final contribution? If the ratio is higher than a threshold then that's an outlier / Firefly and we may want to skip it attenuate it
 // - Can we do many many more samples per each reservoir during the pre integration pass (and thus have less reservoirs per cell) to improve the quality of the integral estimate with less reservoirs and less integration iterations?
 // - Spatial reuse seems to introduce quite a bit of correlations so we would be better off improving the base sampling to not have to rely on spatial reuse for good samples quality
@@ -229,9 +227,10 @@ extern ImGuiLogger g_imgui_logger;
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Features:
+// - RISLTC: https://data.ishaanshah.xyz/research/pdfs/risltc.pdf. Some explanations in there for projected solid angle and LTC sampling
 // - Inciteful graph to explore (started with Practical product sampling warping NVIDIA): https://inciteful.xyz/p?ids%5B%5D=W4220995884&ids%5B%5D=W3179788358&ids%5B%5D=W4403641440&ids%5B%5D=W4390345185&ids%5B%5D=W4388994411&ids%5B%5D=W4200187284&ids%5B%5D=W2885975589&ids%5B%5D=W3183450244&ids%5B%5D=W1893031899&ids%5B%5D=W3036883119&ids%5B%5D=W3044759327&ids%5B%5D=W4240396283&ids%5B%5D=W3110265079&ids%5B%5D=W2073976119&ids%5B%5D=W2988541899&ids%5B%5D=W2885239691&ids%5B%5D=W2964425571&ids%5B%5D=W2030242873&ids%5B%5D=W3044185278
 // - VisibilityCluster: Average Directional Visibility for Many-Light Rendering: https://ieeexplore.ieee.org/document/6464264
-// - Practical product sampling warping NVIDIA
+// - Practical product sampling warping NVIDIA, there's a shadertoy for that
 // - Sample specular/diffuse lobe with the luminance of the diffuse lobe
 // - Sample specular/diffuse by taking the thrioughput of the path into account?
 // - Sample by evaluating the contribution of both samples and choosing proportional to the contribution:

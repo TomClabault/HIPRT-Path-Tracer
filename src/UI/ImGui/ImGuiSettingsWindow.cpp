@@ -2160,12 +2160,31 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR hash grid tree");
 
+			static bool constant_grid_cell_size = ReGIR_HashGridConstantGridCellSize;
+			if (ImGui::Checkbox("Constant grid cell size", &constant_grid_cell_size))
+			{
+				regir_settings.hash_grid.m_grid_cell_min_size = constant_grid_cell_size ? 0.75f : 0.2f;
+
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE, constant_grid_cell_size ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to use constant grid cell size for the hash grid.\n\n"
+				""
+				"If this is false, the grid cell size will increase(cells gets bigger) the further away "
+				"from the camera.This can help with performance and the number of resident cells "
+				"in the hash grid but it tends to hurt quality because of the reduced grid cell resolution.");
+
+			ImGui::BeginDisabled(constant_grid_cell_size);
 			if (ImGui::SliderFloat("Grid cell target projected size", &regir_settings.hash_grid.m_grid_cell_target_projected_size, 5, 25))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("The target screen-space size (in pixels) that a grid cell should occupy on the screen.\n"
 				"This has the effect of making the grid cells larger in the distance so that the projected size stays approximately constant.");
+			ImGui::EndDisabled();
 
-			if (ImGui::SliderFloat("Grid cell minimum size", &regir_settings.hash_grid.m_grid_cell_min_size, 0.1, 0.5))
+			std::string grid_cell_size_text = constant_grid_cell_size ? "Grid cell size" : "Grid cell minimum size";
+			if (ImGui::SliderFloat(grid_cell_size_text.c_str(), &regir_settings.hash_grid.m_grid_cell_min_size, 0.1, 0.5))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
 
@@ -2230,10 +2249,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePop();
 			}
 
-			static bool adaptive_roughness_grid_precision = ReGIR_AdaptiveRoughnessGridPrecision;
+			static bool adaptive_roughness_grid_precision = ReGIR_HashGridAdaptiveRoughnessGridPrecision;
 			if (ImGui::Checkbox("Adaptive roughness grid precision", &adaptive_roughness_grid_precision))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_ADAPTIVE_ROUGHNESS_GRID_PRECISION, adaptive_roughness_grid_precision ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION, adaptive_roughness_grid_precision ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
