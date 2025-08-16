@@ -56,8 +56,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 572
-#define DEBUG_PIXEL_Y 346
+#define DEBUG_PIXEL_X 3
+#define DEBUG_PIXEL_Y 0
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -401,12 +401,16 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.emissive_triangles_primitive_indices = parsed_scene.emissive_triangles_primitive_indices.data();
     m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures = parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.data();
 
+    m_emissive_meshes_alias_tables.load_from_emissive_meshes(parsed_scene);
+    m_render_data.buffers.emissive_meshes_alias_tables = m_emissive_meshes_alias_tables.to_device();
+
     std::cout << "Building scene's BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles(parsed_scene.triangles_vertex_indices);
     m_emissive_triangles_buffer = parsed_scene.get_triangles(parsed_scene.emissive_triangle_vertex_indices);
 
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
     m_light_bvh = std::make_shared<BVH>(&m_emissive_triangles_buffer);
+
 
     m_render_data.cpu_only.bvh = m_bvh.get();
     m_render_data.cpu_only.light_bvh = m_light_bvh.get();
@@ -454,10 +458,10 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 
             Utils::compute_alias_table(power_list, power_sum, m_power_alias_table_probas, m_power_alias_table_alias);
 
-            m_render_data.buffers.emissives_power_alias_table.alias_table_alias = m_power_alias_table_alias.data();
-            m_render_data.buffers.emissives_power_alias_table.alias_table_probas = m_power_alias_table_probas.data();
-            m_render_data.buffers.emissives_power_alias_table.sum_elements = power_sum;
-            m_render_data.buffers.emissives_power_alias_table.size = scene.emissive_triangles_primitive_indices.size();
+            m_render_data.buffers.emissive_triangles_power_alias_table.alias_table_alias = m_power_alias_table_alias.data();
+            m_render_data.buffers.emissive_triangles_power_alias_table.alias_table_probas = m_power_alias_table_probas.data();
+            m_render_data.buffers.emissive_triangles_power_alias_table.sum_elements = power_sum;
+            m_render_data.buffers.emissive_triangles_power_alias_table.size = scene.emissive_triangles_primitive_indices.size();
 
             auto stop = std::chrono::high_resolution_clock::now();
             std::cout << "Power alias table construction time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;

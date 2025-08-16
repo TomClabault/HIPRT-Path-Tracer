@@ -25,6 +25,7 @@ public:
 
 	OrochiBuffer() : m_data_pointer(nullptr) {}
 	OrochiBuffer(int element_count);
+	OrochiBuffer(const std::vector<T>& data);
 	OrochiBuffer(OrochiBuffer<T>&& other);
 	~OrochiBuffer();
 
@@ -97,7 +98,7 @@ public:
 	/**
 	 * Uploads 'element_count' elmements from 'data' starting (it will be overriden) at element number 'start_index' in the buffer
 	 */
-	void upload_data_partial(int start_index, const T* data, size_t element_count);
+	void upload_data_partial(size_t start_index, const T* data, size_t element_count);
 
 	void unpack_to_GL_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
 
@@ -126,6 +127,16 @@ template <typename T>
 OrochiBuffer<T>::OrochiBuffer(int element_count) : m_element_count(element_count)
 {
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * element_count));
+}
+
+template <typename T>
+OrochiBuffer<T>::OrochiBuffer(const std::vector<T>& data)
+{
+	if (data.size() == 0)
+		return;
+
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * data.size()));
+	upload_data(data);
 }
 
 template <typename T>
@@ -430,7 +441,7 @@ void OrochiBuffer<T>::upload_data(const T* data)
 }
 
 template<typename T>
-inline void OrochiBuffer<T>::upload_data_partial(int start_index, const T* data, size_t element_count)
+inline void OrochiBuffer<T>::upload_data_partial(size_t start_index, const T* data, size_t element_count)
 {
 	if (start_index > m_element_count)
 	{

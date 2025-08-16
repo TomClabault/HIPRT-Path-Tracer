@@ -19,7 +19,7 @@
 #include "Renderer/CPUDataStructures/GMoNCPUData.h"
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
-#include "Renderer/CPUGPUCommonDataStructures/PrecomputedEmissiveTrianglesDataSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRPresampledLightsSoAHost.h"
@@ -127,10 +127,15 @@ private:
     std::vector<float> m_envmap_alias_table_probas;
     std::vector<int> m_envmap_alias_table_alias;
 
+    // Alias table for sampling emissive triangles in the scene proportional to
+    // their power
     std::vector<float> m_power_alias_table_probas;
     std::vector<int> m_power_alias_table_alias;
-    // This is a remnant of some tests and it was actually not worth it
-	PrecomputedEmissiveTrianglesDataSoAHost<std::vector> m_precomputed_emissive_triangles_data;
+
+    // Structure that contains an alias table for sampling an emissive mesh proportional
+    // to its power as well as individual alias tables for each emissive mesh to be able
+    // to sample an emissive triangle proportional to its power within a given mesh
+    EmissiveMeshesAliasTablesHost<std::vector> m_emissive_meshes_alias_tables;
 
     NEEPlusPlusCPUData m_nee_plus_plus;
 
@@ -214,6 +219,10 @@ private:
     std::vector<Triangle> m_triangle_buffer;
     std::vector<Triangle> m_emissive_triangles_buffer;
     std::shared_ptr<BVH> m_bvh;
+    // The light BVH is only used for tracing rays. This is a BVH built only over the emissive
+    // triangles of the scene. 
+    // 
+    // This is not a light hierarchy for light sampling
     std::shared_ptr<BVH> m_light_bvh;
 
     Camera m_camera;

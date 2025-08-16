@@ -375,7 +375,7 @@ private:
 
 		OrochiBuffer<float>& alias_table_probas_buffer,
 		OrochiBuffer<int>& alias_table_alias_buffer,
-		DeviceAliasTable& power_alias_table);
+		AliasTableDevice& power_alias_table);
 
 	/**
 	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal

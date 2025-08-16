@@ -37,7 +37,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
     full_sample_information.area_measure_pdf *= 1.0f / render_data.buffers.emissive_triangles_count;
 #elif ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER
     // PDF of sampling that triangle according to its power
-    full_sample_information.area_measure_pdf *= (full_sample_information.emission.luminance() * full_sample_information.light_area) / render_data.buffers.emissives_power_alias_table.sum_elements;
+    full_sample_information.area_measure_pdf *= (full_sample_information.emission.luminance() * full_sample_information.light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
 #endif
 
     return full_sample_information;

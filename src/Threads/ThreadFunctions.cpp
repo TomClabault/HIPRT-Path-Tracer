@@ -135,7 +135,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 
 void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene)
 {
-    int current_emissive_triangle_index = 0;
+    int current_triangle_index_in_whole_scene = 0;
 
     // If the scene contains multiple meshes, each mesh will have
     // its vertices indices starting at 0. We don't want that.
@@ -166,7 +166,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
         bool is_mesh_emissive = renderer_material.is_emissive() || emissive_texture_used;
 
         int max_emissive_mesh_index_offset = 0;
-        for (int face_index = 0; face_index < mesh->mNumFaces; face_index++, current_emissive_triangle_index++)
+        for (int face_index = 0; face_index < mesh->mNumFaces; face_index++, current_triangle_index_in_whole_scene++)
         {
             int index_1 = mesh->mFaces[face_index].mIndices[0];
             int index_2 = mesh->mFaces[face_index].mIndices[1];
@@ -181,41 +181,101 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
                     // Pushing the index of the current triangle if we're looping on an emissive mesh
                     // and if that mesh doesn't have an emissive texture because we're not importance
                     // sampling emissive textures
-                    parsed_scene.emissive_triangles_primitive_indices.push_back(current_emissive_triangle_index);
+                    parsed_scene.emissive_triangles_primitive_indices.push_back(current_triangle_index_in_whole_scene);
 
                 parsed_scene.emissive_triangle_vertex_indices.push_back(index_1 + global_indices_offset);
                 parsed_scene.emissive_triangle_vertex_indices.push_back(index_2 + global_indices_offset);
                 parsed_scene.emissive_triangle_vertex_indices.push_back(index_3 + global_indices_offset);
-                parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.push_back(current_emissive_triangle_index);
+                parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.push_back(current_triangle_index_in_whole_scene);
             }
         }
 
 		global_indices_offset += max_emissive_mesh_index_offset + 1; // +1 because the indices start at 0 but 0 is already 1 index on its own so we need + 1
     }
 
-    // Precomputing the edges AB, AC of the emissives triangles
-//    parsed_scene.triangle_A.resize(parsed_scene.emissive_triangle_indices.size());
-//    parsed_scene.triangle_AB.resize(parsed_scene.emissive_triangle_indices.size());
-//    parsed_scene.triangle_AC.resize(parsed_scene.emissive_triangle_indices.size());
-//
-//    // Also pre-computing the edges AB and AC of that triangle for light sampling (for generating a point on the triangle)
+    // Counting the emissive meshes in the scene
+    // Reserving the worst case where all meshes of the scene are emissive
+    std::vector<unsigned int> emissive_meshes_indices; emissive_meshes_indices.reserve(scene->mNumMeshes);
+    for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
+    {
+        aiMesh* mesh = scene->mMeshes[mesh_index];
+        int material_index = mesh->mMaterialIndex;
+
+        CPUMaterial& renderer_material = parsed_scene.materials[material_index];
+
+        // This does not resolve to true if the mesh is using emissive textures
+        // because we do not want to count those as 'emissive meshes' since
+        // emissive textures aren't importance sampled and "emissive meshes" are
+        // only for importance sampling.
+        bool is_mesh_emissive = renderer_material.is_emissive() && !renderer_material.emissive_texture_used;
+
+        if (is_mesh_emissive)
+            emissive_meshes_indices.push_back(mesh_index);
+    }
+
+    // Computing the offsets
+    std::vector<unsigned int> emissive_meshes_offsets(emissive_meshes_indices.size());
+    for (int i = 1; i < emissive_meshes_offsets.size(); i++)
+        emissive_meshes_offsets[i] = scene->mMeshes[emissive_meshes_indices[i - 1]]->mNumFaces + emissive_meshes_offsets[i - 1];
+
+    if (emissive_meshes_indices.size() > 0)
+    {
+        parsed_scene.parsed_emissive_meshes.emissive_meshes.resize(emissive_meshes_indices.size());
+        parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.resize(parsed_scene.emissive_triangles_primitive_indices.size());
+
+        // Another loop to compute emissive meshes, multithreaded
+
 //#pragma omp parallel for
-//    for (int i = 0; i < parsed_scene.emissive_triangle_indices.size(); i++)
-//    {
-//		// Getting the index of the triangle we're currently processing
-//		int current_triangle_index = parsed_scene.emissive_triangle_indices[i];
-//
-//        float3 vertex_A = parsed_scene.vertices_positions[parsed_scene.triangles_indices[current_triangle_index * 3 + 0]];
-//        float3 vertex_B = parsed_scene.vertices_positions[parsed_scene.triangles_indices[current_triangle_index * 3 + 1]];
-//        float3 vertex_C = parsed_scene.vertices_positions[parsed_scene.triangles_indices[current_triangle_index * 3 + 2]];
-//
-//		float3 AB = vertex_B - vertex_A;
-//		float3 AC = vertex_C - vertex_A;
-//
-//        parsed_scene.triangle_A[i] = vertex_A;
-//        parsed_scene.triangle_AB[i] = AB;
-//        parsed_scene.triangle_AC[i] = AC;
-//    }
+        for (int i = 0; i < emissive_meshes_indices.size(); i++)
+        {
+            aiMesh* mesh = scene->mMeshes[emissive_meshes_indices[i]];
+
+            int material_index = mesh->mMaterialIndex;
+            CPUMaterial& renderer_material = parsed_scene.materials[material_index];
+
+            // If the mesh is emissive, we're going to compute its average vertex, it's total
+            // emissive power and an alias table for sampling the emissive triangles of that mesh
+
+            float total_mesh_power = 0.0f;
+            unsigned int mesh_offset = emissive_meshes_offsets[i];
+            std::vector<float> power_per_face; power_per_face.reserve(mesh->mNumFaces);
+
+            for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
+            {
+                int emissive_triangle_index = parsed_scene.emissive_triangles_primitive_indices.at(mesh_offset + face_index);
+                float3 vertex_1 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 0]];
+                float3 vertex_2 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 1]];
+                float3 vertex_3 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 2]];
+
+                // Using the triangle class to easily compute the area of the triangle
+                float face_area = Triangle(vertex_1, vertex_2, vertex_3).area();
+                float face_power = face_area * renderer_material.emission.luminance() * renderer_material.emission_strength * renderer_material.global_emissive_factor;
+
+                // The PDF of each emissive triangle of the mesh is going to be its power divided by the total power
+                // of the mesh (we'll divide later).
+                // This assumes that emissive triangles within a mesh are always sampled according to power but
+                // this is the case for now
+                parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.at(mesh_offset + face_index) = face_power;
+
+                power_per_face.push_back(face_power);
+                total_mesh_power += face_power;
+            }
+
+            // Normalizing the PDFs of the emissive triangles by the total emissive power of the mesh
+            for (int j = 0; j < mesh->mNumFaces; j++)
+                parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.at(mesh_offset + j) /= total_mesh_power;
+
+            // Computing the average vertex
+            float3 average_vertex = make_float3(0.0f, 0.0f, 0.0f);
+            for (int j = 0; j < mesh->mNumVertices; j++)
+                average_vertex += *reinterpret_cast<float3*>(&mesh->mVertices[j]);
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].average_mesh_point = average_vertex / mesh->mNumVertices;
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].emissive_triangle_count = mesh->mNumFaces;
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].total_mesh_emissive_power = total_mesh_power;
+
+            Utils::compute_alias_table(power_per_face, total_mesh_power, parsed_scene.parsed_emissive_meshes.emissive_meshes[i].alias_probas, parsed_scene.parsed_emissive_meshes.emissive_meshes[i].alias_aliases);
+        }
+    }
 }
 
 void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)

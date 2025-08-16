@@ -66,7 +66,7 @@ HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const 
     else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
     {
         area_measure_pdf = 1.0f / light_area;
-        area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissives_power_alias_table.sum_elements;
+        area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
     }
     else if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
         // Faking the ReGIR PDF with the PDF of its base sampling strategy
@@ -199,50 +199,6 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_trian
 }
 
 /**
- * Samples a point uniformly on the given emissive triangle.
- * The given 'emissive_triangle_index' must come from reading the 'emissive_triangle_indices' buffer of the scene.
- *
- * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
- * 
- * !!!!! This function is a remnant of some tests. It's actually less performant than
- * sample_point_on_generic_triangle() because of more cache misses for some reason !!!!!
- */
-HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_emissive_triangle(int emissive_triangle_index, 
-    const PrecomputedEmissiveTrianglesDataSoADevice& petd, Xorshift32Generator& rng,
-    float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area)
-{
-    float rand_1 = rng();
-    float rand_2 = rng();
-
-#if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_TURK_1990
-    float sqrt_r1 = sqrt(rand_1);
-    float u = 1.0f - sqrt_r1;
-    float v = (1.0f - rand_2) * sqrt_r1;
-#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_HEITZ_2019
-    float2 remapped = square_to_triangle(rand_1, rand_2);
-
-    float u = remapped.x;
-    float v = remapped.y;
-#endif
-
-    float3 vertex_A = petd.triangles_A[emissive_triangle_index];
-    float3 AB = petd.triangles_AB[emissive_triangle_index];
-    float3 AC = petd.triangles_AC[emissive_triangle_index];
-    float3 normal = hippt::cross(AB, AC);
-
-    float length_normal = hippt::length(normal);
-    if (length_normal <= 1.0e-6f)
-        return false;
-
-    float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
-    out_sample_point = random_point_on_triangle;
-    out_sampled_triangle_normal = normal / length_normal;
-    out_triangle_area = 0.5f * length_normal;
-
-    return true;
-}
-
-/**
  * The PDF is computed in area measure
  */
 HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_uniform(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
@@ -283,9 +239,14 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
 
     LightSampleInformation out_sample;
     
-    int random_emissive_triangle_index = render_data.buffers.emissives_power_alias_table.sample(random_number_generator);
-    
-    int triangle_index = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
+    ///////////////////////////////////////////////////
+    /*float mesh_pdf, triangle_pdf;
+    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(random_number_generator, mesh_pdf);
+    int triangle_index = mesh_alias_table.sample_one_triangle_power(random_number_generator, triangle_pdf);*/
+    //////////////////////////////
+
+     int random_emissive_triangle_index = render_data.buffers.emissive_triangles_power_alias_table.sample(random_number_generator);
+     int triangle_index = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
 
     float sampled_triangle_area;
     float3 sampled_triangle_normal;
@@ -303,7 +264,8 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
     // PDF of that point on that triangle
     out_sample.area_measure_pdf = 1.0f / sampled_triangle_area;
     // PDF of sampling that triangle according to its power
-    out_sample.area_measure_pdf *= (out_sample.emission.luminance() * sampled_triangle_area) / render_data.buffers.emissives_power_alias_table.sum_elements;
+    out_sample.area_measure_pdf *= (out_sample.emission.luminance() * sampled_triangle_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
+    //out_sample.area_measure_pdf *= mesh_pdf * triangle_pdf;
 
     return out_sample;
 }

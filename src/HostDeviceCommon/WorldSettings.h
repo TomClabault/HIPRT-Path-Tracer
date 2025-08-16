@@ -45,7 +45,7 @@ struct WorldSettings
 	float* envmap_cdf = nullptr;
 
 	// Probabilities and aliases for sampling the envmap with the alias table strategy
-	DeviceAliasTable envmap_alias_table;
+	AliasTableDevice envmap_alias_table;
 
 	// Rotation matrix for rotating the envmap around in the current frame
 	float3x3 envmap_to_world_matrix = float3x3{ { {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } };

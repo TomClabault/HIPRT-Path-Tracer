@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_RENDER_BUFFERS_H
 
 #include "Device/includes/AliasTable.h"
+#include "Device/includes/EmissiveMeshesAliasTables.h"
 #include "Device/includes/GMoN/GMoNDevice.h"
 
 #include "HostDeviceCommon/Material/MaterialPackedSoA.h"
@@ -39,19 +40,6 @@ struct RenderBuffers
 	float2* texcoords = nullptr;
 	// Precomputed areas of all triangles of the scene
 	float* triangles_areas = nullptr;
-	// For each emissive triangle of the scene, this buffer contains the vertex A of the triangle
-	// as well as AB and AC edges. This is usseful for sampling a point on a triangle without having
-	// to go through the usual
-	//
-	// float3 vertex_A = vertices_positions[triangles_indices[triangle_index * 3 + 0]];
-	// float3 vertex_B = vertices_positions[triangles_indices[triangle_index * 3 + 1]];
-	// float3 vertex_C = vertices_positions[triangles_indices[triangle_index * 3 + 2]];
-	//
-	// indirect fetch code which is expensive on the GPU because of the pointer chasing
-	// 
-	// This is a remnant of some tests and it was actually more expensive than the indirect fetch code
-	// above.
-	// PrecomputedEmissiveTrianglesDataSoADevice precomputed_emissive_triangles_data;
 
 	// Index of the material used by each triangle of the scene
 	int* material_indices = nullptr;
@@ -75,7 +63,8 @@ struct RenderBuffers
 	// that have emissive textures
 	int* emissive_triangles_primitive_indices_and_emissive_textures = nullptr;
 	// Alias table for sampling emissives lights according to power
-	DeviceAliasTable emissives_power_alias_table;
+	AliasTableDevice emissive_triangles_power_alias_table;
+	EmissiveMeshesAliasTablesDevice emissive_meshes_alias_tables;
 
 	// A pointer either to an array of Image8Bit or to an array of
 	// oroTextureObject_t whether if CPU or GPU rendering respectively

@@ -15,6 +15,8 @@
 #include "Image/Image.h"
 #include "Scene/BoundingBox.h"
 #include "Scene/Camera.h"
+#include "Scene/ParsedEmissiveMeshes.h"
+#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshHost.h"
 #include "Renderer/Sphere.h"
 #include "Renderer/Triangle.h"
 #include "Utils/Utils.h"
@@ -120,20 +122,25 @@ struct Scene
     std::vector<float3> vertex_normals;
     std::vector<float2> texcoords;
     std::vector<float> triangle_areas;
-    // Vertex A, edges AB and AC of the emissive triangles of the scene
+    // Vertex A, edges AB and AC of the triangles of the scene
     /*std::vector<float3> triangle_A;
     std::vector<float3> triangle_AB;
     std::vector<float3> triangle_AC;*/
 
 	// Contains the primitive indices of all the emissives triangles that will be used for light sampling.
+    // 
 	// Does not contain the emissive triangles that have emissive textures because those are not light sampled
     // at the moment.
     std::vector<int> emissive_triangles_primitive_indices;
     // Contains the primitive indices of all the emissives triangles that will be used for light sampling.
-	// The difference with 'emissive_triangle_primitive_indices_for_light_sampling' at the moment is that this one
+	// The difference with 'emissive_triangles_primitive_indices' at the moment is that this one ALSO
 	// contains the indices of the emissive triangles that have emissive textures.
     std::vector<int> emissive_triangles_primitive_indices_and_emissive_textures;
+    // Vertex indices of the emissive triangles of the scene. Used only to build a BVH
+    // over the emissive triangles of the scene for ray traversal
     std::vector<int> emissive_triangle_vertex_indices;
+
+    ParsedEmissiveMeshes parsed_emissive_meshes;
 
     std::vector<int> material_indices;
     std::vector<bool> material_has_opaque_base_color_texture;

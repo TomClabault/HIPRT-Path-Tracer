@@ -65,8 +65,6 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
     if (input.size() == 0)
         return;
 
-    // TODO try using floats here to reduce memory usage during the construction and see if precision is an issue or not
-
     // A vector of the luminance of all the pixels of the envmap
     // normalized such that the average of the elements of this vector is 'width*height'
     double input_total_sum_double = in_input_total_sum;

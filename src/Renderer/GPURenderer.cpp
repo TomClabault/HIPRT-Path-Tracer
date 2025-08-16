@@ -181,7 +181,7 @@ void GPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 		
 		m_hiprt_scene.emissive_power_alias_table_probas, 
 		m_hiprt_scene.emissive_power_alias_table_alias,
-		m_render_data.buffers.emissives_power_alias_table);
+		m_render_data.buffers.emissive_triangles_power_alias_table);
 
 	// Not joining the thread that does the computation here because it will
 	// be joined before starting the render since this method is called during
@@ -213,7 +213,7 @@ void GPURenderer::recompute_emissives_power_alias_table()
 
 		m_hiprt_scene.emissive_power_alias_table_probas,
 		m_hiprt_scene.emissive_power_alias_table_alias,
-		m_render_data.buffers.emissives_power_alias_table);
+		m_render_data.buffers.emissive_triangles_power_alias_table);
 
 	ThreadManager::join_threads(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE);
 }
@@ -227,7 +227,7 @@ void GPURenderer::compute_emissives_power_alias_table(
 
 	OrochiBuffer<float>& alias_table_probas_buffer,
 	OrochiBuffer<int>& alias_table_alias_buffer,
-	DeviceAliasTable& power_alias_table)
+	AliasTableDevice& power_alias_table)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE, [
@@ -302,10 +302,10 @@ void GPURenderer::free_emissives_power_alias_table()
 	if (m_hiprt_scene.emissive_power_alias_table_probas.size() > 0)
 		m_hiprt_scene.emissive_power_alias_table_probas.free();
 
-	m_render_data.buffers.emissives_power_alias_table.alias_table_alias = nullptr;
-	m_render_data.buffers.emissives_power_alias_table.alias_table_probas = nullptr;
-	m_render_data.buffers.emissives_power_alias_table.size = 0;
-	m_render_data.buffers.emissives_power_alias_table.sum_elements = 0;
+	m_render_data.buffers.emissive_triangles_power_alias_table.alias_table_alias = nullptr;
+	m_render_data.buffers.emissive_triangles_power_alias_table.alias_table_probas = nullptr;
+	m_render_data.buffers.emissive_triangles_power_alias_table.size = 0;
+	m_render_data.buffers.emissive_triangles_power_alias_table.sum_elements = 0;
 }
 
 bool GPURenderer::needs_emissives_power_alias_table()
@@ -780,7 +780,6 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
 		m_render_data.buffers.has_vertex_normals = m_hiprt_scene.has_vertex_normals.get_device_pointer();
 		m_render_data.buffers.vertex_normals = m_hiprt_scene.vertex_normals.get_device_pointer();
-		// m_render_data.buffers.precomputed_emissive_triangles_data = PrecomputedEmissiveTrianglesDataSoAHostHelpers::to_device(m_hiprt_scene.precomputed_emissive_triangles_data);
 
 		m_render_data.buffers.material_indices = m_hiprt_scene.material_indices.get_device_pointer();
 		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
@@ -790,6 +789,7 @@ void GPURenderer::update_render_data()
 			m_render_data.buffers.emissive_triangles_primitive_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_primitive_indices.get_device_pointer());
 		if (m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.size() > 0)
 			m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
+		m_render_data.buffers.emissive_meshes_alias_tables = m_hiprt_scene.emissive_meshes_alias_tables.to_device();
 		m_render_data.buffers.triangles_areas = m_hiprt_scene.triangle_areas.get_device_pointer();
 		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
 			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
@@ -932,10 +932,8 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 			m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
 		}
 
-		/*m_hiprt_scene.precomputed_emissive_triangles_data.resize(m_hiprt_scene.emissive_triangles_count);
-		m_hiprt_scene.precomputed_emissive_triangles_data.template upload_to_buffer<PrecomputedEmissiveTrianglesDataSoAHostHelpers::VERTEX_A_BUFFER>(scene.triangle_A);
-		m_hiprt_scene.precomputed_emissive_triangles_data.template upload_to_buffer<PrecomputedEmissiveTrianglesDataSoAHostHelpers::AB_BUFFER>(scene.triangle_AB);
-		m_hiprt_scene.precomputed_emissive_triangles_data.template upload_to_buffer<PrecomputedEmissiveTrianglesDataSoAHostHelpers::AC_BUFFER>(scene.triangle_AC);*/
+		// Uploading emissive meshes
+		m_hiprt_scene.emissive_meshes_alias_tables.load_from_emissive_meshes(scene);
 	});
 }
 

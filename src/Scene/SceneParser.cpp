@@ -22,6 +22,9 @@ extern ImGuiLogger g_imgui_logger;
 void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
 {
     const aiScene* scene;
+    // TODO MATERIAL DEDUPLICATION: we don't want ASSIMP::PreTransform but then this is going to duplicate materials for each mesh that use the same material
+    // We don't want the duplicate materials but we do want separate meshes that use the same material
+    assimp_importer.SetPropertyInteger(AI_CONFIG_PP_PTV_KEEP_HIERARCHY, 1);
     scene = assimp_importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
     if (scene == nullptr)
     {
@@ -29,7 +32,7 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
         std::string message = "Falling back to default scene...: " + std::string(CommandlineArguments::DEFAULT_SCENE);
         g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "%s", message.c_str());
 
-        scene = assimp_importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+        scene = assimp_importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
         scene_filepath = CommandlineArguments::DEFAULT_SCENE;
 
         if (scene == nullptr)
@@ -430,9 +433,6 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, renderer_material.absorption_color);
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
-
-    /*renderer_material.metallic = 1.0f;
-    renderer_material.roughness = 0.0f;*/
 
     renderer_material.make_safe();
 }

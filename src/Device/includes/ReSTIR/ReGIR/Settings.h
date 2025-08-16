@@ -84,7 +84,7 @@ struct ReGIRGridFillSettings
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 8;
+		light_sample_count_per_cell_reservoir = 1;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 64 : 8;
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 12 : 4;
@@ -129,7 +129,7 @@ private:
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = true;
+	bool do_spatial_reuse = false;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = true;
