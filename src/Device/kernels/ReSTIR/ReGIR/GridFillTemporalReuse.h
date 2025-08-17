@@ -15,10 +15,33 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRenderData& render_data, const ReGIRSettings& regir_settings, 
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distributions(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
+{
+    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+    AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
+    int alias_table_index = cell_alias_table.sample(rng);
+
+    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size;
+    unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
+    float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
+
+    float triangle_PDF;
+    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
+    int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+
+    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+    light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
+
+    return light_sample;
+}
+
+HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRenderData& render_data, 
     unsigned int hash_grid_cell_index, int reservoir_index_in_cell, bool primary_hit,
     Xorshift32Generator& rng)
 {
+    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
     float presampled_light_pdf;
     ReGIRPresampledLight light_sample = regir_settings.sample_one_presampled_light(hash_grid_cell_index, reservoir_index_in_cell, primary_hit, presampled_light_pdf, rng);
 
@@ -57,11 +80,13 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
     {
         LightSampleInformation light_sample;
 
-        if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)
+        if constexpr (ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE)
+            light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, hash_grid_cell_index, primary_hit, rng);
+        else if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)
             // Never using presampling lights for pre integration because pre integration needs
             // different samples to pre integrate properly and using presampled lights severely restricts
             // the number of different samples we have available
-            light_sample = sample_one_presampled_light(render_data, regir_settings, hash_grid_cell_index, reservoir_index_in_cell, primary_hit, rng);
+            light_sample = sample_one_presampled_light(render_data, hash_grid_cell_index, reservoir_index_in_cell, primary_hit, rng);
         else
             light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
 
@@ -117,14 +142,12 @@ HIPRT_DEVICE void grid_fill_pre_integration_accumulation(HIPRTRenderData& render
 
 /** 
  * This kernel is in charge of resetting (when necessary) and filling the ReGIR grid.
- * 
- * This kernel also does the temporal reuse if enabled.
  */
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit)
 #else
 template <bool accumulatePreIntegration>
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
 #endif
 {
     if (render_data.buffers.emissive_triangles_count == 0)

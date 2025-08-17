@@ -31,7 +31,10 @@ std::size_t ReGIRHashGridStorage::get_byte_size() const
 		m_correlation_reduction_grid_primary_hits.get_byte_size() +
 
 		m_canonical_pre_integration_factors_primary_hits.get_byte_size() +
-		m_canonical_pre_integration_factors_secondary_hits.get_byte_size();
+		m_canonical_pre_integration_factors_secondary_hits.get_byte_size() + 
+		
+		m_cells_alias_tables_primary_hits.get_byte_size() +
+		m_cells_alias_tables_secondary_hits.get_byte_size();
 }
 
 bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
@@ -78,6 +81,13 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 		get_non_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 		get_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
+
+		updated = true;
+	}
+
+	if (grid_not_allocated || grid_res_changed)
+	{
+		get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), 256);
 
 		updated = true;
 	}
@@ -140,6 +150,8 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 				m_correlation_reduction_grid_primary_hits.free();
 		}
 
+		// Only allocate light presampling if the if(primary_hit) branch because we only want to do the allocation
+		// once for both primary hits and secondary hits
 		if (render_data.render_settings.regir_settings.do_light_presampling)
 		{
 			unsigned int presampled_lights_count_needed = render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count();
@@ -234,6 +246,8 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 
 			get_non_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 			get_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
+
+			get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), 256);
 
 			// We need to update the cell alive count because there may have possibly been collisions that couldn't be resolved during the rehashing
 			// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different (lower) --> need to update
@@ -344,6 +358,13 @@ bool ReGIRHashGridStorage::free_internal(bool primary_hit)
 		updated = true;
 	}
 
+	if (get_cell_alias_tables(primary_hit).get_byte_size() > 0)
+	{
+		get_cell_alias_tables(primary_hit).free();
+
+		updated = true;
+	}
+
 	if (primary_hit && m_presampled_lights.get_byte_size() > 0)
 		// Only freeing the presampled lights on the first hit by convention
 		m_presampled_lights.free();
@@ -381,6 +402,11 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = get_non_canonical_factors(true).get_atomic_device_pointer();
 	render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = get_canonical_factors(true).get_atomic_device_pointer();
 
+	render_data.render_settings.regir_settings.cells_distributions_primary_hits = get_cell_alias_tables(true).to_device();
+
+
+
+
 	// Secondary hits grid cells
 	if (render_data.render_settings.nb_bounces > 0)
 	{
@@ -393,6 +419,8 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 
 		render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
+
+		render_data.render_settings.regir_settings.cells_distributions_secondary_hits = get_cell_alias_tables(false).to_device();
 	}
 }
 
@@ -441,6 +469,11 @@ OrochiBuffer<float>& ReGIRHashGridStorage::get_non_canonical_factors(bool primar
 OrochiBuffer<float>& ReGIRHashGridStorage::get_canonical_factors(bool primary_hit)
 {
 	return primary_hit ? m_canonical_pre_integration_factors_primary_hits : m_canonical_pre_integration_factors_secondary_hits;
+}
+
+ReGIRCellsAliasTablesSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_cell_alias_tables(bool primary_hit)
+{
+	return primary_hit ? m_cells_alias_tables_primary_hits : m_cells_alias_tables_secondary_hits;
 }
 
 unsigned int& ReGIRHashGridStorage::get_total_number_of_cells(bool primary_hit)

@@ -62,6 +62,12 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Rename random_number_generator into rng everywhere
+// - ReGIR rename per cell alias tables into per cell light distributions everywhere
+// - Remove RNG argument from bsdf_dispatcher_eval(), not needed anymore since we don't the on-the-fly monte carlo integration anymore
+// - NEE++ seems broken, worked better before
+// - Jitter NEE++ just a little bit to get rid of grid artifacts at the cost of some variance
+// - Jitter ReGIR for shading and spatial reuse only in the tangent plane of the surface instead of randomly
 // - Can we group light triangles by their meshes and pre-compute a CDF per each grid cell for which meshes are the best one for that grid cell.
 //		- We would then use that CDF during the grid fill to resample a good mesh and then resample a good triangle in that mesh
 //		- We'er going to have a similar "CDF per cell" situation as "Cache Points" from Disney some maybe there are going to be some ideas to pick from their CDF blending / visibility integration etc...

@@ -165,6 +165,7 @@ struct HIPRTScene
 		stream << "Scene statistics: " << std::endl;
 		stream << "\t" << whole_scene_BLAS.m_mesh.vertexCount << " vertices" << std::endl;
 		stream << "\t" << whole_scene_BLAS.m_mesh.triangleCount << " triangles" << std::endl;
+		stream << "\t" << emissive_meshes_alias_tables.m_meshes_PDFs.size() << " emissive meshes" << std::endl;
 		stream << "\t" << emissive_triangles_primitive_indices.size() << " emissive triangles" << std::endl;
 		stream << "\t" << materials_buffer.m_element_count << " materials" << std::endl;
 		stream << "\t" << orochi_materials_textures.size() << " textures" << std::endl;

@@ -36,6 +36,9 @@
  */
 #define ReGIR_GridPrepopulationResolutionDownscale 1
 
+#define ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes 200000000u
+#define ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts (static_cast<unsigned int>(ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes / sizeof(float)))
+
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -111,7 +114,17 @@
  * Whether or not to enable light presampling to improve grid fill performance
  * on scenes with many many lights
  */
-#define ReGIR_GridFillDoLightPresampling KERNEL_OPTION_TRUE
+#define ReGIR_GridFillDoLightPresampling KERNEL_OPTION_FALSE
+
+/**
+ * If true, the contribution of each emissive mesh of the scene will be precomputed
+ * at each cell of the hash grid to build a sampling distribution based on the contribution
+ * of the emissive meshes.
+ * 
+ * Those per-cell sampling distribution will then be used during the grid fill to provide higher
+ * quality initial light samples
+ */
+#define ReGIR_GridFillUsePerCellDistributions KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

@@ -8,6 +8,8 @@
 
 #include "UI/RenderWindow.h"
 
+#include <numeric>
+
 const std::string ReGIRRenderPass::REGIR_GRID_PRE_POPULATE = "ReGIR Pre-population";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING = "ReGIR Light presampling";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID = "ReGIR Grid fill 1st hits";
@@ -17,6 +19,7 @@ const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID 
 const std::string ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration grid fill";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration spatial reuse";
+const std::string ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID = "ReGIR Compute cells alias tables";
 const std::string ReGIRRenderPass::REGIR_REHASH_KERNEL_ID = "ReGIR Rehash kernel";
 const std::string ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID = "ReGIR Supersampling copy";
 
@@ -33,6 +36,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 	{ REGIR_PRE_INTEGRATION_KERNEL_ID , "ReGIR_Pre_integration" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse"},
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Spatial_Reuse"},
+	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, "ReGIR_Compute_Cells_Alias_Tables"},
 	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
 	{ REGIR_SUPERSAMPLING_COPY_KERNEL_ID, "ReGIR_Supersampling_Copy" },
 };
@@ -48,6 +52,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 	{ REGIR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/PreIntegration.h" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h"},
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h"},
+	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/ComputeCellsAliasTables.h"},
 	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
 	{ REGIR_SUPERSAMPLING_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SupersamplingCopy.h" },
 };
@@ -137,6 +142,11 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION, KERNEL_OPTION_TRUE);
 
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID));
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID));
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->synchronize_options_with(global_compiler_options, options_not_synchronized);
+
 
 
 
@@ -218,6 +228,12 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 	{
 		updated = true;
 		m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+	}
+
+	if (!m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->has_been_compiled())
+	{
+		updated = true;
+		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 	}
 
 
@@ -306,6 +322,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	synchronize_async_compute();
 
+	// For the very first sample of the render
 	if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting())
 	{
 		m_render_window->set_ImGui_status_text("ReGIR Prepopulation pass...");
@@ -316,6 +333,9 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
+
+		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
+		launch_cell_alias_tables_precomputation(render_data);
 
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
@@ -331,6 +351,11 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		// Same with the pre integration factors of the grid cells
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
+
+		// Also need to recompute the alias tables of the grid cells because
+		// a rehash completely restructures 
+		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
+		launch_cell_alias_tables_precomputation(render_data);
 
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 
@@ -501,6 +526,8 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 		// We also want the local 'render_data' parameter here to be updated such
 		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
 		m_hash_grid_storage.to_device(render_data);
+
+		m_last_cells_alias_tables_compute_count_primary_hits = m_last_cells_alias_tables_compute_count_secondary_hits = 0;
 
 		return true;
 	}
@@ -744,6 +771,128 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	render_data.random_number = seed_backup;
 }
 
+void ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data)
+{
+	launch_cell_alias_tables_precomputation_internal(render_data, true);
+	launch_cell_alias_tables_precomputation_internal(render_data, false);
+}
+
+void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit)
+{
+	if (render_data.buffers.emissive_meshes_alias_tables.alias_table_count > ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts)
+	{
+		// There are more emissive meshes than the space in our scratch buffer so we're not
+		// even going to be able to compute one single alias table, aborting
+
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Too many emissive meshes in the scene. ReGIR can't compute per-cell alias tables.");
+
+		return;
+	}
+
+	unsigned int nb_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
+	if (nb_cells_alive == 0)
+		return;
+
+	unsigned int& last_nb_computed_cells_alias_tables = primary_hit ? m_last_cells_alias_tables_compute_count_primary_hits : m_last_cells_alias_tables_compute_count_secondary_hits;
+
+	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
+	unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_alias_tables;
+	unsigned int max_number_of_cells_computed_per_iteration = ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts / emissive_mesh_count;
+
+	// Allocating the scratch buffer with a maximum size of SCRATCH_BUFFER_MAX_SIZE_BYTES.
+	// If we don't need that much size, then we're just allocating what we need (that's the outer min() part)
+	//
+	// The inner min() part on ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts is to round down the buffer on an integer number of
+	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
+	OrochiBuffer<float> contribution_scratch_buffer(hippt::min(hippt::min(ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts, max_number_of_cells_computed_per_iteration), total_number_of_cells_to_compute * emissive_mesh_count));
+	float* scratch_buffer_address = contribution_scratch_buffer.get_device_pointer();
+	
+	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
+
+	unsigned int cell_offset = 0;
+	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
+	const unsigned int actual_number_of_cells_computed_per_iteration = contribution_scratch_buffer.size() / emissive_mesh_count;
+	for (int iter = 0; iter < iteration_needed; iter++)
+	{
+		void* launch_args[] = { &render_data, &scratch_buffer_address, &cell_offset, &primary_hit };
+
+
+
+
+		// Computing the contributions of emissive meshes
+		unsigned int contributions_left_to_compute = total_number_of_cells_to_compute - cell_offset * emissive_mesh_count;
+		unsigned int dispatch_size = hippt::min(contributions_left_to_compute, static_cast<unsigned int>(contribution_scratch_buffer.size()));
+		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->launch_synchronous(64, 1, dispatch_size, 1, launch_args);
+
+
+
+
+		// Sorting the contributions because we're only going to build the alias table on the best
+		// emissives meshes
+		//
+		// We're actually not going to sort the contributions directly but rather sort the
+		// indices that point to the contributions because we're going to need the sorted indices later
+		std::vector<float> contributions = contribution_scratch_buffer.download_data();
+		std::vector<unsigned int> sorted_indices(contributions.size());
+
+		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
+			std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1) + 1, 0); // 0,1,2,...
+
+		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++) 
+		{
+			auto first = sorted_indices.begin() + emissive_mesh_count * i;
+			auto last = sorted_indices.begin() + emissive_mesh_count * (i + 1);
+
+			std::sort(first, last, [&](unsigned int a, unsigned int b) 
+			{
+				// Sorting in descendant order
+				return contributions[a] > contributions[b];
+			});
+		}
+
+		unsigned int alias_table_size = render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
+//#pragma omp parallel for
+		for (int cell_index = 0; cell_index < actual_number_of_cells_computed_per_iteration; cell_index++)
+		{
+			// Either the alias table size or the number of emissive meshes
+			// (number of contributions per cell), whichever is the smallest
+			unsigned contribution_count_min = hippt::min(alias_table_size, emissive_mesh_count);
+
+			// We're only going to keep the best 'alias_table_size' contributing meshes
+			// in case there are more than that
+			float sum_best_contributions = 0.0f;
+			std::vector<float> best_contributions(alias_table_size);
+			for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
+			{
+				float contribution = contributions.at(sorted_indices.at(cell_index * contribution_count_min + contribution_index));
+
+				best_contributions[contribution_index] = contribution;
+				sum_best_contributions += contribution;
+			}
+
+			// Computing the PDFs
+			std::vector<float> PDFs(alias_table_size);
+			for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
+				PDFs[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
+
+			// And computing the alias tables from the contributions
+			std::vector<float> probas;
+			std::vector<int> aliases;
+			Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
+
+			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index];
+			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>().upload_data_partial(hash_grid_cell_index * alias_table_size, probas.data(), contribution_count_min);
+			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>().upload_data_partial(hash_grid_cell_index * alias_table_size, aliases.data(), contribution_count_min);
+			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>().upload_data_partial(hash_grid_cell_index * alias_table_size, PDFs.data(), contribution_count_min);
+			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>().upload_data_partial(hash_grid_cell_index * alias_table_size, sorted_indices.data(), contribution_count_min);
+		}
+
+		cell_offset += max_number_of_cells_computed_per_iteration;
+	}
+
+	last_nb_computed_cells_alias_tables = nb_cells_alive;
+}
+
 void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)
 {
 	if (render_data.render_settings.nb_bounces == 0 && !primary_hit)
@@ -916,6 +1065,9 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 
 	if (m_hash_grid_storage.get_byte_size() > 0)
 		m_hash_grid_storage.reset();
+
+	m_last_cells_alias_tables_compute_count_primary_hits = 0;
+	m_last_cells_alias_tables_compute_count_secondary_hits = 0;
 }
 
 bool ReGIRRenderPass::is_render_pass_used() const

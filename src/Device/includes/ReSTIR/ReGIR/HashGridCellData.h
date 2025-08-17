@@ -25,6 +25,7 @@ struct ReGIRHashCellDataSoADevice
 	Octahedral24BitNormalPadded32b* world_normals = nullptr;
 
 	// TODO these guys in a single buffer to have only one memory access
+	// TODO don't need these, we can fetch the material with the hit primitive index. Some more indirection however. How is going to be the perf?
 	unsigned char* roughness = nullptr;
 	unsigned char* specular = nullptr;
 	unsigned char* metallic = nullptr;
@@ -38,6 +39,8 @@ struct ReGIRHashCellDataSoADevice
 	// may be reading from that buffer at the same time to see if a cell is alive or not
 	//
 	// That staging buffer is then copied to the 'grid_cell_alive' buffer at the end of the frame
+	//
+	// TODO Do we need this buffer? Can we not just check the hit primitive index for example? If it's -1, the cell is not alive
 	AtomicType<unsigned int>* grid_cell_alive = nullptr;
 	unsigned int* grid_cells_alive_list = nullptr;
 

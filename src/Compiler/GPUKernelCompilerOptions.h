@@ -43,6 +43,7 @@ public:
 	static const std::string TRIANGLE_POINT_SAMPLING_STRATEGY;
 
 	static const std::string REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING;
+	static const std::string REGIR_GRID_FILL_USE_PER_CELL_DISTRIBUTIONS;
 	static const std::string REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY;
 	static const std::string REGIR_GRID_FILL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string REGIR_GRID_FILL_TARGET_FUNCTION_COSINE_TERM;

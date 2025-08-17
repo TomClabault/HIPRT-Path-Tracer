@@ -6,8 +6,10 @@
 #ifndef DEVICE_INCLUDES_REGIR_SETTINGS_H
 #define DEVICE_INCLUDES_REGIR_SETTINGS_H
 
+#include "Device/includes/AliasTable.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/RayPayload.h"
+#include "Device/includes/ReSTIR/ReGIR/CellsAliasTablesSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/PresampledLight.h"
 #include "Device/includes/ReSTIR/ReGIR/ReGIRHashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
@@ -206,6 +208,23 @@ struct ReGIRSettings
 
 	HIPRT_DEVICE float get_non_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
 	HIPRT_DEVICE float get_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
+
+	HIPRT_DEVICE const ReGIRCellsAliasTablesSoADevice& get_cell_distributions(bool primary_hit) const { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
+	HIPRT_DEVICE ReGIRCellsAliasTablesSoADevice& get_cell_distributions(bool primary_hit) { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
+
+	HIPRT_DEVICE AliasTableDevice get_cell_alias_table(unsigned int hash_grid_cell_index, bool primary_hit) const
+	{
+		AliasTableDevice out;
+
+		const ReGIRCellsAliasTablesSoADevice& cell_distributions = get_cell_distributions(primary_hit); 
+
+		out.alias_table_alias = cell_distributions.all_alias_tables_aliases + hash_grid_cell_index * cell_distributions.alias_table_size;
+		out.alias_table_probas = cell_distributions.all_alias_tables_probas + hash_grid_cell_index * cell_distributions.alias_table_size;
+		out.size = cell_distributions.alias_table_size;
+		out.sum_elements = -1.0f;
+			
+		return out;
+	}
 
 	///////////////////// Delegating to the grid for these functions /////////////////////
 
@@ -652,6 +671,9 @@ struct ReGIRSettings
 
 	AtomicType<float>* non_canonical_pre_integration_factors_secondary_hits = nullptr;
 	AtomicType<float>* canonical_pre_integration_factors_secondary_hits = nullptr;
+
+	ReGIRCellsAliasTablesSoADevice cells_distributions_primary_hits;
+	ReGIRCellsAliasTablesSoADevice cells_distributions_secondary_hits;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;

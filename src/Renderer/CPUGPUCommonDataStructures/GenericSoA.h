@@ -43,24 +43,21 @@ struct IsStdAtomic<std::atomic<U>> : std::true_type {};
  */
 template<
     template<typename> class Container,
-    typename... Ts>
+    typename... Types>
 struct GenericSoA
 {
     template <typename T>
     using BufferTypeFromVariable = typename std::decay_t<T>::value_type;
 
     template <int bufferIndex>
-    using BufferTypeFromIndex = typename std::tuple_element<bufferIndex, std::tuple<Container<Ts>...>>::type::value_type;
+    using BufferTypeFromIndex = typename std::tuple_element<bufferIndex, std::tuple<Container<Types>...>>::type::value_type;
 
     using IsCPUBuffer = std::is_same<Container<BufferTypeFromIndex<0>>, std::vector<BufferTypeFromIndex<0>>>;
 
-    void resize(std::size_t new_element_count)
+    void resize(std::size_t new_element_count, std::unordered_set<int> excluded_buffer_indices = {})
     {
-        // Applies resize(new_element_count) on each buffer in the tuple
-        std::apply([this, new_element_count](auto&... buffer) 
-        { 
-            (resize_buffer_internal(buffer, new_element_count), ...);
-        }, buffers);
+        // Applies resize(new_element_count) on each buffer in the tuple and handles the excluded buffers
+        resize_with_exclusions_internal(new_element_count, excluded_buffer_indices, std::index_sequence_for<Types...>{});
     }
 
     std::size_t get_byte_size() const
@@ -157,6 +154,15 @@ struct GenericSoA
     }
 
 private:
+    template <std::size_t... indices>
+    void resize_with_exclusions_internal(std::size_t new_element_count, const std::unordered_set<int>& excluded_buffer_indices, std::index_sequence<indices...>)
+    {
+        // If the current buffer being processed has an index that is excluded, let's not resize it
+        ((excluded_buffer_indices.count(indices) == 0
+            ? resize_buffer_internal(std::get<indices>(buffers), new_element_count)
+            : void()), ...);
+    }
+
     template <typename BufferType>
     void resize_buffer_internal(BufferType& buffer, std::size_t new_element_count)
     {
@@ -169,7 +175,7 @@ private:
             buffer.resize(new_element_count);
     }
 
-    std::tuple<Container<Ts>...> buffers;
+    std::tuple<Container<Types>...> buffers;
 };
 
 namespace GenericSoAHelpers

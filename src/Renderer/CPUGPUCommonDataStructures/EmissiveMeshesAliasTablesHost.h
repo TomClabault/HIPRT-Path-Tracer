@@ -98,6 +98,13 @@ struct EmissiveMeshesAliasTablesHost
 		m_meshes_alias_table.size = meshes_alias_table_aliases.size();
 		m_meshes_alias_table.sum_elements = total_meshes_power_sum;
 
+		std::vector<float3> meshes_average_points(parsed_scene.parsed_emissive_meshes.emissive_meshes.size());
+		for (int i = 0; i < meshes_average_points.size(); i++)
+			meshes_average_points[i] = parsed_scene.parsed_emissive_meshes.emissive_meshes[i].average_mesh_point;
+
+		upload_to_device_buffer(m_meshes_average_points, meshes_average_points);
+		upload_to_device_buffer(m_meshes_total_power, emissive_meshes_power);
+
 		// Uploading some more data needed for sampling at runtime
 		std::vector<float> meshes_PDFs(emissive_meshes.size());
 		for (int i = 0; i < emissive_meshes.size(); i++)
@@ -115,8 +122,11 @@ struct EmissiveMeshesAliasTablesHost
 		out.alias_table_count = m_offsets_into_alias_table.size();
 		out.offsets = m_offsets_into_alias_table.data();
 		out.individual_alias_tables_sizes = m_meshes_alias_tables_sizes.data();
+
 		out.meshes_alias_table = m_meshes_alias_table.to_device();
 		out.meshes_PDFs = m_meshes_PDFs.data();
+		out.meshes_average_points = m_meshes_average_points.data();
+		out.meshes_total_power = m_meshes_total_power.data();
 
 		out.alias_tables_aliases = m_alias_tables_aliases.data();
 		out.alias_tables_probas = m_alias_tables_probas.data();
@@ -135,6 +145,8 @@ struct EmissiveMeshesAliasTablesHost
 	DataContainer<unsigned int> m_meshes_alias_tables_sizes;
 	// PDF that the 'meshes_alias_table' samples a given mesh index
 	DataContainer<float> m_meshes_PDFs;
+	DataContainer<float3> m_meshes_average_points;
+	DataContainer<float> m_meshes_total_power;
 
 	// Concatenation of the alias_probas of the alias tables of all emissive meshes of the scene
 	DataContainer<float> m_alias_tables_probas;

@@ -31,7 +31,13 @@ struct EmissiveMeshesAliasTablesDevice
 	// 
 	// This buffer is 'alias_table_count' entries long
 	float* meshes_PDFs = nullptr;
+	// Average of all the vertices of the mesh
+	float3* meshes_average_points = nullptr;
+	// Sum of the emissive power of all the triangles of the mesh
+	float* meshes_total_power = nullptr;
 
+	// How many alias tables are in the big concatenated buffer of alias tables
+	// This is also how many emissive meshes there are in the scene.
 	unsigned int alias_table_count = 0;
 	// Offsets a the alias table of a given mesh index in the big concatenated buffer
 	// of all the alias tables 'alias_tables_probas' and 'alias_tables_aliases'
@@ -49,12 +55,9 @@ struct EmissiveMeshesAliasTablesDevice
 	float* meshes_emissive_triangles_PDFs = nullptr;
 	int* meshes_triangle_indices = nullptr;
 
-	HIPRT_DEVICE EmissiveMeshAliasTableDevice sample_one_emissive_mesh(Xorshift32Generator& rng, float& out_pdf) const
+	HIPRT_DEVICE EmissiveMeshAliasTableDevice get_emissive_mesh_alias_table(unsigned int emissive_mesh_index) const
 	{
 		EmissiveMeshAliasTableDevice out;
-
-		int emissive_mesh_index = meshes_alias_table.sample(rng);
-		out_pdf = meshes_PDFs[emissive_mesh_index];
 
 		unsigned int offset = offsets[emissive_mesh_index];
 		out.alias_table_alias = alias_tables_aliases + offset;
@@ -64,6 +67,14 @@ struct EmissiveMeshesAliasTablesDevice
 		out.size = individual_alias_tables_sizes[emissive_mesh_index];
 
 		return out;
+	}
+
+	HIPRT_DEVICE EmissiveMeshAliasTableDevice sample_one_emissive_mesh(Xorshift32Generator& rng, float& out_pdf) const
+	{
+		int emissive_mesh_index = meshes_alias_table.sample(rng);
+		out_pdf = meshes_PDFs[emissive_mesh_index];
+
+		return get_emissive_mesh_alias_table(emissive_mesh_index);
 	}
 };
 
