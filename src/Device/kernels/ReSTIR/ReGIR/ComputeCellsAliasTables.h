@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_REGIR_GRID_FILL_H
-#define DEVICE_KERNELS_REGIR_GRID_FILL_H
+#ifndef DEVICE_KERNELS_REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_H
+#define DEVICE_KERNELS_REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
@@ -53,13 +53,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Alias_Tables(HIPRTRende
 
 #ifdef __KERNELCC__
     uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-#endif
 
     unsigned int thread_count_per_cell = render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
     unsigned int nb_threads_dispatched = gridDim.x * blockDim.x;
     unsigned int max_thread_index = floorf(nb_threads_dispatched / (float)thread_count_per_cell) * thread_count_per_cell;
+
     if (thread_index >= max_thread_index)
         return;
+#endif
 
     // Cell index in [0, number of grid cells alive]
     unsigned int cell_index = cell_offset + thread_index / render_data.buffers.emissive_meshes_alias_tables.meshes_alias_table.size;

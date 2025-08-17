@@ -8,6 +8,7 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
+#include "Device/kernels/ReSTIR/ReGIR/ComputeCellsAliasTables.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
 #include "Device/kernels/ReSTIR/ReGIR/LightPresampling.h"
@@ -37,12 +38,13 @@
 
 #include <atomic>
 #include <chrono>
+#include <numeric>
 #include <omp.h>
 
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -56,8 +58,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 3
-#define DEBUG_PIXEL_Y 0
+#define DEBUG_PIXEL_X 760
+#define DEBUG_PIXEL_Y 56
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -113,6 +115,9 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     m_regir_state.non_canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_primary_hit.end(), 0.0f);
     m_regir_state.canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.canonical_pre_integration_factors_primary_hit.end(), 0.0f);
+
+    m_regir_state.cells_light_distributions_primary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size);
+    m_regir_state.cells_light_distributions_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.cells_distributions_secondary_hits.alias_table_size);
 
     m_regir_state.non_canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
     m_regir_state.canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
@@ -372,6 +377,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = m_regir_state.non_canonical_pre_integration_factors_primary_hit.data();
     m_render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = m_regir_state.canonical_pre_integration_factors_primary_hit.data();
+
+    m_render_data.render_settings.regir_settings.cells_distributions_primary_hits = m_regir_state.cells_light_distributions_primary_hit.to_device();
+    m_render_data.render_settings.regir_settings.cells_distributions_secondary_hits = m_regir_state.cells_light_distributions_secondary_hit.to_device();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -711,7 +719,14 @@ void CPURenderer::camera_rays_pass()
 void CPURenderer::ReGIR_pass()
 {
     if (m_render_data.render_settings.sample_number == 0)
+    {
+        ReGIR_pre_population();
+        ReGIR_compute_cells_light_distributions();
+
         ReGIR_pre_integration();
+    }
+    else
+        ReGIR_compute_cells_light_distributions();
 
     ReGIR_presample_lights();
 
@@ -774,6 +789,14 @@ ReGIRHashGridSoADevice CPURenderer::ReGIR_spatial_reuse_pass(bool primary_hit)
     return input_reservoirs;
 }
 
+void CPURenderer::ReGIR_pre_population()
+{
+    debug_render_pass([this](int x, int y) 
+    {
+        ReGIR_Grid_Prepopulate(m_render_data, x, y);
+    });
+}
+
 void CPURenderer::ReGIR_pre_integration()
 {
     // 2 iterations: 1 for the primary hits, 1 for the secondary hits
@@ -796,6 +819,138 @@ void CPURenderer::ReGIR_pre_integration()
 
         m_render_data.random_number = seed_backup;
     }
+}
+
+void CPURenderer::ReGIR_compute_cells_light_distributions()
+{
+    ReGIR_compute_cells_light_distributions_internal(true);
+    ReGIR_compute_cells_light_distributions_internal(false);
+}
+
+void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_hit)
+{
+    if (m_render_data.buffers.emissive_meshes_alias_tables.alias_table_count > ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts)
+    {
+        // There are more emissive meshes than the space in our scratch buffer so we're not
+        // even going to be able to compute one single alias table, aborting
+
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Too many emissive meshes in the scene. ReGIR can't compute per-cell alias tables.");
+
+        return;
+    }
+
+    unsigned int nb_cells_alive = primary_hit ? m_regir_state.hash_cell_data_primary_hit.m_grid_cells_alive_count.at(0) : m_regir_state.hash_cell_data_secondary_hit.m_grid_cells_alive_count.at(0);
+    if (nb_cells_alive == 0)
+        return;
+
+    unsigned int& last_nb_computed_cells_alias_tables = primary_hit ? m_regir_state.m_last_cells_alias_tables_compute_count_primary_hits : m_regir_state.m_last_cells_alias_tables_compute_count_secondary_hits;
+
+    unsigned int emissive_mesh_count = m_render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
+    unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_alias_tables;
+    if (total_number_of_cells_to_compute == 0)
+        return;
+    unsigned int max_number_of_cells_computed_per_iteration = ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts / emissive_mesh_count;
+
+    // Allocating the scratch buffer with a maximum size of SCRATCH_BUFFER_MAX_SIZE_BYTES.
+    // If we don't need that much size, then we're just allocating what we need (that's the outer min() part)
+    //
+    // The inner min() part on ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts is to round down the buffer on an integer number of
+    // cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
+    std::vector<float> contribution_scratch_buffer(hippt::min(hippt::min(ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts, max_number_of_cells_computed_per_iteration), total_number_of_cells_to_compute * emissive_mesh_count));
+
+    std::vector<unsigned int> grid_cell_alive_list = primary_hit
+        ? m_regir_state.hash_cell_data_primary_hit.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>()
+        : m_regir_state.hash_cell_data_secondary_hit.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
+
+    unsigned int cell_offset = last_nb_computed_cells_alias_tables;
+    const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
+    const unsigned int actual_number_of_cells_computed_per_iteration = contribution_scratch_buffer.size() / emissive_mesh_count;
+    for (int iter = 0; iter < iteration_needed; iter++)
+    {
+        // Computing the contributions of emissive meshes
+        unsigned int contributions_left_to_compute = total_number_of_cells_to_compute - cell_offset * emissive_mesh_count;
+        unsigned int dispatch_size = hippt::min(contributions_left_to_compute, static_cast<unsigned int>(contribution_scratch_buffer.size()));
+
+#pragma omp parallel for
+        for (int thread_index = 0; thread_index < dispatch_size; thread_index++)
+        {
+            ReGIR_Compute_Cells_Alias_Tables(m_render_data, contribution_scratch_buffer.data(), cell_offset, primary_hit, thread_index);
+        }
+
+
+
+
+        // Sorting the contributions because we're only going to build the alias table on the best
+        // emissives meshes
+        //
+        // We're actually not going to sort the contributions directly but rather sort the
+        // indices that point to the contributions because we're going to need the sorted indices later
+        const std::vector<float>& contributions = contribution_scratch_buffer;
+        std::vector<unsigned int> sorted_indices(contributions.size());
+
+        for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
+            std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
+
+        for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
+        {
+            auto first = sorted_indices.begin() + emissive_mesh_count * i;
+            auto last = sorted_indices.begin() + emissive_mesh_count * (i + 1);
+
+            std::sort(first, last, [&](unsigned int a, unsigned int b)
+                {
+                    // Sorting in descendant order
+                    return contributions[a] > contributions[b];
+                });
+        }
+
+        unsigned int alias_table_size = m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
+        //#pragma omp parallel for
+        for (int cell_index = 0; cell_index < actual_number_of_cells_computed_per_iteration; cell_index++)
+        {
+            // Either the alias table size or the number of emissive meshes
+            // (number of contributions per cell), whichever is the smallest
+            unsigned contribution_count_min = hippt::min(alias_table_size, emissive_mesh_count);
+
+            // We're only going to keep the best 'alias_table_size' contributing meshes
+            // in case there are more than that
+            float sum_best_contributions = 0.0f;
+            std::vector<float> best_contributions(alias_table_size);
+            for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
+            {
+                float contribution = contributions.at(sorted_indices.at(cell_index * contribution_count_min + contribution_index));
+
+                best_contributions[contribution_index] = contribution;
+                sum_best_contributions += contribution;
+            }
+
+            ReGIRCellsAliasTablesSoAHost<std::vector>& soa_host = primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
+            unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index + cell_offset];
+
+            // Computing the PDFs
+            std::vector<float> PDFs(alias_table_size, 0.0f);
+
+            // And computing the alias tables from the contributions
+            std::vector<float> probas(alias_table_size, 0.0f);
+            std::vector<int> aliases(alias_table_size, 0);
+            if (sum_best_contributions > 0.0f)
+            {
+                for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
+                    PDFs[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
+
+                Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
+
+                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices, contribution_count_min);
+            }
+             
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(static_cast<size_t>(hash_grid_cell_index * alias_table_size), probas, static_cast<size_t>(contribution_count_min));
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);
+        }
+
+        cell_offset += max_number_of_cells_computed_per_iteration;
+    }
+
+    last_nb_computed_cells_alias_tables = nb_cells_alive;
 }
 
 void CPURenderer::ReSTIR_DI_pass()

@@ -72,11 +72,11 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
     for (int i = 0; i < input.size(); i++)
     {
         // Normalized
-        normalized_elements[i] = static_cast<double>(input[i]) / input_total_sum_double;
+        normalized_elements.at(i) = static_cast<double>(input.at(i)) / input_total_sum_double;
 
         // Scale for alias table construction such that the average of
         // the elements is 1
-        normalized_elements[i] *= input.size();
+        normalized_elements.at(i) *= input.size();
     }
 
     out_probas.resize(input.size());
@@ -87,7 +87,7 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
 
     for (int i = 0; i < normalized_elements.size(); i++)
     {
-        if (normalized_elements[i] < 1.0f)
+        if (normalized_elements.at(i) < 1.0f)
             smalls.push_back(i);
         else
             larges.push_back(i);
@@ -101,11 +101,11 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
         smalls.pop_front();
         larges.pop_front();
 
-        out_probas[small_index] = normalized_elements[small_index];
-        out_alias[small_index] = large_index;
+        out_probas.at(small_index) = normalized_elements.at(small_index);
+        out_alias.at(small_index) = large_index;
 
-        normalized_elements[large_index] = (normalized_elements[large_index] + normalized_elements[small_index]) - 1.0f;
-        if (normalized_elements[large_index] > 1.0f)
+        normalized_elements.at(large_index) = (normalized_elements.at(large_index) + normalized_elements.at(small_index)) - 1.0f;
+        if (normalized_elements.at(large_index) > 1.0f)
             larges.push_back(large_index);
         else
             smalls.push_back(large_index);
@@ -116,7 +116,7 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
         int index = larges.front();
         larges.pop_front();
 
-        out_probas[index] = 1.0f;
+        out_probas.at(index) = 1.0f;
     }
 
     while (!smalls.empty())
@@ -124,7 +124,7 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
         int index = smalls.front();
         smalls.pop_front();
 
-        out_probas[index] = 1.0f;
+        out_probas.at(index) = 1.0f;
     }
 }
 

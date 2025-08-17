@@ -331,11 +331,11 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
 		launch_supersampling_fill(render_data);
 
-		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
-		launch_pre_integration(render_data);
-
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
 		launch_cell_alias_tables_precomputation(render_data);
+
+		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
+		launch_pre_integration(render_data);
 
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
@@ -348,14 +348,14 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
 		launch_supersampling_fill(render_data);
 
-		// Same with the pre integration factors of the grid cells
-		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
-		launch_pre_integration(render_data);
-
 		// Also need to recompute the alias tables of the grid cells because
 		// a rehash completely restructures 
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
 		launch_cell_alias_tables_precomputation(render_data);
+
+		// Same with the pre integration factors of the grid cells
+		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
+		launch_pre_integration(render_data);
 
 		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 
@@ -797,6 +797,8 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 
 	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
 	unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_alias_tables;
+	if (total_number_of_cells_to_compute == 0)
+		return;
 	unsigned int max_number_of_cells_computed_per_iteration = ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts / emissive_mesh_count;
 
 	// Allocating the scratch buffer with a maximum size of SCRATCH_BUFFER_MAX_SIZE_BYTES.
@@ -809,7 +811,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 
-	unsigned int cell_offset = 0;
+	unsigned int cell_offset = last_nb_computed_cells_alias_tables;
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
 	const unsigned int actual_number_of_cells_computed_per_iteration = contribution_scratch_buffer.size() / emissive_mesh_count;
 	for (int iter = 0; iter < iteration_needed; iter++)
@@ -836,7 +838,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		std::vector<unsigned int> sorted_indices(contributions.size());
 
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
-			std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1) + 1, 0); // 0,1,2,...
+			std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
 
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++) 
 		{
@@ -871,20 +873,25 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 			}
 
 			// Computing the PDFs
-			std::vector<float> PDFs(alias_table_size);
-			for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
-				PDFs[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
+			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index + cell_offset];
 
-			// And computing the alias tables from the contributions
-			std::vector<float> probas;
-			std::vector<int> aliases;
-			Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
+			std::vector<float> PDFs(alias_table_size, 0.0f);
+			std::vector<float> probas(alias_table_size, 0.0f);
+			std::vector<int> aliases(alias_table_size, 0);
+			if (sum_best_contributions > 0.0f)
+			{
+				for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
+					PDFs[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
 
-			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index];
-			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>().upload_data_partial(hash_grid_cell_index * alias_table_size, probas.data(), contribution_count_min);
-			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>().upload_data_partial(hash_grid_cell_index * alias_table_size, aliases.data(), contribution_count_min);
-			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>().upload_data_partial(hash_grid_cell_index * alias_table_size, PDFs.data(), contribution_count_min);
-			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>().upload_data_partial(hash_grid_cell_index * alias_table_size, sorted_indices.data(), contribution_count_min);
+				// And computing the alias tables from the contributions
+				Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
+
+				m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices, contribution_count_min);
+			}
+			
+			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
+			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
+			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);
 		}
 
 		cell_offset += max_number_of_cells_computed_per_iteration;

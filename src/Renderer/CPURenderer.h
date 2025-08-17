@@ -20,6 +20,7 @@
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsAliasTablesSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRPresampledLightsSoAHost.h"
@@ -71,7 +72,10 @@ public:
     void ReGIR_grid_fill_pass(bool primary_hit);
     template <bool accumulatePreIntegration>
     ReGIRHashGridSoADevice ReGIR_spatial_reuse_pass(bool primary_hit);
+    void ReGIR_pre_population();
     void ReGIR_pre_integration();
+    void ReGIR_compute_cells_light_distributions();
+    void ReGIR_compute_cells_light_distributions_internal(bool primary_hit);
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
@@ -203,6 +207,11 @@ private:
 
         std::vector<AtomicType<float>> non_canonical_pre_integration_factors_secondary_hit;
         std::vector<AtomicType<float>> canonical_pre_integration_factors_secondary_hit;
+
+        ReGIRCellsAliasTablesSoAHost<std::vector> cells_light_distributions_primary_hit;
+        ReGIRCellsAliasTablesSoAHost<std::vector> cells_light_distributions_secondary_hit;
+        unsigned int m_last_cells_alias_tables_compute_count_primary_hits = 0;
+        unsigned int m_last_cells_alias_tables_compute_count_secondary_hits = 0;
 
         std::vector<AtomicType<unsigned int>> grid_cell_alive;
         std::vector<unsigned int> grid_cells_alive_list;

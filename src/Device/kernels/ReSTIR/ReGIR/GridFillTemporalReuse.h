@@ -25,6 +25,9 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size;
     unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
     float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
+    if (mesh_PDF == 0.0f)
+        // No valid mesh for this cell, falling back to global triangle sampling
+        return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
 
     float triangle_PDF;
     EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
@@ -32,6 +35,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 
     LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
     light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
+
+    sanity_check<true>(render_data, ColorRGB32F(1.0f / light_sample.area_measure_pdf), -1, -1);
 
     return light_sample;
 }
