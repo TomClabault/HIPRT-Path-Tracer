@@ -62,6 +62,11 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Remove freeze random feature
+// - Remove debug kernel feature
+// - Automatic cell resolution to reach a given cell count target and exploit more quality at the cost of some perf?
+// - Cache cells - Include the average mesh normal ion the computaion? could easily reject meshes that are totally backfacing us
+// - Should we always sample a few triangles on each mesh when computing the contributions? To get a better estimate of the mesh's contribtunio
 // - Rename random_number_generator into rng everywhere
 // - ReGIR rename per cell alias tables into per cell light distributions everywhere
 // - Remove RNG argument from bsdf_dispatcher_eval(), not needed anymore since we don't the on-the-fly monte carlo integration anymore

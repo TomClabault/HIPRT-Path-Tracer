@@ -402,7 +402,7 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = get_non_canonical_factors(true).get_atomic_device_pointer();
 	render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = get_canonical_factors(true).get_atomic_device_pointer();
 
-	render_data.render_settings.regir_settings.cells_distributions_primary_hits = get_cell_alias_tables(true).to_device();
+	render_data.render_settings.regir_settings.cells_distributions_primary_hits = get_cell_alias_tables(true).to_device(render_data);
 
 
 
@@ -420,7 +420,7 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 		render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
 
-		render_data.render_settings.regir_settings.cells_distributions_secondary_hits = get_cell_alias_tables(false).to_device();
+		render_data.render_settings.regir_settings.cells_distributions_secondary_hits = get_cell_alias_tables(false).to_device(render_data);
 	}
 }
 

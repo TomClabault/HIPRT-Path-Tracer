@@ -854,7 +854,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 
 		unsigned int alias_table_size = render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
 //#pragma omp parallel for
-		for (int cell_index = 0; cell_index < actual_number_of_cells_computed_per_iteration; cell_index++)
+		for (int cell_index_in_iteration = 0; cell_index_in_iteration < actual_number_of_cells_computed_per_iteration; cell_index_in_iteration++)
 		{
 			// Either the alias table size or the number of emissive meshes
 			// (number of contributions per cell), whichever is the smallest
@@ -866,14 +866,14 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 			std::vector<float> best_contributions(alias_table_size);
 			for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
 			{
-				float contribution = contributions.at(sorted_indices.at(cell_index * contribution_count_min + contribution_index));
+				float contribution = contributions.at(cell_index_in_iteration * contribution_count_min + sorted_indices.at(cell_index_in_iteration * contribution_count_min + contribution_index));
 
 				best_contributions[contribution_index] = contribution;
 				sum_best_contributions += contribution;
 			}
 
 			// Computing the PDFs
-			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index + cell_offset];
+			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
 
 			std::vector<float> PDFs(alias_table_size, 0.0f);
 			std::vector<float> probas(alias_table_size, 0.0f);

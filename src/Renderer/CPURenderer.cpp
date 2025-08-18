@@ -44,7 +44,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -116,8 +116,10 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_regir_state.non_canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_primary_hit.end(), 0.0f);
     m_regir_state.canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.canonical_pre_integration_factors_primary_hit.end(), 0.0f);
 
+#if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE
     m_regir_state.cells_light_distributions_primary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size);
     m_regir_state.cells_light_distributions_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.cells_distributions_secondary_hits.alias_table_size);
+#endif
 
     m_regir_state.non_canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
     m_regir_state.canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
@@ -378,9 +380,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = m_regir_state.non_canonical_pre_integration_factors_primary_hit.data();
     m_render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = m_regir_state.canonical_pre_integration_factors_primary_hit.data();
 
-    m_render_data.render_settings.regir_settings.cells_distributions_primary_hits = m_regir_state.cells_light_distributions_primary_hit.to_device();
-    m_render_data.render_settings.regir_settings.cells_distributions_secondary_hits = m_regir_state.cells_light_distributions_secondary_hit.to_device();
-
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
@@ -411,6 +410,10 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_emissive_meshes_alias_tables.load_from_emissive_meshes(parsed_scene);
     m_render_data.buffers.emissive_meshes_alias_tables = m_emissive_meshes_alias_tables.to_device();
+#if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE
+    m_render_data.render_settings.regir_settings.cells_distributions_primary_hits = m_regir_state.cells_light_distributions_primary_hit.to_device(m_render_data);
+    m_render_data.render_settings.regir_settings.cells_distributions_secondary_hits = m_regir_state.cells_light_distributions_secondary_hit.to_device(m_render_data);
+#endif
 
     std::cout << "Building scene's BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles(parsed_scene.triangles_vertex_indices);
@@ -823,6 +826,10 @@ void CPURenderer::ReGIR_pre_integration()
 
 void CPURenderer::ReGIR_compute_cells_light_distributions()
 {
+#if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_FALSE
+    return;
+#endif
+
     ReGIR_compute_cells_light_distributions_internal(true);
     ReGIR_compute_cells_light_distributions_internal(false);
 }
@@ -868,7 +875,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
     for (int iter = 0; iter < iteration_needed; iter++)
     {
         // Computing the contributions of emissive meshes
-        unsigned int contributions_left_to_compute = total_number_of_cells_to_compute - cell_offset * emissive_mesh_count;
+        unsigned int contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;
         unsigned int dispatch_size = hippt::min(contributions_left_to_compute, static_cast<unsigned int>(contribution_scratch_buffer.size()));
 
 #pragma omp parallel for
@@ -897,15 +904,15 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             auto last = sorted_indices.begin() + emissive_mesh_count * (i + 1);
 
             std::sort(first, last, [&](unsigned int a, unsigned int b)
-                {
-                    // Sorting in descendant order
-                    return contributions[a] > contributions[b];
-                });
+            {
+                // Sorting in descendant order
+                return contributions[a] > contributions[b];
+            });
         }
 
         unsigned int alias_table_size = m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
         //#pragma omp parallel for
-        for (int cell_index = 0; cell_index < actual_number_of_cells_computed_per_iteration; cell_index++)
+        for (int cell_index_in_iteration = 0; cell_index_in_iteration < actual_number_of_cells_computed_per_iteration; cell_index_in_iteration++)
         {
             // Either the alias table size or the number of emissive meshes
             // (number of contributions per cell), whichever is the smallest
@@ -914,17 +921,20 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             // We're only going to keep the best 'alias_table_size' contributing meshes
             // in case there are more than that
             float sum_best_contributions = 0.0f;
-            std::vector<float> best_contributions(alias_table_size);
+            std::vector<float> best_contributions(contribution_count_min);
             for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
             {
-                float contribution = contributions.at(sorted_indices.at(cell_index * contribution_count_min + contribution_index));
+                float contribution = contributions.at(cell_index_in_iteration * contribution_count_min + sorted_indices.at(cell_index_in_iteration * contribution_count_min + contribution_index));
 
                 best_contributions[contribution_index] = contribution;
                 sum_best_contributions += contribution;
             }
 
             ReGIRCellsAliasTablesSoAHost<std::vector>& soa_host = primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
-            unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index + cell_offset];
+            unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
+
+            if (hash_grid_cell_index == 361137)
+                std::cout << std::endl;
 
             // Computing the PDFs
             std::vector<float> PDFs(alias_table_size, 0.0f);

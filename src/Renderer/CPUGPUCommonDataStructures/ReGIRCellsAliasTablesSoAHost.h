@@ -56,7 +56,7 @@ struct ReGIRCellsAliasTablesSoAHost
 		return soa.size();
 	}
 
-	ReGIRCellsAliasTablesSoADevice to_device()
+	ReGIRCellsAliasTablesSoADevice to_device(const HIPRTRenderData& render_data)
 	{
 		ReGIRCellsAliasTablesSoADevice cells_alias_tables;
 
@@ -64,7 +64,9 @@ struct ReGIRCellsAliasTablesSoAHost
 		cells_alias_tables.all_alias_tables_aliases = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>();
 		cells_alias_tables.all_alias_tables_PDFs = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>();
 		cells_alias_tables.emissive_meshes_indices = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>();
-		cells_alias_tables.alias_table_size = m_alias_table_size;
+		// The size of the light distributions at each cell is the minimum between the target alias table
+		// size and the number of emissive meshes in the scene
+		cells_alias_tables.alias_table_size = hippt::min(m_alias_table_size, render_data.buffers.emissive_meshes_alias_tables.alias_table_count);
 
 		return cells_alias_tables;
 	}

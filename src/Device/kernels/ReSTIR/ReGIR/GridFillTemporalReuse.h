@@ -86,7 +86,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
         LightSampleInformation light_sample;
 
         if constexpr (ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE)
-            light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, hash_grid_cell_index, primary_hit, rng);
+        {
+            /*if (reservoir_is_canonical)
+                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+            else*/
+                light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, hash_grid_cell_index, primary_hit, rng);
+        }
         else if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)
             // Never using presampling lights for pre integration because pre integration needs
             // different samples to pre integrate properly and using presampled lights severely restricts
@@ -196,7 +201,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
 #else
         constexpr bool ACCUMULATE_PRE_INTEGRATION_OPTION = accumulatePreIntegration;
 #endif
-
         output_reservoir = grid_fill<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, regir_settings, hash_grid_cell_index, reservoir_index_in_cell, cell_surface, primary_hit, random_number_generator);
         
         // Normalizing the reservoir

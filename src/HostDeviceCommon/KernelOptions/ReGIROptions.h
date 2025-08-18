@@ -124,7 +124,7 @@
  * Those per-cell sampling distribution will then be used during the grid fill to provide higher
  * quality initial light samples
  */
-#define ReGIR_GridFillUsePerCellDistributions KERNEL_OPTION_FALSE
+#define ReGIR_GridFillUsePerCellDistributions KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
@@ -164,7 +164,7 @@
  * This massively improves quality at the cost of performance and is very likely to be worth it for scenes that are not
  * too hard to trace (where shadow rays are expensive).
  */
-#define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_FALSE
 
 /**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
@@ -239,6 +239,7 @@
  * Debug option to color the scene with the grid cells
  */
 #define ReGIR_DebugMode REGIR_DEBUG_MODE_NO_DEBUG
+//#define ReGIR_DebugMode REGIR_DEBUG_MODE_GRID_CELLS
 
 #endif // #ifndef __KERNELCC__
 
