@@ -110,6 +110,17 @@ struct SceneMetadata
 
 struct Scene
 {
+    void print_statistics(std::ostream& stream)
+    {
+        stream << "Scene statistics: " << std::endl;
+        stream << "\t" << vertices_positions.size() << " vertices" << std::endl;
+        stream << "\t" << triangles_vertex_indices.size() / 3 << " triangles" << std::endl;
+        stream << "\t" << parsed_emissive_meshes.emissive_meshes.size() << " emissive meshes" << std::endl;
+        stream << "\t" << emissive_triangles_primitive_indices.size() << " emissive triangles" << std::endl;
+        stream << "\t" << materials.size() << " materials" << std::endl;
+        stream << "\t" << textures.size() << " textures" << std::endl;
+    }
+
     SceneMetadata metadata;
 
     std::vector<CPUMaterial> materials;

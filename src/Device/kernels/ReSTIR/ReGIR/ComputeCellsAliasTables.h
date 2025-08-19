@@ -15,30 +15,47 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-#define SAMPLES_PER_MESH 100
+#define SAMPLES_PER_MESH 10000
+
+//HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
+//{
+//    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
+//    float total_contribution_to_cell = 0.0f;
+//    for (int i = 0; i < SAMPLES_PER_MESH; i++)
+//    {
+//        float sample_PDF;
+//        int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
+//        LightSampleInformation mesh_light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+//
+//        sample_PDF *= mesh_light_sample.area_measure_pdf;
+//
+//        total_contribution_to_cell += ReGIR_grid_fill_evaluate_target_function<
+//            /* visibility */ false,
+//            /* cosine term at cell point */ true,
+//            /* cosine term at mesh point */ true,
+//            ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
+//            /* NEE++ */ true>(
+//                render_data, cell_surface, primary_hit, mesh_light_sample.emission, mesh_light_sample.light_source_normal, mesh_light_sample.point_on_light, rng) / sample_PDF;
+//    }
+//
+//    return total_contribution_to_cell / (float)SAMPLES_PER_MESH;
+//}
 
 HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
-    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
-    float total_contribution_to_cell = 0.0f;
-    for (int i = 0; i < SAMPLES_PER_MESH; i++)
-    {
-        float sample_PDF;
-        int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
-        LightSampleInformation mesh_light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+    float3 mesh_average_point = render_data.buffers.emissive_meshes_alias_tables.meshes_average_points[mesh_index_for_grid_cell];
+    // Just wrapping the mesh power in an RGB value to be able to pass it to the 'target_function' function which doesn't take
+    // just a float as argument
+    ColorRGB32F total_mesh_power = ColorRGB32F(render_data.buffers.emissive_meshes_alias_tables.meshes_total_power[mesh_index_for_grid_cell]);
 
-        sample_PDF *= mesh_light_sample.area_measure_pdf;
-
-        total_contribution_to_cell += ReGIR_grid_fill_evaluate_target_function<
-            /* visibility */ false,
-            /* cosine term at cell point */ true,
-            /* cosine term at mesh point */ true,
-            ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
-            /* NEE++ */ true>(
-                render_data, cell_surface, primary_hit, mesh_light_sample.emission, mesh_light_sample.light_source_normal, mesh_light_sample.point_on_light, rng) / sample_PDF;
-    }
-
-    return total_contribution_to_cell / (float)SAMPLES_PER_MESH;
+    Xorshift32Generator dummy_rng(5847);
+    return ReGIR_grid_fill_evaluate_target_function<
+        /* visibility */ false,
+        /* cosine term at cell point */ true,
+        /* cosine term at mesh point */ false,
+        ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
+        /* NEE++ */ true>(
+            render_data, cell_surface, primary_hit, total_mesh_power, make_float3(0, 0, 0), mesh_average_point, dummy_rng);
 }
 
 /**
@@ -73,13 +90,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Alias_Tables(HIPRTRende
 
     // Cell index in [0, number of grid cells alive]
     unsigned int cell_index = cell_offset + thread_index / render_data.buffers.emissive_meshes_alias_tables.meshes_alias_table.size;
-    if (cell_index == 9677)
-        std::cout << std::endl;
     unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_index];
     unsigned int mesh_index_for_grid_cell = thread_index % render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
-
-    if (hash_grid_cell_index == 361137)
-        std::cout << std::endl;
 
     ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 

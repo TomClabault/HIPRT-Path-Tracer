@@ -779,7 +779,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& r
 
 void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit)
 {
-	if (render_data.buffers.emissive_meshes_alias_tables.alias_table_count > ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts)
+	if (render_data.buffers.emissive_meshes_alias_tables.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
 	{
 		// There are more emissive meshes than the space in our scratch buffer so we're not
 		// even going to be able to compute one single alias table, aborting
@@ -799,21 +799,21 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_alias_tables;
 	if (total_number_of_cells_to_compute == 0)
 		return;
-	unsigned int max_number_of_cells_computed_per_iteration = ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts / emissive_mesh_count;
+	unsigned int max_number_of_cells_computed_per_iteration = std::floor(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 
 	// Allocating the scratch buffer with a maximum size of SCRATCH_BUFFER_MAX_SIZE_BYTES.
 	// If we don't need that much size, then we're just allocating what we need (that's the outer min() part)
 	//
-	// The inner min() part on ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts is to round down the buffer on an integer number of
+	// The inner min() part on ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount is to round down the buffer on an integer number of
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
-	OrochiBuffer<float> contribution_scratch_buffer(hippt::min(hippt::min(ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts, max_number_of_cells_computed_per_iteration), total_number_of_cells_to_compute * emissive_mesh_count));
+	OrochiBuffer<float> contribution_scratch_buffer(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count, total_number_of_cells_to_compute * emissive_mesh_count));
 	float* scratch_buffer_address = contribution_scratch_buffer.get_device_pointer();
 	
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 
 	unsigned int cell_offset = last_nb_computed_cells_alias_tables;
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
-	const unsigned int actual_number_of_cells_computed_per_iteration = contribution_scratch_buffer.size() / emissive_mesh_count;
+	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
 	for (int iter = 0; iter < iteration_needed; iter++)
 	{
 		void* launch_args[] = { &render_data, &scratch_buffer_address, &cell_offset, &primary_hit };
@@ -822,8 +822,8 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 
 
 		// Computing the contributions of emissive meshes
-		unsigned int contributions_left_to_compute = total_number_of_cells_to_compute - cell_offset * emissive_mesh_count;
-		unsigned int dispatch_size = hippt::min(contributions_left_to_compute, static_cast<unsigned int>(contribution_scratch_buffer.size()));
+		size_t contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;
+		unsigned int dispatch_size = hippt::min(contributions_left_to_compute, contribution_scratch_buffer.size());
 		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->launch_synchronous(64, 1, dispatch_size, 1, launch_args);
 
 
@@ -853,8 +853,9 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		}
 
 		unsigned int alias_table_size = render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
-//#pragma omp parallel for
-		for (int cell_index_in_iteration = 0; cell_index_in_iteration < actual_number_of_cells_computed_per_iteration; cell_index_in_iteration++)
+		unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
+#pragma omp parallel for
+		for (int cell_index_in_iteration = 0; cell_index_in_iteration < hippt::min(actual_number_of_cells_computed_per_iteration, cells_yet_to_compute_count); cell_index_in_iteration++)
 		{
 			// Either the alias table size or the number of emissive meshes
 			// (number of contributions per cell), whichever is the smallest
@@ -874,6 +875,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 
 			// Computing the PDFs
 			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
+			assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
 			std::vector<float> PDFs(alias_table_size, 0.0f);
 			std::vector<float> probas(alias_table_size, 0.0f);
@@ -886,9 +888,9 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 				// And computing the alias tables from the contributions
 				Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
 
-				m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices, contribution_count_min);
+				m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
 			}
-			
+
 			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
 			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
 			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);

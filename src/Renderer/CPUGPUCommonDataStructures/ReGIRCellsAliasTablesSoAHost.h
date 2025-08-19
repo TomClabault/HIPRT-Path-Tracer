@@ -34,7 +34,7 @@ enum ReGIRCellsAliasTablesSoAHostBuffers
 template <template <typename> typename DataContainer>
 struct ReGIRCellsAliasTablesSoAHost
 {
-	void resize(unsigned int new_number_of_cells, unsigned int alias_tables_size)
+	void resize(size_t new_number_of_cells, unsigned int alias_tables_size)
 	{
 		soa.resize(new_number_of_cells * alias_tables_size);
 

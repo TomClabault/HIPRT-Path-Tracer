@@ -64,6 +64,8 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - Remove freeze random feature
 // - Remove debug kernel feature
+// - Can we refine the light distributions at each cell based on the sampling done at runtime?
+// - Can we do some sort of spatial reuse on the light distributions? We do 10 samples per mesh per cell and then share those samples somehow?
 // - Automatic cell resolution to reach a given cell count target and exploit more quality at the cost of some perf?
 // - Cache cells - Include the average mesh normal ion the computaion? could easily reject meshes that are totally backfacing us
 // - Should we always sample a few triangles on each mesh when computing the contributions? To get a better estimate of the mesh's contribtunio

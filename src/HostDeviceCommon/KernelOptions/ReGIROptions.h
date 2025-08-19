@@ -37,7 +37,7 @@
 #define ReGIR_GridPrepopulationResolutionDownscale 1
 
 #define ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes 200000000u
-#define ReGIR_ComputeCellsAliasTablesScratchBufferMaxElementCounts (static_cast<unsigned int>(ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes / sizeof(float)))
+#define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount (static_cast<unsigned int>(ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes / sizeof(float)))
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:

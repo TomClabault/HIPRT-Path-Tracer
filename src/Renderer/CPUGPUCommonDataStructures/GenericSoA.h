@@ -10,6 +10,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "HostDeviceCommon/AtomicType.h"
 
@@ -140,20 +141,26 @@ struct GenericSoA
     }
 
     template <int bufferIndex>
-    void upload_to_buffer_partial(size_t start_index, const std::vector<BufferTypeFromIndex<bufferIndex>>& data, size_t element_count)
+    void upload_to_buffer_partial(size_t start_index, const std::vector<BufferTypeFromIndex<bufferIndex>>::const_iterator& iterator_start, size_t element_count)
     {
         if constexpr (IsCPUBuffer::value)
         {
             // If our main container type for this SoA is std::vector (i.e. this is for the CPU), then we're uploading
             // to the buffer simply by copying
-            std::copy(data.begin(), data.begin() + element_count, get_buffer<bufferIndex>().begin() + start_index);
+            std::copy(iterator_start, iterator_start + element_count, get_buffer<bufferIndex>().begin() + start_index);
         }
         else
         {
             // If our main container type for this SoA is OrochiBuffer (i.e. this is for the GPU), then we're uploading
             // to the buffer by uploading to the GPU
-            get_buffer<bufferIndex>().upload_data_partial(start_index, data.data(), element_count);
+            get_buffer<bufferIndex>().upload_data_partial(start_index, &*iterator_start, element_count);
         }
+    }
+
+    template <int bufferIndex>
+    void upload_to_buffer_partial(size_t start_index, const std::vector<BufferTypeFromIndex<bufferIndex>>& data, size_t element_count)
+    {
+        upload_to_buffer_partial<bufferIndex>(start_index, data.begin(), element_count);
     }
 
     void free()

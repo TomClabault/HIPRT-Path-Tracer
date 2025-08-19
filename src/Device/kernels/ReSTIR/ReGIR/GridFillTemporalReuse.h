@@ -19,6 +19,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
+    if (hash_grid_cell_index == 460282)
+        std::cout << std::endl;
     AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
 
