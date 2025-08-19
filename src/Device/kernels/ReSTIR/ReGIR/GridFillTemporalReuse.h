@@ -19,8 +19,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    if (hash_grid_cell_index == 460282)
-        std::cout << std::endl;
     AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
 
@@ -89,9 +87,9 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 
         if constexpr (ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE)
         {
-            /*if (reservoir_is_canonical)
+            if (reservoir_is_canonical)
                 light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
-            else*/
+            else
                 light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, hash_grid_cell_index, primary_hit, rng);
         }
         else if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)

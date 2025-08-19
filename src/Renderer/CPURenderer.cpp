@@ -44,7 +44,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -58,8 +58,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 1260
-#define DEBUG_PIXEL_Y 465
+#define DEBUG_PIXEL_X 866
+#define DEBUG_PIXEL_Y 555
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -880,11 +880,14 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
         size_t contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;
         unsigned int dispatch_size = hippt::min(contributions_left_to_compute, contribution_scratch_buffer.size());
 
+        auto compute = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for
         for (int thread_index = 0; thread_index < dispatch_size; thread_index++)
         {
             ReGIR_Compute_Cells_Alias_Tables(m_render_data, contribution_scratch_buffer.data(), cell_offset, primary_hit, thread_index);
         }
+        auto stop_compute = std::chrono::high_resolution_clock::now();
+        std::cout << "Compute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_compute - compute).count() << "ms. " << std::endl;
 
 
 
@@ -899,6 +902,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
         for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
             std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
 
+#pragma omp parallel for
         for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
         {
             auto first = sorted_indices.begin() + emissive_mesh_count * i;
@@ -907,15 +911,18 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             std::sort(first, last, [&](unsigned int a, unsigned int b)
             {
                 // Sorting in descendant order
-                return contribution_scratch_buffer[a] > contribution_scratch_buffer[b];
+                return contribution_scratch_buffer[i * emissive_mesh_count + a] > contribution_scratch_buffer[i * emissive_mesh_count + b];
             });
         }
 
         unsigned int alias_table_size = m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
-        //#pragma omp parallel for
+        // #pragma omp parallel for
         unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
+
+        auto upload = std::chrono::high_resolution_clock::now();
         for (int cell_index_in_iteration = 0; cell_index_in_iteration < hippt::min(actual_number_of_cells_computed_per_iteration, cells_yet_to_compute_count); cell_index_in_iteration++)
         {
+            unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
             // Either the alias table size or the number of emissive meshes
             // (number of contributions per cell), whichever is the smallest
             unsigned contribution_count_min = hippt::min(alias_table_size, emissive_mesh_count);
@@ -926,17 +933,19 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             std::vector<float> best_contributions(contribution_count_min);
             for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
             {
-                float contribution = contribution_scratch_buffer.at(cell_index_in_iteration * contribution_count_min + sorted_indices.at(cell_index_in_iteration * contribution_count_min + contribution_index));
+                if (hash_grid_cell_index == 1448)
+                    std::cout << std::endl;
+                       
+                float contribution = contribution_scratch_buffer.at(sorted_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) + cell_index_in_iteration * emissive_mesh_count);
 
                 best_contributions[contribution_index] = contribution;
                 sum_best_contributions += contribution;
             }
 
             ReGIRCellsAliasTablesSoAHost<std::vector>& soa_host = primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
-            unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
             assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
-            if (hash_grid_cell_index == 182209)
+            if (hash_grid_cell_index == 1448)
                 std::cout << std::endl;
 
             // Computing the PDFs
@@ -959,6 +968,9 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
             soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);
         }
+        
+        auto stop_upload = std::chrono::high_resolution_clock::now();
+        std::cout << "Best contrib / alias table / upload time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_upload - upload).count() << "ms. " << std::endl;
 
         cell_offset += max_number_of_cells_computed_per_iteration;
     }

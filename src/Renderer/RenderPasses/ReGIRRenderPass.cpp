@@ -840,16 +840,17 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
 			std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
 
-		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++) 
+#pragma omp parallel for
+		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
 		{
 			auto first = sorted_indices.begin() + emissive_mesh_count * i;
 			auto last = sorted_indices.begin() + emissive_mesh_count * (i + 1);
 
-			std::sort(first, last, [&](unsigned int a, unsigned int b) 
-			{
-				// Sorting in descendant order
-				return contributions[a] > contributions[b];
-			});
+			std::sort(first, last, [&](unsigned int a, unsigned int b)
+				{
+					// Sorting in descendant order
+					return contributions[i * emissive_mesh_count + a] > contributions[i * emissive_mesh_count + b];
+				});
 		}
 
 		unsigned int alias_table_size = render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
@@ -867,7 +868,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 			std::vector<float> best_contributions(alias_table_size);
 			for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
 			{
-				float contribution = contributions.at(cell_index_in_iteration * contribution_count_min + sorted_indices.at(cell_index_in_iteration * contribution_count_min + contribution_index));
+				float contribution = contributions.at(cell_index_in_iteration * emissive_mesh_count + sorted_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
 
 				best_contributions[contribution_index] = contribution;
 				sum_best_contributions += contribution;

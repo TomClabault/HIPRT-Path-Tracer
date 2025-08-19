@@ -27,7 +27,7 @@ struct ReGIRCellsAliasTablesSoADevice
 	unsigned int* emissive_meshes_indices = nullptr;
 
 	// How many entries in the alias tables of each cell
-	unsigned int alias_table_size = 10000;
+	unsigned int alias_table_size = 1;
 };
 
 #endif
