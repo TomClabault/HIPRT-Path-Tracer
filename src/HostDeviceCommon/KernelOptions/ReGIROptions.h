@@ -78,7 +78,7 @@
  * Takes the cosine term at the light source (i.e. the cosine term of the geometry term) into account when
  * evaluating the target function during grid fill
  */
-#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to include the BSDF in the target function used for the resampling of the initial candidates

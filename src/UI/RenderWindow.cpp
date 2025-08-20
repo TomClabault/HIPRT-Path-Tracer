@@ -62,6 +62,26 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Can we somehow incorporate light source normal in the mesh contribution of the cache cells? 
+//		Average normal of the mesh at least? To reject totally backfacing lights
+//		What about spherical mesh though? How to sample only from the visible part?
+//			Maybe precompute some characteristics about meshes during scene parsing that gives us an indication of how many faces are facing a particular way (discretize directions) and so we could then fetch that precomputed information during mesh contribution computation
+//			Should be cheap in memory too so we could have some nice precision there?
+//			This is basically binning the emissive power of the mesh per each discretized direction, should work well and should fairly easily avoid sampling backfacing triangles
+// 
+//			We're also going to need a way to importance sample a triangle on that selected mesh also accounting for backfacing triangles however.
+//			We can probably do that by pre-processing emissive meshes into different directional bins (the same as above) and then importance sampling a bin (and thus the triangles isnide that bin) based on the shading point's normal
+// - We could compact the ReGIR hash table by using perfect hasing right? After a few samples, we could build a minimal perfect hash table with RecSplit or something and get a perfect hash table with no probing and no waster memory --> faster and less memory
+//		- But then we can't expand the table anymore hmmmm. Maybe compact at a point where we can assume that no more cells are going to be added to the hash table
+// - Can we have another buffer that is the same size as the alias table per each cell and accumulate visibility inside it the same way we do for NEE++ but at shading time? So we get an estimate over the whole cell instead of just at the representative point of the cell
+// - Would we get good efficiency out of sampling directly from the cell light distributions at each sampling point instead of going through ReGIR? We wouldn't have to go through the whole pairwise MIS stuff and we could just do proper RIS?
+// - How can we blur NEE++?
+// - Can we do something with the hash function that smoothly transitions between one cell to another on curve objects because of the normal? Some kind of stochastic discretization of normal instead to have smooth transitions. Stochastic hash table maybe? --> add some random in the hash function?
+// - Can we compute the light distribution for each cell with like 256 large alias table and then run a visibility pass on those 256 best meshes to make sure they are not occluded? If they are occluded, reject them and have another one take the place. We're basically doing visibility to compute the contributions but only at a really reduced cost
+// - Can we maybe find a compromise in quality perf in cell distributions so that it doesn't take too long to compute by only building the distribution on the N most powerful meshes only instead of all? So don't compute contributions for all the meshes of the scene but only the most important ones? What about small lights very close to surfaces though :( Maybe handled okay by BSDF MIS?
+// - Can we do some warp wide reordering when sampling lights during the grid fill?
+//		If multiple threads of a warp sample the same lights, we would light these accesses to be coalesced, so we reorder / sort by light index before fetching light data
+// - Can we cache some things in ReGIR to avoid repopulating / re integrating etc... if we can actually still keep the pre pop, pre intégration etc... Results of last time? Enabling/disabling GMoN for example resets the render but doesn't invalidate the pre-population / etc...
 // - Remove freeze random feature
 // - Remove debug kernel feature
 // - Can we refine the light distributions at each cell based on the sampling done at runtime?

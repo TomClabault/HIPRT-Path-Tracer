@@ -108,7 +108,7 @@ template <bool CheckOnlyOnCPU = false>
 HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, const ColorRGB32F& in_out_color, int x, int y)
 {
     ColorRGB32F copy = in_out_color;
-    return sanity_check(render_data, copy, x, y);
+    return sanity_check<CheckOnlyOnCPU>(render_data, copy, x, y);
 }
 
 #endif

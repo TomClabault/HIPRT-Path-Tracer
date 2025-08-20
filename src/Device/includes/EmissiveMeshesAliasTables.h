@@ -69,12 +69,19 @@ struct EmissiveMeshesAliasTablesDevice
 		return out;
 	}
 
+	HIPRT_DEVICE EmissiveMeshAliasTableDevice sample_one_emissive_mesh(Xorshift32Generator& rng, float& out_pdf, unsigned int& out_emissive_mesh_index_sampled) const
+	{
+		out_emissive_mesh_index_sampled = meshes_alias_table.sample(rng);
+		out_pdf = meshes_PDFs[out_emissive_mesh_index_sampled];
+
+		return get_emissive_mesh_alias_table(out_emissive_mesh_index_sampled);
+	}
+
 	HIPRT_DEVICE EmissiveMeshAliasTableDevice sample_one_emissive_mesh(Xorshift32Generator& rng, float& out_pdf) const
 	{
-		int emissive_mesh_index = meshes_alias_table.sample(rng);
-		out_pdf = meshes_PDFs[emissive_mesh_index];
+		unsigned int emissive_mesh_index_trash;
 
-		return get_emissive_mesh_alias_table(emissive_mesh_index);
+		return sample_one_emissive_mesh(rng, out_pdf, emissive_mesh_index_trash);
 	}
 };
 

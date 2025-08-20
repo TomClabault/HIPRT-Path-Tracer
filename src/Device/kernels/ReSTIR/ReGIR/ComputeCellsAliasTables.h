@@ -51,7 +51,7 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
     Xorshift32Generator dummy_rng(5847);
     return ReGIR_grid_fill_evaluate_target_function<
         /* visibility */ false,
-        /* cosine term at cell point */ true,
+        /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
         /* cosine term at mesh point */ false,
         ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
         /* NEE++ */ true>(

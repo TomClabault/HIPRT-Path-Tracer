@@ -275,7 +275,35 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     if constexpr (canonicalPDF)
         sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
     else
+    {
+        // TODO DEBUG REMOVE THIS
+        {
+            sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_target_function<
+                ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
+                ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
+                    render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
+    }
 
     return sample_PDF_unnormalized / PDF_normalization;
 }

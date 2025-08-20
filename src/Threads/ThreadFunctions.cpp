@@ -225,7 +225,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
         // Another loop to compute emissive meshes, multithreaded
 
-//#pragma omp parallel for
+#pragma omp parallel for
         for (int i = 0; i < emissive_meshes_indices.size(); i++)
         {
             aiMesh* mesh = scene->mMeshes[emissive_meshes_indices[i]];
