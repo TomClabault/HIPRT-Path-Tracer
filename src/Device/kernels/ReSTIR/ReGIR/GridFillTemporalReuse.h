@@ -22,15 +22,30 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
 
-    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size;
-    unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
-    float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
-    if (mesh_PDF == 0.0f)
-        // No valid mesh for this cell, falling back to global triangle sampling
-        return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+    float mesh_PDF = 0.0f;
+    EmissiveMeshAliasTableDevice mesh_alias_table;
+    if (alias_table_index == cell_alias_table.size - 1)
+        // The last index of the alias table is reserved for sampling all the remaining
+        // emissive meshes of the scene that are not present in the light distribution
+        //
+        // We're sampling one mesh from the whole scene to make sure that all emissive meshes are eventually
+        // considered for sampling at some point and avoid bias
+        mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF);
+    else
+    {
+        unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size;
+        unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
+        mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
+        if (mesh_PDF == 0.0f)
+            // No valid mesh for this cell, falling back to global triangle sampling
+            return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+    
+        mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
+    }
 
+    // Now that we have importance sampled a mesh, we're importance sampling a triangle
+    // on that mesh
     float triangle_PDF;
-    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
     int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
 
     LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);

@@ -9,11 +9,13 @@
 struct ReGIRCellsAliasTablesSoADevice
 {
 	// These buffers are all NUMBER OF REGIR CELLS * ALIAS TABLE SIZE big
+	// 
 	// Contains the probas of all the alias tables of all the cells concatenated in one buffer
 	float* all_alias_tables_probas = nullptr;
 	// Same for the aliases
 	int* all_alias_tables_aliases = nullptr;
-	// Same for the PDFs
+	// Same for the PDFs: the PDF that a given cell samples a given mesh index
+	// Should be indexed as: [hash_grid_cell_index * alais_table_size + mesh_index]
 	float* all_alias_tables_PDFs = nullptr;
 	// Contains the indices of the meshes associated with the entries of the alias table
 	//
@@ -27,7 +29,14 @@ struct ReGIRCellsAliasTablesSoADevice
 	unsigned int* emissive_meshes_indices = nullptr;
 
 	// How many entries in the alias tables of each cell
-	unsigned int alias_table_size = 1;
+	//
+	// Note that this size, * at runtime * is always incremented by 1 to
+	// reserve one slot of the alias table to sample all the lights that are not
+	// present in the light distrubution to avoid bias.
+	//
+	// So if this value is 10 here, it will be 11 at runtime and the alias tables
+	// will have 11 slots to sample from
+	unsigned int alias_table_size = 10;
 };
 
 #endif

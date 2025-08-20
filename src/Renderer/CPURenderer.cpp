@@ -44,7 +44,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -916,10 +916,10 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
         }
 
         unsigned int alias_table_size = m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
-        // #pragma omp parallel for
         unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
 
         auto upload = std::chrono::high_resolution_clock::now();
+        // #pragma omp parallel for
         for (int cell_index_in_iteration = 0; cell_index_in_iteration < hippt::min(actual_number_of_cells_computed_per_iteration, cells_yet_to_compute_count); cell_index_in_iteration++)
         {
             unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
@@ -930,23 +930,27 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             // We're only going to keep the best 'alias_table_size' contributing meshes
             // in case there are more than that
             float sum_best_contributions = 0.0f;
+            float sum_all_contributions = 0.0f;
             std::vector<float> best_contributions(contribution_count_min);
-            for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
+            for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
             {
-                if (hash_grid_cell_index == 1448)
-                    std::cout << std::endl;
-                       
                 float contribution = contribution_scratch_buffer.at(sorted_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) + cell_index_in_iteration * emissive_mesh_count);
 
-                best_contributions[contribution_index] = contribution;
-                sum_best_contributions += contribution;
+                if (contribution_index < contribution_count_min - 1)
+                {
+                    best_contributions[contribution_index] = contribution;
+                    sum_best_contributions += contribution;
+                }
+
+                sum_all_contributions += contribution;
             }
+            // The last slot of the alias table contains the sum of the contributions of all the lights
+            // of the scene that are not the "best lights" (so not the contribution_count_min - 1 first entries of the
+            // alias table)
+            best_contributions[contribution_count_min - 1] = sum_all_contributions - sum_best_contributions;
 
             ReGIRCellsAliasTablesSoAHost<std::vector>& soa_host = primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
             assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
-
-            if (hash_grid_cell_index == 1448)
-                std::cout << std::endl;
 
             // Computing the PDFs
             std::vector<float> PDFs(alias_table_size, 0.0f);
@@ -957,9 +961,9 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             if (sum_best_contributions > 0.0f)
             {
                 for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
-                    PDFs[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
+                    PDFs[pdf_index] = best_contributions[pdf_index] / sum_all_contributions;
 
-                Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
+                Utils::compute_alias_table(best_contributions, sum_all_contributions, probas, aliases);
 
                 soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
             }

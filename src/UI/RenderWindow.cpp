@@ -62,6 +62,12 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Can we do something with the hash function that smoothly transitions between one cell to another on curve objects because of the normal? Some kind of stochastic discretization of normal instead to have smooth transitions. Stochastic hash table maybe? --> add some random in the hash function?
+// - Can we compute the light distribution for each cell with like 256 large alias table and then run a visibility pass on those 256 best meshes to make sure they are not occluded? If they are occluded, reject them and have another one take the place. We're basically doing visibility to compute the contributions but only at a really reduced cost
+// - Can we maybe find a compromise in quality perf in cell distributions so that it doesn't take too long to compute by only building the distribution on the N most powerful meshes only instead of all? So don't compute contributions for all the meshes of the scene but only the most important ones? What about small lights very close to surfaces though :( Maybe handled okay by BSDF MIS?
+// - Can we do some warp wide reordering when sampling lights during the grid fill?
+//		If multiple threads of a warp sample the same lights, we would light these accesses to be coalesced, so we reorder / sort by light index before fetching light data
+// - Can we cache some things in ReGIR to avoid repopulating / re integrating etc... if we can actually still keep the pre pop, pre intégration etc... Results of last time? Enabling/disabling GMoN for example resets the render but doesn't invalidate the pre-population / etc...
 // - Remove freeze random feature
 // - Remove debug kernel feature
 // - Can we refine the light distributions at each cell based on the sampling done at runtime?
