@@ -6,6 +6,7 @@
 #include "GMoNRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
+#include "UI/RenderWindow.h"
 
 const std::string GMoNRenderPass::GMON_RENDER_PASS_NAME = "GMoN Render Pass";
 const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL = "Compute G-MoN";
@@ -338,7 +339,7 @@ void GMoNRenderPass::reset(bool reset_by_camera_movement)
 	{
 		m_next_set_to_accumulate = 0;
 
-		if (buffers_allocated())
+		if (buffers_allocated() && !m_render_window->is_interacting())
 			m_gmon.sets.memset_whole_buffer(ColorRGB32F(0.0f));
 
 		// Requesting a computation on reset just so that we copy the very
