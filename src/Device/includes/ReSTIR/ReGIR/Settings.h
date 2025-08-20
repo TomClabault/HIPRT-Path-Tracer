@@ -84,7 +84,7 @@ struct ReGIRGridFillSettings
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 8;
+		light_sample_count_per_cell_reservoir = 32;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 64 : 8;
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 12 : 4;
@@ -151,7 +151,7 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = false;
+	bool do_correlation_reduction = true;
 
 	int correlation_reduction_factor = 2;
 	int correl_frames_available = 0;

@@ -35,8 +35,8 @@ struct HIPRTRenderSettings
 	// TODO DEBUG REMOVE THESE
 	////////////////////////////////////////////////////
 
-	static constexpr bool DEBUG_DEV_GMON_BLEND_WEIGHTS = false;
-	bool DEBUG_gmon_auto_blending_weights = true;
+	static constexpr bool DEBUG_DEV_GMON_BLEND_WEIGHTS = true;
+	bool DEBUG_gmon_auto_blending_weights = false;
 	float DEBUG_GMON_DIVIDER = 3.0f;
 	int DEBUG_GMON_WINDOW_SIZE = 3;
 
@@ -97,7 +97,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 5;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
