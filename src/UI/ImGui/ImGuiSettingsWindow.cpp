@@ -1094,7 +1094,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGui::EndDisabled();
 
-			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- ReGIR"};
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- ReGIR (Experimental)"};
 			const char* tooltips_base_strategy[] = {
 				"All lights are sampled uniformly.",
 
