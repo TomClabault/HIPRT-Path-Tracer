@@ -269,7 +269,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(HIPRTRenderDat
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
     return ColorRGB32F(0.0f);
 #else
-    return sample_environment_map_with_mis(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
+    return sample_environment_map_with_mis(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
 }
 
