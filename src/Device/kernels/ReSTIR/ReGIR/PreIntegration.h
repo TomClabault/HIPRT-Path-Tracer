@@ -20,7 +20,7 @@ GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReGIR_Pre_integration(HIPRTR
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData render_data, unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
 #endif
 {
-    if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+    if (render_data.buffers.emissive_triangles_count == 0)
         // No initial candidates to sample since no lights
         return;
 

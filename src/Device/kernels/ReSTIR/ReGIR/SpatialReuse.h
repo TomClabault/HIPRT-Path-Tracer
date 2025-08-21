@@ -212,7 +212,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
     unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
  #endif
  {
-    if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+    if (render_data.buffers.emissive_triangles_count == 0)
         // No initial candidates to sample since no lights
         return;
 

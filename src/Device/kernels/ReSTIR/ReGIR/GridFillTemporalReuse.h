@@ -127,7 +127,7 @@ template <bool accumulatePreIntegration>
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, int thread_index, unsigned int number_of_cells_alive, bool primary_hit)
 #endif
 {
-    if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+    if (render_data.buffers.emissive_triangles_count == 0)
         // No initial candidates to sample since no lights
         return;
 
