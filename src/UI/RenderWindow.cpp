@@ -62,6 +62,11 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - We could compact the ReGIR hash table by using perfect hasing right? After a few samples, we could build a minimal perfect hash table with RecSplit or something and get a perfect hash table with no probing and no waster memory --> faster and less memory
+//		- But then we can't expand the table anymore hmmmm. Maybe compact at a point where we can assume that no more cells are going to be added to the hash table
+// - Can we have another buffer that is the same size as the alias table per each cell and accumulate visibility inside it the same way we do for NEE++ but at shading time? So we get an estimate over the whole cell instead of just at the representative point of the cell
+// - Would we get good efficiency out of sampling directly from the cell light distributions at each sampling point instead of going through ReGIR? We wouldn't have to go through the whole pairwise MIS stuff and we could just do proper RIS?
+// - How can we blur NEE++?
 // - Can we do something with the hash function that smoothly transitions between one cell to another on curve objects because of the normal? Some kind of stochastic discretization of normal instead to have smooth transitions. Stochastic hash table maybe? --> add some random in the hash function?
 // - Can we compute the light distribution for each cell with like 256 large alias table and then run a visibility pass on those 256 best meshes to make sure they are not occluded? If they are occluded, reject them and have another one take the place. We're basically doing visibility to compute the contributions but only at a really reduced cost
 // - Can we maybe find a compromise in quality perf in cell distributions so that it doesn't take too long to compute by only building the distribution on the N most powerful meshes only instead of all? So don't compute contributions for all the meshes of the scene but only the most important ones? What about small lights very close to surfaces though :( Maybe handled okay by BSDF MIS?

@@ -24,6 +24,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 
     float mesh_PDF = 0.0f;
     EmissiveMeshAliasTableDevice mesh_alias_table;
+
+    // TODO we can probably brute force through the exisintg alias table to see if a given mesh index exists in it and see if computing the PDF with that is at least unbiased or not at all
     if (alias_table_index == cell_alias_table.size - 1)
         // The last index of the alias table is reserved for sampling all the remaining
         // emissive meshes of the scene that are not present in the light distribution
