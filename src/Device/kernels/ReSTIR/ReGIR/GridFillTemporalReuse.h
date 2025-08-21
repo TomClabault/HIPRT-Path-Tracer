@@ -25,14 +25,26 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     float mesh_PDF = 0.0f;
     EmissiveMeshAliasTableDevice mesh_alias_table;
 
-    // TODO we can probably brute force through the exisintg alias table to see if a given mesh index exists in it and see if computing the PDF with that is at least unbiased or not at all
     if (alias_table_index == cell_alias_table.size - 1)
+    {
         // The last index of the alias table is reserved for sampling all the remaining
         // emissive meshes of the scene that are not present in the light distribution
         //
         // We're sampling one mesh from the whole scene to make sure that all emissive meshes are eventually
         // considered for sampling at some point and avoid bias
-        mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF);
+        unsigned int mesh_index;
+        mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
+
+        for (int i = 0; i < cell_alias_table.size - 1; i++)
+        {
+            if (regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[i] == mesh_index)
+            {
+                mesh_PDF += regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[i];
+
+                break;
+            }
+        }
+    }
     else
     {
         unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size;
@@ -41,6 +53,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
         if (mesh_PDF == 0.0f)
             // No valid mesh for this cell, falling back to global triangle sampling
             return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+        mesh_PDF += render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size - 1] * render_data.buffers.emissive_meshes_alias_tables.meshes_PDFs[emissive_mesh_index];
     
         mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
     }

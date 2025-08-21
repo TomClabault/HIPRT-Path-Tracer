@@ -10,7 +10,7 @@
 
 struct AliasTableDevice
 {
-	HIPRT_HOST_DEVICE int sample(Xorshift32Generator& rng) const
+	HIPRT_HOST_DEVICE unsigned int sample(Xorshift32Generator& rng) const
 	{
 		int random_index = rng.random_index(size);
 		float probability = alias_table_probas[random_index];
