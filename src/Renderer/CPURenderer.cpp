@@ -926,6 +926,8 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             // Either the alias table size or the number of emissive meshes
             // (number of contributions per cell), whichever is the smallest
             unsigned contribution_count_min = hippt::min(alias_table_size, emissive_mesh_count);
+            if (hash_grid_cell_index == 1727)
+                std::cout << std::endl;
 
             // We're only going to keep the best 'alias_table_size' contributing meshes
             // in case there are more than that
@@ -947,10 +949,11 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             // The last slot of the alias table contains the sum of the contributions of all the lights
             // of the scene that are not the "best lights" (so not the contribution_count_min - 1 first entries of the
             // alias table)
-            best_contributions[contribution_count_min - 1] = sum_all_contributions - sum_best_contributions;
+            best_contributions.back() = sum_all_contributions - sum_best_contributions;
 
             ReGIRCellsAliasTablesSoAHost<std::vector>& soa_host = primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
             assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+
 
             // Computing the PDFs
             std::vector<float> PDFs(alias_table_size, 0.0f);
@@ -958,7 +961,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             // And computing the alias tables from the contributions
             std::vector<float> probas(alias_table_size, 0.0f);
             std::vector<int> aliases(alias_table_size, 0);
-            if (sum_best_contributions > 0.0f)
+            if (sum_all_contributions > 0.0f)
             {
                 for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
                     PDFs[pdf_index] = best_contributions[pdf_index] / sum_all_contributions;

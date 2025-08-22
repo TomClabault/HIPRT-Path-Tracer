@@ -21,9 +21,21 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 
     AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
+    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size;
 
     float mesh_PDF = 0.0f;
     EmissiveMeshAliasTableDevice mesh_alias_table;
+
+    /*if (hash_grid_cell_index == 1727)
+        std::cout << std::endl;*/
+
+    // TODO we probably don't have the choice to do:
+    //      - 1 alias table sample
+    //      - +1 regular power sample
+    //      and mix the two with MIS somehow
+    //
+    // We could do 1 sample MIS with a proba that depends on the contribution of all the lights not in the alias table, (the very last index of the alias table)
+
 
     if (alias_table_index == cell_alias_table.size - 1)
     {
@@ -37,9 +49,9 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 
         for (int i = 0; i < cell_alias_table.size - 1; i++)
         {
-            if (regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[i] == mesh_index)
+            if (regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
             {
-                mesh_PDF += regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[i];
+                mesh_PDF += regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
 
                 break;
             }
@@ -47,7 +59,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     }
     else
     {
-        unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size;
         unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
         mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
         if (mesh_PDF == 0.0f)

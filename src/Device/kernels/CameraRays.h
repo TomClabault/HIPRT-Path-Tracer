@@ -201,7 +201,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     render_data.g_buffer.first_hit_prim_index[pixel_index] = intersection_found ? closest_hit_info.primitive_index : -1;
     render_data.aux_buffers.pixel_active[pixel_index] = true;
 
-    if (x == 1038 && y == render_data.render_settings.render_resolution.y - 1 - 171)
+    if (x == 261 && y == render_data.render_settings.render_resolution.y - 1 - 134)
         std::cout << std::endl;
 
     ReGIR_update_representative_data(render_data, closest_hit_info.inter_point, closest_hit_info.geometric_normal, render_data.current_camera, closest_hit_info.primitive_index, true, ray_payload.material);

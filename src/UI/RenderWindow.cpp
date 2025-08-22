@@ -62,6 +62,15 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Can we somehow incorporate light source normal in the mesh contribution of the cache cells? 
+//		Average normal of the mesh at least? To reject totally backfacing lights
+//		What about spherical mesh though? How to sample only from the visible part?
+//			Maybe precompute some characteristics about meshes during scene parsing that gives us an indication of how many faces are facing a particular way (discretize directions) and so we could then fetch that precomputed information during mesh contribution computation
+//			Should be cheap in memory too so we could have some nice precision there?
+//			This is basically binning the emissive power of the mesh per each discretized direction, should work well and should fairly easily avoid sampling backfacing triangles
+// 
+//			We're also going to need a way to importance sample a triangle on that selected mesh also accounting for backfacing triangles however.
+//			We can probably do that by pre-processing emissive meshes into different directional bins (the same as above) and then importance sampling a bin (and thus the triangles isnide that bin) based on the shading point's normal
 // - We could compact the ReGIR hash table by using perfect hasing right? After a few samples, we could build a minimal perfect hash table with RecSplit or something and get a perfect hash table with no probing and no waster memory --> faster and less memory
 //		- But then we can't expand the table anymore hmmmm. Maybe compact at a point where we can assume that no more cells are going to be added to the hash table
 // - Can we have another buffer that is the same size as the alias table per each cell and accumulate visibility inside it the same way we do for NEE++ but at shading time? So we get an estimate over the whole cell instead of just at the representative point of the cell
