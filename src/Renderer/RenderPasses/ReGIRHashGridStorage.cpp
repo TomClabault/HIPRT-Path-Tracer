@@ -87,7 +87,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 	if (grid_not_allocated || grid_res_changed)
 	{
-		get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), 256);
+		get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
 
 		updated = true;
 	}
@@ -247,7 +247,7 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 			get_non_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 			get_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 
-			get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), 256);
+			get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
 
 			// We need to update the cell alive count because there may have possibly been collisions that couldn't be resolved during the rehashing
 			// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different (lower) --> need to update

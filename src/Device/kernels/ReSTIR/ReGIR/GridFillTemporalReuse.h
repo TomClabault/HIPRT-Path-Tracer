@@ -21,7 +21,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 
     AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
-    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size;
+    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
 
     float mesh_PDF = 0.0f;
     EmissiveMeshAliasTableDevice mesh_alias_table;
@@ -33,7 +33,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     //
     // We could do 1 sample MIS with a proba that depends on the contribution of all the lights not in the alias table, (the very last index of the alias table)
 
-    constexpr float proba_sample_all = 0.15f;
+    constexpr float proba_sample_all = 0.0f;
     if (rng() < proba_sample_all)
     {
         // The last index of the alias table is reserved for sampling all the remaining
@@ -47,9 +47,9 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
         float alias_table_mesh_PDF = 0.0f;
         for (int i = 0; i < cell_alias_table.size; i++)
         {
-            if (regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
+            if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
             {
-                alias_table_mesh_PDF = regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
+                alias_table_mesh_PDF = regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
 
                 break;
             }
@@ -64,8 +64,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     }
     else
     {
-        unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
-        mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
+        unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
+        mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
         if (mesh_PDF == 0.0f)
             // No valid mesh for this cell, falling back to global triangle sampling
             return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
@@ -74,7 +74,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
         // light sample by the balance heuristic weight. We do not have the light contribution computed here
         // yet so instead we divide the PDF by weight which is equivalent to multiplying the contribution by
         // the weight since we're going to divide by the PDF
-        mesh_PDF /= balance_heuristic(mesh_PDF, render_data.buffers.emissive_meshes_alias_tables.meshes_PDFs[emissive_mesh_index]);
+        // mesh_PDF /= balance_heuristic(mesh_PDF, render_data.buffers.emissive_meshes_alias_tables.meshes_PDFs[emissive_mesh_index]);
         mesh_PDF *= (1.0f - proba_sample_all);
 
         mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
