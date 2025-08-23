@@ -33,52 +33,53 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     //
     // We could do 1 sample MIS with a proba that depends on the contribution of all the lights not in the alias table, (the very last index of the alias table)
 
-    constexpr float proba_sample_all = 0.0f;
-    if (rng() < proba_sample_all)
-    {
-        // The last index of the alias table is reserved for sampling all the remaining
-        // emissive meshes of the scene that are not present in the light distribution
-        //
-        // We're sampling one mesh from the whole scene to make sure that all emissive meshes are eventually
-        // considered for sampling at some point and avoid bias
-        unsigned int mesh_index;
-        mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
+    //constexpr float proba_sample_all = 0.025f;
+    //if (rng() < proba_sample_all)
+    //{
+    //    // The last index of the alias table is reserved for sampling all the remaining
+    //    // emissive meshes of the scene that are not present in the light distribution
+    //    //
+    //    // We're sampling one mesh from the whole scene to make sure that all emissive meshes are eventually
+    //    // considered for sampling at some point and avoid bias
+    //    unsigned int mesh_index;
+    //    mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
 
-        float alias_table_mesh_PDF = 0.0f;
-        for (int i = 0; i < cell_alias_table.size; i++)
-        {
-            if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
-            {
-                alias_table_mesh_PDF = regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
+    //    float alias_table_mesh_PDF = 0.0f;
+    //    for (int i = 0; i < cell_alias_table.size; i++)
+    //    {
+    //        if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
+    //        {
+    //            alias_table_mesh_PDF = regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
 
-                break;
-            }
-        }
+    //            break;
+    //        }
+    //    }
 
-        // We're doing a one-sample MIS estimator here. We thus want to multiply the contribution of the
-        // light sample by the balance heuristic weight. We do not have the light contribution computed here
-        // yet so instead we divide the PDF by weight which is equivalent to multiplying the contribution by
-        // the weight since we're going to divide by the PDF
-        mesh_PDF /= balance_heuristic(mesh_PDF, alias_table_mesh_PDF);
-        mesh_PDF *= proba_sample_all;
-    }
-    else
-    {
+    //    // We're doing a one-sample MIS estimator here. We thus want to multiply the contribution of the
+    //    // light sample by the balance heuristic weight. We do not have the light contribution computed here
+    //    // yet so instead we divide the PDF by weight which is equivalent to multiplying the contribution by
+    //    // the weight since we're going to divide by the PDF
+    //    mesh_PDF /= balance_heuristic(mesh_PDF, alias_table_mesh_PDF);
+    //    mesh_PDF *= proba_sample_all;
+    //}
+    //else
+    //{
         unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
         mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
         if (mesh_PDF == 0.0f)
-            // No valid mesh for this cell, falling back to global triangle sampling
-            return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+            // No valid mesh for this cell, early exit by returning
+            // an empty sample
+            return LightSampleInformation();
 
-        // We're doing a one-sample MIS estimator here. We thus want to multiply the contribution of the
-        // light sample by the balance heuristic weight. We do not have the light contribution computed here
-        // yet so instead we divide the PDF by weight which is equivalent to multiplying the contribution by
-        // the weight since we're going to divide by the PDF
-        // mesh_PDF /= balance_heuristic(mesh_PDF, render_data.buffers.emissive_meshes_alias_tables.meshes_PDFs[emissive_mesh_index]);
-        mesh_PDF *= (1.0f - proba_sample_all);
+        //// We're doing a one-sample MIS estimator here. We thus want to multiply the contribution of the
+        //// light sample by the balance heuristic weight. We do not have the light contribution computed here
+        //// yet so instead we divide the PDF by weight which is equivalent to multiplying the contribution by
+        //// the weight since we're going to divide by the PDF
+        //// mesh_PDF /= balance_heuristic(mesh_PDF, render_data.buffers.emissive_meshes_alias_tables.meshes_PDFs[emissive_mesh_index]);
+        //mesh_PDF *= (1.0f - proba_sample_all);
 
         mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
-    }
+    // }
 
     // Now that we have importance sampled a mesh, we're importance sampling a triangle
     // on that mesh
@@ -134,44 +135,127 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 
     bool reservoir_is_canonical = regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell);
 
-    int retries = 0;
-    for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
+    if constexpr (ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE)
     {
-        LightSampleInformation light_sample;
-
-        if constexpr (ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE)
+#define NUMBER_OF_SIMPLE_SAMPLES 1
+        
+        for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
         {
+            LightSampleInformation light_sample;
+
             if (reservoir_is_canonical)
                 light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
             else
                 light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, hash_grid_cell_index, primary_hit, rng);
+
+            if (light_sample.emissive_triangle_index == -1)
+                continue;
+
+            float target_function;
+            if (reservoir_is_canonical)
+                // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
+                target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data,
+                    surface, primary_hit,
+                    light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+            else
+                target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
+                    surface, primary_hit,
+                    light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+
+            float mis_weight;
+            if (reservoir_is_canonical)
+                mis_weight = 1.0f / regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir;
+            else
+            {
+                float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, light_sample.light_area, light_sample.emission);
+                mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF, NUMBER_OF_SIMPLE_SAMPLES);
+            }
+
+            grid_fill_reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
         }
-        else if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)
-            // Never using presampling lights for pre integration because pre integration needs
-            // different samples to pre integrate properly and using presampled lights severely restricts
-            // the number of different samples we have available
-            light_sample = sample_one_presampled_light(render_data, hash_grid_cell_index, reservoir_index_in_cell, primary_hit, rng);
-        else
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
 
-        if (light_sample.emissive_triangle_index == -1)
-            continue;
+        if (!reservoir_is_canonical)
+        {
+            for (int light_sample_index = 0; light_sample_index < NUMBER_OF_SIMPLE_SAMPLES; light_sample_index++)
+            {
+                float mesh_PDF;
+                unsigned int mesh_index;
+                EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
 
-        float target_function;
-        if (reservoir_is_canonical)
-            // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-            target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, 
-                surface, primary_hit,
-                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
-        else
-            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, 
-                surface, primary_hit,
-                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+                float triangle_PDF;
+                int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+                if (emissive_triangle_index == -1)
+					continue;
 
-        float mis_weight = 1.0f / regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir;
-        float source_pdf = light_sample.area_measure_pdf;
+                LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+                light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
 
-        grid_fill_reservoir.stream_sample(mis_weight, target_function, source_pdf, light_sample, rng);
+                float target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
+                        surface, primary_hit,
+                        light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+
+                float cell_light_distributions_pdf = 0.0f;
+                {
+                    float mesh_sampling_PDF = 0.0f;
+
+                    AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
+                    int alias_table_index = cell_alias_table.sample(rng);
+                    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
+                    for (int i = 0; i < cell_alias_table.size; i++)
+                    {
+                        if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
+                        {
+                            mesh_sampling_PDF = regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
+
+                            break;
+                        }
+                    }
+
+                    float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_alias_tables.get_power_sampled_triangle_PDF_in_mesh(mesh_index, light_sample.light_area, light_sample.emission);
+                    float point_on_triangle_PDF = 1.0f / light_sample.light_area;
+
+                    cell_light_distributions_pdf = mesh_sampling_PDF * triangle_within_mesh_sampling_PDF * point_on_triangle_PDF;
+                }
+
+                float mis_weight = balance_heuristic(light_sample.area_measure_pdf, NUMBER_OF_SIMPLE_SAMPLES, cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
+
+                grid_fill_reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
+            }
+        }
+    }
+    else
+    {
+        for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
+        {
+            LightSampleInformation light_sample;
+
+            if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)
+                // Never using presampling lights for pre integration because pre integration needs
+                // different samples to pre integrate properly and using presampled lights severely restricts
+                // the number of different samples we have available
+                light_sample = sample_one_presampled_light(render_data, hash_grid_cell_index, reservoir_index_in_cell, primary_hit, rng);
+            else
+                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+
+            if (light_sample.emissive_triangle_index == -1)
+                continue;
+
+            float target_function;
+            if (reservoir_is_canonical)
+                // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
+                target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data,
+                    surface, primary_hit,
+                    light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+            else
+                target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
+                    surface, primary_hit,
+                    light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+
+            float mis_weight = 1.0f / regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir;
+            float source_pdf = light_sample.area_measure_pdf;
+
+            grid_fill_reservoir.stream_sample(mis_weight, target_function, source_pdf, light_sample, rng);
+        }
     }
 
     return grid_fill_reservoir;

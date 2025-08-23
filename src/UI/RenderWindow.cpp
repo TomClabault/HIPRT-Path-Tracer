@@ -62,6 +62,7 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Should we separate non-canonical and canonical samples in two different dispatches for the grid fill because there is quite a bit of divergence
 // - Can we somehow incorporate light source normal in the mesh contribution of the cache cells? 
 //		Average normal of the mesh at least? To reject totally backfacing lights
 //		What about spherical mesh though? How to sample only from the visible part?
