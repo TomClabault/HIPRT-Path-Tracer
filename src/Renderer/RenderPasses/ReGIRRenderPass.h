@@ -79,7 +79,7 @@ public:
 	void launch_supersampling_copy(HIPRTRenderData& render_data);
 	void launch_pre_integration(HIPRTRenderData& render_data);
 	void launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream);
-	void launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data);
+	void launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 	void launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit);
 	void launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data);
 

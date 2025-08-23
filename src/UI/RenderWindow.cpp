@@ -62,6 +62,10 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Improve NEE++ memory usage to be able to use more precision for the same memory space:
+//		- Move at the very least to 2 * uchar for the total counter and unoccluded counter
+//		- 1 single uchar with exponential moving average?
+//		- Morris counters for even less?
 // - Should we separate non-canonical and canonical samples in two different dispatches for the grid fill because there is quite a bit of divergence
 // - Can we somehow incorporate light source normal in the mesh contribution of the cache cells? 
 //		Average normal of the mesh at least? To reject totally backfacing lights
@@ -862,6 +866,7 @@ bool RenderWindow::is_rendering_done()
 
 bool RenderWindow::needs_viewport_refresh()
 {
+	return true;
 	// Update every X seconds
 	bool enough_time_has_passed = get_time_ms_before_viewport_refresh() <= 0.0f;
 	// The render was reset and one frame has been rendered

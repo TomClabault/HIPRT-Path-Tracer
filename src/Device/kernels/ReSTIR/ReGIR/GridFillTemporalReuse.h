@@ -47,6 +47,32 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     return light_sample;
 }
 
+HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, const LightSampleInformation& light_sample, unsigned int mesh_index, Xorshift32Generator& rng)
+{
+    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+
+    AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
+    int alias_table_index = cell_alias_table.sample(rng);
+    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
+
+    float mesh_sampling_PDF = 0.0f;
+    for (int i = 0; i < cell_alias_table.size; i++)
+    {
+        if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
+        {
+            mesh_sampling_PDF = regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
+
+            break;
+        }
+    }
+
+    float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_alias_tables.get_power_sampled_triangle_PDF_in_mesh(mesh_index, light_sample.light_area, light_sample.emission);
+    float point_on_triangle_PDF = 1.0f / light_sample.light_area;
+
+    return mesh_sampling_PDF * triangle_within_mesh_sampling_PDF * point_on_triangle_PDF;
+}
+
 HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRenderData& render_data, 
     unsigned int hash_grid_cell_index, int reservoir_index_in_cell, bool primary_hit,
     Xorshift32Generator& rng)
@@ -86,6 +112,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
     bool reservoir_is_canonical = regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell);
 
+    // Sampling some samples with per-cell light distributions
     for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
     {
         LightSampleInformation light_sample;
@@ -123,6 +150,8 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 
     if (!reservoir_is_canonical)
     {
+        // Sampling some samples with a simple 'cover-all-triangles" strategy (power sampling for example)
+        // for unbiasedness
         for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillPerCellDistributionsCanonicalSampleCount; light_sample_index++)
         {
             float mesh_PDF;
@@ -135,35 +164,13 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
                 continue;
 
             LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+            // That point on this triangle on that emissive mesh
             light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
 
             float target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
-
-            float cell_light_distributions_pdf = 0.0f;
-            {
-                float mesh_sampling_PDF = 0.0f;
-
-                AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
-                int alias_table_index = cell_alias_table.sample(rng);
-                unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
-                for (int i = 0; i < cell_alias_table.size; i++)
-                {
-                    if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
-                    {
-                        mesh_sampling_PDF = regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
-
-                        break;
-                    }
-                }
-
-                float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_alias_tables.get_power_sampled_triangle_PDF_in_mesh(mesh_index, light_sample.light_area, light_sample.emission);
-                float point_on_triangle_PDF = 1.0f / light_sample.light_area;
-
-                cell_light_distributions_pdf = mesh_sampling_PDF * triangle_within_mesh_sampling_PDF * point_on_triangle_PDF;
-            }
-
+            float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, mesh_index, rng);
             float mis_weight = balance_heuristic(light_sample.area_measure_pdf, ReGIR_GridFillPerCellDistributionsCanonicalSampleCount, cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
 
             reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
@@ -228,7 +235,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
     if constexpr (ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE)
         grid_fill_reservoir = grid_fill_with_per_cell_light_distributions(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit, rng);
     else
-        grid_fill_reservoir = grid_fill_classic<accumulatePreIntegration>();
+        grid_fill_reservoir = grid_fill_classic<accumulatePreIntegration>(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit, rng);
 
     return grid_fill_reservoir;
 }

@@ -332,7 +332,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		launch_supersampling_fill(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
-		launch_cell_alias_tables_precomputation(render_data);
+		launch_cell_alias_tables_precomputation(render_data, compiler_options);
 
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
@@ -351,7 +351,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		// Also need to recompute the alias tables of the grid cells because
 		// a rehash completely restructures 
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
-		launch_cell_alias_tables_precomputation(render_data);
+		launch_cell_alias_tables_precomputation(render_data, compiler_options);
 
 		// Same with the pre integration factors of the grid cells
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
@@ -771,8 +771,11 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	render_data.random_number = seed_backup;
 }
 
-void ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data)
+void ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
+	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_DISTRIBUTIONS) == KERNEL_OPTION_FALSE)
+		return;
+
 	launch_cell_alias_tables_precomputation_internal(render_data, true);
 	launch_cell_alias_tables_precomputation_internal(render_data, false);
 }
