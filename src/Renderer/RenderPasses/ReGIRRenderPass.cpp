@@ -811,6 +811,11 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 
+	std::vector<unsigned int> meshes_indices_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>().size());
+	std::vector<float> probas_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>().size());
+	std::vector<int> aliases_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>().size());
+	std::vector<float> PDFs_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>().size());
+
 	unsigned int cell_offset = last_nb_computed_cells_alias_tables;
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
 	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
@@ -822,9 +827,12 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 
 
 		// Computing the contributions of emissive meshes
+		auto start = std::chrono::high_resolution_clock::now();
 		size_t contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;
 		unsigned int dispatch_size = hippt::min(contributions_left_to_compute, contribution_scratch_buffer.size());
 		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->launch_synchronous(64, 1, dispatch_size, 1, launch_args);
+		auto stop = std::chrono::high_resolution_clock::now();
+		std::cout << "Compute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop- start).count() << "ms. " << std::endl;
 
 
 
@@ -840,6 +848,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
 			std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
 
+		start = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
 		{
@@ -852,9 +861,13 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 					return contributions[i * emissive_mesh_count + a] > contributions[i * emissive_mesh_count + b];
 				});
 		}
+		stop = std::chrono::high_resolution_clock::now();
+		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
 		unsigned int alias_table_size = render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
 		unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
+
+		start = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for
 		for (int cell_index_in_iteration = 0; cell_index_in_iteration < hippt::min(actual_number_of_cells_computed_per_iteration, cells_yet_to_compute_count); cell_index_in_iteration++)
 		{
@@ -889,16 +902,28 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 				// And computing the alias tables from the contributions
 				Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
 
-				m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
+				std::copy(sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count, sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count + contribution_count_min, meshes_indices_staging.begin() + hash_grid_cell_index * alias_table_size);
+				//m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
 			}
 
-			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
+			std::copy(probas.begin(), probas.end(), probas_staging.begin() + hash_grid_cell_index * alias_table_size);
+			std::copy(aliases.begin(), aliases.end(), aliases_staging.begin() + hash_grid_cell_index * alias_table_size);
+			std::copy(PDFs.begin(), PDFs.end(), PDFs_staging.begin() + hash_grid_cell_index * alias_table_size);
+			
+			/*m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
 			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
-			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);
+			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);*/
 		}
+		stop = std::chrono::high_resolution_clock::now();
+		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
 		cell_offset += max_number_of_cells_computed_per_iteration;
 	}
+
+	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(meshes_indices_staging);
+	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(probas_staging);
+	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(aliases_staging);
+	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(PDFs_staging);
 
 	last_nb_computed_cells_alias_tables = nb_cells_alive;
 }

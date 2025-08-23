@@ -36,7 +36,7 @@ struct ReGIRCellsAliasTablesSoADevice
 	//
 	// So if this value is 10 here, it will be 11 at runtime and the alias tables
 	// will have 11 slots to sample from
-	unsigned int alias_table_size = 256;
+	unsigned int alias_table_size = 1024;
 };
 
 #endif

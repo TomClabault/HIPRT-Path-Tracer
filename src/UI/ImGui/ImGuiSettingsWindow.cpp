@@ -1870,6 +1870,22 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			ImGui::SeparatorText("Common to primary and secondary grid cells");
+			static bool cache_cells_light_distributions = ReGIR_GridFillUsePerCellDistributions;
+			if (ImGui::Checkbox("Cache cells light distributions", &cache_cells_light_distributions))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_DISTRIBUTIONS, cache_cells_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("If true, the contribution of each emissive mesh of the scene will be precomputed "
+				"at each cell of the hash grid to build a sampling distribution based on the contribution "
+				"of the emissive meshes.\n\n"
+				""
+				"Those per-cell sampling distribution will then be used during the grid fill to provide higher "
+				"quality initial light samples");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;
 			if (ImGui::Checkbox("Use visibility in target function", &visibility_grid_fill_target_function))
 			{

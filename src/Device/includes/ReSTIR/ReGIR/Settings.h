@@ -209,14 +209,14 @@ struct ReGIRSettings
 	HIPRT_DEVICE float get_non_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
 	HIPRT_DEVICE float get_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
 
-	HIPRT_DEVICE const ReGIRCellsAliasTablesSoADevice& get_cell_distributions(bool primary_hit) const { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
-	HIPRT_DEVICE ReGIRCellsAliasTablesSoADevice& get_cell_distributions(bool primary_hit) { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
+	HIPRT_DEVICE const ReGIRCellsAliasTablesSoADevice& get_cell_distributions_soa(bool primary_hit) const { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
+	HIPRT_DEVICE ReGIRCellsAliasTablesSoADevice& get_cell_distributions_soa(bool primary_hit) { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
 
 	HIPRT_DEVICE AliasTableDevice get_cell_alias_table(unsigned int hash_grid_cell_index, bool primary_hit) const
 	{
 		AliasTableDevice out;
 
-		const ReGIRCellsAliasTablesSoADevice& cell_distributions = get_cell_distributions(primary_hit); 
+		const ReGIRCellsAliasTablesSoADevice& cell_distributions = get_cell_distributions_soa(primary_hit); 
 
 		out.alias_table_alias = cell_distributions.all_alias_tables_aliases + hash_grid_cell_index * cell_distributions.alias_table_size;
 		out.alias_table_probas = cell_distributions.all_alias_tables_probas + hash_grid_cell_index * cell_distributions.alias_table_size;
