@@ -864,6 +864,14 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
+		std::vector<float> DEBUG_SORTED8CONTRIBUTIONS(emissive_mesh_count);
+		double sum_all_contrib = 0.0;
+		for (int i = 0; i < emissive_mesh_count; i++)
+		{
+			DEBUG_SORTED8CONTRIBUTIONS[i] = contributions[sorted_indices[i]];
+			sum_all_contrib += DEBUG_SORTED8CONTRIBUTIONS[i];
+		}
+
 		unsigned int alias_table_size = render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
 		unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
 

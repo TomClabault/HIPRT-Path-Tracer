@@ -55,6 +55,11 @@ struct EmissiveMeshesAliasTablesDevice
 	float* meshes_emissive_triangles_PDFs = nullptr;
 	int* meshes_triangle_indices = nullptr;
 
+	HIPRT_DEVICE float get_power_sampled_triangle_PDF_in_mesh(unsigned int emissive_mesh_index, float sampled_triangle_area, const ColorRGB32F& sampled_triangle_emission) const
+	{
+		return sampled_triangle_area * sampled_triangle_emission.luminance() / meshes_total_power[emissive_mesh_index];
+	}
+
 	HIPRT_DEVICE EmissiveMeshAliasTableDevice get_emissive_mesh_alias_table(unsigned int emissive_mesh_index) const
 	{
 		EmissiveMeshAliasTableDevice out;
