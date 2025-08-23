@@ -42,11 +42,9 @@
  * 
  * The bigger the size, the faster the precomputation but obviously the more memory is used
  */
-#define ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes 2000000u
+#define ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes 200000000u
 // This one is just an helper constant computed from the one above and should not be modified directly
 #define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount (static_cast<unsigned int>(ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes / sizeof(float)))
-
-#define ReGIR_GridFillPerCellDistributionsCanonicalSampleCount 0
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -134,6 +132,15 @@
  * quality initial light samples
  */
 #define ReGIR_GridFillUsePerCellDistributions KERNEL_OPTION_TRUE
+
+/**
+ * How many canonical samples (simple power sampling) to draw and combine with cell-light-distribution
+ * samples to guarantee unbiasedness.
+ * 
+ * 1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the
+ * cell-light-distribution is poor
+ */
+#define ReGIR_GridFillPerCellDistributionsCanonicalSampleCount 1
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

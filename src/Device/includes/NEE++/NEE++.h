@@ -241,7 +241,7 @@ struct NEEPlusPlusDevice
 		return hash_grid_index;
 	}
 
-	// TODO compare with the alpha learning rate and the ground truth to see the behavior of a single float buffer
+	// TODO compare with the alpha learning rate / exponential moving average and the ground truth to see the behavior of a single float buffer
 	// TODO see if capping at 255 / 65535 is enough
 private:
 	/**

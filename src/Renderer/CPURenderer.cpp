@@ -928,7 +928,8 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             unsigned contribution_count_min = hippt::min(alias_table_size, emissive_mesh_count);
 
             // We're only going to keep the best 'alias_table_size' contributing meshes
-            // in case there are more than that
+            // in case there are more than that, i.e. the alias table is going to be built only on
+            // the 'alias_table_size' meshes that contribute the most to the cell
             float sum_best_contributions = 0.0f;
             std::vector<float> best_contributions(contribution_count_min);
             for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)

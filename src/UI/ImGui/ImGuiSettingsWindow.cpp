@@ -1884,6 +1884,27 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"Those per-cell sampling distribution will then be used during the grid fill to provide higher "
 				"quality initial light samples");
+			static int cache_cells_list_distribution_canonical_samples_count = ReGIR_GridFillPerCellDistributionsCanonicalSampleCount;
+			ImGui::SliderInt("Canonical samples count", &cache_cells_list_distribution_canonical_samples_count, 1, 16);
+			ImGuiRenderer::show_help_marker("How many canonical samples(simple power sampling) to draw and combine with cell-light-distribution "
+				"samples to guarantee unbiasedness.\n\n"
+				""
+				"1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the "
+				"cell-light-distribution is poor");
+			if (cache_cells_list_distribution_canonical_samples_count!= global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PER_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT))
+			{
+				ImGui::TreePush("Apply jitter tries regir");
+
+				if (ImGui::Button("Apply"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PER_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT, cache_cells_list_distribution_canonical_samples_count);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;

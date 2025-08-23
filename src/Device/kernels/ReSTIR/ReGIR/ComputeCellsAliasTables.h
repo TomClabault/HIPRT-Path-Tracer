@@ -50,9 +50,9 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
 
     Xorshift32Generator dummy_rng(5847);
     return ReGIR_grid_fill_evaluate_target_function<
-        /* visibility */ false, // we don't have the normal
+        /* visibility */ false,
         /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
-        /* cosine term at mesh point */ false,
+        /* cosine term at mesh point */ false, // we don't have the normal
         ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
         /* NEE++ */ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
             render_data, cell_surface, primary_hit, total_mesh_power, make_float3(0, 0, 0), mesh_average_point, dummy_rng);
