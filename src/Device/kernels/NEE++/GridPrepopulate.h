@@ -65,8 +65,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 #endif
 {
 #ifdef __KERNELCC__
-    const uint32_t x = (blockIdx.x * blockDim.x + threadIdx.x) * ReGIR_GridPrepopulationResolutionDownscale;
-    const uint32_t y = (blockIdx.y * blockDim.y + threadIdx.y) * ReGIR_GridPrepopulationResolutionDownscale;
+    const uint32_t x = (blockIdx.x * blockDim.x + threadIdx.x) * NEEPlusPlus_GridPrepoluationResolutionDownscale;
+    const uint32_t y = (blockIdx.y * blockDim.y + threadIdx.y) * NEEPlusPlus_GridPrepoluationResolutionDownscale;
 #endif
     if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
         return;
