@@ -15,8 +15,8 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-#define SAMPLES_PER_MESH 10000
-
+//#define SAMPLES_PER_MESH 1000
+//
 //HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 //{
 //    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
@@ -30,9 +30,9 @@
 //        sample_PDF *= mesh_light_sample.area_measure_pdf;
 //
 //        total_contribution_to_cell += ReGIR_grid_fill_evaluate_target_function<
-//            /* visibility */ false,
-//            /* cosine term at cell point */ true,
-//            /* cosine term at mesh point */ true,
+//            /* visibility */ true,
+//            /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
+//            /* cosine term at mesh point */ ReGIR_GridFillTargetFunctionCosineTermLightSource,
 //            ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
 //            /* NEE++ */ true>(
 //                render_data, cell_surface, primary_hit, mesh_light_sample.emission, mesh_light_sample.light_source_normal, mesh_light_sample.point_on_light, rng) / sample_PDF;
@@ -50,11 +50,11 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
 
     Xorshift32Generator dummy_rng(5847);
     return ReGIR_grid_fill_evaluate_target_function<
-        /* visibility */ false,
+        /* visibility */ false, // we don't have the normal
         /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
         /* cosine term at mesh point */ false,
         ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
-        /* NEE++ */ true>(
+        /* NEE++ */ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
             render_data, cell_surface, primary_hit, total_mesh_power, make_float3(0, 0, 0), mesh_average_point, dummy_rng);
 }
 
@@ -71,7 +71,7 @@ GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Compute_Cells_Alias_Tables(HIPRTRenderData r
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Alias_Tables(HIPRTRenderData render_data, float* contributions_scratch_buffer, unsigned int cell_offset, bool primary_hit, unsigned int thread_index)
 #endif
 {
-    if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+    if (render_data.buffers.emissive_triangles_count == 0)
         // No initial candidates to sample since no lights
         return;
 

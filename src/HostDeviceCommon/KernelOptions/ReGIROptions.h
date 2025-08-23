@@ -36,8 +36,17 @@
  */
 #define ReGIR_GridPrepopulationResolutionDownscale 1
 
-#define ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes 200000000u
+/**
+ * Maximum size in bytes of the scratch buffer that is going to be used to compute
+ * the contribution of all the lights in the scene to each cell of the ReGIR grid
+ * 
+ * The bigger the size, the faster the precomputation but obviously the more memory is used
+ */
+#define ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes 2000000u
+// This one is just an helper constant computed from the one above and should not be modified directly
 #define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount (static_cast<unsigned int>(ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes / sizeof(float)))
+
+#define ReGIR_GridFillPerCellDistributionsCanonicalSampleCount 0
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -78,7 +87,7 @@
  * Takes the cosine term at the light source (i.e. the cosine term of the geometry term) into account when
  * evaluating the target function during grid fill
  */
-#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_FALSE
+#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to include the BSDF in the target function used for the resampling of the initial candidates
