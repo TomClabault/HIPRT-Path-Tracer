@@ -36,15 +36,9 @@ struct ReGIRCellsAliasTablesSoAHost
 {
 	void resize(size_t new_number_of_cells, unsigned int alias_tables_size)
 	{
-		// Adding 1 to the alias table size because we reserve one slot in the light distribution
-		// of all cells to sample all the lights that don't appear in the distribution.
-		//
-		// In other words, if there are 100 lights in the scene but the alias table are only size 10,
-		// the 11th slot is added here and reserved such that we can sample the 90 remaining lights to
-		// avoid bias because of not considering all the lights of the scene
-		soa.resize(new_number_of_cells * (alias_tables_size + 1));
+		soa.resize(new_number_of_cells * alias_tables_size);
 
-		m_alias_table_size = alias_tables_size + 1;
+		m_alias_table_size = alias_tables_size;
 	}
 
 	void free()
@@ -70,14 +64,7 @@ struct ReGIRCellsAliasTablesSoAHost
 		cells_alias_tables.all_alias_tables_aliases = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>();
 		cells_alias_tables.all_alias_tables_PDFs = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>();
 		cells_alias_tables.emissive_meshes_indices = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>();
-		// The size of the light distributions at each cell is the minimum between the target alias table
-		// size and the number of emissive meshes in the scene
-		//
-		// +1 is for the reserved slot as explained in the resize() function
-		//
-		// Also because we store m_alias_table_size already with + 1, we do - 1 here to avoid
-		// having two times the + 1
-		cells_alias_tables.alias_table_size = hippt::min(m_alias_table_size - 1, render_data.buffers.emissive_meshes_alias_tables.alias_table_count) + 1;
+		cells_alias_tables.alias_table_size = hippt::min(m_alias_table_size, render_data.buffers.emissive_meshes_alias_tables.alias_table_count);
 
 		return cells_alias_tables;
 	}
