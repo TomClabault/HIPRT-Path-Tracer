@@ -26,9 +26,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     float mesh_PDF = 0.0f;
     EmissiveMeshAliasTableDevice mesh_alias_table;
 
-    /*if (hash_grid_cell_index == 1727)
-        std::cout << std::endl;*/
-
     // TODO we probably don't have the choice to do:
     //      - 1 alias table sample
     //      - +1 regular power sample
@@ -36,8 +33,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     //
     // We could do 1 sample MIS with a proba that depends on the contribution of all the lights not in the alias table, (the very last index of the alias table)
 
-
-    if (alias_table_index == cell_alias_table.size - 1)
+    constexpr float proba_sample_all = 0.15f;
+    if (rng() < proba_sample_all)
     {
         // The last index of the alias table is reserved for sampling all the remaining
         // emissive meshes of the scene that are not present in the light distribution
@@ -47,15 +44,23 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
         unsigned int mesh_index;
         mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
 
-        for (int i = 0; i < cell_alias_table.size - 1; i++)
+        float alias_table_mesh_PDF = 0.0f;
+        for (int i = 0; i < cell_alias_table.size; i++)
         {
             if (regir_settings.get_cell_distributions(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
             {
-                mesh_PDF += regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
+                alias_table_mesh_PDF = regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
 
                 break;
             }
         }
+
+        // We're doing a one-sample MIS estimator here. We thus want to multiply the contribution of the
+        // light sample by the balance heuristic weight. We do not have the light contribution computed here
+        // yet so instead we divide the PDF by weight which is equivalent to multiplying the contribution by
+        // the weight since we're going to divide by the PDF
+        mesh_PDF /= balance_heuristic(mesh_PDF, alias_table_mesh_PDF);
+        mesh_PDF *= proba_sample_all;
     }
     else
     {
@@ -64,8 +69,14 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
         if (mesh_PDF == 0.0f)
             // No valid mesh for this cell, falling back to global triangle sampling
             return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
-        mesh_PDF += render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).all_alias_tables_PDFs[render_data.render_settings.regir_settings.get_cell_distributions(primary_hit).alias_table_size - 1] * render_data.buffers.emissive_meshes_alias_tables.meshes_PDFs[emissive_mesh_index];
-    
+
+        // We're doing a one-sample MIS estimator here. We thus want to multiply the contribution of the
+        // light sample by the balance heuristic weight. We do not have the light contribution computed here
+        // yet so instead we divide the PDF by weight which is equivalent to multiplying the contribution by
+        // the weight since we're going to divide by the PDF
+        mesh_PDF /= balance_heuristic(mesh_PDF, render_data.buffers.emissive_meshes_alias_tables.meshes_PDFs[emissive_mesh_index]);
+        mesh_PDF *= (1.0f - proba_sample_all);
+
         mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
     }
 
@@ -75,6 +86,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
 
     LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+    // Area measure PDF already contains the PDF for sampling the point *on the triangle*.
+    // We need to add (multiply) the PDF of sampling the triangle itself within the sampled mesh
     light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
 
     sanity_check<true>(render_data, ColorRGB32F(1.0f / light_sample.area_measure_pdf), -1, -1);
