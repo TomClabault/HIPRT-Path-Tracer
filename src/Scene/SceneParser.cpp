@@ -129,7 +129,6 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
             material_indices_already_seen.insert(mesh->mMaterialIndex);
         }
 
-
         // Inserting the normals if present
         if (mesh->HasNormals())
             parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(),
