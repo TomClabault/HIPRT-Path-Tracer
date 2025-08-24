@@ -19,7 +19,7 @@
 //
 //HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 //{
-//    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
+//    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
 //    float total_contribution_to_cell = 0.0f;
 //    for (int i = 0; i < SAMPLES_PER_MESH; i++)
 //    {
@@ -43,19 +43,48 @@
 
 HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
-    float3 mesh_average_point = render_data.buffers.emissive_meshes_alias_tables.meshes_average_points[mesh_index_for_grid_cell];
+    float3 mesh_average_point = render_data.buffers.emissive_meshes_data.meshes_average_points[mesh_index_for_grid_cell];
     // Just wrapping the mesh power in an RGB value to be able to pass it to the 'target_function' function which doesn't take
     // just a float as argument
-    ColorRGB32F total_mesh_power = ColorRGB32F(render_data.buffers.emissive_meshes_alias_tables.meshes_total_power[mesh_index_for_grid_cell]);
+    ColorRGB32F total_mesh_power = ColorRGB32F(render_data.buffers.emissive_meshes_data.meshes_total_power[mesh_index_for_grid_cell]);
 
+	// This RNG is only used for the visibility test (and alpha testing random number) which we don't do here
     Xorshift32Generator dummy_rng(5847);
-    return ReGIR_grid_fill_evaluate_target_function<
+
+    //return ReGIR_grid_fill_evaluate_target_function<
+    //    /* visibility */ false,
+    //    /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
+    //    /* cosine term at mesh point */ false, // we don't have the normal
+    //    ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
+    //    /* NEE++ */ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
+    //        render_data, cell_surface, primary_hit, total_mesh_power, make_float3(0, 0, 0), mesh_average_point, dummy_rng);
+
+    // We are computing the mesh contribution with a unit emision of 1.0f here because what we want here is the contribution
+    // of the BRDF / cosine terms / distance / ...
+    //
+    // From that contribution which doesn't take emissive power into account, we're going to add the emissive power
+    // of all the faces of the mesh but weighted by their angle to the cell. We're going to use the binned emissive
+	// mesh faces for that. The binning by orientation is done during scene load
+    float contribution_no_emission = ReGIR_grid_fill_evaluate_target_function<
         /* visibility */ false,
         /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
-        /* cosine term at mesh point */ false, // we don't have the normal
+        /* cosine term at mesh point */ false, // we don't have the normal of the whole mesh, that doesn't make senes
         ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
         /* NEE++ */ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
-            render_data, cell_surface, primary_hit, total_mesh_power, make_float3(0, 0, 0), mesh_average_point, dummy_rng);
+            render_data, cell_surface, primary_hit, ColorRGB32F(1.0f), make_float3(0, 0, 0), mesh_average_point, dummy_rng);
+
+    float full_mesh_contribution = 0.0f;
+    float3 direction_to_mesh = hippt::normalize(mesh_average_point - cell_surface.cell_point);
+    unsigned int mesh_offset = mesh_index_for_grid_cell * EmissiveMeshesDataDevice::BIN_NORMAL_COUNT;
+    for (int binning_normal_index = 0; binning_normal_index < EmissiveMeshesDataDevice::BIN_NORMAL_COUNT; binning_normal_index++)
+    {
+        float binned_faces_power = render_data.buffers.emissive_meshes_data.binned_faces_total_power[mesh_offset + binning_normal_index];
+
+        float3 binning_normal = EmissiveMeshesDataDevice::get_binning_normal(binning_normal_index);
+		full_mesh_contribution += contribution_no_emission * hippt::max(0.0f, hippt::dot(direction_to_mesh, -binning_normal)) * binned_faces_power;
+    }
+
+    return full_mesh_contribution;
 }
 
 /**
@@ -80,7 +109,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Alias_Tables(HIPRTRende
 #ifdef __KERNELCC__
     uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-    unsigned int thread_count_per_cell = render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
+    unsigned int thread_count_per_cell = render_data.buffers.emissive_meshes_data.alias_table_count;
     unsigned int nb_threads_dispatched = gridDim.x * blockDim.x;
     unsigned int max_thread_index = floorf(nb_threads_dispatched / (float)thread_count_per_cell) * thread_count_per_cell;
 
@@ -89,9 +118,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Alias_Tables(HIPRTRende
 #endif
 
     // Cell index in [0, number of grid cells alive]
-    unsigned int cell_index = cell_offset + thread_index / render_data.buffers.emissive_meshes_alias_tables.meshes_alias_table.size;
+    unsigned int cell_index = cell_offset + thread_index / render_data.buffers.emissive_meshes_data.meshes_alias_table.size;
     unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_index];
-    unsigned int mesh_index_for_grid_cell = thread_index % render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
+    unsigned int mesh_index_for_grid_cell = thread_index % render_data.buffers.emissive_meshes_data.alias_table_count;
+
+    /*if (hash_grid_cell_index == 34720)
+        std::cout << std::endl;*/
 
     ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 

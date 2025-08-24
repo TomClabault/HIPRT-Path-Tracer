@@ -223,12 +223,12 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
         parsed_scene.parsed_emissive_meshes.emissive_meshes.resize(emissive_meshes_indices.size());
         parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.resize(parsed_scene.emissive_triangles_primitive_indices.size());
 
-        // Another loop to compute emissive meshes, multithreaded
+        // Another loop to pre-compute stuff about emissive meshes, multithreaded
 
 #pragma omp parallel for
-        for (int i = 0; i < emissive_meshes_indices.size(); i++)
+        for (int emissive_mesh_index = 0; emissive_mesh_index < emissive_meshes_indices.size(); emissive_mesh_index++)
         {
-            aiMesh* mesh = scene->mMeshes[emissive_meshes_indices[i]];
+            aiMesh* mesh = scene->mMeshes[emissive_meshes_indices[emissive_mesh_index]];
 
             int material_index = mesh->mMaterialIndex;
             CPUMaterial& renderer_material = parsed_scene.materials[material_index];
@@ -237,8 +237,13 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
             // emissive power and an alias table for sampling the emissive triangles of that mesh
 
             float total_mesh_power = 0.0f;
-            unsigned int mesh_offset = emissive_meshes_offsets[i];
+            unsigned int mesh_offset = emissive_meshes_offsets[emissive_mesh_index];
             std::vector<float> power_per_face; power_per_face.reserve(mesh->mNumFaces);
+            // Indices of the faces of the emissive mesh binned by orientation
+            std::vector<std::vector<unsigned int>> binned_faces_indices(ParsedEmissiveMesh::BinningNormals.size());
+
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_total_power.resize(ParsedEmissiveMesh::BinningNormals.size(), 0.0f);
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_mesh_face_index_to_bin_index.resize(mesh->mNumFaces);
 
             for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
             {
@@ -247,8 +252,8 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
                 float3 vertex_2 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 1]];
                 float3 vertex_3 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 2]];
 
-                // Using the triangle class to easily compute the area of the triangle
-                float face_area = Triangle(vertex_1, vertex_2, vertex_3).area();
+                float3 normal = hippt::cross(vertex_2 - vertex_1, vertex_3 - vertex_1);
+                float face_area = hippt::length(normal) * 0.5f;
                 float face_power = face_area * renderer_material.emission.luminance() * renderer_material.emission_strength * renderer_material.global_emissive_factor;
 
                 // The PDF of each emissive triangle of the mesh is going to be its power divided by the total power
@@ -259,21 +264,71 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
                 power_per_face.push_back(face_power);
                 total_mesh_power += face_power;
+
+                int best_bin = -1;
+                if (face_area > 0.0f)
+                {
+                    // If the face isn't degenerate
+                    normal = hippt::normalize(normal);
+
+                    float best_cosine_angle = 0.0f;
+                    for (int binning_normal_index = 0; binning_normal_index < ParsedEmissiveMesh::BinningNormals.size(); binning_normal_index++)
+                    {
+                        float3 binning_normal = ParsedEmissiveMesh::BinningNormals[binning_normal_index];
+                        float angle = hippt::dot(binning_normal, normal);
+                        if (angle > best_cosine_angle)
+                        {
+                            best_cosine_angle = angle;
+                            best_bin = binning_normal_index;
+
+                            if (angle > 0.95f)
+                                // That's good enough, no need to find a better bin than that
+                                break;
+                        }
+                    }
+
+                    binned_faces_indices[best_bin].push_back(face_index);
+                    parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_total_power[best_bin] += face_power;
+                }
+
+                parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_mesh_face_index_to_bin_index[face_index] = best_bin;
             }
 
             // Normalizing the PDFs of the emissive triangles by the total emissive power of the mesh
             for (int j = 0; j < mesh->mNumFaces; j++)
                 parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.at(mesh_offset + j) /= total_mesh_power;
+            
+            // Constructing the binning vectors from the binned face indices
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_indices.resize(mesh->mNumFaces);
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_counts.resize(ParsedEmissiveMesh::BinningNormals.size());
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_start_index.resize(ParsedEmissiveMesh::BinningNormals.size());
+            for (int bin_index = 0; bin_index < ParsedEmissiveMesh::BinningNormals.size(); bin_index++)
+            {
+                auto copy_dest = parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_indices.begin();
+                if (bin_index > 0)
+                {
+                    copy_dest += parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_start_index[bin_index - 1];
+                    copy_dest += parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_counts[bin_index - 1];
+                }
+
+                std::copy(binned_faces_indices[bin_index].begin(), binned_faces_indices[bin_index].end(), copy_dest);
+             
+                parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_counts[bin_index] = binned_faces_indices[bin_index].size();
+                if (bin_index == 0)
+                    parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_start_index[bin_index] = 0;
+                else
+                    parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_start_index[bin_index] = parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_start_index[bin_index - 1] + parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].binned_faces_counts[bin_index - 1];;
+            }
 
             // Computing the average vertex
             float3 average_vertex = make_float3(0.0f, 0.0f, 0.0f);
             for (int j = 0; j < mesh->mNumVertices; j++)
                 average_vertex += *reinterpret_cast<float3*>(&mesh->mVertices[j]);
-            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].average_mesh_point = average_vertex / mesh->mNumVertices;
-            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].emissive_triangle_count = mesh->mNumFaces;
-            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].total_mesh_emissive_power = total_mesh_power;
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].average_mesh_point = average_vertex / mesh->mNumVertices;
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].emissive_triangle_count = mesh->mNumFaces;
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].total_mesh_emissive_power = total_mesh_power;
 
-            Utils::compute_alias_table(power_per_face, total_mesh_power, parsed_scene.parsed_emissive_meshes.emissive_meshes[i].alias_probas, parsed_scene.parsed_emissive_meshes.emissive_meshes[i].alias_aliases);
+            Utils::compute_alias_table(power_per_face, total_mesh_power, parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].alias_probas, parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].alias_aliases);
         }
     }
 }

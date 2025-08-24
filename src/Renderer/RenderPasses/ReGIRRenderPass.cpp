@@ -782,7 +782,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& r
 
 void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit)
 {
-	if (render_data.buffers.emissive_meshes_alias_tables.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
+	if (render_data.buffers.emissive_meshes_data.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
 	{
 		// There are more emissive meshes than the space in our scratch buffer so we're not
 		// even going to be able to compute one single alias table, aborting
@@ -798,7 +798,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 
 	unsigned int& last_nb_computed_cells_alias_tables = primary_hit ? m_last_cells_alias_tables_compute_count_primary_hits : m_last_cells_alias_tables_compute_count_secondary_hits;
 
-	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
+	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_data.alias_table_count;
 	unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_alias_tables;
 	if (total_number_of_cells_to_compute == 0)
 		return;

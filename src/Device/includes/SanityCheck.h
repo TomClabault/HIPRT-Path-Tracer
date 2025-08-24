@@ -95,7 +95,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
         Utils::debugbreak();
 #endif
 
-        if (render_data.render_settings.display_NaNs)
+        if (render_data.render_settings.display_NaNs 
+            && x >= 0 && y >= 0 
+            && x < render_data.render_settings.render_resolution.x && y < render_data.render_settings.render_resolution.y)
             debug_set_final_color(render_data, x, y, ColorRGB32F(1.0e30f, 0.0f, 1.0e30f));
         else
             in_out_color = ColorRGB32F(0.0f);
@@ -105,10 +107,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
 }
 
 template <bool CheckOnlyOnCPU = false>
-HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, const ColorRGB32F& in_out_color, int x, int y)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, const ColorRGB32F& in_out_color, int x = -1, int y = -1)
 {
     ColorRGB32F copy = in_out_color;
     return sanity_check<CheckOnlyOnCPU>(render_data, copy, x, y);
+}
+
+template <bool CheckOnlyOnCPU = false>
+HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, float value, int x = -1, int y = -1)
+{
+    return sanity_check<CheckOnlyOnCPU>(render_data, ColorRGB32F(value), x, y);
 }
 
 #endif

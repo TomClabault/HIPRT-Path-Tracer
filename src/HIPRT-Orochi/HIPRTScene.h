@@ -10,7 +10,6 @@
 #include "HIPRT-Orochi/OrochiTexture.h"
 #include "Renderer/GPUDataStructures/MaterialPackedSoAGPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshHost.h"
 #include "UI/ImGui/ImGuiLogger.h"
 
 #include "hiprt/hiprt.h"
@@ -182,7 +181,7 @@ struct HIPRTScene
 	OrochiBuffer<int> emissive_triangles_indices_and_emissive_textures;
 	OrochiBuffer<float> emissive_power_alias_table_probas;
 	OrochiBuffer<int> emissive_power_alias_table_alias;
-	EmissiveMeshesAliasTablesHost<OrochiBuffer> emissive_meshes_alias_tables;
+	EmissiveMeshesAliasTablesHost<OrochiBuffer> emissive_meshes_data;
 
 	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
 	// be destroyed which means that the underlying textures would be destroyed

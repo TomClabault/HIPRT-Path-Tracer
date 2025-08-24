@@ -409,7 +409,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures = parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.data();
 
     m_emissive_meshes_alias_tables.load_from_emissive_meshes(parsed_scene);
-    m_render_data.buffers.emissive_meshes_alias_tables = m_emissive_meshes_alias_tables.to_device();
+    m_render_data.buffers.emissive_meshes_data = m_emissive_meshes_alias_tables.to_device();
 #if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE
     m_render_data.render_settings.regir_settings.cells_distributions_primary_hits = m_regir_state.cells_light_distributions_primary_hit.to_device(m_render_data);
     m_render_data.render_settings.regir_settings.cells_distributions_secondary_hits = m_regir_state.cells_light_distributions_secondary_hit.to_device(m_render_data);
@@ -836,7 +836,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions()
 
 void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_hit)
 {
-    if (m_render_data.buffers.emissive_meshes_alias_tables.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
+    if (m_render_data.buffers.emissive_meshes_data.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
     {
         // There are more emissive meshes than the space in our scratch buffer so we're not
         // even going to be able to compute one single alias table, aborting
@@ -855,7 +855,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
     unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_alias_tables;
     if (total_number_of_cells_to_compute == 0)
         return;
-    unsigned int emissive_mesh_count = m_render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
+    unsigned int emissive_mesh_count = m_render_data.buffers.emissive_meshes_data.alias_table_count;
     unsigned int max_number_of_cells_computed_per_iteration = std::floor(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 
     auto start = std::chrono::high_resolution_clock::now();
