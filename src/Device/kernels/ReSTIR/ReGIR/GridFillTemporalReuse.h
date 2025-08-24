@@ -189,7 +189,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 
             if (2866 == hash_grid_cell_index)
             {
-                printf("MIS (%f):TG:PDF/OtherPDF: %f %f %f %f\n", mis_weight, light_sample.area_measure_pdf / (light_sample.area_measure_pdf + simple_strategy_PDF), target_function, light_sample.area_measure_pdf, simple_strategy_PDF);
+                printf("PDF: %f\n", light_sample.area_measure_pdf);
             }
         }
 
