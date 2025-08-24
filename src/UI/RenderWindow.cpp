@@ -56,7 +56,6 @@ extern ImGuiLogger g_imgui_logger;
 // - memory coalescing aware spatial reuse pattern --> per warp / per half warp to reduce correlation artifacts?
 // - can we maybe stop ReSTIR GI from resampling specular lobe samples? Since it's bound to fail anwyays. And do not resample on glass
 // - See how many pixels of ReSTIR GI end up with the initial candidate as the final sample --> we can reuse NEE at the first hit for those samples in the shading pass instead of recomputing NEE
-// - BSDF MIS Reuse for ReSTIR DI
 // - Force albedo to white for spatial reuse? Because what's interesting to reuse is the shape of the BRDF and the incident radiance. Resampling from a black diffuse is still interesting. The albedo doesn't matter
 // - Have a look at compute usage with the profiler with only a camera ray kernel and more and more of the code to see what's dropping the compute usage 
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
@@ -67,15 +66,14 @@ extern ImGuiLogger g_imgui_logger;
 //		- 1 single uchar with exponential moving average?
 //		- Morris counters for even less?
 // - Should we separate non-canonical and canonical samples in two different dispatches for the grid fill because there is quite a bit of divergence
+// 
 // - Can we somehow incorporate light source normal in the mesh contribution of the cache cells? 
-//		Average normal of the mesh at least? To reject totally backfacing lights
-//		What about spherical mesh though? How to sample only from the visible part?
 //			Maybe precompute some characteristics about meshes during scene parsing that gives us an indication of how many faces are facing a particular way (discretize directions) and so we could then fetch that precomputed information during mesh contribution computation
-//			Should be cheap in memory too so we could have some nice precision there?
-//			This is basically binning the emissive power of the mesh per each discretized direction, should work well and should fairly easily avoid sampling backfacing triangles
+//			This is basically binning the emissive power of the mesh per each discretized direction, should work well and should fairly easily avoid sampling very backfacing triangles
 // 
 //			We're also going to need a way to importance sample a triangle on that selected mesh also accounting for backfacing triangles however.
-//			We can probably do that by pre-processing emissive meshes into different directional bins (the same as above) and then importance sampling a bin (and thus the triangles isnide that bin) based on the shading point's normal
+//			We can probably do that by pre-processing emissive meshes into different directional bins (the same as above) and then importance sampling a bin (and thus the triangles inside that bin) based on the shading point's normal
+// 
 // - We could compact the ReGIR hash table by using perfect hasing right? After a few samples, we could build a minimal perfect hash table with RecSplit or something and get a perfect hash table with no probing and no waster memory --> faster and less memory
 //		- But then we can't expand the table anymore hmmmm. Maybe compact at a point where we can assume that no more cells are going to be added to the hash table
 // - Can we have another buffer that is the same size as the alias table per each cell and accumulate visibility inside it the same way we do for NEE++ but at shading time? So we get an estimate over the whole cell instead of just at the representative point of the cell
@@ -92,7 +90,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we refine the light distributions at each cell based on the sampling done at runtime?
 // - Can we do some sort of spatial reuse on the light distributions? We do 10 samples per mesh per cell and then share those samples somehow?
 // - Automatic cell resolution to reach a given cell count target and exploit more quality at the cost of some perf?
-// - Cache cells - Include the average mesh normal ion the computaion? could easily reject meshes that are totally backfacing us
 // - Should we always sample a few triangles on each mesh when computing the contributions? To get a better estimate of the mesh's contribtunio
 // - Rename random_number_generator into rng everywhere
 // - ReGIR rename per cell alias tables into per cell light distributions everywhere
@@ -866,7 +863,6 @@ bool RenderWindow::is_rendering_done()
 
 bool RenderWindow::needs_viewport_refresh()
 {
-	return true;
 	// Update every X seconds
 	bool enough_time_has_passed = get_time_ms_before_viewport_refresh() <= 0.0f;
 	// The render was reset and one frame has been rendered

@@ -15,7 +15,7 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distributions(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distributions(const HIPRTRenderData& render_data, float3 surface_point, unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
@@ -30,12 +30,55 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
         // an empty sample
         return LightSampleInformation();
 
-    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
+    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(emissive_mesh_index);
 
-    // Now that we have importance sampled a mesh, we're importance sampling a triangle
-    // on that mesh
-    float triangle_PDF;
-    int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+    //// Now that we have importance sampled a mesh, we're importance sampling a triangle
+    //// on that mesh
+    //float triangle_PDF;
+    //int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+    /*if (hash_grid_cell_index == 34720)
+        std::cout << std::endl;*/
+
+    // Total weight for choosing a bin (bin of faces binned by normal direction) to sample with WRS
+	float3 average_mesh_point = render_data.buffers.emissive_meshes_data.meshes_average_points[emissive_mesh_index];
+    float3 direction_to_mesh = hippt::normalize(average_mesh_point - surface_point);
+    float total_weight = 0.0f;
+	int selected_bin = -1;
+    float selected_bin_weight = 0.0f;
+
+    float triangle_PDF = 0.0f;
+    // Doing WRS on the binned faces of the mesh to select a bin proportional to its approximate contribution
+    // to the cell
+    for (int i = 0; i < EmissiveMeshesDataDevice::BIN_NORMAL_COUNT; i++)
+    {
+		float bin_power = render_data.buffers.emissive_meshes_data.binned_faces_total_power[emissive_mesh_index * EmissiveMeshesDataDevice::BIN_NORMAL_COUNT + i];
+        float bin_weight = bin_power * hippt::max(0.0f, hippt::dot(direction_to_mesh, -EmissiveMeshesDataDevice::get_binning_normal(i)));
+
+        if (49277 == hash_grid_cell_index && emissive_mesh_index == 0 && i == 0)
+            printf("binPower: %f\n", bin_power);
+
+        if (rng() < bin_weight / total_weight)
+        {
+            selected_bin = i;
+            selected_bin_weight = bin_weight;
+        }
+
+        total_weight += bin_weight;
+    }
+
+    if (total_weight == 0.0f)
+        // The mesh is totally backfacing
+        return LightSampleInformation();
+
+    unsigned int bin_face_count = render_data.buffers.emissive_meshes_data.binned_faces_counts[emissive_mesh_index * EmissiveMeshesDataDevice::BIN_NORMAL_COUNT + selected_bin];
+	triangle_PDF = selected_bin_weight / total_weight;
+	triangle_PDF *= 1.0f / bin_face_count;
+    unsigned int emissive_mesh_offset = render_data.buffers.emissive_meshes_data.offsets[emissive_mesh_index];
+	unsigned int triangle_index_in_mesh = render_data.buffers.emissive_meshes_data.binned_faces_indices[emissive_mesh_offset + render_data.buffers.emissive_meshes_data.binned_faces_start_index[emissive_mesh_index * EmissiveMeshesDataDevice::BIN_NORMAL_COUNT + selected_bin] + rng.random_index(bin_face_count)];
+    int emissive_triangle_index = render_data.buffers.emissive_meshes_data.meshes_triangle_indices[emissive_mesh_offset + triangle_index_in_mesh];
+
+    /*if (49277 == hash_grid_cell_index)
+        printf("meshIdx [%u], slect / total / bin face count: %f / %f / %u\n", emissive_mesh_index, selected_bin_weight, total_weight, bin_face_count);*/
 
     LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
     // Area measure PDF already contains the PDF for sampling the point *on the triangle*.
@@ -47,19 +90,19 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     return light_sample;
 }
 
-HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, const LightSampleInformation& light_sample, unsigned int mesh_index, Xorshift32Generator& rng)
+HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, const LightSampleInformation& light_sample, unsigned int emissive_mesh_index, unsigned int face_index_in_mesh, float3 surface_point,
+    Xorshift32Generator& rng)
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-
     AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
-    int alias_table_index = cell_alias_table.sample(rng);
     unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
 
+    // PDF that the light distribution of the cell samples that mesh
     float mesh_sampling_PDF = 0.0f;
     for (int i = 0; i < cell_alias_table.size; i++)
     {
-        if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
+        if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == emissive_mesh_index)
         {
             mesh_sampling_PDF = regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
 
@@ -67,7 +110,10 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
         }
     }
 
-    float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_alias_tables.get_power_sampled_triangle_PDF_in_mesh(mesh_index, light_sample.light_area, light_sample.emission);
+    if (mesh_sampling_PDF == 0.0f)
+        return 0.0f;
+
+    float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_data.get_binned_faces_sampled_triangle_PDF_in_mesh(emissive_mesh_index, face_index_in_mesh, render_data.buffers.emissive_meshes_data.meshes_average_points[emissive_mesh_index], surface_point);
     float point_on_triangle_PDF = 1.0f / light_sample.light_area;
 
     return mesh_sampling_PDF * triangle_within_mesh_sampling_PDF * point_on_triangle_PDF;
@@ -120,7 +166,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         if (reservoir_is_canonical)
             light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
         else
-            light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, hash_grid_cell_index, primary_hit, rng);
+            light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, surface.cell_point, hash_grid_cell_index, primary_hit, rng);
 
         if (light_sample.emissive_triangle_index == -1)
             continue;
@@ -156,10 +202,11 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         {
             float mesh_PDF;
             unsigned int mesh_index;
-            EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
+            EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
 
             float triangle_PDF;
-            int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+            unsigned triangle_index_in_mesh;
+            int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_index_in_mesh, triangle_PDF);
             if (emissive_triangle_index == -1)
                 continue;
 
@@ -170,7 +217,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
             float target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
-            float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, mesh_index, rng);
+            float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, mesh_index, triangle_index_in_mesh, surface.cell_point, rng);
             float mis_weight = balance_heuristic(light_sample.area_measure_pdf, ReGIR_GridFillPerCellDistributionsCanonicalSampleCount, cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
 
             reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
@@ -237,6 +284,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
     else
         grid_fill_reservoir = grid_fill_classic<accumulatePreIntegration>(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit, rng);
 
+    sanity_check<true>(render_data, grid_fill_reservoir.weight_sum);
     return grid_fill_reservoir;
 }
 

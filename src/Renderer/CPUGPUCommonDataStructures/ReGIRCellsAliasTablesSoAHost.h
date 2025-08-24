@@ -64,7 +64,7 @@ struct ReGIRCellsAliasTablesSoAHost
 		cells_alias_tables.all_alias_tables_aliases = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>();
 		cells_alias_tables.all_alias_tables_PDFs = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>();
 		cells_alias_tables.emissive_meshes_indices = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>();
-		cells_alias_tables.alias_table_size = hippt::min(m_alias_table_size, render_data.buffers.emissive_meshes_alias_tables.alias_table_count);
+		cells_alias_tables.alias_table_size = hippt::min(m_alias_table_size, render_data.buffers.emissive_meshes_data.alias_table_count);
 
 		return cells_alias_tables;
 	}

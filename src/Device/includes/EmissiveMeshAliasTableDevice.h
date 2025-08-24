@@ -10,16 +10,22 @@
 
 struct EmissiveMeshAliasTableDevice
 {
-	HIPRT_HOST_DEVICE int sample_one_triangle_power(Xorshift32Generator& rng, float& out_pdf) const
+	HIPRT_HOST_DEVICE int sample_one_triangle_power(Xorshift32Generator& rng, unsigned int& face_index_in_mesh, float& out_pdf) const
 	{
-		int emissive_triangle_index_within_the_mesh = rng.random_index(size);
-		float probability = alias_table_probas[emissive_triangle_index_within_the_mesh];
+		face_index_in_mesh = rng.random_index(size);
+		float probability = alias_table_probas[face_index_in_mesh];
 		if (rng() > probability)
 			// Picking the alias
-			emissive_triangle_index_within_the_mesh = alias_table_alias[emissive_triangle_index_within_the_mesh];
+			face_index_in_mesh = alias_table_alias[face_index_in_mesh];
 
-		out_pdf = PDFs[emissive_triangle_index_within_the_mesh];
-		return triangle_indices[emissive_triangle_index_within_the_mesh];
+		out_pdf = PDFs[face_index_in_mesh];
+		return triangle_indices[face_index_in_mesh];
+	}
+
+	HIPRT_HOST_DEVICE int sample_one_triangle_power(Xorshift32Generator& rng, float& out_pdf) const
+	{
+		unsigned int face_index_in_mesh_trash;
+		return sample_one_triangle_power(rng, face_index_in_mesh_trash, out_pdf);
 	}
 
 	int* alias_table_alias = nullptr;

@@ -88,8 +88,8 @@ struct ReGIRGridFillSettings
 	{
 		light_sample_count_per_cell_reservoir = 1;
 
-		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 64 : 8;
-		reservoirs_count_per_grid_cell_canonical = primary_hit ? 12 : 4;
+		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 1 : 8;
+		reservoirs_count_per_grid_cell_canonical = primary_hit ? 1 : 4;
 	}
 
 	// How many light samples are resampled into each reservoir of the grid cell
@@ -576,6 +576,8 @@ struct ReGIRSettings
 	{
 		unsigned int checksum;
 		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, primary_hit, hash_grid_to_update.m_total_number_of_cells, checksum);
+		/*if (hippt::is_pixel_index(934, 719 - 1 - 636))
+			printf("Hash grid cell index: %u\n", hash_grid_cell_index);*/
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 
