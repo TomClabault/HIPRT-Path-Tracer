@@ -140,7 +140,7 @@
  * 1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the
  * cell-light-distribution is poor
  */
-#define ReGIR_GridFillPerCellDistributionsCanonicalSampleCount 1
+#define ReGIR_GridFillPerCellDistributionsCanonicalSampleCount 4
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
