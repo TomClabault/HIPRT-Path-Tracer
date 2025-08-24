@@ -576,7 +576,7 @@ struct ReGIRSettings
 	{
 		unsigned int checksum;
 		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, primary_hit, hash_grid_to_update.m_total_number_of_cells, checksum);
-		if (hippt::is_pixel_index(934, 719 - 1 - 636))
+		if (hippt::is_pixel_index(675, 719 - 1 - 365))
 			printf("Hash grid cell index: %u\n", hash_grid_cell_index);
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		

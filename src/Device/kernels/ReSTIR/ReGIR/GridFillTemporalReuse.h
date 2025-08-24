@@ -54,8 +54,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 		float bin_power = render_data.buffers.emissive_meshes_data.binned_faces_total_power[emissive_mesh_index * EmissiveMeshesDataDevice::BIN_NORMAL_COUNT + i];
         float bin_weight = bin_power * hippt::max(0.0f, hippt::dot(direction_to_mesh, -EmissiveMeshesDataDevice::get_binning_normal(i)));
 
-        if (49277 == hash_grid_cell_index && emissive_mesh_index == 0 && i == 0)
-            printf("binPower: %f\n", bin_power);
+        // if (2866 == hash_grid_cell_index && emissive_mesh_index == 0 && i == 0)
+        //     printf("binPower: %f\n", bin_power);
 
         if (rng() < bin_weight / total_weight)
         {
@@ -76,9 +76,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     unsigned int emissive_mesh_offset = render_data.buffers.emissive_meshes_data.offsets[emissive_mesh_index];
 	unsigned int triangle_index_in_mesh = render_data.buffers.emissive_meshes_data.binned_faces_indices[emissive_mesh_offset + render_data.buffers.emissive_meshes_data.binned_faces_start_index[emissive_mesh_index * EmissiveMeshesDataDevice::BIN_NORMAL_COUNT + selected_bin] + rng.random_index(bin_face_count)];
     int emissive_triangle_index = render_data.buffers.emissive_meshes_data.meshes_triangle_indices[emissive_mesh_offset + triangle_index_in_mesh];
-
-    /*if (49277 == hash_grid_cell_index)
-        printf("meshIdx [%u], slect / total / bin face count: %f / %f / %u\n", emissive_mesh_index, selected_bin_weight, total_weight, bin_face_count);*/
 
     LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
     // Area measure PDF already contains the PDF for sampling the point *on the triangle*.
@@ -189,6 +186,11 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         {
             float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, light_sample.light_area, light_sample.emission);
             mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF, ReGIR_GridFillPerCellDistributionsCanonicalSampleCount);
+
+            // if (2866 == hash_grid_cell_index)
+            // {
+            //     printf("MIS (%f):TG:PDF/OtherPDF: %f %f %f %f\n", mis_weight, light_sample.area_measure_pdf / (light_sample.area_measure_pdf + simple_strategy_PDF), target_function, light_sample.area_measure_pdf, simple_strategy_PDF);
+            // }
         }
 
         reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
