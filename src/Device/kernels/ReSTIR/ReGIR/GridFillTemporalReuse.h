@@ -188,9 +188,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
             mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF, ReGIR_GridFillPerCellDistributionsCanonicalSampleCount);
 
             if (2866 == hash_grid_cell_index)
-            {
                 printf("PDF: %f\n", light_sample.area_measure_pdf);
-            }
         }
 
         reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);

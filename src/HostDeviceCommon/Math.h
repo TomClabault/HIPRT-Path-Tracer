@@ -143,7 +143,7 @@ namespace hippt
 
 	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
 	__device__ float2 cos(float2 x) { return make_float2(cosf(x.x), cosf(x.y)); }
-	__device__ float intrin_cosf(float x) { return __cosf(x); } // Not using the intrinsic for now because of a compiler bug
+	__device__ float intrin_cosf(float x) { return cosf(x); } // Not using the intrinsic for now because of a compiler bug
 
 	__device__ float3 sin(float3 x) { return make_float3(sinf(x.x), sinf(x.y), sinf(x.z)); }
 	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
