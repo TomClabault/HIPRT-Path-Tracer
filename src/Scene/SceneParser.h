@@ -16,7 +16,6 @@
 #include "Scene/BoundingBox.h"
 #include "Scene/Camera.h"
 #include "Scene/ParsedEmissiveMeshes.h"
-#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshHost.h"
 #include "Renderer/Sphere.h"
 #include "Renderer/Triangle.h"
 #include "Utils/Utils.h"

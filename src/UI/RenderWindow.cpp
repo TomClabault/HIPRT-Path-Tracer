@@ -62,8 +62,10 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
-// - TODO: Try average normal per mesh to simply reject backfacing meshes: probably use the same orientation bound system as ATS rather than average normals
 // - TODO then, try to extract common lists of lights per cell in the tail of the alias table and share those lists between cells to be able to sample more lights per cell iwthout increasing memory usage too much
+// - Add a nice printing function for printing the progress of the ReGIR light distribution pre-process progress because it's easier to wait when we can see the progress
+// - Remove the BSDF simple ray test by full ray test if we're shading all samples to avoid shooting 2 rays
+// - Rename all "CellAliasTables" into "CellLightDistributions" everywhere
 // - Improve NEE++ memory usage to be able to use more precision for the same memory space:
 //		- Move at the very least to 2 * uchar for the total counter and unoccluded counter
 //		- 1 single uchar with exponential moving average?

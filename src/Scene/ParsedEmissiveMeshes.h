@@ -6,7 +6,23 @@
 #ifndef SCENE_PARSED_EMISSIVE_MESHES_H
 #define SCENE_PARSED_EMISSIVE_MESHES_H
 
-#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshHost.h"
+struct ParsedEmissiveMesh
+{
+    // Alias table built on the power of all the emissive triangles of the mesh
+    std::vector<float> alias_probas;
+    std::vector<int> alias_aliases;
+
+    // Average of all the vertices of the emissive mesh
+    float3 average_mesh_point = make_float3(0.0f, 0.0f, 0.0f);
+    // Representative normal of the mesh
+    // 
+    // If no good representative normal could be extracted from the mesh at scene parse time
+    // then the buffer will contain value float3(INVALID_NORMAL, 0.0f, 0.0f) for that mesh
+    float3 representative_normal = make_float3(0.0f, 0.0f, 0.0f);
+
+    float total_mesh_emissive_power = 0.0f;
+    unsigned int emissive_triangle_count = 0;
+};
 
 struct ParsedEmissiveMeshes
 {
@@ -15,7 +31,7 @@ struct ParsedEmissiveMeshes
     // 
     // Any emissive mesh that contains emissive textures is NOT in that list because emissive textures
     // aren't importance sampled
-    std::vector<EmissiveMeshHost<std::vector>> emissive_meshes;
+    std::vector<ParsedEmissiveMesh> emissive_meshes;
 
     // PDF that a given triangle in a given emissive mesh is sampled by the sampler
     // that samples triangles in meshes.

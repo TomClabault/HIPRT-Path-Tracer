@@ -10,7 +10,6 @@
 #include "HIPRT-Orochi/OrochiTexture.h"
 #include "Renderer/GPUDataStructures/MaterialPackedSoAGPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshHost.h"
 #include "UI/ImGui/ImGuiLogger.h"
 
 #include "hiprt/hiprt.h"

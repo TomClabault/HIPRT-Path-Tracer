@@ -44,6 +44,15 @@
 HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
     float3 mesh_average_point = render_data.buffers.emissive_meshes_alias_tables.meshes_average_points[mesh_index_for_grid_cell];
+    float3 mesh_average_normal = render_data.buffers.emissive_meshes_alias_tables.meshes_representative_normals[mesh_index_for_grid_cell];
+    float3 mesh_normal;
+    if (mesh_average_normal.x == EmissiveMeshesAliasTablesDevice::INVALID_NORMAL)
+        // Invalid normal, using the direction from the cell to the mesh average point instead
+        // such that the geometry term cosine term evaluates to 1 and the normal essentially
+        // isn't taken into account
+        mesh_normal = -hippt::normalize(mesh_average_point - cell_surface.cell_point);
+    else
+		mesh_normal = mesh_average_normal;
     // Just wrapping the mesh power in an RGB value to be able to pass it to the 'target_function' function which doesn't take
     // just a float as argument
     ColorRGB32F total_mesh_power = ColorRGB32F(render_data.buffers.emissive_meshes_alias_tables.meshes_total_power[mesh_index_for_grid_cell]);
@@ -52,10 +61,10 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
     return ReGIR_grid_fill_evaluate_target_function<
         /* visibility */ false,
         /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
-        /* cosine term at mesh point */ false, // we don't have the normal
+        /* cosine term at mesh point */ ReGIR_GridFillTargetFunctionCosineTermLightSource,
         ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
         /* NEE++ */ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
-            render_data, cell_surface, primary_hit, total_mesh_power, make_float3(0, 0, 0), mesh_average_point, dummy_rng);
+            render_data, cell_surface, primary_hit, total_mesh_power, mesh_normal, mesh_average_point, dummy_rng);
 }
 
 /**

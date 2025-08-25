@@ -24,6 +24,8 @@
  */
 struct EmissiveMeshesAliasTablesDevice
 {
+	static constexpr float INVALID_NORMAL = 4242.0f;
+
 	// An alias table for sampling a mesh according to its total emissive power
 	// amongst all the meshes of the scene
 	AliasTableDevice meshes_alias_table;
@@ -33,6 +35,11 @@ struct EmissiveMeshesAliasTablesDevice
 	float* meshes_PDFs = nullptr;
 	// Average of all the vertices of the mesh
 	float3* meshes_average_points = nullptr;
+	// Representative normal of the mesh
+	// 
+	// If no good representative normal could be extracted from the mesh at scene parse time
+	// then the buffer will contain value float3(INVALID_NORMAL, 0.0f, 0.0f) for that mesh
+	float3* meshes_representative_normals = nullptr;
 	// Sum of the emissive power of all the triangles of the mesh
 	float* meshes_total_power = nullptr;
 

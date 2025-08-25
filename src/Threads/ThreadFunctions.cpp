@@ -135,6 +135,8 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 
 void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene)
 {
+	auto start = std::chrono::high_resolution_clock::now();
+
     int current_triangle_index_in_whole_scene = 0;
 
     // If the scene contains multiple meshes, each mesh will have
@@ -240,6 +242,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
             unsigned int mesh_offset = emissive_meshes_offsets[i];
             std::vector<float> power_per_face; power_per_face.reserve(mesh->mNumFaces);
 
+            float3 average_normal = make_float3(0.0f, 0.0f, 0.0f);
             for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
             {
                 int emissive_triangle_index = parsed_scene.emissive_triangles_primitive_indices.at(mesh_offset + face_index);
@@ -248,7 +251,8 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
                 float3 vertex_3 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 2]];
 
                 // Using the triangle class to easily compute the area of the triangle
-                float face_area = Triangle(vertex_1, vertex_2, vertex_3).area();
+                float3 face_normal = hippt::cross(vertex_2 - vertex_1, vertex_3 - vertex_1);
+                float face_area = hippt::length(face_normal) * 0.5f;
                 float face_power = face_area * renderer_material.emission.luminance() * renderer_material.emission_strength * renderer_material.global_emissive_factor;
 
                 // The PDF of each emissive triangle of the mesh is going to be its power divided by the total power
@@ -259,6 +263,9 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
                 power_per_face.push_back(face_power);
                 total_mesh_power += face_power;
+
+                // Sum of all the normals weighted by area
+                average_normal += face_area * face_normal;
             }
 
             // Normalizing the PDFs of the emissive triangles by the total emissive power of the mesh
@@ -270,12 +277,20 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
             for (int j = 0; j < mesh->mNumVertices; j++)
                 average_vertex += *reinterpret_cast<float3*>(&mesh->mVertices[j]);
             parsed_scene.parsed_emissive_meshes.emissive_meshes[i].average_mesh_point = average_vertex / mesh->mNumVertices;
+            if (hippt::length(average_normal) <= 0.01f)
+                parsed_scene.parsed_emissive_meshes.emissive_meshes[i].representative_normal = make_float3(EmissiveMeshesAliasTablesDevice::INVALID_NORMAL, 0.0f, 0.0f);
+            else
+                parsed_scene.parsed_emissive_meshes.emissive_meshes[i].representative_normal = hippt::normalize(average_normal / mesh->mNumFaces);
             parsed_scene.parsed_emissive_meshes.emissive_meshes[i].emissive_triangle_count = mesh->mNumFaces;
             parsed_scene.parsed_emissive_meshes.emissive_meshes[i].total_mesh_emissive_power = total_mesh_power;
 
             Utils::compute_alias_table(power_per_face, total_mesh_power, parsed_scene.parsed_emissive_meshes.emissive_meshes[i].alias_probas, parsed_scene.parsed_emissive_meshes.emissive_meshes[i].alias_aliases);
         }
     }
+
+    auto stop = std::chrono::high_resolution_clock::now();
+
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Parsed emissive triangles in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 }
 
 void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)

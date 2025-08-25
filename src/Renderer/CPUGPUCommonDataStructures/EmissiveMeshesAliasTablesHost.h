@@ -9,7 +9,6 @@
 #include "Device/includes/EmissiveMeshesAliasTables.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/AliasTableHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshHost.h"
 
 #include "Scene/SceneParser.h"
 
@@ -47,7 +46,7 @@ struct EmissiveMeshesAliasTablesHost
 
 	void load_from_emissive_meshes(const Scene& parsed_scene)
 	{
-		const std::vector<EmissiveMeshHost<std::vector>>& emissive_meshes = parsed_scene.parsed_emissive_meshes.emissive_meshes;
+		const std::vector<ParsedEmissiveMesh>& emissive_meshes = parsed_scene.parsed_emissive_meshes.emissive_meshes;
 
 		std::vector<unsigned int> offsets(emissive_meshes.size());
 		std::vector<unsigned int> alias_tables_sizes(emissive_meshes.size());
@@ -99,10 +98,15 @@ struct EmissiveMeshesAliasTablesHost
 		m_meshes_alias_table.sum_elements = total_meshes_power_sum;
 
 		std::vector<float3> meshes_average_points(parsed_scene.parsed_emissive_meshes.emissive_meshes.size());
-		for (int i = 0; i < meshes_average_points.size(); i++)
+		std::vector<float3> meshes_representative_normals(parsed_scene.parsed_emissive_meshes.emissive_meshes.size());
+		for (int i = 0; i < emissive_meshes.size(); i++)
+		{
 			meshes_average_points[i] = parsed_scene.parsed_emissive_meshes.emissive_meshes[i].average_mesh_point;
+			meshes_representative_normals[i] = parsed_scene.parsed_emissive_meshes.emissive_meshes[i].representative_normal;
+		}
 
 		upload_to_device_buffer(m_meshes_average_points, meshes_average_points);
+		upload_to_device_buffer(m_meshes_representative_normals, meshes_representative_normals);
 		upload_to_device_buffer(m_meshes_total_power, emissive_meshes_power);
 
 		// Uploading some more data needed for sampling at runtime
@@ -126,6 +130,7 @@ struct EmissiveMeshesAliasTablesHost
 		out.meshes_alias_table = m_meshes_alias_table.to_device();
 		out.meshes_PDFs = m_meshes_PDFs.data();
 		out.meshes_average_points = m_meshes_average_points.data();
+		out.meshes_representative_normals = m_meshes_representative_normals.data();
 		out.meshes_total_power = m_meshes_total_power.data();
 
 		out.alias_tables_aliases = m_alias_tables_aliases.data();
@@ -146,6 +151,7 @@ struct EmissiveMeshesAliasTablesHost
 	// PDF that the 'meshes_alias_table' samples a given mesh index
 	DataContainer<float> m_meshes_PDFs;
 	DataContainer<float3> m_meshes_average_points;
+	DataContainer<float3> m_meshes_representative_normals;
 	DataContainer<float> m_meshes_total_power;
 
 	// Concatenation of the alias_probas of the alias tables of all emissive meshes of the scene
