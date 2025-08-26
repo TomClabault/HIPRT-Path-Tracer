@@ -143,13 +143,20 @@
 #define ReGIR_GridFillCellDistributionsCanonicalSampleCount 1
 
 /**
+ * Whether or not to use a repsentative normal when computing the contribution of an emissive
+ * mesh to the grid cell. This can help quickly reject backfacing lights and should
+ * probably be left enabled
+ */
+#define ReGIR_GridFillCellDistributionsUseRepresentativeNormal KERNEL_OPTION_TRUE
+
+/**
  * When computing the contribution of meshes to the grid cell point:
  * 
  * - If this option is KERNEL_OPTION_TRUE, random points will be chosen on the emissive mesh and the 
  *		contribution to the grid cell point of each of these points on the emissive mesh
  * 		will be integrated to compute an estimate of the overall contribution of the
  *		emissive mesh to the grid cell.
- *		The number of random points drawn is equal to ReGIR_GRIDFillCellDistributionsIntegrateMeshSampleCount
+ *		The number of random points drawn is equal to ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount
  * 
  * - If this option is KERNEL_OPTION_FALSE, the overall contribution of the mesh is going to be computed
  *		in one go using an approximate representative point for the whole as well as an average reprensetative
@@ -161,7 +168,7 @@
  * How many random points to integrate the contribution of an emissive mesh over 
  * if ReGIR_GridFillCellDistributionsIntegrateMesh is KERNEL_OPTION_TRUE
  */
-#define ReGIR_GRIDFillCellDistributionsIntegrateMeshSampleCount 16
+#define ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount 16
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

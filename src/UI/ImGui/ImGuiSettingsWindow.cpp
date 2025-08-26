@@ -1885,7 +1885,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"in one go using an approximate representative point for the whole as well as an average reprensetative "
 				"normal. This is less precise than integrating over the mesh but way faster.");
 			ImGui::BeginDisabled(!integrate_mesh);
-			static int integrate_mesh_sample_count = ReGIR_GRIDFillCellDistributionsIntegrateMeshSampleCount;
+			static int integrate_mesh_sample_count = ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount;
 			ImGui::SliderInt("Integrate mesh sample count", &integrate_mesh_sample_count, 1, 64);
 			ImGuiRenderer::show_help_marker("How many random points to integrate the contribution of an emissive mesh over "
 				"if \"Integrate mesh contribution\" is true");
@@ -1904,6 +1904,18 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePop();
 			}
 			ImGui::EndDisabled();
+			static bool use_representative_normal = ReGIR_GridFillCellDistributionsUseRepresentativeNormal;
+			if (ImGui::Checkbox("Use representative normal", &use_representative_normal))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL, use_representative_normal ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to use a repsentative normal when computing the contribution of an emissive "
+				"mesh to the grid cell.This can help quickly reject backfacing lights and should "
+				"probably be left enabled");
+
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			static int cache_cells_list_distribution_canonical_samples_count = ReGIR_GridFillCellDistributionsCanonicalSampleCount;
@@ -1966,9 +1978,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
 			ImGui::SeparatorText("Common to primary and secondary grid cells");
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;
 			if (ImGui::Checkbox("Use visibility in target function", &visibility_grid_fill_target_function))
 			{
