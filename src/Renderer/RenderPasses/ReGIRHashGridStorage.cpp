@@ -85,10 +85,12 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		updated = true;
 	}
 
-	if (grid_not_allocated || grid_res_changed)
+	bool cell_light_distibution_size_changed = m_current_cell_light_distribution_size != hippt::min(render_data.buffers.emissive_meshes_data.alias_table_count, regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
+	if (grid_not_allocated || grid_res_changed || cell_light_distibution_size_changed)
 	{
 		get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
 
+		m_current_cell_light_distribution_size = get_cell_alias_tables(primary_hit).m_alias_table_size;
 		updated = true;
 	}
 

@@ -115,6 +115,8 @@ public:
 
 	void update_all_cell_alive_count(HIPRTRenderData& render_data);
 	float get_alive_cells_ratio(bool primary_hit) const;
+
+	unsigned int get_current_cell_light_distributions_size() const;
 	
 private:
 	unsigned int m_number_of_cells_alive_primary_hits = 0;

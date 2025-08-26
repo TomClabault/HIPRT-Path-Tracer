@@ -64,7 +64,7 @@ struct RenderBuffers
 	int* emissive_triangles_primitive_indices_and_emissive_textures = nullptr;
 	// Alias table for sampling emissives lights according to power
 	AliasTableDevice emissive_triangles_power_alias_table;
-	EmissiveMeshesAliasTablesDevice emissive_meshes_alias_tables;
+	EmissiveMeshesAliasTablesDevice emissive_meshes_data;
 
 	// A pointer either to an array of Image8Bit or to an array of
 	// oroTextureObject_t whether if CPU or GPU rendering respectively

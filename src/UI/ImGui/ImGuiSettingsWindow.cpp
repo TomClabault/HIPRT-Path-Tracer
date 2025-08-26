@@ -1891,15 +1891,33 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the "
 				"cell-light-distribution is poor");
-			if (cache_cells_list_distribution_canonical_samples_count!= global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PER_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT))
+			if (cache_cells_list_distribution_canonical_samples_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PER_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT))
 			{
-				ImGui::TreePush("Apply jitter tries regir");
+				ImGui::TreePush("Canonical sample count cell light distribs regir");
 
 				if (ImGui::Button("Apply"))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PER_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT, cache_cells_list_distribution_canonical_samples_count);
 
 					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+
+			static int light_distribution_size = regir_settings.cells_distributions_primary_hits.alias_table_size;
+			ImGui::SliderInt("Light distribution size", &light_distribution_size, 1, render_data.buffers.emissive_meshes_data.alias_table_count);
+
+			if (light_distribution_size != regir_render_pass->get_current_cell_light_distributions_size())
+			{
+				ImGui::TreePush("ReGIR light distributions size");
+
+				if (ImGui::Button("Apply"))
+				{
+					regir_settings.cells_distributions_primary_hits.alias_table_size = light_distribution_size;
+					regir_settings.cells_distributions_secondary_hits.alias_table_size = light_distribution_size;
+
 					m_render_window->set_render_dirty(true);
 				}
 

@@ -63,7 +63,10 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - TODO then, try to extract common lists of lights per cell in the tail of the alias table and share those lists between cells to be able to sample more lights per cell iwthout increasing memory usage too much
+// - TODO GMoN is broken
 // - Add a nice printing function for printing the progress of the ReGIR light distribution pre-process progress because it's easier to wait when we can see the progress
+// - Can we do something to allow more jitter somehow without to big of a loss in variance? Jittering is nice for quality, removes correlations
+// - There's probably a way to learn visibility in a more precise way than NEE++ for our light cell distributions no ?
 // - Remove the BSDF simple ray test by full ray test if we're shading all samples to avoid shooting 2 rays
 // - Rename all "CellAliasTables" into "CellLightDistributions" everywhere
 // - Improve NEE++ memory usage to be able to use more precision for the same memory space:

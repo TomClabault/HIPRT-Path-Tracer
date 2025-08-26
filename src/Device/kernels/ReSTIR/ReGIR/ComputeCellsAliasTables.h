@@ -19,7 +19,7 @@
 //
 //HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 //{
-//    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
+//    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
 //    float total_contribution_to_cell = 0.0f;
 //    for (int i = 0; i < SAMPLES_PER_MESH; i++)
 //    {
@@ -43,8 +43,8 @@
 
 HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
-    float3 mesh_average_point = render_data.buffers.emissive_meshes_alias_tables.meshes_average_points[mesh_index_for_grid_cell];
-    float3 mesh_average_normal = render_data.buffers.emissive_meshes_alias_tables.meshes_representative_normals[mesh_index_for_grid_cell];
+    float3 mesh_average_point = render_data.buffers.emissive_meshes_data.meshes_average_points[mesh_index_for_grid_cell];
+    float3 mesh_average_normal = render_data.buffers.emissive_meshes_data.meshes_representative_normals[mesh_index_for_grid_cell];
     float3 mesh_normal;
     if (mesh_average_normal.x == EmissiveMeshesAliasTablesDevice::INVALID_NORMAL)
         // Invalid normal, using the direction from the cell to the mesh average point instead
@@ -55,7 +55,7 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
 		mesh_normal = mesh_average_normal;
     // Just wrapping the mesh power in an RGB value to be able to pass it to the 'target_function' function which doesn't take
     // just a float as argument
-    ColorRGB32F total_mesh_power = ColorRGB32F(render_data.buffers.emissive_meshes_alias_tables.meshes_total_power[mesh_index_for_grid_cell]);
+    ColorRGB32F total_mesh_power = ColorRGB32F(render_data.buffers.emissive_meshes_data.meshes_total_power[mesh_index_for_grid_cell]);
 
     Xorshift32Generator dummy_rng(5847);
     return ReGIR_grid_fill_evaluate_target_function<
@@ -89,7 +89,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Alias_Tables(HIPRTRende
 #ifdef __KERNELCC__
     uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 
-    unsigned int thread_count_per_cell = render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
+    unsigned int thread_count_per_cell = render_data.buffers.emissive_meshes_data.alias_table_count;
     unsigned int nb_threads_dispatched = gridDim.x * blockDim.x;
     unsigned int max_thread_index = floorf(nb_threads_dispatched / (float)thread_count_per_cell) * thread_count_per_cell;
 
@@ -98,9 +98,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Alias_Tables(HIPRTRende
 #endif
 
     // Cell index in [0, number of grid cells alive]
-    unsigned int cell_index = cell_offset + thread_index / render_data.buffers.emissive_meshes_alias_tables.meshes_alias_table.size;
+    unsigned int cell_index = cell_offset + thread_index / render_data.buffers.emissive_meshes_data.meshes_alias_table.size;
     unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_index];
-    unsigned int mesh_index_for_grid_cell = thread_index % render_data.buffers.emissive_meshes_alias_tables.alias_table_count;
+    unsigned int mesh_index_for_grid_cell = thread_index % render_data.buffers.emissive_meshes_data.alias_table_count;
 
     ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 

@@ -30,7 +30,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
         // an empty sample
         return LightSampleInformation();
 
-    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.get_emissive_mesh_alias_table(emissive_mesh_index);
+    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(emissive_mesh_index);
 
     // Now that we have importance sampled a mesh, we're importance sampling a triangle
     // on that mesh
@@ -68,7 +68,7 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
         }
     }
 
-    float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_alias_tables.get_power_sampled_triangle_PDF_in_mesh(mesh_index, light_sample.light_area, light_sample.emission);
+    float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_data.get_power_sampled_triangle_PDF_in_mesh(mesh_index, light_sample.light_area, light_sample.emission);
     float point_on_triangle_PDF = 1.0f / light_sample.light_area;
 
     return mesh_sampling_PDF * triangle_within_mesh_sampling_PDF * point_on_triangle_PDF;
@@ -157,7 +157,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         {
             float mesh_PDF;
             unsigned int mesh_index;
-            EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_alias_tables.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
+            EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
 
             float triangle_PDF;
             int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);

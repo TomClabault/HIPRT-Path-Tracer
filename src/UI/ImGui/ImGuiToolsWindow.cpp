@@ -396,6 +396,7 @@ void ImGuiToolsWindow::draw_glossy_dielectric()
 	}
 }
 
+#define USING_VIEWPORT_TEXT "Using viewport"
 void ImGuiToolsWindow::draw_image_difference_panel()
 {
 	if (ImGui::CollapsingHeader("Image difference"))
@@ -445,7 +446,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		if (ImGui::Button("Use viewport"))
 		{
 			subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
-			subject_image_text = "Viewport";
+			subject_image_text = USING_VIEWPORT_TEXT;
 		}
 		if (subject_image_text != "")
 		{
@@ -463,10 +464,11 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		bool ready_to_compute = reference_image.width != 0 && subject_image.width != 0;
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Separator();
 		ImGui::BeginDisabled(!ready_to_compute);
 		if (ImGui::Button("Compute MSE"))
 		{
-			if (subject_image_text == "Viewport")
+			if (subject_image_text == USING_VIEWPORT_TEXT)
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
@@ -485,7 +487,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 		if (ImGui::Button("Compute RMSE"))
 		{
-			if (subject_image_text == "Viewport")
+			if (subject_image_text == USING_VIEWPORT_TEXT)
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
@@ -505,7 +507,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		static bool output_flip_error_map = false;
 		if (ImGui::Button("Compute FLIP"))
 		{
-			if (subject_image_text == "Viewport")
+			if (subject_image_text == USING_VIEWPORT_TEXT)
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
