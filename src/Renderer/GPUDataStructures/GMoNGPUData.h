@@ -55,7 +55,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 
 	ColorRGB32F* map_result_framebuffer()
 	{
-		if (using_gmon)
+		if (use_gmon)
 			return result_framebuffer->map();
 		else
 			return nullptr;

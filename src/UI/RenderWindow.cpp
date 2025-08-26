@@ -64,7 +64,12 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - TODO then, try to extract common lists of lights per cell in the tail of the alias table and share those lists between cells to be able to sample more lights per cell iwthout increasing memory usage too much
 // - TODO GMoN is broken
+// 
+// 
+// 
 // - Add a nice printing function for printing the progress of the ReGIR light distribution pre-process progress because it's easier to wait when we can see the progress
+// - We may need to blur spatially the light distributions to avoid the fireflies in the city many lights scene for example
+// - Mesh integration seems very good for low triangle count meshes? Maybe we should automatically use that for low triangle meshes and keep the approximation for higher triangle count meshes
 // - Can we do something to allow more jitter somehow without to big of a loss in variance? Jittering is nice for quality, removes correlations
 // - There's probably a way to learn visibility in a more precise way than NEE++ for our light cell distributions no ?
 // - Remove the BSDF simple ray test by full ray test if we're shading all samples to avoid shooting 2 rays
@@ -872,7 +877,6 @@ bool RenderWindow::is_rendering_done()
 
 bool RenderWindow::needs_viewport_refresh()
 {
-	return true;
 	// Update every X seconds
 	bool enough_time_has_passed = get_time_ms_before_viewport_refresh() <= 0.0f;
 	// The render was reset and one frame has been rendered

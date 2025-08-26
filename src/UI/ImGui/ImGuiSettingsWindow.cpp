@@ -617,7 +617,7 @@ void ImGuiSettingsWindow::display_view_disabled_action(DisplayViewType display_v
 
 	case DisplayViewType::GMON_BLEND:
 		// Enabling GMoN
-		m_renderer->get_gmon_render_pass()->get_gmon_data().using_gmon = true;
+		m_renderer->get_gmon_render_pass()->get_gmon_data().use_gmon = true;
 		toggle_gmon();
 
 		return;
@@ -1849,27 +1849,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::EndDisabled();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			ImGui::SeparatorText("Primary hits grid cells");
-			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir, 0, 64))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			ImGui::SeparatorText("Secondary hits grid cells");
-			if (ImGui::SliderInt("Light samples per reservoir##secondary", &regir_settings.grid_fill_settings_secondary_hits.light_sample_count_per_cell_reservoir, 0, 64))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_settings_secondary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_settings_secondary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			ImGui::SeparatorText("Common to primary and secondary grid cells");
+			ImGui::SeparatorText("Per-cell light distributions");
 			static bool cache_cells_light_distributions = ReGIR_GridFillUsePerCellDistributions;
 			if (ImGui::Checkbox("Cache cells light distributions", &cache_cells_light_distributions))
 			{
@@ -1884,20 +1864,62 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"Those per-cell sampling distribution will then be used during the grid fill to provide higher "
 				"quality initial light samples");
-			static int cache_cells_list_distribution_canonical_samples_count = ReGIR_GridFillPerCellDistributionsCanonicalSampleCount;
+
+			static bool integrate_mesh = ReGIR_GridFillCellDistributionsIntegrateMesh;
+			if (ImGui::Checkbox("Integrate mesh contribution", &integrate_mesh))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH, integrate_mesh ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("When computing the contribution of meshes to the grid cell point:\n\n"
+				""
+				"If this option is true, random points will be chosen on the emissive mesh and the "
+				"contribution to the grid cell point of each of these points on the emissive mesh "
+				"will be integrated to compute an estimate of the overall contribution of the "
+				"emissive mesh to the grid cell.\n"
+				"The number of random points drawn is equal to \"Integrate mesh sample count\".\n\n"
+				""
+				"If this option is false, the overall contribution of the mesh is going to be computed "
+				"in one go using an approximate representative point for the whole as well as an average reprensetative "
+				"normal. This is less precise than integrating over the mesh but way faster.");
+			ImGui::BeginDisabled(!integrate_mesh);
+			static int integrate_mesh_sample_count = ReGIR_GRIDFillCellDistributionsIntegrateMeshSampleCount;
+			ImGui::SliderInt("Integrate mesh sample count", &integrate_mesh_sample_count, 1, 64);
+			ImGuiRenderer::show_help_marker("How many random points to integrate the contribution of an emissive mesh over "
+				"if \"Integrate mesh contribution\" is true");
+			if (integrate_mesh_sample_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT))
+			{
+				ImGui::TreePush("Integrate mesh sample count tree regir");
+
+				if (ImGui::Button("Apply"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT, integrate_mesh_sample_count);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+			ImGui::EndDisabled();
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			static int cache_cells_list_distribution_canonical_samples_count = ReGIR_GridFillCellDistributionsCanonicalSampleCount;
 			ImGui::SliderInt("Canonical samples count", &cache_cells_list_distribution_canonical_samples_count, 1, 16);
 			ImGuiRenderer::show_help_marker("How many canonical samples(simple power sampling) to draw and combine with cell-light-distribution "
 				"samples to guarantee unbiasedness.\n\n"
 				""
 				"1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the "
 				"cell-light-distribution is poor");
-			if (cache_cells_list_distribution_canonical_samples_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PER_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT))
+			if (cache_cells_list_distribution_canonical_samples_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT))
 			{
 				ImGui::TreePush("Canonical sample count cell light distribs regir");
 
 				if (ImGui::Button("Apply"))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_PER_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT, cache_cells_list_distribution_canonical_samples_count);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT, cache_cells_list_distribution_canonical_samples_count);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
@@ -1924,6 +1946,28 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePop();
 			}
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Primary hits grid cells");
+			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir, 0, 64))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			ImGui::SeparatorText("Secondary hits grid cells");
+			if (ImGui::SliderInt("Light samples per reservoir##secondary", &regir_settings.grid_fill_settings_secondary_hits.light_sample_count_per_cell_reservoir, 0, 64))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_settings_secondary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Canonical reservoirs per grid cell##secondary", regir_settings.grid_fill_settings_secondary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
+				m_render_window->set_render_dirty(true);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			ImGui::SeparatorText("Common to primary and secondary grid cells");
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			static bool visibility_grid_fill_target_function = ReGIR_GridFillTargetFunctionVisibility;
 			if (ImGui::Checkbox("Use visibility in target function", &visibility_grid_fill_target_function))
@@ -3631,7 +3675,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	{
 		ImGui::TreePush("GMoN tree post processing");
 
-		if (ImGui::Checkbox("Use GMoN", &gmon_data.using_gmon))
+		if (ImGui::Checkbox("Use GMoN", &gmon_data.use_gmon))
 			toggle_gmon();
 
 		if (HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
@@ -3659,7 +3703,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			""
 			"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
 
-		if (gmon_data.using_gmon)
+		if (gmon_data.use_gmon)
 		{
 			ImGui::Text("VRAM Usage: %.3fMB", gmon_render_pass->get_VRAM_usage_bytes() / 1000000.0f);
 
@@ -3735,7 +3779,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 void ImGuiSettingsWindow::toggle_gmon()
 {
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
-	bool gmon_now_enabled = gmon_render_pass->get_gmon_data().using_gmon;
+	bool gmon_now_enabled = gmon_render_pass->get_gmon_data().use_gmon;
 	if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::DEFAULT && gmon_now_enabled)
 		// We just enabled GMoN, automatically switching to the GMoN view for convenience
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::GMON_BLEND);

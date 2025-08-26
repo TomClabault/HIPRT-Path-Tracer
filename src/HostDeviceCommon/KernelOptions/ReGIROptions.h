@@ -140,7 +140,28 @@
  * 1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the
  * cell-light-distribution is poor
  */
-#define ReGIR_GridFillPerCellDistributionsCanonicalSampleCount 1
+#define ReGIR_GridFillCellDistributionsCanonicalSampleCount 1
+
+/**
+ * When computing the contribution of meshes to the grid cell point:
+ * 
+ * - If this option is KERNEL_OPTION_TRUE, random points will be chosen on the emissive mesh and the 
+ *		contribution to the grid cell point of each of these points on the emissive mesh
+ * 		will be integrated to compute an estimate of the overall contribution of the
+ *		emissive mesh to the grid cell.
+ *		The number of random points drawn is equal to ReGIR_GRIDFillCellDistributionsIntegrateMeshSampleCount
+ * 
+ * - If this option is KERNEL_OPTION_FALSE, the overall contribution of the mesh is going to be computed
+ *		in one go using an approximate representative point for the whole as well as an average reprensetative
+ *		normal. This is less precise than integrating over the mesh but way faster
+ */
+#define ReGIR_GridFillCellDistributionsIntegrateMesh KERNEL_OPTION_FALSE
+
+/**
+ * How many random points to integrate the contribution of an emissive mesh over 
+ * if ReGIR_GridFillCellDistributionsIntegrateMesh is KERNEL_OPTION_TRUE
+ */
+#define ReGIR_GRIDFillCellDistributionsIntegrateMeshSampleCount 16
 
 /**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.

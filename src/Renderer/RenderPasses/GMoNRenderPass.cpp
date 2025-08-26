@@ -400,7 +400,7 @@ bool GMoNRenderPass::buffers_allocated()
 
 bool GMoNRenderPass::is_render_pass_used() const
 {
-	bool gmon_enabled = m_gmon.using_gmon;
+	bool gmon_enabled = m_gmon.use_gmon;
 	bool accumulation_enabled = m_renderer->get_render_settings().accumulate;
 
 	return gmon_enabled && accumulation_enabled;

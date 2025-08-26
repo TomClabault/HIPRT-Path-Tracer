@@ -15,31 +15,33 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-//#define SAMPLES_PER_MESH 1000
-//
-//HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
-//{
-//    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
-//    float total_contribution_to_cell = 0.0f;
-//    for (int i = 0; i < SAMPLES_PER_MESH; i++)
-//    {
-//        float sample_PDF;
-//        int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
-//        LightSampleInformation mesh_light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
-//
-//        sample_PDF *= mesh_light_sample.area_measure_pdf;
-//
-//        total_contribution_to_cell += ReGIR_grid_fill_evaluate_target_function<
-//            /* visibility */ true,
-//            /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
-//            /* cosine term at mesh point */ ReGIR_GridFillTargetFunctionCosineTermLightSource,
-//            ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
-//            /* NEE++ */ true>(
-//                render_data, cell_surface, primary_hit, mesh_light_sample.emission, mesh_light_sample.light_source_normal, mesh_light_sample.point_on_light, rng) / sample_PDF;
-//    }
-//
-//    return total_contribution_to_cell / (float)SAMPLES_PER_MESH;
-//}
+#if ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
+
+HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
+{
+    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
+    float total_contribution_to_cell = 0.0f;
+    for (int i = 0; i < ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount; i++)
+    {
+        float sample_PDF;
+        int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
+        LightSampleInformation mesh_light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+
+        sample_PDF *= mesh_light_sample.area_measure_pdf;
+
+        total_contribution_to_cell += ReGIR_grid_fill_evaluate_target_function<
+            /* visibility */ true,
+            /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
+            /* cosine term at mesh point */ ReGIR_GridFillTargetFunctionCosineTermLightSource,
+            ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
+            /* NEE++ */ true>(
+                render_data, cell_surface, primary_hit, mesh_light_sample.emission, mesh_light_sample.light_source_normal, mesh_light_sample.point_on_light, rng) / sample_PDF;
+    }
+
+    return total_contribution_to_cell / (float)ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount;
+}
+
+#else // ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
 
 HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
@@ -66,6 +68,8 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
         /* NEE++ */ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
             render_data, cell_surface, primary_hit, total_mesh_power, mesh_normal, mesh_average_point, dummy_rng);
 }
+
+#endif // ReGIR_GridFillCellDistributionsIntegrateMesh
 
 /**
  * This kernel computes the contribution of all the meshes of the scene to each grid cell

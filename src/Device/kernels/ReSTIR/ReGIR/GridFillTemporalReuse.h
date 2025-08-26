@@ -143,7 +143,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         else
         {
             float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, light_sample.light_area, light_sample.emission);
-            mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF, ReGIR_GridFillPerCellDistributionsCanonicalSampleCount);
+            mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount);
         }
 
         reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
@@ -153,7 +153,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
     {
         // Sampling some samples with a simple 'cover-all-triangles" strategy (power sampling for example)
         // for unbiasedness
-        for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillPerCellDistributionsCanonicalSampleCount; light_sample_index++)
+        for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillCellDistributionsCanonicalSampleCount; light_sample_index++)
         {
             float mesh_PDF;
             unsigned int mesh_index;
@@ -172,7 +172,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
             float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, mesh_index, rng);
-            float mis_weight = balance_heuristic(light_sample.area_measure_pdf, ReGIR_GridFillPerCellDistributionsCanonicalSampleCount, cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
+            float mis_weight = balance_heuristic(light_sample.area_measure_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount, cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
 
             reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
         }
