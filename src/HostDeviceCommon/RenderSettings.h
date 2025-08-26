@@ -35,11 +35,6 @@ struct HIPRTRenderSettings
 	// TODO DEBUG REMOVE THESE
 	////////////////////////////////////////////////////
 
-	static constexpr bool DEBUG_DEV_GMON_BLEND_WEIGHTS = false;
-	bool DEBUG_gmon_auto_blending_weights = true;
-	float DEBUG_GMON_DIVIDER = 3.0f;
-	int DEBUG_GMON_WINDOW_SIZE = 3;
-
 	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS = 4;
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 

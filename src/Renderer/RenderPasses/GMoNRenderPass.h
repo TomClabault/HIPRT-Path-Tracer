@@ -34,11 +34,6 @@ public:
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 
-	float compute_gmon_darkening(HIPRTRenderData& render_data);
-	float get_gmon_darkening();
-
-	float get_lumi();
-
 	/**
 	 * Does the actual allocation/deallocation of the GMoN buffers.
 	 * 
@@ -73,11 +68,7 @@ public:
 	GMoNGPUData& get_gmon_data();
 	unsigned int get_VRAM_usage_bytes() const;
 
-	float m_DEBUG_LUMINANCE_VARIANCE1 = 0.0f;
-	float m_DEBUG_LUMINANCE_VARIANCE2 = 0.0f;
 private:
-	float m_darkening_factor = 0.0f;
-
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
 

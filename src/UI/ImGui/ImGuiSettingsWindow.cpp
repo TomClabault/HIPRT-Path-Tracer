@@ -3678,22 +3678,6 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		if (ImGui::Checkbox("Use GMoN", &gmon_data.use_gmon))
 			toggle_gmon();
 
-		if (HIPRTRenderSettings::DEBUG_DEV_GMON_BLEND_WEIGHTS)
-		{
-			if (ImGui::Checkbox("Auto blending weight", &render_data.render_settings.DEBUG_gmon_auto_blending_weights))
-				m_render_window->set_render_dirty(true);
-
-			if (ImGui::SliderFloat("GMoN Divider", &render_data.render_settings.DEBUG_GMON_DIVIDER, 1.0f, 10.0f))
-				m_render_window->set_render_dirty(true);
-
-			if (ImGui::SliderInt("GMoN Window size", &render_data.render_settings.DEBUG_GMON_WINDOW_SIZE, 3, 21))
-				m_render_window->set_render_dirty(true);
-
-			ImGui::Text("GMoN Darkening: %f", m_renderer->get_gmon_render_pass()->get_gmon_darkening());
-			ImGui::Text("Variance 1: %f", m_renderer->get_gmon_render_pass()->m_DEBUG_LUMINANCE_VARIANCE1);
-			ImGui::Text("Variance 2: %f", m_renderer->get_gmon_render_pass()->m_DEBUG_LUMINANCE_VARIANCE2);
-		}
-
 		ImGuiRenderer::show_help_marker("Use GMoN for fireflies elimination.\n"
 			"The algorithm computes the median of means of the pixels as an estimator "
 			"that is more robust than the simple mean usually used to average samples.\n"

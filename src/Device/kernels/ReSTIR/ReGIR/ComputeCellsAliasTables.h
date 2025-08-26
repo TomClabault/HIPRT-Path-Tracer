@@ -30,7 +30,7 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
         sample_PDF *= mesh_light_sample.area_measure_pdf;
 
         total_contribution_to_cell += ReGIR_grid_fill_evaluate_target_function<
-            /* visibility */ true,
+            /* visibility */ false,
             /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
             /* cosine term at mesh point */ ReGIR_GridFillTargetFunctionCosineTermLightSource,
             ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
