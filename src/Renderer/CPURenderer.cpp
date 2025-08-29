@@ -9,13 +9,13 @@
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
 #include "Device/kernels/ReSTIR/ReGIR/ComputeCellsAliasTables.h"
+#include "Device/kernels/ReSTIR/ReGIR/CorrelationReductionCopy.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
 #include "Device/kernels/ReSTIR/ReGIR/LightPresampling.h"
 #include "Device/kernels/ReSTIR/ReGIR/PreIntegration.h"
 #include "Device/kernels/ReSTIR/ReGIR/Rehash.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
-#include "Device/kernels/ReSTIR/ReGIR/SupersamplingCopy.h"
 
 #include "Device/kernels/ReSTIR/DirectionalReuseCompute.h"
 
@@ -124,8 +124,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_regir_state.non_canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
     m_regir_state.canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
 
-    if (m_render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
-        m_regir_state.correlation_reduction_grid.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) * m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
+    if (m_render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
+        m_regir_state.correlation_reduction_grid.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) * m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
 
 
 
@@ -278,7 +278,7 @@ void CPURenderer::ReGIR_post_render_update()
     return;
 #endif
 
-    if (m_render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
+    if (m_render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
     {
         ReGIRHashGridSoADevice to_copy;
         if (m_render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
@@ -289,14 +289,14 @@ void CPURenderer::ReGIR_post_render_update()
 #pragma omp parallel for
         for (int x = 0; x < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true); x++)
         {
-            ReGIR_Supersampling_Copy(m_render_data, to_copy, x);
+            ReGIR_Correlation_Reduction_Copy(m_render_data, to_copy, x);
         }
 
-        m_render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid++;
-        m_render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid %= m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor;
+        m_render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid++;
+        m_render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid %= m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor;
 
-        m_render_data.render_settings.regir_settings.supersampling.correl_frames_available++;
-        m_render_data.render_settings.regir_settings.supersampling.correl_frames_available = hippt::min(m_render_data.render_settings.regir_settings.supersampling.correl_frames_available, m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
+        m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available++;
+        m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available = hippt::min(m_render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available, m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
     }
 }
 
@@ -372,7 +372,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_regir_state.spatial_grid_buffer_secondary_hit.to_device(m_render_data.render_settings.regir_settings.spatial_output_secondary_hits_grid);
     m_render_data.render_settings.regir_settings.hash_cell_data_secondary_hits = m_regir_state.hash_cell_data_secondary_hit.to_device();
 
-    m_regir_state.correlation_reduction_grid.to_device(m_render_data.render_settings.regir_settings.supersampling.correlation_reduction_grid);
+    m_regir_state.correlation_reduction_grid.to_device(m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_grid);
 
     m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = m_regir_state.non_canonical_pre_integration_factors_primary_hit.data();
     m_render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = m_regir_state.canonical_pre_integration_factors_primary_hit.data();

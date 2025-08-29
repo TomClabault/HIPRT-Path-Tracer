@@ -2241,9 +2241,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Correlation reduction");
-			if (ImGui::Checkbox("Correlation reduction", &regir_settings.supersampling.do_correlation_reduction))
+			if (ImGui::Checkbox("Correlation reduction", &regir_settings.correlation_reduction.do_correlation_reduction))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Correlation reduction factor", &regir_settings.supersampling.correlation_reduction_factor, 1, 8))
+			if (ImGui::SliderInt("Correlation reduction factor", &regir_settings.correlation_reduction.correlation_reduction_factor, 1, 8))
 				m_render_window->set_render_dirty(true);
 			
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

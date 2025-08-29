@@ -28,7 +28,7 @@ public:
 
 	bool pre_render_update(HIPRTRenderData& render_data);
 	void post_sample_update_async(HIPRTRenderData& render_data);
-	void increment_supersampling_counters(HIPRTRenderData& render_data);
+	void increment_correlation_reduction_counters(HIPRTRenderData& render_data);
 	bool try_rehash(HIPRTRenderData& render_data);
 	void reset();
 	bool free();
@@ -49,8 +49,8 @@ public:
 	unsigned int& get_total_number_of_cells(bool primary_hit);
 	unsigned int get_total_number_of_cells(bool primary_hit) const;
 
-	unsigned int get_supersampling_current_frame() const;
-	unsigned int get_supersampling_frames_available() const;
+	unsigned int get_correlation_reduction_current_frame() const;
+	unsigned int get_correlation_reduction_frames_available() const;
 
 public:
 	void reset_internal(bool primary_hit);

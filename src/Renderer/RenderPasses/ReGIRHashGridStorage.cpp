@@ -130,15 +130,15 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 	if (primary_hit)
 	{
-		if (regir_settings.supersampling.do_correlation_reduction)
+		if (regir_settings.correlation_reduction.do_correlation_reduction)
 		{
 			bool correlation_reduction_grid_not_allocated = m_correlation_reduction_grid_primary_hits.m_total_number_of_cells == 0;
-			bool correlation_reduction_reservoirs_count_changed = regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != m_correlation_reduction_grid_primary_hits.m_reservoirs_per_cell / regir_settings.supersampling.correlation_reduction_factor;
-			bool needs_supersample_grid_resize = correlation_reduction_grid_not_allocated || grid_res_changed || correlation_reduction_reservoirs_count_changed;
+			bool correlation_reduction_reservoirs_count_changed = regir_settings.get_number_of_reservoirs_per_cell(primary_hit) != m_correlation_reduction_grid_primary_hits.m_reservoirs_per_cell / regir_settings.correlation_reduction.correlation_reduction_factor;
+			bool needs_correlation_reduction_grid_resize = correlation_reduction_grid_not_allocated || grid_res_changed || correlation_reduction_reservoirs_count_changed;
 
-			if (needs_supersample_grid_resize)
+			if (needs_correlation_reduction_grid_resize)
 			{
-				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.supersampling.correlation_reduction_factor);
+				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.correlation_reduction.correlation_reduction_factor);
 
 				m_correlation_reduction_current_grid_offset = 0;
 				m_correlation_reduction_frames_available = 0;
@@ -176,16 +176,16 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 void ReGIRHashGridStorage::post_sample_update_async(HIPRTRenderData& render_data)
 {
-	increment_supersampling_counters(render_data);
+	increment_correlation_reduction_counters(render_data);
 }
 
-void ReGIRHashGridStorage::increment_supersampling_counters(HIPRTRenderData& render_data)
+void ReGIRHashGridStorage::increment_correlation_reduction_counters(HIPRTRenderData& render_data)
 {
 	m_correlation_reduction_current_grid_offset++;
-	m_correlation_reduction_current_grid_offset %= render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor;
+	m_correlation_reduction_current_grid_offset %= render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor;
 
 	m_correlation_reduction_frames_available++;
-	m_correlation_reduction_frames_available = hippt::min(m_correlation_reduction_frames_available, render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor);
+	m_correlation_reduction_frames_available = hippt::min(m_correlation_reduction_frames_available, render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
 }
 
 bool ReGIRHashGridStorage::try_rehash(HIPRTRenderData& render_data)
@@ -233,9 +233,9 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 			get_initial_grid_buffers(primary_hit) = std::move(new_hash_grid_soa);
 			if (regir_settings.spatial_reuse.do_spatial_reuse)
 				get_spatial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
-			if (regir_settings.supersampling.do_correlation_reduction && primary_hit)
+			if (regir_settings.correlation_reduction.do_correlation_reduction && primary_hit)
 			{
-				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.supersampling.correlation_reduction_factor);
+				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.correlation_reduction.correlation_reduction_factor);
 
 				m_correlation_reduction_current_grid_offset = 0;
 				m_correlation_reduction_frames_available = 0;
@@ -396,8 +396,8 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 	if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		m_spatial_output_primary_hits_grid.to_device(render_data.render_settings.regir_settings.spatial_output_primary_hits_grid);
 
-	if (render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
-		m_correlation_reduction_grid_primary_hits.to_device(render_data.render_settings.regir_settings.supersampling.correlation_reduction_grid);
+	if (render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
+		m_correlation_reduction_grid_primary_hits.to_device(render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_grid);
 
 	render_data.render_settings.regir_settings.hash_cell_data_primary_hits = m_hash_cell_data_primary_hits.to_device();
 
@@ -488,12 +488,12 @@ unsigned int ReGIRHashGridStorage::get_total_number_of_cells(bool primary_hit) c
 	return primary_hit ? m_total_number_of_cells_primary_hits : m_total_number_of_cells_secondary_hits;
 }
 
-unsigned int ReGIRHashGridStorage::get_supersampling_current_frame() const
+unsigned int ReGIRHashGridStorage::get_correlation_reduction_current_frame() const
 {
 	return m_correlation_reduction_current_grid_offset;
 }
 
-unsigned int ReGIRHashGridStorage::get_supersampling_frames_available() const
+unsigned int ReGIRHashGridStorage::get_correlation_reduction_frames_available() const
 {
 	return m_correlation_reduction_frames_available;
 }

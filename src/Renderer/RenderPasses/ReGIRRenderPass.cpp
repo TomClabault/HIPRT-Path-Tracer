@@ -21,7 +21,7 @@ const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGR
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration spatial reuse";
 const std::string ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID = "ReGIR Compute cells alias tables";
 const std::string ReGIRRenderPass::REGIR_REHASH_KERNEL_ID = "ReGIR Rehash kernel";
-const std::string ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID = "ReGIR Supersampling copy";
+const std::string ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID = "ReGIR Correlation reduction copy";
 
 const std::string ReGIRRenderPass::REGIR_RENDER_PASS_NAME = "ReGIR Render Pass";
 
@@ -38,7 +38,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Spatial_Reuse"},
 	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, "ReGIR_Compute_Cells_Alias_Tables"},
 	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
-	{ REGIR_SUPERSAMPLING_COPY_KERNEL_ID, "ReGIR_Supersampling_Copy" },
+	{ REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID, "ReGIR_Correlation_Reduction_Copy" },
 };
 
 const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES =
@@ -54,7 +54,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h"},
 	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/ComputeCellsAliasTables.h"},
 	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
-	{ REGIR_SUPERSAMPLING_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SupersamplingCopy.h" },
+	{ REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/CorrelationReductionCopy.h" },
 };
 
 ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
@@ -156,9 +156,9 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_REHASH_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 
-	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID] = std::make_shared<GPUKernel>();
-	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID));
-	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID));
+	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
+	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID));
 }
 
 bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -246,10 +246,10 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 		m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 	}
 
-	if (!m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->has_been_compiled())
+	if (!m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->has_been_compiled())
 	{
 		updated = true;
-		m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+		m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 	}
 
 	return updated;
@@ -331,8 +331,8 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
 		launch_cell_alias_tables_precomputation(render_data, compiler_options);
 
-		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
-		launch_supersampling_fill(render_data);
+		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
+		launch_correlation_reduction_fill(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
@@ -349,9 +349,9 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
 		launch_cell_alias_tables_precomputation(render_data, compiler_options);
 
-		// A rehashing with supersampling enabled will empty the supersampling grid so we need to fill it again
-		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
-		launch_supersampling_fill(render_data);
+		// A rehashing with will empty the correlation reduction buffers so we need to fill them again
+		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
+		launch_correlation_reduction_fill(render_data);
 
 		// Same with the pre integration factors of the grid cells
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
@@ -363,8 +363,8 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		full_grid_fill_needed = true;
 	}
 
-	render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
-	render_data.render_settings.regir_settings.supersampling.correl_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
+	render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid = m_hash_grid_storage.get_correlation_reduction_current_frame();
+	render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available = m_hash_grid_storage.get_correlation_reduction_frames_available();
 
 	// If this is the first sample, we have no frame before that that could fill the grid asynchronously
 	// so we're going to need to fully fill the grid now
@@ -645,34 +645,34 @@ ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& re
 	return launch_spatial_reuse(render_data, input_reservoirs, output_reservoirs, primary_hit, for_pre_integration, stream);
 }
 
-void ReGIRRenderPass::launch_supersampling_fill(HIPRTRenderData& render_data)
+void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_data)
 {
-	if (!render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
+	if (!render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
 		return;
 
 	unsigned int seed_backup = render_data.random_number;
 
-	for (int i = 0; i < render_data.render_settings.regir_settings.supersampling.correlation_reduction_factor; i++)
+	for (int i = 0; i < render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor; i++)
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
 		launch_light_presampling(render_data, m_renderer->get_main_stream());
 		launch_grid_fill_temporal_reuse(render_data, true, false, m_renderer->get_main_stream());
 		ReGIRHashGridSoADevice spatial_output = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
-		launch_supersampling_copy(render_data, spatial_output);
+		launch_correlation_reduction_copy(render_data, spatial_output);
 
-		m_hash_grid_storage.increment_supersampling_counters(render_data);
+		m_hash_grid_storage.increment_correlation_reduction_counters(render_data);
 
-		render_data.render_settings.regir_settings.supersampling.correl_reduction_current_grid = m_hash_grid_storage.get_supersampling_current_frame();
-		render_data.render_settings.regir_settings.supersampling.correl_frames_available = m_hash_grid_storage.get_supersampling_frames_available();
+		render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid = m_hash_grid_storage.get_correlation_reduction_current_frame();
+		render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available = m_hash_grid_storage.get_correlation_reduction_frames_available();
 	}
 
 	render_data.random_number = seed_backup;
 }
 
-void ReGIRRenderPass::launch_supersampling_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
+void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
 {
-	if (!render_data.render_settings.regir_settings.supersampling.do_correlation_reduction)
+	if (!render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
 		return;
 
 	void* launch_args[] = { &render_data, &input_reservoirs_to_copy };
@@ -682,10 +682,10 @@ void ReGIRRenderPass::launch_supersampling_copy(HIPRTRenderData& render_data, Re
 		// No cell alive to copy
 		return;
 
-	m_kernels[ReGIRRenderPass::REGIR_SUPERSAMPLING_COPY_KERNEL_ID]->launch_asynchronous(64, 1,nb_threads, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->launch_asynchronous(64, 1,nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
-void ReGIRRenderPass::launch_supersampling_copy(HIPRTRenderData& render_data)
+void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_data)
 {
 	ReGIRHashGridSoADevice to_copy;
 	if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
@@ -693,7 +693,7 @@ void ReGIRRenderPass::launch_supersampling_copy(HIPRTRenderData& render_data)
     else
         to_copy = render_data.render_settings.regir_settings.get_initial_reservoirs_grid(true);
 
-	launch_supersampling_copy(render_data, to_copy);
+	launch_correlation_reduction_copy(render_data, to_copy);
 }
 
 void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
@@ -978,7 +978,7 @@ void ReGIRRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPU
 	if (!m_render_pass_used_this_frame)
 		return;
 
-	launch_supersampling_copy(render_data);
+	launch_correlation_reduction_copy(render_data);
 
 	m_hash_grid_storage.post_sample_update_async(render_data);
 }

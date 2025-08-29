@@ -408,24 +408,24 @@ struct ReGIRSettings
 		// If this stays to 0, this means that we're going to read the reservoirs from
 		// either the regular initial candidates grid or spatial reuse grid
 		// 
-		// If this is > 0, then we're going to read the reservoirs from the supersampling grid
+		// If this is > 0, then we're going to read the reservoirs from the correlation reduction grids
 		unsigned int grid_index = 0;
 
 		if constexpr (getCanonicalReservoir)
 		{
-			if (supersampling.do_correlation_reduction)
+			if (correlation_reduction.do_correlation_reduction)
 			{
 				// If correlation reduction is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + correlation reduction reservoirs)
-				reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * (supersampling.correl_frames_available + 1));
+				reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * (correlation_reduction.correl_frames_available + 1));
 			}
 			else
 				reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell());
 		}
 		else
 		{
-			if (supersampling.do_correlation_reduction)
+			if (correlation_reduction.do_correlation_reduction)
 				// If correlation reduction is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + correlation reduction reservoirs)
-				reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * (supersampling.correl_frames_available + 1));
+				reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell() * (correlation_reduction.correl_frames_available + 1));
 			else
 				reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell());
 		}
@@ -458,11 +458,11 @@ struct ReGIRSettings
 		}
 		else
 		{
-			// If we have grid_index == 1 here for example, this is going to be grid index 0 of the supersampling grid
+			// If we have grid_index == 1 here for example, this is going to be grid index 0 of the correlation_reduction grid
 			// so we have grid_index - 1
-			unsigned int reservoir_index_in_supersample_grid = reservoir_index_in_grid + (grid_index - 1) * get_number_of_reservoirs_per_grid(primary_hit);
+			unsigned int reservoir_index_in_correlation_reduction_grid = reservoir_index_in_grid + (grid_index - 1) * get_number_of_reservoirs_per_grid(primary_hit);
 
-			return hash_grid.read_full_reservoir(supersampling.correlation_reduction_grid, reservoir_index_in_supersample_grid);
+			return hash_grid.read_full_reservoir(correlation_reduction.correlation_reduction_grid, reservoir_index_in_correlation_reduction_grid);
 		}
 	}
 
@@ -664,7 +664,7 @@ struct ReGIRSettings
 
 	ReGIRSpatialReuseSettings spatial_reuse;
 	ReGIRShadingSettings shading;
-	ReGIRCorrelationReductionSettings supersampling;
+	ReGIRCorrelationReductionSettings correlation_reduction;
 
 	AtomicType<float>* non_canonical_pre_integration_factors_primary_hits = nullptr;
 	AtomicType<float>* canonical_pre_integration_factors_primary_hits = nullptr;

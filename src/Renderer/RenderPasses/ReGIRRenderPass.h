@@ -26,7 +26,7 @@ public:
 	static const std::string REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID;
 	static const std::string REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID;
 	static const std::string REGIR_REHASH_KERNEL_ID;
-	static const std::string REGIR_SUPERSAMPLING_COPY_KERNEL_ID;
+	static const std::string REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID;
 
 	static const std::string REGIR_RENDER_PASS_NAME;
 
@@ -74,9 +74,9 @@ public:
 	 */
 	ReGIRHashGridSoADevice launch_spatial_reuse(HIPRTRenderData& render_data, ReGIRHashGridSoADevice first_input_reservoirs, ReGIRHashGridSoADevice first_output_reservoirs, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	ReGIRHashGridSoADevice launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
-	void launch_supersampling_fill(HIPRTRenderData& render_data);
-	void launch_supersampling_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy);
-	void launch_supersampling_copy(HIPRTRenderData& render_data);
+	void launch_correlation_reduction_fill(HIPRTRenderData& render_data);
+	void launch_correlation_reduction_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy);
+	void launch_correlation_reduction_copy(HIPRTRenderData& render_data);
 	void launch_pre_integration(HIPRTRenderData& render_data);
 	void launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream);
 	void launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);

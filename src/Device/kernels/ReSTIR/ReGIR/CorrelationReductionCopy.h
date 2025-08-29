@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_KERNELS_REGIR_SUPERSAMPLING_COPY_H
-#define DEVICE_KERNELS_REGIR_SUPERSAMPLING_COPY_H
+#ifndef DEVICE_KERNELS_REGIR_CORRELATION_REDUCTION_COPY_H
+#define DEVICE_KERNELS_REGIR_CORRELATION_REDUCTION_COPY_H
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -15,9 +15,9 @@
  * of the old (smaller) hash table into the new (larger) hash table
  */
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Supersampling_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
+GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Supersampling_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy, int thread_index)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy, int thread_index)
 #endif
 {
     ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
@@ -47,9 +47,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Supersampling_Copy(HIPRTRenderData re
 
     ReGIRReservoir reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(input_reservoirs_to_copy, reservoir_index_in_grid);
 
-	unsigned int reservoir_index_in_supersampling_grid = reservoir_index_in_grid + regir_settings.supersampling.correl_reduction_current_grid * regir_settings.get_number_of_reservoirs_per_grid(true);
+	unsigned int reservoir_index_in_supersampling_grid = reservoir_index_in_grid + regir_settings.correlation_reduction.correl_reduction_current_grid * regir_settings.get_number_of_reservoirs_per_grid(true);
 
-    render_data.render_settings.regir_settings.hash_grid.store_full_reservoir(regir_settings.supersampling.correlation_reduction_grid, reservoir_to_copy, reservoir_index_in_supersampling_grid);
+    render_data.render_settings.regir_settings.hash_grid.store_full_reservoir(regir_settings.correlation_reduction.correlation_reduction_grid, reservoir_to_copy, reservoir_index_in_supersampling_grid);
 }
 
 #endif
