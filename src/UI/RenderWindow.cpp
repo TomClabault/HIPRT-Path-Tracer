@@ -63,10 +63,20 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - TODO then, try to extract common lists of lights per cell in the tail of the alias table and share those lists between cells to be able to sample more lights per cell iwthout increasing memory usage too much
-// - TODO GMoN is broken
+//		- Just try brute force big VRAM usage to see if at least it helps
+// - TODO why do we have banding and artifacts on the v3 scene?
 // 
 // 
-// 
+// - Add cache cells to the README
+// - Should we have a very light ReSTIR DI pass on top of ReGIR to clean things up a bit / help with small details?
+// - renamed sorted indices into sorted mesh indices
+// - Can we maybe start with a constant grid cell size for good precision and merge grid cells which have similar light distributions?
+//		- We would be merging gfrid cells by storing a list of grid cell indices that are merge into a main grid cell so each grid cell would have some kind of adjacency list of grid cells that are merged into it
+// - If we learn the visibility of the lights in the cell distribution live, we'll to recompute the distributions at some time. Maybe we can recompute the distributions fully if the number of non-zero light contributions in the distribution goes below a threshold, meaning that lmany lights in the distribution have been flagged as occluded and so we need to recompute the distribution for precision 
+// - Maybe we want mesh integration for the meshes that have a large solid angle to the shading point?
+// - Is it the simplified BSDF ray that makes the BSDF mis not super good?
+// - What about sampling directly from the grid cell light distributions instead of going through ReGIR? Would it be worth it? We could do RIS at shading time on multiple samples of the light distribution
+// - Fix that grid cell issue where we have grid cells popping inside other grid cells, the wave is too big?
 // - Add a nice printing function for printing the progress of the ReGIR light distribution pre-process progress because it's easier to wait when we can see the progress
 // - We may need to blur spatially the light distributions to avoid the fireflies in the city many lights scene for example
 // - Mesh integration seems very good for low triangle count meshes? Maybe we should automatically use that for low triangle meshes and keep the approximation for higher triangle count meshes

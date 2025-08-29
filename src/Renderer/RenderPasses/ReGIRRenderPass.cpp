@@ -328,11 +328,11 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Prepopulation pass...");
 		launch_grid_pre_population(render_data);
 
-		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
-		launch_supersampling_fill(render_data);
-
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
 		launch_cell_alias_tables_precomputation(render_data, compiler_options);
+
+		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
+		launch_supersampling_fill(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
@@ -344,14 +344,14 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	bool rehashed = rehash(render_data);
 	if (rehashed)
 	{
-		// A rehashing with supersampling enabled will empty the supersampling grid so we need to fill it again
-		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
-		launch_supersampling_fill(render_data);
-
 		// Also need to recompute the alias tables of the grid cells because
 		// a rehash completely restructures 
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
 		launch_cell_alias_tables_precomputation(render_data, compiler_options);
+
+		// A rehashing with supersampling enabled will empty the supersampling grid so we need to fill it again
+		m_render_window->set_ImGui_status_text("ReGIR Supersampling fill...");
+		launch_supersampling_fill(render_data);
 
 		// Same with the pre integration factors of the grid cells
 		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
@@ -804,6 +804,8 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		return;
 	unsigned int max_number_of_cells_computed_per_iteration = std::floor(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 
+	auto start_total = std::chrono::high_resolution_clock::now();
+
 	// Allocating the scratch buffer with a maximum size of SCRATCH_BUFFER_MAX_SIZE_BYTES.
 	// If we don't need that much size, then we're just allocating what we need (that's the outer min() part)
 	//
@@ -927,7 +929,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);*/
 		}
 		stop = std::chrono::high_resolution_clock::now();
-		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
+		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
 
 		cell_offset += max_number_of_cells_computed_per_iteration;
 	}
@@ -938,6 +940,9 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(PDFs_staging);
 
 	last_nb_computed_cells_alias_tables = nb_cells_alive;
+
+	auto stop_total = std::chrono::high_resolution_clock::now();
+	std::cout << "Full precomputation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_total - start_total).count() << "ms. " << std::endl;
 }
 
 void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)
