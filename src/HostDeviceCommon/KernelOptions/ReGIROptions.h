@@ -196,6 +196,13 @@
 #define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
 
 /**
+ * If this is true, BSDF sample rays will be traced in a BVH that contains only the lights of the scene,
+ * not the rest of the geometry. This can increase variance but make the traces way way faster to the point
+ * where BSDF MIS rays are almost free
+ */
+#define ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay KERNEL_OPTION_TRUE
+
+/**
  * If true, all samples resampled will be shaded instead of shading only the reservoir result of the resampling.
  * 
  * This massively improves quality at the cost of performance and is very likely to be worth it for scenes that are not

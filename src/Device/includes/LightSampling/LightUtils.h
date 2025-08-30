@@ -629,7 +629,11 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                     new_ray.origin = shading_point;
                     new_ray.direction = sampled_bsdf_direction;
 
+#if ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay == KERNEL_OPTION_TRUE
                     intersection_found = evaluate_bsdf_light_sample_ray_simplified(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
+#else
+                    intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
+#endif
 
                     // Checking that we did hit something and if we hit something,
                     // it needs to be emissive

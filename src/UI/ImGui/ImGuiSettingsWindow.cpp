@@ -2182,6 +2182,24 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("Whether or not to incorporate BSDF samples with MIS during shading resampling.");
+			if (do_resampling_bsdf_mis)
+			{
+				ImGui::TreePush("BSDF MIS reGIR simplified ray");
+
+				static bool do_resampling_bsdf_mis_simplified_ray = ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay;
+				if (ImGui::Checkbox("Simplified ray", &do_resampling_bsdf_mis_simplified_ray))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY, do_resampling_bsdf_mis_simplified_ray ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("If this is true, BSDF sample rays will be traced in a BVH that contains only the lights of the scene, "
+					"not the rest of the geometry.This can increase variance but make the traces way way faster to the point "
+					"where BSDF MIS rays are almost free.");
+
+				ImGui::TreePop();
+			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Jittering");
