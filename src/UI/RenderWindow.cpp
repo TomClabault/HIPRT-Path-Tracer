@@ -73,6 +73,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we maybe start with a constant grid cell size for good precision and merge grid cells which have similar light distributions?
 //		- We would be merging gfrid cells by storing a list of grid cell indices that are merge into a main grid cell so each grid cell would have some kind of adjacency list of grid cells that are merged into it
 // - If we learn the visibility of the lights in the cell distribution live, we'll to recompute the distributions at some time. Maybe we can recompute the distributions fully if the number of non-zero light contributions in the distribution goes below a threshold, meaning that lmany lights in the distribution have been flagged as occluded and so we need to recompute the distribution for precision 
+// - Can we have variable light distribution size per cell such that the distribution accounts for a max of 97% of the energy or whatever and save VRAM where the light distributions don't have to be so large?
 // - Maybe we want mesh integration for the meshes that have a large solid angle to the shading point?
 // - Is it the simplified BSDF ray that makes the BSDF mis not super good?
 // - What about sampling directly from the grid cell light distributions instead of going through ReGIR? Would it be worth it? We could do RIS at shading time on multiple samples of the light distribution

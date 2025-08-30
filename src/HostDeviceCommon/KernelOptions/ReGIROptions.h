@@ -196,13 +196,6 @@
 #define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
 
 /**
- * Whether or not to use Pairwise MIS weights for weighting the different samples at shading-resampling time.
- * 
- * If this is false, 1/Z MIS weights will be used instead which are potentially faster but definitely have more variance.
- */
-#define ReGIR_ShadingResamplingDoMISPairwiseMIS KERNEL_OPTION_TRUE
-
-/**
  * If true, all samples resampled will be shaded instead of shading only the reservoir result of the resampling.
  * 
  * This massively improves quality at the cost of performance and is very likely to be worth it for scenes that are not

@@ -2184,19 +2184,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Whether or not to incorporate BSDF samples with MIS during shading resampling.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			static bool do_pairwise_MIS = ReGIR_ShadingResamplingDoMISPairwiseMIS;
-			if (ImGui::Checkbox("Pairwise MIS", &do_pairwise_MIS))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS, do_pairwise_MIS ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to use Pairwise MIS weights for weighting the different samples at shading-resampling time.\n\n"
-				""
-				"If this is false, 1 / Z MIS weights will be used instead which are potentially faster but definitely have more variance.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Jittering");
 			if (ImGui::Checkbox("Do cell jittering (1st hits)", &regir_settings.shading.do_cell_jittering_first_hits))
 				m_render_window->set_render_dirty(true);

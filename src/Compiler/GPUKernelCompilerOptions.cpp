@@ -59,7 +59,6 @@ const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNC
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY = "ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES = "ReGIR_ShadingResamplingJitterCanonicalCandidates";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS = "ReGIR_ShadingResamplingDoBSDFMIS";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS = "ReGIR_ShadingResamplingDoMISPairwiseMIS";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES = "ReGIR_ShadingResamplingShadeAllSamples";
 const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE = "ReGIR_HashGridCollisionResolutionMode";
@@ -153,7 +152,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES,
 	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE,
@@ -251,7 +249,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_TARGET_FUNCTION_NEE_PLUS_PLUS_VISIBILITY] = std::make_shared<int>(ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES] = std::make_shared<int>(ReGIR_ShadingResamplingJitterCanonicalCandidates);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS] = std::make_shared<int>(ReGIR_ShadingResamplingDoBSDFMIS);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_MIS_PAIRWISE_MIS] = std::make_shared<int>(ReGIR_ShadingResamplingDoMISPairwiseMIS);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES] = std::make_shared<int>(ReGIR_ShadingResamplingShadeAllSamples);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE] = std::make_shared<int>(ReGIR_HashGridCollisionResolutionMode);
