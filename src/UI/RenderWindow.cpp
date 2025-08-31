@@ -70,7 +70,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Maybe we want mesh integration for the meshes that have a large solid angle to the shading point?
 // - Is it the simplified BSDF ray that makes the BSDF mis not super good?
 // - What about sampling directly from the grid cell light distributions instead of going through ReGIR? Would it be worth it? We could do RIS at shading time on multiple samples of the light distribution
-// - Fix that grid cell issue where we have grid cells popping inside other grid cells, the wave is too big?
 // - Add a nice printing function for printing the progress of the ReGIR light distribution pre-process progress because it's easier to wait when we can see the progress
 // - We may need to blur spatially the light distributions to avoid the fireflies in the city many lights scene for example
 // - Mesh integration seems very good for low triangle count meshes? Maybe we should automatically use that for low triangle meshes and keep the approximation for higher triangle count meshes

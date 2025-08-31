@@ -67,11 +67,11 @@ struct ReGIRHashGrid
 		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size);
 
 		// Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
-		world_position = hash_periodic_shifting(world_position, cell_size);
+		float3 new_world_position = hash_periodic_shifting(world_position, cell_size);
 
-		unsigned int grid_coord_x = static_cast<int>(floorf(world_position.x / cell_size));
-		unsigned int grid_coord_y = static_cast<int>(floorf(world_position.y / cell_size));
-		unsigned int grid_coord_z = static_cast<int>(floorf(world_position.z / cell_size));
+		unsigned int grid_coord_x = static_cast<int>(floorf(new_world_position.x / cell_size));
+		unsigned int grid_coord_y = static_cast<int>(floorf(new_world_position.y / cell_size));
+		unsigned int grid_coord_z = static_cast<int>(floorf(new_world_position.z / cell_size));
 
 		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
 #if ReGIR_HashGridHashSurfaceNormal == KERNEL_OPTION_TRUE

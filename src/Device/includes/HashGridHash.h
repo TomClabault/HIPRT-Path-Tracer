@@ -50,7 +50,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int h2_xxhash32(float seed)
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 hash_periodic_shifting(float3 base_position, float grid_cell_size)
 {
-    float scaling = 0.1f * grid_cell_size;
+    float scaling = 0.005f * grid_cell_size;
 
     constexpr float frequency_per_grid_cell = 5.0f;
     constexpr float frequency_per_grid_cell_inverse = 1.0f / frequency_per_grid_cell;
