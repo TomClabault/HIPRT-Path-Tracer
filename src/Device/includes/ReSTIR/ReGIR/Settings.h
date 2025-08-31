@@ -153,7 +153,7 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = false;
+	bool do_correlation_reduction = true;
 
 	int correlation_reduction_factor = 2;
 	int correl_frames_available = 0;
@@ -576,6 +576,7 @@ struct ReGIRSettings
 	{
 		unsigned int checksum;
 		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, primary_hit, hash_grid_to_update.m_total_number_of_cells, checksum);
+
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		
 		// Trying to insert the new key atomically 

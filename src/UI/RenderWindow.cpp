@@ -62,6 +62,7 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Can we simplify the grid fill target function since the cell distributions already have some guarantees?
 // - Should we have a very light ReSTIR DI pass on top of ReGIR to clean things up a bit / help with small details?
 // - Can we maybe start with a constant grid cell size for good precision and merge grid cells which have similar light distributions?
 //		- We would be merging gfrid cells by storing a list of grid cell indices that are merge into a main grid cell so each grid cell would have some kind of adjacency list of grid cells that are merged into it

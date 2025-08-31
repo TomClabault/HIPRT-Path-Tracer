@@ -68,7 +68,7 @@ struct NEEPlusPlusDevice
 
 	// After how many samples to stop updating the visibility map
 	// (because it's probably converged enough)
-	int m_stop_update_samples = 256;
+	int m_stop_update_samples = 2048;
 
 	enum BufferNames : unsigned int
 	{

@@ -34,7 +34,7 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
             /* cosine term at cell point */ ReGIR_GridFillTargetFunctionCosineTerm,
             /* cosine term at mesh point */ ReGIR_GridFillTargetFunctionCosineTermLightSource,
             ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
-            /* NEE++ */ true>(
+            /* NEE++ */ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
                 render_data, cell_surface, primary_hit, mesh_light_sample.emission, mesh_light_sample.light_source_normal, mesh_light_sample.point_on_light, rng) / sample_PDF;
     }
 

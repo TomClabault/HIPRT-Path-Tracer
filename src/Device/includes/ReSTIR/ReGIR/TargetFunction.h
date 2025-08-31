@@ -171,7 +171,12 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 			shadow_ray.origin = shading_point;
 			shadow_ray.direction = to_light_direction;
 
-			bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, last_hit_primitive_index, ray_payload.bounce, rng);
+			// NEE++ context for the shadow ray
+			NEEPlusPlusContext nee_plus_plus_context;
+			nee_plus_plus_context.point_on_light = point_on_light;
+			nee_plus_plus_context.shaded_point = shading_point;
+
+			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(const_cast<HIPRTRenderData&>(render_data), shadow_ray, distance_to_light, last_hit_primitive_index, nee_plus_plus_context, rng, ray_payload.bounce);
 		
 			target_function *= !in_shadow;
 			sample_radiance *= !in_shadow;

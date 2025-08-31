@@ -328,7 +328,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Prepopulation pass...");
 		launch_grid_pre_population(render_data);
 
-		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
+		m_render_window->set_ImGui_status_text("ReGIR Cell light distributions build...");
 		launch_cell_alias_tables_precomputation(render_data, compiler_options);
 
 		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
@@ -361,6 +361,22 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 		// If we rehashed the grid, we're going to need a full grid re-fill for this frame
 		full_grid_fill_needed = true;
+	}
+
+	if (false)
+	{
+		// Light distributions recomputation to take NEE++ learnings into account
+
+	    // A rehashing with will empty the correlation reduction buffers so we need to fill them again
+		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
+		launch_cell_alias_tables_precomputation(render_data, compiler_options, true);
+
+		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
+		launch_correlation_reduction_fill(render_data);
+
+		// Same with the pre integration factors of the grid cells
+		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
+		launch_pre_integration(render_data);
 	}
 
 	render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid = m_hash_grid_storage.get_correlation_reduction_current_frame();
@@ -771,16 +787,16 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	render_data.random_number = seed_backup;
 }
 
-void ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+void ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, bool force_recompute)
 {
 	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_DISTRIBUTIONS) == KERNEL_OPTION_FALSE)
 		return;
 
-	launch_cell_alias_tables_precomputation_internal(render_data, true);
-	launch_cell_alias_tables_precomputation_internal(render_data, false);
+	launch_cell_alias_tables_precomputation_internal(render_data, true, force_recompute);
+	launch_cell_alias_tables_precomputation_internal(render_data, false, force_recompute);
 }
 
-void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit)
+void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit, bool force_recompute)
 {
 	if (render_data.buffers.emissive_meshes_data.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
 	{
@@ -799,7 +815,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	unsigned int& last_nb_computed_cells_alias_tables = primary_hit ? m_last_cells_alias_tables_compute_count_primary_hits : m_last_cells_alias_tables_compute_count_secondary_hits;
 
 	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_data.alias_table_count;
-	unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_alias_tables;
+	unsigned int total_number_of_cells_to_compute = force_recompute ? nb_cells_alive : nb_cells_alive - last_nb_computed_cells_alias_tables;
 	if (total_number_of_cells_to_compute == 0)
 		return;
 	unsigned int max_number_of_cells_computed_per_iteration = std::floor(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
@@ -826,7 +842,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	std::atomic<unsigned int> average_alias_table_saving = 0;
 	std::atomic<float> average_alias_table_energy = 0.0f;
 
-	unsigned int cell_offset = last_nb_computed_cells_alias_tables;
+	unsigned int cell_offset = force_recompute ? 0 : last_nb_computed_cells_alias_tables;
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
 	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
 	for (int iter = 0; iter < iteration_needed; iter++)
@@ -866,10 +882,10 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 			auto last = sorted_mesh_indices.begin() + emissive_mesh_count * (i + 1);
 
 			std::sort(first, last, [&](unsigned int a, unsigned int b)
-				{
-					// Sorting in descendant order
-					return contributions[i * emissive_mesh_count + a] > contributions[i * emissive_mesh_count + b];
-				});
+			{
+				// Sorting in descendant order
+				return contributions[i * emissive_mesh_count + a] > contributions[i * emissive_mesh_count + b];
+			});
 		}
 		stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
