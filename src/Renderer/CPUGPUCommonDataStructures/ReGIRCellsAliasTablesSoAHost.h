@@ -15,11 +15,12 @@ template <template <typename> typename DataContainer>
 using ReGIRCellsAliasTablesSoAHostInternal = GenericSoA<DataContainer,
 	// TODO this can probably be uint 16 unorm?
 	float,  // alias table probas
-	// TODO, this can be an unsigned char if the alias table is 256 max elements
+	// TODO Can we use unsigned char / short int (short int would be the max anyways) automatically depending on the number of emissive meshes in the scene?
 	int, // alias table aliases
 	// TODO we can probably do something a bit clever to be able to recompute the alias table PDF on the fly without having
 	//		to store a full other buffer just for that
 	float, // PDFs that each cell samples a given mesh index within its own cell-alias-table
+	// TODO Can we use unsigned char / short int / uint automatically depending on the number of emissive meshes in the scene?
 	unsigned int // Indices of the emissive meshes associated with the entries of the alias table at each cell
 >;
 

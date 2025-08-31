@@ -983,7 +983,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	last_nb_computed_cells_alias_tables = nb_cells_alive;
 
 	auto stop_total = std::chrono::high_resolution_clock::now();
-	std::cout << "Full precomputation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_total - start_total).count() << "ms. " << std::endl;
+	std::cout << "Full precomputation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_total - start_total).count() << "ms. " << std::endl << std::endl << std::endl;
 }
 
 void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)

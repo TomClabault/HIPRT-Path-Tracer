@@ -1893,7 +1893,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			{
 				ImGui::TreePush("Integrate mesh sample count tree regir");
 
-				if (ImGui::Button("Apply"))
+					if (ImGui::Button("Apply"))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT, integrate_mesh_sample_count);
 
@@ -1941,7 +1941,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 
 			static int light_distribution_size = regir_settings.cells_distributions_primary_hits.alias_table_size;
-			ImGui::SliderInt("Light distribution size", &light_distribution_size, 1, render_data.buffers.emissive_meshes_data.alias_table_count);
+			ImGui::SliderInt("Light distribution size", &light_distribution_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count));
 
 			if (light_distribution_size != regir_render_pass->get_current_cell_light_distributions_size())
 			{
@@ -1949,6 +1949,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 				if (ImGui::Button("Apply"))
 				{
+					light_distribution_size = hippt::min(65535, light_distribution_size);
+
 					regir_settings.cells_distributions_primary_hits.alias_table_size = light_distribution_size;
 					regir_settings.cells_distributions_secondary_hits.alias_table_size = light_distribution_size;
 

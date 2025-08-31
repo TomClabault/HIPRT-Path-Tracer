@@ -122,7 +122,7 @@ struct EmissiveMeshesAliasTablesHost
 
 		auto stop = std::chrono::high_resolution_clock::now();
 
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Uploading emissive meshes precomputed-data time: %lldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Uploading emissive meshes precomputed-data time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 	}
 
 	EmissiveMeshesAliasTablesDevice to_device()
