@@ -212,7 +212,7 @@ struct ReGIRSettings
 	HIPRT_DEVICE const ReGIRCellsAliasTablesSoADevice& get_cell_distributions_soa(bool primary_hit) const { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
 	HIPRT_DEVICE ReGIRCellsAliasTablesSoADevice& get_cell_distributions_soa(bool primary_hit) { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
 
-	HIPRT_DEVICE AliasTableDevice get_cell_alias_table(unsigned int hash_grid_cell_index, bool primary_hit) const
+	HIPRT_DEVICE AliasTableDevice get_cell_light_distributions(unsigned int hash_grid_cell_index, bool primary_hit) const
 	{
 		AliasTableDevice out;
 

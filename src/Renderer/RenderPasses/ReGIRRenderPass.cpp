@@ -36,7 +36,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 	{ REGIR_PRE_INTEGRATION_KERNEL_ID , "ReGIR_Pre_integration" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Grid_Fill"},
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Spatial_Reuse"},
-	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, "ReGIR_Compute_Cells_Alias_Tables"},
+	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, "ReGIR_Compute_Cells_Light_Distributions"},
 	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
 	{ REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID, "ReGIR_Correlation_Reduction_Copy" },
 };
@@ -52,7 +52,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 	{ REGIR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/PreIntegration.h" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h"},
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h"},
-	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/ComputeCellsAliasTables.h"},
+	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/ComputeCellsLightDistributions.h"},
 	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
 	{ REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/CorrelationReductionCopy.h" },
 };
@@ -329,7 +329,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		launch_grid_pre_population(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Cell light distributions build...");
-		launch_cell_alias_tables_precomputation(render_data);
+		launch_cell_light_distributions_precomputation(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
 		launch_correlation_reduction_fill(render_data);
@@ -347,7 +347,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		// Also need to recompute the alias tables of the grid cells because
 		// a rehash completely restructures 
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
-		launch_cell_alias_tables_precomputation(render_data);
+		launch_cell_light_distributions_precomputation(render_data);
 
 		// A rehashing with will empty the correlation reduction buffers so we need to fill them again
 		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
@@ -369,14 +369,14 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	    // A rehashing with will empty the correlation reduction buffers so we need to fill them again
 		m_render_window->set_ImGui_status_text("ReGIR Updating cell distributions...");
-		launch_cell_alias_tables_precomputation(render_data, true);
+		launch_cell_light_distributions_precomputation(render_data, true);
 		launch_correlation_reduction_fill(render_data);
 		launch_pre_integration(render_data);
 	}
 
 	// Launching the computation of grid-cells light distributions at each frame in case new grid
 	// cells have been added to the grid because of rays hitting unexplored parts of the scene
-	//if (launch_cell_alias_tables_precomputation(render_data, compiler_options))
+	//if (launch_cell_light_distributions_precomputation(render_data, compiler_options))
 	//	// If we indeed recomputed some cell light distributions, we're going to need to update
 	//	// the pre-integrated RIS integral factors
 	//	launch_pre_integration(render_data);
@@ -789,20 +789,20 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	render_data.random_number = seed_backup;
 }
 
-bool ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data, bool force_recompute)
+bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data, bool force_recompute)
 {
 	if (!render_data.render_settings.regir_settings.use_per_cell_light_distributions)
 		return false;
 
 	bool recomputed = false;
 
-	recomputed |= launch_cell_alias_tables_precomputation_internal(render_data, true, force_recompute);
-	recomputed |= launch_cell_alias_tables_precomputation_internal(render_data, false, force_recompute);
+	recomputed |= launch_cell_light_distributions_precomputation_internal(render_data, true, force_recompute);
+	recomputed |= launch_cell_light_distributions_precomputation_internal(render_data, false, force_recompute);
 
 	return recomputed;
 }
 
-bool ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit, bool force_recompute)
+bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit, bool force_recompute)
 {
 	if (render_data.buffers.emissive_meshes_data.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
 	{
@@ -838,10 +838,10 @@ bool ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 
-	std::vector<unsigned int> meshes_indices_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>().size());
-	std::vector<float> probas_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>().size());
-	std::vector<int> aliases_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>().size());
-	std::vector<float> PDFs_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>().size());
+	std::vector<unsigned int> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>().size());
+	std::vector<float> probas_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>().size());
+	std::vector<int> aliases_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>().size());
+	std::vector<float> PDFs_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>().size());
 
 	std::atomic<unsigned int> minimum_alias_table_saving = 0;
 	std::atomic<unsigned int> maximum_alias_table_saving = 0;
@@ -958,16 +958,16 @@ bool ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 				Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
 
 				std::copy(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count + contribution_count_min, meshes_indices_staging.begin() + hash_grid_cell_index * alias_table_size);
-				//m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
+				//m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
 			}
 
 			std::copy(probas.begin(), probas.end(), probas_staging.begin() + hash_grid_cell_index * alias_table_size);
 			std::copy(aliases.begin(), aliases.end(), aliases_staging.begin() + hash_grid_cell_index * alias_table_size);
 			std::copy(PDFs.begin(), PDFs.end(), PDFs_staging.begin() + hash_grid_cell_index * alias_table_size);
 			
-			/*m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
-			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
-			m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);*/
+			/*m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
+			m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
+			m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);*/
 		}
 		stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
@@ -975,10 +975,10 @@ bool ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		cell_offset += max_number_of_cells_computed_per_iteration;
 	}
 
-	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(meshes_indices_staging);
-	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(probas_staging);
-	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(aliases_staging);
-	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(PDFs_staging);
+	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(meshes_indices_staging);
+	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(probas_staging);
+	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(aliases_staging);
+	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(PDFs_staging);
 
 	std::cout << "Alias table size: " << render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size << std::endl;
 	std::cout << "Minimum alias table saving: " << minimum_alias_table_saving.load() << std::endl;

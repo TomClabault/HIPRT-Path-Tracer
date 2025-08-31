@@ -87,9 +87,9 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
  * which will be used to sample important emissive meshes directly, in one alias table sample
  */
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Compute_Cells_Alias_Tables(HIPRTRenderData render_data, float* contributions_scratch_buffer, unsigned int cell_index_offset, bool primary_hit)
+GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data, float* contributions_scratch_buffer, unsigned int cell_index_offset, bool primary_hit)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Alias_Tables(HIPRTRenderData render_data, float* contributions_scratch_buffer, unsigned int cell_index_offset, bool primary_hit, unsigned int thread_index)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Light_Distributions(HIPRTRenderData render_data, float* contributions_scratch_buffer, unsigned int cell_index_offset, bool primary_hit, unsigned int thread_index)
 #endif
 {
     if (render_data.buffers.emissive_triangles_count == 0)

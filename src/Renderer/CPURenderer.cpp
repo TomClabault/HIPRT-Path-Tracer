@@ -8,7 +8,7 @@
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
-#include "Device/kernels/ReSTIR/ReGIR/ComputeCellsAliasTables.h"
+#include "Device/kernels/ReSTIR/ReGIR/ComputeCellsLightDistributions.h"
 #include "Device/kernels/ReSTIR/ReGIR/CorrelationReductionCopy.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridFill.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
@@ -884,7 +884,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
 #pragma omp parallel for
         for (int thread_index = 0; thread_index < dispatch_size; thread_index++)
         {
-            ReGIR_Compute_Cells_Alias_Tables(m_render_data, contribution_scratch_buffer.data(), cell_offset, primary_hit, thread_index);
+            ReGIR_Compute_Cells_Light_Distributions(m_render_data, contribution_scratch_buffer.data(), cell_offset, primary_hit, thread_index);
         }
         auto stop_compute = std::chrono::high_resolution_clock::now();
         std::cout << "Compute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_compute - compute).count() << "ms. " << std::endl;

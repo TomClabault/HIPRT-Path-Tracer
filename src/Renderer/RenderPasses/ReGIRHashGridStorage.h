@@ -45,7 +45,7 @@ public:
 	ReGIRHashCellDataSoADevice& get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit);
 	OrochiBuffer<float>& get_non_canonical_factors(bool primary_hit);
 	OrochiBuffer<float>& get_canonical_factors(bool primary_hit);
-	ReGIRCellsAliasTablesSoAHost<OrochiBuffer>& get_cell_alias_tables(bool primary_hit);
+	ReGIRCellsAliasTablesSoAHost<OrochiBuffer>& get_cell_light_distributions(bool primary_hit);
 	unsigned int& get_total_number_of_cells(bool primary_hit);
 	unsigned int get_total_number_of_cells(bool primary_hit) const;
 

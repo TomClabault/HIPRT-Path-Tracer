@@ -77,7 +77,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we do something to allow more jitter somehow without to big of a loss in variance? Jittering is nice for quality, removes correlations
 // - There's probably a way to learn visibility in a more precise way than NEE++ for our light cell distributions no ?
 // - Remove the BSDF simple ray test by full ray test if we're shading all samples to avoid shooting 2 rays
-// - Rename all "CellAliasTables" into "CellLightDistributions" everywhere
 // - Improve NEE++ memory usage to be able to use more precision for the same memory space:
 //		- Move at the very least to 2 * uchar for the total counter and unoccluded counter
 //		- 1 single uchar with exponential moving average?

@@ -19,7 +19,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
+    AliasTableDevice cell_alias_table = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
     unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
 
@@ -51,7 +51,7 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    AliasTableDevice cell_alias_table = regir_settings.get_cell_alias_table(hash_grid_cell_index, primary_hit);
+    AliasTableDevice cell_alias_table = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
     unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
 
