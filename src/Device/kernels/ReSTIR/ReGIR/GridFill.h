@@ -133,8 +133,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         else
-            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
-                surface, primary_hit,
+            target_function = ReGIR_grid_fill_evaluate_target_function<
+            ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
+            ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF, 
+            /* We don't need NEE++ here because it's already included in the sampling distribution of the grid cell.
+               We don't need that in RIS*/ false>(
+                render_data, surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
 
         float mis_weight;
