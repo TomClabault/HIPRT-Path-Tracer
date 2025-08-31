@@ -55,9 +55,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	// Initializing the random generator
 	unsigned int seed;
-	if (render_data.render_settings.freeze_random)
-		seed = wang_hash(center_pixel_index + 1);
-	else if (render_data.render_settings.restir_gi_settings.common_spatial_pass.coalesced_spatial_reuse)
+	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.coalesced_spatial_reuse)
 		seed = wang_hash((render_data.render_settings.sample_number + 1) * render_data.random_number);
 	else 
 		seed = wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) * render_data.random_number);

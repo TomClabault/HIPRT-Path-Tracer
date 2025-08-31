@@ -239,11 +239,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
             hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_alive_index];
         int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(primary_hit) + reservoir_index_in_cell;
         
-        unsigned int seed;
-        if (render_data.render_settings.freeze_random)
-            seed = wang_hash(reservoir_index_in_grid + 1);
-        else
-            seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+        unsigned int seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
         Xorshift32Generator random_number_generator(seed);
 
@@ -265,7 +261,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
         if (regir_settings.spatial_reuse.do_coalesced_spatial_reuse)
             // Everyone is going to use the same RNG (the RNG doesn't depend on the pixel index) 
             // such that memory accesses on the spatial neighbors are coalesced to improve performance
-            spatial_neighbor_rng_seed = render_data.render_settings.freeze_random ? render_data.random_number : (render_data.render_settings.sample_number + 1) * render_data.random_number;
+            spatial_neighbor_rng_seed = render_data.random_number;
         else
             spatial_neighbor_rng_seed = wang_hash(seed);
 

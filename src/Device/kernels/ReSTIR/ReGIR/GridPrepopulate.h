@@ -29,11 +29,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Prepopulate(HIPRTRenderData rend
 
     uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
-    unsigned int seed;
-    if (render_data.render_settings.freeze_random)
-        seed = wang_hash(pixel_index + 1);
-    else
-        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+    unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
     Xorshift32Generator random_number_generator(seed);
 

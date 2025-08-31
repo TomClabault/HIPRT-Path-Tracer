@@ -67,11 +67,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		return;
 
 	// Initializing the random generator
-	unsigned int seed;
-	if (render_data.render_settings.freeze_random)
-		seed = wang_hash(center_pixel_index + 1);
-	else
-		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
 
 	if (render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested)
@@ -83,7 +79,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	int temporal_neighbor_pixel_index = find_temporal_neighbor_index<false>(render_data,
 		render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, center_pixel_index, random_number_generator).x;
-	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
+	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
 		// we're only going to resample the initial candidates so let's set that as

@@ -13,7 +13,7 @@
 #include "hiprt/impl/hiprt_device_impl.h"
 
 //#include "Device/kernels/Megakernel.h"
-//#include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
+//#include "Device/kernels/ReSTIR/ReGIR/GridFill.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
 //#include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 //#include "Device/kernels/ReSTIR/DI/SpatialReuse.h"

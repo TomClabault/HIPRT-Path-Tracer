@@ -272,10 +272,10 @@ HIPRT_DEVICE void grid_fill_pre_integration_accumulation(HIPRTRenderData& render
  * This kernel is in charge of resetting (when necessary) and filling the ReGIR grid.
  */
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit)
+GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Grid_Fill(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit)
 #else
 template <bool accumulatePreIntegration>
-GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data, ReGIRHashGridSoADevice output_reservoirs_grid, unsigned int number_of_cells_alive, bool primary_hit, int thread_index)
 #endif
 {
     if (render_data.buffers.emissive_triangles_count == 0)
@@ -302,11 +302,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill_Temporal_Reuse(HIPRTRenderD
         unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_list[cell_alive_index];
         unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(primary_hit) + reservoir_index_in_cell;
         
-        unsigned int seed;
-        if (render_data.render_settings.freeze_random)
-            seed = wang_hash(reservoir_index_in_grid + 1);
-        else
-            seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+        unsigned int seed = wang_hash((reservoir_index_in_grid + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
         
         Xorshift32Generator random_number_generator(seed);
         ReGIRReservoir output_reservoir;

@@ -48,11 +48,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
         // Pixel isn't active because of adaptive sampling or render resolution scaling
         return;
 
-    unsigned int seed;
-    if (render_data.render_settings.freeze_random)
-        seed = wang_hash(center_pixel_index + 1);
-    else
-        seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+    unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
     Xorshift32Generator random_number_generator(seed);
 
     // Clearing previous data

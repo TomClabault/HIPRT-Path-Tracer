@@ -77,7 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_spatiotemporal_neighbor_data(const HIPR
 {
 	int3 temporal_neighbor_pixel_index_and_pos = find_temporal_neighbor_index<false>(render_data,
 		render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, center_pixel_index, random_number_generator);
-	if (temporal_neighbor_pixel_index_and_pos.x == -1 || render_data.render_settings.freeze_random)
+	if (temporal_neighbor_pixel_index_and_pos.x == -1)
 		// Temporal occlusion / disoccusion --> temporal neighbor is invalid,
 		// we're only going to resample the initial candidates so let's set that as
 		// the output right away
@@ -170,7 +170,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	// Initializing the random generator
 	// TODO try having multiply instead of XOR again
-	unsigned int seed = render_data.render_settings.freeze_random ? wang_hash(center_pixel_index + 1) : wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_number);
+	unsigned int seed = wang_hash(((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1)) ^ render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
 
 	// Generating a unique seed per pixel that will be used to generate the spatial neighbors of that pixel if Hammersley isn't used

@@ -113,11 +113,6 @@ struct HIPRTRenderSettings
 	// probability
 	PathRussianRoulette path_russian_roulette_method = PathRussianRoulette::MAX_THROUGHPUT;
 
-	// Whether or not to "freeze" random number generation so that each frame uses
-	// exactly the same random number. This allows every ray to follow the exact
-	// same path every frame, allowing for more stable benchmarking.
-	int freeze_random = false;
-
 	// If true, NaNs encountered during rendering will be rendered as very bright pink. 
 	// Useful for debugging only.
 	bool display_NaNs = true;

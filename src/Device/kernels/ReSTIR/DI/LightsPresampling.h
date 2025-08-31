@@ -88,11 +88,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_LightsPresampling(LightPresamplin
 
     uint32_t thread_index = x;
 
-    unsigned int seed;
-    if (render_data.render_settings.freeze_random)
-        seed = wang_hash(thread_index + 1);
-    else
-        seed = wang_hash((thread_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+    unsigned int seed = wang_hash((thread_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
     Xorshift32Generator random_number_generator(seed);
 

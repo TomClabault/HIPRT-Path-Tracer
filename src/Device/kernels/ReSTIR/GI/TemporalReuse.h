@@ -58,18 +58,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 
 	// Initializing the random generator
-	unsigned int seed;
-	if (render_data.render_settings.freeze_random)
-		seed = wang_hash(center_pixel_index + 1);
-	else
-		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+	unsigned int seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
 
 
 	// Surface data of the center pixel
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 	int temporal_neighbor_pixel_index = find_temporal_neighbor_index<true>(render_data, center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<true>(render_data, center_pixel_surface), center_pixel_index, random_number_generator).x;
-	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
+	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
 		// we're only going to resample the initial candidates so let's set that as

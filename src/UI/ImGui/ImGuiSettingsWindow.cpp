@@ -4333,15 +4333,6 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 
 	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	if (ImGui::Button("Apply benchmark settings"))
-	{
-		render_settings.freeze_random = true;
-		render_settings.enable_adaptive_sampling = false;
-
-		m_render_window->set_render_dirty(true);
-	}
-	if (ImGui::Checkbox("Freeze random", (bool*)&render_settings.freeze_random))
-		m_render_window->set_render_dirty(true);
 	if (ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame))
 	{
 		// Clamping to 1

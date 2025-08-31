@@ -62,14 +62,7 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
-// - TODO then, try to extract common lists of lights per cell in the tail of the alias table and share those lists between cells to be able to sample more lights per cell iwthout increasing memory usage too much
-//		- Just try brute force big VRAM usage to see if at least it helps
-// - TODO why do we have banding and artifacts on the v3 scene?
-// 
-// 
-// - Add cache cells to the README
 // - Should we have a very light ReSTIR DI pass on top of ReGIR to clean things up a bit / help with small details?
-// - renamed sorted indices into sorted mesh indices
 // - Can we maybe start with a constant grid cell size for good precision and merge grid cells which have similar light distributions?
 //		- We would be merging gfrid cells by storing a list of grid cell indices that are merge into a main grid cell so each grid cell would have some kind of adjacency list of grid cells that are merged into it
 // - If we learn the visibility of the lights in the cell distribution live, we'll to recompute the distributions at some time. Maybe we can recompute the distributions fully if the number of non-zero light contributions in the distribution goes below a threshold, meaning that lmany lights in the distribution have been flagged as occluded and so we need to recompute the distribution for precision 

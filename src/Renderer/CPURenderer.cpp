@@ -10,7 +10,7 @@
 
 #include "Device/kernels/ReSTIR/ReGIR/ComputeCellsAliasTables.h"
 #include "Device/kernels/ReSTIR/ReGIR/CorrelationReductionCopy.h"
-#include "Device/kernels/ReSTIR/ReGIR/GridFillTemporalReuse.h"
+#include "Device/kernels/ReSTIR/ReGIR/GridFill.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
 #include "Device/kernels/ReSTIR/ReGIR/LightPresampling.h"
 #include "Device/kernels/ReSTIR/ReGIR/PreIntegration.h"
@@ -756,7 +756,7 @@ void CPURenderer::ReGIR_grid_fill_pass(bool primary_hit)
 #pragma omp parallel for
     for (int index = 0; index < *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count * m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit); index++)
     {
-        ReGIR_Grid_Fill_Temporal_Reuse<accumulatePreIntegration>(m_render_data, m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit, index);
+        ReGIR_Grid_Fill<accumulatePreIntegration>(m_render_data, m_render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), *m_render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit).grid_cells_alive_count, primary_hit, index);
     }
 }
 
@@ -897,16 +897,16 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
         //
         // We're actually not going to sort the contributions directly but rather sort the
         // indices that point to the contributions because we're going to need the sorted indices later
-        std::vector<unsigned int> sorted_indices(contribution_scratch_buffer.size());
+        std::vector<unsigned int> sorted_mesh_indices(contribution_scratch_buffer.size());
 
         for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
-            std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
+            std::iota(sorted_mesh_indices.begin() + emissive_mesh_count * i, sorted_mesh_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
 
 #pragma omp parallel for
         for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
         {
-            auto first = sorted_indices.begin() + emissive_mesh_count * i;
-            auto last = sorted_indices.begin() + emissive_mesh_count * (i + 1);
+            auto first = sorted_mesh_indices.begin() + emissive_mesh_count * i;
+            auto last = sorted_mesh_indices.begin() + emissive_mesh_count * (i + 1);
 
             std::sort(first, last, [&](unsigned int a, unsigned int b)
             {
@@ -934,7 +934,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             std::vector<float> best_contributions(contribution_count_min);
             for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
             {
-                float contribution = contribution_scratch_buffer.at(sorted_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) + cell_index_in_iteration * emissive_mesh_count);
+                float contribution = contribution_scratch_buffer.at(sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) + cell_index_in_iteration * emissive_mesh_count);
 
                 best_contributions[contribution_index] = contribution;
                 sum_best_contributions += contribution;
@@ -956,7 +956,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
 
                 Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
 
-                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
+                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
             }
 
             soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);

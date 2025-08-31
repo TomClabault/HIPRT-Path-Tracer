@@ -29,12 +29,12 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 {
 	{ REGIR_GRID_PRE_POPULATE, "ReGIR_Grid_Prepopulate" },
 	{ REGIR_GRID_FILL_LIGHT_PRESAMPLING, "ReGIR_Light_Presampling" },
-	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse" },
-	{ REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse" },
+	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID, "ReGIR_Grid_Fill" },
+	{ REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID, "ReGIR_Grid_Fill" },
 	{ REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID, "ReGIR_Spatial_Reuse" },
 	{ REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID, "ReGIR_Spatial_Reuse" },
 	{ REGIR_PRE_INTEGRATION_KERNEL_ID , "ReGIR_Pre_integration" },
-	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Grid_Fill_Temporal_Reuse"},
+	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Grid_Fill"},
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Spatial_Reuse"},
 	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, "ReGIR_Compute_Cells_Alias_Tables"},
 	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
@@ -45,12 +45,12 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 {
 	{ REGIR_GRID_PRE_POPULATE, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridPrepopulate.h" },
 	{ REGIR_GRID_FILL_LIGHT_PRESAMPLING, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/LightPresampling.h" },
-	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h" },
-	{ REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h" },
+	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h" },
+	{ REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h" },
 	{ REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
 	{ REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
 	{ REGIR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/PreIntegration.h" },
-	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFillTemporalReuse.h"},
+	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h"},
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h"},
 	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/ComputeCellsAliasTables.h"},
 	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
@@ -821,6 +821,11 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	std::vector<int> aliases_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>().size());
 	std::vector<float> PDFs_staging(m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template get_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>().size());
 
+	std::atomic<unsigned int> minimum_alias_table_saving = 0;
+	std::atomic<unsigned int> maximum_alias_table_saving = 0;
+	std::atomic<unsigned int> average_alias_table_saving = 0;
+	std::atomic<float> average_alias_table_energy = 0.0f;
+
 	unsigned int cell_offset = last_nb_computed_cells_alias_tables;
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
 	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
@@ -848,17 +853,17 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		// We're actually not going to sort the contributions directly but rather sort the
 		// indices that point to the contributions because we're going to need the sorted indices later
 		std::vector<float> contributions = contribution_scratch_buffer.download_data();
-		std::vector<unsigned int> sorted_indices(contributions.size());
+		std::vector<unsigned int> sorted_mesh_indices(contributions.size());
 
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
-			std::iota(sorted_indices.begin() + emissive_mesh_count * i, sorted_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
+			std::iota(sorted_mesh_indices.begin() + emissive_mesh_count * i, sorted_mesh_indices.begin() + emissive_mesh_count * (i + 1), 0); // 0,1,2,...
 
 		start = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for
 		for (int i = 0; i < actual_number_of_cells_computed_per_iteration; i++)
 		{
-			auto first = sorted_indices.begin() + emissive_mesh_count * i;
-			auto last = sorted_indices.begin() + emissive_mesh_count * (i + 1);
+			auto first = sorted_mesh_indices.begin() + emissive_mesh_count * i;
+			auto last = sorted_mesh_indices.begin() + emissive_mesh_count * (i + 1);
 
 			std::sort(first, last, [&](unsigned int a, unsigned int b)
 				{
@@ -873,7 +878,7 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 		double sum_all_contrib = 0.0;
 		for (int i = 0; i < emissive_mesh_count; i++)
 		{
-			DEBUG_SORTED8CONTRIBUTIONS[i] = contributions[sorted_indices[i]];
+			DEBUG_SORTED8CONTRIBUTIONS[i] = contributions[sorted_mesh_indices[i]];
 			sum_all_contrib += DEBUG_SORTED8CONTRIBUTIONS[i];
 		}
 
@@ -888,6 +893,11 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 			// (number of contributions per cell), whichever is the smallest
 			unsigned contribution_count_min = hippt::min(alias_table_size, emissive_mesh_count);
 
+			unsigned int potential_alias_table_savings = 0;
+			double sum_all_contributions = 0.0;
+			for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
+				sum_all_contributions += contributions.at(cell_index_in_iteration * emissive_mesh_count + contribution_index);
+
 			// We're only going to keep the best 'alias_table_size' contributing meshes
 			// in case there are more than that, i.e. the alias table is going to be built only on
 			// the 'alias_table_size' meshes that contribute the most to the cell
@@ -895,11 +905,20 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 			std::vector<float> best_contributions(alias_table_size);
 			for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
 			{
-				float contribution = contributions.at(cell_index_in_iteration * emissive_mesh_count + sorted_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
+				float contribution = contributions.at(cell_index_in_iteration * emissive_mesh_count + sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
 
 				best_contributions[contribution_index] = contribution;
 				sum_best_contributions += contribution;
+
+				if (sum_best_contributions >= 0.97f * sum_all_contributions)
+					potential_alias_table_savings++;
 			}
+
+			hippt::atomic_min(&minimum_alias_table_saving, potential_alias_table_savings);
+			hippt::atomic_max(&maximum_alias_table_saving, potential_alias_table_savings);
+			hippt::atomic_fetch_add(&average_alias_table_saving, potential_alias_table_savings);
+			if (sum_all_contributions > 0.0f)
+				hippt::atomic_fetch_add(&average_alias_table_energy, sum_best_contributions / (float)sum_all_contributions);
 
 			// Computing the PDFs
 			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
@@ -916,8 +935,8 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 				// And computing the alias tables from the contributions
 				Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
 
-				std::copy(sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count, sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count + contribution_count_min, meshes_indices_staging.begin() + hash_grid_cell_index * alias_table_size);
-				//m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
+				std::copy(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count + contribution_count_min, meshes_indices_staging.begin() + hash_grid_cell_index * alias_table_size);
+				//m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
 			}
 
 			std::copy(probas.begin(), probas.end(), probas_staging.begin() + hash_grid_cell_index * alias_table_size);
@@ -938,6 +957,12 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(probas_staging);
 	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(aliases_staging);
 	m_hash_grid_storage.get_cell_alias_tables(primary_hit).soa.template upload_to_buffer<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(PDFs_staging);
+
+	std::cout << "Alias table size: " << render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size << std::endl;
+	std::cout << "Minimum alias table saving: " << minimum_alias_table_saving.load() << std::endl;
+	std::cout << "Maximum alias table saving: " << maximum_alias_table_saving.load() << std::endl;
+	std::cout << "Average alias table saving: " << (float)average_alias_table_saving.load() / (float)total_number_of_cells_to_compute << std::endl;
+	std::cout << "Average alias table energy: " << (float)average_alias_table_energy.load() / (float)total_number_of_cells_to_compute * 100.0f << "%" << std::endl;
 
 	last_nb_computed_cells_alias_tables = nb_cells_alive;
 

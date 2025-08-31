@@ -73,11 +73,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     if (!render_data.aux_buffers.pixel_active[pixel_index])
         return;
 
-    unsigned int seed;
-    if (render_data.render_settings.freeze_random)
-        seed = wang_hash(pixel_index + 1);
-    else
-        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+    unsigned int seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
     Xorshift32Generator random_number_generator(seed);
 
     hiprtRay ray;
