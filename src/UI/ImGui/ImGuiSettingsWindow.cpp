@@ -1850,10 +1850,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			ImGui::SeparatorText("Per-cell light distributions");
-			static bool cache_cells_light_distributions = ReGIR_GridFillUsePerCellDistributions;
-			if (ImGui::Checkbox("Cache cells light distributions", &cache_cells_light_distributions))
+			if (ImGui::Checkbox("Cache cells light distributions", &regir_settings.use_per_cell_light_distributions))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_DISTRIBUTIONS, cache_cells_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_DISTRIBUTIONS, regir_settings.use_per_cell_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1865,6 +1864,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"Those per-cell sampling distribution will then be used during the grid fill to provide higher "
 				"quality initial light samples");
 
+			ImGui::BeginDisabled(!regir_settings.use_per_cell_light_distributions);
 			static bool integrate_mesh = ReGIR_GridFillCellDistributionsIntegrateMesh;
 			if (ImGui::Checkbox("Integrate mesh contribution", &integrate_mesh))
 			{
@@ -1959,6 +1959,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 				ImGui::TreePop();
 			}
+			ImGui::EndDisabled(); // !regir_settings.use_per_cell_light_distributions
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Primary hits grid cells");

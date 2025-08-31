@@ -86,11 +86,19 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 	}
 
 	bool cell_light_distibution_size_changed = m_current_cell_light_distribution_size != hippt::min(render_data.buffers.emissive_meshes_data.alias_table_count, regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
-	if (grid_not_allocated || grid_res_changed || cell_light_distibution_size_changed)
+	if ((grid_not_allocated || grid_res_changed || cell_light_distibution_size_changed) && render_data.render_settings.regir_settings.use_per_cell_light_distributions)
 	{
 		get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
 
 		m_current_cell_light_distribution_size = get_cell_alias_tables(primary_hit).m_alias_table_size;
+		updated = true;
+	}
+
+	if (!render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+	{
+		get_cell_alias_tables(primary_hit).free();
+
+		m_current_cell_light_distribution_size = 0;
 		updated = true;
 	}
 
@@ -249,7 +257,8 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 			get_non_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 			get_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 
-			get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
+			if (render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+				get_cell_alias_tables(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
 
 			// We need to update the cell alive count because there may have possibly been collisions that couldn't be resolved during the rehashing
 			// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different (lower) --> need to update
@@ -404,7 +413,8 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = get_non_canonical_factors(true).get_atomic_device_pointer();
 	render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = get_canonical_factors(true).get_atomic_device_pointer();
 
-	render_data.render_settings.regir_settings.cells_distributions_primary_hits = get_cell_alias_tables(true).to_device(render_data);
+	if (render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+		render_data.render_settings.regir_settings.cells_distributions_primary_hits = get_cell_alias_tables(true).to_device(render_data);
 
 
 
@@ -421,8 +431,9 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 
 		render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
-
-		render_data.render_settings.regir_settings.cells_distributions_secondary_hits = get_cell_alias_tables(false).to_device(render_data);
+		
+		if (render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+			render_data.render_settings.regir_settings.cells_distributions_secondary_hits = get_cell_alias_tables(false).to_device(render_data);
 	}
 }
 

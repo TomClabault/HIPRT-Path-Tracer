@@ -329,7 +329,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		launch_grid_pre_population(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Cell light distributions build...");
-		launch_cell_alias_tables_precomputation(render_data, compiler_options);
+		launch_cell_alias_tables_precomputation(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
 		launch_correlation_reduction_fill(render_data);
@@ -347,7 +347,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		// Also need to recompute the alias tables of the grid cells because
 		// a rehash completely restructures 
 		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
-		launch_cell_alias_tables_precomputation(render_data, compiler_options);
+		launch_cell_alias_tables_precomputation(render_data);
 
 		// A rehashing with will empty the correlation reduction buffers so we need to fill them again
 		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
@@ -363,21 +363,23 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		full_grid_fill_needed = true;
 	}
 
-	if (false)
+	if (render_data.render_settings.sample_number <= 2 && render_data.render_settings.sample_number > 0 && compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 	{
-		// Light distributions recomputation to take NEE++ learnings into account
+		// Upadting ReGIR's cell light distributions to take NEE++ learnt visibility into account in the distributions
 
 	    // A rehashing with will empty the correlation reduction buffers so we need to fill them again
-		m_render_window->set_ImGui_status_text("ReGIR Cell alias tables build...");
-		launch_cell_alias_tables_precomputation(render_data, compiler_options, true);
-
-		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
+		m_render_window->set_ImGui_status_text("ReGIR Updating cell distributions...");
+		launch_cell_alias_tables_precomputation(render_data, true);
 		launch_correlation_reduction_fill(render_data);
-
-		// Same with the pre integration factors of the grid cells
-		m_render_window->set_ImGui_status_text("ReGIR Pre-integration...");
 		launch_pre_integration(render_data);
 	}
+
+	// Launching the computation of grid-cells light distributions at each frame in case new grid
+	// cells have been added to the grid because of rays hitting unexplored parts of the scene
+	//if (launch_cell_alias_tables_precomputation(render_data, compiler_options))
+	//	// If we indeed recomputed some cell light distributions, we're going to need to update
+	//	// the pre-integrated RIS integral factors
+	//	launch_pre_integration(render_data);
 
 	render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid = m_hash_grid_storage.get_correlation_reduction_current_frame();
 	render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available = m_hash_grid_storage.get_correlation_reduction_frames_available();
@@ -787,16 +789,20 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	render_data.random_number = seed_backup;
 }
 
-void ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, bool force_recompute)
+bool ReGIRRenderPass::launch_cell_alias_tables_precomputation(HIPRTRenderData& render_data, bool force_recompute)
 {
-	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_DISTRIBUTIONS) == KERNEL_OPTION_FALSE)
-		return;
+	if (!render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+		return false;
 
-	launch_cell_alias_tables_precomputation_internal(render_data, true, force_recompute);
-	launch_cell_alias_tables_precomputation_internal(render_data, false, force_recompute);
+	bool recomputed = false;
+
+	recomputed |= launch_cell_alias_tables_precomputation_internal(render_data, true, force_recompute);
+	recomputed |= launch_cell_alias_tables_precomputation_internal(render_data, false, force_recompute);
+
+	return recomputed;
 }
 
-void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit, bool force_recompute)
+bool ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit, bool force_recompute)
 {
 	if (render_data.buffers.emissive_meshes_data.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
 	{
@@ -805,19 +811,19 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Too many emissive meshes in the scene. ReGIR can't compute per-cell alias tables.");
 
-		return;
+		return false;
 	}
 
 	unsigned int nb_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	if (nb_cells_alive == 0)
-		return;
+		return false;
 
 	unsigned int& last_nb_computed_cells_alias_tables = primary_hit ? m_last_cells_alias_tables_compute_count_primary_hits : m_last_cells_alias_tables_compute_count_secondary_hits;
 
 	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_data.alias_table_count;
 	unsigned int total_number_of_cells_to_compute = force_recompute ? nb_cells_alive : nb_cells_alive - last_nb_computed_cells_alias_tables;
 	if (total_number_of_cells_to_compute == 0)
-		return;
+		return false;
 	unsigned int max_number_of_cells_computed_per_iteration = std::floor(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 
 	auto start_total = std::chrono::high_resolution_clock::now();
@@ -984,6 +990,8 @@ void ReGIRRenderPass::launch_cell_alias_tables_precomputation_internal(HIPRTRend
 
 	auto stop_total = std::chrono::high_resolution_clock::now();
 	std::cout << "Full precomputation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_total - start_total).count() << "ms. " << std::endl << std::endl << std::endl;
+
+	return true;
 }
 
 void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data)

@@ -63,14 +63,18 @@ void GPURendererThread::setup_render_passes(RenderWindow* render_window)
 	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass = std::make_shared<MegaKernelRenderPass>(m_renderer);
 	megakernel_render_pass->add_dependency(camera_rays_render_pass);
 	megakernel_render_pass->add_dependency(restir_di_render_pass);
+	megakernel_render_pass->add_dependency(regir_render_pass);
 
 	std::shared_ptr<ReSTIRGIRenderPass> restir_gi_render_pass = std::make_shared<ReSTIRGIRenderPass>(m_renderer);
 	restir_gi_render_pass->add_dependency(camera_rays_render_pass);
 	restir_gi_render_pass->add_dependency(restir_di_render_pass);
+	restir_gi_render_pass->add_dependency(regir_render_pass);
 
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass = std::make_shared<GMoNRenderPass>(m_renderer);
-	// GMoN depends on the main path tracing pass which is the megakernel pass or ReSTIR GI, whichever is
-	// active
+	// GMoN depends on the main path tracing pass which
+	// is the megakernel pass or ReSTIR GI, whichever is active
+	// because we want the values of the samples accumulated in the GMoN sets
+	// so far
 	gmon_render_pass->add_dependency(megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_gi_render_pass);
 
