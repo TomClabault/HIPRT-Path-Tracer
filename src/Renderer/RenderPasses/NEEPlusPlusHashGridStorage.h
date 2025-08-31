@@ -37,8 +37,8 @@ public:
 private:
 	NEEPlusPlusRenderPass* m_nee_plus_plus_render_pass;
 
-	OrochiBuffer<unsigned int> m_total_unoccluded_rays;
-	OrochiBuffer<unsigned int> m_total_num_rays;
+	OrochiBuffer<unsigned char> m_total_unoccluded_rays;
+	OrochiBuffer<unsigned char> m_total_num_rays;
 
 	OrochiBuffer<unsigned int> m_checksum_buffer;
 	

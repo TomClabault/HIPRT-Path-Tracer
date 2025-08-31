@@ -205,8 +205,8 @@ void CPURenderer::setup_nee_plus_plus()
 #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     // Only doing if using NEE++ 
 
-    m_nee_plus_plus.total_num_rays = std::vector<AtomicType<unsigned int>>(1000000);
-    m_nee_plus_plus.total_unoccluded_rays = std::vector<AtomicType<unsigned int>>(1000000);
+    m_nee_plus_plus.total_num_rays = std::vector<AtomicType<unsigned char>>(1000000);
+    m_nee_plus_plus.total_unoccluded_rays = std::vector<AtomicType<unsigned char>>(1000000);
     m_nee_plus_plus.num_rays_staging = std::vector<AtomicType<unsigned int>>(1000000);
     m_nee_plus_plus.unoccluded_rays_staging = std::vector<AtomicType<unsigned int>>(1000000);
     m_nee_plus_plus.checksum_buffer = std::vector<AtomicType<unsigned int>>(1000000);

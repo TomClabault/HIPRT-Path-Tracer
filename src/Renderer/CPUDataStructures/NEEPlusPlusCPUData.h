@@ -15,8 +15,8 @@ struct NEEPlusPlusCPUData
 {
 	int frame_timer_before_visibility_map_update = 1;
 
-	std::vector<AtomicType<unsigned int>> total_unoccluded_rays;
-	std::vector<AtomicType<unsigned int>> total_num_rays;
+	std::vector<AtomicType<unsigned char>> total_unoccluded_rays;
+	std::vector<AtomicType<unsigned char>> total_num_rays;
 
 	std::vector<AtomicType<unsigned int>> num_rays_staging;
 	std::vector<AtomicType<unsigned int>> unoccluded_rays_staging;

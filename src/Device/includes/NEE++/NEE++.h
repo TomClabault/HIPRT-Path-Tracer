@@ -39,8 +39,8 @@ struct NEEPlusPlusContext
 
 struct NEEPlusPlusEntry
 {
-	AtomicType<unsigned int>* total_unoccluded_rays = nullptr;
-	AtomicType<unsigned int>* total_num_rays = nullptr;
+	AtomicType<unsigned char>* total_unoccluded_rays = nullptr;
+	AtomicType<unsigned char>* total_num_rays = nullptr;
 
 	AtomicType<unsigned int>* checksum_buffer = nullptr;
 };
@@ -263,7 +263,7 @@ private:
 	 * There is no protection against overflows in this function
 	 */
 	template <unsigned int bufferName>
-	HIPRT_HOST_DEVICE unsigned int increment_buffer(unsigned int hash_grid_index, unsigned int value)
+	HIPRT_HOST_DEVICE unsigned char increment_buffer(unsigned int hash_grid_index, unsigned char value)
 	{
 		if constexpr (bufferName == 0)
 			return hippt::atomic_fetch_add(&m_entries_buffer.total_unoccluded_rays[hash_grid_index], value);
@@ -278,7 +278,7 @@ private:
 	 * This function is non-atomic
 	 */
 	template <unsigned int bufferName>
-	HIPRT_HOST_DEVICE void set_buffer(unsigned int hash_grid_index, unsigned int value)
+	HIPRT_HOST_DEVICE void set_buffer(unsigned int hash_grid_index, unsigned char value)
 	{
 		if constexpr (bufferName == 0)
 			m_entries_buffer.total_unoccluded_rays[hash_grid_index] = value;

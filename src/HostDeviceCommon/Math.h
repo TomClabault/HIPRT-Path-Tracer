@@ -218,6 +218,36 @@ namespace hippt
 	template <typename T>
 	__device__ T atomic_fetch_add(T* address, T increment) { return atomicAdd(address, increment); }
 
+	template <>
+	__device__ unsigned char atomic_fetch_add(unsigned char* address, unsigned char increment)
+	{
+		// From https://stackoverflow.com/questions/5447570/cuda-atomic-operations-on-unsigned-chars/59329536#59329536
+
+		// offset, in bytes, of the char* address within the 32-bit address of the space that overlaps it
+		size_t long_address_modulo = (size_t)address & 3;
+		// the 32-bit address that overlaps the same memory
+		unsigned int* base_address = (unsigned int*)((unsigned char*)address - long_address_modulo);
+		// A 0x3210 selector in __byte_perm will simply select all four bytes in the first argument in the same order.
+		// The "4" signifies the position where the first byte of the second argument will end up in the output.
+		unsigned int selectors[] = { 0x3214, 0x3240, 0x3410, 0x4210 };
+		// for selecting bytes within a 32-bit chunk that correspond to the char* address (relative to base_address)
+		unsigned int selector = selectors[long_address_modulo];
+		unsigned int long_old, long_assumed, long_val, replacement;
+
+		long_old = *base_address;
+
+		do 
+		{
+			long_assumed = long_old;
+			// replace bits in long_old that pertain to the char address with those from val
+			long_val = __byte_perm(long_old, 0, long_address_modulo) + increment;
+			replacement = __byte_perm(long_old, long_val, selector);
+			long_old = atomicCAS(base_address, long_assumed, replacement);
+		} while (long_old != long_assumed);
+
+		return __byte_perm(long_old, 0, long_address_modulo);
+	}
+
 	template <typename T>
 	__device__ T atomic_load(T* address) { return *address; }
 	/**
