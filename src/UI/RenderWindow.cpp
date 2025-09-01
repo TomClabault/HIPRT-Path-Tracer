@@ -77,6 +77,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Add a nice printing function for printing the progress of the ReGIR light distribution pre-process progress because it's easier to wait when we can see the progress
 // - We may need to blur spatially the light distributions to avoid the fireflies in the city many lights scene for example
 // - Mesh integration seems very good for low triangle count meshes? Maybe we should automatically use that for low triangle meshes and keep the approximation for higher triangle count meshes
+// - We should allow jittering of canonical samples but jitter in the tangent plane of the surface to avoid the big variane increase which actually comes from the missed jittered position rather than the jittering of canonical samples themselves
 // - Issues with ReSTIR GI + ReGIR, weird variance
 // - Can we do something to allow more jitter somehow without to big of a loss in variance? Jittering is nice for quality, removes correlations
 // - There's probably a way to learn visibility in a more precise way than NEE++ for our light cell distributions no ?

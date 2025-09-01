@@ -86,7 +86,7 @@ struct ReGIRGridFillSettings
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 1;
+		light_sample_count_per_cell_reservoir = 32;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 64 : 8;
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 12 : 4;
@@ -624,7 +624,7 @@ struct ReGIRSettings
 	// the grid fill/spatial reuse cost of ReGIR.
 	//
 	// Async compute is only supported with spatial reuse enabled though.
-	bool do_asynchronous_compute = true;
+	bool do_asynchronous_compute = false;
 	bool do_light_presampling = ReGIR_GridFillDoLightPresampling;
 
 	bool DEBUG_CORRELATE_rEGIR = true;

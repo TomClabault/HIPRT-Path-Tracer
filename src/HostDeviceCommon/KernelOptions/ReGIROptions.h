@@ -140,7 +140,7 @@
  * 1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the
  * cell-light-distribution is poor
  */
-#define ReGIR_GridFillCellDistributionsCanonicalSampleCount 1
+#define ReGIR_GridFillCellDistributionsCanonicalSampleCount 0
 
 /**
  * Whether or not to use a repsentative normal when computing the contribution of an emissive
