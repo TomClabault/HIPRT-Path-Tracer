@@ -158,11 +158,9 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
                 // A canonical reservoir can always be produced by anyone
                 valid_neighbor_count += regir_settings.spatial_reuse.reuse_per_neighbor_count;
             else
-            {
                 // Non-canonical sample, we need to count how many neighbors could have produced it
                 if (ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit, emission, light_source_normal, point_on_light, random_number_generator) > 0.0f)
                     valid_neighbor_count += regir_settings.spatial_reuse.reuse_per_neighbor_count;
-            }
         }
     }
 
