@@ -11,7 +11,7 @@ struct ReGIRCellsAliasTablesSoADevice
 	// These buffers are all NUMBER OF REGIR CELLS * ALIAS TABLE SIZE big
 	// 
 	// Contains the probas of all the alias tables of all the cells concatenated in one buffer
-	float* all_alias_tables_probas = nullptr;
+	unsigned short int* all_alias_tables_probas = nullptr;
 	// Same for the aliases
 	int* all_alias_tables_aliases = nullptr;
 	// Same for the PDFs: the PDF that a given cell samples a given mesh index

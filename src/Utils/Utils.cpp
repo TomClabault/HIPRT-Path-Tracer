@@ -22,6 +22,7 @@
 
 #if defined(_WIN32) || defined(_WIN32_WCE) || defined(__WIN32__)
 #include <Windows.h> // for is_file_on_SSD() and other functions
+#undef min
 #endif
 
 extern ImGuiLogger g_imgui_logger;

@@ -28,4 +28,27 @@ struct AliasTableDevice
 	unsigned int size = 0;
 };
 
+/**
+ * Alias table that uses 16 bits normalized unsigned integers for the alias probas
+ */
+struct AliasTableDeviceU16Unorm
+{
+	HIPRT_HOST_DEVICE unsigned int sample(Xorshift32Generator& rng) const
+	{
+		int random_index = rng.random_index(size);
+		float probability = alias_table_probas[random_index] / 65535.0f;
+		if (rng() > probability)
+			// Picking the alias
+			random_index = alias_table_alias[random_index];
+
+		return random_index;
+	}
+
+	int* alias_table_alias = nullptr;
+	unsigned short int* alias_table_probas = nullptr;
+
+	float sum_elements = 0.0f;
+	unsigned int size = 0;
+};
+
 #endif

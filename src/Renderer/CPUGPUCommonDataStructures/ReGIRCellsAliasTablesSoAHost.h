@@ -13,8 +13,7 @@
 // TODO maybe a CDF would be fast enough and would use less memory (probably? because with all the packing we can do on the alias table this may not be true / worth it)
 template <template <typename> typename DataContainer>
 using ReGIRCellsLightDistributionsSoAHostInternal = GenericSoA<DataContainer,
-	// TODO this can probably be uint 16 unorm?
-	float,  // alias table probas
+	unsigned short int,  // Alias table probas, needs to be divided by 65535.0f at runtime to get the proba
 	// TODO Can we use unsigned char / short int (short int would be the max anyways) automatically depending on the number of emissive meshes in the scene?
 	//     Maybe even pack even less than that by tight packing just the right amount of bits
 	int, // alias table aliases

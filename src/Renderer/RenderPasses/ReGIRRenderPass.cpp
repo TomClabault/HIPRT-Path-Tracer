@@ -839,7 +839,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 
 	std::vector<unsigned int> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>().size());
-	std::vector<float> probas_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>().size());
+	std::vector<unsigned short int> probas_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>().size());
 	std::vector<int> aliases_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>().size());
 	std::vector<float> PDFs_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>().size());
 
@@ -948,6 +948,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 
 			std::vector<float> PDFs(alias_table_size, 0.0f);
 			std::vector<float> probas(alias_table_size, 0.0f);
+			std::vector<unsigned short int> probas_u16(alias_table_size, 0.0f);
 			std::vector<int> aliases(alias_table_size, 0);
 			if (sum_best_contributions > 0.0f)
 			{
@@ -957,17 +958,15 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 				// And computing the alias tables from the contributions
 				Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
 
+				for (int proba_index = 0; proba_index < probas.size(); proba_index++)
+					probas_u16[proba_index] = probas[proba_index] * 65535.0f;
+
 				std::copy(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count + contribution_count_min, meshes_indices_staging.begin() + hash_grid_cell_index * alias_table_size);
-				//m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
 			}
 
-			std::copy(probas.begin(), probas.end(), probas_staging.begin() + hash_grid_cell_index * alias_table_size);
+			std::copy(probas_u16.begin(), probas_u16.end(), probas_staging.begin() + hash_grid_cell_index * alias_table_size);
 			std::copy(aliases.begin(), aliases.end(), aliases_staging.begin() + hash_grid_cell_index * alias_table_size);
 			std::copy(PDFs.begin(), PDFs.end(), PDFs_staging.begin() + hash_grid_cell_index * alias_table_size);
-			
-			/*m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
-			m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
-			m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);*/
 		}
 		stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
