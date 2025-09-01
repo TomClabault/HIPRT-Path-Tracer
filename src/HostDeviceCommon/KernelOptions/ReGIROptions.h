@@ -171,6 +171,18 @@
 #define ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount 16
 
 /**
+ * If this is TRUE, NEE++ visibility estimation will be used in the grid fill target
+ * function for non-canonical reservoirs if grid cell light distributions are enabled.
+ * 
+ * If this is false, NEE++ won't be used in the target function with makes the grid fill
+ * quite a bit faster because fetching NEE++ for each non-canonical reservoir is a bit expensive. 
+ *
+ * With ReGIR spatial reuse enabled (and only if it is enabled) however, this is going to be biased but the bias is
+ * actually is very small so this is a worthy optimization imo.
+ */
+#define ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus KERNEL_OPTION_FALSE
+
+/**
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */

@@ -1865,6 +1865,33 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"quality initial light samples");
 
 			ImGui::BeginDisabled(!regir_settings.use_per_cell_light_distributions);
+			static bool use_representative_normal = ReGIR_GridFillCellDistributionsUseRepresentativeNormal;
+			if (ImGui::Checkbox("Use representative normal", &use_representative_normal))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL, use_representative_normal ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to use a repsentative normal when computing the contribution of an emissive "
+				"mesh to the grid cell.This can help quickly reject backfacing lights and should "
+				"probably be left enabled");
+			static bool unbiased_nee_plus_plus = ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus;
+			if (ImGui::Checkbox("Unbiased NEE++", &unbiased_nee_plus_plus))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_UNBIASED_NEE_PLUS_PLUS, unbiased_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("If this is TRUE, NEE++ visibility estimation will be used in the grid fill target "
+				"function for non - canonical reservoirs if grid cell light distributions are enabled.\n\n"
+				""
+				"If this is false, NEE++ won't be used in the target function with makes the grid fill "
+				"quite a bit faster because fetching NEE++ for each non - canonical reservoir is a bit expensive.\n\n"
+				""
+				"With ReGIR spatial reuse enabled (and only if it is enabled) however, this is going to be biased but the bias is "
+				"actually is very small so this is a worthy optimization imo.");
 			static bool integrate_mesh = ReGIR_GridFillCellDistributionsIntegrateMesh;
 			if (ImGui::Checkbox("Integrate mesh contribution", &integrate_mesh))
 			{
@@ -1893,7 +1920,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			{
 				ImGui::TreePush("Integrate mesh sample count tree regir");
 
-					if (ImGui::Button("Apply"))
+				if (ImGui::Button("Apply"))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT, integrate_mesh_sample_count);
 
@@ -1904,17 +1931,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePop();
 			}
 			ImGui::EndDisabled();
-			static bool use_representative_normal = ReGIR_GridFillCellDistributionsUseRepresentativeNormal;
-			if (ImGui::Checkbox("Use representative normal", &use_representative_normal))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL, use_representative_normal ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to use a repsentative normal when computing the contribution of an emissive "
-				"mesh to the grid cell.This can help quickly reject backfacing lights and should "
-				"probably be left enabled");
 
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
