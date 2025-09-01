@@ -956,12 +956,12 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
 
                 Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
 
-                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
+                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
             }
 
-            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
-            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
-            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas, contribution_count_min);
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);
         }
         
         auto stop_upload = std::chrono::high_resolution_clock::now();

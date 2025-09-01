@@ -73,7 +73,7 @@ bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 	if (!m_render_pass_used_this_frame)
 		return false;
 
-	if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting())
+	if (render_data.render_settings.sample_number == 0 && !m_render_window->is_interacting() && render_data.render_settings.accumulate)
 	{
 		m_render_window->set_ImGui_status_text("NEE++ Prepopulation pass...");
 		launch_grid_pre_population(render_data);

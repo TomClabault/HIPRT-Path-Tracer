@@ -1094,14 +1094,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGui::EndDisabled();
 
-			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- ReGIR (Experimental)"};
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- ReGIR + Cache cells (Experimental)"};
 			const char* tooltips_base_strategy[] = {
 				"All lights are sampled uniformly.",
 
 				"Lights are sampled proportionally to their power.",
 
 				"Uses ReGIR to sample lights.\n\n"
-				"Implementation of[Rendering many lights with grid - based reservoirs, Boksansky, 2021]"
+				"Highly custom implementation of [Rendering many lights with grid - based reservoirs, Boksansky, 2021]"
 			};
 
 			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))

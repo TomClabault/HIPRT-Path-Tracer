@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef REGIR_CELLS_ALIAS_TABLES_SOA_HOST_H
-#define REGIR_CELLS_ALIAS_TABLES_SOA_HOST_H
+#ifndef REGIR_CELLS_LIGHT_DISTRIBUTIONS_SOA_HOST_H
+#define REGIR_CELLS_LIGHT_DISTRIBUTIONS_SOA_HOST_H
 
 #include "Device/includes/ReSTIR/ReGIR/CellsAliasTablesSoADevice.h"
 
@@ -12,19 +12,21 @@
 
 // TODO maybe a CDF would be fast enough and would use less memory (probably? because with all the packing we can do on the alias table this may not be true / worth it)
 template <template <typename> typename DataContainer>
-using ReGIRCellsAliasTablesSoAHostInternal = GenericSoA<DataContainer,
+using ReGIRCellsLightDistributionsSoAHostInternal = GenericSoA<DataContainer,
 	// TODO this can probably be uint 16 unorm?
 	float,  // alias table probas
 	// TODO Can we use unsigned char / short int (short int would be the max anyways) automatically depending on the number of emissive meshes in the scene?
+	//     Maybe even pack even less than that by tight packing just the right amount of bits
 	int, // alias table aliases
 	// TODO we can probably do something a bit clever to be able to recompute the alias table PDF on the fly without having
 	//		to store a full other buffer just for that
 	float, // PDFs that each cell samples a given mesh index within its own cell-alias-table
 	// TODO Can we use unsigned char / short int / uint automatically depending on the number of emissive meshes in the scene?
+	//		Do tight packing using just the right amount of bits
 	unsigned int // Indices of the emissive meshes associated with the entries of the alias table at each cell
 >;
 
-enum ReGIRCellsAliasTablesSoAHostBuffers
+enum ReGIRCellsLightDistributionsSoAHostBuffers
 {
 	REGIR_CELLS_ALIAS_TABLES_PROBAS,
 	REGIR_CELLS_ALIAS_TABLES_ALIASES,
@@ -61,16 +63,16 @@ struct ReGIRCellsAliasTablesSoAHost
 	{
 		ReGIRCellsAliasTablesSoADevice cells_alias_tables;
 
-		cells_alias_tables.all_alias_tables_probas = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>();
-		cells_alias_tables.all_alias_tables_aliases = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>();
-		cells_alias_tables.all_alias_tables_PDFs = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>();
-		cells_alias_tables.emissive_meshes_indices = soa.template get_buffer_data_ptr<ReGIRCellsAliasTablesSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>();
+		cells_alias_tables.all_alias_tables_probas = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>();
+		cells_alias_tables.all_alias_tables_aliases = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>();
+		cells_alias_tables.all_alias_tables_PDFs = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>();
+		cells_alias_tables.emissive_meshes_indices = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>();
 		cells_alias_tables.alias_table_size = hippt::min(m_alias_table_size, render_data.buffers.emissive_meshes_data.alias_table_count);
 
 		return cells_alias_tables;
 	}
 
-	ReGIRCellsAliasTablesSoAHostInternal<DataContainer> soa;
+	ReGIRCellsLightDistributionsSoAHostInternal<DataContainer> soa;
 
 	unsigned int m_alias_table_size = 0;
 };
