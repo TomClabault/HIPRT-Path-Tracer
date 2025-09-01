@@ -111,4 +111,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
     return sanity_check<CheckOnlyOnCPU>(render_data, copy, x, y);
 }
 
+template <bool CheckOnlyOnCPU = false>
+HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, float value, int x, int y)
+{
+    return sanity_check<CheckOnlyOnCPU>(render_data, ColorRGB32F(value), x, y);
+}
+
 #endif

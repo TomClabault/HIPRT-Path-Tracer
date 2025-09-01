@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_REGIR_SETTINGS_H
 
 #include "Device/includes/AliasTable.h"
+#include "Device/includes/CDF.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/ReSTIR/ReGIR/CellsAliasTablesSoADevice.h"
@@ -212,17 +213,15 @@ struct ReGIRSettings
 	HIPRT_DEVICE const ReGIRCellsAliasTablesSoADevice& get_cell_distributions_soa(bool primary_hit) const { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
 	HIPRT_DEVICE ReGIRCellsAliasTablesSoADevice& get_cell_distributions_soa(bool primary_hit) { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
 
-	HIPRT_DEVICE AliasTableDeviceU16Unorm get_cell_light_distributions(unsigned int hash_grid_cell_index, bool primary_hit) const
+	HIPRT_DEVICE CDFDeviceU16 get_cell_light_distributions(unsigned int hash_grid_cell_index, bool primary_hit) const
 	{
-		AliasTableDeviceU16Unorm out;
+		CDFDeviceU16 out;
 
-		const ReGIRCellsAliasTablesSoADevice& cell_distributions = get_cell_distributions_soa(primary_hit); 
+		const ReGIRCellsAliasTablesSoADevice& cell_distributions = get_cell_distributions_soa(primary_hit);
 
-		out.alias_table_alias = cell_distributions.all_alias_tables_aliases + hash_grid_cell_index * cell_distributions.alias_table_size;
-		out.alias_table_probas = cell_distributions.all_alias_tables_probas + hash_grid_cell_index * cell_distributions.alias_table_size;
+		out.cdf_u16 = cell_distributions.all_cdfs + hash_grid_cell_index * cell_distributions.alias_table_size;
 		out.size = cell_distributions.alias_table_size;
-		out.sum_elements = -1.0f;
-			
+
 		return out;
 	}
 

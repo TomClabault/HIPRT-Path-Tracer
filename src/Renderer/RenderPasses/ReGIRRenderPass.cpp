@@ -119,7 +119,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 
 
 
-		
+
 	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID));
@@ -367,11 +367,13 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	{
 		// Upadting ReGIR's cell light distributions to take NEE++ learnt visibility into account in the distributions
 
-	    // A rehashing with will empty the correlation reduction buffers so we need to fill them again
+		// A rehashing with will empty the correlation reduction buffers so we need to fill them again
 		m_render_window->set_ImGui_status_text("ReGIR Updating cell distributions...");
 		launch_cell_light_distributions_precomputation(render_data, true);
 		launch_correlation_reduction_fill(render_data);
 		launch_pre_integration(render_data);
+
+		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), callback_reset_imgui_status_text, m_render_window));
 	}
 
 	// Launching the computation of grid-cells light distributions at each frame in case new grid
@@ -486,7 +488,7 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 			// by the path tracing kernels which is the buffer that the spatial reuse passes did not fill at the end
 			ReGIRHashGridSoADevice buffer_used_by_pt_kernels = primary_hit ? render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits : render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits;;
 			ReGIRHashGridSoADevice output_reservoirs_async_grid_fill = get_non_equal_buffer(
-				render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit), 
+				render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit),
 				render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit),
 				buffer_used_by_pt_kernels);
 
@@ -540,7 +542,7 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 	if (m_hash_grid_storage.try_rehash(render_data))
 	{
 		m_hash_grid_storage.to_device(m_renderer->get_render_data());
-		
+
 		// We also want the local 'render_data' parameter here to be updated such
 		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
 		m_hash_grid_storage.to_device(render_data);
@@ -593,7 +595,7 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 	if (nb_threads == 0)
 		// No grid cell alive to fill
 		return;
-	
+
 	if (for_pre_integration)
 		m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 	else
@@ -618,15 +620,15 @@ ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& re
 		return first_input_reservoirs;
 
 	ReGIRHashCellDataSoADevice output_reservoirs_cell_data = render_data.render_settings.regir_settings.get_hash_cell_data_soa(primary_hit);
-	
+
 	unsigned int number_of_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	unsigned int reservoirs_per_cell = render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(primary_hit);
-	
+
 	for (int i = 0; i < render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_count; i++)
 	{
 		render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 		render_data.render_settings.regir_settings.spatial_reuse.spatial_reuse_pass_index = i;
-		
+
 		void* launch_args[] = { &render_data, &first_input_reservoirs, &first_output_reservoirs, &output_reservoirs_cell_data, &number_of_cells_alive, &primary_hit };
 
 		// Same reason for nb_threads here as explained in the GridFill kernel launch
@@ -695,12 +697,12 @@ void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_
 
 	void* launch_args[] = { &render_data, &input_reservoirs_to_copy };
 
-	unsigned int nb_threads =  m_number_of_cells_alive_primary_hits * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true);
+	unsigned int nb_threads = m_number_of_cells_alive_primary_hits * render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true);
 	if (nb_threads == 0)
 		// No cell alive to copy
 		return;
 
-	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->launch_asynchronous(64, 1,nb_threads, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_data)
@@ -708,8 +710,8 @@ void ReGIRRenderPass::launch_correlation_reduction_copy(HIPRTRenderData& render_
 	ReGIRHashGridSoADevice to_copy;
 	if (render_data.render_settings.regir_settings.spatial_reuse.do_spatial_reuse)
 		to_copy = render_data.render_settings.regir_settings.get_actual_spatial_output_reservoirs_grid(true);
-    else
-        to_copy = render_data.render_settings.regir_settings.get_initial_reservoirs_grid(true);
+	else
+		to_copy = render_data.render_settings.regir_settings.get_initial_reservoirs_grid(true);
 
 	launch_correlation_reduction_copy(render_data, to_copy);
 }
@@ -757,7 +759,7 @@ void ReGIRRenderPass::launch_pre_integration(HIPRTRenderData& render_data)
 
 
 
-	
+
 	// --------------- Record the end of the overall pre integration process
 	OROCHI_CHECK_ERROR(oroEventRecord(m_event_pre_integration_duration_stop, m_renderer->get_main_stream()));
 	// --------------- Record the end of the overall pre integration process
@@ -835,13 +837,12 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 	// cells computed per each iteration. We're not going to compute 2.5 alias table per iteration for example, only 2
 	OrochiBuffer<float> contribution_scratch_buffer(hippt::min(max_number_of_cells_computed_per_iteration * emissive_mesh_count, total_number_of_cells_to_compute * emissive_mesh_count));
 	float* scratch_buffer_address = contribution_scratch_buffer.get_device_pointer();
-	
+
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 
-	std::vector<unsigned int> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>().size());
-	std::vector<unsigned short int> probas_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>().size());
-	std::vector<int> aliases_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>().size());
-	std::vector<float> PDFs_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>().size());
+	std::vector<unsigned int> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>().size());
+	//std::vector<float> CDF_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
+	std::vector<unsigned short int> CDF_staging_u16(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
 
 	std::atomic<unsigned int> minimum_alias_table_saving = 0;
 	std::atomic<unsigned int> maximum_alias_table_saving = 0;
@@ -864,7 +865,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 		unsigned int dispatch_size = hippt::min(contributions_left_to_compute, contribution_scratch_buffer.size());
 		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->launch_synchronous(64, 1, dispatch_size, 1, launch_args);
 		auto stop = std::chrono::high_resolution_clock::now();
-		std::cout << "Compute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop- start).count() << "ms. " << std::endl;
+		std::cout << "Compute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
 
 
@@ -946,27 +947,25 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
 			assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
-			std::vector<float> PDFs(alias_table_size, 0.0f);
-			std::vector<float> probas(alias_table_size, 0.0f);
-			std::vector<unsigned short int> probas_u16(alias_table_size, 0.0f);
-			std::vector<int> aliases(alias_table_size, 0);
+			std::vector<unsigned short int> cdf_u16(alias_table_size, 0.0f);
 			if (sum_best_contributions > 0.0f)
 			{
+				std::vector<float> normalized(contribution_count_min);
 				for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
-					PDFs[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
+					normalized[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
 
 				// And computing the alias tables from the contributions
-				Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
+				std::vector<float> cdf(alias_table_size, 0.0f);
+				Utils::compute_prefix_sum(normalized, cdf);
 
-				for (int proba_index = 0; proba_index < probas.size(); proba_index++)
-					probas_u16[proba_index] = probas[proba_index] * 65535.0f;
+				for (int proba_index = 0; proba_index < cdf.size(); proba_index++)
+					cdf_u16[proba_index] = cdf[proba_index] * 65535.0f;
 
 				std::copy(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count + contribution_count_min, meshes_indices_staging.begin() + hash_grid_cell_index * alias_table_size);
 			}
 
-			std::copy(probas_u16.begin(), probas_u16.end(), probas_staging.begin() + hash_grid_cell_index * alias_table_size);
-			std::copy(aliases.begin(), aliases.end(), aliases_staging.begin() + hash_grid_cell_index * alias_table_size);
-			std::copy(PDFs.begin(), PDFs.end(), PDFs_staging.begin() + hash_grid_cell_index * alias_table_size);
+			//std::copy(cdf.begin(), cdf.end(), CDF_staging.begin() + hash_grid_cell_index * alias_table_size);
+			std::copy(cdf_u16.begin(), cdf_u16.end(), CDF_staging_u16.begin() + hash_grid_cell_index * alias_table_size);
 		}
 		stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
@@ -974,10 +973,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 		cell_offset += max_number_of_cells_computed_per_iteration;
 	}
 
-	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(meshes_indices_staging);
-	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(probas_staging);
-	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(aliases_staging);
-	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(PDFs_staging);
+	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(CDF_staging_u16);
+	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>(meshes_indices_staging);
 
 	std::cout << "Alias table size: " << render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size << std::endl;
 	std::cout << "Minimum alias table saving: " << minimum_alias_table_saving.load() << std::endl;
@@ -1004,20 +1001,20 @@ void ReGIRRenderPass::launch_rehashing_kernel(HIPRTRenderData& render_data, bool
 	unsigned int old_cell_alive_count = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 
 	// The old number of cells alive is the number of cells that we're going to have to rehash
-	
-	void* launch_args[] = { 
+
+	void* launch_args[] = {
 		&render_data.current_camera,
-		
+
 		&render_data.render_settings.regir_settings.hash_grid,
 		&new_hash_grid_soa, &new_hash_cell_data,
-		
+
 		&m_hash_grid_storage.get_hash_cell_data_device_soa(render_data.render_settings.regir_settings, primary_hit),
 		&cell_alive_list_ptr, // old cell alive list
 		&old_cell_alive_count,
 
 		&primary_hit
 	};
-	
+
 	m_kernels[ReGIRRenderPass::REGIR_REHASH_KERNEL_ID]->launch_synchronous(64, 1, old_cell_alive_count, 1, launch_args);
 }
 
@@ -1182,7 +1179,7 @@ float ReGIRRenderPass::get_VRAM_usage() const
 
 unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const
 {
-	return primary_hit ? m_number_of_cells_alive_primary_hits  : m_number_of_cells_alive_secondary_hits;
+	return primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 }
 
 unsigned int ReGIRRenderPass::get_total_number_of_cells_alive(bool primary_hit) const

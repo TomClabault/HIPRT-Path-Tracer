@@ -8,15 +8,25 @@
 
 struct ReGIRCellsAliasTablesSoADevice
 {
-	// These buffers are all NUMBER OF REGIR CELLS * ALIAS TABLE SIZE big
-	// 
-	// Contains the probas of all the alias tables of all the cells concatenated in one buffer
-	unsigned short int* all_alias_tables_probas = nullptr;
-	// Same for the aliases
-	int* all_alias_tables_aliases = nullptr;
-	// Same for the PDFs: the PDF that a given cell samples a given mesh index
-	// Should be indexed as: [hash_grid_cell_index * alais_table_size + mesh_index]
-	float* all_alias_tables_PDFs = nullptr;
+	HIPRT_DEVICE float get_PDF(unsigned int hash_grid_cell_index, unsigned int alias_table_index) const
+	{
+		if (alias_table_index == 0)
+			return all_cdfs[hash_grid_cell_index * alias_table_size + alias_table_index] / 65535.0f;
+		else
+			return (all_cdfs[hash_grid_cell_index * alias_table_size + alias_table_index] - all_cdfs[hash_grid_cell_index * alias_table_size + alias_table_index - 1]) / 65535.0f;
+	}
+
+	unsigned short int* all_cdfs = nullptr;
+
+	//// These buffers are all NUMBER OF REGIR CELLS * ALIAS TABLE SIZE big
+	//// 
+	//// Contains the probas of all the alias tables of all the cells concatenated in one buffer
+	//unsigned short int* all_alias_tables_probas = nullptr;
+	//// Same for the aliases
+	//int* all_alias_tables_aliases = nullptr;
+	//// Same for the PDFs: the PDF that a given cell samples a given mesh index
+	//// Should be indexed as: [hash_grid_cell_index * alais_table_size + mesh_index]
+	//float* all_alias_tables_PDFs = nullptr;
 	// Contains the indices of the meshes associated with the entries of the alias table
 	//
 	// For example, if the alias tables are 4 entries long but there are 20 emissive

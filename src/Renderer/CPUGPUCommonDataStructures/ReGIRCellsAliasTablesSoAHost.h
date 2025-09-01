@@ -13,13 +13,7 @@
 // TODO maybe a CDF would be fast enough and would use less memory (probably? because with all the packing we can do on the alias table this may not be true / worth it)
 template <template <typename> typename DataContainer>
 using ReGIRCellsLightDistributionsSoAHostInternal = GenericSoA<DataContainer,
-	unsigned short int,  // Alias table probas, needs to be divided by 65535.0f at runtime to get the proba
-	// TODO Can we use unsigned char / short int (short int would be the max anyways) automatically depending on the number of emissive meshes in the scene?
-	//     Maybe even pack even less than that by tight packing just the right amount of bits
-	int, // alias table aliases
-	// TODO we can probably do something a bit clever to be able to recompute the alias table PDF on the fly without having
-	//		to store a full other buffer just for that
-	float, // PDFs that each cell samples a given mesh index within its own cell-alias-table
+	unsigned short int, // CDF
 	// TODO Can we use unsigned char / short int / uint automatically depending on the number of emissive meshes in the scene?
 	//		Do tight packing using just the right amount of bits
 	unsigned int // Indices of the emissive meshes associated with the entries of the alias table at each cell
@@ -27,10 +21,8 @@ using ReGIRCellsLightDistributionsSoAHostInternal = GenericSoA<DataContainer,
 
 enum ReGIRCellsLightDistributionsSoAHostBuffers
 {
-	REGIR_CELLS_ALIAS_TABLES_PROBAS,
-	REGIR_CELLS_ALIAS_TABLES_ALIASES,
-	REGIR_CELLS_ALIAS_PDFS,
-	REGIR_CELLS_EMISSIVE_MESHES_INDICES
+	REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF,
+	REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES
 };
 
 template <template <typename> typename DataContainer>
@@ -62,10 +54,8 @@ struct ReGIRCellsAliasTablesSoAHost
 	{
 		ReGIRCellsAliasTablesSoADevice cells_alias_tables;
 
-		cells_alias_tables.all_alias_tables_probas = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>();
-		cells_alias_tables.all_alias_tables_aliases = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>();
-		cells_alias_tables.all_alias_tables_PDFs = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>();
-		cells_alias_tables.emissive_meshes_indices = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>();
+		cells_alias_tables.all_cdfs = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>();
+		cells_alias_tables.emissive_meshes_indices = soa.template get_buffer_data_ptr<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>();
 		cells_alias_tables.alias_table_size = hippt::min(m_alias_table_size, render_data.buffers.emissive_meshes_data.alias_table_count);
 
 		return cells_alias_tables;

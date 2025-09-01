@@ -23,6 +23,9 @@ public:
 
     static void compute_alias_table(const std::vector<float>& input, std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum);
     static void compute_alias_table(const std::vector<float>& input, float in_input_total_sum, std::vector<float>& out_probas, std::vector<int>& out_alias);
+    
+	template <typename T>
+    static void compute_prefix_sum(const std::vector<T>& input, std::vector<T>& out_prefix_summed);
 
     static std::string file_to_string(const char* filepath);
     static void get_current_date_string(std::stringstream& ss);
@@ -61,5 +64,21 @@ public:
 	static AddEnvVarError windows_add_ENV_var_to_PATH(const wchar_t* env_var_name, std::wstring extra_string = L"");
 #endif
 };
+
+template <typename T>
+void Utils::compute_prefix_sum(const std::vector<T>& input, std::vector<T>& out_prefix_summed)
+{
+    out_prefix_summed.resize(input.size());
+
+    if (input.size() == 0)
+        return;
+
+    T sum = 0;
+    for (int i = 0; i < input.size(); i++)
+    {
+        sum += input[i];
+        out_prefix_summed[i] = sum;
+    }
+}
 
 #endif

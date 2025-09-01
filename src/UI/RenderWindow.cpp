@@ -62,6 +62,8 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Search for all 'alias' in the code to make sure we didn't miss any for the ReGIR impl
+// 
 // - Compare shading RIS with vis in target function vs shading all
 //		Can we have the same quality as shading all but by just using visibility in the target function and no more shenanigans ? Simplified code.t function since the cell distributions already have some guarantees?
 // - Should we have a very light ReSTIR DI pass on top of ReGIR to clean things up a bit / help with small details?

@@ -19,12 +19,15 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    AliasTableDeviceU16Unorm cell_alias_table = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
+    /*if (hash_grid_cell_index == 5277)
+        std::cout << std::endl;*/
+
+    CDFDeviceU16 cell_alias_table = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
     unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
 
     unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
-    float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + alias_table_index];
+    float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, alias_table_index);
     if (mesh_PDF == 0.0f)
         // No valid mesh for this cell, early exit by returning
         // an empty sample
@@ -51,7 +54,7 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    AliasTableDeviceU16Unorm cell_alias_table = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
+    CDFDeviceU16 cell_alias_table = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
     int alias_table_index = cell_alias_table.sample(rng);
     unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
 
@@ -62,7 +65,7 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
     {
         if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
         {
-            mesh_sampling_PDF = regir_settings.get_cell_distributions_soa(primary_hit).all_alias_tables_PDFs[hash_grid_cell_index * alias_table_size + i];
+            mesh_sampling_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, i);
 
             break;
         }
@@ -151,6 +154,8 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         }
 
         reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
+        /*if (!sanity_check<true>(render_data, reservoir.weight_sum, -1, -1))
+            std::cout << std::endl;*/
     }
 
     if (!reservoir_is_canonical)
@@ -313,6 +318,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
 
         ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 
+        /*if (hash_grid_cell_index == 15950)
+            std::cout << std::endl;*/
+
         // Grid fill
 #ifdef __KERNELCC__
         constexpr bool ACCUMULATE_PRE_INTEGRATION_OPTION = ReGIR_GridFillSpatialReuse_AccumulatePreIntegration;
@@ -324,6 +332,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
         // Normalizing the reservoir
         output_reservoir.finalize_resampling(1.0f, 1.0f);
         
+        sanity_check<true>(render_data, output_reservoir.weight_sum, -1, -1);
+        sanity_check<true>(render_data, output_reservoir.UCW, -1, -1);
         regir_settings.store_reservoir_custom_buffer_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
 
         grid_fill_pre_integration_accumulation<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);

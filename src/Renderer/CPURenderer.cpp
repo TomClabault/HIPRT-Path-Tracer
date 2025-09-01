@@ -943,29 +943,25 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             ReGIRCellsAliasTablesSoAHost<std::vector>& soa_host = primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
             assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
-            // Computing the PDFs
-            std::vector<float> PDFs(alias_table_size, 0.0f);
-
             // And computing the alias tables from the contributions
-            std::vector<float> probas(alias_table_size, 0.0f);
-            std::vector<unsigned short int> probas_u16(alias_table_size, 0.0f);
-            std::vector<int> aliases(alias_table_size, 0);
+            std::vector<unsigned short int> cdf_u16(alias_table_size, 0.0f);
             if (sum_best_contributions > 0.0f)
             {
+                std::vector<float> normalized(contribution_count_min);
                 for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
-                    PDFs[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
+                    normalized[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
 
-                Utils::compute_alias_table(best_contributions, sum_best_contributions, probas, aliases);
+                // And computing the alias tables from the contributions
+                std::vector<float> cdf(alias_table_size, 0.0f);
+                Utils::compute_prefix_sum(normalized, cdf);
 
-                for (int proba_index = 0; proba_index < probas.size(); proba_index++)
-                    probas_u16[proba_index] = probas[proba_index] * 65535.0f;
+                for (int proba_index = 0; proba_index < cdf.size(); proba_index++)
+                    cdf_u16[proba_index] = cdf[proba_index] * 65535.0f;
 
-                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_EMISSIVE_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
+                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
             }
 
-            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_PROBAS>(hash_grid_cell_index * alias_table_size, probas_u16, contribution_count_min);
-            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_TABLES_ALIASES>(hash_grid_cell_index * alias_table_size, aliases, contribution_count_min);
-            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_ALIAS_PDFS>(hash_grid_cell_index * alias_table_size, PDFs, contribution_count_min);
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(hash_grid_cell_index * alias_table_size, cdf_u16, contribution_count_min);
         }
         
         auto stop_upload = std::chrono::high_resolution_clock::now();
