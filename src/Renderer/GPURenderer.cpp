@@ -1067,6 +1067,11 @@ const std::vector<int>& GPURenderer::get_mesh_material_indices()
 	return m_parsed_scene_metadata.mesh_material_indices;
 }
 
+unsigned int GPURenderer::get_emissive_mesh_count() const
+{
+	return m_hiprt_scene.emissive_meshes_data.get_emissive_mesh_count();
+}
+
 Camera& GPURenderer::get_camera()
 {
 	return m_camera;

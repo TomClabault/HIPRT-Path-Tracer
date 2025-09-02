@@ -125,11 +125,16 @@ struct EmissiveMeshesAliasTablesHost
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Uploading emissive meshes precomputed-data time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 	}
 
+	unsigned int get_emissive_mesh_count() const
+	{
+		return static_cast<unsigned int>(m_offsets_into_alias_table.size());
+	}
+
 	EmissiveMeshesAliasTablesDevice to_device()
 	{
 		EmissiveMeshesAliasTablesDevice out;
 
-		out.alias_table_count = m_offsets_into_alias_table.size();
+		out.alias_table_count = get_emissive_mesh_count();
 		out.offsets = m_offsets_into_alias_table.data();
 		out.individual_alias_tables_sizes = m_meshes_alias_tables_sizes.data();
 

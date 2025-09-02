@@ -16,8 +16,8 @@
  */
 struct NEEPlusPlusContext
 {
-	float3 shaded_point;
-	float3 point_on_light;
+	float3 shaded_point = make_float3(0.0f, 0.0f, 0.0f);
+	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
 
 	// After passing this context to a call to 'evaluate_shadow_ray_nee_plus_plus',
 	// this member will be filled with the probability that the points 'shaded_point'

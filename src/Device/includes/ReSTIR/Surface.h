@@ -13,7 +13,7 @@ struct ReSTIRSurface
 {
 	DeviceUnpackedEffectiveMaterial material;
 	RayVolumeState ray_volume_state;
-	int primitive_index;
+	int primitive_index = -1;
 
 	// Do we need the view direction here? We can probably reconstruct it
 	float3 view_direction = { 0.0f, 0.0f, 0.0f};

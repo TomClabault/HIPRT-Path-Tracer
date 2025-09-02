@@ -1864,119 +1864,121 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"Those per-cell sampling distribution will then be used during the grid fill to provide higher "
 				"quality initial light samples");
 
-			ImGui::BeginDisabled(!regir_settings.use_per_cell_light_distributions);
-			static bool use_representative_normal = ReGIR_GridFillCellDistributionsUseRepresentativeNormal;
-			if (ImGui::Checkbox("Use representative normal", &use_representative_normal))
+			if (regir_settings.use_per_cell_light_distributions)
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL, use_representative_normal ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to use a repsentative normal when computing the contribution of an emissive "
-				"mesh to the grid cell.This can help quickly reject backfacing lights and should "
-				"probably be left enabled");
-			static bool unbiased_nee_plus_plus = ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus;
-			if (ImGui::Checkbox("Unbiased NEE++", &unbiased_nee_plus_plus))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_UNBIASED_NEE_PLUS_PLUS, unbiased_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If this is TRUE, NEE++ visibility estimation will be used in the grid fill target "
-				"function for non - canonical reservoirs if grid cell light distributions are enabled.\n\n"
-				""
-				"If this is false, NEE++ won't be used in the target function with makes the grid fill "
-				"quite a bit faster because fetching NEE++ for each non - canonical reservoir is a bit expensive.\n\n"
-				""
-				"With ReGIR spatial reuse enabled (and only if it is enabled) however, this is going to be biased but the bias is "
-				"actually is very small so this is a worthy optimization imo.");
-			static bool integrate_mesh = ReGIR_GridFillCellDistributionsIntegrateMesh;
-			if (ImGui::Checkbox("Integrate mesh contribution", &integrate_mesh))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH, integrate_mesh ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("When computing the contribution of meshes to the grid cell point:\n\n"
-				""
-				"If this option is true, random points will be chosen on the emissive mesh and the "
-				"contribution to the grid cell point of each of these points on the emissive mesh "
-				"will be integrated to compute an estimate of the overall contribution of the "
-				"emissive mesh to the grid cell.\n"
-				"The number of random points drawn is equal to \"Integrate mesh sample count\".\n\n"
-				""
-				"If this option is false, the overall contribution of the mesh is going to be computed "
-				"in one go using an approximate representative point for the whole as well as an average reprensetative "
-				"normal. This is less precise than integrating over the mesh but way faster.");
-			ImGui::BeginDisabled(!integrate_mesh);
-			static int integrate_mesh_sample_count = ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount;
-			ImGui::SliderInt("Integrate mesh sample count", &integrate_mesh_sample_count, 1, 64);
-			ImGuiRenderer::show_help_marker("How many random points to integrate the contribution of an emissive mesh over "
-				"if \"Integrate mesh contribution\" is true");
-			if (integrate_mesh_sample_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT))
-			{
-				ImGui::TreePush("Integrate mesh sample count tree regir");
-
-				if (ImGui::Button("Apply"))
+				static bool use_representative_normal = ReGIR_GridFillCellDistributionsUseRepresentativeNormal;
+				if (ImGui::Checkbox("Use representative normal", &use_representative_normal))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT, integrate_mesh_sample_count);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL, use_representative_normal ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
-
-				ImGui::TreePop();
-			}
-			ImGui::EndDisabled();
-
-
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			static int cache_cells_list_distribution_canonical_samples_count = ReGIR_GridFillCellDistributionsCanonicalSampleCount;
-			ImGui::SliderInt("Canonical samples count", &cache_cells_list_distribution_canonical_samples_count, 1, 16);
-			ImGuiRenderer::show_help_marker("How many canonical samples(simple power sampling) to draw and combine with cell-light-distribution "
-				"samples to guarantee unbiasedness.\n\n"
-				""
-				"1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the "
-				"cell-light-distribution is poor");
-			if (cache_cells_list_distribution_canonical_samples_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT))
-			{
-				ImGui::TreePush("Canonical sample count cell light distribs regir");
-
-				if (ImGui::Button("Apply"))
+				ImGuiRenderer::show_help_marker("Whether or not to use a repsentative normal when computing the contribution of an emissive "
+					"mesh to the grid cell.This can help quickly reject backfacing lights and should "
+					"probably be left enabled");
+				static bool unbiased_nee_plus_plus = ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus;
+				if (ImGui::Checkbox("Unbiased NEE++", &unbiased_nee_plus_plus))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT, cache_cells_list_distribution_canonical_samples_count);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_UNBIASED_NEE_PLUS_PLUS, unbiased_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
-
-				ImGui::TreePop();
-			}
-
-			static int light_distribution_size = regir_settings.cells_distributions_primary_hits.alias_table_size;
-			ImGui::SliderInt("Light distribution size", &light_distribution_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count));
-
-			if (light_distribution_size != regir_render_pass->get_current_cell_light_distributions_size())
-			{
-				ImGui::TreePush("ReGIR light distributions size");
-
-				if (ImGui::Button("Apply"))
+				ImGuiRenderer::show_help_marker("If this is TRUE, NEE++ visibility estimation will be used in the grid fill target "
+					"function for non - canonical reservoirs if grid cell light distributions are enabled.\n\n"
+					""
+					"If this is false, NEE++ won't be used in the target function with makes the grid fill "
+					"quite a bit faster because fetching NEE++ for each non - canonical reservoir is a bit expensive.\n\n"
+					""
+					"With ReGIR spatial reuse enabled (and only if it is enabled) however, this is going to be biased but the bias is "
+					"actually is very small so this is a worthy optimization imo.");
+				static bool integrate_mesh = ReGIR_GridFillCellDistributionsIntegrateMesh;
+				if (ImGui::Checkbox("Integrate mesh contribution", &integrate_mesh))
 				{
-					light_distribution_size = hippt::min(65535, light_distribution_size);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH, integrate_mesh ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
-					regir_settings.cells_distributions_primary_hits.alias_table_size = light_distribution_size;
-					regir_settings.cells_distributions_secondary_hits.alias_table_size = light_distribution_size;
-
+					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
+				ImGuiRenderer::show_help_marker("When computing the contribution of meshes to the grid cell point:\n\n"
+					""
+					"If this option is true, random points will be chosen on the emissive mesh and the "
+					"contribution to the grid cell point of each of these points on the emissive mesh "
+					"will be integrated to compute an estimate of the overall contribution of the "
+					"emissive mesh to the grid cell.\n"
+					"The number of random points drawn is equal to \"Integrate mesh sample count\".\n\n"
+					""
+					"If this option is false, the overall contribution of the mesh is going to be computed "
+					"in one go using an approximate representative point for the whole as well as an average reprensetative "
+					"normal. This is less precise than integrating over the mesh but way faster.");
+				ImGui::BeginDisabled(!integrate_mesh);
+				static int integrate_mesh_sample_count = ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount;
+				ImGui::SliderInt("Integrate mesh sample count", &integrate_mesh_sample_count, 1, 64);
+				ImGuiRenderer::show_help_marker("How many random points to integrate the contribution of an emissive mesh over "
+					"if \"Integrate mesh contribution\" is true");
+				if (integrate_mesh_sample_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT))
+				{
+					ImGui::TreePush("Integrate mesh sample count tree regir");
 
-				ImGui::TreePop();
-			}
-			ImGui::EndDisabled(); // !regir_settings.use_per_cell_light_distributions
+					if (ImGui::Button("Apply"))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT, integrate_mesh_sample_count);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
+				ImGui::EndDisabled();
+
+
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				static int cache_cells_list_distribution_canonical_samples_count = ReGIR_GridFillCellDistributionsCanonicalSampleCount;
+				ImGui::SliderInt("Canonical samples count", &cache_cells_list_distribution_canonical_samples_count, 1, 16);
+				ImGuiRenderer::show_help_marker("How many canonical samples(simple power sampling) to draw and combine with cell-light-distribution "
+					"samples to guarantee unbiasedness.\n\n"
+					""
+					"1 guarantees unbiasedness. More than 1 reduces variance more effectively if the coverage of the "
+					"cell-light-distribution is poor");
+				if (cache_cells_list_distribution_canonical_samples_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT))
+				{
+					ImGui::TreePush("Canonical sample count cell light distribs regir");
+
+					if (ImGui::Button("Apply"))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT, cache_cells_list_distribution_canonical_samples_count);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
+
+				static int light_distribution_size = regir_settings.cells_distributions_primary_hits.light_distribution_size;
+				ImGui::SliderInt("Light distribution size", &light_distribution_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count));
+
+				if (light_distribution_size != regir_render_pass->get_current_cell_light_distributions_size(true))
+				{
+					ImGui::TreePush("ReGIR light distributions size");
+
+					if (ImGui::Button("Apply"))
+					{
+						light_distribution_size = hippt::min(65535, light_distribution_size);
+
+						regir_settings.cells_distributions_primary_hits.light_distribution_size = light_distribution_size;
+						regir_settings.cells_distributions_secondary_hits.light_distribution_size = light_distribution_size;
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::TreePop();
+				}
+			} // regir_settings.use_per_cell_light_distributions
+			
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Primary hits grid cells");

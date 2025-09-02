@@ -92,6 +92,8 @@ int main(int argc, char* argv[])
         pos += make_float3(0, 0.1, 0);
 
     cpu_renderer.set_scene(parsed_scene);
+    cpu_renderer.resize_buffers();
+    cpu_renderer.update_render_data();
 
     ThreadManager::join_all_threads();
 

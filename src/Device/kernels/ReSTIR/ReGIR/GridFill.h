@@ -22,12 +22,11 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     /*if (hash_grid_cell_index == 5277)
         std::cout << std::endl;*/
 
-    CDFDeviceU16 cell_alias_table = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
-    int alias_table_index = cell_alias_table.sample(rng);
-    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
+    CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
+    int index_in_distribution = cell_light_distribution.sample(rng);
 
-    unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + alias_table_index];
-    float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, alias_table_index);
+    unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_emissive_mesh_index(hash_grid_cell_index, index_in_distribution);
+    float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, index_in_distribution);
     if (mesh_PDF == 0.0f)
         // No valid mesh for this cell, early exit by returning
         // an empty sample
@@ -41,6 +40,10 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
 
     LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+    if (light_sample.emissive_triangle_index == -1)
+        // Probably a degenerate triangle
+        return LightSampleInformation();
+
     // Area measure PDF already contains the PDF for sampling the point *on the triangle*.
     // We need to add (multiply) the PDF of sampling the triangle itself within the sampled mesh
     light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
@@ -54,16 +57,15 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    CDFDeviceU16 cell_alias_table = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
-    int alias_table_index = cell_alias_table.sample(rng);
-    unsigned int alias_table_size = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size;
+    CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
+    int index_in_distribution = cell_light_distribution.sample(rng);
 
     float mesh_sampling_PDF = 0.0f;
     // TODO absolutely need to replace that with a perfect hash table (or any fast membership data structure)
     // for performance instead of brute forcing
-    for (int i = 0; i < cell_alias_table.size; i++)
+    for (int i = 0; i < cell_light_distribution.size; i++)
     {
-        if (regir_settings.get_cell_distributions_soa(primary_hit).emissive_meshes_indices[hash_grid_cell_index * alias_table_size + i] == mesh_index)
+        if (regir_settings.get_cell_distributions_soa(primary_hit).get_emissive_mesh_index(hash_grid_cell_index, i) == mesh_index)
         {
             mesh_sampling_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, i);
 
@@ -136,13 +138,15 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         else
+        {
             target_function = ReGIR_grid_fill_evaluate_target_function<
-            ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
-            ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF, 
-            /* We don't need NEE++ here because it's already included in the sampling distribution of the grid cell.
-               We don't need that in RIS*/ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation && ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus>(
-                render_data, surface, primary_hit,
-                light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+                ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
+                ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
+                /* We don't need NEE++ here because it's already included in the sampling distribution of the grid cell.
+                   We don't need that in RIS*/ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation&& ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus>(
+                    render_data, surface, primary_hit,
+                    light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+        }
 
         float mis_weight;
         if (reservoir_is_canonical)
@@ -154,8 +158,6 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         }
 
         reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
-        /*if (!sanity_check<true>(render_data, reservoir.weight_sum, -1, -1))
-            std::cout << std::endl;*/
     }
 
     if (!reservoir_is_canonical)
@@ -332,8 +334,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
         // Normalizing the reservoir
         output_reservoir.finalize_resampling(1.0f, 1.0f);
         
-        sanity_check<true>(render_data, output_reservoir.weight_sum, -1, -1);
-        sanity_check<true>(render_data, output_reservoir.UCW, -1, -1);
         regir_settings.store_reservoir_custom_buffer_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
 
         grid_fill_pre_integration_accumulation<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);

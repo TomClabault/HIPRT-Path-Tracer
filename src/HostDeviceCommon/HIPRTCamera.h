@@ -18,10 +18,10 @@ struct HIPRTCamera
     float4x4 inverse_view;
     float4x4 inverse_projection;
     float4x4 view_projection;
-    float3 position;
+    float3 position = make_float3(0.0f, 0.0f, 0.0f);
 
-    float vertical_fov;
-    int sensor_width, sensor_height;
+    float vertical_fov = M_PI * 0.5f;
+    int sensor_width = 1280, sensor_height = 720;
 
     bool do_jittering = true;
 

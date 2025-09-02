@@ -428,14 +428,14 @@ void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data, bool b
 	bool skip_frame_primary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
 	if (m_number_of_cells_alive_primary_hits > 0 && (!skip_frame_primary_hits || bypass_skip_frame))
 	{
-		launch_grid_fill_temporal_reuse(render_data, true, false, m_renderer->get_main_stream());
+		launch_grid_fill(render_data, true, false, m_renderer->get_main_stream());
 		m_last_spatial_reuse_output_buffer_primary_hits = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
 	}
 
 	bool skip_frame_secondary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_secondary_hit_grid + 1) != 0;
 	if (m_number_of_cells_alive_secondary_hits > 0 && (!skip_frame_secondary_hits || bypass_skip_frame))
 	{
-		launch_grid_fill_temporal_reuse(render_data, false, false, m_renderer->get_main_stream());
+		launch_grid_fill(render_data, false, false, m_renderer->get_main_stream());
 		m_last_spatial_reuse_output_buffer_secondary_hits = launch_spatial_reuse(render_data, false, false, m_renderer->get_main_stream());
 	}
 }
@@ -492,7 +492,7 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 				render_data.render_settings.regir_settings.get_raw_spatial_output_reservoirs_grid(primary_hit),
 				buffer_used_by_pt_kernels);
 
-			launch_grid_fill_temporal_reuse(render_data, output_reservoirs_async_grid_fill, primary_hit, false, async_stream);
+			launch_grid_fill(render_data, output_reservoirs_async_grid_fill, primary_hit, false, async_stream);
 
 			// Same for the sptial reuse as for the grid fill: we're going to use the buffer that is not being used by the path tracing kernels
 			// and that is not the buffer that is input to the spatial reuse (because we don't want to store into the buffer which we're reading
@@ -569,7 +569,7 @@ void ReGIRRenderPass::launch_light_presampling(HIPRTRenderData& render_data, oro
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 }
 
-void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream)
+void ReGIRRenderPass::launch_grid_fill(HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream)
 {
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 
@@ -607,11 +607,11 @@ void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_da
 	}
 }
 
-void ReGIRRenderPass::launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream)
+void ReGIRRenderPass::launch_grid_fill(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream)
 {
 	ReGIRHashGridSoADevice output_reservoirs_grid = render_data.render_settings.regir_settings.get_initial_reservoirs_grid(primary_hit);
 
-	launch_grid_fill_temporal_reuse(render_data, output_reservoirs_grid, primary_hit, for_pre_integration, stream);
+	launch_grid_fill(render_data, output_reservoirs_grid, primary_hit, for_pre_integration, stream);
 }
 
 ReGIRHashGridSoADevice ReGIRRenderPass::launch_spatial_reuse(HIPRTRenderData& render_data, ReGIRHashGridSoADevice first_input_reservoirs, ReGIRHashGridSoADevice first_output_reservoirs, bool primary_hit, bool for_pre_integration, oroStream_t stream)
@@ -677,7 +677,7 @@ void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_
 		render_data.random_number = m_local_rng.xorshift32();
 
 		launch_light_presampling(render_data, m_renderer->get_main_stream());
-		launch_grid_fill_temporal_reuse(render_data, true, false, m_renderer->get_main_stream());
+		launch_grid_fill(render_data, true, false, m_renderer->get_main_stream());
 		ReGIRHashGridSoADevice spatial_output = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
 		launch_correlation_reduction_copy(render_data, spatial_output);
 
@@ -784,7 +784,7 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 		render_data.random_number = m_local_rng.xorshift32();
 
 		launch_light_presampling(render_data, stream);
-		launch_grid_fill_temporal_reuse(render_data, primary_hit, true, stream);
+		launch_grid_fill(render_data, primary_hit, true, stream);
 		launch_spatial_reuse(render_data, primary_hit, true, stream);
 	}
 
@@ -840,7 +840,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 
-	std::vector<unsigned int> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>().size());
+	std::vector<unsigned long long int> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>().size());
 	//std::vector<float> CDF_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
 	std::vector<unsigned short int> CDF_staging_u16(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
 
@@ -905,7 +905,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 			sum_all_contrib += DEBUG_SORTED8CONTRIBUTIONS[i];
 		}
 
-		unsigned int alias_table_size = render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
+		unsigned int light_distribution_size = render_data.render_settings.regir_settings.cells_distributions_primary_hits.light_distribution_size;
 		unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
 
 		start = std::chrono::high_resolution_clock::now();
@@ -914,19 +914,19 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 		{
 			// Either the alias table size or the number of emissive meshes
 			// (number of contributions per cell), whichever is the smallest
-			unsigned contribution_count_min = hippt::min(alias_table_size, emissive_mesh_count);
+			unsigned effective_light_distribution_size = hippt::min(light_distribution_size, emissive_mesh_count);
 
 			unsigned int potential_alias_table_savings = 0;
 			double sum_all_contributions = 0.0;
 			for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 				sum_all_contributions += contributions.at(cell_index_in_iteration * emissive_mesh_count + contribution_index);
 
-			// We're only going to keep the best 'alias_table_size' contributing meshes
+			// We're only going to keep the best 'light_distribution_size' contributing meshes
 			// in case there are more than that, i.e. the alias table is going to be built only on
-			// the 'alias_table_size' meshes that contribute the most to the cell
+			// the 'light_distribution_size' meshes that contribute the most to the cell
 			float sum_best_contributions = 0.0f;
-			std::vector<float> best_contributions(alias_table_size);
-			for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
+			std::vector<float> best_contributions(light_distribution_size);
+			for (int contribution_index = 0; contribution_index < effective_light_distribution_size; contribution_index++)
 			{
 				float contribution = contributions.at(cell_index_in_iteration * emissive_mesh_count + sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count));
 
@@ -947,25 +947,26 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
 			assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
-			std::vector<unsigned short int> cdf_u16(alias_table_size, 0.0f);
+			std::vector<unsigned short int> cdf_u16(light_distribution_size, 0.0f);
 			if (sum_best_contributions > 0.0f)
 			{
-				std::vector<float> normalized(contribution_count_min);
-				for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
+				std::vector<float> normalized(effective_light_distribution_size);
+				for (int pdf_index = 0; pdf_index < effective_light_distribution_size; pdf_index++)
 					normalized[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
 
 				// And computing the alias tables from the contributions
-				std::vector<float> cdf(alias_table_size, 0.0f);
+				std::vector<float> cdf(light_distribution_size, 0.0f);
 				Utils::compute_prefix_sum(normalized, cdf);
 
 				for (int proba_index = 0; proba_index < cdf.size(); proba_index++)
 					cdf_u16[proba_index] = cdf[proba_index] * 65535.0f;
 
-				std::copy(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count + contribution_count_min, meshes_indices_staging.begin() + hash_grid_cell_index * alias_table_size);
+				std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> sorted_mesh_indices_packed = ReGIRCellsLightDistributionsHostUtils::pack_mesh_indices(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, emissive_mesh_count, effective_light_distribution_size);
+				std::copy(sorted_mesh_indices_packed.begin(), sorted_mesh_indices_packed.end(), meshes_indices_staging.begin() + hash_grid_cell_index * ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_mesh_count, effective_light_distribution_size));
 			}
 
-			//std::copy(cdf.begin(), cdf.end(), CDF_staging.begin() + hash_grid_cell_index * alias_table_size);
-			std::copy(cdf_u16.begin(), cdf_u16.end(), CDF_staging_u16.begin() + hash_grid_cell_index * alias_table_size);
+			//std::copy(cdf.begin(), cdf.end(), CDF_staging.begin() + hash_grid_cell_index * light_distribution_size);
+			std::copy(cdf_u16.begin(), cdf_u16.end(), CDF_staging_u16.begin() + hash_grid_cell_index * light_distribution_size);
 		}
 		stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
@@ -976,7 +977,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(CDF_staging_u16);
 	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>(meshes_indices_staging);
 
-	std::cout << "Alias table size: " << render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size << std::endl;
+	std::cout << "Alias table size: " << render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).light_distribution_size << std::endl;
 	std::cout << "Minimum alias table saving: " << minimum_alias_table_saving.load() << std::endl;
 	std::cout << "Maximum alias table saving: " << maximum_alias_table_saving.load() << std::endl;
 	std::cout << "Average alias table saving: " << (float)average_alias_table_saving.load() / (float)total_number_of_cells_to_compute << std::endl;
@@ -1217,7 +1218,7 @@ float ReGIRRenderPass::get_alive_cells_ratio(bool primary_hit) const
 	return get_number_of_cells_alive(primary_hit) / static_cast<float>(total_number_of_cells);
 }
 
-unsigned int ReGIRRenderPass::get_current_cell_light_distributions_size() const
+unsigned int ReGIRRenderPass::get_current_cell_light_distributions_size(bool primary_hit) const
 {
-	return m_hash_grid_storage.m_current_cell_light_distribution_size;
+	return primary_hit ? m_hash_grid_storage.m_current_cell_light_distribution_size_primary_hits : m_hash_grid_storage.m_current_cell_light_distribution_size_secondary_hits;
 }

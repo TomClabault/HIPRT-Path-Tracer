@@ -21,7 +21,7 @@ struct CDFDevice
 		while (left < right)
 		{
 			unsigned int mid = (left + right) / 2;
-			if (cdf[mid] < random_value)
+			if (hippt::ldg_load(cdf + mid) < random_value)
 				left = mid + 1;
 			else
 				right = mid;
@@ -30,7 +30,7 @@ struct CDFDevice
 		return left;
 	}
 
-	float* cdf = nullptr;
+	const float* cdf = nullptr;
 
 	unsigned int size = 0;
 };
@@ -40,6 +40,7 @@ struct CDFDeviceU16
 	HIPRT_DEVICE unsigned int sample(Xorshift32Generator& rng) const
 	{
 		unsigned short int random_value = rng() * 65535.0f;
+		unsigned short int value_zero = cdf_u16[0];
 
 		// Binary search
 		unsigned int left = 0;
@@ -48,7 +49,7 @@ struct CDFDeviceU16
 		while (left < right)
 		{
 			unsigned int mid = (left + right) / 2;
-			if (cdf_u16[mid] < random_value)
+			if (hippt::ldg_load(cdf_u16 + mid) < random_value)
 				left = mid + 1;
 			else
 				right = mid;
@@ -57,7 +58,7 @@ struct CDFDeviceU16
 		return left;
 	}
 
-	unsigned short int* cdf_u16 = nullptr;
+	const unsigned short int* cdf_u16 = nullptr;
 
 	unsigned int size = 0;
 };

@@ -87,9 +87,15 @@
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
-    m_framebuffer = Image32Bit(width, height, 3);
-
     m_render_data.render_settings.render_resolution = m_resolution;
+}
+
+void CPURenderer::resize_buffers()
+{
+    unsigned int width = m_resolution.x;
+    unsigned int height = m_resolution.y;
+
+    m_framebuffer = Image32Bit(width, height, 3);
 
     // Resizing buffers + initial value
     m_pixel_active_buffer.resize(width * height, 0);
@@ -117,8 +123,9 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_regir_state.canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.canonical_pre_integration_factors_primary_hit.end(), 0.0f);
 
 #if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE
-    m_regir_state.cells_light_distributions_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size);
-    m_regir_state.cells_light_distributions_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.cells_distributions_secondary_hits.alias_table_size);
+    unsigned int light_distribution_size = hippt::min(m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.light_distribution_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
+    m_regir_state.cells_light_distributions_primary_hit.resize(new_cell_count_primary_hits, light_distribution_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
+    m_regir_state.cells_light_distributions_secondary_hit.resize(new_cell_count_secondary_hits, light_distribution_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
 #endif
 
     m_regir_state.non_canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
@@ -320,13 +327,37 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_render_data.buffers.material_opaque = m_material_opaque.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
-    m_render_data.buffers.accumulated_ray_colors = m_framebuffer.get_data_as_ColorRGB32F();
     m_render_data.buffers.triangles_indices = parsed_scene.triangles_vertex_indices.data();
     m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
     m_render_data.buffers.triangles_areas = parsed_scene.triangle_areas.data();
 
+    ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
+    m_render_data.buffers.material_textures = parsed_scene.textures.data();
+
+    ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+    m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangles_primitive_indices.size();
+    m_render_data.buffers.emissive_triangles_primitive_indices = parsed_scene.emissive_triangles_primitive_indices.data();
+    m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures = parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.data();
+
+    m_emissive_meshes_alias_tables.load_from_emissive_meshes(parsed_scene);
+
+    std::cout << "Building scene's BVH..." << std::endl;
+    m_triangle_buffer = parsed_scene.get_triangles(parsed_scene.triangles_vertex_indices);
+    m_emissive_triangles_buffer = parsed_scene.get_triangles(parsed_scene.emissive_triangle_vertex_indices);
+
+    m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
+    m_light_bvh = std::make_shared<BVH>(&m_emissive_triangles_buffer);
+
+#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER)
+    std::cout << "Building scene's power alias table" << std::endl;
+    compute_emissives_power_alias_table(parsed_scene);
+#endif
+}
+
+void CPURenderer::update_render_data()
+{
     m_render_data.bsdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
     m_render_data.bsdfs_data.GGX_conductor_directional_albedo = &m_GGX_conductor_directional_albedo;
     m_render_data.bsdfs_data.glossy_dielectric_directional_albedo = &m_glossy_dielectrics_directional_albedo;
@@ -334,9 +365,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.bsdfs_data.GGX_glass_directional_albedo_inverse = &m_GGX_glass_inverse_directional_albedo;
     m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo = &m_GGX_thin_glass_directional_albedo;
 
-    ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
-    m_render_data.buffers.material_textures = parsed_scene.textures.data();
-
+    m_render_data.buffers.accumulated_ray_colors = m_framebuffer.get_data_as_ColorRGB32F();
     m_render_data.aux_buffers.pixel_active = m_pixel_active_buffer.data();
     m_render_data.aux_buffers.denoiser_albedo = m_denoiser_albedo.data();
     m_render_data.aux_buffers.denoiser_normals = m_denoiser_normals.data();
@@ -403,33 +432,14 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_total = &m_restir_gi_state.spatial_reuse_hit_rate_total;
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
 
-    ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-    m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangles_primitive_indices.size();
-    m_render_data.buffers.emissive_triangles_primitive_indices = parsed_scene.emissive_triangles_primitive_indices.data();
-    m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures = parsed_scene.emissive_triangles_primitive_indices_and_emissive_textures.data();
-
-    m_emissive_meshes_alias_tables.load_from_emissive_meshes(parsed_scene);
     m_render_data.buffers.emissive_meshes_data = m_emissive_meshes_alias_tables.to_device();
 #if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE
     m_render_data.render_settings.regir_settings.cells_distributions_primary_hits = m_regir_state.cells_light_distributions_primary_hit.to_device(m_render_data);
     m_render_data.render_settings.regir_settings.cells_distributions_secondary_hits = m_regir_state.cells_light_distributions_secondary_hit.to_device(m_render_data);
 #endif
 
-    std::cout << "Building scene's BVH..." << std::endl;
-    m_triangle_buffer = parsed_scene.get_triangles(parsed_scene.triangles_vertex_indices);
-    m_emissive_triangles_buffer = parsed_scene.get_triangles(parsed_scene.emissive_triangle_vertex_indices);
-
-    m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
-    m_light_bvh = std::make_shared<BVH>(&m_emissive_triangles_buffer);
-
-
     m_render_data.cpu_only.bvh = m_bvh.get();
     m_render_data.cpu_only.light_bvh = m_light_bvh.get();
-
-#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER)
-    std::cout << "Building scene's power alias table" << std::endl;
-    compute_emissives_power_alias_table(parsed_scene);
-#endif
 }
 
 void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
@@ -558,7 +568,7 @@ void CPURenderer::render()
         m_render_data.render_settings.do_update_status_buffers = true;
 
         pre_render_update(frame_number);
-        update_render_data(frame_number);
+        update_cameras(frame_number);
 
         camera_rays_pass();
 
@@ -612,7 +622,7 @@ void CPURenderer::post_sample_update(int frame_number)
     ReGIR_post_render_update();
 }
 
-void CPURenderer::update_render_data(int sample)
+void CPURenderer::update_cameras(int sample)
 {
     m_render_data.prev_camera = m_render_data.current_camera;
     m_render_data.current_camera = m_camera.to_hiprt(m_resolution.x, m_resolution.y);
@@ -915,7 +925,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             });
         }
 
-        unsigned int alias_table_size = m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.alias_table_size;
+        unsigned int alias_table_size = m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.light_distribution_size;
         unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
 
         auto upload = std::chrono::high_resolution_clock::now();
@@ -925,14 +935,14 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
             // Either the alias table size or the number of emissive meshes
             // (number of contributions per cell), whichever is the smallest
-            unsigned contribution_count_min = hippt::min(alias_table_size, emissive_mesh_count);
+            unsigned effective_light_distribution_size = hippt::min(alias_table_size, emissive_mesh_count);
 
             // We're only going to keep the best 'alias_table_size' contributing meshes
             // in case there are more than that, i.e. the alias table is going to be built only on
             // the 'alias_table_size' meshes that contribute the most to the cell
             float sum_best_contributions = 0.0f;
-            std::vector<float> best_contributions(contribution_count_min);
-            for (int contribution_index = 0; contribution_index < contribution_count_min; contribution_index++)
+            std::vector<float> best_contributions(effective_light_distribution_size);
+            for (int contribution_index = 0; contribution_index < effective_light_distribution_size; contribution_index++)
             {
                 float contribution = contribution_scratch_buffer.at(sorted_mesh_indices.at(contribution_index + cell_index_in_iteration * emissive_mesh_count) + cell_index_in_iteration * emissive_mesh_count);
 
@@ -940,15 +950,15 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
                 sum_best_contributions += contribution;
             }
 
-            ReGIRCellsAliasTablesSoAHost<std::vector>& soa_host = primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
+            ReGIRCellsLightDistributionsSoAHost<std::vector>& soa_host = primary_hit ? m_regir_state.cells_light_distributions_primary_hit : m_regir_state.cells_light_distributions_secondary_hit;
             assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
             // And computing the alias tables from the contributions
             std::vector<unsigned short int> cdf_u16(alias_table_size, 0.0f);
             if (sum_best_contributions > 0.0f)
             {
-                std::vector<float> normalized(contribution_count_min);
-                for (int pdf_index = 0; pdf_index < contribution_count_min; pdf_index++)
+                std::vector<float> normalized(effective_light_distribution_size);
+                for (int pdf_index = 0; pdf_index < effective_light_distribution_size; pdf_index++)
                     normalized[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
 
                 // And computing the alias tables from the contributions
@@ -958,10 +968,11 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
                 for (int proba_index = 0; proba_index < cdf.size(); proba_index++)
                     cdf_u16[proba_index] = cdf[proba_index] * 65535.0f;
 
-                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>(hash_grid_cell_index * alias_table_size, sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, contribution_count_min);
+                std::vector<ReGIRCellsLightDistributionsMeshIndicesPackingType> sorted_mesh_indices_packed = ReGIRCellsLightDistributionsHostUtils::pack_mesh_indices(sorted_mesh_indices.begin() + cell_index_in_iteration * emissive_mesh_count, emissive_mesh_count, effective_light_distribution_size);
+                soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>(hash_grid_cell_index * sorted_mesh_indices_packed.size(), sorted_mesh_indices_packed.begin(), sorted_mesh_indices_packed.size());
             }
 
-            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(hash_grid_cell_index * alias_table_size, cdf_u16, contribution_count_min);
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(hash_grid_cell_index * alias_table_size, cdf_u16, effective_light_distribution_size);
         }
         
         auto stop_upload = std::chrono::high_resolution_clock::now();

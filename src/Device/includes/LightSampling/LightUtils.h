@@ -186,9 +186,8 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_trian
     float3 normal = hippt::cross(AB, AC);
 
     float length_normal = hippt::length(normal);
-    // TODO the normal length check used to be for some NaNs that occured on degenerate triangles but doesn't seem to happen anymore
-    /*if (length_normal <= 1.0e-6f)
-        return false;*/
+    if (length_normal <= 1.0e-6f)
+        return false;
 
     float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
     out_sample_point = random_point_on_triangle;
@@ -202,8 +201,8 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_trian
  * From a triangle index, samples uniformly a point on the triangle and fills a LightSampleInformation
  * structure with the information (normal, area, emission, ...) of the triangle
  * 
- * The PDF field of the LightSampleInformation is only field with '1.0f / triangleArea'. 
- * The rest of the PDF must be computed by the caller
+ * The PDF field of the LightSampleInformation is only field with the probability of sampling the
+ * point on the triangle. The rest of the PDF must be computed by the caller
  */
 HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, int triangle_index, Xorshift32Generator& rng)
 {

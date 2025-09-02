@@ -10,7 +10,7 @@
 #include "Device/includes/CDF.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/RayPayload.h"
-#include "Device/includes/ReSTIR/ReGIR/CellsAliasTablesSoADevice.h"
+#include "Device/includes/ReSTIR/ReGIR/CellsLightDistributionsSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/PresampledLight.h"
 #include "Device/includes/ReSTIR/ReGIR/ReGIRHashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
@@ -210,17 +210,17 @@ struct ReGIRSettings
 	HIPRT_DEVICE float get_non_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
 	HIPRT_DEVICE float get_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
 
-	HIPRT_DEVICE const ReGIRCellsAliasTablesSoADevice& get_cell_distributions_soa(bool primary_hit) const { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
-	HIPRT_DEVICE ReGIRCellsAliasTablesSoADevice& get_cell_distributions_soa(bool primary_hit) { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
+	HIPRT_DEVICE const ReGIRCellsLightDistributionsSoADevice& get_cell_distributions_soa(bool primary_hit) const { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
+	HIPRT_DEVICE ReGIRCellsLightDistributionsSoADevice& get_cell_distributions_soa(bool primary_hit) { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
 
 	HIPRT_DEVICE CDFDeviceU16 get_cell_light_distributions(unsigned int hash_grid_cell_index, bool primary_hit) const
 	{
 		CDFDeviceU16 out;
 
-		const ReGIRCellsAliasTablesSoADevice& cell_distributions = get_cell_distributions_soa(primary_hit);
+		const ReGIRCellsLightDistributionsSoADevice& cell_distributions = get_cell_distributions_soa(primary_hit);
 
-		out.cdf_u16 = cell_distributions.all_cdfs + hash_grid_cell_index * cell_distributions.alias_table_size;
-		out.size = cell_distributions.alias_table_size;
+		out.cdf_u16 = cell_distributions.all_cdfs + hash_grid_cell_index * cell_distributions.light_distribution_size;
+		out.size = cell_distributions.light_distribution_size;
 
 		return out;
 	}
@@ -556,10 +556,10 @@ struct ReGIRSettings
 
 		// Because we just inserted into that grid cell, it is now alive
 		// Only go through all that atomic stuff if the cell isn't alive
+		 
+		// TODO is this check needed since we have an atomic just below?
 		if (hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index] == 0)
 		{
-			// TODO is this atomic needed since we can only be here if the cell was unoccoupied?
-
 			if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index], 0u, 1u) == 0u)
 			{
 				unsigned int cell_alive_index = hippt::atomic_fetch_add(hash_cell_data_to_update.grid_cells_alive_count, 1u);
@@ -672,8 +672,8 @@ struct ReGIRSettings
 	AtomicType<float>* non_canonical_pre_integration_factors_secondary_hits = nullptr;
 	AtomicType<float>* canonical_pre_integration_factors_secondary_hits = nullptr;
 
-	ReGIRCellsAliasTablesSoADevice cells_distributions_primary_hits;
-	ReGIRCellsAliasTablesSoADevice cells_distributions_secondary_hits;
+	ReGIRCellsLightDistributionsSoADevice cells_distributions_primary_hits;
+	ReGIRCellsLightDistributionsSoADevice cells_distributions_secondary_hits;
 	bool use_per_cell_light_distributions = ReGIR_GridFillUsePerCellDistributions;
 
 	// Multiplicative factor to multiply the output of some debug views

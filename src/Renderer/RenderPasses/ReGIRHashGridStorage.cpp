@@ -85,12 +85,13 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		updated = true;
 	}
 
-	bool cell_light_distibution_size_changed = m_current_cell_light_distribution_size != hippt::min(render_data.buffers.emissive_meshes_data.alias_table_count, regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
+	unsigned int& current_distribution_size = primary_hit ? m_current_cell_light_distribution_size_primary_hits : m_current_cell_light_distribution_size_secondary_hits;
+	bool cell_light_distibution_size_changed = current_distribution_size != hippt::min(render_data.buffers.emissive_meshes_data.alias_table_count, regir_settings.get_cell_distributions_soa(primary_hit).light_distribution_size);
 	if ((grid_not_allocated || grid_res_changed || cell_light_distibution_size_changed) && render_data.render_settings.regir_settings.use_per_cell_light_distributions)
 	{
-		get_cell_light_distributions(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
+		get_cell_light_distributions(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).light_distribution_size, m_regir_render_pass->get_renderer()->get_emissive_mesh_count());
 
-		m_current_cell_light_distribution_size = get_cell_light_distributions(primary_hit).m_alias_table_size;
+		current_distribution_size = get_cell_light_distributions(primary_hit).m_light_distribution_size;
 		updated = true;
 	}
 
@@ -98,7 +99,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 	{
 		get_cell_light_distributions(primary_hit).free();
 
-		m_current_cell_light_distribution_size = 0;
+		current_distribution_size = 0;
 		updated = true;
 	}
 
@@ -258,7 +259,7 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 			get_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 
 			if (render_data.render_settings.regir_settings.use_per_cell_light_distributions)
-				get_cell_light_distributions(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).alias_table_size);
+				get_cell_light_distributions(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_cell_distributions_soa(primary_hit).light_distribution_size, render_data.buffers.emissive_meshes_data.alias_table_count);
 
 			// We need to update the cell alive count because there may have possibly been collisions that couldn't be resolved during the rehashing
 			// and maybe some cells could not be reinserted in the new hash table --> the cell alive count is different (lower) --> need to update
@@ -484,7 +485,7 @@ OrochiBuffer<float>& ReGIRHashGridStorage::get_canonical_factors(bool primary_hi
 	return primary_hit ? m_canonical_pre_integration_factors_primary_hits : m_canonical_pre_integration_factors_secondary_hits;
 }
 
-ReGIRCellsAliasTablesSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_cell_light_distributions(bool primary_hit)
+ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_cell_light_distributions(bool primary_hit)
 {
 	return primary_hit ? m_cells_alias_tables_primary_hits : m_cells_alias_tables_secondary_hits;
 }

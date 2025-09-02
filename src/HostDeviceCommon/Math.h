@@ -540,14 +540,9 @@ namespace hippt
 	template <typename T>
 	T atomic_compare_exchange(std::atomic<T>* atomic_address, T expected, T new_value)
 	{
-		// Overriding the semantic here so that it behaves the same as in CUDA i.e. returns the old value
-		// instead of returning true or false (stdlib default behavior)
-
-		T old = *atomic_address;
-		
 		atomic_address->compare_exchange_strong(expected, new_value);
 			
-		return old;
+		return expected;
 	}
 
 	/**

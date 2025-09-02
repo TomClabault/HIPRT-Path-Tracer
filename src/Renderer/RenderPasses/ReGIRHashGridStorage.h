@@ -9,7 +9,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsAliasTablesSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRPresampledLightsSoAHost.h"
@@ -45,7 +45,7 @@ public:
 	ReGIRHashCellDataSoADevice& get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit);
 	OrochiBuffer<float>& get_non_canonical_factors(bool primary_hit);
 	OrochiBuffer<float>& get_canonical_factors(bool primary_hit);
-	ReGIRCellsAliasTablesSoAHost<OrochiBuffer>& get_cell_light_distributions(bool primary_hit);
+	ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& get_cell_light_distributions(bool primary_hit);
 	unsigned int& get_total_number_of_cells(bool primary_hit);
 	unsigned int get_total_number_of_cells(bool primary_hit) const;
 
@@ -89,13 +89,14 @@ public:
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data_primary_hits;
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data_secondary_hits;
 
-	ReGIRCellsAliasTablesSoAHost<OrochiBuffer> m_cells_alias_tables_primary_hits;
-	ReGIRCellsAliasTablesSoAHost<OrochiBuffer> m_cells_alias_tables_secondary_hits;
+	ReGIRCellsLightDistributionsSoAHost<OrochiBuffer> m_cells_alias_tables_primary_hits;
+	ReGIRCellsLightDistributionsSoAHost<OrochiBuffer> m_cells_alias_tables_secondary_hits;
 
 	float m_current_grid_min_cell_size = 0.0f;
 	float m_grid_cell_target_projected_size = 0.0f;
 
-	unsigned int m_current_cell_light_distribution_size = 0;
+	unsigned int m_current_cell_light_distribution_size_primary_hits = 0;
+	unsigned int m_current_cell_light_distribution_size_secondary_hits = 0;
 
 	unsigned int m_total_number_of_cells_primary_hits = 0;
 	unsigned int m_total_number_of_cells_secondary_hits = 0;

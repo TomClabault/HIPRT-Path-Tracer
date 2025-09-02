@@ -67,8 +67,8 @@ public:
 	bool rehash(HIPRTRenderData& render_data);
 
 	void launch_light_presampling(HIPRTRenderData& render_data, oroStream_t stream);
-	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream);
-	void launch_grid_fill_temporal_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
+	void launch_grid_fill(HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream);
+	void launch_grid_fill(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	/**
 	 * Returns the hash grid buffer into which the spatial reuse output the result
 	 */
@@ -116,7 +116,7 @@ public:
 	void update_all_cell_alive_count(HIPRTRenderData& render_data);
 	float get_alive_cells_ratio(bool primary_hit) const;
 
-	unsigned int get_current_cell_light_distributions_size() const;
+	unsigned int get_current_cell_light_distributions_size(bool primary_hit) const;
 	
 private:
 	unsigned int m_number_of_cells_alive_primary_hits = 0;

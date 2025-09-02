@@ -20,7 +20,7 @@
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsAliasTablesSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRPresampledLightsSoAHost.h"
@@ -36,6 +36,7 @@ class CPURenderer
 public:
     CPURenderer(int width, int height);
 
+
     void setup_brdfs_data();
     void setup_nee_plus_plus();
     void setup_gmon();
@@ -48,6 +49,9 @@ public:
     void set_envmap(Image32Bit& envmap_image);
     void set_camera(Camera& camera);
 
+    void resize_buffers();
+    void update_render_data();
+
     HIPRTRenderData& get_render_data();
     HIPRTRenderSettings& get_render_settings();
     Image32Bit& get_framebuffer();
@@ -55,7 +59,7 @@ public:
     void render();
     void pre_render_update(int frame_number);
     void post_sample_update(int frame_number);
-    void update_render_data(int sample);
+    void update_cameras(int sample);
 
     void reset();
 
@@ -208,8 +212,8 @@ private:
         std::vector<AtomicType<float>> non_canonical_pre_integration_factors_secondary_hit;
         std::vector<AtomicType<float>> canonical_pre_integration_factors_secondary_hit;
 
-        ReGIRCellsAliasTablesSoAHost<std::vector> cells_light_distributions_primary_hit;
-        ReGIRCellsAliasTablesSoAHost<std::vector> cells_light_distributions_secondary_hit;
+        ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_primary_hit;
+        ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_secondary_hit;
         unsigned int m_last_cells_alias_tables_compute_count_primary_hits = 0;
         unsigned int m_last_cells_alias_tables_compute_count_secondary_hits = 0;
 

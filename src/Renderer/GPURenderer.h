@@ -258,6 +258,8 @@ public:
 	const std::vector<std::string>& get_mesh_names();
 	const std::vector<int>& get_mesh_material_indices();
 
+	unsigned int get_emissive_mesh_count() const;
+
 	/**
 	 * Returns the size of the RayVolumeState struct on the GPU.
 	 * 
