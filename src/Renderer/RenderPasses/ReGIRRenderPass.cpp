@@ -328,7 +328,6 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		m_render_window->set_ImGui_status_text("ReGIR Prepopulation pass...");
 		launch_grid_pre_population(render_data);
 
-		m_render_window->set_ImGui_status_text("ReGIR Cell light distributions build...");
 		launch_cell_light_distributions_precomputation(render_data);
 
 		m_render_window->set_ImGui_status_text("ReGIR Correlation reduction fill...");
@@ -368,7 +367,6 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		// Upadting ReGIR's cell light distributions to take NEE++ learnt visibility into account in the distributions
 
 		// A rehashing with will empty the correlation reduction buffers so we need to fill them again
-		m_render_window->set_ImGui_status_text("ReGIR Updating cell distributions...");
 		launch_cell_light_distributions_precomputation(render_data, true);
 		launch_correlation_reduction_fill(render_data);
 		launch_pre_integration(render_data);
@@ -975,6 +973,11 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 		std::cout << "Alias tables: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << (iter + 1.0f) / iteration_needed * 100.0f << "%" << std::endl;
 
 		cell_offset += max_number_of_cells_computed_per_iteration;
+
+		std::string text = std::format("ReGIR light distributions build: {:.2f}%", (iter + 1) / (float)iteration_needed * 100.0f);
+		if (m_number_of_cells_alive_secondary_hits > 0)
+			text += " " + std::to_string(primary_hit ? 1 : 2) + "/2";
+		m_render_window->set_ImGui_status_text(text);
 	}
 
 	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(CDF_staging_u16);

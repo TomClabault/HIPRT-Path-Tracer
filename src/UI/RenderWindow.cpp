@@ -62,24 +62,20 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
-// - Search for all 'alias' in the code to make sure we didn't miss any for the ReGIR impl
 // - Can we pack the light indices of reservoirs the same way we packed the mesh indices?
 // - Should we re introduce the seed in the reservoirs instead of the float3 point on light for VRAM savings?
-// - Can we maybe encode some light distribution CDFs as uchar and some as ushort? Depending on the precision needed? Need some kind of error measure to decide what encoding to use
 // 
 // - Compare shading RIS with vis in target function vs shading all
 //		Can we have the same quality as shading all but by just using visibility in the target function and no more shenanigans ? Simplified code.t function since the cell distributions already have some guarantees?
 // - Should we have a very light ReSTIR DI pass on top of ReGIR to clean things up a bit / help with small details?
 // - Can we maybe start with a constant grid cell size for good precision and merge grid cells which have similar light distributions?
 //		- We would be merging gfrid cells by storing a list of grid cell indices that are merge into a main grid cell so each grid cell would have some kind of adjacency list of grid cells that are merged into it
-// - If we learn the visibility of the lights in the cell distribution live, we'll to recompute the distributions at some time. Maybe we can recompute the distributions fully if the number of non-zero light contributions in the distribution goes below a threshold, meaning that lmany lights in the distribution have been flagged as occluded and so we need to recompute the distribution for precision 
+// - If we learn the visibility of the lights in the cell distribution live, we'll to recompute the distributions at some time.
+//		Maybe we can recompute the distributions fully if the number of non-zero light contributions in the distribution goes below a threshold, meaning that lmany lights in the distribution have been flagged as occluded and so we need to recompute the distribution for precision 
 // - Can we have variable light distribution size per cell such that the distribution accounts for a max of 97% of the energy or whatever and save VRAM where the light distributions don't have to be so large?
 //		- Can we compress the light distributions such that they hold less than 97% Maybe 95% is enough and doesn't add much variance
-// - Maybe we want mesh integration for the meshes that have a large solid angle to the shading point?
-// - Is it the simplified BSDF ray that makes the BSDF mis not super good?
 // - Can we maybe have some heuristic on where to do multiple shading? Maybe count how many samples are occluded to detect where visibility is difficult
 // - What about sampling directly from the grid cell light distributions instead of going through ReGIR? Would it be worth it? We could do RIS at shading time on multiple samples of the light distribution
-// - Add a nice printing function for printing the progress of the ReGIR light distribution pre-process progress because it's easier to wait when we can see the progress
 // - We may need to blur spatially the light distributions to avoid the fireflies in the city many lights scene for example
 // - Mesh integration seems very good for low triangle count meshes? Maybe we should automatically use that for low triangle meshes and keep the approximation for higher triangle count meshes
 // - We should allow jittering of canonical samples but jitter in the tangent plane of the surface to avoid the big variane increase which actually comes from the missed jittered position rather than the jittering of canonical samples themselves
