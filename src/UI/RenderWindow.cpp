@@ -63,6 +63,9 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Search for all 'alias' in the code to make sure we didn't miss any for the ReGIR impl
+// - Can we pack the light indices of reservoirs the same way we packed the mesh indices?
+// - Should we re introduce the seed in the reservoirs instead of the float3 point on light for VRAM savings?
+// - Can we maybe encode some light distribution CDFs as uchar and some as ushort? Depending on the precision needed? Need some kind of error measure to decide what encoding to use
 // 
 // - Compare shading RIS with vis in target function vs shading all
 //		Can we have the same quality as shading all but by just using visibility in the target function and no more shenanigans ? Simplified code.t function since the cell distributions already have some guarantees?

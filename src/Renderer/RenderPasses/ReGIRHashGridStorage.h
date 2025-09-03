@@ -89,8 +89,8 @@ public:
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data_primary_hits;
 	ReGIRHashCellDataSoAHost<OrochiBuffer> m_hash_cell_data_secondary_hits;
 
-	ReGIRCellsLightDistributionsSoAHost<OrochiBuffer> m_cells_alias_tables_primary_hits;
-	ReGIRCellsLightDistributionsSoAHost<OrochiBuffer> m_cells_alias_tables_secondary_hits;
+	ReGIRCellsLightDistributionsSoAHost<OrochiBuffer> m_cells_light_distributions_primary_hits;
+	ReGIRCellsLightDistributionsSoAHost<OrochiBuffer> m_cells_light_distributions_secondary_hits;
 
 	float m_current_grid_min_cell_size = 0.0f;
 	float m_grid_cell_target_projected_size = 0.0f;

@@ -860,9 +860,9 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
     if (nb_cells_alive == 0)
         return;
 
-    unsigned int& last_nb_computed_cells_alias_tables = primary_hit ? m_regir_state.m_last_cells_alias_tables_compute_count_primary_hits : m_regir_state.m_last_cells_alias_tables_compute_count_secondary_hits;
+    unsigned int& last_nb_computed_cells_light_distributions = primary_hit ? m_regir_state.m_last_cells_light_distributions_compute_count_primary_hits : m_regir_state.m_last_cells_light_distributions_compute_count_secondary_hits;
 
-    unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_alias_tables;
+    unsigned int total_number_of_cells_to_compute = nb_cells_alive - last_nb_computed_cells_light_distributions;
     if (total_number_of_cells_to_compute == 0)
         return;
     unsigned int emissive_mesh_count = m_render_data.buffers.emissive_meshes_data.alias_table_count;
@@ -881,7 +881,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
         ? m_regir_state.hash_cell_data_primary_hit.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>()
         : m_regir_state.hash_cell_data_secondary_hit.m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 
-    unsigned int cell_offset = last_nb_computed_cells_alias_tables;
+    unsigned int cell_offset = last_nb_computed_cells_light_distributions;
     const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
     const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
     for (int iter = 0; iter < iteration_needed; iter++)
@@ -925,7 +925,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             });
         }
 
-        unsigned int alias_table_size = m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.light_distribution_size;
+        unsigned int light_distribution_size = m_render_data.render_settings.regir_settings.cells_distributions_primary_hits.light_distribution_size;
         unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
 
         auto upload = std::chrono::high_resolution_clock::now();
@@ -935,11 +935,11 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
             // Either the alias table size or the number of emissive meshes
             // (number of contributions per cell), whichever is the smallest
-            unsigned effective_light_distribution_size = hippt::min(alias_table_size, emissive_mesh_count);
+            unsigned effective_light_distribution_size = hippt::min(light_distribution_size, emissive_mesh_count);
 
-            // We're only going to keep the best 'alias_table_size' contributing meshes
+            // We're only going to keep the best 'light_distribution_size' contributing meshes
             // in case there are more than that, i.e. the alias table is going to be built only on
-            // the 'alias_table_size' meshes that contribute the most to the cell
+            // the 'light_distribution_size' meshes that contribute the most to the cell
             float sum_best_contributions = 0.0f;
             std::vector<float> best_contributions(effective_light_distribution_size);
             for (int contribution_index = 0; contribution_index < effective_light_distribution_size; contribution_index++)
@@ -954,7 +954,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
             assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
             // And computing the alias tables from the contributions
-            std::vector<unsigned short int> cdf_u16(alias_table_size, 0.0f);
+            std::vector<unsigned short int> cdf_u16(light_distribution_size, 0.0f);
             if (sum_best_contributions > 0.0f)
             {
                 std::vector<float> normalized(effective_light_distribution_size);
@@ -962,7 +962,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
                     normalized[pdf_index] = best_contributions[pdf_index] / sum_best_contributions;
 
                 // And computing the alias tables from the contributions
-                std::vector<float> cdf(alias_table_size, 0.0f);
+                std::vector<float> cdf(light_distribution_size, 0.0f);
                 Utils::compute_prefix_sum(normalized, cdf);
 
                 for (int proba_index = 0; proba_index < cdf.size(); proba_index++)
@@ -972,7 +972,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
                 soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>(hash_grid_cell_index * sorted_mesh_indices_packed.size(), sorted_mesh_indices_packed.begin(), sorted_mesh_indices_packed.size());
             }
 
-            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(hash_grid_cell_index * alias_table_size, cdf_u16, effective_light_distribution_size);
+            soa_host.soa.template upload_to_buffer_partial<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(hash_grid_cell_index * light_distribution_size, cdf_u16, effective_light_distribution_size);
         }
         
         auto stop_upload = std::chrono::high_resolution_clock::now();
@@ -981,7 +981,7 @@ void CPURenderer::ReGIR_compute_cells_light_distributions_internal(bool primary_
         cell_offset += max_number_of_cells_computed_per_iteration;
     }
 
-    last_nb_computed_cells_alias_tables = nb_cells_alive;
+    last_nb_computed_cells_light_distributions = nb_cells_alive;
 
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << "Distribution compute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. ";

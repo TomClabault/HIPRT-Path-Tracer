@@ -214,8 +214,8 @@ private:
 
         ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_primary_hit;
         ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_secondary_hit;
-        unsigned int m_last_cells_alias_tables_compute_count_primary_hits = 0;
-        unsigned int m_last_cells_alias_tables_compute_count_secondary_hits = 0;
+        unsigned int m_last_cells_light_distributions_compute_count_primary_hits = 0;
+        unsigned int m_last_cells_light_distributions_compute_count_secondary_hits = 0;
 
         std::vector<AtomicType<unsigned int>> grid_cell_alive;
         std::vector<unsigned int> grid_cells_alive_list;

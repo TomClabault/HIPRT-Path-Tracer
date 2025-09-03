@@ -19,7 +19,7 @@ const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_SECONDARY_HITS_KERNEL_ID 
 const std::string ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration grid fill";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID = "ReGIR Pre-integration spatial reuse";
-const std::string ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID = "ReGIR Compute cells alias tables";
+const std::string ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID = "ReGIR Compute cells alias tables";
 const std::string ReGIRRenderPass::REGIR_REHASH_KERNEL_ID = "ReGIR Rehash kernel";
 const std::string ReGIRRenderPass::REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID = "ReGIR Correlation reduction copy";
 
@@ -36,7 +36,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 	{ REGIR_PRE_INTEGRATION_KERNEL_ID , "ReGIR_Pre_integration" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Grid_Fill"},
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, "ReGIR_Spatial_Reuse"},
-	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, "ReGIR_Compute_Cells_Light_Distributions"},
+	{ REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID, "ReGIR_Compute_Cells_Light_Distributions"},
 	{ REGIR_REHASH_KERNEL_ID, "ReGIR_Rehash" },
 	{ REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID, "ReGIR_Correlation_Reduction_Copy" },
 };
@@ -52,7 +52,7 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 	{ REGIR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/PreIntegration.h" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h"},
 	{ REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h"},
-	{ REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/ComputeCellsLightDistributions.h"},
+	{ REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/ComputeCellsLightDistributions.h"},
 	{ REGIR_REHASH_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/Rehash.h" },
 	{ REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/CorrelationReductionCopy.h" },
 };
@@ -142,10 +142,10 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_SPATIAL_REUSE_ACCUMULATE_PRE_INTEGRATION, KERNEL_OPTION_TRUE);
 
-	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID] = std::make_shared<GPUKernel>();
-	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID));
-	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID));
-	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->synchronize_options_with(global_compiler_options, options_not_synchronized);
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID));
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID));
+	m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->synchronize_options_with(global_compiler_options, options_not_synchronized);
 
 
 
@@ -230,10 +230,10 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 		m_kernels[ReGIRRenderPass::REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 	}
 
-	if (!m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->has_been_compiled())
+	if (!m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->has_been_compiled())
 	{
 		updated = true;
-		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 	}
 
 
@@ -547,7 +547,7 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
 		m_hash_grid_storage.to_device(render_data);
 
-		m_last_cells_alias_tables_compute_count_primary_hits = m_last_cells_alias_tables_compute_count_secondary_hits = 0;
+		m_last_cells_light_distributions_compute_count_primary_hits = m_last_cells_light_distributions_compute_count_secondary_hits = 0;
 
 		return true;
 	}
@@ -820,10 +820,10 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 	if (nb_cells_alive == 0)
 		return false;
 
-	unsigned int& last_nb_computed_cells_alias_tables = primary_hit ? m_last_cells_alias_tables_compute_count_primary_hits : m_last_cells_alias_tables_compute_count_secondary_hits;
+	unsigned int& last_nb_computed_cells_light_distributions = primary_hit ? m_last_cells_light_distributions_compute_count_primary_hits : m_last_cells_light_distributions_compute_count_secondary_hits;
 
 	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_data.alias_table_count;
-	unsigned int total_number_of_cells_to_compute = force_recompute ? nb_cells_alive : nb_cells_alive - last_nb_computed_cells_alias_tables;
+	unsigned int total_number_of_cells_to_compute = force_recompute ? nb_cells_alive : nb_cells_alive - last_nb_computed_cells_light_distributions;
 	if (total_number_of_cells_to_compute == 0)
 		return false;
 	unsigned int max_number_of_cells_computed_per_iteration = std::floor(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
@@ -844,12 +844,15 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 	//std::vector<float> CDF_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
 	std::vector<unsigned short int> CDF_staging_u16(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
 
-	std::atomic<unsigned int> minimum_alias_table_saving = 0;
-	std::atomic<unsigned int> maximum_alias_table_saving = 0;
-	std::atomic<unsigned int> average_alias_table_saving = 0;
-	std::atomic<float> average_alias_table_energy = 0.0f;
+	// Some DEBUG statistics for estimating how much memory could be
+	// saved by "clamping" the light distributions to only X% of the
+	// incoming energy
+	std::atomic<unsigned int> minimum_light_distribution_saving = 0;
+	std::atomic<unsigned int> maximum_light_distribution_saving = 0;
+	std::atomic<unsigned int> average_light_distribution_saving = 0;
+	std::atomic<float> average_light_distribution_energy = 0.0f;
 
-	unsigned int cell_offset = force_recompute ? 0 : last_nb_computed_cells_alias_tables;
+	unsigned int cell_offset = force_recompute ? 0 : last_nb_computed_cells_light_distributions;
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
 	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
 	for (int iter = 0; iter < iteration_needed; iter++)
@@ -863,7 +866,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 		auto start = std::chrono::high_resolution_clock::now();
 		size_t contributions_left_to_compute = (total_number_of_cells_to_compute - cell_offset) * emissive_mesh_count;
 		unsigned int dispatch_size = hippt::min(contributions_left_to_compute, contribution_scratch_buffer.size());
-		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID]->launch_synchronous(64, 1, dispatch_size, 1, launch_args);
+		m_kernels[ReGIRRenderPass::REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID]->launch_synchronous(64, 1, dispatch_size, 1, launch_args);
 		auto stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Compute time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
@@ -916,7 +919,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 			// (number of contributions per cell), whichever is the smallest
 			unsigned effective_light_distribution_size = hippt::min(light_distribution_size, emissive_mesh_count);
 
-			unsigned int potential_alias_table_savings = 0;
+			unsigned int potential_light_distribution_savings = 0;
 			double sum_all_contributions = 0.0;
 			for (int contribution_index = 0; contribution_index < emissive_mesh_count; contribution_index++)
 				sum_all_contributions += contributions.at(cell_index_in_iteration * emissive_mesh_count + contribution_index);
@@ -934,14 +937,14 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 				sum_best_contributions += contribution;
 
 				if (sum_best_contributions >= 0.97f * sum_all_contributions)
-					potential_alias_table_savings++;
+					potential_light_distribution_savings++;
 			}
 
-			hippt::atomic_min(&minimum_alias_table_saving, potential_alias_table_savings);
-			hippt::atomic_max(&maximum_alias_table_saving, potential_alias_table_savings);
-			hippt::atomic_fetch_add(&average_alias_table_saving, potential_alias_table_savings);
+			hippt::atomic_min(&minimum_light_distribution_saving, potential_light_distribution_savings);
+			hippt::atomic_max(&maximum_light_distribution_saving, potential_light_distribution_savings);
+			hippt::atomic_fetch_add(&average_light_distribution_saving, potential_light_distribution_savings);
 			if (sum_all_contributions > 0.0f)
-				hippt::atomic_fetch_add(&average_alias_table_energy, sum_best_contributions / (float)sum_all_contributions);
+				hippt::atomic_fetch_add(&average_light_distribution_energy, sum_best_contributions / (float)sum_all_contributions);
 
 			// Computing the PDFs
 			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
@@ -978,12 +981,12 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 	m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESHES_INDICES>(meshes_indices_staging);
 
 	std::cout << "Alias table size: " << render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).light_distribution_size << std::endl;
-	std::cout << "Minimum alias table saving: " << minimum_alias_table_saving.load() << std::endl;
-	std::cout << "Maximum alias table saving: " << maximum_alias_table_saving.load() << std::endl;
-	std::cout << "Average alias table saving: " << (float)average_alias_table_saving.load() / (float)total_number_of_cells_to_compute << std::endl;
-	std::cout << "Average alias table energy: " << (float)average_alias_table_energy.load() / (float)total_number_of_cells_to_compute * 100.0f << "%" << std::endl;
+	std::cout << "Minimum alias table saving: " << minimum_light_distribution_saving.load() << std::endl;
+	std::cout << "Maximum alias table saving: " << maximum_light_distribution_saving.load() << std::endl;
+	std::cout << "Average alias table saving: " << (float)average_light_distribution_saving.load() / (float)total_number_of_cells_to_compute << std::endl;
+	std::cout << "Average alias table energy: " << (float)average_light_distribution_energy.load() / (float)total_number_of_cells_to_compute * 100.0f << "%" << std::endl;
 
-	last_nb_computed_cells_alias_tables = nb_cells_alive;
+	last_nb_computed_cells_light_distributions = nb_cells_alive;
 
 	auto stop_total = std::chrono::high_resolution_clock::now();
 	std::cout << "Full precomputation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_total - start_total).count() << "ms. " << std::endl << std::endl << std::endl;
@@ -1164,8 +1167,8 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 	if (m_hash_grid_storage.get_byte_size() > 0)
 		m_hash_grid_storage.reset();
 
-	m_last_cells_alias_tables_compute_count_primary_hits = 0;
-	m_last_cells_alias_tables_compute_count_secondary_hits = 0;
+	m_last_cells_light_distributions_compute_count_primary_hits = 0;
+	m_last_cells_light_distributions_compute_count_secondary_hits = 0;
 }
 
 bool ReGIRRenderPass::is_render_pass_used() const

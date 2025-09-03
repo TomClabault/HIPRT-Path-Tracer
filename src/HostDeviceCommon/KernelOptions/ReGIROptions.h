@@ -42,9 +42,9 @@
  * 
  * The bigger the size, the faster the precomputation but obviously the more memory is used
  */
-#define ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes 200000000u
+#define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxSizeBytes 200000000u
 // This one is just an helper constant computed from the one above and should not be modified directly
-#define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount (static_cast<unsigned int>(ReGIR_ComputeCellsAliasTablesScratchBufferMaxSizeBytes / sizeof(float)))
+#define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount (static_cast<unsigned int>(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxSizeBytes / sizeof(float)))
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:

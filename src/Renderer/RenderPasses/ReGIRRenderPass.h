@@ -24,7 +24,7 @@ public:
 	static const std::string REGIR_PRE_INTEGRATION_KERNEL_ID;
 	static const std::string REGIR_GRID_FILL_TEMPORAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID;
 	static const std::string REGIR_SPATIAL_REUSE_FOR_PRE_INTEGRATION_KERNEL_ID;
-	static const std::string REGIR_COMPUTE_CELLS_ALIAS_TABLES_ID;
+	static const std::string REGIR_COMPUTE_CELLS_LIGHT_DISTRIBUTIONS_ID;
 	static const std::string REGIR_REHASH_KERNEL_ID;
 	static const std::string REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID;
 
@@ -151,8 +151,8 @@ private:
 	//		alias tables 
 	// 
 	// So we need to keep track of how many alias tables we've computed already
-	unsigned int m_last_cells_alias_tables_compute_count_primary_hits = 0;
-	unsigned int m_last_cells_alias_tables_compute_count_secondary_hits = 0;
+	unsigned int m_last_cells_light_distributions_compute_count_primary_hits = 0;
+	unsigned int m_last_cells_light_distributions_compute_count_secondary_hits = 0;
 };
 
 #endif
