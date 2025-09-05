@@ -103,7 +103,10 @@ public:
 	/**
 	 * Returns the VRAM used by ReSTIR DI in MB
 	 */
-	float get_VRAM_usage() const;
+	float get_VRAM_usage_bytes() const;
+	size_t get_correlation_reduction_VRAM_usage_bytes(bool primary_hit) const;
+	size_t get_reservoirs_VRAM_usage_bytes(bool primary_hit) const;
+	size_t get_light_distibutions_VRAM_usage_bytes(bool primary_hit) const;
 
 	/**
 	 * Returns the total number of cells currently used by the hash grid
@@ -117,6 +120,8 @@ public:
 	float get_alive_cells_ratio(bool primary_hit) const;
 
 	unsigned int get_current_cell_light_distributions_size(bool primary_hit) const;
+
+	ReGIRHashGridStorage& get_hash_grid_storage();
 	
 private:
 	unsigned int m_number_of_cells_alive_primary_hits = 0;

@@ -1176,9 +1176,31 @@ bool ReGIRRenderPass::is_render_pass_used() const
 	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
 }
 
-float ReGIRRenderPass::get_VRAM_usage() const
+float ReGIRRenderPass::get_VRAM_usage_bytes() const
 {
-	return (m_hash_grid_storage.get_byte_size()) / 1000000.0f;
+	return m_hash_grid_storage.get_byte_size();
+}
+
+size_t ReGIRRenderPass::get_correlation_reduction_VRAM_usage_bytes(bool primary_hit) const
+{
+	return primary_hit ? m_hash_grid_storage.m_correlation_reduction_grid_primary_hits.get_byte_size() : 0;
+}
+
+size_t ReGIRRenderPass::get_reservoirs_VRAM_usage_bytes(bool primary_hit) const
+{
+	size_t correlation_reduction_size = get_correlation_reduction_VRAM_usage_bytes(primary_hit);
+	return m_hash_grid_storage.get_initial_grid_buffers(primary_hit).get_byte_size() 
+		+ m_hash_grid_storage.get_spatial_grid_buffers(primary_hit).get_byte_size()
+		+ m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).get_byte_size()
+		+ m_hash_grid_storage.get_async_compute_staging_buffer(primary_hit).get_byte_size()
+		+ m_hash_grid_storage.get_non_canonical_factors(primary_hit).get_byte_size()
+		+ m_hash_grid_storage.get_canonical_factors(primary_hit).get_byte_size()
+		+ correlation_reduction_size;
+}
+
+size_t ReGIRRenderPass::get_light_distibutions_VRAM_usage_bytes(bool primary_hit) const
+{
+	return m_hash_grid_storage.get_cell_light_distributions(primary_hit).get_byte_size();
 }
 
 unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const
@@ -1224,4 +1246,9 @@ float ReGIRRenderPass::get_alive_cells_ratio(bool primary_hit) const
 unsigned int ReGIRRenderPass::get_current_cell_light_distributions_size(bool primary_hit) const
 {
 	return primary_hit ? m_hash_grid_storage.m_current_cell_light_distribution_size_primary_hits : m_hash_grid_storage.m_current_cell_light_distribution_size_secondary_hits;
+}
+
+ReGIRHashGridStorage& ReGIRRenderPass::get_hash_grid_storage()
+{
+	return m_hash_grid_storage;
 }

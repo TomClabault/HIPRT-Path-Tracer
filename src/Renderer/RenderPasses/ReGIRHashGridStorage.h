@@ -38,14 +38,30 @@ public:
 	void to_device(HIPRTRenderData& render_data);
 
 	ReGIRHashGridSoAHost<OrochiBuffer>& get_initial_grid_buffers(bool primary_hit);
+	const ReGIRHashGridSoAHost<OrochiBuffer>& get_initial_grid_buffers(bool primary_hit) const;
+
 	ReGIRHashGridSoAHost<OrochiBuffer>& get_spatial_grid_buffers(bool primary_hit);
+	const ReGIRHashGridSoAHost<OrochiBuffer>& get_spatial_grid_buffers(bool primary_hit) const;
+
 	ReGIRHashGridSoAHost<OrochiBuffer>& get_async_compute_staging_buffer(bool primary_hit);
+	const ReGIRHashGridSoAHost<OrochiBuffer>& get_async_compute_staging_buffer(bool primary_hit) const;
 	ReGIRHashGridSoADevice get_async_compute_staging_buffer_device(bool primary_hit);
+
 	ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa(bool primary_hit);
+	const ReGIRHashCellDataSoAHost<OrochiBuffer>& get_hash_cell_data_soa(bool primary_hit) const;
+
 	ReGIRHashCellDataSoADevice& get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit);
+	const ReGIRHashCellDataSoADevice& get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit) const;
+
 	OrochiBuffer<float>& get_non_canonical_factors(bool primary_hit);
+	const OrochiBuffer<float>& get_non_canonical_factors(bool primary_hit) const;
+
 	OrochiBuffer<float>& get_canonical_factors(bool primary_hit);
+	const OrochiBuffer<float>& get_canonical_factors(bool primary_hit) const;
+
 	ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& get_cell_light_distributions(bool primary_hit);
+	const ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& get_cell_light_distributions(bool primary_hit) const;
+
 	unsigned int& get_total_number_of_cells(bool primary_hit);
 	unsigned int get_total_number_of_cells(bool primary_hit) const;
 

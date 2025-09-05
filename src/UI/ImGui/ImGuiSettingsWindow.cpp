@@ -1804,7 +1804,41 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::Text("Load factor: %.3f%% | %.3f%%", regir_render_pass->get_alive_cells_ratio(true) * 100.0f, regir_render_pass->get_alive_cells_ratio(false) * 100.0f);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::Text("VRAM Usage: %.3fMB (avg. %.1fB per cell)", regir_render_pass->get_VRAM_usage(), regir_render_pass->get_VRAM_usage() * 1000000.0f / ((float)regir_render_pass->get_total_number_of_cells_alive(true) + regir_render_pass->get_total_number_of_cells_alive(false)));
+		ImGui::Text("VRAM Usage: %.3fMB (avg. %.1fB per cell)", regir_render_pass->get_VRAM_usage_bytes() / 1000000.0f, regir_render_pass->get_VRAM_usage_bytes() / ((float)regir_render_pass->get_total_number_of_cells_alive(true) + regir_render_pass->get_total_number_of_cells_alive(false)));
+		ImGui::Text("VRAM Usage breakdown: ");
+		std::vector<char> tooltip_buffer(2048);
+		snprintf(tooltip_buffer.data(), 2048, "Breakdown:\n"
+			"\t- Primary hit reservoirs: %.3fMB\n"
+			"\t\t- Base reservoirs: %.3fMB\n"
+			"\t\t- Spatial reuse reservoirs: %.3fMB\n"
+			"\t\t- Cell world data: %.3fMB\n"
+			"\t\t- Async compute: %.3fMB\n"
+			"\t\t- RIS pre-integration: %.3fMB\n"
+			"\t- Primary hit light distributions: %.3fMB\n\n"
+
+			"\t- Secondary hit light distributions: %.3fMB\n"
+			"\t\t- Base reservoirs: %.3fMB\n"
+			"\t\t- Spatial reuse reservoirs: %.3fMB\n"
+			"\t\t- Cell world data: %.3fMB\n"
+			"\t\t- Async compute: %.3fMB\n"
+			"\t\t- RIS pre-integration: %.3fMB\n"
+			"\t- Secondary hit reservoirs: %.3fMB",
+			regir_render_pass->get_reservoirs_VRAM_usage_bytes(true) / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_initial_grid_buffers(true).get_byte_size() / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_spatial_grid_buffers(true).get_byte_size() / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_hash_cell_data_soa(true).get_byte_size() / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_async_compute_staging_buffer(true).get_byte_size() / 1000000.0f,
+			(regir_render_pass->get_hash_grid_storage().get_non_canonical_factors(true).get_byte_size() + regir_render_pass->get_hash_grid_storage().get_canonical_factors(true).get_byte_size()) / 1000000.0f,
+			regir_render_pass->get_light_distibutions_VRAM_usage_bytes(true) / 1000000.0f,
+
+			regir_render_pass->get_reservoirs_VRAM_usage_bytes(false) / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_initial_grid_buffers(false).get_byte_size() / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_spatial_grid_buffers(false).get_byte_size() / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_hash_cell_data_soa(false).get_byte_size() / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_async_compute_staging_buffer(false).get_byte_size() / 1000000.0f,
+			(regir_render_pass->get_hash_grid_storage().get_non_canonical_factors(false).get_byte_size() + regir_render_pass->get_hash_grid_storage().get_canonical_factors(false).get_byte_size()) / 1000000.0f,
+			regir_render_pass->get_light_distibutions_VRAM_usage_bytes(false) / 1000000.0f);
+		ImGuiRenderer::show_help_marker(tooltip_buffer.data());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 

@@ -438,20 +438,14 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 	}
 }
 
-ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid_buffers(bool primary_hit)
-{
-	return primary_hit ? m_initial_reservoirs_primary_hits_grid : m_initial_reservoirs_secondary_hits_grid;
-}
+ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid_buffers(bool primary_hit) { return primary_hit ? m_initial_reservoirs_primary_hits_grid : m_initial_reservoirs_secondary_hits_grid; }
+const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid_buffers(bool primary_hit) const { return primary_hit ? m_initial_reservoirs_primary_hits_grid : m_initial_reservoirs_secondary_hits_grid; }
 
-ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_spatial_grid_buffers(bool primary_hit)
-{
-	return primary_hit ? m_spatial_output_primary_hits_grid : m_spatial_output_secondary_hits_grid;
-}
+ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_spatial_grid_buffers(bool primary_hit) { return primary_hit ? m_spatial_output_primary_hits_grid : m_spatial_output_secondary_hits_grid; }
+const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_spatial_grid_buffers(bool primary_hit) const { return primary_hit ? m_spatial_output_primary_hits_grid : m_spatial_output_secondary_hits_grid; }
 
-ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_async_compute_staging_buffer(bool primary_hit)
-{
-	return primary_hit ? m_async_compute_staging_buffer_primary_hits : m_async_compute_staging_buffer_secondary_hits;
-}
+ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_async_compute_staging_buffer(bool primary_hit) { return primary_hit ? m_async_compute_staging_buffer_primary_hits : m_async_compute_staging_buffer_secondary_hits; }
+const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_async_compute_staging_buffer(bool primary_hit) const { return primary_hit ? m_async_compute_staging_buffer_primary_hits : m_async_compute_staging_buffer_secondary_hits; }
 
 ReGIRHashGridSoADevice ReGIRHashGridStorage::get_async_compute_staging_buffer_device(bool primary_hit)
 {
@@ -465,30 +459,20 @@ ReGIRHashGridSoADevice ReGIRHashGridStorage::get_async_compute_staging_buffer_de
 	return output_soa_device;
 }
 
-ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data_soa(bool primary_hit)
-{
-	return primary_hit ? m_hash_cell_data_primary_hits : m_hash_cell_data_secondary_hits;
-}
+ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data_soa(bool primary_hit) { return primary_hit ? m_hash_cell_data_primary_hits : m_hash_cell_data_secondary_hits; }
+const ReGIRHashCellDataSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_hash_cell_data_soa(bool primary_hit) const { return primary_hit ? m_hash_cell_data_primary_hits : m_hash_cell_data_secondary_hits; }
 
-ReGIRHashCellDataSoADevice& ReGIRHashGridStorage::get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit)
-{
-	return regir_settings.get_hash_cell_data_soa(primary_hit);
-}
+ReGIRHashCellDataSoADevice& ReGIRHashGridStorage::get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit) { return regir_settings.get_hash_cell_data_soa(primary_hit); }
+const ReGIRHashCellDataSoADevice& ReGIRHashGridStorage::get_hash_cell_data_device_soa(ReGIRSettings& regir_settings, bool primary_hit) const { return regir_settings.get_hash_cell_data_soa(primary_hit); }
 
-OrochiBuffer<float>& ReGIRHashGridStorage::get_non_canonical_factors(bool primary_hit)
-{
-	return primary_hit ? m_non_canonical_pre_integration_factors_primary_hits : m_non_canonical_pre_integration_factors_secondary_hits;
-}
+OrochiBuffer<float>& ReGIRHashGridStorage::get_non_canonical_factors(bool primary_hit) { return primary_hit ? m_non_canonical_pre_integration_factors_primary_hits : m_non_canonical_pre_integration_factors_secondary_hits; }
+const OrochiBuffer<float>& ReGIRHashGridStorage::get_non_canonical_factors(bool primary_hit) const { return primary_hit ? m_non_canonical_pre_integration_factors_primary_hits : m_non_canonical_pre_integration_factors_secondary_hits; }
 
-OrochiBuffer<float>& ReGIRHashGridStorage::get_canonical_factors(bool primary_hit)
-{
-	return primary_hit ? m_canonical_pre_integration_factors_primary_hits : m_canonical_pre_integration_factors_secondary_hits;
-}
+OrochiBuffer<float>& ReGIRHashGridStorage::get_canonical_factors(bool primary_hit) { return primary_hit ? m_canonical_pre_integration_factors_primary_hits : m_canonical_pre_integration_factors_secondary_hits; }
+const OrochiBuffer<float>& ReGIRHashGridStorage::get_canonical_factors(bool primary_hit) const { return primary_hit ? m_canonical_pre_integration_factors_primary_hits : m_canonical_pre_integration_factors_secondary_hits; }
 
-ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_cell_light_distributions(bool primary_hit)
-{
-	return primary_hit ? m_cells_light_distributions_primary_hits : m_cells_light_distributions_secondary_hits;
-}
+ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_cell_light_distributions(bool primary_hit) { return primary_hit ? m_cells_light_distributions_primary_hits : m_cells_light_distributions_secondary_hits; }
+const ReGIRCellsLightDistributionsSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_cell_light_distributions(bool primary_hit) const { return primary_hit ? m_cells_light_distributions_primary_hits : m_cells_light_distributions_secondary_hits; }
 
 unsigned int& ReGIRHashGridStorage::get_total_number_of_cells(bool primary_hit)
 {
