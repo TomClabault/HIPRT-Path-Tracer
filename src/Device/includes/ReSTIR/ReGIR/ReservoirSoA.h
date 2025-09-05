@@ -8,12 +8,18 @@
 
 #include "Device/includes/ReSTIR/ReGIR/Reservoir.h"
 
+#ifndef __KERNELCC__
+template <template <typename> typename DataContainer>
+struct ReGIRHashGridSoAHost;
+#endif
+
 struct ReGIRSampleSoADevice
 {
+	using ReGIRSampleEmissiveTriangleIndicesPackingType = unsigned long long int;
+
 	HIPRT_HOST_DEVICE void store_sample(int linear_reservoir_index, const ReGIRSample& sample)
 	{
-		emissive_triangle_index[linear_reservoir_index] = sample.emissive_triangle_index;
-		// random_seed[linear_reservoir_index] = sample.random_seed;
+		set_emissive_triangle_index(linear_reservoir_index, sample.emissive_triangle_global_index);
 		point_on_light[linear_reservoir_index] = sample.point_on_light;
 	}
 
@@ -21,17 +27,100 @@ struct ReGIRSampleSoADevice
 	{
 		ReGIRSample sample;
 
-		sample.emissive_triangle_index = emissive_triangle_index[linear_reservoir_index];
-		// sample.random_seed = random_seed[linear_reservoir_index];
+		sample.emissive_triangle_global_index = get_emissive_triangle_index(linear_reservoir_index);
 		sample.point_on_light = point_on_light[linear_reservoir_index];
 
 		return sample;
 	}
 
-	int* emissive_triangle_index = nullptr;
-	// Random seed for generating the point on the light
-	// unsigned int* random_seed = nullptr;
 	float3* point_on_light = nullptr;
+
+private:
+	AtomicType<ReGIRSampleEmissiveTriangleIndicesPackingType>* emissive_triangle_indices_packed = nullptr;
+
+	unsigned int bits_per_emissive_triangle_global_index = 0;
+
+	/**
+	 * Bitwise AND the value at 'emissive_triangle_indices_packed[element_index]' with 'clear_mask'
+	 * and then bitwise OR with 'bits' atomically
+	 */
+	HIPRT_DEVICE void update_element_atomically(unsigned int element_index, ReGIRSampleEmissiveTriangleIndicesPackingType clear_mask, ReGIRSampleEmissiveTriangleIndicesPackingType bits) const
+	{
+		ReGIRSampleEmissiveTriangleIndicesPackingType old_val, new_val;
+
+		do {
+			// Current value
+			old_val = hippt::atomic_load(&emissive_triangle_indices_packed[element_index]);
+
+			// Clear and set
+			new_val = (old_val & clear_mask) | bits;
+		} while (hippt::atomic_compare_exchange(&emissive_triangle_indices_packed[element_index], old_val, new_val) != old_val); // attempt update until success
+	}
+
+	HIPRT_DEVICE void set_emissive_triangle_index(unsigned int linear_reservoir_index, unsigned int emissive_triangle_global_index) const
+	{
+		unsigned int bit_offset_start_in_element = (linear_reservoir_index * bits_per_emissive_triangle_global_index) % (sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8);
+		unsigned int element_index = linear_reservoir_index * bits_per_emissive_triangle_global_index / (sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8);
+
+		if (bit_offset_start_in_element + bits_per_emissive_triangle_global_index > sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8)
+		{
+			// If the index is straddling two differents elements
+
+			unsigned int bits_in_first_element = sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8 - bit_offset_start_in_element;
+			unsigned int bits_in_second_element = bits_per_emissive_triangle_global_index - bits_in_first_element;
+
+			ReGIRSampleEmissiveTriangleIndicesPackingType bits_in_first_element_mask = (1 << bits_in_first_element) - 1;
+			ReGIRSampleEmissiveTriangleIndicesPackingType bits_in_second_element_mask = (1 << bits_in_second_element) - 1;
+
+			ReGIRSampleEmissiveTriangleIndicesPackingType first_element = emissive_triangle_indices_packed[element_index];
+			ReGIRSampleEmissiveTriangleIndicesPackingType second_element = emissive_triangle_indices_packed[element_index + 1];
+
+			ReGIRSampleEmissiveTriangleIndicesPackingType clear_mask_element_1 = ~(bits_in_first_element_mask << bit_offset_start_in_element);
+			ReGIRSampleEmissiveTriangleIndicesPackingType bits_element_1 = (emissive_triangle_global_index & bits_in_first_element_mask) << bit_offset_start_in_element;
+			update_element_atomically(element_index, clear_mask_element_1, bits_element_1);
+
+			ReGIRSampleEmissiveTriangleIndicesPackingType clear_mask_element_2 = ~bits_in_second_element_mask;
+			ReGIRSampleEmissiveTriangleIndicesPackingType bits_element_2 = (emissive_triangle_global_index >> bits_in_first_element) & bits_in_second_element_mask;
+			update_element_atomically(element_index + 1, clear_mask_element_2, bits_element_2);
+		}
+		else
+		{
+			// Packed mesh index not straddling
+			ReGIRSampleEmissiveTriangleIndicesPackingType clear_mask = ~(static_cast<ReGIRSampleEmissiveTriangleIndicesPackingType>((1 << bits_per_emissive_triangle_global_index) - 1) << bit_offset_start_in_element);
+			ReGIRSampleEmissiveTriangleIndicesPackingType bits = static_cast<ReGIRSampleEmissiveTriangleIndicesPackingType>(emissive_triangle_global_index & ((1 << bits_per_emissive_triangle_global_index) - 1)) << bit_offset_start_in_element;
+
+			// Updating the bits atomically
+			update_element_atomically(element_index, clear_mask, bits);
+		}
+	}
+
+	HIPRT_DEVICE unsigned int get_emissive_triangle_index(unsigned int linear_reservoir_index) const
+	{
+		unsigned int bit_offset_start_in_element = (linear_reservoir_index * bits_per_emissive_triangle_global_index) % (sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8);
+		unsigned int element_index = linear_reservoir_index * bits_per_emissive_triangle_global_index / (sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8);
+
+		if (bit_offset_start_in_element + bits_per_emissive_triangle_global_index > sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8)
+		{
+			// If the mesh index is straddling two differents elements
+
+			unsigned int bits_in_first_element = sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8 - bit_offset_start_in_element;
+			unsigned int bits_in_second_element = bits_per_emissive_triangle_global_index - bits_in_first_element;
+
+			unsigned int bits_in_first_element_mask = (1 << bits_in_first_element) - 1;
+			unsigned int bits_in_second_element_mask = (1 << bits_in_second_element) - 1;
+
+			unsigned int first_part = (emissive_triangle_indices_packed[element_index] >> bit_offset_start_in_element) & bits_in_first_element_mask;
+			unsigned int second_part = (emissive_triangle_indices_packed[element_index + 1]) & bits_in_second_element_mask;
+
+			return first_part | (second_part << bits_in_first_element);
+		}
+		else
+			// Packed mesh index not straddling, just need to fetch the bits
+			return (emissive_triangle_indices_packed[element_index] >> bit_offset_start_in_element) & ((1 << bits_per_emissive_triangle_global_index) - 1);
+	}
+
+	template <template <typename> typename DataContainer>
+	friend struct ReGIRHashGridSoAHost;
 };
 
 struct ReGIRReservoirSoADevice

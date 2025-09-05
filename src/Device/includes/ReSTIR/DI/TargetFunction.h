@@ -38,7 +38,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F ReSTIR_DI_get_light_sample_emission(c
 	}
 	else
 	{
-		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
+		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_global_index];
 		sample_emission = render_data.buffers.materials_buffer.get_emission(material_index);
 	}
 
@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F ReSTIR_DI_get_light_sample_emission(c
 template <bool withVisibility>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
 {
-	if (sample.emissive_triangle_index == -1 && !sample.is_envmap_sample())
+	if (sample.emissive_triangle_global_index == -1 && !sample.is_envmap_sample())
 		// No sample
 		return 0.0f;
 
@@ -70,7 +70,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	float geometry_term = 1.0f;
 	if (!sample.is_envmap_sample())
 	{
-		float3 emissive_triangle_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, sample.emissive_triangle_index));
+		float3 emissive_triangle_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, sample.emissive_triangle_global_index));
 		geometry_term = compute_cosine_term_at_light_source(emissive_triangle_normal, -sample_direction);
 		geometry_term /= hippt::square(distance_to_light);
 	}

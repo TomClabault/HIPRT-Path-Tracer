@@ -24,8 +24,8 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
     for (int i = 0; i < ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount; i++)
     {
         float sample_PDF;
-        int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
-        LightSampleInformation mesh_light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+        int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
+        LightSampleInformation mesh_light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
 
         sample_PDF *= mesh_light_sample.area_measure_pdf;
 

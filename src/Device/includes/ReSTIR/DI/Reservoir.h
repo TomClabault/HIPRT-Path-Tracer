@@ -26,7 +26,7 @@ struct ReSTIRDISample
     float3 point_on_light_source = { 0, 0, 0 };
 
     // Global primitive index corresponding to the emissive triangle sampled
-    int emissive_triangle_index = -1;
+    int emissive_triangle_global_index = -1;
 
     float target_function = 0.0f;
 

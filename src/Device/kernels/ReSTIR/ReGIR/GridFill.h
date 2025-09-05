@@ -37,10 +37,10 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
     // Now that we have importance sampled a mesh, we're importance sampling a triangle
     // on that mesh
     float triangle_PDF;
-    int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+    int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
 
-    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
-    if (light_sample.emissive_triangle_index == -1)
+    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+    if (light_sample.emissive_triangle_global_index == -1)
         // Probably a degenerate triangle
         return LightSampleInformation();
 
@@ -89,11 +89,11 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
     ReGIRPresampledLight light_sample = regir_settings.sample_one_presampled_light(hash_grid_cell_index, reservoir_index_in_cell, primary_hit, presampled_light_pdf, rng);
 
     LightSampleInformation full_sample_information;
-    full_sample_information.emissive_triangle_index = light_sample.emissive_triangle_index;
+    full_sample_information.emissive_triangle_global_index = light_sample.emissive_triangle_global_index;
     full_sample_information.light_source_normal = light_sample.normal.unpack();
      full_sample_information.light_area = light_sample.triangle_area;
     //full_sample_information.emission = light_sample.emission;
-    full_sample_information.emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[light_sample.emissive_triangle_index]);
+    full_sample_information.emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[light_sample.emissive_triangle_global_index]);
     full_sample_information.point_on_light = light_sample.point_on_light;
 
     // PDF of that point on that triangle
@@ -128,7 +128,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         else
             light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, hash_grid_cell_index, primary_hit, rng);
 
-        if (light_sample.emissive_triangle_index == -1)
+        if (light_sample.emissive_triangle_global_index == -1)
             continue;
 
         float target_function;
@@ -171,11 +171,11 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
             EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
 
             float triangle_PDF;
-            int emissive_triangle_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
-            if (emissive_triangle_index == -1)
+            int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+            if (emissive_triangle_global_index == -1)
                 continue;
 
-            LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+            LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
             // That point on this triangle on that emissive mesh
             light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
 
@@ -214,7 +214,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
         else
             light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
 
-        if (light_sample.emissive_triangle_index == -1)
+        if (light_sample.emissive_triangle_global_index == -1)
             continue;
 
         float target_function;
@@ -319,9 +319,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
         ReGIRReservoir output_reservoir;
 
         ReGIRGridFillSurface cell_surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
-
-        /*if (hash_grid_cell_index == 15950)
-            std::cout << std::endl;*/
 
         // Grid fill
 #ifdef __KERNELCC__

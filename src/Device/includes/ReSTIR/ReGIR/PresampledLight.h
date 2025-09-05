@@ -11,7 +11,7 @@
 struct ReGIRPresampledLight
 {
 	// Index in the whole scene of the triangle sampled 
-	int emissive_triangle_index = -1;
+	int emissive_triangle_global_index = -1;
 
 	// Area of the sampled triangle
 	float triangle_area = 0.0f;

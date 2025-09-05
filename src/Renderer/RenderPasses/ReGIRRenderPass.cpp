@@ -966,7 +966,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 				std::copy(sorted_mesh_indices_packed.begin(), sorted_mesh_indices_packed.end(), meshes_indices_staging.begin() + hash_grid_cell_index * ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_mesh_count, effective_light_distribution_size));
 			}
 
-			//std::copy(cdf.begin(), cdf.end(), CDF_staging.begin() + hash_grid_cell_index * light_distribution_size);
 			std::copy(cdf_u16.begin(), cdf_u16.end(), CDF_staging_u16.begin() + hash_grid_cell_index * light_distribution_size);
 		}
 		stop = std::chrono::high_resolution_clock::now();

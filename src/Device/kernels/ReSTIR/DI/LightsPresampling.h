@@ -47,7 +47,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
     {
         presampled_light.point_on_light_source = light_sample.point_on_light;
         presampled_light.light_source_normal = light_sample.light_source_normal;
-        presampled_light.emissive_triangle_index = light_sample.emissive_triangle_index;
+        presampled_light.emissive_triangle_global_index = light_sample.emissive_triangle_global_index;
 
         // PDF in area measure
         presampled_light.pdf = light_sample.area_measure_pdf;

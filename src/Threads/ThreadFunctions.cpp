@@ -245,10 +245,10 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
             float3 average_normal = make_float3(0.0f, 0.0f, 0.0f);
             for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
             {
-                int emissive_triangle_index = parsed_scene.emissive_triangles_primitive_indices.at(mesh_offset + face_index);
-                float3 vertex_1 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 0]];
-                float3 vertex_2 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 1]];
-                float3 vertex_3 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_index * 3 + 2]];
+                int emissive_triangle_global_index = parsed_scene.emissive_triangles_primitive_indices.at(mesh_offset + face_index);
+                float3 vertex_1 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 0]];
+                float3 vertex_2 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 1]];
+                float3 vertex_3 = parsed_scene.vertices_positions[parsed_scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 2]];
 
                 // Using the triangle class to easily compute the area of the triangle
                 float3 face_normal = hippt::cross(vertex_2 - vertex_1, vertex_3 - vertex_1);

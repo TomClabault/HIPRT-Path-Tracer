@@ -22,7 +22,7 @@
 
 struct ReGIRPresampledLightsSoADevice
 {
-	int* emissive_triangle_index = nullptr;
+	int* emissive_triangle_global_index = nullptr;
 
 	float* light_area = nullptr;
 
@@ -45,7 +45,7 @@ struct ReGIRGridFillPresampledLights
 		unsigned int index_in_subset = (hash_grid_cell_index * reservoir_count_per_grid_cell + reservoir_index_in_cell) % subset_size;
 
 		ReGIRPresampledLight sample;
-		sample.emissive_triangle_index = presampled_lights_soa.emissive_triangle_index[random_subset * subset_size + index_in_subset];
+		sample.emissive_triangle_global_index = presampled_lights_soa.emissive_triangle_global_index[random_subset * subset_size + index_in_subset];
 		sample.triangle_area = presampled_lights_soa.light_area[random_subset * subset_size + index_in_subset];
 		sample.point_on_light = presampled_lights_soa.point_on_light[random_subset * subset_size + index_in_subset];
 		sample.normal = presampled_lights_soa.light_normal[random_subset * subset_size + index_in_subset];
@@ -58,7 +58,7 @@ struct ReGIRGridFillPresampledLights
 
 	HIPRT_DEVICE void store_one_presampled_light(const ReGIRPresampledLight& presampled_light, unsigned int presampled_light_index)
 	{
-		presampled_lights_soa.emissive_triangle_index[presampled_light_index] = presampled_light.emissive_triangle_index;
+		presampled_lights_soa.emissive_triangle_global_index[presampled_light_index] = presampled_light.emissive_triangle_global_index;
 		presampled_lights_soa.light_area[presampled_light_index] = presampled_light.triangle_area;
 		presampled_lights_soa.point_on_light[presampled_light_index] = presampled_light.point_on_light;
 		presampled_lights_soa.light_normal[presampled_light_index] = presampled_light.normal;

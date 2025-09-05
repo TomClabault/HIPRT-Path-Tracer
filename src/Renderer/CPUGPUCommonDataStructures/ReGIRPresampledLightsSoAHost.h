@@ -53,7 +53,7 @@ struct ReGIRPresampledLightsSoAHost
 
 	void to_device(ReGIRPresampledLightsSoADevice& soa_device)
 	{
-		soa_device.emissive_triangle_index = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_TRIANGLE_INDEX>();
+		soa_device.emissive_triangle_global_index = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_TRIANGLE_INDEX>();
 		soa_device.light_area = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_LIGHT_AREA>();
 		soa_device.point_on_light = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_POINT_ON_LIGHT>();
 		soa_device.light_normal = m_hash_cell_data.template get_buffer_data_ptr<ReGIRPresampledLightsSoAHostBuffers::REGIR_PRESAMPLED_LIGHTS_LIGHT_NORMAL>();

@@ -51,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
     ReSTIRDIPresampledLight presampled_light_sample = light_presampling_settings.light_samples[light_sample_index];
 
     ReSTIRDISample light_sample;
-    light_sample.emissive_triangle_index = presampled_light_sample.emissive_triangle_index;
+    light_sample.emissive_triangle_global_index = presampled_light_sample.emissive_triangle_global_index;
     light_sample.point_on_light_source = presampled_light_sample.point_on_light_source;
     light_sample.flags = presampled_light_sample.flags;
 
@@ -107,7 +107,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
-        light_sample.emissive_triangle_index = light_sample_info.emissive_triangle_index;
+        light_sample.emissive_triangle_global_index = light_sample_info.emissive_triangle_global_index;
         light_sample.point_on_light_source = light_sample_info.point_on_light;
         out_sample_pdf = light_sample_info.area_measure_pdf;
 
@@ -168,7 +168,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
         // the envmap
         out_sample_pdf *= envmap_candidate_probability;
 
-        light_sample.emissive_triangle_index = -1;
+        light_sample.emissive_triangle_global_index = -1;
         // Storing in envmap space
         light_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, envmap_sampled_direction);
         light_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
@@ -243,7 +243,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
                     light_pdf_solid_angle = light_pdf_area_measure;
                 else
                 {
-                    float3 light_normal = get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_index);
+                    float3 light_normal = get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
                     float normal_length = hippt::length(light_normal);
                     float light_area = normal_length * 0.5f;
                     light_normal /= normal_length;
@@ -333,7 +333,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 surface.view_direction = view_direction;
 
                 ReSTIRDISample bsdf_RIS_sample;
-                bsdf_RIS_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
+                bsdf_RIS_sample.emissive_triangle_global_index = shadow_light_ray_hit_info.hit_prim_index;
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
                 bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
@@ -408,7 +408,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     surface.view_direction = view_direction;
 
                     ReSTIRDISample bsdf_RIS_sample;
-                    bsdf_RIS_sample.emissive_triangle_index = -1;
+                    bsdf_RIS_sample.emissive_triangle_global_index = -1;
                     // Storing in envmap space
                     bsdf_RIS_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, bsdf_sampled_direction);
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;

@@ -14,7 +14,7 @@
 struct LightSampleInformation
 {
     // Index of the triangle in the whole scene (not just in the emissive triangles buffer)
-    int emissive_triangle_index = -1;
+    int emissive_triangle_global_index = -1;
 
     float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
     float light_area = 1.0f;

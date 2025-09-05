@@ -75,7 +75,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		// we don't want to resize the buffers while the async grid fill is running
 		m_regir_render_pass->synchronize_async_compute();
 
-		get_initial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+		get_initial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit), m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 		get_hash_cell_data_soa(primary_hit).resize(get_total_number_of_cells(primary_hit));
 
@@ -112,7 +112,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		if (needs_spatial_grid_resize)
 		{
 			// Resizing the spatial buffer
-			get_spatial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+			get_spatial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit), m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 			updated = true;
 		}
@@ -129,7 +129,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		bool needs_async_grid_resize = async_grid_not_allocated || grid_res_changed || reservoirs_per_cell_changed;
 
 		if (needs_async_grid_resize)
-			get_async_compute_staging_buffer(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+			get_async_compute_staging_buffer(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit), m_regir_render_pass->get_renderer()->get_total_triangle_count());
 	}
 	else
 	{
@@ -147,7 +147,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 			if (needs_correlation_reduction_grid_resize)
 			{
-				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.correlation_reduction.correlation_reduction_factor);
+				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.correlation_reduction.correlation_reduction_factor, m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 				m_correlation_reduction_current_grid_offset = 0;
 				m_correlation_reduction_frames_available = 0;
@@ -226,7 +226,7 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 
 			// Allocating a larger hash table
 			ReGIRHashGridSoAHost<OrochiBuffer> new_hash_grid_soa;
-			new_hash_grid_soa.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+			new_hash_grid_soa.resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit), m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 			ReGIRHashCellDataSoAHost<OrochiBuffer> new_hash_cell_data;
 			new_hash_cell_data.resize(get_total_number_of_cells(primary_hit));
@@ -241,17 +241,17 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 
 			get_initial_grid_buffers(primary_hit) = std::move(new_hash_grid_soa);
 			if (regir_settings.spatial_reuse.do_spatial_reuse)
-				get_spatial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+				get_spatial_grid_buffers(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit), m_regir_render_pass->get_renderer()->get_total_triangle_count());
 			if (regir_settings.correlation_reduction.do_correlation_reduction && primary_hit)
 			{
-				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.correlation_reduction.correlation_reduction_factor);
+				m_correlation_reduction_grid_primary_hits.resize(get_total_number_of_cells(true), regir_settings.get_number_of_reservoirs_per_cell(true) * regir_settings.correlation_reduction.correlation_reduction_factor, m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 				m_correlation_reduction_current_grid_offset = 0;
 				m_correlation_reduction_frames_available = 0;
 			}
 
 			if (regir_settings.do_asynchronous_compute)
-				get_async_compute_staging_buffer(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit));
+				get_async_compute_staging_buffer(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.get_number_of_reservoirs_per_cell(primary_hit), m_regir_render_pass->get_renderer()->get_total_triangle_count());
 
 			get_hash_cell_data_soa(primary_hit) = std::move(new_hash_cell_data);
 

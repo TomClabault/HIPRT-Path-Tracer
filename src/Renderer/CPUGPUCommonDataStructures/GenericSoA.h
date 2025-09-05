@@ -62,6 +62,12 @@ struct GenericSoA
         resize_with_exclusions_internal(new_element_count, excluded_buffer_indices, std::index_sequence_for<Types...>{});
     }
 
+    template<int bufferIndex>
+    void resize_one_buffer(std::size_t new_element_count)
+    {
+        resize_buffer_internal(get_buffer<bufferIndex>(), new_element_count);
+    }
+
     std::size_t get_byte_size() const
     {
         std::size_t total = 0;

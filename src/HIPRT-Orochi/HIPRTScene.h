@@ -176,7 +176,8 @@ struct HIPRTScene
 	std::vector<bool> material_has_opaque_base_color_texture;
 	OrochiBuffer<unsigned char> material_opaque;
 
-	int emissive_triangles_count = 0;
+	unsigned int emissive_triangles_count = 0;
+	unsigned int total_triangle_count = 0;
 	OrochiBuffer<int> emissive_triangles_primitive_indices;
 	OrochiBuffer<int> emissive_triangles_indices_and_emissive_textures;
 	OrochiBuffer<float> emissive_power_alias_table_probas;

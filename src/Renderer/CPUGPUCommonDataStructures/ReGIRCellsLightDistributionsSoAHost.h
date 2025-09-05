@@ -15,7 +15,6 @@ using ReGIRCellsLightDistributionsMeshIndicesPackingType = ReGIRCellsLightDistri
 class ReGIRCellsLightDistributionsHostUtils
 {
 public:
-
 	static unsigned int get_bits_per_packed_mesh_index(unsigned int emissive_mesh_count)
 	{
 		return std::ceil(std::log2(emissive_mesh_count));

@@ -58,8 +58,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 861
-#define DEBUG_PIXEL_Y 545
+#define DEBUG_PIXEL_X 411
+#define DEBUG_PIXEL_Y 336
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -111,12 +111,12 @@ void CPURenderer::resize_buffers()
 
     m_regir_state.presampled_lights.resize(m_render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count());
 
-    m_regir_state.grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true));
-    m_regir_state.spatial_grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true));
+    m_regir_state.grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true), m_triangle_buffer.size());
+    m_regir_state.spatial_grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true), m_triangle_buffer.size());
     m_regir_state.hash_cell_data_primary_hit.resize(new_cell_count_primary_hits);
 
-    m_regir_state.grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false));
-    m_regir_state.spatial_grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false));
+    m_regir_state.grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false), m_triangle_buffer.size());
+    m_regir_state.spatial_grid_buffer_secondary_hit.resize(new_cell_count_secondary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(false), m_triangle_buffer.size());
     m_regir_state.hash_cell_data_secondary_hit.resize(new_cell_count_secondary_hits);
 
     m_regir_state.non_canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_primary_hit.end(), 0.0f);
@@ -132,7 +132,7 @@ void CPURenderer::resize_buffers()
     m_regir_state.canonical_pre_integration_factors_secondary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_secondary_hit.begin(), m_regir_state.canonical_pre_integration_factors_secondary_hit.end(), 0.0f);
 
     if (m_render_data.render_settings.regir_settings.correlation_reduction.do_correlation_reduction)
-        m_regir_state.correlation_reduction_grid.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) * m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor);
+        m_regir_state.correlation_reduction_grid.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true) * m_render_data.render_settings.regir_settings.correlation_reduction.correlation_reduction_factor, m_triangle_buffer.size());
 
 
 
@@ -454,12 +454,12 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 
             for (int i = 0; i < scene.emissive_triangles_primitive_indices.size(); i++)
             {
-                int emissive_triangle_index = scene.emissive_triangles_primitive_indices[i];
+                int emissive_triangle_global_index = scene.emissive_triangles_primitive_indices[i];
 
                 // Computing the area of the triangle
-                float3 vertex_A = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 0]];
-                float3 vertex_B = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 1]];
-                float3 vertex_C = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_index * 3 + 2]];
+                float3 vertex_A = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 0]];
+                float3 vertex_B = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 1]];
+                float3 vertex_C = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 2]];
 
                 float3 AB = vertex_B - vertex_A;
                 float3 AC = vertex_C - vertex_A;
@@ -468,7 +468,7 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
                 float length_normal = hippt::length(normal);
                 float triangle_area = 0.5f * length_normal;
 
-                int mat_index = scene.material_indices[emissive_triangle_index];
+                int mat_index = scene.material_indices[emissive_triangle_global_index];
                 float emission_luminance = scene.materials[mat_index].emission.luminance() * scene.materials[mat_index].emission_strength * scene.materials[mat_index].global_emissive_factor;
 
                 float area_power = emission_luminance * triangle_area;

@@ -12,7 +12,7 @@
 
 struct ReGIRSample
 {
-	int emissive_triangle_index = -1; // Only needed for ReSTIR DI
+	int emissive_triangle_global_index = -1; // Only needed for ReSTIR DI
 	float3 point_on_light;
 
 	// Note: the target function isn't stored in the sample SoA, it's just there during the sampling process
@@ -24,7 +24,7 @@ struct ReGIRReservoir
 	static constexpr float VISIBILITY_REUSE_KILLED_UCW = -42.0f;
 	static constexpr float UNDEFINED_UCW = -4242.0f;
 	
-	HIPRT_DEVICE bool stream_sample_raw(float mis_weight, float target_function, float source_pdf, int emissive_triangle_index, float3 point_on_light, Xorshift32Generator& rng)
+	HIPRT_DEVICE bool stream_sample_raw(float mis_weight, float target_function, float source_pdf, int emissive_triangle_global_index, float3 point_on_light, Xorshift32Generator& rng)
 	{
 		float resampling_weight = mis_weight * target_function / source_pdf;
 
@@ -32,7 +32,7 @@ struct ReGIRReservoir
 
 		if (rng() < resampling_weight / weight_sum)
 		{
-			sample.emissive_triangle_index = emissive_triangle_index;
+			sample.emissive_triangle_global_index = emissive_triangle_global_index;
 			sample.point_on_light = point_on_light;
 
 			sample.target_function = target_function;
@@ -45,7 +45,7 @@ struct ReGIRReservoir
 
 	HIPRT_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
 	{
-		return stream_sample_raw(mis_weight, target_function, source_pdf, light_sample.emissive_triangle_index, light_sample.point_on_light, rng);
+		return stream_sample_raw(mis_weight, target_function, source_pdf, light_sample.emissive_triangle_global_index, light_sample.point_on_light, rng);
 	}
 
 	HIPRT_DEVICE bool stream_reservoir(float mis_weight, float target_function, const ReGIRReservoir& other_reservoir, Xorshift32Generator& rng)

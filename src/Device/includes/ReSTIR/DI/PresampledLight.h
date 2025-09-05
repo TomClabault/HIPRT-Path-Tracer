@@ -14,7 +14,7 @@
 struct ReSTIRDIPresampledLight
 {
 	// Global primitive index corresponding to the emissive triangle sampled
-	int emissive_triangle_index = -1;
+	int emissive_triangle_global_index = -1;
 
 	// For envmap samples, this 'point_on_light_source' is the envmap direction in *envmap space*
 	// A sample is an envmap sample if 'flags' contains 'RESTIR_DI_FLAGS_ENVMAP_SAMPLE'

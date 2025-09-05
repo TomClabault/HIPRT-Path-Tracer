@@ -254,12 +254,12 @@ void GPURenderer::compute_emissives_power_alias_table(
 
 		for (int i = 0; i < emissive_triangle_indices.size(); i++)
 		{
-			int emissive_triangle_index = emissive_triangle_indices[i];
+			int emissive_triangle_global_index = emissive_triangle_indices[i];
 
 			// Computing the area of the triangle
-			float3 vertex_A = vertices_positions[triangles_indices[emissive_triangle_index * 3 + 0]];
-			float3 vertex_B = vertices_positions[triangles_indices[emissive_triangle_index * 3 + 1]];
-			float3 vertex_C = vertices_positions[triangles_indices[emissive_triangle_index * 3 + 2]];
+			float3 vertex_A = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 0]];
+			float3 vertex_B = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 1]];
+			float3 vertex_C = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 2]];
 
 			float3 AB = vertex_B - vertex_A;
 			float3 AC = vertex_C - vertex_A;
@@ -268,7 +268,7 @@ void GPURenderer::compute_emissives_power_alias_table(
 			float length_normal = hippt::length(normal);
 			float triangle_area = 0.5f * length_normal;
 
-			int mat_index = material_indices[emissive_triangle_index];
+			int mat_index = material_indices[emissive_triangle_global_index];
 			float emission_luminance = materials[mat_index].emission.luminance() * materials[mat_index].emission_strength * materials[mat_index].global_emissive_factor;
 
 			float area_power = emission_luminance * triangle_area;
@@ -828,6 +828,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	m_hiprt_scene.whole_scene_BLAS.upload_triangle_indices(scene.triangles_vertex_indices);
 	m_hiprt_scene.whole_scene_BLAS.upload_vertices_positions(scene.vertices_positions);
 	m_hiprt_scene.whole_scene_BLAS.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
+	m_hiprt_scene.total_triangle_count = scene.triangles_vertex_indices.size() / 3;
 	rebuild_bvh(m_hiprt_scene.whole_scene_BLAS, hiprtBuildFlagBitPreferHighQualityBuild, true, true);
 
 	m_hiprt_scene.emissive_triangles_BLAS.upload_triangle_indices(scene.emissive_triangle_vertex_indices);
@@ -1070,6 +1071,11 @@ const std::vector<int>& GPURenderer::get_mesh_material_indices()
 unsigned int GPURenderer::get_emissive_mesh_count() const
 {
 	return m_hiprt_scene.emissive_meshes_data.get_emissive_mesh_count();
+}
+
+unsigned int GPURenderer::get_total_triangle_count() const
+{
+	return m_hiprt_scene.total_triangle_count;
 }
 
 Camera& GPURenderer::get_camera()

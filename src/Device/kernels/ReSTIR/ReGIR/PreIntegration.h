@@ -56,10 +56,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 
             LightSampleInformation light_sample;
             light_sample.area_measure_pdf = 1.0f / non_canonical_reservoir.UCW;
-            light_sample.emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
-            light_sample.emissive_triangle_index = non_canonical_reservoir.sample.emissive_triangle_index;
-            light_sample.light_area = triangle_area(render_data, non_canonical_reservoir.sample.emissive_triangle_index);
-            light_sample.light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_index));
+            light_sample.emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
+            light_sample.emissive_triangle_global_index = non_canonical_reservoir.sample.emissive_triangle_global_index;
+            light_sample.light_area = triangle_area(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
+            light_sample.light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index));
             light_sample.point_on_light = non_canonical_reservoir.sample.point_on_light;
 
             if (light_sample.area_measure_pdf <= 0.0f)
@@ -88,10 +88,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 
             LightSampleInformation light_sample;
             light_sample.area_measure_pdf = 1.0f / canonical_reservoir.UCW;
-            light_sample.emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_index);
-            light_sample.emissive_triangle_index = canonical_reservoir.sample.emissive_triangle_index;
-            light_sample.light_area = triangle_area(render_data, canonical_reservoir.sample.emissive_triangle_index);
-            light_sample.light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, canonical_reservoir.sample.emissive_triangle_index));
+            light_sample.emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
+            light_sample.emissive_triangle_global_index = canonical_reservoir.sample.emissive_triangle_global_index;
+            light_sample.light_area = triangle_area(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
+            light_sample.light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, canonical_reservoir.sample.emissive_triangle_global_index));
             light_sample.point_on_light = canonical_reservoir.sample.point_on_light;
 
             if (light_sample.area_measure_pdf <= 0.0f)

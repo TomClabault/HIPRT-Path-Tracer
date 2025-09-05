@@ -36,7 +36,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Light_Presampling(HIPRTRenderData ren
     LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
 
     ReGIRPresampledLight presampled_light;
-    presampled_light.emissive_triangle_index = light_sample.emissive_triangle_index;
+    presampled_light.emissive_triangle_global_index = light_sample.emissive_triangle_global_index;
     presampled_light.point_on_light = light_sample.point_on_light;
     presampled_light.normal.pack(light_sample.light_source_normal);
     presampled_light.triangle_area = light_sample.light_area;
