@@ -929,7 +929,10 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 ray_payload, point_on_light_3, light_source_normal_3, emission_3,
                 random_number_generator, sample_radiance, canonical_technique_3_sample_ili);
 
-        if (out_reservoir.stream_sample_raw(mis_weight, target_function, canonical_technique_3_canonical_reservoir_3_pdf, triangle_index_3, point_on_light_3, random_number_generator))
+        // Giving 0u as the random seed here because we don't have it for BSDF samples.
+        // 
+        // Not an issue here because out_reservoir.sample.random_seed is never used anyways
+        if (out_reservoir.stream_sample_raw(mis_weight, target_function, canonical_technique_3_canonical_reservoir_3_pdf, triangle_index_3, 0u, random_number_generator))
         {
             selected_point_on_light = point_on_light_3;
             selected_light_source_normal = light_source_normal_3;
