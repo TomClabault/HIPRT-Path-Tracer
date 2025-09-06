@@ -20,6 +20,8 @@ class RGBE9995Envmap
 public:
 	HIPRT_HOST void pack_from(const Image32Bit& image)
 	{
+		bool warning_emitted = false;
+
 		packed_data_CPU.resize(image.width * image.height);
 
 #pragma omp parallel for
@@ -29,6 +31,12 @@ public:
 			{
 				int index = x + y * image.width;
 
+				if (image.get_pixel_ColorRGB32F(index).max_component() > 65535.0f && !warning_emitted)
+				{
+					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Envmap maximum brightness reached (65535)! Clamping to 65535.");
+
+					warning_emitted = true;
+				}
 				packed_data_CPU[index].pack(image.get_pixel_ColorRGB32F(index));
 			}
 		}
