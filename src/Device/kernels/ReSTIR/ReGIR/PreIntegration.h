@@ -59,8 +59,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
             light_sample.emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
             light_sample.emissive_triangle_global_index = non_canonical_reservoir.sample.emissive_triangle_global_index;
             light_sample.light_area = triangle_area(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
-            light_sample.light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index));
-            light_sample.point_on_light = non_canonical_reservoir.sample.point_on_light;
+            light_sample.point_on_light = reconstruct_sample_point_on_light(render_data, non_canonical_reservoir.sample.point_on_light_random_seed, non_canonical_reservoir.sample.emissive_triangle_global_index, light_sample.light_source_normal);
 
             if (light_sample.area_measure_pdf <= 0.0f)
                 // Can happen for very small triangles
@@ -91,8 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
             light_sample.emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
             light_sample.emissive_triangle_global_index = canonical_reservoir.sample.emissive_triangle_global_index;
             light_sample.light_area = triangle_area(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
-            light_sample.light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, canonical_reservoir.sample.emissive_triangle_global_index));
-            light_sample.point_on_light = canonical_reservoir.sample.point_on_light;
+            light_sample.point_on_light = reconstruct_sample_point_on_light(render_data, canonical_reservoir.sample.point_on_light_random_seed, canonical_reservoir.sample.emissive_triangle_global_index, light_sample.light_source_normal);
 
             if (light_sample.area_measure_pdf <= 0.0f)
                 // Can happen for very small triangles

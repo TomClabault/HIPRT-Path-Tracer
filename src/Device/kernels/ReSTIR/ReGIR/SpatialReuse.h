@@ -9,6 +9,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/LightSampling/LightUtils.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
+#include "Device/includes/ReSTIR/ReGIR/LightUtils.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -97,10 +98,9 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
                 continue;
 
             ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
-            float3 point_on_light = neighbor_reservoir.sample.point_on_light;
-            float3 light_source_normal = get_triangle_normal_not_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
-            float light_source_area = hippt::length(light_source_normal) * 0.5f;
-            light_source_normal /= light_source_area * 2.0f;
+            float3 light_source_normal;
+            float light_source_area;
+            float3 point_on_light = reconstruct_sample_point_on_light(render_data, neighbor_reservoir.sample, light_source_normal, light_source_area);
 
             float target_function_at_center;
             if (regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
@@ -133,10 +133,10 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
     if (output_reservoir.weight_sum > 0.0f)
     {
         ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, output_reservoir.sample.emissive_triangle_global_index);
-        float3 point_on_light = output_reservoir.sample.point_on_light;
-        float3 light_source_normal = get_triangle_normal_not_normalized(render_data, output_reservoir.sample.emissive_triangle_global_index);
-        float light_source_area = hippt::length(light_source_normal) * 0.5f;
-        light_source_normal /= light_source_area * 2.0f;
+
+        float3 light_source_normal;
+        float light_source_area;
+        float3 point_on_light = reconstruct_sample_point_on_light(render_data, output_reservoir.sample, light_source_normal, light_source_area);
 
         for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
         {

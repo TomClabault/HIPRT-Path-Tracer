@@ -8,9 +8,10 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/LightSampling/PDFConversion.h"
+#include "Device/includes/ReSTIR/ReGIR/LightUtils.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
-#include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingAdditionalInfo.h"
+#include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"
@@ -161,12 +162,13 @@ HIPRT_DEVICE HIPRT_INLINE float2 square_to_triangle(float& x, float& y)
  * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
  */
 HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
-    float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area)
+    float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, unsigned int& out_point_on_light_random_seed)
 {
     float3 vertex_A = vertices_positions[triangles_indices[global_triangle_index * 3 + 0]];
     float3 vertex_B = vertices_positions[triangles_indices[global_triangle_index * 3 + 1]];
     float3 vertex_C = vertices_positions[triangles_indices[global_triangle_index * 3 + 2]];
 
+    out_point_on_light_random_seed = rng.m_state.seed;
     float rand_1 = rng();
     float rand_2 = rng();
 
@@ -197,6 +199,13 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_trian
     return true;
 }
 
+HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
+    float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area)
+{
+    unsigned int trash_random_seed;
+    return sample_point_on_generic_triangle(global_triangle_index, vertices_positions, triangles_indices, rng, out_sample_point, out_sampled_triangle_normal, out_triangle_area, trash_random_seed);
+}
+
 /**
  * From a triangle index, samples uniformly a point on the triangle and fills a LightSampleInformation
  * structure with the information (normal, area, emission, ...) of the triangle
@@ -211,8 +220,9 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     float sampled_triangle_area;
     float3 sampled_triangle_normal;
     float3 random_point_on_triangle;
+    unsigned int point_on_light_random_seed;
     if (!sample_point_on_generic_triangle(triangle_index, render_data.buffers.vertices_positions,
-        render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area))
+        render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, point_on_light_random_seed))
         return LightSampleInformation();
 
     light_sample.emissive_triangle_global_index = triangle_index;
@@ -221,6 +231,7 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     light_sample.emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[triangle_index]);
     light_sample.point_on_light = random_point_on_triangle;
     light_sample.area_measure_pdf = 1.0f / light_sample.light_area;
+    light_sample.sample_random_seed = point_on_light_random_seed;
 
     return light_sample;
 }
@@ -274,35 +285,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     if constexpr (canonicalPDF)
         sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
     else
-    {
-        // TODO DEBUG REMOVE THIS
-        {
-            sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_target_function<
-                ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
-                ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
-                    render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, surface, primary_hit, emission, light_source_normal, point_on_light, random_number_generator);
-    }
 
     return sample_PDF_unnormalized / PDF_normalization;
 }
@@ -351,8 +334,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     if (reservoir.UCW <= 0.0f)
         return 0.0f;
 
-    float3 point_on_light = reservoir.sample.point_on_light;
-    float3 light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+    float3 light_source_normal;
+    float3 point_on_light = reconstruct_sample_point_on_light(render_data, reservoir.sample.point_on_light_random_seed, reservoir.sample.emissive_triangle_global_index, light_source_normal);
     ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, reservoir.sample.emissive_triangle_global_index);
 
     return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, primary_hit, random_number_generator);
@@ -364,8 +347,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     if (reservoir.UCW <= 0.0f)
         return 0.0f;
 
-    float3 point_on_light = reservoir.sample.point_on_light;
-    float3 light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+    float3 light_source_normal;
+    float3 point_on_light = reconstruct_sample_point_on_light(render_data, reservoir.sample.point_on_light_random_seed, reservoir.sample.emissive_triangle_global_index, light_source_normal);
     ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, reservoir.sample.emissive_triangle_global_index);
 
     return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, RIS_integral, primary_hit, random_number_generator);
@@ -396,8 +379,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
     if (reservoir.UCW <= 0.0f)
         return 0.0f;
 
-    float3 point_on_light = reservoir.sample.point_on_light;
-    float3 light_source_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+    float3 light_source_normal;
+    float3 point_on_light = reconstruct_sample_point_on_light(render_data, reservoir.sample.point_on_light_random_seed, reservoir.sample.emissive_triangle_global_index, light_source_normal);
     ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, reservoir.sample.emissive_triangle_global_index);
 
     return ReGIR_get_reservoir_sample_BSDF_PDF(render_data,
@@ -578,6 +561,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
     float UCW_1 = 0.0f, UCW_2 = 0.0f;
     int triangle_index_1 = -1, triangle_index_2 = -1, triangle_index_3 = -1;
+    unsigned int random_point_on_light_1_seed, random_point_on_light_2_seed;
     float3 point_on_light_1, point_on_light_2, point_on_light_3;
     float3 light_source_normal_1, light_source_normal_2, light_source_normal_3;
     ColorRGB32F emission_1, emission_2, emission_3;
@@ -654,8 +638,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             {
                 UCW_1 = canonical_technique_1_reservoir.UCW;
                 triangle_index_1 = canonical_technique_1_reservoir.sample.emissive_triangle_global_index;
-                point_on_light_1 = canonical_technique_1_reservoir.sample.point_on_light;
-                light_source_normal_1 = hippt::normalize(get_triangle_normal_not_normalized(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_global_index));
+
+                point_on_light_1 = reconstruct_sample_point_on_light(render_data, canonical_technique_1_reservoir.sample.point_on_light_random_seed, canonical_technique_1_reservoir.sample.emissive_triangle_global_index, light_source_normal_1);
+                random_point_on_light_1_seed = canonical_technique_1_reservoir.sample.point_on_light_random_seed;
                 emission_1 = get_emission_of_triangle_from_index(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_global_index);
             }
 
@@ -663,8 +648,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
             {
                 UCW_2 = canonical_technique_2_reservoir.UCW;
                 triangle_index_2 = canonical_technique_2_reservoir.sample.emissive_triangle_global_index;
-                point_on_light_2 = canonical_technique_2_reservoir.sample.point_on_light;
-                light_source_normal_2 = hippt::normalize(get_triangle_normal_not_normalized(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_global_index));
+
+                point_on_light_2 = reconstruct_sample_point_on_light(render_data, canonical_technique_2_reservoir.sample.point_on_light_random_seed, canonical_technique_2_reservoir.sample.emissive_triangle_global_index, light_source_normal_2);
+                random_point_on_light_2_seed = canonical_technique_2_reservoir.sample.point_on_light_random_seed;
                 emission_2 = get_emission_of_triangle_from_index(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_global_index);
             }
         }
@@ -769,10 +755,9 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
                 continue;
             }
 
-            float3 point_on_light = non_canonical_reservoir.sample.point_on_light;
-            float3 light_source_normal = get_triangle_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
-            float light_source_area = hippt::length(light_source_normal) * 0.5f;
-            light_source_normal /= light_source_area * 2.0f;
+            float3 light_source_normal;
+            float light_source_area;
+            float3 point_on_light = reconstruct_sample_point_on_light(render_data, non_canonical_reservoir.sample.point_on_light_random_seed, non_canonical_reservoir.sample.emissive_triangle_global_index, light_source_normal, light_source_area);
             ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
 
             ColorRGB32F sample_radiance;
@@ -854,7 +839,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 ReGIRReservoir canonical_technique_1_reservoir;
                 canonical_technique_1_reservoir.sample.emissive_triangle_global_index = triangle_index_1;
-                canonical_technique_1_reservoir.sample.point_on_light = point_on_light_1;
+                canonical_technique_1_reservoir.sample.point_on_light_random_seed = random_point_on_light_1_seed;
                 canonical_technique_1_reservoir.UCW = UCW_1;
                 if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_technique_1_reservoir, random_number_generator))
                 {
@@ -911,7 +896,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
                 ReGIRReservoir canonical_technique_2_reservoir;
                 canonical_technique_2_reservoir.sample.emissive_triangle_global_index = triangle_index_2;
-                canonical_technique_2_reservoir.sample.point_on_light = point_on_light_2;
+                canonical_technique_2_reservoir.sample.point_on_light_random_seed = random_point_on_light_2_seed;
                 canonical_technique_2_reservoir.UCW = UCW_2;
                 if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_technique_2_reservoir, random_number_generator))
                 {

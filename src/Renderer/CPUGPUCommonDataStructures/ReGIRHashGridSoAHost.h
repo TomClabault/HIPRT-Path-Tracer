@@ -37,7 +37,6 @@ struct ReGIRHashGridSoAHost
 		samples.template resize_one_buffer<REGIR_SAMPLE_EMISSIVE_TRIANGLE_GLOBAL_INDEX>(std::ceil(m_total_number_of_cells * reservoirs_per_cell * ReGIRHashGridSoAHostUtils::get_bits_per_packed_emissive_triangle_global_index(total_triangle_count) / (sizeof(ReGIRSampleSoADevice::ReGIRSampleEmissiveTriangleIndicesPackingType) * 8)));
 		reservoirs.resize(m_total_number_of_cells * reservoirs_per_cell);
 
-		// samples.template memset_buffer<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSIVE_TRIANGLE_GLOBAL_INDEX>(-1);
 		reservoirs.template memset_buffer<ReGIRReservoirSoAHostBuffers::REGIR_RESERVOIR_UCW>(ReGIRReservoir::UNDEFINED_UCW);
 	}
 
@@ -62,7 +61,7 @@ struct ReGIRHashGridSoAHost
 	void to_device(ReGIRHashGridSoADevice& out_soa_device)
 	{
 		out_soa_device.samples.emissive_triangle_indices_packed = samples.template get_buffer_data_atomic_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSIVE_TRIANGLE_GLOBAL_INDEX>();
-		out_soa_device.samples.point_on_light = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_POINT_ON_LIGHT>();
+		out_soa_device.samples.point_on_light_random_seed = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_RANDOM_SEED>();
 
 		out_soa_device.samples.bits_per_emissive_triangle_global_index = ReGIRHashGridSoAHostUtils::get_bits_per_packed_emissive_triangle_global_index(m_total_triangle_count);
 

@@ -2001,7 +2001,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 					if (ImGui::Button("Apply"))
 					{
-						light_distribution_size = hippt::min(65535, light_distribution_size);
+						light_distribution_size = hippt::min(light_distribution_size, 65535);
+						light_distribution_size = hippt::min(light_distribution_size, (int)render_data.buffers.emissive_meshes_data.alias_table_count);
 
 						regir_settings.cells_distributions_primary_hits.light_distribution_size = light_distribution_size;
 						regir_settings.cells_distributions_secondary_hits.light_distribution_size = light_distribution_size;
