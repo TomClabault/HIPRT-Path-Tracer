@@ -561,7 +561,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 
     float UCW_1 = 0.0f, UCW_2 = 0.0f;
     int triangle_index_1 = -1, triangle_index_2 = -1, triangle_index_3 = -1;
-    unsigned int random_point_on_light_1_seed, random_point_on_light_2_seed;
+    unsigned int random_point_on_light_1_seed = 0, random_point_on_light_2_seed = 0;
     float3 point_on_light_1, point_on_light_2, point_on_light_3;
     float3 light_source_normal_1, light_source_normal_2, light_source_normal_3;
     ColorRGB32F emission_1, emission_2, emission_3;

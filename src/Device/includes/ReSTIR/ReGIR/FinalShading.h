@@ -51,7 +51,13 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& re
         nee_plus_plus_context.point_on_light = light_sample.point_on_light;
         nee_plus_plus_context.shaded_point = shadow_ray_origin;
 
+#if ReGIR_ShadingResamplingTargetFunctionVisibility == KERNEL_OPTION_TRUE
+        // We already know that a selected sample isn't in shadow otherwise its target
+        // function would have been 0 and it would have never been selected
+        bool in_shadow = false;
+#else
         bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+#endif
 
         if (!in_shadow)
             return additional_infos.sample_radiance / light_sample.area_measure_pdf / nee_plus_plus_context.unoccluded_probability;
