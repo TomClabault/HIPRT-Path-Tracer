@@ -168,6 +168,7 @@ namespace hippt
 	__device__ constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
 
 	__device__ float intrin_pow(float x, float y) { return __powf(x, y); }
+	__device__ float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
 
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 
@@ -462,6 +463,7 @@ namespace hippt
 	inline constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
 
 	inline float intrin_pow(float x, float y) { return powf(x, y); }
+	inline float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
 
 	inline float3 normalize(float3 u) { return hiprt::normalize(u); }
 

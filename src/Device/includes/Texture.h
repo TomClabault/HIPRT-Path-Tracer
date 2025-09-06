@@ -47,10 +47,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
     if (flip_uv_y)
         v = -v;
 
-    if (reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index] == 0)
+    const oroTextureObject_t texture = reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index];
+    if (texture == nullptr)
         return ColorRGBA32F(0.0f);
 
-    rgba = ColorRGBA32F(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], u, v));
+    rgba = ColorRGBA32F(tex2D<float4>(texture, u, v));
 #else
     const ImageType& texture = reinterpret_cast<const ImageType*>(texture_buffer)[texture_index];
 
@@ -61,7 +62,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
     // Doing the conversion manually instead of using the hardware
     // because it's unavailable in Orochi (again) :(
     if (is_srgb)
-        return intrin_pow(rgba, 2.2f);
+        return pow_2_2_fit(rgba);
     else
         return rgba;
 }
