@@ -1811,6 +1811,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			"\t- Primary hit reservoirs: %.3fMB\n"
 			"\t\t- Base reservoirs: %.3fMB\n"
 			"\t\t- Spatial reuse reservoirs: %.3fMB\n"
+			"\t\t- Correlation reduction: %.3fMB\n"
 			"\t\t- Cell world data: %.3fMB\n"
 			"\t\t- Async compute: %.3fMB\n"
 			"\t\t- RIS pre-integration: %.3fMB\n"
@@ -1826,6 +1827,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			regir_render_pass->get_reservoirs_VRAM_usage_bytes(true) / 1000000.0f,
 			regir_render_pass->get_hash_grid_storage().get_initial_grid_buffers(true).get_byte_size() / 1000000.0f,
 			regir_render_pass->get_hash_grid_storage().get_spatial_grid_buffers(true).get_byte_size() / 1000000.0f,
+			regir_render_pass->get_hash_grid_storage().get_correlation_reduction_buffer().get_byte_size() / 1000000.0f,
 			regir_render_pass->get_hash_grid_storage().get_hash_cell_data_soa(true).get_byte_size() / 1000000.0f,
 			regir_render_pass->get_hash_grid_storage().get_async_compute_staging_buffer(true).get_byte_size() / 1000000.0f,
 			(regir_render_pass->get_hash_grid_storage().get_non_canonical_factors(true).get_byte_size() + regir_render_pass->get_hash_grid_storage().get_canonical_factors(true).get_byte_size()) / 1000000.0f,

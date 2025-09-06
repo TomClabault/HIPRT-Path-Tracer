@@ -43,6 +43,9 @@ public:
 	ReGIRHashGridSoAHost<OrochiBuffer>& get_spatial_grid_buffers(bool primary_hit);
 	const ReGIRHashGridSoAHost<OrochiBuffer>& get_spatial_grid_buffers(bool primary_hit) const;
 
+	ReGIRHashGridSoAHost<OrochiBuffer>& get_correlation_reduction_buffer();
+	const ReGIRHashGridSoAHost<OrochiBuffer>& get_correlation_reduction_buffer() const;
+
 	ReGIRHashGridSoAHost<OrochiBuffer>& get_async_compute_staging_buffer(bool primary_hit);
 	const ReGIRHashGridSoAHost<OrochiBuffer>& get_async_compute_staging_buffer(bool primary_hit) const;
 	ReGIRHashGridSoADevice get_async_compute_staging_buffer_device(bool primary_hit);

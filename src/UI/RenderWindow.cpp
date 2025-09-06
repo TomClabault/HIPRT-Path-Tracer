@@ -67,6 +67,8 @@ extern ImGuiLogger g_imgui_logger;
 // 
 // - Compare shading RIS with vis in target function vs shading all
 //		Can we have the same quality as shading all but by just using visibility in the target function and no more shenanigans ? Simplified code.t function since the cell distributions already have some guarantees?
+// - We should probably retry that idea if inning meshes into directional faves but maybe use something a bit more conservative to avoid the noise that we had before
+//		Why did we have noise before?
 // - Should we have a very light ReSTIR DI pass on top of ReGIR to clean things up a bit / help with small details?
 // - Can we maybe start with a constant grid cell size for good precision and merge grid cells which have similar light distributions?
 //		- We would be merging gfrid cells by storing a list of grid cell indices that are merge into a main grid cell so each grid cell would have some kind of adjacency list of grid cells that are merged into it

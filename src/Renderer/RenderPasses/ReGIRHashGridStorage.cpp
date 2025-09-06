@@ -444,6 +444,9 @@ const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_initial_grid
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_spatial_grid_buffers(bool primary_hit) { return primary_hit ? m_spatial_output_primary_hits_grid : m_spatial_output_secondary_hits_grid; }
 const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_spatial_grid_buffers(bool primary_hit) const { return primary_hit ? m_spatial_output_primary_hits_grid : m_spatial_output_secondary_hits_grid; }
 
+ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_correlation_reduction_buffer() { return m_correlation_reduction_grid_primary_hits; }
+const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_correlation_reduction_buffer() const { return m_correlation_reduction_grid_primary_hits; }
+
 ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_async_compute_staging_buffer(bool primary_hit) { return primary_hit ? m_async_compute_staging_buffer_primary_hits : m_async_compute_staging_buffer_secondary_hits; }
 const ReGIRHashGridSoAHost<OrochiBuffer>& ReGIRHashGridStorage::get_async_compute_staging_buffer(bool primary_hit) const { return primary_hit ? m_async_compute_staging_buffer_primary_hits : m_async_compute_staging_buffer_secondary_hits; }
 
