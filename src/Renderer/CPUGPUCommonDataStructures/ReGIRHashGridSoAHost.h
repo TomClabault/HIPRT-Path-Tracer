@@ -18,7 +18,7 @@ class ReGIRHashGridSoAHostUtils
 public:
 	static unsigned int get_bits_per_packed_emissive_triangle_global_index(unsigned int total_triangle_count)
 	{
-		return std::ceil(std::log2(total_triangle_count));
+		return std::ceil(std::log2(total_triangle_count)) + 1;
 	}
 };
 

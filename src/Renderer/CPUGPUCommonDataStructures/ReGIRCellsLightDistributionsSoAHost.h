@@ -17,7 +17,7 @@ class ReGIRCellsLightDistributionsHostUtils
 public:
 	static unsigned int get_bits_per_packed_mesh_index(unsigned int emissive_mesh_count)
 	{
-		return std::ceil(std::log2(emissive_mesh_count));
+		return std::ceil(std::log2(emissive_mesh_count)) + 1;
 	}
 
 	static unsigned int get_packed_mesh_indices_count_per_cell(unsigned int emissive_mesh_count, unsigned int light_distribution_size)

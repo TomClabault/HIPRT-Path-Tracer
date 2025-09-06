@@ -376,10 +376,10 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	// Launching the computation of grid-cells light distributions at each frame in case new grid
 	// cells have been added to the grid because of rays hitting unexplored parts of the scene
-	//if (launch_cell_light_distributions_precomputation(render_data, compiler_options))
-	//	// If we indeed recomputed some cell light distributions, we're going to need to update
-	//	// the pre-integrated RIS integral factors
-	//	launch_pre_integration(render_data);
+	if (render_data.render_settings.sample_number % 64 == 0 && launch_cell_light_distributions_precomputation(render_data, true))
+		// If we indeed recomputed some cell light distributions, we're going to need to update
+		// the pre-integrated RIS integral factors
+		launch_pre_integration(render_data);
 
 	render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid = m_hash_grid_storage.get_correlation_reduction_current_frame();
 	render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available = m_hash_grid_storage.get_correlation_reduction_frames_available();
