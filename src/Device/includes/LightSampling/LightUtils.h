@@ -17,7 +17,7 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)
+HIPRT_DEVICE float3 get_triangle_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)
 {
     int triangle_index_start = triangle_index * 3;
 
@@ -31,7 +31,7 @@ HIPRT_DEVICE HIPRT_INLINE float3 get_triangle_normal_not_normalized(const HIPRTR
     return hippt::cross(AB, AC);
 }
 
-HIPRT_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
+HIPRT_DEVICE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
 {
     return render_data.buffers.triangles_areas[triangle_index];
 }
@@ -50,7 +50,7 @@ HIPRT_DEVICE ColorRGB32F get_emission_of_triangle_from_index(const HIPRTRenderDa
  * 'ray_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
  */
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, float light_area, ColorRGB32F light_emission)
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, float light_area, ColorRGB32F light_emission)
 {
     float hit_distance = 1.0f;
     float area_measure_pdf;
@@ -78,13 +78,13 @@ HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const 
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, int hit_primitive_index, ColorRGB32F light_emission)
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, int hit_primitive_index, ColorRGB32F light_emission)
 {
     return pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, triangle_area(render_data, hit_primitive_index), light_emission);
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, const BSDFLightSampleRayHitInfo& light_hit_info)
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, const BSDFLightSampleRayHitInfo& light_hit_info)
 {
     return pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, light_hit_info.hit_prim_index, light_hit_info.hit_emission);
 }
@@ -101,7 +101,7 @@ HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_area_measure(const 
  * 'to_light_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
  */
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data,
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data,
     float light_area,
     ColorRGB32F light_emission, float3 light_surface_normal,
     float hit_distance, float3 to_light_direction)
@@ -119,7 +119,7 @@ HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const H
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, int hit_primitive_index,
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, int hit_primitive_index,
     ColorRGB32F light_emission, float3 light_surface_normal,
     float hit_distance, float3 to_light_direction)
 {
@@ -128,7 +128,7 @@ HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const H
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, const BSDFLightSampleRayHitInfo& light_hit_info, float3 to_light_direction)
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data, const BSDFLightSampleRayHitInfo& light_hit_info, float3 to_light_direction)
 {
     return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(render_data,
         light_hit_info.hit_prim_index, light_hit_info.hit_emission, light_hit_info.hit_geometric_normal,
@@ -140,7 +140,7 @@ HIPRT_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit_solid_angle(const H
  * 
  * Maps a point in a square to a point in an arbitrary triangle
  */
-HIPRT_DEVICE HIPRT_INLINE float2 square_to_triangle(float& x, float& y)
+HIPRT_DEVICE float2 square_to_triangle(float& x, float& y)
 {
     if (y > x)
     {
@@ -161,7 +161,7 @@ HIPRT_DEVICE HIPRT_INLINE float2 square_to_triangle(float& x, float& y)
  *
  * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
  */
-HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
+HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
     float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, unsigned int& out_point_on_light_random_seed)
 {
     float3 vertex_A = vertices_positions[triangles_indices[global_triangle_index * 3 + 0]];
@@ -199,7 +199,7 @@ HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_trian
     return true;
 }
 
-HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
+HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
     float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area)
 {
     unsigned int trash_random_seed;
@@ -239,7 +239,7 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
 /**
  * The PDF is computed in area measure
  */
-HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_uniform(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_uniform(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         return LightSampleInformation();
@@ -255,7 +255,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_un
     return light_sample;
 }
 
-HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_power(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_power(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         return LightSampleInformation();
@@ -273,7 +273,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_po
 
 // Forward declaration for use in 'sample_one_emissive_triangle_regir' below
 template <int samplingStrategy>
-HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data,
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
     Xorshift32Generator& random_number_generator);
@@ -506,7 +506,7 @@ struct ReGIRPairwiseMIS
     float m_sum_canonical_weight_3 = 0.0f;
 };
 
-HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_regir_with_info(
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
@@ -970,7 +970,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
     return out_sample;
 }
 
-HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_regir(
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
@@ -983,7 +983,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle_re
 }
 
 template <int samplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, 
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, 
     int last_hit_primitive_index, RayPayload& ray_payload,
     Xorshift32Generator& random_number_generator)
@@ -1031,7 +1031,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(co
  * and will produced incorrect results if used anyways
  */
 template <int samplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
 {
     RayPayload dummy_ray_payload;
 
@@ -1047,7 +1047,7 @@ HIPRT_DEVICE HIPRT_INLINE LightSampleInformation sample_one_emissive_triangle(co
  * 'clamp_condition' is false, then the 'light_contribution' parameter is returned
  * untouched
  */
-HIPRT_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution, float clamp_max_value, bool clamp_condition)
+HIPRT_DEVICE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution, float clamp_max_value, bool clamp_condition)
 {
     if (!light_contribution.has_nan() && clamp_max_value > 0.0f && clamp_condition)
         // We don't want to clamp NaNs because that's UB (kind of) and the NaNs get
@@ -1065,7 +1065,7 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F light
  * Returns true if the given contribution satisfies the minimum light contribution
  * required for a light to be 
  */
-HIPRT_DEVICE HIPRT_INLINE bool check_minimum_light_contribution(float minimum_contribution, const ColorRGB32F& contribution)
+HIPRT_DEVICE bool check_minimum_light_contribution(float minimum_contribution, const ColorRGB32F& contribution)
 {
     if (minimum_contribution > 0.0f)
     {
@@ -1083,7 +1083,7 @@ HIPRT_DEVICE HIPRT_INLINE bool check_minimum_light_contribution(float minimum_co
         return true;
 }
 
-HIPRT_DEVICE HIPRT_INLINE bool check_minimum_light_contribution(float minimum_contribution, float contribution)
+HIPRT_DEVICE bool check_minimum_light_contribution(float minimum_contribution, float contribution)
 {
     if (minimum_contribution > 0.0f)
     {
