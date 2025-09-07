@@ -32,7 +32,7 @@ struct RISSample
 
 struct RISReservoir
 {
-    HIPRT_HOST_DEVICE void add_one_candidate(RISSample new_sample, float weight, Xorshift32Generator& random_number_generator)
+    HIPRT_DEVICE void add_one_candidate(RISSample new_sample, float weight, Xorshift32Generator& random_number_generator)
     {
         M++;
         weight_sum += weight;
@@ -41,7 +41,7 @@ struct RISReservoir
             sample = new_sample;
     }
 
-    HIPRT_HOST_DEVICE void end()
+    HIPRT_DEVICE void end()
     {
         if (weight_sum == 0.0f)
             UCW = 0.0f;
@@ -49,7 +49,7 @@ struct RISReservoir
             UCW = 1.0f / sample.target_function * weight_sum;
     }
 
-    HIPRT_HOST_DEVICE HIPRT_INLINE void sanity_check(int2 pixel_coords = make_int2(-1, -1))
+    HIPRT_DEVICE void sanity_check(int2 pixel_coords = make_int2(-1, -1))
     {
 #ifndef __KERNELCC__
         if (M < 0)
