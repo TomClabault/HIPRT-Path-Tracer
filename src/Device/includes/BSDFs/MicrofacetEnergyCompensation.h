@@ -24,7 +24,7 @@
   * [6] [Blender's Cycles codebase on Github]
   */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction, int current_bounce)
+HIPRT_HOST_DEVICE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction, int current_bounce)
 {
 	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.metal_energy_compensation_max_bounce && render_data.bsdfs_data.metal_energy_compensation_max_bounce > -1;
 	bool smooth_enough = material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
@@ -98,7 +98,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
  * instead of fixing the root of the issue which probably isn't what you should do if you're
  * reading this
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correction_exponent(float roughness, float relative_eta)
+HIPRT_HOST_DEVICE float GGX_glass_energy_compensation_get_correction_exponent(float roughness, float relative_eta)
 {
     if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
         // No correction for these, returning the original 2.5f that is used in the LUT
@@ -630,7 +630,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correctio
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float custom_roughness, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
+HIPRT_HOST_DEVICE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float custom_roughness, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
 {
 	bool smooth_enough = custom_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glass_energy_compensation_max_bounce && render_data.bsdfs_data.glass_energy_compensation_max_bounce > -1;
@@ -702,7 +702,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
 	return compensation_term;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
+HIPRT_HOST_DEVICE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
 {
 	return get_GGX_energy_compensation_dielectrics(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV, current_bounce);
 }

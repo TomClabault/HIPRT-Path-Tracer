@@ -22,7 +22,7 @@
 /**
  * Evaluates the GGX anisotropic normal distribution function
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic(float alpha_x, float alpha_y, const float3& local_microfacet_normal)
+HIPRT_HOST_DEVICE float GGX_anisotropic(float alpha_x, float alpha_y, const float3& local_microfacet_normal)
 {
     float denom = (local_microfacet_normal.x * local_microfacet_normal.x) / (alpha_x * alpha_x) +
         (local_microfacet_normal.y * local_microfacet_normal.y) / (alpha_y * alpha_y) +
@@ -38,7 +38,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic(float alpha_x, float alpha_
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 3
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic_vndf(float D, float G1V, const float3& local_view_direction, const float3& local_microfacet_normal)
+HIPRT_HOST_DEVICE float GGX_anisotropic_vndf(float D, float G1V, const float3& local_view_direction, const float3& local_microfacet_normal)
 {
     float HoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::dot(local_view_direction, local_microfacet_normal));
     return G1V * D * HoL / local_view_direction.z;
@@ -47,7 +47,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic_vndf(float D, float G1V, co
 /**
  * Lambda function for the denominator of the G1 Smith masking/shadowing functions
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith_lambda(float alpha_x, float alpha_y, const float3& local_direction)
+HIPRT_HOST_DEVICE float G1_Smith_lambda(float alpha_x, float alpha_y, const float3& local_direction)
 {
     float ax = local_direction.x * alpha_x;
     float ay = local_direction.y * alpha_y;
@@ -61,7 +61,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith_lambda(float alpha_x, float alpha_
  * Reference: [Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs, Heitz, 2014]
  * Equation 43
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith(float alpha_x, float alpha_y, const float3& local_direction)
+HIPRT_HOST_DEVICE float G1_Smith(float alpha_x, float alpha_y, const float3& local_direction)
 {
     float lambda = G1_Smith_lambda(alpha_x, alpha_y, local_direction);
 
@@ -76,7 +76,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith(float alpha_x, float alpha_y, cons
  * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialConstants::ROUGHNESS_CLAMP
  */
 template <bool useMultipleScatteringEnergyCompensation>
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
+HIPRT_HOST_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
                                                                              const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
                                                                              float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                              int current_bounce)
@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect(con
  * Equation 15
  */
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F,
+HIPRT_HOST_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F,
                                                                                 const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
                                                                                 float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                                 int current_bounce)
@@ -197,7 +197,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
  * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialConstants::ROUGHNESS_CLAMP
  */
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
+HIPRT_HOST_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
                                                                                 const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
                                                                                 float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                                 int current_bounce)
@@ -224,7 +224,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 15
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float torrance_sparrow_GGX_pdf_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy,
+HIPRT_HOST_DEVICE float torrance_sparrow_GGX_pdf_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy,
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector,
     MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
 {
@@ -285,7 +285,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float torrance_sparrow_GGX_pdf_reflect(const HIPR
     return Dvisible / (4.0f * hippt::dot(local_view_direction, local_halfway_vector));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(const DeviceUnpackedEffectiveMaterial& material, float roughness, float relative_eta, ColorRGB32F fresnel_reflectance,
+HIPRT_HOST_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_refract(const DeviceUnpackedEffectiveMaterial& material, float roughness, float relative_eta, ColorRGB32F fresnel_reflectance,
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector,
     float& out_pdf, BSDFIncidentLightInfo incident_light_info)
 {
@@ -351,7 +351,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(con
     return color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float torrance_sparrow_GGX_pdf_refract(const DeviceUnpackedEffectiveMaterial& material, float roughness, float relative_eta,
+HIPRT_HOST_DEVICE float torrance_sparrow_GGX_pdf_refract(const DeviceUnpackedEffectiveMaterial& material, float roughness, float relative_eta,
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector,
     BSDFIncidentLightInfo incident_light_info)
 {
@@ -395,7 +395,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float torrance_sparrow_GGX_pdf_refract(const Devi
 /**
  * Reference: [Sampling the GGX Distribution of Visible Normals, Unity: Heitz ; 2018]
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE float3 GGX_VNDF_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();
@@ -430,7 +430,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_di
  *
  * Reference: [Sampling Visible GGX Normals with Spherical Caps, Dupuy, Benyoub, 2023]
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE float3 GGX_VNDF_spherical_caps_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();
@@ -457,7 +457,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float
  * Samples a microfacet normal from the distribution of visible normals of
  * the GGX normal function distribution
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_anisotropic_sample_microfacet(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE float3 GGX_anisotropic_sample_microfacet(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     if (alpha_x <= MaterialConstants::ROUGHNESS_CLAMP && alpha_y <= MaterialConstants::ROUGHNESS_CLAMP)
         // For delta GGX distribution, the sampled normal is always the same as the surface normal
@@ -481,7 +481,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_anisotropic_sample_microfacet(const fl
  * about that microfacet normal to produce a 'to_light_direction' in local
  * shading space that is then returned by that function
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GGX_sample_reflection(float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE float3 microfacet_GGX_sample_reflection(float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     // The view direction can sometimes be below the shading normal hemisphere
     // because of normal mapping / smooth normals
