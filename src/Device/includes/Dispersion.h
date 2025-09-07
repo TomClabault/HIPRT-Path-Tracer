@@ -343,7 +343,7 @@ const float D65_SPD[] = {
 /**
  * Converts an XYZ value to the sRGB color space (linear, no gamma correction is applied)
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F XYZ_to_sRGB(const ColorRGB32F& XYZ)
+HIPRT_HOST_DEVICE ColorRGB32F XYZ_to_sRGB(const ColorRGB32F& XYZ)
 {
     /**
      * Reference: https://en.wikipedia.org/wiki/SRGB#Correspondence_to_CIE_XYZ_stimulus
@@ -355,7 +355,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F XYZ_to_sRGB(const ColorRGB32F& XYZ)
     return ColorRGB32F(r, g, b);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F wavelength_to_XYZ(float wavelength)
+HIPRT_HOST_DEVICE ColorRGB32F wavelength_to_XYZ(float wavelength)
 {
     ColorRGB32F XYZ;
 
@@ -410,7 +410,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F wavelength_to_XYZ(float wavelength)
  * 
  * This normalization trick actually is imperceptible in practice so I guess it's fine and convenient
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F wavelength_to_RGB_clamped(float wavelength)
+HIPRT_HOST_DEVICE ColorRGB32F wavelength_to_RGB_clamped(float wavelength)
 {
     const ColorRGB32F scale = ColorRGB32F(1.4979f, 1.13591f, 1.13159f);
     ColorRGB32F RGB = XYZ_to_sRGB(wavelength_to_XYZ(wavelength));
@@ -430,7 +430,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F wavelength_to_RGB_clamped(float wavel
  * This function takes wavelengths between 360 and 830nm and returns RGB values such that
  * the average of the RGB values of all wavelengths is RGB(1.0f, 1.0f, 1.0f).
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F wavelength_to_RGB_fit(float wavelength)
+HIPRT_HOST_DEVICE static ColorRGB32F wavelength_to_RGB_fit(float wavelength)
 {
     ColorRGB32F RGB;
 
@@ -457,7 +457,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F wavelength_to_RGB_fit(float wavelengt
     return RGB * 10.0f;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F wavelength_to_RGB(float wavelength)
+HIPRT_HOST_DEVICE static ColorRGB32F wavelength_to_RGB(float wavelength)
 {
 #if WavelengthToRGBMethod == WAVELENGTH_TO_RGB_FIT
     return wavelength_to_RGB_fit(wavelength);
@@ -466,7 +466,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F wavelength_to_RGB(float wavelength)
 #endif
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float sample_wavelength_uniformly(Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE static float sample_wavelength_uniformly(Xorshift32Generator& random_number_generator)
 {
 	float r = random_number_generator();
 
@@ -482,7 +482,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float sample_wavelength_uniformly(Xorshift32Gener
  * returns the new IOR of the material but as if measured at the given
  * 'wavelength'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float compute_dispersion_ior(float dispersion_abbe_number, float dispersion_scale, float base_IOR, float wavelength)
+HIPRT_HOST_DEVICE static float compute_dispersion_ior(float dispersion_abbe_number, float dispersion_scale, float base_IOR, float wavelength)
 {
     if (dispersion_scale == 0.0f)
         return base_IOR;
@@ -509,7 +509,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float compute_dispersion_ior(float dispersion_abb
  * throughput filter has already been applied to the ray and should not
  * be applied a second time.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_dispersion_ray_color(float& wavelength, float dispersion_scale)
+HIPRT_HOST_DEVICE static ColorRGB32F get_dispersion_ray_color(float& wavelength, float dispersion_scale)
 {
     if (dispersion_scale == 0.0f)
         // No dispersion
