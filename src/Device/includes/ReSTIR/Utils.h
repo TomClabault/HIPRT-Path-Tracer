@@ -22,7 +22,7 @@
  * 
  * Returns true if the reservoir was killed, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point, int last_primitive_hit_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point, int last_primitive_hit_index, Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
 		return false;
@@ -70,7 +70,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_DI_visibility_test_kill_reservoir(con
  * 
  * Returns true if the reservoir was killed, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3 shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3 shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
 		return false;
