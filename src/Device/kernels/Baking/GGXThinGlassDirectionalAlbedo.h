@@ -29,7 +29,7 @@
 * the thin BSDF and its IOR (F0 actually)
 */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 thin_glass_sample(float relative_eta, float roughness, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float3 thin_glass_sample(float relative_eta, float roughness, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     // To avoid sampling directions that would lead to a null half_vector.
     // Explained in more details in principled_glass_eval.
@@ -84,7 +84,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 thin_glass_sample(float relative_eta, floa
     return sampled_direction;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float thin_glass_eval(float relative_eta, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
+HIPRT_DEVICE float thin_glass_eval(float relative_eta, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
 {
     pdf = 0.0f;
 
