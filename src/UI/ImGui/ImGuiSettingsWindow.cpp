@@ -4628,7 +4628,38 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 void ImGuiSettingsWindow::draw_debug_panel()
 {
 	if (!ImGui::CollapsingHeader("Debug"))
+	{
+		static bool display_only_sample = DisplayOnlySampleN;
+		if (ImGui::Checkbox("Display only sample N", &display_only_sample))
+		{
+			m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N, display_only_sample ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_render_window->set_render_dirty(true);
+			m_renderer->recompile_kernels();
+		}
+		if (display_only_sample)
+		{
+			ImGui::SameLine();
+			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+			if (ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N))
+				m_render_window->set_render_dirty(true);
+
+			static bool auto_sample = true;
+			ImGui::SameLine();
+			ImGui::Checkbox("Auto", &auto_sample);
+			if (auto_sample)
+			{
+				int new_sample_count = m_render_window->get_application_settings()->max_sample_count - 1;
+
+				if (m_renderer->get_render_data().render_settings.output_debug_sample_N != new_sample_count)
+					m_render_window->set_render_dirty(true);
+
+				m_renderer->get_render_data().render_settings.output_debug_sample_N = m_render_window->get_application_settings()->max_sample_count - 1;
+			}
+		}
+
 		return;
+	}
 
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
@@ -4678,35 +4709,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives))
 			m_render_window->set_render_dirty(true);
 		ImGui::TreePop();
-	}
-
-	static bool display_only_sample = DisplayOnlySampleN;
-	if (ImGui::Checkbox("Display only sample N", &display_only_sample))
-	{
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N, display_only_sample ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-		m_render_window->set_render_dirty(true);
-		m_renderer->recompile_kernels();
-	}
-	if (display_only_sample)
-	{
-		ImGui::SameLine();
-		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-		if (ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N))
-			m_render_window->set_render_dirty(true);
-
-		static bool auto_sample = true;
-		ImGui::SameLine();
-		ImGui::Checkbox("Auto", &auto_sample);
-		if (auto_sample)
-		{
-			int new_sample_count = m_render_window->get_application_settings()->max_sample_count - 1;
-
-			if (m_renderer->get_render_data().render_settings.output_debug_sample_N != new_sample_count)
-				m_render_window->set_render_dirty(true);
-
-			m_renderer->get_render_data().render_settings.output_debug_sample_N = m_render_window->get_application_settings()->max_sample_count - 1;
-		}
 	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));

@@ -143,7 +143,7 @@ struct NEEPlusPlusDevice
 			// One of the two points was outside the scene, cannot cache this
 			return;
 		
-		if (read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index) >= 255)
+		if (read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index) >= (254 - hippt::warp_size()))
 			return;
 
 		if (visible)
@@ -241,19 +241,17 @@ struct NEEPlusPlusDevice
 		return hash_grid_index;
 	}
 
-	// TODO compare with the alpha learning rate / exponential moving average and the ground truth to see the behavior of a single float buffer
-	// TODO see if capping at 255 / 65535 is enough
-private:
+// private:
 	/**
 	 * Returns the value packed in the buffer at the given visibility matrix index and with the given
 	 * buffer name from the BufferNames enum
 	 */
 	template <unsigned int bufferName>
-	HIPRT_HOST_DEVICE unsigned int read_buffer(unsigned int hash_grid_index) const
+	HIPRT_HOST_DEVICE unsigned char read_buffer(unsigned int hash_grid_index) const
 	{
-		if constexpr (bufferName == 0)
+		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT)
 			return m_entries_buffer.total_unoccluded_rays[hash_grid_index];
-		else if constexpr (bufferName == 1)
+		else if constexpr (bufferName == BufferNames::VISIBILITY_MAP_TOTAL_COUNT)
 			return m_entries_buffer.total_num_rays[hash_grid_index];
 	}
 
@@ -265,9 +263,9 @@ private:
 	template <unsigned int bufferName>
 	HIPRT_HOST_DEVICE unsigned char increment_buffer(unsigned int hash_grid_index, unsigned char value)
 	{
-		if constexpr (bufferName == 0)
+		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT)
 			return hippt::atomic_fetch_add(&m_entries_buffer.total_unoccluded_rays[hash_grid_index], value);
-		if constexpr (bufferName == 1)
+		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_TOTAL_COUNT)
 			return hippt::atomic_fetch_add(&m_entries_buffer.total_num_rays[hash_grid_index], value);
 	}
 
@@ -280,9 +278,9 @@ private:
 	template <unsigned int bufferName>
 	HIPRT_HOST_DEVICE void set_buffer(unsigned int hash_grid_index, unsigned char value)
 	{
-		if constexpr (bufferName == 0)
+		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT)
 			m_entries_buffer.total_unoccluded_rays[hash_grid_index] = value;
-		if constexpr (bufferName == 1)
+		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_TOTAL_COUNT)
 			m_entries_buffer.total_num_rays[hash_grid_index] = value;
 	}
 };

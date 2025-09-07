@@ -6,6 +6,8 @@
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/Megakernel.h"
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
+
+#include "Device/kernels/NEE++/GridPrepopulate.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
 #include "Device/kernels/ReSTIR/ReGIR/ComputeCellsLightDistributions.h"
@@ -44,7 +46,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -58,8 +60,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 411
-#define DEBUG_PIXEL_Y 336
+#define DEBUG_PIXEL_X 414
+#define DEBUG_PIXEL_Y 491
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -245,22 +247,6 @@ void CPURenderer::setup_gmon()
         m_render_data.buffers.gmon_estimator.sets = m_gmon.sets.data();
         m_render_data.buffers.gmon_estimator.result_framebuffer = m_gmon.result_framebuffer.get_data_as_ColorRGB32F();
     }
-}
-
-void CPURenderer::nee_plus_plus_memcpy_accumulation(int frame_number)
-{
-#if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
-    bool enough_frames_passed = frame_number % m_nee_plus_plus.frame_timer_before_visibility_map_update == 0;
-    bool not_updating_vis_map_anymore = !m_render_data.nee_plus_plus.m_update_visibility_map;
-    if (!enough_frames_passed || not_updating_vis_map_anymore)
-        return;
-
-    // Only doing if using NEE++
-    for (int x = 0; x < m_render_data.nee_plus_plus.m_total_number_of_cells; x++)
-        NEEPlusPlusFinalizeAccumulation(m_render_data.nee_plus_plus, x);
-#else
-    // Otherwise, it's a no-op
-#endif
 }
 
 void CPURenderer::gmon_check_for_sets_accumulation()
@@ -562,6 +548,8 @@ void CPURenderer::render()
 
     auto start = std::chrono::high_resolution_clock::now();
 
+    nee_plus_plus_cache_visibility_pass();
+
     // Using 'samples_per_frame' as the number of samples to render on the CPU
     for (int frame_number = 1; frame_number <= m_render_data.render_settings.samples_per_frame; frame_number++)
     {
@@ -617,7 +605,6 @@ void CPURenderer::post_sample_update(int frame_number)
     // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
     // and then we can re-use the old buffers of to be filled by the current frame render
 
-    nee_plus_plus_memcpy_accumulation(frame_number);
     gmon_check_for_sets_accumulation();
     ReGIR_post_render_update();
 }
@@ -713,11 +700,9 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 
 void CPURenderer::nee_plus_plus_cache_visibility_pass()
 {
-    //debug_render_pass([this](int x, int y) {
-    //    NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, x, y);
-    //});
-
-    //nee_plus_plus_memcpy_accumulation(/* frame_number */ 0);
+    debug_render_pass([this](int x, int y) {
+        NEEPlusPlus_Grid_Prepopulate(m_render_data, x, y);
+    });
 }
 
 void CPURenderer::camera_rays_pass()
@@ -726,7 +711,7 @@ void CPURenderer::camera_rays_pass()
 
     debug_render_pass([this](int x, int y) {
         CameraRays(m_render_data, x, y);
-        });
+    });
 }
 
 void CPURenderer::ReGIR_pass()

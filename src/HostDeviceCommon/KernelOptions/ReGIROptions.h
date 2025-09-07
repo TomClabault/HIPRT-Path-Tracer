@@ -162,7 +162,7 @@
  *		in one go using an approximate representative point for the whole as well as an average reprensetative
  *		normal. This is less precise than integrating over the mesh but way faster
  */
-#define ReGIR_GridFillCellDistributionsIntegrateMesh KERNEL_OPTION_FALSE
+#define ReGIR_GridFillCellDistributionsIntegrateMesh KERNEL_OPTION_TRUE
 
 /**
  * How many random points to integrate the contribution of an emissive mesh over 

@@ -65,6 +65,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we pack the light indices of reservoirs the same way we packed the mesh indices?
 // - Should we re introduce the seed in the reservoirs instead of the float3 point on light for VRAM savings?
 // 
+// - Debug with the sampling fallback debug mode because last time I tried I think there was quite a bit of falback even though there shouldn't be any (unless we having missing cells in the grid because of collisions)
 // - Compare shading RIS with vis in target function vs shading all
 //		Can we have the same quality as shading all but by just using visibility in the target function and no more shenanigans ? Simplified code.t function since the cell distributions already have some guarantees?
 // - We should probably retry that idea if inning meshes into directional faves but maybe use something a bit more conservative to avoid the noise that we had before

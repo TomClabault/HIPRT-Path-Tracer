@@ -23,7 +23,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {   

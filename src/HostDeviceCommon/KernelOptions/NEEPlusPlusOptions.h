@@ -71,6 +71,7 @@
  * Debug mode for displaying some debug infos about NEE++
  */
 #define NEEPlusPlusDebugMode NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
+//#define NEEPlusPlusDebugMode NEE_PLUS_PLUS_DEBUG_MODE_GRID_CELLS
 
 #endif
 

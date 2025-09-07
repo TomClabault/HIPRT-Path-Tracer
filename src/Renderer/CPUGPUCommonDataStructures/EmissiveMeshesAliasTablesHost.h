@@ -46,8 +46,6 @@ struct EmissiveMeshesAliasTablesHost
 
 	void load_from_emissive_meshes(const Scene& parsed_scene)
 	{
-		auto start = std::chrono::high_resolution_clock::now();
-
 		const std::vector<ParsedEmissiveMesh>& emissive_meshes = parsed_scene.parsed_emissive_meshes.emissive_meshes;
 
 		std::vector<unsigned int> offsets(emissive_meshes.size());
@@ -125,10 +123,6 @@ struct EmissiveMeshesAliasTablesHost
 		upload_to_device_buffer(m_meshes_emissive_triangles_PDFs, parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs);
 		upload_to_device_buffer(m_meshes_emissive_triangles_indices, parsed_scene.emissive_triangles_primitive_indices);
 		upload_to_device_buffer(m_meshes_PDFs, meshes_PDFs);
-
-		auto stop = std::chrono::high_resolution_clock::now();
-
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Uploading emissive meshes precomputed-data time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 	}
 
 	unsigned int get_emissive_mesh_count() const

@@ -19,7 +19,7 @@ HIPRT_DEVICE static unsigned int h1_pcg(unsigned int seed)
     return (word >> 22u) ^ word;
 }
 
-HIPRT_HOST_DEVICE static unsigned int h1_pcg(float seed)
+HIPRT_DEVICE static unsigned int h1_pcg(float seed)
 {
     return h1_pcg(hippt::float_as_uint(seed));
 }
@@ -43,12 +43,12 @@ HIPRT_DEVICE static unsigned int h2_xxhash32(unsigned int seed)
     return h32^(h32 >> 16);
 }
 
-HIPRT_HOST_DEVICE static unsigned int h2_xxhash32(float seed)
+HIPRT_DEVICE static unsigned int h2_xxhash32(float seed)
 {
     return h2_xxhash32(hippt::float_as_uint(seed));
 }
 
-HIPRT_HOST_DEVICE static  float3 hash_periodic_shifting(float3 base_position, float grid_cell_size)
+HIPRT_DEVICE static float3 hash_grid_aliasing_fix_periodic_shifting(float3 base_position, float grid_cell_size)
 {
     float scaling = 0.005f * grid_cell_size;
 
@@ -62,13 +62,32 @@ HIPRT_HOST_DEVICE static  float3 hash_periodic_shifting(float3 base_position, fl
         base_position.z + (hippt::intrin_cosf(base_position.y * frequency) + hippt::intrin_cosf(base_position.x * frequency)) * scaling * 0.5f);
 }
 
+HIPRT_DEVICE static float3 hash_grid_aliasing_fix_clamping(float3 base_position, float grid_cell_size)
+{
+    float grid_coord_x_frac = hippt::fract(base_position.x / grid_cell_size);
+    float grid_coord_y_frac = hippt::fract(base_position.y / grid_cell_size);
+    float grid_coord_z_frac = hippt::fract(base_position.z / grid_cell_size);
+
+    // If the position is very close to the border of a cell, clamping the
+    // position to the border of the cell
+    float3 new_position = base_position;
+    if (grid_coord_x_frac < 1.0e-3f || grid_coord_x_frac > 0.999f)
+        new_position.x = roundf(base_position.x / grid_cell_size) * grid_cell_size;
+    if (grid_coord_y_frac < 1.0e-3f || grid_coord_y_frac > 0.999f)
+        new_position.y = roundf(base_position.y / grid_cell_size) * grid_cell_size;
+    if (grid_coord_z_frac < 1.0e-3f || grid_coord_z_frac > 0.999f)
+        new_position.z = roundf(base_position.z / grid_cell_size) * grid_cell_size;
+
+    return new_position;
+}
+
 /**
  * The 'precision' factor controls the discretization of the normal. 
  * Higher values mean more discretization steps mean more precision.
  * 
  * 2 is a default good value for 'precision'
  */
-HIPRT_HOST_DEVICE static unsigned int hash_quantize_normal(float3 normal, unsigned int precision)
+HIPRT_DEVICE static unsigned int hash_quantize_normal(float3 normal, unsigned int precision)
 {
     float precision_f = precision;
 
@@ -110,7 +129,7 @@ HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(unsigned int total_
     // grid cell that has Y-negative and some other randoms rays access the Y-positive hash grid cell
     //
     // Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
-    world_position = hash_periodic_shifting(world_position, cell_size);
+    world_position = hash_grid_aliasing_fix_clamping(world_position, cell_size);
 
     unsigned int grid_coord_x = static_cast<int>(floorf(world_position.x / cell_size));
     unsigned int grid_coord_y = static_cast<int>(floorf(world_position.y / cell_size));
@@ -138,8 +157,8 @@ HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_
     // grid cell that has Y-negative and some other randoms rays access the Y-positive hash grid cell
     //
     // Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
-    world_position_1 = hash_periodic_shifting(world_position_1, cell_size_1);
-    world_position_2 = hash_periodic_shifting(world_position_2, cell_size_2);
+    world_position_1 = hash_grid_aliasing_fix_clamping(world_position_1, cell_size_1);
+    world_position_2 = hash_grid_aliasing_fix_clamping(world_position_2, cell_size_2);
 
     unsigned int grid_coord_x_1 = static_cast<int>(floorf(world_position_1.x / cell_size_1));
     unsigned int grid_coord_y_1 = static_cast<int>(floorf(world_position_1.y / cell_size_1));

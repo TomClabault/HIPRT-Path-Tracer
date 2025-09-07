@@ -398,7 +398,12 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
     {
         unsigned int nee_plus_plus_hash_grid_cell_index = render_data.nee_plus_plus.get_visibility_map_index<true>(nee_plus_plus_context, render_data.current_camera);
         
+        /*if (hippt::is_pixel_index(1030, 692 - 1 - 565))
+            printf("--------------------------------- [Before %u] Visible / Total = %u / %u\n", nee_plus_plus_hash_grid_cell_index, render_data.nee_plus_plus.read_buffer<NEEPlusPlusDevice::BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(nee_plus_plus_hash_grid_cell_index), render_data.nee_plus_plus.read_buffer<NEEPlusPlusDevice::BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(nee_plus_plus_hash_grid_cell_index));*/
         render_data.nee_plus_plus.accumulate_visibility(!shadow_ray_occluded, nee_plus_plus_hash_grid_cell_index);
+
+        /*if (hippt::is_pixel_index(1030, 692 - 1 - 565))
+            printf("--------------------------------- [After  %u] Visible / Total = %u / %u\n", nee_plus_plus_hash_grid_cell_index, render_data.nee_plus_plus.read_buffer<NEEPlusPlusDevice::BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(nee_plus_plus_hash_grid_cell_index), render_data.nee_plus_plus.read_buffer<NEEPlusPlusDevice::BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(nee_plus_plus_hash_grid_cell_index));*/
     }
 #endif
 

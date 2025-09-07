@@ -40,7 +40,6 @@ public:
     void setup_brdfs_data();
     void setup_nee_plus_plus();
     void setup_gmon();
-    void nee_plus_plus_memcpy_accumulation(int frame_number);
     void gmon_check_for_sets_accumulation();
     void ReGIR_post_render_update();
 
