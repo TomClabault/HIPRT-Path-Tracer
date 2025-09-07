@@ -376,24 +376,24 @@ namespace hippt
 	/**
 	 * Returns the 'warpSize' runtime constant of the GPU
 	 */
-	inline int warp_size() { return 1; }
-	inline int thread_idx_x() { return 0; }
-	inline int thread_idx_y() { return 0; }
-	inline int thread_idx_global() { return 0; }
-	inline bool is_pixel_index(int x, int y) { return false; }
-	inline int current_warp_lane() { return 0; }
+	static int warp_size() { return 1; }
+	static int thread_idx_x() { return 0; }
+	static int thread_idx_y() { return 0; }
+	static int thread_idx_global() { return 0; }
+	static bool is_pixel_index(int x, int y) { return false; }
+	static int current_warp_lane() { return 0; }
 
 	template <typename T>
-	inline T ldg_load(T* address) { return *address; }
+	static T ldg_load(T* address) { return *address; }
 
-	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
-	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
+	static float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
+	static float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
-	inline float length(float3 u) { return sqrtf(dot(u, u)); }
-	inline float length2(float3 u) { return dot(u, u); }
+	static float length(float3 u) { return sqrtf(dot(u, u)); }
+	static float length2(float3 u) { return dot(u, u); }
 
-	inline float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
-	inline float abs(float a) { return std::abs(a); }
+	static float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
+	static float abs(float a) { return std::abs(a); }
 
 
 
@@ -401,28 +401,28 @@ namespace hippt
 
 
 	template <typename T>
-	inline T max(T a, T b) { return a > b ? a : b; }
+	static T max(T a, T b) { return a > b ? a : b; }
 	/**
 	 * Component-wise max of float3 and int3
 	 */
 	template <>
-	inline float3 max(float3 a, float3 b) { return make_float3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
+	static float3 max(float3 a, float3 b) { return make_float3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
 	template <>
-	inline int3 max(int3 a, int3 b) { return make_int3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
+	static int3 max(int3 a, int3 b) { return make_int3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
 
 
 
 
 	template <typename T>
-	inline T min(T a, T b) { return a < b ? a : b; }
+	static T min(T a, T b) { return a < b ? a : b; }
 
 	/**
 	 * Component-wise min of float3 and int3
 	 */
 	template <>
-	inline float3 min(float3 a, float3 b) { return make_float3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+	static float3 min(float3 a, float3 b) { return make_float3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
 	template <>
-	inline int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+	static int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
 
 
 
@@ -431,49 +431,49 @@ namespace hippt
 	/**
 	 * Minimum of each component of the float3 against x
 	 */
-	inline float3 min(float3 a, float x) { return make_float3(hiprt::min(a.x, x), hiprt::min(a.y, x), hiprt::min(a.z, x)); }
-	inline float3 min(float x, float3 a) { return hippt::min(a, x); }
+	static float3 min(float3 a, float x) { return make_float3(hiprt::min(a.x, x), hiprt::min(a.y, x), hiprt::min(a.z, x)); }
+	static float3 min(float x, float3 a) { return hippt::min(a, x); }
 
 	template <typename T>
-	inline T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
+	static T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
-	inline float2 cos(float2 x) { return make_float2(std::cos(x.x), std::cos(x.y)); }
-	inline float3 cos(float3 x) { return make_float3(std::cos(x.x), std::cos(x.y), std::cos(x.z)); }
-	inline float intrin_cosf(float x) { return std::cos(x); }
+	static float2 cos(float2 x) { return make_float2(std::cos(x.x), std::cos(x.y)); }
+	static float3 cos(float3 x) { return make_float3(std::cos(x.x), std::cos(x.y), std::cos(x.z)); }
+	static float intrin_cosf(float x) { return std::cos(x); }
 
-	inline float2 sin(float2 x) { return make_float2(std::sin(x.x), std::sin(x.y)); }
-	inline float3 sin(float3 x) { return make_float3(std::sin(x.x), std::sin(x.y), std::sin(x.z)); }
-	inline float intrin_sinf(float x) { return std::sin(x); }
+	static float2 sin(float2 x) { return make_float2(std::sin(x.x), std::sin(x.y)); }
+	static float3 sin(float3 x) { return make_float3(std::sin(x.x), std::sin(x.y), std::sin(x.z)); }
+	static float intrin_sinf(float x) { return std::sin(x); }
 
-	inline float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
+	static float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
 
-	inline float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
-	inline float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
-	inline float3 ldexp(float3 x, int exp) { return make_float3(std::ldexp(x.x, exp), std::ldexp(x.y, exp), std::ldexp(x.z, exp)); }
-
-	template <typename T>
-	inline T square(T x) { return x * x; }
-
-	inline float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
-	inline float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
-	inline float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
-	inline constexpr float pow_3(float x) { return x * x * x; }
-	inline constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
-	inline constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
-	inline constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
-
-	inline float intrin_pow(float x, float y) { return powf(x, y); }
-	inline float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
-
-	inline float3 normalize(float3 u) { return hiprt::normalize(u); }
+	static float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
+	static float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
+	static float3 ldexp(float3 x, int exp) { return make_float3(std::ldexp(x.x, exp), std::ldexp(x.y, exp), std::ldexp(x.z, exp)); }
 
 	template <typename T>
-	inline bool is_nan(const T& v) { return std::isnan(v); }
-	template <typename T>
-	inline bool is_inf(const T& v) { return std::isinf(v); }
-	inline bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
+	static T square(T x) { return x * x; }
 
-	inline unsigned int float_as_uint(float float_num)
+	static float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
+	static float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
+	static float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
+	static constexpr float pow_3(float x) { return x * x * x; }
+	static constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
+	static constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
+	static constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
+
+	static float intrin_pow(float x, float y) { return powf(x, y); }
+	static float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
+
+	static float3 normalize(float3 u) { return hiprt::normalize(u); }
+
+	template <typename T>
+	static bool is_nan(const T& v) { return std::isnan(v); }
+	template <typename T>
+	static bool is_inf(const T& v) { return std::isinf(v); }
+	static bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
+
+	static unsigned int float_as_uint(float float_num)
 	{
 		return *reinterpret_cast<unsigned int*>(&float_num);
 	}
@@ -551,7 +551,7 @@ namespace hippt
 	 * For t=0, returns a
 	 */
 	template <typename T>
-	inline T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
+	static T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
 
 	/**
 	 * For a 'value' between 'a' and 'b', returns 't' such that
@@ -561,7 +561,7 @@ namespace hippt
 	 * For 'value' == 'b', returns 1.0f
 	 */
 	template <typename T>
-	inline float inverse_lerp(T value, T a, T b) 
+	static float inverse_lerp(T value, T a, T b) 
 	{ 
 		// Clamping
 		value = hippt::max(a, hippt::min(value, b)); 
@@ -577,18 +577,18 @@ namespace hippt
 	 * Smoothstep interpolation in between
 	 */
 	template <typename T>
-	inline T smoothstep(T min, T max, float x) 
+	static T smoothstep(T min, T max, float x) 
 	{ 
 		float t = hippt::clamp(0.0f, 1.0f, (x - min) / (max - min));
 
 		return t * t * (3.0f - 2.0f * t);
 	}
 
-	inline float fract(float a) { return a - floorf(a); }
-	inline float asfloat(unsigned int x) { return std::bit_cast<float, unsigned int>(x); }
-	inline unsigned int asuint(float x) { return std::bit_cast<unsigned int, float>(x); }
+	static float fract(float a) { return a - floorf(a); }
+	static float asfloat(unsigned int x) { return std::bit_cast<float, unsigned int>(x); }
+	static unsigned int asuint(float x) { return std::bit_cast<unsigned int, float>(x); }
 	template <typename T>
-	inline int popc(T bitmask) { return std::popcount(bitmask); }
+	static int popc(T bitmask) { return std::popcount(bitmask); }
 
 	/**
 	 * Finds the position of least signigicant bit set to 1 in a 32 bit unsigned integer.
@@ -596,7 +596,7 @@ namespace hippt
 	 *
 	 * Returns 0 if all bits are zero
 	 */
-	inline unsigned int ffs(unsigned int bitmask)
+	static unsigned int ffs(unsigned int bitmask)
 	{
 		for (int i = 0; i < sizeof(unsigned int) * 8; i++)
 			if (bitmask & (1 << i))
@@ -605,12 +605,12 @@ namespace hippt
 		return 0;
 	}
 
-	inline bool warp_any(unsigned int thread_mask, bool predicate) { return predicate; }
+	static bool warp_any(unsigned int thread_mask, bool predicate) { return predicate; }
 	/**
 	 * Returns a bit mask whose bits are set to 1 for threads that evaluated the predicate to true.
 	 */
-	inline unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate) { return predicate ? 1 : 0; }
-	inline unsigned int warp_activemask() { return 1; }
+	static unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate) { return predicate ? 1 : 0; }
+	static unsigned int warp_activemask() { return 1; }
 
 	/**
 	 * T can be a 32-bit integer type, 64-bit integer type or a single precision or double precision floating point type.
@@ -627,21 +627,21 @@ namespace hippt
 	 * 'warp_shfl': The thread reads the value from the lane specified in srcLane
 	 */
 	template <typename T>
-	inline T warp_shfl(T var, int srcLane, int width = 1) { return var; }
+	static T warp_shfl(T var, int srcLane, int width = 1) { return var; }
 
 	/**
 	 * Returns the index within its warp (not group) of the calling thread
 	 * 
 	 * Warp sizes of 1 on the CPU
 	 */
-	HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int warp_2D_thread_index()
+	static unsigned int warp_2D_thread_index()
 	{
 		return 1;
 	}
 #endif
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_point(const float4x4& m, const float3& p)
+HIPRT_DEVICE static float3 matrix_X_point(const float4x4& m, const float3& p)
 {
 	float x = p.x;
 	float y = p.y;
@@ -660,7 +660,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_point(const float4x4& m, const fl
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vec(const float3x3& m, const float3& u)
+HIPRT_DEVICE static float3 matrix_X_vec(const float3x3& m, const float3& u)
 {
 	float x = u.x;
 	float y = u.y;
@@ -674,7 +674,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vec(const float3x3& m, const floa
 	return make_float3(xt, yt, zt);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vec(const float4x4& m, const float3& u)
+HIPRT_DEVICE static float3 matrix_X_vec(const float4x4& m, const float3& u)
 {
 	float x = u.x;
 	float y = u.y;
