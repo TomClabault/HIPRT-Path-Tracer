@@ -40,7 +40,7 @@
 
 #endif
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float compute_gini_coefficient(SORTED_MEANS_DECLARATION)
+HIPRT_HOST_DEVICE float compute_gini_coefficient(SORTED_MEANS_DECLARATION)
 {
     // Applying Eq. 4 of the paper
     float sum_of_means = 0.0f;
@@ -64,7 +64,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float compute_gini_coefficient(SORTED_MEANS_DECLA
     return nume / denom - static_cast<float>(GMoNMSetsCount + 1) / GMoNMSetsCount;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_median_of_means(GMoNDevice gmon_device, unsigned int pixel_index, int2 render_resolution SORTED_MEANS_DECLARATION_WITH_COMMA)
+HIPRT_HOST_DEVICE ColorRGB32F get_median_of_means(GMoNDevice gmon_device, unsigned int pixel_index, int2 render_resolution SORTED_MEANS_DECLARATION_WITH_COMMA)
 {
     // Getting the index of the set for the sorted median
     unsigned short int median_set_index = SORTED_INDEX_FETCH(GMoNMSetsCount / 2);
