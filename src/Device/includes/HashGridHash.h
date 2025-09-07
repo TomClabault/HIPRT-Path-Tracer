@@ -11,7 +11,7 @@
 /**
  * PCG for the first hash function
  */
-HIPRT_DEVICE HIPRT_INLINE unsigned int h1_pcg(unsigned int seed)
+HIPRT_DEVICE static unsigned int h1_pcg(unsigned int seed)
 {
     unsigned int state = seed * 747796405u + 2891336453u;
     unsigned int word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
@@ -19,7 +19,7 @@ HIPRT_DEVICE HIPRT_INLINE unsigned int h1_pcg(unsigned int seed)
     return (word >> 22u) ^ word;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int h1_pcg(float seed)
+HIPRT_HOST_DEVICE static unsigned int h1_pcg(float seed)
 {
     return h1_pcg(hippt::float_as_uint(seed));
 }
@@ -27,7 +27,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int h1_pcg(float seed)
 /**
  * xxhash32 for the second hash function
  */
-HIPRT_DEVICE HIPRT_INLINE unsigned int h2_xxhash32(unsigned int seed)
+HIPRT_DEVICE static unsigned int h2_xxhash32(unsigned int seed)
 {
     constexpr unsigned int PRIME32_2 = 2246822519U;
     constexpr unsigned int PRIME32_3 = 3266489917U;
@@ -43,12 +43,12 @@ HIPRT_DEVICE HIPRT_INLINE unsigned int h2_xxhash32(unsigned int seed)
     return h32^(h32 >> 16);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int h2_xxhash32(float seed)
+HIPRT_HOST_DEVICE static unsigned int h2_xxhash32(float seed)
 {
     return h2_xxhash32(hippt::float_as_uint(seed));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 hash_periodic_shifting(float3 base_position, float grid_cell_size)
+HIPRT_HOST_DEVICE static  float3 hash_periodic_shifting(float3 base_position, float grid_cell_size)
 {
     float scaling = 0.005f * grid_cell_size;
 
@@ -68,7 +68,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 hash_periodic_shifting(float3 base_positio
  * 
  * 2 is a default good value for 'precision'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int hash_quantize_normal(float3 normal, unsigned int precision)
+HIPRT_HOST_DEVICE static unsigned int hash_quantize_normal(float3 normal, unsigned int precision)
 {
     float precision_f = precision;
 
@@ -82,7 +82,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int hash_quantize_normal(float3 normal, 
  /**
  * Reference: [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
  */
-HIPRT_DEVICE HIPRT_INLINE float compute_adaptive_cell_size(float3 world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size)
+HIPRT_DEVICE static float compute_adaptive_cell_size(float3 world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size)
 {
     int width = current_camera.sensor_width;
     int height = current_camera.sensor_height;
@@ -97,7 +97,7 @@ HIPRT_DEVICE HIPRT_INLINE float compute_adaptive_cell_size(float3 world_position
  * Returns the hash cell index of the given world position and camera position. Does not resolve collisions.
  * The hash key for resolving collision is given in 'out_checksum'
  */
-HIPRT_DEVICE HIPRT_INLINE unsigned int hash_pos_distance_to_camera(unsigned int total_number_of_cells, float3 world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
+HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(unsigned int total_number_of_cells, float3 world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
 {
     float cell_size = compute_adaptive_cell_size(world_position, current_camera, target_projected_size, grid_cell_min_size);
 
@@ -124,7 +124,7 @@ HIPRT_DEVICE HIPRT_INLINE unsigned int hash_pos_distance_to_camera(unsigned int 
     return cell_hash;
 }
 
-HIPRT_DEVICE HIPRT_INLINE unsigned int hash_double_position_camera(unsigned int total_number_of_cells, float3 world_position_1, float3 world_position_2, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
+HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_number_of_cells, float3 world_position_1, float3 world_position_2, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
 {
     float cell_size_1 = compute_adaptive_cell_size(world_position_1, current_camera, target_projected_size, grid_cell_min_size);
     float cell_size_2 = compute_adaptive_cell_size(world_position_2, current_camera, target_projected_size, grid_cell_min_size);
