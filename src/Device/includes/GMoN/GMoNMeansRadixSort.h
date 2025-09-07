@@ -48,7 +48,7 @@ __shared__ unsigned short int sorted_keys[GMoNThreadsPerBlock * GMoNMSetsCount];
 #define STORE_KEY(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(42, key_index)] = value
 #endif
 
-HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution)
+HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution)
 {
 #ifndef __KERNELCC__
 	std::vector<unsigned int> keys_vector(GMoNMSetsCount);
