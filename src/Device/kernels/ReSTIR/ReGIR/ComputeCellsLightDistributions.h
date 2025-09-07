@@ -17,7 +17,7 @@
 
 #if ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
 
-HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng, unsigned int rt)
+HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
     EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(mesh_index_for_grid_cell);
     float total_contribution_to_cell = 0.0f;
@@ -43,7 +43,7 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
 
 #else // ReGIR_GridFillCellDistributionsIntegrateMesh == KERNEL_OPTION_TRUE
 
-HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng, unsigned int hash_grid_cell_index)
+HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
     float3 mesh_average_point = render_data.buffers.emissive_meshes_data.meshes_average_points[mesh_index_for_grid_cell];
     float3 mesh_normal;
@@ -67,16 +67,6 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
     // Just wrapping the mesh power in an RGB value to be able to pass it to the 'target_function' function which doesn't take
     // just a float as argument
     ColorRGB32F total_mesh_power = ColorRGB32F(render_data.buffers.emissive_meshes_data.meshes_total_power[mesh_index_for_grid_cell]);
-
-    if (hash_grid_cell_index == 15547)
-    {
-        NEEPlusPlusContext context;
-        context.envmap = false;
-        context.point_on_light = mesh_average_point;
-        context.shaded_point = cell_surface.cell_point;
-
-        printf("Vis: %f -----------------------------------------------\n", render_data.nee_plus_plus.estimate_visibility_probability(context, render_data.current_camera));
-    }
 
     return ReGIR_grid_fill_evaluate_target_function<
         /* visibility */ false,
@@ -125,7 +115,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Compute_Cells_Light_Distributions(HIP
     unsigned int seed = wang_hash(hash_grid_cell_index + mesh_index_for_grid_cell);
     Xorshift32Generator rng(seed);
 
-    float mesh_contribution = compute_mesh_contribution(render_data, cell_surface, mesh_index_for_grid_cell, primary_hit, rng, hash_grid_cell_index);
+    float mesh_contribution = compute_mesh_contribution(render_data, cell_surface, mesh_index_for_grid_cell, primary_hit, rng);
 
     contributions_scratch_buffer[thread_index] = mesh_contribution;
 }

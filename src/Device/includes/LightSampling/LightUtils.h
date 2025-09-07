@@ -809,57 +809,60 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
         }
     }
 
+    /**
+     * CANONICAL TECHNIQUE: NON-CANONICAL CANDIDATE
+     * For good variance reduction in the donominator of pairwise MIS
+     */
     if (canonical_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
     {
         if (!emission_1.is_black())
         {
-            float light_source_area = hippt::length(get_triangle_normal_not_normalized(render_data, triangle_index_1)) * 0.5f;
+            // Adding visibility in the canonical sample target function's if we have visibility in the grid fill target function
+            // or if we wwant visibility in the target function during shading resampling
+            // or if we're shading all candidates because then we want the target function to produce
+            // the radiance towards the shading point directly which means that we need the visibility in the target function
+            ColorRGB32F sample_radiance;
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                shading_point, view_direction, shading_normal, geometric_normal,
+                last_hit_primitive_index, ray_payload,
+                point_on_light_1, light_source_normal_1, emission_1, random_number_generator, sample_radiance);
 
+            float RIS_integral = regir_settings.get_non_canonical_pre_integration_factor(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
+            if (RIS_integral == 0.0f)
+                RIS_integral = 1.0f;
+            if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
+                RIS_integral = 1.0f;
+            float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload),
+                emission_1, light_source_normal_1, point_on_light_1, random_number_generator);
+            float non_canonical_sample_PDF = non_canonical_sample_PDF_unnormalized / RIS_integral;
+
+            float mis_weight = pairwise.get_canonical_MIS_weight_1(canonical_technique_1_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_3_canonical_reservoir_1_pdf, mis_weight_normalization);
+
+            ReGIRReservoir canonical_technique_1_reservoir;
+            canonical_technique_1_reservoir.sample.emissive_triangle_global_index = triangle_index_1;
+            canonical_technique_1_reservoir.sample.point_on_light_random_seed = random_point_on_light_1_seed;
+            canonical_technique_1_reservoir.UCW = UCW_1;
+            if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_technique_1_reservoir, random_number_generator))
             {
-                // Adding visibility in the canonical sample target function's if we have visibility in the grid fill target function
-                // or if we wwant visibility in the target function during shading resampling
-                // or if we're shading all candidates because then we want the target function to produce
-                // the radiance towards the shading point directly which means that we need the visibility in the target function
-                ColorRGB32F sample_radiance;
-                float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
-                    shading_point, view_direction, shading_normal, geometric_normal,
-                    last_hit_primitive_index, ray_payload,
-                    point_on_light_1, light_source_normal_1, emission_1, random_number_generator, sample_radiance);
-
-                float RIS_integral = regir_settings.get_non_canonical_pre_integration_factor(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
-                if (RIS_integral == 0.0f)
-                    RIS_integral = 1.0f;
-                if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
-                    RIS_integral = 1.0f;
-                float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload),
-                    emission_1, light_source_normal_1, point_on_light_1, random_number_generator);
-                float non_canonical_sample_PDF = non_canonical_sample_PDF_unnormalized / RIS_integral;
-
-                float mis_weight = pairwise.get_canonical_MIS_weight_1(canonical_technique_1_canonical_reservoir_1_pdf, canonical_technique_2_canonical_reservoir_1_pdf, canonical_technique_3_canonical_reservoir_1_pdf, mis_weight_normalization);
-
-                ReGIRReservoir canonical_technique_1_reservoir;
-                canonical_technique_1_reservoir.sample.emissive_triangle_global_index = triangle_index_1;
-                canonical_technique_1_reservoir.sample.point_on_light_random_seed = random_point_on_light_1_seed;
-                canonical_technique_1_reservoir.UCW = UCW_1;
-                if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_technique_1_reservoir, random_number_generator))
-                {
-                    selected_point_on_light = point_on_light_1;
-                    selected_light_source_normal = light_source_normal_1;
-                    selected_light_source_area = light_source_area;
-                    selected_emission = emission_1;
+                selected_point_on_light = point_on_light_1;
+                selected_light_source_normal = light_source_normal_1;
+                selected_light_source_area = hippt::length(get_triangle_normal_not_normalized(render_data, triangle_index_1)) * 0.5f;
+                selected_emission = emission_1;
 
 #if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
-                    out_infos.sample_radiance = sample_radiance;
-#endif
-                }
-
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
-                out_infos.sample_radiance += sample_radiance * canonical_technique_1_reservoir.UCW * mis_weight;
+                out_infos.sample_radiance = sample_radiance;
 #endif
             }
+
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
+            out_infos.sample_radiance += sample_radiance * canonical_technique_1_reservoir.UCW * mis_weight;
+#endif
         }
     }
 
+    /**
+     * TRUE CANONICAL CANDIDATE
+     */
     // Incorporating a canonical candidate if doing visibility reuse because visibility reuse
     // may cause the grid cell to produce no valid reservoir at all so we need canonical samples to
     // cover those cases for unbiased results
@@ -870,50 +873,46 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
     {
         if (!emission_2.is_black())
         {
-            float light_source_area = hippt::length(get_triangle_normal_not_normalized(render_data, triangle_index_2)) * 0.5f;
+            // Adding visibility in the canonical sample target function's if we have visibility in the grid fill target function
+            // or if we wwant visibility in the target function during shading resampling
+            // or if we're shading all candidates because then we want the target function to produce
+            // the radiance towards the shading point directly which means that we need the visibility in the target function
+            ColorRGB32F sample_radiance;
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                shading_point, view_direction, shading_normal, geometric_normal,
+                last_hit_primitive_index, ray_payload,
+                point_on_light_2, light_source_normal_2, emission_2, random_number_generator, sample_radiance);
 
+            float RIS_integral = regir_settings.get_canonical_pre_integration_factor(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
+            if (RIS_integral == 0.0f)
+                RIS_integral = 1.0f;
+            if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
+                RIS_integral = 1.0f;
+            float canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload),
+                emission_2, light_source_normal_2, point_on_light_2, random_number_generator);
+            float canonical_sample_PDF = canonical_sample_PDF_unnormalized / RIS_integral;
+
+            float mis_weight = pairwise.get_canonical_MIS_weight_2(canonical_technique_1_canonical_reservoir_2_pdf, canonical_technique_2_canonical_reservoir_2_pdf, canonical_technique_3_canonical_reservoir_2_pdf, mis_weight_normalization);
+
+            ReGIRReservoir canonical_technique_2_reservoir;
+            canonical_technique_2_reservoir.sample.emissive_triangle_global_index = triangle_index_2;
+            canonical_technique_2_reservoir.sample.point_on_light_random_seed = random_point_on_light_2_seed;
+            canonical_technique_2_reservoir.UCW = UCW_2;
+            if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_technique_2_reservoir, random_number_generator))
             {
-                // Adding visibility in the canonical sample target function's if we have visibility in the grid fill target function
-                // or if we wwant visibility in the target function during shading resampling
-                // or if we're shading all candidates because then we want the target function to produce
-                // the radiance towards the shading point directly which means that we need the visibility in the target function
-                ColorRGB32F sample_radiance;
-                float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
-                    shading_point, view_direction, shading_normal, geometric_normal,
-                    last_hit_primitive_index, ray_payload,
-                    point_on_light_2, light_source_normal_2, emission_2, random_number_generator, sample_radiance);
-
-                float RIS_integral = regir_settings.get_canonical_pre_integration_factor(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
-                if (RIS_integral == 0.0f)
-                    RIS_integral = 1.0f;
-                if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
-                    RIS_integral = 1.0f;
-                float canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload),
-                    emission_2, light_source_normal_2, point_on_light_2, random_number_generator);
-                float canonical_sample_PDF = canonical_sample_PDF_unnormalized / RIS_integral;
-
-                float mis_weight = pairwise.get_canonical_MIS_weight_2(canonical_technique_1_canonical_reservoir_2_pdf, canonical_technique_2_canonical_reservoir_2_pdf, canonical_technique_3_canonical_reservoir_2_pdf, mis_weight_normalization);
-
-                ReGIRReservoir canonical_technique_2_reservoir;
-                canonical_technique_2_reservoir.sample.emissive_triangle_global_index = triangle_index_2;
-                canonical_technique_2_reservoir.sample.point_on_light_random_seed = random_point_on_light_2_seed;
-                canonical_technique_2_reservoir.UCW = UCW_2;
-                if (out_reservoir.stream_reservoir(mis_weight, target_function, canonical_technique_2_reservoir, random_number_generator))
-                {
-                    selected_point_on_light = point_on_light_2;
-                    selected_light_source_normal = light_source_normal_2;
-                    selected_light_source_area = light_source_area;
-                    selected_emission = emission_2;
+                selected_point_on_light = point_on_light_2;
+                selected_light_source_normal = light_source_normal_2;
+                selected_light_source_area = hippt::length(get_triangle_normal_not_normalized(render_data, triangle_index_2)) * 0.5f;
+                selected_emission = emission_2;
 
 #if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
-                    out_infos.sample_radiance = sample_radiance;
-#endif
-                }
-
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
-                out_infos.sample_radiance += sample_radiance * canonical_technique_2_reservoir.UCW * mis_weight;
+                out_infos.sample_radiance = sample_radiance;
 #endif
             }
+
+#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
+            out_infos.sample_radiance += sample_radiance * canonical_technique_2_reservoir.UCW * mis_weight;
+#endif
         }
     }
 

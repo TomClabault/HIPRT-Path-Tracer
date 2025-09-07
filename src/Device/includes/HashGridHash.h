@@ -19,7 +19,7 @@ HIPRT_DEVICE static unsigned int h1_pcg(unsigned int seed)
     return (word >> 22u) ^ word;
 }
 
-HIPRT_DEVICE static unsigned int h1_pcg(float seed)
+HIPRT_HOST_DEVICE static unsigned int h1_pcg(float seed)
 {
     return h1_pcg(hippt::float_as_uint(seed));
 }
@@ -43,12 +43,12 @@ HIPRT_DEVICE static unsigned int h2_xxhash32(unsigned int seed)
     return h32^(h32 >> 16);
 }
 
-HIPRT_DEVICE static unsigned int h2_xxhash32(float seed)
+HIPRT_HOST_DEVICE static unsigned int h2_xxhash32(float seed)
 {
     return h2_xxhash32(hippt::float_as_uint(seed));
 }
 
-HIPRT_DEVICE static float3 hash_grid_aliasing_fix_periodic_shifting(float3 base_position, float grid_cell_size)
+HIPRT_HOST_DEVICE static float3 hash_grid_aliasing_fix_periodic_shifting(float3 base_position, float grid_cell_size)
 {
     float scaling = 0.005f * grid_cell_size;
 
@@ -62,7 +62,7 @@ HIPRT_DEVICE static float3 hash_grid_aliasing_fix_periodic_shifting(float3 base_
         base_position.z + (hippt::intrin_cosf(base_position.y * frequency) + hippt::intrin_cosf(base_position.x * frequency)) * scaling * 0.5f);
 }
 
-HIPRT_DEVICE static float3 hash_grid_aliasing_fix_clamping(float3 base_position, float grid_cell_size)
+HIPRT_HOST_DEVICE static float3 hash_grid_aliasing_fix_clamping(float3 base_position, float grid_cell_size)
 {
     float grid_coord_x_frac = hippt::fract(base_position.x / grid_cell_size);
     float grid_coord_y_frac = hippt::fract(base_position.y / grid_cell_size);
@@ -87,7 +87,7 @@ HIPRT_DEVICE static float3 hash_grid_aliasing_fix_clamping(float3 base_position,
  * 
  * 2 is a default good value for 'precision'
  */
-HIPRT_DEVICE static unsigned int hash_quantize_normal(float3 normal, unsigned int precision)
+HIPRT_HOST_DEVICE static unsigned int hash_quantize_normal(float3 normal, unsigned int precision)
 {
     float precision_f = precision;
 

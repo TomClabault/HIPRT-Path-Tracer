@@ -948,11 +948,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 			unsigned int hash_grid_cell_index = grid_cell_alive_list[cell_index_in_iteration + cell_offset];
 			assert(hash_grid_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
-			if (hash_grid_cell_index == 15547)
-			{
-				printf("mesh 0 / 1: %f / %f\n", best_contributions[0], best_contributions[1]);
-			}
-
 			std::vector<unsigned short int> cdf_u16(light_distribution_size, 0.0f);
 			if (sum_best_contributions > 0.0f)
 			{
