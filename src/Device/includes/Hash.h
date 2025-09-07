@@ -8,7 +8,7 @@
 
 #include <hiprt/hiprt_device.h>
 
-HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
+HIPRT_HOST_DEVICE static unsigned int wang_hash(unsigned int seed)
 {
     seed = (seed ^ 61) ^ (seed >> 16);
     seed *= 9;
