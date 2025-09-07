@@ -8,7 +8,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE HIPRT_INLINE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
+HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
 	float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area);
 
 HIPRT_DEVICE float3 reconstruct_sample_point_on_light(const HIPRTRenderData& render_data, unsigned int point_on_light_random_seed, unsigned int emissive_triangle_global_index, float3& out_triangle_normal, float& out_triangle_area)
