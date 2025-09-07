@@ -18,7 +18,7 @@ struct TriangleIndices
     int z; // vertex C
 };
 
-HIPRT_HOST_DEVICE HIPRT_INLINE TriangleIndices load_triangle_vertex_indices(int* triangle_indices_buffer, int primitive_index)
+HIPRT_DEVICE static TriangleIndices load_triangle_vertex_indices(int* triangle_indices_buffer, int primitive_index)
 {
     int primitive_index_3 = primitive_index * 3;
 
@@ -40,7 +40,7 @@ struct TriangleTexcoords
     float2 z; // vertex C
 };
 
-HIPRT_HOST_DEVICE HIPRT_INLINE TriangleTexcoords load_triangle_texcoords(float2* texcoords_buffer, TriangleIndices triangle_vertex_indices)
+HIPRT_DEVICE static TriangleTexcoords load_triangle_texcoords(float2* texcoords_buffer, TriangleIndices triangle_vertex_indices)
 {
     return TriangleTexcoords
     {
