@@ -22,7 +22,7 @@ struct ReSTIRSurface
 	float3 shading_point = { 0.0f, 0.0f, 0.0f };
 };
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ReSTIRSurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
 {
 	ReSTIRSurface surface;
 
@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface(const HIPRTRender
  * that could have produced the sample that we picked, we need to consider the neighbors at their previous positions,
  * not the current so we need to read in the last frame's g-buffer.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface_previous_frame(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ReSTIRSurface get_pixel_surface_previous_frame(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
 {
 	ReSTIRSurface surface;
 
@@ -71,7 +71,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface_previous_frame(co
 /**
  * Simple overload of the function to base the 'previous_frame' decision on a boolean instead of on the name of the function
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, bool previous_frame, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ReSTIRSurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, bool previous_frame, Xorshift32Generator& random_number_generator)
 {
 	if (previous_frame)
 		return get_pixel_surface_previous_frame(render_data, pixel_index, random_number_generator);
