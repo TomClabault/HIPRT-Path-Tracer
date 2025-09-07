@@ -34,7 +34,7 @@
 * The second texture is used when inside the object: its IOR is simply inversed
 */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
+HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
 {
     pdf = 0.0f;
 
@@ -124,7 +124,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float 
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_glass_E_sample(float relative_ior, float roughness, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float3 GGX_glass_E_sample(float relative_ior, float roughness, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     if (hippt::abs(relative_ior - 1.0f) < 1.0e-5f)
         relative_ior = 1.0f + 1.0e-5f;
@@ -159,7 +159,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_glass_E_sample(float relative_ior, flo
     return sampled_direction;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void glass_directional_albedo_integration(int kernel_iterations, int current_iteration, uint32_t x, uint32_t y, uint32_t z, uint32_t pixel_index, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, bool exiting_surface)
+HIPRT_DEVICE void glass_directional_albedo_integration(int kernel_iterations, int current_iteration, uint32_t x, uint32_t y, uint32_t z, uint32_t pixel_index, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, bool exiting_surface)
 {
     Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);
 
