@@ -16,7 +16,7 @@
   *
   * This function does the branching that allows backfacing lights or not
   */
-HIPRT_INLINE HIPRT_DEVICE float compute_cosine_term_at_light_source(float3 light_source_normal, float3 minus_direction_to_light)
+HIPRT_DEVICE static float compute_cosine_term_at_light_source(float3 light_source_normal, float3 minus_direction_to_light)
 {
     // The cosine term is the dot product between the light source normal and the direction to the shading point
 
@@ -29,7 +29,7 @@ HIPRT_INLINE HIPRT_DEVICE float compute_cosine_term_at_light_source(float3 light
 #endif
 }
 
-HIPRT_INLINE HIPRT_HOST_DEVICE float area_to_solid_angle_pdf(float area_pdf, float distance, float cos_theta_at_light_source)
+HIPRT_DEVICE static float area_to_solid_angle_pdf(float area_pdf, float distance, float cos_theta_at_light_source)
 {
     if (cos_theta_at_light_source < 1.0e-8f)
         return 0.0f;
@@ -37,7 +37,7 @@ HIPRT_INLINE HIPRT_HOST_DEVICE float area_to_solid_angle_pdf(float area_pdf, flo
     return area_pdf * hippt::square(distance) / cos_theta_at_light_source;
 }
 
-HIPRT_INLINE HIPRT_HOST_DEVICE float solid_angle_to_area_pdf(float solid_angle_pdf, float distance, float cos_theta_at_light_source)
+HIPRT_DEVICE static float solid_angle_to_area_pdf(float solid_angle_pdf, float distance, float cos_theta_at_light_source)
 {
     if (cos_theta_at_light_source < 1.0e-8f)
         return 0.0f;
