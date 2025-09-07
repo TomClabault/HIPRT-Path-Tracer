@@ -19,7 +19,7 @@
  * [1] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
  */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_envmap(const WorldSettings& world_settings, float envmap_sampling_probability, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ReSTIRDIPresampledLight presample_envmap(const WorldSettings& world_settings, float envmap_sampling_probability, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_envmap;
     presampled_envmap.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
@@ -34,7 +34,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_envmap(const Wo
     return presampled_envmap;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triangle(const HIPRTRenderData& render_data, float light_sampling_probability, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ReSTIRDIPresampledLight presample_emissive_triangle(const HIPRTRenderData& render_data, float light_sampling_probability, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_light;
 
@@ -59,7 +59,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
 }
 
 // TODO try just passing LightPresamplingParameters in there instead of everything individually
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight ReSTIR_DI_presample_one_light(const HIPRTRenderData& render_data, const LightPresamplingParameters& parameters, float envmap_sampling_probability, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ReSTIRDIPresampledLight ReSTIR_DI_presample_one_light(const HIPRTRenderData& render_data, const LightPresamplingParameters& parameters, float envmap_sampling_probability, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_light;
     if (random_number_generator() < envmap_sampling_probability)
