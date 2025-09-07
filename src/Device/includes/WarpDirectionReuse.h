@@ -21,7 +21,7 @@
  * the Bistro (which is an expensive scene to trace). Because the correlations were pretty bad,
  * the implementation of the paper was discontinued
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void warp_direction_reuse(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, float3 view_direction, float3& in_out_bounce_direction, ColorRGB32F& out_bsdf_color, float& out_bsdf_pdf, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE void warp_direction_reuse(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, float3 view_direction, float3& in_out_bounce_direction, ColorRGB32F& out_bsdf_color, float& out_bsdf_pdf, int bounce, Xorshift32Generator& random_number_generator)
 {
     if (bounce == 0)
     {
