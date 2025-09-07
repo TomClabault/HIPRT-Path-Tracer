@@ -17,7 +17,7 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
+HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
 {
     if (render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
     {
@@ -58,7 +58,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     }
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void rescale_samples(HIPRTRenderData& render_data, uint32_t pixel_index)
+HIPRT_DEVICE void rescale_samples(HIPRTRenderData& render_data, uint32_t pixel_index)
 {
     // Because when displaying the framebuffer, we're dividing by the number of samples to 
     // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
