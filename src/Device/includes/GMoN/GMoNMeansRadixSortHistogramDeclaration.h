@@ -35,7 +35,7 @@ struct GMoNRadixSortHistogram
 	/**
 	 * This function adds 'value' to the correct histogram bin
 	 */
-	HIPRT_HOST_DEVICE HIPRT_INLINE void increment(unsigned int index, unsigned int value)
+	HIPRT_HOST_DEVICE void increment(unsigned int index, unsigned int value)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);
 		unsigned int bin_index = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
@@ -61,7 +61,7 @@ struct GMoNRadixSortHistogram
 	/**
 	 * This function adds 'value' to the correct histogram bin
 	 */
-	HIPRT_HOST_DEVICE HIPRT_INLINE void decrement(unsigned int index, unsigned int value)
+	HIPRT_HOST_DEVICE void decrement(unsigned int index, unsigned int value)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);
 		unsigned int bin_index = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
@@ -82,7 +82,7 @@ struct GMoNRadixSortHistogram
 	/**
      * Returns
      */
-	HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int fetch_value(unsigned int index)
+	HIPRT_HOST_DEVICE unsigned int fetch_value(unsigned int index)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);
 		unsigned int bin_index = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
@@ -105,7 +105,7 @@ struct GMoNRadixSortHistogram
 		}
 	}
 
-	HIPRT_HOST_DEVICE HIPRT_INLINE void clear_bin(unsigned int index)
+	HIPRT_HOST_DEVICE void clear_bin(unsigned int index)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);
 		unsigned int bin_index = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
