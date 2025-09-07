@@ -14,7 +14,7 @@
 /**
  * Returns true if the two given points pass the plane distance check, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3& temporal_world_space_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
+HIPRT_DEVICE bool plane_distance_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3& temporal_world_space_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
 {
 	if (!neighbor_similarity_settings.use_plane_distance_heuristic)
 		return true;
@@ -25,7 +25,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_heuristic(const ReSTIRCommonN
 	return distance_to_plane < plane_distance_threshold;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool normal_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3& current_normal, const float3& neighbor_normal, float threshold)
+HIPRT_DEVICE bool normal_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3& current_normal, const float3& neighbor_normal, float threshold)
 {
 	if (!neighbor_similarity_settings.use_normal_similarity_heuristic)
 		return true;
@@ -33,7 +33,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool normal_similarity_heuristic(const ReSTIRComm
 	return hippt::dot(current_normal, neighbor_normal) > threshold;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, float neighbor_roughness, float center_pixel_roughness, float threshold)
+HIPRT_DEVICE bool roughness_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, float neighbor_roughness, float center_pixel_roughness, float threshold)
 {
 	if (!neighbor_similarity_settings.use_roughness_similarity_heuristic)
 		return true;
@@ -51,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(const ReSTIRC
 }
 
 template <bool IsReSTIRGI>
-HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& render_data,
+HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& render_data,
 																		 int neighbor_pixel_index, int center_pixel_index, 
 																		 const float3& current_shading_point, const float3& current_normal, bool previous_frame = false)
 {
