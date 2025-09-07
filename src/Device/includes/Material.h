@@ -17,11 +17,11 @@
 #endif
 
 template <typename T>
-HIPRT_DEVICE HIPRT_INLINE T get_material_property(const HIPRTRenderData& render_data, bool is_srgb, const float2& texcoords, int texture_index);
-HIPRT_DEVICE HIPRT_INLINE float2 get_metallic_roughness(const HIPRTRenderData& render_data, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
-HIPRT_DEVICE HIPRT_INLINE ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2& texcoords, int base_color_texture_index);
+HIPRT_DEVICE static T get_material_property(const HIPRTRenderData& render_data, bool is_srgb, const float2& texcoords, int texture_index);
+HIPRT_DEVICE static float2 get_metallic_roughness(const HIPRTRenderData& render_data, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
+HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2& texcoords, int base_color_texture_index);
 
-HIPRT_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, unsigned short int base_color_texture_index, int prim_id, float2 uv)
+HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, unsigned short int base_color_texture_index, int prim_id, float2 uv)
 {
     if (base_color_texture_index == MaterialConstants::NO_TEXTURE)
         // Quick exit if no texture
@@ -36,12 +36,12 @@ HIPRT_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& 
     return alpha;
 }
 
-HIPRT_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, const DevicePackedTexturedMaterial& material, hiprtHit hit)
+HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, const DevicePackedTexturedMaterial& material, hiprtHit hit)
 {
     return get_hit_base_color_alpha(render_data, material.get_base_color_texture_index(), hit.primID, hit.uv);
 }
 
-HIPRT_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, int prim_id, float2 uv)
+HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, int prim_id, float2 uv)
 {
     int material_index = render_data.buffers.material_indices[prim_id];
     unsigned short int base_color_texture_index = render_data.buffers.materials_buffer.get_base_color_texture_index(material_index);
@@ -49,7 +49,7 @@ HIPRT_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& 
     return get_hit_base_color_alpha(render_data, base_color_texture_index, prim_id, uv);
 }
 
-HIPRT_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
+HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
 {
     int material_index = render_data.buffers.material_indices[hit.primID];
     unsigned short int base_color_texture_index = render_data.buffers.materials_buffer.get_base_color_texture_index(material_index);
@@ -57,7 +57,7 @@ HIPRT_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& 
     return get_hit_base_color_alpha(render_data, base_color_texture_index, hit.primID, hit.uv);
 }
 
-HIPRT_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
+HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
 {
     DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer.read_partial_material(material_index).unpack();
 
@@ -152,7 +152,7 @@ HIPRT_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_mater
 /**
  * The float2 returned is (roughness, metallic)
  */
-HIPRT_DEVICE HIPRT_INLINE float2 get_metallic_roughness(const HIPRTRenderData& render_data, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index)
+HIPRT_DEVICE static float2 get_metallic_roughness(const HIPRTRenderData& render_data, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index)
 {
     float2 out;
 
@@ -173,7 +173,7 @@ HIPRT_DEVICE HIPRT_INLINE float2 get_metallic_roughness(const HIPRTRenderData& r
     return out;
 }
 
-HIPRT_DEVICE HIPRT_INLINE ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2& texcoords, int base_color_texture_index)
+HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2& texcoords, int base_color_texture_index)
 {
     out_alpha = 1.0f;
     ColorRGBA32F rgba = get_material_property<ColorRGBA32F>(render_data, true, texcoords, base_color_texture_index);
@@ -189,28 +189,28 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F get_base_color(const HIPRTRenderData& rend
 }
 
 template <typename T>
-HIPRT_DEVICE HIPRT_INLINE T read_data(const ColorRGBA32F& rgba) {}
+HIPRT_DEVICE static T read_data(const ColorRGBA32F& rgba) {}
 
 template<>
-HIPRT_DEVICE HIPRT_INLINE ColorRGBA32F read_data<ColorRGBA32F>(const ColorRGBA32F& rgba)
+HIPRT_DEVICE static ColorRGBA32F read_data<ColorRGBA32F>(const ColorRGBA32F& rgba)
 {
     return rgba;
 }
 
 template<>
-HIPRT_DEVICE HIPRT_INLINE ColorRGB32F read_data<ColorRGB32F>(const ColorRGBA32F& rgba)
+HIPRT_DEVICE static ColorRGB32F read_data<ColorRGB32F>(const ColorRGBA32F& rgba)
 {
     return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
 
 template<>
-HIPRT_DEVICE HIPRT_INLINE float read_data<float>(const ColorRGBA32F& rgba)
+HIPRT_DEVICE static float read_data<float>(const ColorRGBA32F& rgba)
 {
     return rgba.r;
 }
 
 template <typename T>
-HIPRT_DEVICE HIPRT_INLINE T get_material_property(const HIPRTRenderData& render_data, bool is_srgb, const float2& texcoords, int texture_index)
+HIPRT_DEVICE static T get_material_property(const HIPRTRenderData& render_data, bool is_srgb, const float2& texcoords, int texture_index)
 {
     if (texture_index == MaterialConstants::NO_TEXTURE || texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
         return T();
