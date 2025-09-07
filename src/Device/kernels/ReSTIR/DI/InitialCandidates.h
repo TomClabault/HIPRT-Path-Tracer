@@ -23,12 +23,12 @@
 /**
  * Reference: https://en.wikipedia.org/wiki/Pairing_function
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int cantor_pairing_function(int x, int y)
+HIPRT_DEVICE int cantor_pairing_function(int x, int y)
 {
     return (x + y + 1) * (x + y) / 2 + y;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(const HIPRTRenderData& render_data, const int2& pixel_coords,
+HIPRT_DEVICE ReSTIRDISample use_presampled_light_candidate(const HIPRTRenderData& render_data, const int2& pixel_coords,
     const float3& evaluated_point, const float3& shading_normal,
     ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, float& out_distance_to_light, float3& out_to_light_direction,
     Xorshift32Generator& random_number_generator)
@@ -72,7 +72,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
     return light_sample;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const HIPRTRenderData& render_data, float envmap_candidate_probability, 
+HIPRT_DEVICE ReSTIRDISample sample_fresh_light_candidate(const HIPRTRenderData& render_data, float envmap_candidate_probability, 
     const float3& view_direction, const HitInfo& closest_hit_info,
     RayPayload& ray_payload,
     ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, Xorshift32Generator& random_number_generator)
@@ -133,7 +133,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
     return light_sample;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, 
+HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, 
     int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, 
     const float3& view_direction, Xorshift32Generator& random_number_generator, const int2& pixel_coords)
 {
@@ -245,7 +245,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
     }
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     // Sampling the BSDF candidates
     for (int i = 0; i < nb_bsdf_candidates; i++)
@@ -379,7 +379,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
     }
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
