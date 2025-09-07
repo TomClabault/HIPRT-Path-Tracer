@@ -11,7 +11,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     if (!MaterialUtils::can_do_light_sampling(ray_payload.material))
         return ColorRGB32F(0.0f);
