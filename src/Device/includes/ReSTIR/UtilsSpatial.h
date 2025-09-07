@@ -36,7 +36,7 @@ HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& rend
 }
 
 template <bool IsReSTIRGI>
-HIPRT_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
+HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
 {
 	const ReSTIRCommonSpatialPassSettings& spatial_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 	bool visibility_only_on_last_pass = spatial_settings.do_visibility_only_last_pass;
@@ -174,7 +174,7 @@ HIPRT_DEVICE float2 sample_spatial_neighbor_from_allowed_directions(const HIPRTR
  *		Only used if render_data.render_settings.restir_settings.common_spatial_pass.use_hammersley == false
  */
 template <bool IsReSTIRGI>
-HIPRT_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data, int neighbor_index, int2 center_pixel_coords, Xorshift32Generator& rng)
+HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data, int neighbor_index, int2 center_pixel_coords, Xorshift32Generator& rng)
 {
 	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 
@@ -299,7 +299,7 @@ HIPRT_DEVICE void spatial_neighbor_advance_rng(const HIPRTRenderData& render_dat
  * re-evauate the heuristics). Neighbor 0 is LSB.
  */
 template <bool IsReSTIRGI>
-HIPRT_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRenderData& render_data,
+HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_data,
 	const ReSTIRSurface& center_pixel_surface,
 	int2 center_pixel_coords,
 	int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
