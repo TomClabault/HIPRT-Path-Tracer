@@ -17,7 +17,7 @@
  * 
  * If russian roulette wasn't applied, 'throughput_scaling' is left untouched
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, float& throughput_scaling, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, float& throughput_scaling, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
 {
     if (bounce >= render_settings.russian_roulette_min_depth && render_settings.do_russian_roulette)
     {
@@ -57,7 +57,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSetting
 /**
  * Returns false if the ray should be killed.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
 {
     float unused_throughput_scaling;
     return do_russian_roulette(render_settings, bounce, ray_throughput, unused_throughput_scaling, current_weight, random_number_generator);
