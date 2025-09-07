@@ -198,13 +198,13 @@ HIPRT_DEVICE static ColorRGBA32F read_data<ColorRGBA32F>(const ColorRGBA32F& rgb
 }
 
 template<>
-HIPRT_DEVICE static ColorRGB32F read_data<ColorRGB32F>(const ColorRGBA32F& rgba)
+HIPRT_DEVICE ColorRGB32F read_data<ColorRGB32F>(const ColorRGBA32F& rgba)
 {
     return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
 
 template<>
-HIPRT_DEVICE static float read_data<float>(const ColorRGBA32F& rgba)
+HIPRT_DEVICE float read_data<float>(const ColorRGBA32F& rgba)
 {
     return rgba.r;
 }

@@ -21,7 +21,7 @@
  * 
  * Reference: [Holger Dammertz, Hammersley Points on the Hemisphere] http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float radical_inverse_base_2(unsigned int index) {
+HIPRT_DEVICE HIPRT_INLINE float radical_inverse_base_2(unsigned int index) {
     index = (index << 16u) | (index >> 16u);
     index = ((index & 0x55555555u) << 1u) | ((index & 0xAAAAAAAAu) >> 1u);
     index = ((index & 0x33333333u) << 2u) | ((index & 0xCCCCCCCCu) >> 2u);
@@ -35,7 +35,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float radical_inverse_base_2(unsigned int index) 
  * of points that are going to be sampled and the index of the point
  * (in [0, number_of_points -1]) that we're sampling right now
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_hammersley_2D(unsigned int number_of_points, unsigned int point_index)
+HIPRT_DEVICE HIPRT_INLINE float2 sample_hammersley_2D(unsigned int number_of_points, unsigned int point_index)
 {
     return make_float2(static_cast<float>(point_index) / static_cast<float>(number_of_points), radical_inverse_base_2(point_index));
 }
@@ -47,7 +47,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_hammersley_2D(unsigned int number_o
  * uv.x is used as theta for sampling the disk
  * uv.y is used for sampling the distance from the center of the disk
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk_uv(float radius, float2 uv)
+HIPRT_DEVICE HIPRT_INLINE float2 sample_in_disk_uv(float radius, float2 uv)
 {
     float r_sqrt_v = radius * sqrtf(uv.y);
     float x = r_sqrt_v * cos(M_TWO_PI * uv.x);
@@ -59,7 +59,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk_uv(float radius, float2 uv)
 /**
  * Returns integer pixel coordinates offset from the center of the disk of radius 'radius'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE float2 sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
 {
     float u1 = random_number_generator();
     float u2 = random_number_generator();
@@ -74,7 +74,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk(float radius, Xorshift32Gen
  * that you should not divide by 1/nb_pdf_a in the evaluation of your function where you use
  * the MIS weight
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
+HIPRT_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
 {
     float p_a_sqr = (nb_pdf_a * pdf_a) * (nb_pdf_a * pdf_a);
     float p_b_sqr = (nb_pdf_b * pdf_b) * (nb_pdf_b * pdf_b);
@@ -88,7 +88,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, int nb_pdf_a, 
     return nb_pdf_a * pdf_a * pdf_a / (p_a_sqr + p_b_sqr);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
+HIPRT_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
 {
     return power_heuristic(pdf_a, 1, pdf_b, 1);
 }
@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
  * that you should not divide by 1/nb_pdf_a in the evaluation of your function where you use
  * the MIS weight
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float nb_pdf_a, float pdf_b, float nb_pdf_b)
+HIPRT_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float nb_pdf_a, float pdf_b, float nb_pdf_b)
 {
     if (pdf_a == 0.0f)
         return 0.0f;
@@ -118,7 +118,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float nb_pdf
 /**
  * Balance heuristic for 3 strategies
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b, int pdf_c, int nb_pdf_c)
+HIPRT_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b, int pdf_c, int nb_pdf_c)
 {
     // Note that we should have a multiplication by nb_pdf_a in the
     // numerator but because we're going to divide by nb_pdf_a in the
@@ -130,12 +130,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, int nb_pdf_a
     return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b + nb_pdf_c * pdf_c);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float pdf_b)
+HIPRT_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float pdf_b)
 {
     return balance_heuristic(pdf_a, 1, pdf_b, 1);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float pdf_b, float pdf_c)
+HIPRT_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float pdf_b, float pdf_c)
 {
     return balance_heuristic(pdf_a, 1, pdf_b, 1, pdf_c, 1);
 }
@@ -144,7 +144,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float pdf_b,
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
+HIPRT_DEVICE HIPRT_INLINE float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
 {
     return 2.0f * hippt::dot(ray_direction, surface_normal) * surface_normal - ray_direction;
 }
@@ -157,7 +157,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 reflect_ray(const float3& ray_direction, c
  * 
  * No total internal reflection is assumed
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 refract_ray(const float3& ray_direction, const float3& surface_normal, float relative_eta)
+HIPRT_DEVICE HIPRT_INLINE float3 refract_ray(const float3& ray_direction, const float3& surface_normal, float relative_eta)
 {
     float NoI = hippt::dot(ray_direction, surface_normal);
 
@@ -177,7 +177,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 refract_ray(const float3& ray_direction, c
  * 
  * The sampled direction is returned in world space
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_around_normal_world_space(const float3& normal, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_around_normal_world_space(const float3& normal, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = 2.0f * random_number_generator() - 1.0f;
@@ -207,7 +207,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_around_normal_world
  *
  * The sampled direction is returned in a local frame with Z as the up axis
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_z_up_frame(Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_z_up_frame(Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();

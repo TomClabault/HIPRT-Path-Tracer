@@ -13,7 +13,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
  // TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data, RayPayload& ray_payload, 
+HIPRT_DEVICE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data, RayPayload& ray_payload, 
     const HitInfo& closest_hit_info, const float3& view_direction,
     const ReSTIRDIReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
@@ -100,14 +100,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void validate_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir)
+HIPRT_DEVICE void validate_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir)
 {
     if (reservoir.sample.is_envmap_sample() && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
         // Killing the reservoir if it was an envmap sample but the envmap is not used anymore
         reservoir.UCW = 0.0f;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords)
+HIPRT_DEVICE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords)
 {
 	int pixel_index = pixel_coords.x + pixel_coords.y * render_data.render_settings.render_resolution.x;
     

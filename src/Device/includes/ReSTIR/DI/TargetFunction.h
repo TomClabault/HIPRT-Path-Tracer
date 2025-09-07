@@ -9,8 +9,7 @@
 #include "Device/includes/ReSTIR/Utils.h"
 #include "HostDeviceCommon/RenderData.h"
 
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, 
+HIPRT_DEVICE float3 ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, 
 	float3 surface_shading_point, float& out_distance_to_light)
 {
 	float3 sample_direction;
@@ -28,7 +27,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 ReSTIR_DI_get_light_sample_direction(const
 	return sample_direction;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F ReSTIR_DI_get_light_sample_emission(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, float3 sample_direction)
+HIPRT_DEVICE ColorRGB32F ReSTIR_DI_get_light_sample_emission(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, float3 sample_direction)
 {
 	ColorRGB32F sample_emission;
 	if (sample.is_envmap_sample())
@@ -46,7 +45,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F ReSTIR_DI_get_light_sample_emission(c
 }
 
 template <bool withVisibility>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
 {
 	if (sample.emissive_triangle_global_index == -1 && !sample.is_envmap_sample())
 		// No sample

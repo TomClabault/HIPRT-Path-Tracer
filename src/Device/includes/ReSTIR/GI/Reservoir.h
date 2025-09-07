@@ -50,12 +50,12 @@ struct ReSTIRGISample
 
     Octahedral24BitNormalPadded32b sample_point_geometric_normal;
 
-    HIPRT_HOST_DEVICE bool is_envmap_path() const {  return sample_point_primitive_index == -1; }
+    HIPRT_DEVICE bool is_envmap_path() const {  return sample_point_primitive_index == -1; }
 };
 
 struct ReSTIRGIReservoir
 {
-    HIPRT_HOST_DEVICE void add_one_candidate(ReSTIRGISample new_sample, float weight, Xorshift32Generator& random_number_generator)
+    HIPRT_DEVICE void add_one_candidate(ReSTIRGISample new_sample, float weight, Xorshift32Generator& random_number_generator)
     {
         M++;
         weight_sum += weight;
@@ -78,7 +78,7 @@ struct ReSTIRGIReservoir
      * 'random_number_generator' for generating the random number that will be used to stochastically
      *      select the sample from 'other_reservoir' or not
      */
-    HIPRT_HOST_DEVICE bool combine_with(const ReSTIRGIReservoir& other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
+    HIPRT_DEVICE bool combine_with(const ReSTIRGIReservoir& other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
     {
         // Bullet point 4. of the intro of Section 5.2 of [A Gentle Introduction to ReSTIR: Path Reuse in Real-time] https://intro-to-restir.cwyman.org/
         float reservoir_resampling_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
@@ -97,7 +97,7 @@ struct ReSTIRGIReservoir
         return false;
     }
 
-    HIPRT_HOST_DEVICE void end()
+    HIPRT_DEVICE void end()
     {
         if (weight_sum == 0.0f)
             UCW = 0.0f;
@@ -105,7 +105,7 @@ struct ReSTIRGIReservoir
             UCW = 1.0f / sample.target_function * weight_sum;
     }
 
-    HIPRT_HOST_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
+    HIPRT_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
     {
         // Checking some limit values
         if (weight_sum == 0.0f || weight_sum > 1.0e10f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
@@ -117,7 +117,7 @@ struct ReSTIRGIReservoir
         M = hippt::min(M, 1000000);
     }
 
-    HIPRT_HOST_DEVICE HIPRT_INLINE void sanity_check(int2 pixel_coords)
+    HIPRT_DEVICE void sanity_check(int2 pixel_coords)
     {
 #ifndef __KERNELCC__
         if (M < 0)

@@ -11,7 +11,7 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
-HIPRT_HOST_DEVICE ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, float NoL, float& pdf)
+HIPRT_DEVICE ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, float NoL, float& pdf)
 {
     pdf = 0.0f;
 
@@ -22,7 +22,7 @@ HIPRT_HOST_DEVICE ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffective
     return material.base_color * M_INV_PI;
 }
 
-HIPRT_HOST_DEVICE float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, float NoL)
+HIPRT_DEVICE float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, float NoL)
 {
     float pdf = 0.0f;
 
@@ -38,7 +38,7 @@ HIPRT_HOST_DEVICE float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMateria
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_HOST_DEVICE ColorRGB32F lambertian_brdf_sample(
+HIPRT_DEVICE ColorRGB32F lambertian_brdf_sample(
     const DeviceUnpackedEffectiveMaterial& material, 
     const float3& shading_normal, float3& sampled_direction, 
     float& pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo& out_sampled_light_info)

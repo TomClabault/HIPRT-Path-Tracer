@@ -26,7 +26,7 @@
 /**
  * This function expects 'direction' to be in world space
  */
-HIPRT_HOST_DEVICE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3& direction)
+HIPRT_DEVICE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3& direction)
 {
     // Bringing the direction in envmap space for sampling the envmap
     float3 rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
@@ -37,7 +37,7 @@ HIPRT_HOST_DEVICE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_sett
     return sample_environment_map_texture(world_settings, make_float2(u, v));
 }
 
-HIPRT_HOST_DEVICE void envmap_cdf_search(const WorldSettings& world_settings, float value, int& x, int& y)
+HIPRT_DEVICE void envmap_cdf_search(const WorldSettings& world_settings, float value, int& x, int& y)
 {
     //First searching a line to sample
     unsigned int lower = 0;
@@ -74,7 +74,7 @@ HIPRT_HOST_DEVICE void envmap_cdf_search(const WorldSettings& world_settings, fl
     x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings, float3& sampled_direction, float& envmap_pdf, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings, float3& sampled_direction, float& envmap_pdf, Xorshift32Generator& random_number_generator)
 {
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
     envmap_pdf = 0.0f;
@@ -136,7 +136,7 @@ HIPRT_HOST_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
  * This function expects the given direction to be in world space i.e.
  * the direction is already rotated by the envmap rotation matrix
  */
-HIPRT_HOST_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const float3& direction, float& pdf)
+HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const float3& direction, float& pdf)
 {
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
     pdf = 0.0f;
@@ -167,7 +167,7 @@ HIPRT_HOST_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, co
     return envmap_radiance;
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info,
+HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info,
     const float3& view_direction, 
     Xorshift32Generator& random_number_generator)
 {
@@ -248,7 +248,7 @@ HIPRT_HOST_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& r
 #endif
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
+HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
     const float3& view_direction, 
     Xorshift32Generator& random_number_generator)
 {
