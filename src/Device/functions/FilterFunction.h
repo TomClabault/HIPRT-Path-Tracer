@@ -19,7 +19,7 @@
  * return FALSE if the intersection is ACCEPTED
  * return true if the intersection is rejected
  */
-HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
+HIPRT_DEVICE static bool filter_function(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
 {
 	FilterFunctionPayload* payload = reinterpret_cast<FilterFunctionPayload*>(payld);
 
