@@ -70,14 +70,20 @@ struct EmissiveMeshesAliasTablesHost
 		m_alias_tables_probas.resize(total_alias_tables_entries_count);
 		m_alias_tables_aliases.resize(total_alias_tables_entries_count);
 
+		std::vector<float> all_alias_tables_probas_staging(total_alias_tables_entries_count);
+		std::vector<int> all_alias_tables_aliases_staging(total_alias_tables_entries_count);
+
 		unsigned int cumulative_start_index = 0;
 		for (int i = 0; i < emissive_meshes.size(); i++)
 		{
-			upload_to_device_buffer_partial<float>(m_alias_tables_probas, emissive_meshes[i].alias_probas, cumulative_start_index, emissive_meshes[i].emissive_triangle_count);
-			upload_to_device_buffer_partial<int>(m_alias_tables_aliases, emissive_meshes[i].alias_aliases, cumulative_start_index, emissive_meshes[i].emissive_triangle_count);
+			std::copy(emissive_meshes[i].alias_probas.begin(), emissive_meshes[i].alias_probas.begin() + emissive_meshes[i].emissive_triangle_count, all_alias_tables_probas_staging.begin() + cumulative_start_index);
+			std::copy(emissive_meshes[i].alias_aliases.begin(), emissive_meshes[i].alias_aliases.begin() + emissive_meshes[i].emissive_triangle_count, all_alias_tables_aliases_staging.begin() + cumulative_start_index);
 			
 			cumulative_start_index += emissive_meshes[i].emissive_triangle_count;
 		}
+
+		upload_to_device_buffer(m_alias_tables_probas, all_alias_tables_probas_staging);
+		upload_to_device_buffer(m_alias_tables_aliases, all_alias_tables_aliases_staging);
 
 		// Now computing an alias table on all the meshes of the scene to be able to sample a
 		// mesh according to its total power
