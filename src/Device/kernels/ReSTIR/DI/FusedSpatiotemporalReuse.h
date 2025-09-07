@@ -40,7 +40,7 @@
 
 #define TEMPORAL_NEIGHBOR_ID 0
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_spatial_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
+HIPRT_DEVICE bool do_include_spatial_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
 {
 	const ReSTIRCommonSpatialPassSettings& spatial_settings = render_data.render_settings.restir_di_settings.common_spatial_pass;
 	bool visibility_only_on_last_pass = spatial_settings.do_visibility_only_last_pass;
@@ -70,7 +70,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_spatial_visibility_term_or_not(co
  * Returns -1 if there is no valid temporal neighbor.
  * The linear buffer index of the temporal neighbor otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_spatiotemporal_neighbor_data(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE int3 load_spatiotemporal_neighbor_data(const HIPRTRenderData& render_data, 
 																	  const ReSTIRSurface& center_pixel_surface, int center_pixel_index, 
 																	  ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRSurface& out_temporal_neighbor_surface, 
 																	  Xorshift32Generator& random_number_generator)
@@ -117,7 +117,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_spatiotemporal_neighbor_data(const HIPR
  * the corresponding neighbor was valid or not (can be reused later to avoid having to
  * re-evauate the heuristics). Neighbor 0 is LSB.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data, 
 																		 const ReSTIRSurface& center_pixel_surface, 
 																		 int center_pixel_index, int2 temporal_neighbor_position, 
 																		 int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
