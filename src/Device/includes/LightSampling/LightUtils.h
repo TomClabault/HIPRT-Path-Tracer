@@ -1061,42 +1061,4 @@ HIPRT_DEVICE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution
     return light_contribution;
 }
 
-/**
- * Returns true if the given contribution satisfies the minimum light contribution
- * required for a light to be 
- */
-HIPRT_DEVICE bool check_minimum_light_contribution(float minimum_contribution, const ColorRGB32F& contribution)
-{
-    if (minimum_contribution > 0.0f)
-    {
-        if (contribution.r < minimum_contribution
-            && contribution.g < minimum_contribution
-            && contribution.b < minimum_contribution)
-            // The light doesn't contribute enough
-            return false;
-        else
-            // The light contributes enough
-            return true;
-    }
-    else
-        // Minimum light contribution threshold disabled
-        return true;
-}
-
-HIPRT_DEVICE bool check_minimum_light_contribution(float minimum_contribution, float contribution)
-{
-    if (minimum_contribution > 0.0f)
-    {
-        if (contribution < minimum_contribution)
-            // The light doesn't contribute enough
-            return false;
-        else
-            // The light contributes enough
-            return true;
-    }
-    else
-        // Minimum light contribution threshold disabled
-        return true;
-}
-
 #endif

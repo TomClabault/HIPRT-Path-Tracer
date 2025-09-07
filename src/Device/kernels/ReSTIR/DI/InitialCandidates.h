@@ -20,8 +20,6 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 
-#define LIGHT_DOESNT_CONTRIBUTE_ENOUGH -42.0f
-
 /**
  * Reference: https://en.wikipedia.org/wiki/Pairing_function
  */
@@ -71,21 +69,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
 
     out_sample_cosine_term = hippt::dot(shading_normal, out_to_light_direction);
 
-    if (!light_sample.is_envmap_sample())
-    {
-        bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, out_sample_radiance * out_sample_cosine_term / out_sample_pdf);
-        if (!contributes_enough)
-        {
-            // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
-
-            // Setting it to LIGHT_DOESNT_CONTRIBUTE_ENOUGH so that we know that the sample is invalid when the caller of this
-            // function will look at the target function's value
-            light_sample.target_function = LIGHT_DOESNT_CONTRIBUTE_ENOUGH;
-
-            return light_sample;
-        }
-    }
-
     return light_sample;
 }
 
@@ -123,20 +106,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
             to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
 
             out_sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, to_light_direction));
-
-            float cosine_at_light_source = compute_cosine_term_at_light_source(light_sample_info.light_source_normal, -to_light_direction);
-            bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_sample_info.emission * out_sample_cosine_term / out_sample_pdf);
-            if (!contributes_enough)
-            {
-                // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
-
-                // Setting it to LIGHT_DOESNT_CONTRIBUTE_ENOUGH so that we know that the sample is invalid when the caller of this
-                // function will look at the target function's value
-                light_sample.target_function = LIGHT_DOESNT_CONTRIBUTE_ENOUGH;
-
-                return light_sample;
-            }
-
             // Accounting for the probability of sampling a light, not the envmap
             // (which has probability 'envmap_candidate_probability')
             out_sample_pdf *= (1.0f - envmap_candidate_probability);
@@ -150,19 +119,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
         float3 envmap_sampled_direction;
         out_sample_radiance = envmap_sample(render_data.world_settings, envmap_sampled_direction, out_sample_pdf, random_number_generator);
         out_sample_cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
-
-        bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, out_sample_radiance * out_sample_cosine_term / out_sample_pdf);
-        if (!contributes_enough)
-        {
-            // Early check that the envmap sample contributes enough to the point, and if it doesn't, skip it
-
-            // Setting it to LIGHT_DOESNT_CONTRIBUTE_ENOUGH so that we know that the sample is invalid when the caller of this
-            // function will look at the target function's value
-            light_sample.target_function = LIGHT_DOESNT_CONTRIBUTE_ENOUGH;
-
-            return light_sample;
-
-        }
 
         // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
         // the envmap
@@ -211,9 +167,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         }
 #endif
 
-        if (light_sample.target_function == LIGHT_DOESNT_CONTRIBUTE_ENOUGH)
-            continue;
-
         float candidate_weight = 0.0f;
         if (sample_cosine_term > 0.0f && light_pdf_area_measure > 0.0f)
         {
@@ -233,35 +186,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             surface.view_direction = view_direction;
 
             float target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, light_sample, surface, random_number_generator);
-            if (bsdf_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / light_pdf_area_measure / bsdf_pdf_solid_angle))
-                target_function = 0.0f;
+            float light_pdf_solid_angle;
+            if (light_sample.is_envmap_sample()) 
+                // For envmap sample, the PDF is already in solid angle
+                light_pdf_solid_angle = light_pdf_area_measure;
             else
             {
-                float light_pdf_solid_angle;
-                if (light_sample.is_envmap_sample()) 
-                    // For envmap sample, the PDF is already in solid angle
-                    light_pdf_solid_angle = light_pdf_area_measure;
-                else
-                {
-                    float3 light_normal = get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
-                    float normal_length = hippt::length(light_normal);
-                    float light_area = normal_length * 0.5f;
-                    light_normal /= normal_length;
+                float3 light_normal = get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
+                float normal_length = hippt::length(light_normal);
+                float light_area = normal_length * 0.5f;
+                light_normal /= normal_length;
 
-                    // Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
-                    // (same measure for the BSDF PDF and the light PDF)
-                    //
-                    // Removing the envmap proba to avoid double counting it below in
-                    light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure / (1.0f - envmap_candidate_probability), distance_to_light, compute_cosine_term_at_light_source(light_normal, -to_light_direction));
-                    light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
-                }
-
-                float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
-                candidate_weight = mis_weight * target_function / light_pdf_area_measure;
-                sanity_check<true>(render_data, ColorRGB32F(candidate_weight), 0, 0);
-
-                light_sample.target_function = target_function;
+                // Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
+                // (same measure for the BSDF PDF and the light PDF)
+                //
+                // Removing the envmap proba to avoid double counting it below in
+                light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure / (1.0f - envmap_candidate_probability), distance_to_light, compute_cosine_term_at_light_source(light_normal, -to_light_direction));
+                light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
             }
+
+            float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
+            candidate_weight = mis_weight * target_function / light_pdf_area_measure;
+            sanity_check<true>(render_data, ColorRGB32F(candidate_weight), 0, 0);
+
+            light_sample.target_function = target_function;
         }
 
 #if ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE
@@ -367,10 +315,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
 #endif
                 }
 
-                float target_function = bsdf_RIS_sample.target_function;
-                if (bsdf_sample_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / light_pdf_solid_angle / bsdf_sample_pdf_solid_angle))
-                    continue;
-
                 // Our light sampler is only chosen with probability '1.0f - envmap_candidate_probability'
                 // so we multiply that here to take that into account
                 light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
@@ -381,7 +325,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 bsdf_sample_pdf_area_measure /= (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance);
                 bsdf_sample_pdf_area_measure *= compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -bsdf_sampled_direction);
 
-                float candidate_weight = mis_weight * target_function / bsdf_sample_pdf_area_measure;
+                float candidate_weight = mis_weight * bsdf_RIS_sample.target_function / bsdf_sample_pdf_area_measure;
 
                 reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                 reservoir.sanity_check(make_int2(-1, -1));
@@ -416,20 +360,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
                     bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample, surface, random_number_generator);
 
-                    float target_function = bsdf_RIS_sample.target_function;
-
                     // Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
                     // (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF
                     // of the current envmap sample is always 0 for a light sampler.
-                    if (bsdf_sample_pdf_solid_angle <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, target_function / bsdf_sample_pdf_solid_angle))
-                        continue;
 
                     // We're evaluating the probability of choosing that BSDF-sample direction with the envmap sampler.
                     // Because our envmap sampler is chosen only with probability 'envmap_candidate_probability', we multiply
                     // that here to account for that
                     envmap_pdf *= envmap_candidate_probability;
                     float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, envmap_pdf, nb_light_candidates);
-                    float candidate_weight = mis_weight * target_function / bsdf_sample_pdf_solid_angle;
+                    float candidate_weight = mis_weight * bsdf_RIS_sample.target_function / bsdf_sample_pdf_solid_angle;
 
                     reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                     reservoir.sanity_check(make_int2(-1, -1));

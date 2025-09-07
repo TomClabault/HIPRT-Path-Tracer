@@ -3975,16 +3975,6 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderFloat("Minimum light contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
-		{
-			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
-			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
-			"This can improve performance at the cost of some bias depending on the scene.\n"
-			"0.0f to disable");
-
 		bool allow_backfacing_lihts = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS);
 		if (ImGui::Checkbox("Allow backfacing lights", &allow_backfacing_lihts))
 		{

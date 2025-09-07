@@ -170,11 +170,6 @@ struct HIPRTRenderSettings
 	// Clamp indirect lighting contribution to reduce fireflies
 	float indirect_contribution_clamp = 0.0f;
 
-	// If a selected light (for direct lighting estimation) contributes at a given
-	// point less than this 'minimum_light_contribution' value then the light sample is discarded
-	// 0.0f to disable
-	float minimum_light_contribution = 0.0f;
-
 	// Whether or not to do alpha testing for geometry with transparent base color textures
 	bool do_alpha_testing = true;
 	// At what bounce to stop doing alpha testing

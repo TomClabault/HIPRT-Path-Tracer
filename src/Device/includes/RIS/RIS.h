@@ -121,30 +121,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // Early check for minimum light contribution: if the light itself doesn't contribute enough,
                 // adding the BSDF attenuation on top of it will only make it worse so we can already
                 // skip the light and saves ourselves the evaluation of the BSDF
-                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_sample_info.emission / light_sample_info.area_measure_pdf);
-                if (!contributes_enough)
-                    target_function = 0.0f;
-                else
-                {
-                    // Only going to evaluate the target function if we passed the preliminary minimum light contribution test
 
-                    BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-                    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-                    ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+                BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+                ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
-                    ColorRGB32F light_contribution = bsdf_color * light_sample_info.emission * cosine_at_evaluated_point;
-                    // Checking the light contribution and taking the BSDF and light PDFs into account
-                    contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / bsdf_pdf / light_sample_info.area_measure_pdf);
-                    if (!contributes_enough)
-                        // The light doesn't contribute enough, setting the target function to 0.0f
-                        // so that this light sample is skipped
-                        // 
-                        // Also, if at least one thread is going to evaluate the light anyways, because of the divergence that this would
-                        // create, we may as well evaluate the light for all threads and not loose that much performance anyways
-                        target_function = 0.0f;
-                    else
-                        target_function = light_contribution.luminance();
-                }
+                target_function = (bsdf_color * light_sample_info.emission * cosine_at_evaluated_point).luminance();
 
 #if RISUseVisiblityTargetFunction == KERNEL_OPTION_TRUE
                 if (!render_data.render_settings.do_render_low_resolution() && target_function > 0.0f)
@@ -225,10 +207,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 target_function = light_contribution.luminance();
 
                 float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
-                bool contributes_enough = bsdf_sample_pdf <= 0.0f || check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf);
-                if (!contributes_enough)
-                    target_function = 0.0f;
-
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
