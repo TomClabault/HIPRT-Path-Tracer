@@ -10,9 +10,9 @@
 
 #include "HostDeviceCommon/Color.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior);
+HIPRT_HOST_DEVICE float principled_specular_relative_ior(const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior);
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_base(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV, int current_bounce)
+HIPRT_HOST_DEVICE float get_principled_energy_compensation_glossy_base(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV, int current_bounce)
 {
     bool energy_compensation_disabled = !material.do_specular_energy_compensation;
     bool roughness_low_enough = material.roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold;
@@ -77,7 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
  * it's way better than nothing and cheap compared to the full on-the-fly integration that we
  * would have to do otherwise (or full interlayer-multiple-scattering simulation)
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoat_lobe(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV, int current_bounce)
+HIPRT_HOST_DEVICE float get_principled_energy_compensation_clearcoat_lobe(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV, int current_bounce)
 {
     bool energy_compensation_disabled = !material.do_specular_energy_compensation;
     // If we don't have a clearcoat, let's not compensate energy
