@@ -8,7 +8,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE int2 apply_permutation_sampling(int2 pixel_position, int random_bits)
+HIPRT_DEVICE int2 apply_permutation_sampling(int2 pixel_position, int random_bits)
 {
 	int2 offset = make_int2(random_bits & 3, (random_bits >> 2) & 3);
 	pixel_position += offset;
@@ -31,7 +31,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int2 apply_permutation_sampling(int2 pixel_positi
  *	(disoccluion / occlusion / out of viewport)
  */
 template <bool IsReSTIRGI>
-HIPRT_HOST_DEVICE HIPRT_INLINE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_data,
+HIPRT_DEVICE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_data,
 	const float3& current_shading_point, const float3& current_normal, int center_pixel_index, Xorshift32Generator& random_number_generator)
 {
 	if (render_data.render_settings.accumulate)
