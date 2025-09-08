@@ -129,7 +129,7 @@ HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(unsigned int total_
     // grid cell that has Y-negative and some other randoms rays access the Y-positive hash grid cell
     //
     // Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
-    world_position = hash_grid_aliasing_fix_clamping(world_position, cell_size);
+    world_position = hash_grid_aliasing_fix_periodic_shifting(world_position, cell_size);
 
     unsigned int grid_coord_x = static_cast<int>(floorf(world_position.x / cell_size));
     unsigned int grid_coord_y = static_cast<int>(floorf(world_position.y / cell_size));
@@ -157,8 +157,8 @@ HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_
     // grid cell that has Y-negative and some other randoms rays access the Y-positive hash grid cell
     //
     // Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
-    world_position_1 = hash_grid_aliasing_fix_clamping(world_position_1, cell_size_1);
-    world_position_2 = hash_grid_aliasing_fix_clamping(world_position_2, cell_size_2);
+    world_position_1 = hash_grid_aliasing_fix_periodic_shifting(world_position_1, cell_size_1);
+    world_position_2 = hash_grid_aliasing_fix_periodic_shifting(world_position_2, cell_size_2);
 
     unsigned int grid_coord_x_1 = static_cast<int>(floorf(world_position_1.x / cell_size_1));
     unsigned int grid_coord_y_1 = static_cast<int>(floorf(world_position_1.y / cell_size_1));

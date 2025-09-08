@@ -205,7 +205,7 @@
  * Useful for debugging features that may take effect after the first sample and we only want to see what
  * the second sample looks like without the accumulation
  */
-#define DisplayOnlySampleN KERNEL_OPTION_TRUE
+#define DisplayOnlySampleN KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
 

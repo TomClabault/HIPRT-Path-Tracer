@@ -67,7 +67,7 @@ struct ReGIRHashGrid
 		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size);
 
 		// Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
-		float3 new_world_position = hash_grid_aliasing_fix_clamping(world_position, cell_size);
+		float3 new_world_position = hash_grid_aliasing_fix_periodic_shifting(world_position, cell_size);
 
 		unsigned int grid_coord_x = static_cast<int>(floorf(new_world_position.x / cell_size));
 		unsigned int grid_coord_y = static_cast<int>(floorf(new_world_position.y / cell_size));

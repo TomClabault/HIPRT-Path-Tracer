@@ -168,7 +168,7 @@
  * How many random points to integrate the contribution of an emissive mesh over 
  * if ReGIR_GridFillCellDistributionsIntegrateMesh is KERNEL_OPTION_TRUE
  */
-#define ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount 16
+#define ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount 1
 
 /**
  * If this is TRUE, NEE++ visibility estimation will be used in the grid fill target
