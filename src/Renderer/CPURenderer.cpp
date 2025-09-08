@@ -303,7 +303,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
         gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
 
     m_gpu_packed_materials.upload_data(gpu_packed_materials);
-    m_render_data.buffers.materials_buffer = m_gpu_packed_materials.get_device_SoA_struct();
+    m_render_data.buffers.materials_buffer_soa = m_gpu_packed_materials.get_device_SoA_struct();
     m_render_data.buffers.material_indices = parsed_scene.material_indices.data();
 
     // Computing the opaqueness of materials i.e. whether or not they are FULLY opaque

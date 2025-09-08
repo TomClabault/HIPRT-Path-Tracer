@@ -42,8 +42,10 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<ColorRGB32F>>();
 	m_pixels_converged_sample_count_buffer = std::make_shared<OrochiBuffer<int>>();
 
-	m_DEBUG_SUMS.resize(1024);
-	m_DEBUG_SUM_COUNT.resize(1024);
+	m_DEBUG_BUFFER_ULL_1.resize(1024);
+	m_DEBUG_BUFFER_ULL_2.resize(1024);
+	m_DEBUG_BUFFER_FLOAT.resize(1024);
+	m_DEBUG_BUFFER_STRINGS.resize(1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
 
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
@@ -694,6 +696,13 @@ bool GPURenderer::is_using_debug_kernel()
 	return m_render_thread.get_debug_trace_kernel().has_been_compiled();
 }
 
+std::string GPURenderer::read_debug_buffer_string(char* DEBUG_BUFFER_STRINGS, int index)
+{
+	std::vector<char> debug_string_CPU = OrochiBuffer<char>::download_data(DEBUG_BUFFER_STRINGS, 1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
+
+	return std::string(&debug_string_CPU[index * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH]);
+}
+
 oroStream_t GPURenderer::get_main_stream()
 {
 	return m_main_stream;
@@ -739,8 +748,10 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 
 void GPURenderer::reset(bool reset_by_camera_movement)
 {
-	m_DEBUG_SUMS.memset_whole_buffer(0);
-	m_DEBUG_SUM_COUNT.memset_whole_buffer(0);
+	m_DEBUG_BUFFER_ULL_1.memset_whole_buffer(HIPRTRenderSettings::DEBUG_DEFAULT_ULL);
+	m_DEBUG_BUFFER_ULL_2.memset_whole_buffer(HIPRTRenderSettings::DEBUG_DEFAULT_ULL);
+	m_DEBUG_BUFFER_FLOAT.memset_whole_buffer(HIPRTRenderSettings::DEBUG_DEFAULT_FLOAT);
+	m_DEBUG_BUFFER_STRINGS.memset_whole_buffer(0);
 
 	if (m_render_data.render_settings.accumulate)
 	{
@@ -773,8 +784,10 @@ void GPURenderer::update_render_data()
 		m_render_data.GPU_BVH = m_hiprt_scene.whole_scene_BLAS.m_geometry;
 		m_render_data.light_GPU_BVH = m_hiprt_scene.emissive_triangles_BLAS.m_geometry;
 
-		m_render_data.render_settings.DEBUG_SUM_TOTAL = m_DEBUG_SUMS.get_atomic_device_pointer();
-		m_render_data.render_settings.DEBUG_SUM_COUNT = m_DEBUG_SUM_COUNT.get_atomic_device_pointer();
+		m_render_data.render_settings.DEBUG_BUFFER_ULL_1 = m_DEBUG_BUFFER_ULL_1.get_atomic_device_pointer();
+		m_render_data.render_settings.DEBUG_BUFFER_ULL_2 = m_DEBUG_BUFFER_ULL_2.get_atomic_device_pointer();
+		m_render_data.render_settings.DEBUG_BUFFER_FLOAT = m_DEBUG_BUFFER_FLOAT.get_atomic_device_pointer();
+		m_render_data.render_settings.DEBUG_BUFFER_STRINGS = m_DEBUG_BUFFER_STRINGS.get_device_pointer();
 
 		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
@@ -782,7 +795,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.vertex_normals = m_hiprt_scene.vertex_normals.get_device_pointer();
 
 		m_render_data.buffers.material_indices = m_hiprt_scene.material_indices.get_device_pointer();
-		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
+		m_render_data.buffers.materials_buffer_soa = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
 		m_render_data.buffers.material_opaque = m_hiprt_scene.material_opaque.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)

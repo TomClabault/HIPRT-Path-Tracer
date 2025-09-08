@@ -339,7 +339,7 @@ HIPRT_DEVICE ColorRGB32F principled_beer_absorption(const HIPRTRenderData& rende
     if (render_data.bsdfs_data.white_furnace_mode)
         absorption_color = ColorRGB32F(1.0f);
     else
-        absorption_color = render_data.buffers.materials_buffer.get_absorption_color(ray_volume_state.incident_mat_index);
+        absorption_color = render_data.buffers.materials_buffer_soa.get_absorption_color(ray_volume_state.incident_mat_index);
     if (!absorption_color.is_white())
     {
         // Capping the distance to avoid numerical issues at 0 distance
@@ -349,7 +349,7 @@ HIPRT_DEVICE ColorRGB32F principled_beer_absorption(const HIPRTRenderData& rende
         // Remapping the absorption coefficient so that it is more intuitive to manipulate
         // according to Burley, 2015 [5].
         // This effectively gives us a "at distance" absorption coefficient.
-        ColorRGB32F absorption_coefficient = log(absorption_color) / render_data.buffers.materials_buffer.get_absorption_at_distance(ray_volume_state.incident_mat_index);
+        ColorRGB32F absorption_coefficient = log(absorption_color) / render_data.buffers.materials_buffer_soa.get_absorption_at_distance(ray_volume_state.incident_mat_index);
         return exp(absorption_coefficient * ray_volume_state.distance_in_volume);
     }
 
@@ -371,8 +371,8 @@ HIPRT_DEVICE ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_dat
     bool reflecting = NoL * NoV > 0;
 
     // Relative eta = eta_t / eta_i
-    float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
-    float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+    float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+    float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
     float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
     float dispersion_scale = bsdf_context.material.dispersion_scale;
@@ -572,8 +572,8 @@ HIPRT_DEVICE float principled_glass_pdf(const HIPRTRenderData& render_data, BSDF
     bool reflecting = NoL * NoV > 0;
 
     // Relative eta = eta_t / eta_i
-    float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
-    float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+    float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+    float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
     float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
     float dispersion_scale = bsdf_context.material.dispersion_scale;
@@ -725,8 +725,8 @@ HIPRT_DEVICE float principled_glass_pdf(const HIPRTRenderData& render_data, BSDF
  */
 HIPRT_DEVICE float3 principled_glass_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3 local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
-    float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.outgoing_mat_index);
+    float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
+    float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.outgoing_mat_index);
 
     float dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
     float dispersion_scale = bsdf_context.material.dispersion_scale;
@@ -1643,7 +1643,7 @@ HIPRT_DEVICE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
-    float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
+    float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 
     float coat_weight, sheen_weight, metal_1_weight, metal_2_weight;
     float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
@@ -1740,7 +1740,7 @@ HIPRT_DEVICE float principled_bsdf_pdf(const HIPRTRenderData& render_data, BSDFC
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
-    float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
+    float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 
     float coat_weight, sheen_weight, metal_1_weight, metal_2_weight;
     float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
@@ -1824,7 +1824,7 @@ HIPRT_DEVICE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_da
     float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
     float metal_2_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
     float glass_sampling_proba, diffuse_transmission_sampling_proba;
-    float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(bsdf_context.volume_state.incident_mat_index);
+    float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
     principled_bsdf_get_lobes_sampling_proba(render_data,
         bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior,
         coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,

@@ -46,7 +46,6 @@ struct HashGrid
 				// inserting into it so we just found an empty cell first try
 				// 
 				// Let's try to insert atomically into it
-
 				unsigned int previous_checksum = hippt::atomic_compare_exchange(&checksum_buffer[in_out_hash_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
 				if (previous_checksum == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 				{

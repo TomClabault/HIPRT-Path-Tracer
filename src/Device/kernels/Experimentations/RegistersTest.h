@@ -415,15 +415,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 //
 //    float pdf;
 //    int mat_index = (int)(threadId * randomGenerator() * 50);
-//    DeviceTexturedMaterial mat = render_data.buffers.materials_buffer[(int)(threadId * randomGenerator() * 50) % 10];
-//    ColorRGB32F eval_out = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, mat, render_data.g_buffer.ray_volume_states[threadId], make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), pdf);
+//    DeviceTexturedMaterial mat = render_data.buffers.materials_buffer_soa[(int)(threadId * randomGenerator() * 50) % 10];
+//    ColorRGB32F eval_out = bsdf_dispatcher_eval(render_data.buffers.materials_buffer_soa, mat, render_data.g_buffer.ray_volume_states[threadId], make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), pdf);
 //
 //    int incident, outgoing;
 //    bool leaving;
-//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index, render_data.buffers.materials_buffer[mat_index].dielectric_priority);
-//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index + 5, render_data.buffers.materials_buffer[mat_index + 5].dielectric_priority);
-//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 5, render_data.buffers.materials_buffer[mat_index * 5].dielectric_priority);
-//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 25, render_data.buffers.materials_buffer[mat_index * 25].dielectric_priority);
+//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index, render_data.buffers.materials_buffer_soa[mat_index].dielectric_priority);
+//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index + 5, render_data.buffers.materials_buffer_soa[mat_index + 5].dielectric_priority);
+//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 5, render_data.buffers.materials_buffer_soa[mat_index * 5].dielectric_priority);
+//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 25, render_data.buffers.materials_buffer_soa[mat_index * 25].dielectric_priority);
 //
 //    render_data.buffers.pixels[threadId] = ColorRGB32F(render_data.g_buffer.ray_volume_states[threadId].interior_stack.stack_entries[1].odd_parity) * eval_out;
 //}

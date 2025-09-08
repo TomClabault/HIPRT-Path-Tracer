@@ -65,6 +65,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we pack the light indices of reservoirs the same way we packed the mesh indices?
 // - Should we re introduce the seed in the reservoirs instead of the float3 point on light for VRAM savings?
 // 
+// - can we save a bunch of registers by using #if instead of rendersettings variable at the heart of ReGIR?
+// - if we want to do a more efficient multi shading, maybe we can do the multi shading using the visibility in target function and not include visibility in bad candidates to save shadow rays (canonical sample + bsdf sample)
 // - visibility_proba = hippt::max(0.1f, visibility_proba); in ReGIR target function.h, should we remove that for canonical candidates because they bring quite a lot of visibility noise when their target function is really high but turns out to be occluded.
 // - Debug with the sampling fallback debug mode because last time I tried I think there was quite a bit of falback even though there shouldn't be any (unless we having missing cells in the grid because of collisions)
 // - Compare shading RIS with vis in target function vs shading all

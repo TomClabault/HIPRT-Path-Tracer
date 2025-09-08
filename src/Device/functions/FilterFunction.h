@@ -19,7 +19,7 @@
  * return FALSE if the intersection is ACCEPTED
  * return true if the intersection is rejected
  */
-HIPRT_DEVICE static bool filter_function(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
+HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
 {
 	FilterFunctionPayload* payload = reinterpret_cast<FilterFunctionPayload*>(payld);
 
@@ -60,9 +60,9 @@ HIPRT_DEVICE static bool filter_function(const hiprtRay&, const void*, void* pay
 		return false;
 
 	// Composition both the alpha of the base color texture and the material
-	unsigned short int base_color_texture_index = payload->render_data->buffers.materials_buffer.get_base_color_texture_index(material_index);
+	unsigned short int base_color_texture_index = payload->render_data->buffers.materials_buffer_soa.get_base_color_texture_index(material_index);
 	float base_color_alpha = get_hit_base_color_alpha(*payload->render_data, base_color_texture_index, global_triangle_index_hit, hit.uv);
-	float alpha_opacity = payload->render_data->buffers.materials_buffer.get_alpha_opacity(material_index);
+	float alpha_opacity = payload->render_data->buffers.materials_buffer_soa.get_alpha_opacity(material_index);
 	float composited_alpha = alpha_opacity * base_color_alpha;
 
 	if ((*payload->random_number_generator)() < composited_alpha)

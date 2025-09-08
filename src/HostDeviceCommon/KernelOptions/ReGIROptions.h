@@ -162,13 +162,13 @@
  *		in one go using an approximate representative point for the whole as well as an average reprensetative
  *		normal. This is less precise than integrating over the mesh but way faster
  */
-#define ReGIR_GridFillCellDistributionsIntegrateMesh KERNEL_OPTION_TRUE
+#define ReGIR_GridFillCellDistributionsIntegrateMesh KERNEL_OPTION_FALSE
 
 /**
  * How many random points to integrate the contribution of an emissive mesh over 
  * if ReGIR_GridFillCellDistributionsIntegrateMesh is KERNEL_OPTION_TRUE
  */
-#define ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount 1
+#define ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount 16
 
 /**
  * If this is TRUE, NEE++ visibility estimation will be used in the grid fill target

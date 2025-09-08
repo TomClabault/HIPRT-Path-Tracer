@@ -108,8 +108,23 @@ struct GenericSoA
         }
     }
 
+    template <int bufferIndex>
+    std::vector<BufferTypeFromIndex<bufferIndex>> download_buffer() const
+    {
+        if constexpr (IsCPUBuffer::value)
+            return get_buffer<bufferIndex>();
+        else
+            return get_buffer<bufferIndex>().download_data();
+    }
+
     template<int bufferIndex>
     auto& get_buffer()
+    {
+        return std::get<bufferIndex>(buffers);
+    }
+
+    template<int bufferIndex>
+    const auto& get_buffer() const
     {
         return std::get<bufferIndex>(buffers);
     }

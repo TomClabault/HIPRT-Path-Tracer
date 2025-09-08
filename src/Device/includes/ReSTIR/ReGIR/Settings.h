@@ -49,7 +49,6 @@ struct ReGIRGridFillPresampledLights
 		sample.triangle_area = presampled_lights_soa.light_area[random_subset * subset_size + index_in_subset];
 		sample.point_on_light = presampled_lights_soa.point_on_light[random_subset * subset_size + index_in_subset];
 		sample.normal = presampled_lights_soa.light_normal[random_subset * subset_size + index_in_subset];
-		// sample.emission = presampled_lights_soa.emission[random_subset * subset_size + index_in_subset].unpack_color3x32f();
 
 		out_pdf = 1.0f / subset_count;
 
@@ -89,8 +88,8 @@ struct ReGIRGridFillSettings
 	{
 		light_sample_count_per_cell_reservoir = 32;
 
-		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 64 : 8;
-		reservoirs_count_per_grid_cell_canonical = primary_hit ? 12 : 4;
+		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 64 : 8; // 64
+		reservoirs_count_per_grid_cell_canonical = primary_hit ? 12 : 4; // 12
 	}
 
 	// How many light samples are resampled into each reservoir of the grid cell
@@ -132,12 +131,16 @@ private:
 
 struct ReGIRSpatialReuseSettings
 {
-	bool do_spatial_reuse = false;
+	bool do_spatial_reuse = true;
  	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
  	// This has the effect of coalescing neighbors memory accesses which improves performance
-	bool do_coalesced_spatial_reuse = false;
+	bool do_coalesced_spatial_reuse = true;
 
+	// How many successive spatial reuse to perform
 	int spatial_reuse_pass_count = 2;
+
+	// Internal variable used to keep track of which spatial reuse we're currently
+	// running 
 	int spatial_reuse_pass_index = 0;
 
 	int spatial_neighbor_count = 3;
@@ -413,10 +416,8 @@ struct ReGIRSettings
 		if constexpr (getCanonicalReservoir)
 		{
 			if (correlation_reduction.do_correlation_reduction)
-			{
 				// If correlation reduction is enabled, we want to pick a reservoir from the whole pool of (regular reservoirs + correlation reduction reservoirs)
 				reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell() * (correlation_reduction.correl_frames_available + 1));
-			}
 			else
 				reservoir_index_in_cell = rng.random_index(get_grid_fill_settings(primary_hit).get_canonical_reservoir_count_per_cell());
 		}
@@ -553,19 +554,17 @@ struct ReGIRSettings
 			hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic * 255.0f;
 			hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular * 255.0f;
 		}
+		else
+			// Already something in that cell
+			return;
 
-		// Because we just inserted into that grid cell, it is now alive
-		// Only go through all that atomic stuff if the cell isn't alive
-		 
-		// TODO is this check needed since we have an atomic just below?
-		if (hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index] == 0)
+		// Because we just inserted into that grid cell, it is now alive so we're setting
+		// it alive and incrementing the number of alive cells
+		if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index], 0u, 1u) == 0u)
 		{
-			if (hippt::atomic_compare_exchange(&hash_cell_data_to_update.grid_cell_alive[hash_grid_cell_index], 0u, 1u) == 0u)
-			{
-				unsigned int cell_alive_index = hippt::atomic_fetch_add(hash_cell_data_to_update.grid_cells_alive_count, 1u);
+			unsigned int cell_alive_index = hippt::atomic_fetch_add(hash_cell_data_to_update.grid_cells_alive_count, 1u);
 
-				hash_cell_data_to_update.grid_cells_alive_list[cell_alive_index] = hash_grid_cell_index;
-			}
+			hash_cell_data_to_update.grid_cells_alive_list[cell_alive_index] = hash_grid_cell_index;
 		}
 	}
 
@@ -590,26 +589,15 @@ struct ReGIRSettings
 
 				unsigned int new_hash_cell_index = hash_grid_cell_index;
 				if (!HashGrid::resolve_collision<ReGIR_HashGridCollisionResolutionMaxSteps, true>(hash_cell_data_to_update.checksums, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, checksum, existing_checksum))
-				{
-					// Could not resolve the collision
-
+					// Could not resolve the collision, we can't insert our data
 					return;
-				}
 				else 
-				{
-					// We resolved the collision by finding an empty cell
-					hash_grid_cell_index = new_hash_cell_index;
-
-					insert_hash_cell_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
-				}
+					insert_hash_cell_data(hash_cell_data_to_update, new_hash_cell_index, world_position, surface_normal, primitive_index, material);
 			}
 		}
 		else
-		{
 			// We just succeeded the insertion of our key in an empty cell
-			
 			insert_hash_cell_data(hash_cell_data_to_update, hash_grid_cell_index, world_position, surface_normal, primitive_index, material);
-		}
 
 	}
 

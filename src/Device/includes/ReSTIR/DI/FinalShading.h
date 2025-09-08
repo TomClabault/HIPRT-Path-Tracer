@@ -80,7 +80,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& ren
             else
             {
                 int material_index = render_data.buffers.material_indices[sample.emissive_triangle_global_index];
-                sample_emission = render_data.buffers.materials_buffer.get_emission(material_index);
+                sample_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
             }
 
             float area_measure_to_solid_angle_conversion;

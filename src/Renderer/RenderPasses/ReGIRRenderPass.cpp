@@ -8,6 +8,7 @@
 
 #include "UI/RenderWindow.h"
 
+#include <format>
 #include <numeric>
 
 const std::string ReGIRRenderPass::REGIR_GRID_PRE_POPULATE = "ReGIR Pre-population";
@@ -376,10 +377,13 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	// Launching the computation of grid-cells light distributions at each frame in case new grid
 	// cells have been added to the grid because of rays hitting unexplored parts of the scene
-	if (render_data.render_settings.sample_number % 64 == 0 && launch_cell_light_distributions_precomputation(render_data, true))
-		// If we indeed recomputed some cell light distributions, we're going to need to update
-		// the pre-integrated RIS integral factors
-		launch_pre_integration(render_data);
+	if (render_data.render_settings.sample_number % 64 == 0 && !m_render_window->is_interacting())
+	{
+		if (launch_cell_light_distributions_precomputation(render_data, true))
+			// If we indeed recomputed some cell light distributions, we're going to need to update
+			// the pre-integrated RIS integral factors
+			launch_pre_integration(render_data);
+	}
 
 	render_data.render_settings.regir_settings.correlation_reduction.correl_reduction_current_grid = m_hash_grid_storage.get_correlation_reduction_current_frame();
 	render_data.render_settings.regir_settings.correlation_reduction.correl_frames_available = m_hash_grid_storage.get_correlation_reduction_frames_available();
@@ -923,7 +927,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HI
 				sum_all_contributions += contributions.at(cell_index_in_iteration * emissive_mesh_count + contribution_index);
 
 			// We're only going to keep the best 'light_distribution_size' contributing meshes
-			// in case there are more than that, i.e. the alias table is going to be built only on
+			// in case there are more than that, reservoir_index.e. the alias table is going to be built only on
 			// the 'light_distribution_size' meshes that contribute the most to the cell
 			float sum_best_contributions = 0.0f;
 			std::vector<float> best_contributions(light_distribution_size);

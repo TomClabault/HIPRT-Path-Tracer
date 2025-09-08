@@ -44,7 +44,7 @@ HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render
 HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, int prim_id, float2 uv)
 {
     int material_index = render_data.buffers.material_indices[prim_id];
-    unsigned short int base_color_texture_index = render_data.buffers.materials_buffer.get_base_color_texture_index(material_index);
+    unsigned short int base_color_texture_index = render_data.buffers.materials_buffer_soa.get_base_color_texture_index(material_index);
 
     return get_hit_base_color_alpha(render_data, base_color_texture_index, prim_id, uv);
 }
@@ -52,14 +52,14 @@ HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render
 HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
 {
     int material_index = render_data.buffers.material_indices[hit.primID];
-    unsigned short int base_color_texture_index = render_data.buffers.materials_buffer.get_base_color_texture_index(material_index);
+    unsigned short int base_color_texture_index = render_data.buffers.materials_buffer_soa.get_base_color_texture_index(material_index);
 
     return get_hit_base_color_alpha(render_data, base_color_texture_index, hit.primID, hit.uv);
 }
 
 HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
 {
-    DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer.read_partial_material(material_index).unpack();
+    DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer_soa.read_partial_material(material_index).unpack();
 
     float trash_alpha;
     if (render_data.bsdfs_data.white_furnace_mode)
@@ -192,7 +192,7 @@ template <typename T>
 HIPRT_DEVICE static T read_data(const ColorRGBA32F& rgba) {}
 
 template<>
-HIPRT_DEVICE static ColorRGBA32F read_data<ColorRGBA32F>(const ColorRGBA32F& rgba)
+HIPRT_DEVICE ColorRGBA32F read_data<ColorRGBA32F>(const ColorRGBA32F& rgba)
 {
     return rgba;
 }

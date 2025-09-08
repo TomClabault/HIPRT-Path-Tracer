@@ -160,7 +160,7 @@ struct NEEPlusPlusDevice
 	 */
 	HIPRT_HOST_DEVICE void accumulate_visibility(const NEEPlusPlusContext& context, HIPRTCamera& current_camera, bool visible)
 	{
-		return accumulate_visibility(visible, get_visibility_map_index<true>(context, current_camera));
+		accumulate_visibility(visible, get_visibility_map_index(context, current_camera));
 	}
 
 	/**
@@ -175,7 +175,7 @@ struct NEEPlusPlusDevice
 	 */
 	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_hash_grid_index, unsigned int& out_cell_total_accumulation_count) const
 	{
-		out_hash_grid_index = get_visibility_map_index<true>(context, current_camera);
+		out_hash_grid_index = get_visibility_map_index(context, current_camera);
 		if (out_hash_grid_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// One of the two points was outside the scene, cannot read the cache for this
 			// 
@@ -228,20 +228,17 @@ struct NEEPlusPlusDevice
 		return hash_double_position_camera(m_total_number_of_cells, context.shaded_point, second_point, current_camera, m_grid_cell_target_projected_size, m_grid_cell_min_size, out_checksum);
 	}
 
-	template <bool isInsertion = false>
 	HIPRT_HOST_DEVICE unsigned int get_visibility_map_index(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera) const
 	{
 		unsigned int checksum;
 		unsigned int hash_grid_index = hash_context(context, current_camera, checksum);
-		if (!HashGrid::resolve_collision<NEEPlusPlus_LinearProbingSteps, isInsertion>(m_entries_buffer.checksum_buffer, m_total_number_of_cells, hash_grid_index, checksum))
-		{
+		if (!HashGrid::resolve_collision<NEEPlusPlus_LinearProbingSteps, true>(m_entries_buffer.checksum_buffer, m_total_number_of_cells, hash_grid_index, checksum))
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-		}
 
 		return hash_grid_index;
 	}
 
-// private:
+private:
 	/**
 	 * Returns the value packed in the buffer at the given visibility matrix index and with the given
 	 * buffer name from the BufferNames enum
@@ -267,21 +264,6 @@ struct NEEPlusPlusDevice
 			return hippt::atomic_fetch_add(&m_entries_buffer.total_unoccluded_rays[hash_grid_index], value);
 		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_TOTAL_COUNT)
 			return hippt::atomic_fetch_add(&m_entries_buffer.total_num_rays[hash_grid_index], value);
-	}
-
-	/**
-	 * Sets the value in one of the packed buffer
-	 * 
-	 * WARNING:
-	 * This function is non-atomic
-	 */
-	template <unsigned int bufferName>
-	HIPRT_HOST_DEVICE void set_buffer(unsigned int hash_grid_index, unsigned char value)
-	{
-		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT)
-			m_entries_buffer.total_unoccluded_rays[hash_grid_index] = value;
-		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_TOTAL_COUNT)
-			m_entries_buffer.total_num_rays[hash_grid_index] = value;
 	}
 };
 

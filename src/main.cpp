@@ -15,8 +15,6 @@
 #include "Utils/CommandlineArguments.h"
 #include "Utils/Utils.h"
 
-#include "stb_image_write.h"
-
 #include <chrono>
 #include <cmath>
 #include <iostream>

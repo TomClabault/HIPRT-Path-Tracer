@@ -143,7 +143,7 @@ namespace hippt
 
 	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
 	__device__ float2 cos(float2 x) { return make_float2(cosf(x.x), cosf(x.y)); }
-	__device__ float intrin_cosf(float x) { return cosf(x); } // Not using the intrinsic for now because of a compiler bug
+	__device__ float intrin_cosf(float x) { return __cosf(x); } // Not using the intrinsic for now because of a compiler bug
 
 	__device__ float3 sin(float3 x) { return make_float3(sinf(x.x), sinf(x.y), sinf(x.z)); }
 	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
@@ -406,9 +406,9 @@ namespace hippt
 	 * Component-wise max of float3 and int3
 	 */
 	template <>
-	static float3 max(float3 a, float3 b) { return make_float3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
+	float3 max(float3 a, float3 b) { return make_float3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
 	template <>
-	static int3 max(int3 a, int3 b) { return make_int3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
+	int3 max(int3 a, int3 b) { return make_int3(hiprt::max(a.x, b.x), hiprt::max(a.y, b.y), hiprt::max(a.z, b.z)); }
 
 
 
@@ -420,9 +420,9 @@ namespace hippt
 	 * Component-wise min of float3 and int3
 	 */
 	template <>
-	static float3 min(float3 a, float3 b) { return make_float3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+	float3 min(float3 a, float3 b) { return make_float3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
 	template <>
-	static int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+	int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
 
 
 

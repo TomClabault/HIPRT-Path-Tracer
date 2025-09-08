@@ -44,7 +44,7 @@ private:
 	 * Bitwise AND the value at 'emissive_triangle_indices_packed[element_index]' with 'clear_mask'
 	 * and then bitwise OR with 'bits' atomically
 	 */
-	HIPRT_DEVICE void update_element_atomically(unsigned int element_index, ReGIRSampleEmissiveTriangleIndicesPackingType clear_mask, ReGIRSampleEmissiveTriangleIndicesPackingType bits) const
+	HIPRT_DEVICE void update_element_atomically(unsigned int element_index, ReGIRSampleEmissiveTriangleIndicesPackingType clear_mask, ReGIRSampleEmissiveTriangleIndicesPackingType bits)
 	{
 		ReGIRSampleEmissiveTriangleIndicesPackingType old_val, new_val;
 
@@ -57,7 +57,7 @@ private:
 		} while (hippt::atomic_compare_exchange(&emissive_triangle_indices_packed[element_index], old_val, new_val) != old_val); // attempt update until success
 	}
 
-	HIPRT_DEVICE void set_emissive_triangle_index(unsigned int linear_reservoir_index, unsigned int emissive_triangle_global_index) const
+	HIPRT_DEVICE void set_emissive_triangle_index(unsigned int linear_reservoir_index, unsigned int emissive_triangle_global_index)
 	{
 		unsigned int bit_offset_start_in_element = (linear_reservoir_index * bits_per_emissive_triangle_global_index) % (sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8);
 		unsigned int element_index = linear_reservoir_index * bits_per_emissive_triangle_global_index / (sizeof(ReGIRSampleEmissiveTriangleIndicesPackingType) * 8);

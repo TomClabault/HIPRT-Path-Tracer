@@ -18,6 +18,11 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
 #include "HostDeviceCommon/Math.h"
 
+#ifndef __KERNELCC__
+#include "HIPRT-Orochi/OrochiBuffer.h"
+//#include "Renderer/GPURenderer.h"
+#endif
+
 // Just used for initializing some structure members below
 #define local_min_macro(a, b) ((a) < (b) ? (a) : (b))
 
@@ -39,8 +44,41 @@ struct HIPRTRenderSettings
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
 	bool enable_direct = true;
-	AtomicType<unsigned long long int>* DEBUG_SUM_COUNT = nullptr;
-	AtomicType<unsigned long long int>* DEBUG_SUM_TOTAL = nullptr;
+
+	static constexpr unsigned long long int DEBUG_DEFAULT_ULL = 4242424242;
+	static constexpr float DEBUG_DEFAULT_FLOAT = -4242.0f;
+	static constexpr int DEBUG_STRING_MAX_LENGTH = 96;
+
+	AtomicType<unsigned long long int>* DEBUG_BUFFER_ULL_1 = nullptr;
+	AtomicType<unsigned long long int>* DEBUG_BUFFER_ULL_2 = nullptr;
+	AtomicType<float>* DEBUG_BUFFER_FLOAT = nullptr;
+	char* DEBUG_BUFFER_STRINGS = nullptr;
+
+	HIPRT_DEVICE void write_debug_string(const char debug_string[HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH], int index) const
+	{
+		for (int str_index = 0; debug_string[str_index]; str_index++)
+			DEBUG_BUFFER_STRINGS[index * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH + str_index] = debug_string[str_index];
+	}
+
+#ifndef __KERNELCC__
+	void print_debug_floats(int max_number_of_values)
+	{
+		std::vector<float> debug = OrochiBuffer<float>::download_data((float*)DEBUG_BUFFER_FLOAT, 1024);
+		std::vector<char> debug_string_CPU = OrochiBuffer<char>::download_data(DEBUG_BUFFER_STRINGS, 1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
+
+		printf("\n\n-----------------\n");
+		for (int i = 0; i < max_number_of_values; i++)
+		{
+			if (debug[i] != DEBUG_DEFAULT_FLOAT)
+			{
+
+				std::string debug_str(&debug_string_CPU[i * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH]);
+				//std::string debug_str = GPURenderer::read_debug_buffer_string(DEBUG_BUFFER_STRINGS, i);
+				printf("\t(%d) %s: %f\n", i, debug_str.c_str(), debug[i]);
+			}
+		}
+	}
+#endif
 
 	////////////////////////////////////////////////////
 

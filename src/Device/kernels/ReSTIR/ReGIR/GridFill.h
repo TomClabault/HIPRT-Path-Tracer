@@ -93,7 +93,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
     full_sample_information.light_source_normal = light_sample.normal.unpack();
      full_sample_information.light_area = light_sample.triangle_area;
     //full_sample_information.emission = light_sample.emission;
-    full_sample_information.emission = render_data.buffers.materials_buffer.get_emission(render_data.buffers.material_indices[light_sample.emissive_triangle_global_index]);
+    full_sample_information.emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[light_sample.emissive_triangle_global_index]);
     full_sample_information.point_on_light = light_sample.point_on_light;
 
     // PDF of that point on that triangle

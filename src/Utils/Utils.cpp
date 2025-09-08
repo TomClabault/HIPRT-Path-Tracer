@@ -430,7 +430,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 void Utils::debugbreak()
 {
 #if defined( _WIN32 )
-    __debugbreak();
+   __debugbreak();
 #elif defined( __GNUC__ )
     raise(SIGTRAP);
 #else

@@ -334,6 +334,9 @@ public:
 	 */
 	void set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options = GPUKernelCompilerOptions());
 	bool is_using_debug_kernel();
+
+	static std::string read_debug_buffer_string(char* DEBUG_BUFFER_STRINGS, int index);
+
 	oroStream_t get_main_stream();
 
 	std::unordered_map<std::string, float>& get_render_pass_times();
@@ -355,8 +358,10 @@ public:
 	// Animator of the camera of the current frame ('m_camera')
 	CameraAnimation m_camera_animation;
 
-	OrochiBuffer<unsigned long long int> m_DEBUG_SUM_COUNT;
-	OrochiBuffer<unsigned long long int> m_DEBUG_SUMS;
+	OrochiBuffer<unsigned long long int> m_DEBUG_BUFFER_ULL_1;
+	OrochiBuffer<unsigned long long int> m_DEBUG_BUFFER_ULL_2;
+	OrochiBuffer<float> m_DEBUG_BUFFER_FLOAT;
+	OrochiBuffer<char> m_DEBUG_BUFFER_STRINGS;
 
 private:
 	// So that GPURendererThread can access the private members of GPURenderer without

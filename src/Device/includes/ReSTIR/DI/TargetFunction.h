@@ -38,7 +38,7 @@ HIPRT_DEVICE ColorRGB32F ReSTIR_DI_get_light_sample_emission(const HIPRTRenderDa
 	else
 	{
 		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_global_index];
-		sample_emission = render_data.buffers.materials_buffer.get_emission(material_index);
+		sample_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
 	}
 
 	return sample_emission;

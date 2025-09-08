@@ -1817,13 +1817,13 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			"\t\t- RIS pre-integration: %.3fMB\n"
 			"\t- Primary hit light distributions: %.3fMB\n\n"
 
-			"\t- Secondary hit light distributions: %.3fMB\n"
+			"\t- Secondary hit reservoirs: %.3fMB\n"
 			"\t\t- Base reservoirs: %.3fMB\n"
 			"\t\t- Spatial reuse reservoirs: %.3fMB\n"
 			"\t\t- Cell world data: %.3fMB\n"
 			"\t\t- Async compute: %.3fMB\n"
 			"\t\t- RIS pre-integration: %.3fMB\n"
-			"\t- Secondary hit reservoirs: %.3fMB",
+			"\t- Secondary hit light distributions: %.3fMB",
 			regir_render_pass->get_reservoirs_VRAM_usage_bytes(true) / 1000000.0f,
 			regir_render_pass->get_hash_grid_storage().get_initial_grid_buffers(true).get_byte_size() / 1000000.0f,
 			regir_render_pass->get_hash_grid_storage().get_spatial_grid_buffers(true).get_byte_size() / 1000000.0f,
@@ -4628,38 +4628,7 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 void ImGuiSettingsWindow::draw_debug_panel()
 {
 	if (!ImGui::CollapsingHeader("Debug"))
-	{
-		static bool display_only_sample = DisplayOnlySampleN;
-		if (ImGui::Checkbox("Display only sample N", &display_only_sample))
-		{
-			m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N, display_only_sample ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-			m_render_window->set_render_dirty(true);
-			m_renderer->recompile_kernels();
-		}
-		if (display_only_sample)
-		{
-			ImGui::SameLine();
-			ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-			if (ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N))
-				m_render_window->set_render_dirty(true);
-
-			static bool auto_sample = true;
-			ImGui::SameLine();
-			ImGui::Checkbox("Auto", &auto_sample);
-			if (auto_sample)
-			{
-				int new_sample_count = m_render_window->get_application_settings()->max_sample_count - 1;
-
-				if (m_renderer->get_render_data().render_settings.output_debug_sample_N != new_sample_count)
-					m_render_window->set_render_dirty(true);
-
-				m_renderer->get_render_data().render_settings.output_debug_sample_N = m_render_window->get_application_settings()->max_sample_count - 1;
-			}
-		}
-
 		return;
-	}
 
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
@@ -4686,8 +4655,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		static int debug_index = 0;
 		if (ImGui::InputInt("Debug index", &debug_index))
 			debug_index = hippt::clamp(0, 1023, debug_index);
-		unsigned long long int sum_count = OrochiBuffer<unsigned long long int>::download_data(reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_SUM_COUNT) + debug_index, 1)[0];
-		unsigned long long int sums = OrochiBuffer<unsigned long long int>::download_data(reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_SUM_TOTAL) + debug_index, 1)[0];
+		unsigned long long int sum_count = OrochiBuffer<unsigned long long int>::download_data(reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_BUFFER_ULL_1) + debug_index, 1)[0];
+		unsigned long long int sums = OrochiBuffer<unsigned long long int>::download_data(reinterpret_cast<unsigned long long int*>(render_settings.DEBUG_BUFFER_ULL_2) + debug_index, 1)[0];
 		ImGui::Text("Debug sum count / sums / ratio:"
 			"\n\t%llu"
 			"\n\t%llu"
@@ -4709,6 +4678,35 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		if (ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives))
 			m_render_window->set_render_dirty(true);
 		ImGui::TreePop();
+	}
+
+	static bool display_only_sample = DisplayOnlySampleN;
+	if (ImGui::Checkbox("Display only sample N", &display_only_sample))
+	{
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N, display_only_sample ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+		m_render_window->set_render_dirty(true);
+		m_renderer->recompile_kernels();
+	}
+	if (display_only_sample)
+	{
+		ImGui::SameLine();
+		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+		if (ImGui::InputInt("", &m_renderer->get_render_data().render_settings.output_debug_sample_N))
+			m_render_window->set_render_dirty(true);
+
+		static bool auto_sample = true;
+		ImGui::SameLine();
+		ImGui::Checkbox("Auto", &auto_sample);
+		if (auto_sample)
+		{
+			int new_sample_count = m_render_window->get_application_settings()->max_sample_count - 1;
+
+			if (m_renderer->get_render_data().render_settings.output_debug_sample_N != new_sample_count)
+				m_render_window->set_render_dirty(true);
+
+			m_renderer->get_render_data().render_settings.output_debug_sample_N = m_render_window->get_application_settings()->max_sample_count - 1;
+		}
 	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
