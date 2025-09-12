@@ -62,9 +62,7 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
-// - Can we pack the light indices of reservoirs the same way we packed the mesh indices?
-// - Should we re introduce the seed in the reservoirs instead of the float3 point on light for VRAM savings?
-// 
+// - There is some weird color corruption issue with NEE++ linear probing steps = 16
 // - can we save a bunch of registers by using #if instead of rendersettings variable at the heart of ReGIR?
 // - if we want to do a more efficient multi shading, maybe we can do the multi shading using the visibility in target function and not include visibility in bad candidates to save shadow rays (canonical sample + bsdf sample)
 // - visibility_proba = hippt::max(0.1f, visibility_proba); in ReGIR target function.h, should we remove that for canonical candidates because they bring quite a lot of visibility noise when their target function is really high but turns out to be occluded.

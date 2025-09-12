@@ -121,7 +121,7 @@ bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data, float 
 	update_cell_alive_count();
 
 	float load_factor = m_total_cells_alive_count_cpu / (float)m_checksum_buffer.size();
-	bool load_factor_too_high = load_factor > 0.75f;
+	bool load_factor_too_high = load_factor > 0.65f;
 	bool maximum_size_not_reached = get_byte_size() / 1000000.0f <= max_megabyte_size * 0.95f;
 	bool maximum_size_exceeded = get_byte_size() / 1000000.0f >= max_megabyte_size * 1.05f;
 	if ((load_factor_too_high && maximum_size_not_reached) || maximum_size_exceeded)
@@ -155,6 +155,9 @@ bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data, float 
 
 unsigned int NEEPlusPlusHashGridStorage::update_cell_alive_count()
 {
+	if (m_total_cells_alive_count_cpu_host_pinned_buffer.size() == 0)
+		return 0;
+
 	m_total_cells_alive_count.download_data_into(m_total_cells_alive_count_cpu_host_pinned_buffer.get_host_pinned_pointer());
 	m_total_cells_alive_count_cpu = m_total_cells_alive_count_cpu_host_pinned_buffer.get_host_pinned_pointer()[0];
 
