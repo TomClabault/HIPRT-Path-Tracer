@@ -13,7 +13,6 @@
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
 #include "GL/glew.h"
-#include "tracy/TracyOpenGL.hpp"
 
 extern ImGuiLogger g_imgui_logger;
 

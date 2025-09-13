@@ -7,7 +7,6 @@
 #include "Scene/SceneParser.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
-#include "tracy/TracyOpenGL.hpp"
 #include "UI/RenderWindow.h"
 #include "UI/Interaction/LinuxRenderWindowMouseInteractor.h"
 #include "UI/Interaction/WindowsRenderWindowMouseInteractor.h"
@@ -17,10 +16,6 @@
 #include <iostream>
 
 #include "stb_image_write.h"
-
-// - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
-// - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
-
 
 // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;
@@ -685,8 +680,6 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	
 	glewInit();
 
-	TracyGpuContext;
-
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "GLFW Initialized!");
 }
 
@@ -1097,7 +1090,6 @@ void RenderWindow::run()
 		uint64_t cpu_overhead_stop_time = glfwGetTimerValue();
 
 		glfwSwapBuffers(m_glfw_window);
-		TracyGpuCollect;
 
 		float delta_time_ms = (glfwGetTimerValue() - frame_start_time) / static_cast<float>(timer_frequency) * 1000.0f;
 		m_application_state->last_CPU_frame_delta_time_ms = delta_time_ms;
