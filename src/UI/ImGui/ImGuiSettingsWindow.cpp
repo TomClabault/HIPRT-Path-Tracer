@@ -2333,6 +2333,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR hash grid tree");
 
+			ImGui::SeparatorText("Grid size");
 			static bool constant_grid_cell_size = ReGIR_HashGridConstantGridCellSize;
 			if (ImGui::Checkbox("Constant grid cell size", &constant_grid_cell_size))
 			{
@@ -2361,6 +2362,18 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("The minimum size of a grid cell in world space units");
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Hashing");
+			static bool fuzzy_grid_cells = ReGIR_HashGridHashFuzzyGridCells;
+			if (ImGui::Checkbox("Fuzzy grid cells", &fuzzy_grid_cells))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS, fuzzy_grid_cells? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("If true, cell borders will be randomized a bit to help with grid cell artifacts.");
+
 			static bool include_normals_in_hash = ReGIR_HashGridHashSurfaceNormal;
 			if (ImGui::Checkbox("Use surface normal in hash", &include_normals_in_hash))
 			{
@@ -2369,7 +2382,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			ImGuiRenderer::show_help_marker("Whether or not to use the surface normal in the hash function of the hash grid. Increases quality but also significantly increases memory usage");
+			ImGuiRenderer::show_help_marker("Whether or not to use the surface normal in the hash function of the hash grid. "
+				"Increases quality but also significantly increases memory usage");
 			if (include_normals_in_hash)
 			{
 				ImGui::TreePush("ReGIR surface normal discretization tree");

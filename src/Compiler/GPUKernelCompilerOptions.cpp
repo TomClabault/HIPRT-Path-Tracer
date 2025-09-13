@@ -65,6 +65,7 @@ const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_S
 const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE = "ReGIR_HashGridCollisionResolutionMode";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS = "ReGIR_HashGridCollisionResolutionMaxSteps";
+const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS = "ReGIR_HashGridHashFuzzyGridCells";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL = "ReGIR_HashGridHashSurfaceNormal";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS = "ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS = "ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits";
@@ -160,6 +161,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS,
+	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS,
@@ -259,6 +261,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE] = std::make_shared<int>(ReGIR_HashGridCollisionResolutionMode);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS] = std::make_shared<int>(ReGIR_HashGridCollisionResolutionMaxSteps);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS] = std::make_shared<int>(ReGIR_HashGridHashFuzzyGridCells);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormal);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits);

@@ -264,6 +264,11 @@
 #define ReGIR_HashGridCollisionResolutionMaxSteps 32
 
 /**
+ * If true, cell borders will be randomized a bit to help with grid cell artifacts
+ */
+#define ReGIR_HashGridHashFuzzyGridCells KERNEL_OPTION_TRUE
+
+/**
  * Whether or not to use the surface normal in the hash function of the hash grid
  */
 #define ReGIR_HashGridHashSurfaceNormal KERNEL_OPTION_TRUE

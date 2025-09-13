@@ -69,9 +69,19 @@ struct ReGIRHashGrid
 		// Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
 		float3 new_world_position = hash_grid_aliasing_fix_clamping(world_position, cell_size);
 
+#if ReGIR_HashGridHashFuzzyGridCells == KERNEL_OPTION_TRUE
+		float jitter_x = Xorshift32Generator(h2_xxhash32(world_position.x * 0xFFFFFFFF))() * cell_size;
+		float jitter_y = Xorshift32Generator(h2_xxhash32(world_position.y * 0xFFFFFFFF))() * cell_size;
+		float jitter_z = Xorshift32Generator(h2_xxhash32(world_position.z * 0xFFFFFFFF))() * cell_size;
+
+		unsigned int grid_coord_x = static_cast<int>(floorf(new_world_position.x / cell_size + jitter_x));
+		unsigned int grid_coord_y = static_cast<int>(floorf(new_world_position.y / cell_size + jitter_y));
+		unsigned int grid_coord_z = static_cast<int>(floorf(new_world_position.z / cell_size + jitter_z));
+#else
 		unsigned int grid_coord_x = static_cast<int>(floorf(new_world_position.x / cell_size));
 		unsigned int grid_coord_y = static_cast<int>(floorf(new_world_position.y / cell_size));
 		unsigned int grid_coord_z = static_cast<int>(floorf(new_world_position.z / cell_size));
+#endif
 
 		// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
 #if ReGIR_HashGridHashSurfaceNormal == KERNEL_OPTION_TRUE

@@ -143,7 +143,7 @@ struct NEEPlusPlusDevice
 			// One of the two points was outside the scene, cannot cache this
 			return;
 		
-		if (read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index) >= (254 - hippt::warp_size()))
+		if (read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index) >= 200)
 			return;
 
 		if (visible)
