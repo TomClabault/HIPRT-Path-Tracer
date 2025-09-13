@@ -266,7 +266,13 @@
 /**
  * If true, cell borders will be randomized a bit to help with grid cell artifacts
  */
-#define ReGIR_HashGridHashFuzzyGridCells KERNEL_OPTION_TRUE
+#define ReGIR_HashGridHashFuzzyGridCells KERNEL_OPTION_FALSE
+
+/**
+ * If true, the normals used in the hash function of the hash grid will be jittered a little bit
+ * to help hide grid artifacts caused by the discretization of normals
+ */
+#define ReGIR_HashGridHashFuzzyNormals KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use the surface normal in the hash function of the hash grid

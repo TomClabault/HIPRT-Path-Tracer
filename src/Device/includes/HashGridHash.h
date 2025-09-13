@@ -48,6 +48,9 @@ HIPRT_HOST_DEVICE static unsigned int h2_xxhash32(float seed)
     return h2_xxhash32(hippt::float_as_uint(seed));
 }
 
+/**
+ * Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
+ */
 HIPRT_HOST_DEVICE static float3 hash_grid_aliasing_fix_periodic_shifting(float3 base_position, float grid_cell_size)
 {
     float scaling = 0.005f * grid_cell_size;
@@ -120,15 +123,7 @@ HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(unsigned int total_
 {
     float cell_size = compute_adaptive_cell_size(world_position, current_camera, target_projected_size, grid_cell_min_size);
 
-    // Periodic shifting to avoid float precision issues when, for example, rays hit a surface
-    // that is perfectly at Y=0 (the floor of the scene for example).
-    // 
-    // In that example, because of float imprecisions, rays hitting the floor will never have
-    // a y=0 hit coordinate but rather be slightly negative or slightly positive, depending
-    // on float imprecisions and this will actually create some noisy patterns where random rays access the hash 
-    // grid cell that has Y-negative and some other randoms rays access the Y-positive hash grid cell
-    //
-    // Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
+    // Aliasing fix for the hash grid when our point is very close to the border of a cell
     world_position = hash_grid_aliasing_fix_clamping(world_position, cell_size);
 
     unsigned int grid_coord_x = static_cast<int>(floorf(world_position.x / cell_size));
@@ -148,15 +143,7 @@ HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_
     float cell_size_1 = compute_adaptive_cell_size(world_position_1, current_camera, target_projected_size, grid_cell_min_size);
     float cell_size_2 = compute_adaptive_cell_size(world_position_2, current_camera, target_projected_size, grid_cell_min_size);
 
-    // Periodic shifting to avoid float precision issues when, for example, rays hit a surface
-    // that is perfectly at Y=0 (the floor of the scene for example).
-    // 
-    // In that example, because of float imprecisions, rays hitting the floor will never have
-    // a y=0 hit coordinate but rather be slightly negative or slightly positive, depending
-    // on float imprecisions and this will actually create some noisy patterns where random rays access the hash 
-    // grid cell that has Y-negative and some other randoms rays access the Y-positive hash grid cell
-    //
-    // Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
+    // Aliasing fix for the hash grid when our point is very close to the border of a cell
     world_position_1 = hash_grid_aliasing_fix_clamping(world_position_1, cell_size_1);
     world_position_2 = hash_grid_aliasing_fix_clamping(world_position_2, cell_size_2);
 

@@ -2367,12 +2367,28 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			static bool fuzzy_grid_cells = ReGIR_HashGridHashFuzzyGridCells;
 			if (ImGui::Checkbox("Fuzzy grid cells", &fuzzy_grid_cells))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS, fuzzy_grid_cells? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS, fuzzy_grid_cells ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			ImGuiRenderer::show_help_marker("If true, cell borders will be randomized a bit to help with grid cell artifacts.");
+			ImGuiRenderer::show_help_marker("If true, cell borders will be a bit fuzzy to help with grid cell artifacts.");
+			if (ImGui::SliderFloat("Fuzzy grid cell strength", &regir_settings.hash_grid.fuzzy_grid_cells_strength, 0.0f, 1.0f))
+				m_render_window->set_render_dirty(true);
+
+			static bool fuzzy_normals = ReGIR_HashGridHashFuzzyNormals;
+			if (ImGui::Checkbox("Fuzzy normals", &fuzzy_normals))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_NORMALS, fuzzy_normals ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("If true, the normals used in the hash function of the hash grid will be jittered a little bit "
+				"to help hide grid artifacts caused by the discretization of normals.");
+			if (ImGui::SliderFloat("Fuzzy normals strength", &regir_settings.hash_grid.fuzzy_normals_strength, 0.0f, 1.0f))
+				m_render_window->set_render_dirty(true);
+
 
 			static bool include_normals_in_hash = ReGIR_HashGridHashSurfaceNormal;
 			if (ImGui::Checkbox("Use surface normal in hash", &include_normals_in_hash))

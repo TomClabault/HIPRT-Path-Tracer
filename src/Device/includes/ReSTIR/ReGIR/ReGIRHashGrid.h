@@ -62,17 +62,42 @@ struct ReGIRHashGrid
 #endif
 	}
 
+	HIPRT_DEVICE float3 jitter_normal_in_tangent_plane(float3 N, float3 pos) const
+	{
+		// Getting the tangent plane vectors from the normal
+		float3 up = (fabs(N.z) < 0.999f) ? make_float3(0, 0, 1) : make_float3(1, 0, 0);
+		float3 T = hippt::normalize(hippt::cross(up, N));
+		float3 B = hippt::cross(N, T);
+
+		// Some deterministic random numbers from the position, in [-1, 1]
+		float jitter_x = Xorshift32Generator(h2_xxhash32(pos.x * 0xFFFFFFFF))() * 2.0f - 1.0f;
+		float jitter_y = Xorshift32Generator(h2_xxhash32(pos.y * 0xFFFFFFFF))() * 2.0f - 1.0f;
+
+		// Jittering our normal in the tangent plane
+		float3 jittered = N + (T * jitter_x + B * jitter_y) * fuzzy_normals_strength;
+
+		// --- Step 4: renormalize ---
+		return hippt::normalize(jittered);
+	}
+
 	HIPRT_DEVICE unsigned int custom_regir_hash(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, unsigned int total_number_of_cells, unsigned int& out_checksum) const
 	{
 		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size);
 
-		// Reference: SIGGRAPH 2022 - Advances in Spatial Hashing
+		// Aliasing fix for the hash grid when our point is very close to the border of a cell
 		float3 new_world_position = hash_grid_aliasing_fix_clamping(world_position, cell_size);
 
+#if ReGIR_HashGridHashFuzzyNormals == KERNEL_OPTION_TRUE
+		if (fuzzy_normals_strength > 0.01f)
+			// Jittering the normal a little bit in its tangent plane to help hide
+			// grid artifacts due to normal discretization a bit better
+			surface_normal = jitter_normal_in_tangent_plane(surface_normal, world_position);
+#endif
+
 #if ReGIR_HashGridHashFuzzyGridCells == KERNEL_OPTION_TRUE
-		float jitter_x = Xorshift32Generator(h2_xxhash32(world_position.x * 0xFFFFFFFF))() * cell_size;
-		float jitter_y = Xorshift32Generator(h2_xxhash32(world_position.y * 0xFFFFFFFF))() * cell_size;
-		float jitter_z = Xorshift32Generator(h2_xxhash32(world_position.z * 0xFFFFFFFF))() * cell_size;
+		float jitter_x = Xorshift32Generator(h2_xxhash32(world_position.x * 0xFFFFFFFF))() * cell_size * fuzzy_grid_cells_strength;
+		float jitter_y = Xorshift32Generator(h2_xxhash32(world_position.y * 0xFFFFFFFF))() * cell_size * fuzzy_grid_cells_strength;
+		float jitter_z = Xorshift32Generator(h2_xxhash32(world_position.z * 0xFFFFFFFF))() * cell_size * fuzzy_grid_cells_strength;
 
 		unsigned int grid_coord_x = static_cast<int>(floorf(new_world_position.x / cell_size + jitter_x));
 		unsigned int grid_coord_y = static_cast<int>(floorf(new_world_position.y / cell_size + jitter_y));
@@ -251,6 +276,9 @@ struct ReGIRHashGrid
 
 	float m_grid_cell_min_size = ReGIR_HashGridConstantGridCellSize ? 0.75f : 0.25f;
 	float m_grid_cell_target_projected_size = 10.0f;
+
+	float fuzzy_normals_strength = 0.2f;
+	float fuzzy_grid_cells_strength = 1.0f;
 };
 
 #endif
