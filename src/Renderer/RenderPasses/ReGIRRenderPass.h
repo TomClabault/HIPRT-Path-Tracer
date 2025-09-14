@@ -162,7 +162,7 @@ private:
 	// - 6 meshes in the distribution = 51% of the energy covered
 	//
 	// Then the light distribution will cover 6 meshes
-	float m_light_distribution_incoming_light_energy_target = 50.0f;
+	float m_light_distribution_incoming_light_energy_target = 75.0f;
 };
 
 #endif

@@ -41,6 +41,7 @@ struct ColorRGBA32F
 
     HIPRT_DEVICE ColorRGBA32F abs() { return ColorRGBA32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b), hippt::abs(this->a)); }
     HIPRT_DEVICE void max(const ColorRGBA32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); this->a = hippt::max(this->a, maxer.a); }
+    HIPRT_DEVICE ColorRGBA32F maxed(const ColorRGBA32F& maxer) { return ColorRGBA32F(hippt::max(this->r, maxer.r), hippt::max(this->g, maxer.g), hippt::max(this->b, maxer.b), hippt::max(this->a, maxer.a)); }
     HIPRT_DEVICE static ColorRGBA32F max(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b), hippt::max(a.a, b.a)); }
     HIPRT_DEVICE static ColorRGBA32F min(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b), hippt::min(a.a, b.a)); }
 
@@ -102,6 +103,7 @@ struct ColorRGB32F
 
     HIPRT_DEVICE ColorRGB32F abs() { return ColorRGB32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b)); }
     HIPRT_DEVICE void max(const ColorRGB32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); }
+    HIPRT_DEVICE ColorRGB32F maxed(const ColorRGB32F& maxer) { return ColorRGB32F(hippt::max(this->r, maxer.r), hippt::max(this->g, maxer.g), hippt::max(this->b, maxer.b)); }
     HIPRT_DEVICE static ColorRGB32F max(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b)); }
     HIPRT_DEVICE static ColorRGB32F min(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b)); }
 

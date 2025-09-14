@@ -62,7 +62,7 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer,
     // Doing the conversion manually instead of using the hardware
     // because it's unavailable in Orochi (again) :(
     if (is_srgb)
-        return pow_2_2_fit(rgba);
+        return pow_2_2_fit(rgba).maxed(ColorRGBA32F(0.0f, 0.0f, 0.0f, 0.0f));
     else
         return rgba;
 }

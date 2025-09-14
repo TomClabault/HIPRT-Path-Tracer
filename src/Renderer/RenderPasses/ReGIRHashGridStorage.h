@@ -20,7 +20,7 @@ class ReGIRHashGridStorage
 {
 public:
 	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS = 50000;
-	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS = 100000;
+	static constexpr unsigned int DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS = 50000;
 
 	void set_regir_render_pass(ReGIRRenderPass* regir_render_pass);
 
@@ -113,9 +113,6 @@ public:
 
 	float m_current_grid_min_cell_size = 0.0f;
 	float m_grid_cell_target_projected_size = 0.0f;
-
-	/*unsigned int m_current_cell_light_distribution_maximum_size_primary_hits = 0;
-	unsigned int m_current_cell_light_distribution_maximum_size_secondary_hits = 0;*/
 
 	unsigned int m_total_number_of_cells_primary_hits = 0;
 	unsigned int m_total_number_of_cells_secondary_hits = 0;
