@@ -58,6 +58,9 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - There is some weird color corruption issue with NEE++ linear probing steps = 16
+// 
+// - Should we use the standard canonical samples to defensively cover light distribution bias or should we stick to MIS during grid fill? Canonical samples are probably much higher quality no?
+// - Try hardcoding a lot of constants instead of using RenderData to see if it helps with register & perf
 // - can we save a bunch of registers by using #if instead of rendersettings variable at the heart of ReGIR?
 // - if we want to do a more efficient multi shading, maybe we can do the multi shading using the visibility in target function and not include visibility in bad candidates to save shadow rays (canonical sample + bsdf sample)
 // - visibility_proba = hippt::max(0.1f, visibility_proba); in ReGIR target function.h, should we remove that for canonical candidates because they bring quite a lot of visibility noise when their target function is really high but turns out to be occluded.
@@ -105,7 +108,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Can we maybe find a compromise in quality perf in cell distributions so that it doesn't take too long to compute by only building the distribution on the N most powerful meshes only instead of all? So don't compute contributions for all the meshes of the scene but only the most important ones? What about small lights very close to surfaces though :( Maybe handled okay by BSDF MIS?
 // - Can we do some warp wide reordering when sampling lights during the grid fill?
 //		If multiple threads of a warp sample the same lights, we would light these accesses to be coalesced, so we reorder / sort by light index before fetching light data
-// - Can we cache some things in ReGIR to avoid repopulating / re integrating etc... if we can actually still keep the pre pop, pre intégration etc... Results of last time? Enabling/disabling GMoN for example resets the render but doesn't invalidate the pre-population / etc...
+// - Can we cache some things in ReGIR to avoid repopulating / re integrating etc... if we can actually still keep the pre pop, pre intï¿½gration etc... Results of last time? Enabling/disabling GMoN for example resets the render but doesn't invalidate the pre-population / etc...
 // - Remove freeze random feature
 // - Remove debug kernel feature
 // - Can we refine the light distributions at each cell based on the sampling done at runtime?

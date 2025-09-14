@@ -81,6 +81,7 @@ public:
 	void launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream);
 	bool launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data, bool force_recompute = false);
 	bool launch_cell_light_distributions_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit, bool force_recompute = false);
+	bool launch_cell_light_distributions_compute_and_sort_internal(HIPRTRenderData& render_data, bool primary_hit, bool compute_only_sizes, bool force_recompute = false);
 	void launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data);
 
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
@@ -119,7 +120,7 @@ public:
 	void update_all_cell_alive_count(HIPRTRenderData& render_data);
 	float get_alive_cells_ratio(bool primary_hit) const;
 
-	unsigned int get_current_cell_light_distributions_size(bool primary_hit) const;
+	 unsigned int get_current_cell_light_distributions_size() const;
 
 	ReGIRHashGridStorage& get_hash_grid_storage();
 	
@@ -158,6 +159,20 @@ private:
 	// So we need to keep track of how many alias tables we've computed already
 	unsigned int m_last_cells_light_distributions_compute_count_primary_hits = 0;
 	unsigned int m_last_cells_light_distributions_compute_count_secondary_hits = 0;
+	// Percentage of the total incoming energy that we should keep in each light distribution of
+	// each cell at *most* (roughly)
+	// 
+	// The light distribution will only contain as many emissive meshes as necessary such that the
+	// distribution covers covers that percentage of the total incoming energy to the grid cell.
+	//
+	// This is "rounded up" so if 40% of the total incoming radiance is required by this parameter but
+	// we have to choose between (for example):
+	// 
+	// - 5 meshes in the distribution = 38% of the energy covered
+	// - 6 meshes in the distribution = 51% of the energy covered
+	//
+	// Then the light distribution will cover 6 meshes
+	float m_light_distribution_incoming_light_energy_target = 50.0f;
 };
 
 #endif

@@ -19,9 +19,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distri
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
-    /*if (hash_grid_cell_index == 5277)
-        std::cout << std::endl;*/
-
     CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
     int index_in_distribution = cell_light_distribution.sample(rng);
 
@@ -58,7 +55,6 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
     CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
-    int index_in_distribution = cell_light_distribution.sample(rng);
 
     float mesh_sampling_PDF = 0.0f;
     // TODO absolutely need to replace that with a perfect hash table (or any fast membership data structure)
@@ -158,6 +154,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         }
 
         reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
+        sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
     }
 
     if (!reservoir_is_canonical)
@@ -172,10 +169,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 
             float triangle_PDF;
             int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
-            if (emissive_triangle_global_index == -1)
-                continue;
 
             LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+            if (light_sample.emissive_triangle_global_index == -1)
+                // Can happen if the triangle sampled is degenerate and thus rejected
+                continue;
+
             // That point on this triangle on that emissive mesh
             light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
 
@@ -186,6 +185,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
             float mis_weight = balance_heuristic(light_sample.area_measure_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount, cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
 
             reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
+            sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
         }
     }
 
@@ -330,7 +330,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Grid_Fill(HIPRTRenderData render_data
         
         // Normalizing the reservoir
         output_reservoir.finalize_resampling(1.0f, 1.0f);
-        
+        sanity_check<true>(render_data, output_reservoir.UCW, -1, -1);
+
         regir_settings.store_reservoir_custom_buffer_opt(output_reservoirs_grid, output_reservoir, hash_grid_cell_index, reservoir_index_in_cell);
 
         grid_fill_pre_integration_accumulation<ACCUMULATE_PRE_INTEGRATION_OPTION>(render_data, output_reservoir, regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell), hash_grid_cell_index, primary_hit);

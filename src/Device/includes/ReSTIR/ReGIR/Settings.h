@@ -213,8 +213,8 @@ struct ReGIRSettings
 	HIPRT_DEVICE float get_non_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_non_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
 	HIPRT_DEVICE float get_canonical_pre_integration_factor(unsigned hash_grid_cell_index, bool primary_hit) const { return get_canonical_pre_integration_factor_buffer(primary_hit)[hash_grid_cell_index]; }
 
-	HIPRT_DEVICE const ReGIRCellsLightDistributionsSoADevice& get_cell_distributions_soa(bool primary_hit) const { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
-	HIPRT_DEVICE ReGIRCellsLightDistributionsSoADevice& get_cell_distributions_soa(bool primary_hit) { return primary_hit ? cells_distributions_primary_hits : cells_distributions_secondary_hits; }
+	HIPRT_DEVICE const ReGIRCellsLightDistributionsSoADevice& get_cell_distributions_soa(bool primary_hit) const { return primary_hit ? cells_light_distributions_primary_hits : cells_light_distributions_secondary_hits; }
+	HIPRT_DEVICE ReGIRCellsLightDistributionsSoADevice& get_cell_distributions_soa(bool primary_hit) { return primary_hit ? cells_light_distributions_primary_hits : cells_light_distributions_secondary_hits; }
 
 	HIPRT_DEVICE CDFDeviceU16 get_cell_light_distributions(unsigned int hash_grid_cell_index, bool primary_hit) const
 	{
@@ -222,8 +222,8 @@ struct ReGIRSettings
 
 		const ReGIRCellsLightDistributionsSoADevice& cell_distributions = get_cell_distributions_soa(primary_hit);
 
-		out.cdf_u16 = cell_distributions.all_cdfs + hash_grid_cell_index * cell_distributions.light_distribution_size;
-		out.size = cell_distributions.light_distribution_size;
+		out.cdf_u16 = cell_distributions.all_cdfs + cell_distributions.light_distribution_offsets[hash_grid_cell_index];
+		out.size = cell_distributions.light_distribution_sizes[hash_grid_cell_index];
 
 		return out;
 	}
@@ -660,8 +660,8 @@ struct ReGIRSettings
 	AtomicType<float>* non_canonical_pre_integration_factors_secondary_hits = nullptr;
 	AtomicType<float>* canonical_pre_integration_factors_secondary_hits = nullptr;
 
-	ReGIRCellsLightDistributionsSoADevice cells_distributions_primary_hits;
-	ReGIRCellsLightDistributionsSoADevice cells_distributions_secondary_hits;
+	ReGIRCellsLightDistributionsSoADevice cells_light_distributions_primary_hits;
+	ReGIRCellsLightDistributionsSoADevice cells_light_distributions_secondary_hits;
 	bool use_per_cell_light_distributions = ReGIR_GridFillUsePerCellDistributions;
 
 	// Multiplicative factor to multiply the output of some debug views

@@ -114,8 +114,8 @@ public:
 	float m_current_grid_min_cell_size = 0.0f;
 	float m_grid_cell_target_projected_size = 0.0f;
 
-	unsigned int m_current_cell_light_distribution_size_primary_hits = 0;
-	unsigned int m_current_cell_light_distribution_size_secondary_hits = 0;
+	/*unsigned int m_current_cell_light_distribution_maximum_size_primary_hits = 0;
+	unsigned int m_current_cell_light_distribution_maximum_size_secondary_hits = 0;*/
 
 	unsigned int m_total_number_of_cells_primary_hits = 0;
 	unsigned int m_total_number_of_cells_secondary_hits = 0;

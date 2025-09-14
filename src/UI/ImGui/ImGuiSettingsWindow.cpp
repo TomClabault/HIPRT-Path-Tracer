@@ -1994,10 +1994,13 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 					ImGui::TreePop();
 				}
 
-				static int light_distribution_size = regir_settings.cells_distributions_primary_hits.light_distribution_size;
-				ImGui::SliderInt("Light distribution size", &light_distribution_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count));
+				if (ImGui::SliderInt("Light distribution size", &regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count)))
+				{
+					regir_settings.cells_light_distributions_secondary_hits.light_distribution_maximum_size = regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size;
+					m_render_window->set_render_dirty(true);
+				}
 
-				if (light_distribution_size != regir_render_pass->get_current_cell_light_distributions_size(true))
+				/*if (light_distribution_size != regir_render_pass->get_current_cell_light_distributions_size(true))
 				{
 					ImGui::TreePush("ReGIR light distributions size");
 
@@ -2006,14 +2009,14 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 						light_distribution_size = hippt::min(light_distribution_size, 65535);
 						light_distribution_size = hippt::min(light_distribution_size, (int)render_data.buffers.emissive_meshes_data.alias_table_count);
 
-						regir_settings.cells_distributions_primary_hits.light_distribution_size = light_distribution_size;
-						regir_settings.cells_distributions_secondary_hits.light_distribution_size = light_distribution_size;
+						regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size = light_distribution_size;
+						regir_settings.cells_light_distributions_secondary_hits.light_distribution_maximum_size = light_distribution_size;
 
 						m_render_window->set_render_dirty(true);
 					}
 
 					ImGui::TreePop();
-				}
+				}*/
 			} // regir_settings.use_per_cell_light_distributions
 			
 

@@ -232,7 +232,7 @@ struct HIPRTRenderSettings
 	ReSTIRDISettings restir_di_settings;
 	// Settings for ReSTIR GI
 	ReSTIRGISettings restir_gi_settings;
-
+	// Settings for ReGIR
 	ReGIRSettings regir_settings;
 
 	/**

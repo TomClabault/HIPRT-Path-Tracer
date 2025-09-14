@@ -79,6 +79,7 @@ public:
     void ReGIR_pre_integration();
     void ReGIR_compute_cells_light_distributions();
     void ReGIR_compute_cells_light_distributions_internal(bool primary_hit);
+    void ReGIR_compute_cell_light_compute_and_sort_internal(bool primary_hit, bool only_compute_sizes);
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
@@ -215,6 +216,20 @@ private:
         ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_secondary_hit;
         unsigned int m_last_cells_light_distributions_compute_count_primary_hits = 0;
         unsigned int m_last_cells_light_distributions_compute_count_secondary_hits = 0;
+        // Percentage of the total incoming energy that we should keep in each light distribution of
+        // each cell at *most* (roughly)
+        // 
+        // The light distribution will only contain as many emissive meshes as necessary such that the
+        // distribution covers covers that percentage of the total incoming energy to the grid cell.
+        //
+        // This is "rounded up" so if 40% of the total incoming radiance is required by this parameter but
+        // we have to choose between (for example):
+        // 
+        // - 5 meshes in the distribution = 38% of the energy covered
+        // - 6 meshes in the distribution = 51% of the energy covered
+        //
+        // Then the light distribution will cover 6 meshes
+        float m_light_distribution_incoming_light_energy_target = 1.0f;
 
         std::vector<AtomicType<unsigned int>> grid_cell_alive;
         std::vector<unsigned int> grid_cells_alive_list;

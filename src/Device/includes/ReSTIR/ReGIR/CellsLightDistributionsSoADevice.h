@@ -17,10 +17,14 @@ struct ReGIRCellsLightDistributionsSoADevice
 
 	HIPRT_DEVICE float get_PDF(unsigned int hash_grid_cell_index, unsigned int CDF_table_index) const
 	{
+		unsigned int offset = light_distribution_offsets[hash_grid_cell_index];
+		
 		if (CDF_table_index == 0)
-			return all_cdfs[hash_grid_cell_index * light_distribution_size + CDF_table_index] / 65535.0f;
+			return all_cdfs[offset + CDF_table_index] / 65535.0f;
 		else
-			return (all_cdfs[hash_grid_cell_index * light_distribution_size + CDF_table_index] - all_cdfs[hash_grid_cell_index * light_distribution_size + CDF_table_index - 1]) / 65535.0f;
+		{
+			return (all_cdfs[offset + CDF_table_index] - all_cdfs[offset + CDF_table_index - 1]) / 65535.0f;
+		}
 	}
 
 	HIPRT_DEVICE unsigned int get_emissive_mesh_index(unsigned hash_grid_cell_index, unsigned int CDF_table_index) const
@@ -43,27 +47,23 @@ struct ReGIRCellsLightDistributionsSoADevice
 			unsigned int bits_in_first_element_mask = (1 << bits_in_first_element) - 1;
 			unsigned int bits_in_second_element_mask = (1 << bits_in_second_element) - 1;
 			
-			unsigned int first_part = (emissive_meshes_indices_packed[hash_grid_cell_index * mesh_indices_element_count_per_cell + element_index] >> bit_offset_start_in_element) & bits_in_first_element_mask;
-			unsigned int second_part = (emissive_meshes_indices_packed[hash_grid_cell_index * mesh_indices_element_count_per_cell + element_index + 1]) & bits_in_second_element_mask;
+			unsigned int first_part = (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index] >> bit_offset_start_in_element) & bits_in_first_element_mask;
+			unsigned int second_part = (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index + 1]) & bits_in_second_element_mask;
 
 			return first_part | (second_part << bits_in_first_element);
 		}
 		else
 			// Packed mesh index not straddling, just need to fetch the bits
-			return (emissive_meshes_indices_packed[hash_grid_cell_index * mesh_indices_element_count_per_cell + element_index] >> bit_offset_start_in_element) & ((1 << bits_per_mesh_index) - 1);
+			return (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index] >> bit_offset_start_in_element) & ((1 << bits_per_mesh_index) - 1);
 	}
 
 	unsigned short int* all_cdfs = nullptr;
 
-	// How many entries in the alias tables of each cell
-	//
-	// Note that this size, * at runtime * is always incremented by 1 to
-	// reserve one slot of the alias table to sample all the lights that are not
-	// present in the light distrubution to avoid bias.
-	//
-	// So if this value is 10 here, it will be 11 at runtime and the alias tables
-	// will have 11 slots to sample from
-	unsigned int light_distribution_size = 512;
+	int light_distribution_maximum_size = 512;
+	// How many entries in the light distribution of each cell
+	unsigned short int* light_distribution_sizes = nullptr;
+	// At which index does each light distribution start in the 'all_cdfs' buffer
+	unsigned int* light_distribution_offsets= nullptr;
 
 private:
 	// How many bits are needed to store one mesh index
@@ -85,6 +85,9 @@ private:
 	// Each mesh index only consumes the right number of bits to be represented depending on the
 	// number of emissive meshes in the scene.
 	ReGIRCellsLightDistributionsMeshIndicesPackingType* emissive_meshes_indices_packed = nullptr;
+	// For each grid cell, offset in the 'emissive_meshes_indices_packed' buffer where the packed emissive
+	// meshes indices start
+	unsigned int* mesh_indices_offsets = nullptr;
 
 #ifndef __KERNELCC__
 	template <template <typename> typename OtherContainer>
