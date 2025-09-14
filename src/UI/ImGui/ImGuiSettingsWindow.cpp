@@ -1994,29 +1994,32 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 					ImGui::TreePop();
 				}
 
-				if (ImGui::SliderInt("Light distribution size", &regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count)))
+				if (ImGui::SliderInt("Light distribution max. size", &regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count)))
 				{
 					regir_settings.cells_light_distributions_secondary_hits.light_distribution_maximum_size = regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size;
 					m_render_window->set_render_dirty(true);
 				}
 
-				/*if (light_distribution_size != regir_render_pass->get_current_cell_light_distributions_size(true))
-				{
-					ImGui::TreePush("ReGIR light distributions size");
+				if (ImGui::SliderFloat("Light distribution target radiance", &regir_render_pass->get_light_distribution_target_incoming_energy(), 0.0f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("Percentage of the total incoming energy that we should keep in each light distribution of "
+					"each cell at *most* (roughly)\n\n"
+					""
+					"The light distribution will only contain as many emissive meshes as necessary such that the "
+					"distribution covers covers that percentage of the total incoming energy to the grid cell.\n\n"
+					""
+					"This is \"rounded up\" so if 40% of the total incoming radiance is required by this parameter but "
+					"we have to choose between (for example):\n\n"
+					""
+					" - 5 meshes in the distribution = 38% of the energy covered\n"
+					" - 6 meshes in the distribution = 51% of the energy covered\n\n"
+					""
+					"Then the light distribution will cover 6 meshes.");
+				ImGui::TreePush("VRAM saving ReGIR");
+				ImGui::Text("VRAM saving 1st hits: %f%%", regir_render_pass->get_light_distributions_compaction_VRAM_savings(true));
+				ImGui::Text("VRAM saving 2nd hits: %f%%", regir_render_pass->get_light_distributions_compaction_VRAM_savings(false));
+				ImGui::TreePop();
 
-					if (ImGui::Button("Apply"))
-					{
-						light_distribution_size = hippt::min(light_distribution_size, 65535);
-						light_distribution_size = hippt::min(light_distribution_size, (int)render_data.buffers.emissive_meshes_data.alias_table_count);
-
-						regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size = light_distribution_size;
-						regir_settings.cells_light_distributions_secondary_hits.light_distribution_maximum_size = light_distribution_size;
-
-						m_render_window->set_render_dirty(true);
-					}
-
-					ImGui::TreePop();
-				}*/
 			} // regir_settings.use_per_cell_light_distributions
 			
 

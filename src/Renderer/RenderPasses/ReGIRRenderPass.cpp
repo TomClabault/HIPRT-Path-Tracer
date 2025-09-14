@@ -1032,7 +1032,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		}
 
 		unsigned int total_nb_cells = m_hash_grid_storage.get_total_number_of_cells(primary_hit);
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compacted light distribution size: %u (%f%% saving)", light_distributions_sizes_sum, 100.0f - light_distributions_sizes_sum / ((float)total_nb_cells * hippt::min(emissive_mesh_count, (unsigned int)render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size)) * 100.0f);
+		float& VRAM_saving = primary_hit ? m_last_light_distribution_compaction_vram_saving_primary_hits : m_last_light_distribution_compaction_vram_saving_secondary_hits;
+		VRAM_saving = 100.0f - light_distributions_sizes_sum / ((float)total_nb_cells * hippt::min(emissive_mesh_count, (unsigned int)render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size)) * 100.0f;
 
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(light_distributions_sizes_sum);
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(emissive_mesh_indices_element_count_sum);
@@ -1261,6 +1262,16 @@ size_t ReGIRRenderPass::get_reservoirs_VRAM_usage_bytes(bool primary_hit) const
 size_t ReGIRRenderPass::get_light_distibutions_VRAM_usage_bytes(bool primary_hit) const
 {
 	return m_hash_grid_storage.get_cell_light_distributions(primary_hit).get_byte_size();
+}
+
+float& ReGIRRenderPass::get_light_distribution_target_incoming_energy()
+{
+	return m_light_distribution_incoming_light_energy_target;
+}
+
+float ReGIRRenderPass::get_light_distributions_compaction_VRAM_savings(bool primary_hit) const
+{
+	return primary_hit ? m_last_light_distribution_compaction_vram_saving_primary_hits : m_last_light_distribution_compaction_vram_saving_secondary_hits;
 }
 
 unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const

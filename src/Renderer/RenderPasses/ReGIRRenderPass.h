@@ -108,7 +108,9 @@ public:
 	size_t get_correlation_reduction_VRAM_usage_bytes(bool primary_hit) const;
 	size_t get_reservoirs_VRAM_usage_bytes(bool primary_hit) const;
 	size_t get_light_distibutions_VRAM_usage_bytes(bool primary_hit) const;
-
+	
+	float& get_light_distribution_target_incoming_energy();
+	float get_light_distributions_compaction_VRAM_savings(bool primary_hit) const;
 	/**
 	 * Returns the total number of cells currently used by the hash grid
 	 */
@@ -119,8 +121,6 @@ public:
 
 	void update_all_cell_alive_count(HIPRTRenderData& render_data);
 	float get_alive_cells_ratio(bool primary_hit) const;
-
-	 unsigned int get_current_cell_light_distributions_size() const;
 
 	ReGIRHashGridStorage& get_hash_grid_storage();
 	
@@ -162,7 +162,12 @@ private:
 	// - 6 meshes in the distribution = 51% of the energy covered
 	//
 	// Then the light distribution will cover 6 meshes
-	float m_light_distribution_incoming_light_energy_target = 75.0f;
+	float m_light_distribution_incoming_light_energy_target = 90.0f;
+
+	// How many % VRAM did we save from compacting the light distribution the last time we did
+	// This is just used for debugging / measurements purposes
+	float m_last_light_distribution_compaction_vram_saving_primary_hits = 0.0f;
+	float m_last_light_distribution_compaction_vram_saving_secondary_hits = 0.0f;
 };
 
 #endif
