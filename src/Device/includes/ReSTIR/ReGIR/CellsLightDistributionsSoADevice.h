@@ -15,6 +15,8 @@ struct ReGIRCellsLightDistributionsSoADevice
 {
 	using ReGIRCellsLightDistributionsMeshIndicesPackingType = unsigned long long int;
 
+	static constexpr unsigned int NO_AVAILABLE_LIGHT_DISTRIBUTION = 0xFFFFFFFF;
+
 	HIPRT_DEVICE float get_PDF(unsigned int hash_grid_cell_index, unsigned int CDF_table_index) const
 	{
 		unsigned int offset = light_distribution_offsets[hash_grid_cell_index];

@@ -99,16 +99,33 @@ enum ReGIRCellsLightDistributionsSoAHostBuffers
 template <template <typename> typename DataContainer>
 struct ReGIRCellsLightDistributionsSoAHost
 {
+	constexpr static bool IsCPUBuffer = std::is_same_v<std::vector<int>, DataContainer<int>>;
+
 	void resize(size_t new_number_of_cells, unsigned int light_distribution_size, unsigned int emissive_meshes_count)
 	{
 		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().resize(new_number_of_cells * light_distribution_size);
 		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>().resize(new_number_of_cells * ReGIRCellsLightDistributionsHostUtils::get_packed_mesh_indices_count_per_cell(emissive_meshes_count, light_distribution_size));
 		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>().resize(new_number_of_cells);
 
-		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>().resize(new_number_of_cells);
-		soa.template memset_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(0);
+		if constexpr (IsCPUBuffer)
+		{
+			// Only resizing this correctly on the CPU because the resizing is done during light distribution
+			// computation on the GPU
+			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(new_number_of_cells);
+			soa.template memset_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(0);
+			
+			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(new_number_of_cells);
+			soa.template memset_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(ReGIRCellsLightDistributionsSoADevice::NO_AVAILABLE_LIGHT_DISTRIBUTION);
+		}
+		else
+		{
+			// On the GPU
 
-		soa.template get_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>().resize(new_number_of_cells);
+			// Just resizing with a dummy size of 1 because the buffers are going to be properly resized anyways
+			// during light distribution build
+			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(1);
+			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(1);
+		}
 
 		m_light_distribution_size = light_distribution_size;
 		m_emissive_mesh_count = emissive_meshes_count;

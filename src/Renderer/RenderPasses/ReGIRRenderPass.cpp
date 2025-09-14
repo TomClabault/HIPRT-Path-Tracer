@@ -369,7 +369,7 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		// Upadting ReGIR's cell light distributions to take NEE++ learnt visibility into account in the distributions
 
 		// A rehashing with will empty the correlation reduction buffers so we need to fill them again
-		launch_cell_light_distributions_precomputation(render_data, true);
+		launch_cell_light_distributions_precomputation(render_data);
 		launch_correlation_reduction_fill(render_data);
 		launch_pre_integration(render_data);
 
@@ -549,8 +549,6 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 		// We also want the local 'render_data' parameter here to be updated such
 		// that the grid fill and spatial reuse passes can use the rehashed (and resized) grid
 		m_hash_grid_storage.to_device(render_data);
-
-		m_last_cells_light_distributions_compute_count_primary_hits = m_last_cells_light_distributions_compute_count_secondary_hits = 0;
 
 		return true;
 	}
@@ -794,15 +792,15 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	render_data.random_number = seed_backup;
 }
 
-bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data, bool force_recompute)
+bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data)
 {
 	if (!render_data.render_settings.regir_settings.use_per_cell_light_distributions)
 		return false;
 
 	bool recomputed = false;
 
-	recomputed |= launch_cell_light_distributions_precomputation_internal(render_data, true, force_recompute);
-	recomputed |= launch_cell_light_distributions_precomputation_internal(render_data, false, force_recompute);
+	recomputed |= launch_cell_light_distributions_precomputation_internal(render_data, true);
+	recomputed |= launch_cell_light_distributions_precomputation_internal(render_data, false);
 
 	m_hash_grid_storage.to_device(render_data);
 	m_hash_grid_storage.to_device(m_renderer->get_render_data());
@@ -810,15 +808,15 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRender
 	return recomputed;
 }
 
-bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit, bool force_recompute)
+bool ReGIRRenderPass::launch_cell_light_distributions_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit)
 {
-	launch_cell_light_distributions_compute_and_sort_internal(render_data, primary_hit, true, force_recompute);
-	launch_cell_light_distributions_compute_and_sort_internal(render_data, primary_hit, false, force_recompute);
+	launch_cell_light_distributions_compute_and_sort_internal(render_data, primary_hit, true);
+	launch_cell_light_distributions_compute_and_sort_internal(render_data, primary_hit, false);
 
 	return true;
 }
 
-bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(HIPRTRenderData& render_data, bool primary_hit, bool compute_only_sizes, bool force_recompute)
+bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(HIPRTRenderData& render_data, bool primary_hit, bool compute_only_sizes)
 {
 	if (render_data.buffers.emissive_meshes_data.alias_table_count > ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount)
 	{
@@ -837,12 +835,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	if (nb_cells_alive == 0)
 		return false;
 
-	unsigned int last_nb_computed_cells_light_distributions = 0;// primary_hit ? m_last_cells_light_distributions_compute_count_primary_hits : m_last_cells_light_distributions_compute_count_secondary_hits;
-
 	unsigned int emissive_mesh_count = render_data.buffers.emissive_meshes_data.alias_table_count;
-	unsigned int total_number_of_cells_to_compute = force_recompute ? nb_cells_alive : nb_cells_alive - last_nb_computed_cells_light_distributions;
-	if (total_number_of_cells_to_compute == 0)
-		return false;
+	unsigned int total_number_of_cells_to_compute = nb_cells_alive;
 	unsigned int max_number_of_cells_computed_per_iteration = std::floor(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount / emissive_mesh_count);
 
 	auto start_total = std::chrono::high_resolution_clock::now();
@@ -857,13 +851,13 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 	std::vector<unsigned int> grid_cell_alive_list = m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).m_hash_cell_data.template get_buffer<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>().download_data();
 	std::vector<unsigned short int> light_distribution_sizes = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>() : std::vector<unsigned short int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
-	std::vector<unsigned int> light_distribution_offsets = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>() : std::vector<unsigned int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
+	std::vector<unsigned int> light_distribution_offsets = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>() : std::vector<unsigned int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit), ReGIRCellsLightDistributionsSoADevice::NO_AVAILABLE_LIGHT_DISTRIBUTION);
 	std::vector<unsigned int> mesh_indices_offsets = !compute_only_sizes ? m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.download_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_OFFSETS>() : std::vector<unsigned int>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
 
 	std::vector<unsigned long long int> meshes_indices_staging(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>().size());
 	std::vector<unsigned short int> CDF_staging_u16(m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size());
 
-	unsigned int cell_offset = force_recompute ? 0 : last_nb_computed_cells_light_distributions;
+	unsigned int cell_offset = 0;
 	const unsigned int iteration_needed = std::ceil(total_number_of_cells_to_compute / (float)max_number_of_cells_computed_per_iteration);
 	const unsigned int actual_number_of_cells_computed_per_iteration = hippt::min(max_number_of_cells_computed_per_iteration, total_number_of_cells_to_compute);
 	for (int iter = 0; iter < iteration_needed; iter++)
@@ -1038,10 +1032,12 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		}
 
 		unsigned int total_nb_cells = m_hash_grid_storage.get_total_number_of_cells(primary_hit);
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compacted light distribution size: %u (%f%% saving)", light_distributions_sizes_sum, 100.0f - light_distributions_sizes_sum / (float)total_nb_cells * 100.0f);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compacted light distribution size: %u (%f%% saving)", light_distributions_sizes_sum, 100.0f - light_distributions_sizes_sum / ((float)total_nb_cells * hippt::min(emissive_mesh_count, (unsigned int)render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size)) * 100.0f);
 
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(light_distributions_sizes_sum);
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(emissive_mesh_indices_element_count_sum);
+		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
+		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(m_hash_grid_storage.get_total_number_of_cells(primary_hit));
 
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(light_distribution_sizes);
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(light_distribution_offsets);
@@ -1053,8 +1049,6 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(meshes_indices_staging);
 
 		std::cout << "Alias table maximum size: " << render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).light_distribution_maximum_size << std::endl;
-
-		last_nb_computed_cells_light_distributions = nb_cells_alive;
 
 		auto stop_total = std::chrono::high_resolution_clock::now();
 		std::cout << "Full precomputation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_total - start_total).count() << "ms. " << std::endl << std::endl << std::endl;
@@ -1235,9 +1229,6 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 
 	if (m_hash_grid_storage.get_byte_size() > 0)
 		m_hash_grid_storage.reset();
-
-	m_last_cells_light_distributions_compute_count_primary_hits = 0;
-	m_last_cells_light_distributions_compute_count_secondary_hits = 0;
 }
 
 bool ReGIRRenderPass::is_render_pass_used() const

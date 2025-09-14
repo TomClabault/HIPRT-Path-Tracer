@@ -222,7 +222,12 @@ struct ReGIRSettings
 
 		const ReGIRCellsLightDistributionsSoADevice& cell_distributions = get_cell_distributions_soa(primary_hit);
 
-		out.cdf_u16 = cell_distributions.all_cdfs + cell_distributions.light_distribution_offsets[hash_grid_cell_index];
+		unsigned int light_distribution_offset = cell_distributions.light_distribution_offsets[hash_grid_cell_index];
+		if (light_distribution_offset == ReGIRCellsLightDistributionsSoADevice::NO_AVAILABLE_LIGHT_DISTRIBUTION)
+			// Returning an empty light distribution to indicate that no light distribution is available
+			return CDFDeviceU16();
+
+		out.cdf_u16 = cell_distributions.all_cdfs + light_distribution_offset;
 		out.size = cell_distributions.light_distribution_sizes[hash_grid_cell_index];
 
 		return out;

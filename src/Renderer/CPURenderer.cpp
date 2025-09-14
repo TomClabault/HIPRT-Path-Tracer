@@ -891,7 +891,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
             ReGIR_Compute_Cells_Light_Distributions(m_render_data, contribution_scratch_buffer.data(), cell_offset, primary_hit, thread_index);
         }
         auto stop_compute = std::chrono::high_resolution_clock::now();
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compute time: %lldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_compute - compute).count());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compute time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_compute - compute).count());
 
 
 
@@ -1045,7 +1045,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
         }
 
         unsigned int total_nb_cells = soa_host.soa.get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size();
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compressed light distribution size: %u (%f%% saving)", light_distributions_sizes_sum, 100.0f - light_distributions_sizes_sum / (float)total_nb_cells * 100.0f);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compacted light distribution size: %u (%f%% saving)", light_distributions_sizes_sum, 100.0f - light_distributions_sizes_sum / ((float)total_nb_cells * hippt::min(emissive_mesh_count, (unsigned int)m_render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size)) * 100.0f);
 
         soa_host.soa.resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(light_distributions_sizes_sum);
         soa_host.soa.resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(emissive_mesh_indices_element_count_sum);

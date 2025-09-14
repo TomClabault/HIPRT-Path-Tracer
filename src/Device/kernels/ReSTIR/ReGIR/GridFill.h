@@ -15,11 +15,23 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_per_cell_distributions(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
+#define REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK -42
+
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light_distribution(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
     CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
+    if (cell_light_distribution.cdf_u16 == nullptr)
+    {
+        // No light distribution available for that cell. This can happen if new cells have been discovered
+        // by rays bouncing around but we haven't recomputed light distributions yet
+
+        LightSampleInformation fallback_needed;
+        fallback_needed.emissive_triangle_global_index = REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK;
+
+        return fallback_needed;
+    }
     int index_in_distribution = cell_light_distribution.sample(rng);
 
     unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_emissive_mesh_index(hash_grid_cell_index, index_in_distribution);
@@ -122,7 +134,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         if (reservoir_is_canonical)
             light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
         else
-            light_sample = sample_one_emissive_triangle_per_cell_distributions(render_data, hash_grid_cell_index, primary_hit, rng);
+        {
+            light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
+            if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
+                // Falling back on the base strategy
+                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+        }
 
         if (light_sample.emissive_triangle_global_index == -1)
             continue;

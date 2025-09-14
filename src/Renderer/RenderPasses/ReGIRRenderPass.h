@@ -79,9 +79,9 @@ public:
 	void launch_correlation_reduction_copy(HIPRTRenderData& render_data);
 	void launch_pre_integration(HIPRTRenderData& render_data);
 	void launch_pre_integration_internal(HIPRTRenderData& render_data, bool primary_hit, oroStream_t stream);
-	bool launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data, bool force_recompute = false);
-	bool launch_cell_light_distributions_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit, bool force_recompute = false);
-	bool launch_cell_light_distributions_compute_and_sort_internal(HIPRTRenderData& render_data, bool primary_hit, bool compute_only_sizes, bool force_recompute = false);
+	bool launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data);
+	bool launch_cell_light_distributions_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit);
+	bool launch_cell_light_distributions_compute_and_sort_internal(HIPRTRenderData& render_data, bool primary_hit, bool compute_only_sizes);
 	void launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data);
 
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
@@ -149,16 +149,6 @@ private:
 	// if it didn't run, we cannot compute the GPU events elapsed times
 	bool m_pre_integration_executed = false;
 
-	// How many grid cells did we compute the alias tables for the last time
-	// This is used such that we only compute the alias tables for new cells as rendering
-	// goes on:
-	//	- if on frame 0 we discover 1000 cells, we're going to compute 1000 alias tables.
-	//	- if on frame 1 we discover 150 cells more, we're going to compute only those new 150
-	//		alias tables 
-	// 
-	// So we need to keep track of how many alias tables we've computed already
-	unsigned int m_last_cells_light_distributions_compute_count_primary_hits = 0;
-	unsigned int m_last_cells_light_distributions_compute_count_secondary_hits = 0;
 	// Percentage of the total incoming energy that we should keep in each light distribution of
 	// each cell at *most* (roughly)
 	// 
