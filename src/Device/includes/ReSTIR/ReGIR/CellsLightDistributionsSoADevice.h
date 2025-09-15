@@ -61,7 +61,6 @@ struct ReGIRCellsLightDistributionsSoADevice
 
 	unsigned short int* all_cdfs = nullptr;
 
-	int light_distribution_maximum_size = 512;
 	// How many entries in the light distribution of each cell
 	unsigned short int* light_distribution_sizes = nullptr;
 	// At which index does each light distribution start in the 'all_cdfs' buffer

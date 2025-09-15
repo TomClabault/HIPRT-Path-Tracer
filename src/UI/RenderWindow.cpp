@@ -59,6 +59,8 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - There is some weird color corruption issue with NEE++ linear probing steps = 16
 // 
+// - Remove debug kernel unused feature
+// - Let's add a feature to precompute cell distributions over triangles instead of meshes
 // - Should we use the standard canonical samples to defensively cover light distribution bias or should we stick to MIS during grid fill? Canonical samples are probably much higher quality no?
 // - Try hardcoding a lot of constants instead of using RenderData to see if it helps with register & perf
 // - can we save a bunch of registers by using #if instead of rendersettings variable at the heart of ReGIR?

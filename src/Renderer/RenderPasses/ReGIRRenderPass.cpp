@@ -803,6 +803,9 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRender
 	recomputed |= launch_cell_light_distributions_precomputation_internal(render_data, false);
 
 	m_hash_grid_storage.to_device(render_data);
+	// This to_device is a bit dangerous because modifying renderer.render_data from here
+	// is a race condition with the UI but this modifies mostly pointers to buffers
+	// which the UI doesn't use so this should be fine...
 	m_hash_grid_storage.to_device(m_renderer->get_render_data());
 
 	return recomputed;
@@ -829,7 +832,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 	}
 
 	if (compute_only_sizes)
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Computing ReGIR light distributions sizes...");
+		std::cout << "Computing ReGIR light distributions sizes..." << std::endl;
 
 	unsigned int nb_cells_alive = primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 	if (nb_cells_alive == 0)
@@ -905,7 +908,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		stop = std::chrono::high_resolution_clock::now();
 		std::cout << "Sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " << std::endl;
 
-		unsigned int light_distribution_size = render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size;
+		unsigned int light_distribution_size = render_data.render_settings.regir_settings.light_distribution_maximum_size;
 		unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
 
 		start = std::chrono::high_resolution_clock::now();
@@ -1033,7 +1036,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 
 		unsigned int total_nb_cells = m_hash_grid_storage.get_total_number_of_cells(primary_hit);
 		float& VRAM_saving = primary_hit ? m_last_light_distribution_compaction_vram_saving_primary_hits : m_last_light_distribution_compaction_vram_saving_secondary_hits;
-		VRAM_saving = 100.0f - light_distributions_sizes_sum / ((float)total_nb_cells * hippt::min(emissive_mesh_count, (unsigned int)render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size)) * 100.0f;
+		VRAM_saving = 100.0f - light_distributions_sizes_sum / ((float)total_nb_cells * hippt::min(emissive_mesh_count, (unsigned int)render_data.render_settings.regir_settings.light_distribution_maximum_size)) * 100.0f;
 
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(light_distributions_sizes_sum);
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(emissive_mesh_indices_element_count_sum);
@@ -1049,7 +1052,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_compute_and_sort_internal(
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(CDF_staging_u16);
 		m_hash_grid_storage.get_cell_light_distributions(primary_hit).soa.template upload_to_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(meshes_indices_staging);
 
-		std::cout << "Alias table maximum size: " << render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).light_distribution_maximum_size << std::endl;
+		std::cout << "Alias table maximum size: " << render_data.render_settings.regir_settings.light_distribution_maximum_size << std::endl;
 
 		auto stop_total = std::chrono::high_resolution_clock::now();
 		std::cout << "Full precomputation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_total - start_total).count() << "ms. " << std::endl << std::endl << std::endl;
@@ -1313,11 +1316,6 @@ float ReGIRRenderPass::get_alive_cells_ratio(bool primary_hit) const
 
 	return get_number_of_cells_alive(primary_hit) / static_cast<float>(total_number_of_cells);
 }
-
-//unsigned int ReGIRRenderPass::get_current_cell_light_distributions_maximum_size() const
-//{
-//	return m_ primary_hit ? m_hash_grid_storage.m_current_cell_light_distribution_maximum_size_primary_hits : m_hash_grid_storage.m_current_cell_light_distribution_maximum_size_secondary_hits;
-//}
 
 ReGIRHashGridStorage& ReGIRRenderPass::get_hash_grid_storage()
 {

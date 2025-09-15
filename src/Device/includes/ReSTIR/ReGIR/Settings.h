@@ -668,6 +668,7 @@ struct ReGIRSettings
 	ReGIRCellsLightDistributionsSoADevice cells_light_distributions_primary_hits;
 	ReGIRCellsLightDistributionsSoADevice cells_light_distributions_secondary_hits;
 	bool use_per_cell_light_distributions = ReGIR_GridFillUsePerCellDistributions;
+	int light_distribution_maximum_size = 512;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;

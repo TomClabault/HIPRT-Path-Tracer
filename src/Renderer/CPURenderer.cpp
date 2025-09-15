@@ -125,7 +125,7 @@ void CPURenderer::resize_buffers()
     m_regir_state.canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.canonical_pre_integration_factors_primary_hit.end(), 0.0f);
 
 #if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE
-    unsigned int light_distribution_size = hippt::min((unsigned int)m_render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
+    unsigned int light_distribution_size = hippt::min((unsigned int)m_render_data.render_settings.regir_settings.light_distribution_maximum_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
     m_regir_state.cells_light_distributions_primary_hit.resize(new_cell_count_primary_hits, light_distribution_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
     m_regir_state.cells_light_distributions_secondary_hit.resize(new_cell_count_secondary_hits, light_distribution_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
 #endif
@@ -917,7 +917,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
             });
         }
 
-        unsigned int light_distribution_size = m_render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size;
+        unsigned int light_distribution_size = m_render_data.render_settings.regir_settings.light_distribution_maximum_size;
         unsigned int cells_yet_to_compute_count = contributions_left_to_compute / emissive_mesh_count;
 
         auto upload = std::chrono::high_resolution_clock::now();
@@ -1043,7 +1043,7 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
         }
 
         unsigned int total_nb_cells = soa_host.soa.get_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>().size();
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compacted light distribution size: %u (%f%% saving)", light_distributions_sizes_sum, 100.0f - light_distributions_sizes_sum / ((float)total_nb_cells * hippt::min(emissive_mesh_count, (unsigned int)m_render_data.render_settings.regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size)) * 100.0f);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compacted light distribution size: %u (%f%% saving)", light_distributions_sizes_sum, 100.0f - light_distributions_sizes_sum / ((float)total_nb_cells * hippt::min(emissive_mesh_count, (unsigned int)m_render_data.render_settings.regir_settings.light_distribution_maximum_size)) * 100.0f);
 
         soa_host.soa.resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_CDF>(light_distributions_sizes_sum);
         soa_host.soa.resize_one_buffer<ReGIRCellsLightDistributionsSoAHostBuffers::REGIR_CELLS_LIGHT_DISTRIBUTIONS_MESH_INDICES_PACKED>(emissive_mesh_indices_element_count_sum);

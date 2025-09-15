@@ -36,6 +36,7 @@ public:
 	void clear_pre_integrated_RIS_integral_factors(bool primary_hit);
 
 	void to_device(HIPRTRenderData& render_data);
+	void update_light_distributions_buffer_pointers(HIPRTRenderData& render_data);
 
 	ReGIRHashGridSoAHost<OrochiBuffer>& get_initial_grid_buffers(bool primary_hit);
 	const ReGIRHashGridSoAHost<OrochiBuffer>& get_initial_grid_buffers(bool primary_hit) const;

@@ -186,7 +186,7 @@
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */
-#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during

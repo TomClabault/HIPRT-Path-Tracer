@@ -1994,11 +1994,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 					ImGui::TreePop();
 				}
 
-				if (ImGui::SliderInt("Light distribution max. size", &regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count)))
-				{
-					regir_settings.cells_light_distributions_secondary_hits.light_distribution_maximum_size = regir_settings.cells_light_distributions_primary_hits.light_distribution_maximum_size;
+				if (ImGui::SliderInt("Light distribution max. size", &regir_settings.light_distribution_maximum_size, 1, hippt::min(65535u, render_data.buffers.emissive_meshes_data.alias_table_count), "%d", ImGuiSliderFlags_AlwaysClamp))
 					m_render_window->set_render_dirty(true);
-				}
 
 				if (ImGui::SliderFloat("Light distribution target radiance", &regir_render_pass->get_light_distribution_target_incoming_energy(), 0.0f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 					m_render_window->set_render_dirty(true);

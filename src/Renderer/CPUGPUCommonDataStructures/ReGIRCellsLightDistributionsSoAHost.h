@@ -146,7 +146,7 @@ struct ReGIRCellsLightDistributionsSoAHost
 		return soa.size();
 	}
 
-	ReGIRCellsLightDistributionsSoADevice to_device(const HIPRTRenderData& render_data)
+	ReGIRCellsLightDistributionsSoADevice to_device(const HIPRTRenderData& render_data, bool only_pointers = false)
 	{
 		ReGIRCellsLightDistributionsSoADevice cells_light_distributions;
 
