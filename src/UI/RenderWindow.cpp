@@ -21,9 +21,19 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
-// TODO still some config with envmap sampling that doesn't quite match the reference when playing with all the ReGIR / ReSTIR DI settings
-
-
+// TODO known bugs / incorrectness:
+// - There is some weird color corruption issue with NEE++ linear probing max steps = 16 + ReGIR 
+// - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implementing proper volumes?
+// - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
+//	  - same with perfect reflection
+// - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
+// - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation" --> too bright (with transmission at 1.0f), even with film thickness == 0.0f
+// - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
+// - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
+// - Emissive chminey texture broken in scandinavian-studio
+// - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
+// - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
+ 
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
@@ -57,9 +67,11 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
-// - There is some weird color corruption issue with NEE++ linear probing steps = 16
-// 
 // - Remove debug kernel unused feature
+// 
+// - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
+//		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead
+// - To have a good cell distribution at least for the primary hits (we can probably drop the secondary hits), what about using a screen space mask built with that "good cache placement" paper? That mask could then be used and fetched by the hash function to know whether or not we should subdivide the cell or something
 // - Let's add a feature to precompute cell distributions over triangles instead of meshes
 // - Should we use the standard canonical samples to defensively cover light distribution bias or should we stick to MIS during grid fill? Canonical samples are probably much higher quality no?
 // - Try hardcoding a lot of constants instead of using RenderData to see if it helps with register & perf
@@ -102,6 +114,7 @@ extern ImGuiLogger g_imgui_logger;
 //			We can probably do that by pre-processing emissive meshes into different directional bins (the same as above) and then importance sampling a bin (and thus the triangles isnide that bin) based on the shading point's normal
 // - We could compact the ReGIR hash table by using perfect hasing right? After a few samples, we could build a minimal perfect hash table with RecSplit or something and get a perfect hash table with no probing and no waster memory --> faster and less memory
 //		- But then we can't expand the table anymore hmmmm. Maybe compact at a point where we can assume that no more cells are going to be added to the hash table
+//		- We should probably stop expanding the grid after a few samples anyways, it's not that beneficial it seems for variance ---> run tests on that
 // - Can we have another buffer that is the same size as the alias table per each cell and accumulate visibility inside it the same way we do for NEE++ but at shading time? So we get an estimate over the whole cell instead of just at the representative point of the cell
 // - Would we get good efficiency out of sampling directly from the cell light distributions at each sampling point instead of going through ReGIR? We wouldn't have to go through the whole pairwise MIS stuff and we could just do proper RIS?
 // - How can we blur NEE++?
@@ -159,10 +172,6 @@ extern ImGuiLogger g_imgui_logger;
 // - We need a special path for ReGIR, hard to use as a light sampling plug in, lots of opti to do with a special path
 // - Variable jitter radius basezd on cell size
 // - Include normal in hash grid for low roughness surfaces to have better BRDF sampling precision
-// - Decoupled shading and reuse ReGIR: add visibility rays during the shading so that we have visiblity resampling which is very good and on top of that, we can totally shade the reservoir because the visibility has been computed so the rest of the shading isn't super expensive: maybe use NEE++ in there to reduce shadow rays? Or the visibility caching thing that is biased?
-// - Can we maybe add BRDF samples in the grid fill for rough BRDFs? This will enable perfect MIS for diffuse BRDFs which should be good for the bistro many light with the light close for example. This could also be enough for rough-ish specular BRDFs
-//		- We can probably trace the BRDF rays in a light-only BVH here and then if an intersection point is found, use NEE++ visibility estimation there
-//		- Maybe have some form of roughness threshold when using ReGIR with MIS to use MIS only on specular surfaces where the grid fill BRDF rays didn't help
 // - Only need 1 bit per cell here for 'grid cells alive': whether or not a given grid cell is alive
 // - Quantize ahsh grid cell data .sum_points: we don't need the precision since this is just an average for getting an approximate center of cell
 // - Light to light grid cells should be cached in the same hash cell entry
@@ -282,17 +291,6 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 
-// TODO known bugs / incorrectness:
-// - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implementing proper volumes?
-// - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
-//	  - same with perfect reflection
-// - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation" --> too bright (with transmission at 1.0f), even with film thickness == 0.0f
-// - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
-// - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
-// - Emissive chminey texture broken in scandinavian-studio
-// - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
-// - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
 
 // TODO Features:
 // - Variance aware MIS weights? https://cgg.mff.cuni.cz/~jaroslav/papers/2019-variance-aware-mis/2019-grittmann-variance-aware-mis-paper.pdf

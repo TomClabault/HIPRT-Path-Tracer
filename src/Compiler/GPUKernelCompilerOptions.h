@@ -64,6 +64,7 @@ public:
 	static const std::string REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY;
 	static const std::string REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES;
 	static const std::string REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY;
+	static const std::string REGIR_JITTER_IN_TANGENT_PLANE;
 	static const std::string REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE;
 	static const std::string REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS;
 	static const std::string REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS;
@@ -71,7 +72,7 @@ public:
 	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL;
 	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS;
 	static const std::string REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS;
-	static const std::string REGIR_SHADING_JITTER_TRIES;
+	static const std::string REGIR_SHADING_JITTER_RETRIES;
 	static const std::string REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION;
 	static const std::string REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE;
 	static const std::string REGIR_DEBUG_MODE;

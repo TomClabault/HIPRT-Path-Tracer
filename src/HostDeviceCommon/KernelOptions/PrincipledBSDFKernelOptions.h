@@ -157,12 +157,12 @@
  * below isn't reached by that light that is reflected by the specular layer), it is the specular layer
  * that will be sampled more often.
  */
-#define PrincipledBSDFSampleGlossyBasedOnFresnel KERNEL_OPTION_FALSE
+#define PrincipledBSDFSampleGlossyBasedOnFresnel KERNEL_OPTION_TRUE
 
 /**
  * Same PrincipledBSDFSampleGlossyBasedOnFresnel but for the coat layer
  */
-#define PrincipledBSDFSampleCoatBasedOnFresnel KERNEL_OPTION_FALSE
+#define PrincipledBSDFSampleCoatBasedOnFresnel KERNEL_OPTION_TRUE
 
 /**
  * Implementation of [Microfacet Model Regularization for Robust Light Transport, Jendersie et al. 2019]

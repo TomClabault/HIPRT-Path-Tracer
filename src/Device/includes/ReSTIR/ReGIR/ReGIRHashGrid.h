@@ -12,6 +12,7 @@
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingSettings.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
+#include "Device/includes/ONB.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
@@ -62,19 +63,18 @@ struct ReGIRHashGrid
 #endif
 	}
 
-	HIPRT_DEVICE float3 jitter_normal_in_tangent_plane(float3 N, float3 pos) const
+	HIPRT_DEVICE float3 jitter_normal_in_tangent_plane(float3 surface_normal, float3 pos) const
 	{
 		// Getting the tangent plane vectors from the normal
-		float3 up = (fabs(N.z) < 0.999f) ? make_float3(0, 0, 1) : make_float3(1, 0, 0);
-		float3 T = hippt::normalize(hippt::cross(up, N));
-		float3 B = hippt::cross(N, T);
+		float3 T, B;
+		build_ONB(surface_normal, T, B);
 
 		// Some deterministic random numbers from the position, in [-1, 1]
 		float jitter_x = Xorshift32Generator(h2_xxhash32(pos.x * 0xFFFFFFFF))() * 2.0f - 1.0f;
 		float jitter_y = Xorshift32Generator(h2_xxhash32(pos.y * 0xFFFFFFFF))() * 2.0f - 1.0f;
 
 		// Jittering our normal in the tangent plane
-		float3 jittered = N + (T * jitter_x + B * jitter_y) * fuzzy_normals_strength;
+		float3 jittered = surface_normal + (T * jitter_x + B * jitter_y) * fuzzy_normals_strength;
 
 		// --- Step 4: renormalize ---
 		return hippt::normalize(jittered);
@@ -270,6 +270,24 @@ struct ReGIRHashGrid
 		float3 random_offset = make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f);
 
 		return original_world_position + random_offset * ReGIRHashGrid::compute_adaptive_cell_size_roughness(original_world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size) * jittering_radius;
+	}
+
+	HIPRT_DEVICE float3 jitter_world_position_tangent_plane(float3 original_world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, Xorshift32Generator& rng, float jittering_radius = 0.5f) const
+	{
+		// Getting the tangent plane vectors from the normal
+		float3 T, B;
+		build_ONB(surface_normal, T, B);
+
+		// Offsets X and Y in the tangent plane
+		float random_offset_x = rng() * 2.0f - 1.0f;
+		float random_offset_y = rng() * 2.0f - 1.0f;
+
+		// Scaling by the grid size
+		float scaling = ReGIRHashGrid::compute_adaptive_cell_size_roughness(original_world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size) * jittering_radius;
+		random_offset_x *= scaling;
+		random_offset_y *= scaling;
+
+		return original_world_position + random_offset_x * T + random_offset_y * B;
 	}
 
 	HashGrid m_hash_grid;

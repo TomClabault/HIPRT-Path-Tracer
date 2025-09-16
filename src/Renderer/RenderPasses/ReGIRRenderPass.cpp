@@ -320,6 +320,8 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
+	else if (render_data.buffers.emissive_triangles_count == 0)
+		return false;
 
 	synchronize_async_compute();
 

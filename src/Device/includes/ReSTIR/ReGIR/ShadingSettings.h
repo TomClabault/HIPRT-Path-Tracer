@@ -24,8 +24,10 @@ struct ReGIRShadingSettings
 	// Secondary hits are grid cells only found by bouncing around in the scene
 	bool do_cell_jittering_first_hits = true;
 	bool do_cell_jittering_secondary_hits = false;
-	// Radius of jittering when picking reservoirs from neighboring grid cells for shading
-	float jittering_radius = 0.75f;
+	// Radius of jittering when picking non-canonical reservoirs from neighboring grid cells for shading
+	float jittering_radius = 1.0f;
+	// Radius of jittering when picking canonical reservoirs from neighboring grid cells for shading
+	float jittering_radius_canonical_candidates = 0.25f;
 };
 
 #endif

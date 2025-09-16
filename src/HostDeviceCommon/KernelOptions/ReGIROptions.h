@@ -200,7 +200,7 @@
  * Whether or not to jitter canonical candidates during the shading resampling.
  * This reduces grid artifacts but increases variance
  */
-#define ReGIR_ShadingResamplingJitterCanonicalCandidates KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingJitterCanonicalCandidates KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
@@ -228,6 +228,15 @@
  * All LSS_BASE_XXX strategies are allowed except LSS_BASE_REGIR
  */
 #define ReGIR_FallbackLightSamplingStrategy LSS_BASE_POWER
+
+/**
+ * If true, shading point jittering will only jitter the point in the tangent plane of the surface.
+ * 
+ * This helps reducing bad jittering (jittering which moves the shading point outside of the scene's surface)
+ * and reduces variance becaues we're getting more useful neighbors out of the jitters instead of having to rely
+ * on jittering-retries to find a valid neighbor
+ */
+#define ReGIR_JitterInTangentPlane KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to increase the hash grid precision on surfaces that have a lower roughness
@@ -294,13 +303,13 @@
 #define ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits 2
 
 /**
- * If using jittering, how many tries to perform to find a good neighbor at shading time?
+ * If using jittering, how many retries to perform to find a good neighbor at shading time?
  *
  * This is because with jittering, our jittered position may end up outside of the grid
  * or in an empty cell, in which case we want to retry with a differently jittered position
  * to try and find a good neighbor
  */
-#define ReGIR_ShadingJitterTries 2
+#define ReGIR_ShadingJitterRetries 2
 
 /**
  * Debug option to color the scene with the grid cells

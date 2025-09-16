@@ -365,7 +365,11 @@ struct ReGIRSettings
 		{
 			float3 jittered;
 			if (do_jittering)
+#if ReGIR_JitterInTangentPlane == KERNEL_OPTION_TRUE
+				jittered = hash_grid.jitter_world_position_tangent_plane(world_position, shading_normal, current_camera, roughness, primary_hit, rng, jittering_radius);
+#else
 				jittered = hash_grid.jitter_world_position(world_position, current_camera, roughness, primary_hit, rng, jittering_radius);
+#endif
 			else
 				jittered = world_position;
 
@@ -399,9 +403,9 @@ struct ReGIRSettings
 			}
 
 			retry++;
-		} while (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && retry < ReGIR_ShadingJitterTries);
+		} while (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && retry < ReGIR_ShadingJitterRetries);
 
-		if (fallbackOnCenterCell && neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && retry == ReGIR_ShadingJitterTries)
+		if (fallbackOnCenterCell && neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && retry == ReGIR_ShadingJitterRetries)
 			// We couldn't find a valid neighbor and the fallback on center cell is enabled: we're going to return the index of the center cell
 			neighbor_grid_cell_index = hash_grid.get_hash_grid_cell_index(get_initial_reservoirs_grid(primary_hit), get_hash_cell_data_soa(primary_hit), world_position, shading_normal, current_camera, roughness, primary_hit);
 
@@ -668,7 +672,7 @@ struct ReGIRSettings
 	ReGIRCellsLightDistributionsSoADevice cells_light_distributions_primary_hits;
 	ReGIRCellsLightDistributionsSoADevice cells_light_distributions_secondary_hits;
 	bool use_per_cell_light_distributions = ReGIR_GridFillUsePerCellDistributions;
-	int light_distribution_maximum_size = 512;
+	int light_distribution_maximum_size = 1024;
 
 	// Multiplicative factor to multiply the output of some debug views
 	float debug_view_scale_factor = 0.05f;

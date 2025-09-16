@@ -2279,24 +2279,28 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 			ImGuiRenderer::show_help_marker("Whether or not to jitter canonical candidates during the shading resampling.\n"
 				"This reduces grid artifacts but increases variance.");
-			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering_first_hits && !regir_settings.shading.do_cell_jittering_secondary_hits);
-			if (ImGui::SliderFloat("Jittering radius", &regir_settings.shading.jittering_radius, 0.5f, 2.0f))
+			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering_first_hits && !regir_settings.shading.do_cell_jittering_secondary_hits && !global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES));
+			if (ImGui::SliderFloat("Jitter radius", &regir_settings.shading.jittering_radius, 0.5f, 2.0f))
 				m_render_window->set_render_dirty(true);
+			ImGui::BeginDisabled(!global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES));
+			if (ImGui::SliderFloat("Jitter radius can. candidates", &regir_settings.shading.jittering_radius_canonical_candidates, 0.0f, 1.0f))
+				m_render_window->set_render_dirty(true);
+			ImGui::EndDisabled();
 
-			static int jitter_tries = ReGIR_ShadingJitterTries;
-			ImGui::SliderInt("Jitter tries", &jitter_tries, 1, 16);
-			ImGuiRenderer::show_help_marker("If using jittering, how many tries to perform to find a good neighbor at shading time ?\n\n"
+			static int jitter_retries = ReGIR_ShadingJitterRetries;
+			ImGui::SliderInt("Jitter retries", &jitter_retries, 1, 16);
+			ImGuiRenderer::show_help_marker("If using jittering, how many retries to perform to find a good neighbor at shading time ?\n\n"
 				""
 				"This is because with jittering, our jittered position may end up outside of the grid "
 				"or in an empty cell, in which case we want to retry with a differently jittered position "
 				"to try and find a good neighbor");
-			if (jitter_tries != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES))
+			if (jitter_retries != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES))
 			{
-				ImGui::TreePush("Apply jitter tries regir");
+				ImGui::TreePush("Apply jitter retries regir");
 
 				if (ImGui::Button("Apply"))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES, jitter_tries);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES, jitter_retries);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
@@ -2304,6 +2308,19 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 				ImGui::TreePop();
 			}
+			static bool jitter_in_tangent_plane = ReGIR_JitterInTangentPlane;
+			if (ImGui::Checkbox("Jitter in tangent plane", &jitter_in_tangent_plane))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE, jitter_in_tangent_plane? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("If true, shading point jittering will only jitter the point in the tangent plane of the surface.\n\n"
+				""
+				"This helps reducing bad jittering(jittering which moves the shading point outside of the scene's surface) "
+				"and reduces variance becaues we're getting more useful neighbors out of the jitters instead of having to rely "
+				"on jittering retries to find a valid neighbor.");
 			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

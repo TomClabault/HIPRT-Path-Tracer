@@ -47,6 +47,8 @@ struct EmissiveMeshesAliasTablesHost
 	void load_from_emissive_meshes(const Scene& parsed_scene)
 	{
 		const std::vector<ParsedEmissiveMesh>& emissive_meshes = parsed_scene.parsed_emissive_meshes.emissive_meshes;
+		if (emissive_meshes.size() == 0)
+			return;
 
 		std::vector<unsigned int> offsets(emissive_meshes.size());
 		std::vector<unsigned int> alias_tables_sizes(emissive_meshes.size());

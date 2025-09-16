@@ -63,6 +63,7 @@ const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY = "ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES = "ReGIR_ShadingResamplingShadeAllSamples";
 const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
+const std::string GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE = "ReGIR_JitterInTangentPlane";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE = "ReGIR_HashGridCollisionResolutionMode";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS = "ReGIR_HashGridCollisionResolutionMaxSteps";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS = "ReGIR_HashGridHashFuzzyGridCells";
@@ -70,7 +71,7 @@ const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_NORMALS =
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL = "ReGIR_HashGridHashSurfaceNormal";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS = "ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS = "ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES = "ReGIR_ShadingJitterTries";
+const std::string GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES = "ReGIR_ShadingJitterRetries";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION = "ReGIR_HashGridAdaptiveRoughnessGridPrecision";
 const std::string GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE = "ReGIR_HashGridConstantGridCellSize";
 const std::string GPUKernelCompilerOptions::REGIR_DEBUG_MODE = "ReGIR_DebugMode";
@@ -160,6 +161,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES,
 	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
+	GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS,
@@ -167,7 +169,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS,
-	GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES,
+	GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION,
 	GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE,
 	GPUKernelCompilerOptions::REGIR_DEBUG_MODE,
@@ -261,6 +263,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY] = std::make_shared<int>(ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES] = std::make_shared<int>(ReGIR_ShadingResamplingShadeAllSamples);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE] = std::make_shared<int>(ReGIR_JitterInTangentPlane);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE] = std::make_shared<int>(ReGIR_HashGridCollisionResolutionMode);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_COLLISION_RESOLUTION_MAX_STEPS] = std::make_shared<int>(ReGIR_HashGridCollisionResolutionMaxSteps);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_FUZZY_GRID_CELLS] = std::make_shared<int>(ReGIR_HashGridHashFuzzyGridCells);
@@ -268,7 +271,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormal);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_PRIMARY_HITS] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormalResolutionPrimaryHits);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_HASH_SURFACE_NORMAL_RESOLUTION_SECONDARY_HITS] = std::make_shared<int>(ReGIR_HashGridHashSurfaceNormalResolutionSecondaryHits);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_JITTER_TRIES] = std::make_shared<int>(ReGIR_ShadingJitterTries);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_JITTER_RETRIES] = std::make_shared<int>(ReGIR_ShadingJitterRetries);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_ADAPTIVE_ROUGHNESS_GRID_PRECISION] = std::make_shared<int>(ReGIR_HashGridAdaptiveRoughnessGridPrecision);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_HASH_GRID_CONSTANT_GRID_CELL_SIZE] = std::make_shared<int>(ReGIR_HashGridConstantGridCellSize);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_DEBUG_MODE] = std::make_shared<int>(ReGIR_DebugMode);

@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_ONB_H
-#define DEVICE_ONB_H
+#ifndef DEVICE_INCLUDES_ONB_H
+#define DEVICE_INCLUDES_ONB_H
 
 #include "HostDeviceCommon/Math.h"
 
@@ -15,7 +15,7 @@
   * Taken from https://github.com/nvpro-samples/nvpro_core/blob/master/nvvkhl/shaders/func.h
   * and optimised a little bit by @tigrazone
  */
-HIPRT_DEVICE void build_ONB(const float3& N, float3& T, float3& B)
+HIPRT_DEVICE static void build_ONB(const float3& N, float3& T, float3& B)
 {
     if (N.z < -0.99998796f)  // Handle the singularity
     {
@@ -32,7 +32,7 @@ HIPRT_DEVICE void build_ONB(const float3& N, float3& T, float3& B)
 /*
  * Rotation of the basis around the normal by 'basis_rotation' radians
  */
-HIPRT_DEVICE void build_rotated_ONB(const float3& N, float3& T, float3& B, float basis_rotation)
+HIPRT_DEVICE static void build_rotated_ONB(const float3& N, float3& T, float3& B, float basis_rotation)
 {
     float3 up = hippt::abs(N.z) < 0.9999999f ? make_float3(0.0f, 0.0f, 1.0f) : make_float3(1.0f, 0.0f, 0.0f);
     T = hippt::normalize(hippt::cross(up, N));
@@ -45,7 +45,7 @@ HIPRT_DEVICE void build_rotated_ONB(const float3& N, float3& T, float3& B, float
 /*
  * Transforms V from its local space to the space around the normal
  */
-HIPRT_DEVICE float3 local_to_world_frame(const float3& N, const float3& V)
+HIPRT_DEVICE static float3 local_to_world_frame(const float3& N, const float3& V)
 {
     float3 T, B;
     build_ONB(N, T, B);
@@ -53,7 +53,7 @@ HIPRT_DEVICE float3 local_to_world_frame(const float3& N, const float3& V)
     return hippt::normalize(V.x * T + V.y * B + V.z * N);
 }
 
-HIPRT_DEVICE float3 local_to_world_frame(const float3& T, const float3& B, const float3& N, const float3& V)
+HIPRT_DEVICE static float3 local_to_world_frame(const float3& T, const float3& B, const float3& N, const float3& V)
 {
     return hippt::normalize(V.x * T + V.y * B + V.z * N);
 }
@@ -62,7 +62,7 @@ HIPRT_DEVICE float3 local_to_world_frame(const float3& T, const float3& B, const
  * Transforms V from its space to the local space around the normal
  * The given normal is the Z axis of the local frame around the normal
  */
-HIPRT_DEVICE float3 world_to_local_frame(const float3& N, const float3& V)
+HIPRT_DEVICE static float3 world_to_local_frame(const float3& N, const float3& V)
 {
     float3 T, B;
     build_ONB(N, T, B);
@@ -70,7 +70,7 @@ HIPRT_DEVICE float3 world_to_local_frame(const float3& N, const float3& V)
     return hippt::normalize(make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N)));
 }
 
-HIPRT_DEVICE float3 world_to_local_frame(const float3& T, const float3& B, const float3& N, const float3& V)
+HIPRT_DEVICE static float3 world_to_local_frame(const float3& T, const float3& B, const float3& N, const float3& V)
 {
     return hippt::normalize(make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N)));
 }
