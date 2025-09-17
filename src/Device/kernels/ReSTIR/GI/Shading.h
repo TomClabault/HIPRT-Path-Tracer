@@ -92,6 +92,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
     closest_hit_info.inter_point = render_data.g_buffer.primary_hit_position[pixel_index];
     closest_hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+    closest_hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 
     // Initializing the ray with the information from the camera ray pass
     RayPayload ray_payload;

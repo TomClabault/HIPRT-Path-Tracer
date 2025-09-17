@@ -60,8 +60,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 610
-#define DEBUG_PIXEL_Y 63
+#define DEBUG_PIXEL_X 362
+#define DEBUG_PIXEL_Y 430
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -1357,9 +1357,10 @@ void CPURenderer::launch_ReSTIR_GI_initial_candidates_pass()
 
     if (m_render_data.render_settings.nb_bounces > 0)
     {
-        debug_render_pass([this](int x, int y) {
+        debug_render_pass([this](int x, int y) 
+        {
             ReSTIR_GI_InitialCandidates(m_render_data, x, y);
-            });
+        });
     }
 }
 
