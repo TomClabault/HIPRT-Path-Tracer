@@ -26,7 +26,7 @@ struct ReSTIRGISample
 
     int sample_point_primitive_index = -1;
 
-    RGBE9995Packed incoming_radiance_to_visible_point;
+    ColorRGB32F incoming_radiance_to_visible_point;
 
     BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 
