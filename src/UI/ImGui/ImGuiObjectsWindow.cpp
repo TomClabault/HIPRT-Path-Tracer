@@ -1074,7 +1074,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the glass layer. This material option will have no effect.\n"
 					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 			}
-			material_changed |= ImGui::Checkbox("Glass layer energy compensation", &material.do_glass_energy_compensation);
+			material_changed |= ImGui::Checkbox("Transmission layer energy compensation", &material.do_glass_energy_compensation);
 			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the glass layer of this material.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

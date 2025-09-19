@@ -69,6 +69,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Remove debug kernel unused feature
+// - Crash in scenes with 0 emissive triangles
 // 
 // - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
 //		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead
