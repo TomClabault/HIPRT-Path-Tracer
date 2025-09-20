@@ -100,7 +100,7 @@ public:
 	 */
 	void recompute_emissives_power_alias_table();
 	void free_emissives_power_alias_table();
-	bool needs_emissives_power_alias_table();
+	bool needs_emissives_power_alias_table(unsigned int emissive_count);
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();

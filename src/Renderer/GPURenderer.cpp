@@ -194,7 +194,7 @@ void GPURenderer::recompute_emissives_power_alias_table()
 {
 	synchronize_all_kernels();
 
-	if (!needs_emissives_power_alias_table())
+	if (!needs_emissives_power_alias_table(m_render_data.buffers.emissive_triangles_count))
 	{
 		free_emissives_power_alias_table();
 
@@ -246,7 +246,7 @@ void GPURenderer::compute_emissives_power_alias_table(
 	{
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-		if (!needs_emissives_power_alias_table())
+		if (!needs_emissives_power_alias_table(emissive_triangle_indices.size()))
 			return;
 		else if (emissive_triangle_indices.size() == 0)
 			return;
@@ -310,7 +310,7 @@ void GPURenderer::free_emissives_power_alias_table()
 	m_render_data.buffers.emissive_triangles_power_alias_table.sum_elements = 0;
 }
 
-bool GPURenderer::needs_emissives_power_alias_table()
+bool GPURenderer::needs_emissives_power_alias_table(unsigned int emissive_count)
 {
 	bool directly_using_power = m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER;
 	bool using_regir_power =
@@ -320,7 +320,7 @@ bool GPURenderer::needs_emissives_power_alias_table()
 		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI &&
 		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY) == LSS_BASE_POWER;
 
-	return directly_using_power || using_regir_power || restir_di_presampling_using_power_sampling;
+	return (directly_using_power || using_regir_power || restir_di_presampling_using_power_sampling) && emissive_count > 0;
 }
 
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
