@@ -365,7 +365,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		ReSTIRReservoirType<IsReSTIRGI>& temporal_neighbor_reservoir,

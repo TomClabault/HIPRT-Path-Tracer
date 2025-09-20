@@ -246,10 +246,6 @@ void ReSTIRDIRenderPass::update_render_data()
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total);
-
-		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
-		m_last_restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
-		m_spatial_output_reservoirs_1.upload_data(std::vector<ReSTIRDIReservoir>(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, ReSTIRDIReservoir()));
 	}
 	else
 	{
@@ -323,7 +319,7 @@ void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 	if(!is_render_pass_used())
 		return;
 
-	if (render_data.render_settings.need_to_reset)// reset_by_camera_movement && render_data.render_settings.accumulate)
+	if (render_data.render_settings.need_to_reset)
 	{
 		std::vector<ReSTIRDIReservoir> empty_reservoirs(m_initial_candidates_reservoirs.size());
 
@@ -335,6 +331,12 @@ void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 
 		if (m_spatial_output_reservoirs_2.size() > 0)
 			m_spatial_output_reservoirs_2.upload_data(empty_reservoirs);
+
+		if (m_spatial_output_reservoirs_1.size() > 0)
+			// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
+			m_last_restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
+		else
+			m_last_restir_output_reservoirs = nullptr;
 	}
 
 	odd_frame = false;
@@ -470,6 +472,8 @@ void ReSTIRDIRenderPass::configure_temporal_pass(HIPRTRenderData& render_data)
 	render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
 
+	if (m_last_restir_output_reservoirs == nullptr)
+		m_last_restir_output_reservoirs = m_spatial_output_reservoirs_1.get_device_pointer();
 	// The input of the temporal pass is the output of last frame's
 	// ReSTIR (and also the initial candidates but this is implicit
 	// and hardcoded in the shader)

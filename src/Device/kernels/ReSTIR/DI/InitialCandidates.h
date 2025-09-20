@@ -265,7 +265,7 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
 
             BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
             bool hit_found = evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR */ 0, random_number_generator);
-            if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+            if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -bsdf_sampled_direction) > 0.0f)
             {
                 // If we intersected an emissive material, compute the weight. 
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it
