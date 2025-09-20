@@ -123,6 +123,8 @@ void GPURendererThread::pre_render_update(float delta_time, RenderWindow* render
 {
 	m_renderer->step_animations(delta_time);
 
+	m_renderer->update_render_data();
+
 	if (m_render_graph.pre_render_compilation_check(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets, true, true))
 		// Some kernels have been recompiled, renderer is now dirty
 		render_window->set_render_dirty(true);
@@ -132,7 +134,7 @@ void GPURendererThread::pre_render_update(float delta_time, RenderWindow* render
 	internal_pre_render_update_global_stack_buffer();
 	internal_pre_render_update_adaptive_sampling_buffers();
 
-	m_renderer->update_render_data();
+	get_render_graph().update_render_data();
 
 	m_renderer->m_updated = true;
 }

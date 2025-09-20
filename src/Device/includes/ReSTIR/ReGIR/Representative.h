@@ -73,6 +73,8 @@ HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
 		return;
 	else if (primitive_index == -1)
 		return;
+	else if (render_data.buffers.emissive_triangles_count == 0)
+		return;
 
 	// We're using the packed-unpacked surface normal here because
 	// packing/unpacking (as used in the G-Buffer) normals introduces

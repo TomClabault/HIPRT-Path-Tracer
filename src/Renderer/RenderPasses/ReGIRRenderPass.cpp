@@ -1324,3 +1324,8 @@ ReGIRHashGridStorage& ReGIRRenderPass::get_hash_grid_storage()
 {
 	return m_hash_grid_storage;
 }
+
+bool ReGIRRenderPass::lights_in_scene(HIPRTRenderData& render_data) const
+{
+	return render_data.buffers.emissive_triangles_count > 0;
+}

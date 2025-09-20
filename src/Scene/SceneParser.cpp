@@ -97,6 +97,21 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
     // to our materials buffer
     std::unordered_set<int> material_indices_already_seen;
 
+    // Sanitizing mesh indices in the scene in case there are more material indices
+    // than there are meshes
+    for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
+    {
+        aiMesh* mesh = scene->mMeshes[mesh_index];
+        if (mesh->mMaterialIndex >= parsed_scene.materials.size())
+            // The material index is outside of the number of materials in the scene
+            //
+            // This is probably because there are more materials that there are meshes
+            // (where a mesh is defined by its material, not by its geometry). Not sure
+            // why this happens but this can happen on some very simple scenes it seems
+            // so we're fallbacking to the material index 0 to avoid crashes
+            mesh->mMaterialIndex = 0;
+    }
+
     // If the scene contains multiple meshes, each mesh will have
     // its vertices indices starting at 0. We don't want that.
     // We want indices to be continuously growing (because we don't want

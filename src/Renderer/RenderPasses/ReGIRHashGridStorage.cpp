@@ -49,6 +49,10 @@ bool ReGIRHashGridStorage::pre_render_update(HIPRTRenderData& render_data)
 
 bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_data, bool primary_hit)
 {
+	if (!m_regir_render_pass->lights_in_scene(render_data))
+		// No lights in the scene, nothing for ReGIR to work on
+		return false;
+
 	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 	if (render_data.render_settings.nb_bounces == 0 && !primary_hit)
 	{
@@ -390,6 +394,11 @@ void ReGIRHashGridStorage::clear_pre_integrated_RIS_integral_factors(bool primar
 
 void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 {
+	if (!m_regir_render_pass->lights_in_scene(render_data))
+		// Buffers are not going to be properly allocated if there are no emissives in the scene
+		// (nothing for ReGIR to work on)
+		return;
+
 	if (render_data.render_settings.regir_settings.do_light_presampling)
 		m_presampled_lights.to_device(render_data.render_settings.regir_settings.presampled_lights.presampled_lights_soa);
 
