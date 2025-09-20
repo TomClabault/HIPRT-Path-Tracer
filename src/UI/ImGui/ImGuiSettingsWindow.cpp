@@ -1290,6 +1290,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
 								"resampling initial candidates");
 
+							bool bsdf_samples_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+							if (bsdf_samples_disabled)
+								ImGuiRenderer::add_warning("BSDF samples are disabled in ReSTIR DI because they are controlled by "
+									"the ReGIR settings (use BSDF MIS in ReGIR for BSDF samples).");
+							ImGui::BeginDisabled(bsdf_samples_disabled);
 							if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
 							{
 								// Clamping to 0
@@ -1297,6 +1302,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 								m_render_window->set_render_dirty(true);
 							}
+							ImGui::EndDisabled();
 
 							if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates, 0, 32))
 							{

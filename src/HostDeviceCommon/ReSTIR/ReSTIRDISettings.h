@@ -119,7 +119,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 
 
 
-		m_cap = 3;
+		m_cap = 200;
 		use_confidence_weights = true;
 	}
 

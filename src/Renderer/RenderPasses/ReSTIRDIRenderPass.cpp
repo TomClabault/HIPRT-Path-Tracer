@@ -694,7 +694,7 @@ void ReSTIRDIRenderPass::compute_render_times()
 	{
 		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->compute_execution_time();
 
-		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes > 1 && m_spatial_reuse_events_recorded)
+		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes >= 1 && m_spatial_reuse_events_recorded)
 			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start, m_spatial_reuse_time_stop));
 	}
 	else
@@ -702,7 +702,7 @@ void ReSTIRDIRenderPass::compute_render_times()
 		if (restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 			ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->compute_execution_time();
 
-		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes > 1 && m_spatial_reuse_events_recorded)
+		if (render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes >= 1 && m_spatial_reuse_events_recorded)
 			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_spatial_reuse_time_start, m_spatial_reuse_time_stop));
 	}
 }

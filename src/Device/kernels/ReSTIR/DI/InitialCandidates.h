@@ -381,15 +381,22 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
 
 HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
+    ReSTIRDIReservoir reservoir;
+
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
     int initial_nb_light_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
     int initial_nb_bsdf_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+    // With ReGIR, initial BSDF candidates are controlled by the ReGIR sampling, not by
+    // ReSTIR DI
+    initial_nb_bsdf_cand = 0;
+#endif
 
     int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_light_cand) : initial_nb_light_cand;
     int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_bsdf_cand) : initial_nb_bsdf_cand;
     float envmap_candidate_probability = 0.0f;
-    if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+    if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && EnvmapSamplingStrategy != ESS_NO_SAMPLING)
     {
         if (render_data.buffers.emissive_triangles_count == 0)
             // Only the envmap to sample
@@ -399,7 +406,6 @@ HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& 
     }
 
     // Sampling candidates with weighted reservoir sampling
-    ReSTIRDIReservoir reservoir;
     
     sample_light_candidates(render_data, closest_hit_info, ray_payload, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, random_number_generator, pixel_coords);
     sample_bsdf_candidates(render_data, closest_hit_info, ray_payload, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, random_number_generator);
