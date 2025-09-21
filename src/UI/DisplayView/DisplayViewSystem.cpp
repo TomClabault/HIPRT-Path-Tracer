@@ -110,7 +110,7 @@ void DisplayViewSystem::configure_framebuffer()
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Incomplete framebuffer in DisplayViewSystem!");
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 		std::exit(1);
 	}
 }
@@ -472,7 +472,7 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 	default:
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unhandled display texture type in 'internal_recreate_display_textures_from_display_view'");
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 
 		break;
 	}

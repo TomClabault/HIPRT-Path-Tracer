@@ -10,6 +10,9 @@
 #include <hiprt/hiprt_device.h>
 #else
 #include <hiprt/hiprt_vec.h>
+
+// For hippt::debugbreak()
+#include "Utils/Debug.h"
 #endif
 
 #define int2 hiprtInt2
@@ -363,6 +366,8 @@ namespace hippt
 		return (threadIdx.x + threadIdx.y * blockDim.x) & warpSize;
 	}
 
+	__device__ void debugbreak() { }
+
 #else
 #undef M_PI
 #define M_PI		3.14159265358979323846f
@@ -634,10 +639,9 @@ namespace hippt
 	 * 
 	 * Warp sizes of 1 on the CPU
 	 */
-	static unsigned int warp_2D_thread_index()
-	{
-		return 1;
-	}
+	static unsigned int warp_2D_thread_index() { return 1; }
+
+	static void debugbreak() { Debug::debugbreak(); }
 #endif
 }
 

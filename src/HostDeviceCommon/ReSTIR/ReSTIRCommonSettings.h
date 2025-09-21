@@ -178,7 +178,7 @@ struct ReSTIRCommonSettings
 	// to cap the reservoirs's M value to.
 	//
 	// The point of this parameter is to avoid too much correlation between frames if using
-	// a bias correction that uses confidence weights. Without M-capping, the M value of a reservoir
+	// MIS weights that uses confidence weights. Without M-capping, the M value of a reservoir
 	// will keep growing exponentially through temporal and spatial reuse and when that exponentially
 	// grown M value is used in confidence weights, it results in new samples being very unlikely 
 	// to be chosen which in turn results in non-convergence since always the same sample is evaluated

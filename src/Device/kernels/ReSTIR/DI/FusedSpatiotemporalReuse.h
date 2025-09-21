@@ -211,7 +211,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	ReSTIRDIReservoir spatiotemporal_output_reservoir;
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-	ReSTIRSpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
+	ReSTIRSpatiotemporalResamplingMISWeight<ReSTIR_DI_MISWeightsType, /* IsReSTIRGI */ false> mis_weight_function;
 	if (temporal_neighbor_pixel_index_and_pos.x != -1)
 	{
 		// Resampling the temporal neighbor
@@ -226,21 +226,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				// inside that if() and the target function stays at 0.0f which eliminates
 				// most of the computations afterwards
 				//
-				// Matching the visibility used here with the bias correction mode for ease 
+				// Matching the visibility used here with the mis weight type mode for ease 
 				// of use (and because manually handling the visibility in the target 
 				// function of the temporal reuse is tricky for the user to use in 
 				// combination with other parameters and on top of that, it makes little 
 				// technical sense since our temporal neighbor is supposed to be unoccluded 
 				// (unless geometry moves around in the scene but that's another problem)
-				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+#if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir.M);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir.M);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir.M);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 				temporal_neighbor_reservoir.UCW,
 				temporal_neighbor_reservoir.sample,
@@ -249,7 +249,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				TEMPORAL_NEIGHBOR_ID, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, 
 				center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 				random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
@@ -260,7 +260,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
 				update_mc, /* resample canonical */ false, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
@@ -273,7 +273,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, /* resample canonical */ false, random_number_generator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 			// Combining as in Alg. 6 of the paper
@@ -283,8 +283,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				// Only used with MIS-like weight
 				selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 
-				// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
-#if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
+				// Using ReSTIR_DI_MISWeightsUseVisibility here because that's what we use in the resampling target function
+#if ReSTIR_DI_MISWeightsUseVisibility == KERNEL_OPTION_FALSE
 				// We cannot be certain that the visibility of the temporal neighbor
 				// chosen is exactly the same so we're clearing the unoccluded flag
 				spatiotemporal_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
@@ -396,13 +396,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 		ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+#if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.M);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 		// Using 'spatial_neighbor_index + 1' in this function call because the index
 		// 0 is for the temporal neighbor so we start at 1 by using '+ 1'
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
@@ -413,7 +413,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			spatial_neighbor_index + 1, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, 
 			center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 			random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
@@ -424,7 +424,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
@@ -437,7 +437,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 		// Combining as in Alg. 6 of the paper
@@ -469,52 +469,52 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRSpatiotemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights, /* Is ReSTIR GI */ false> normalization_function;
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+	ReSTIRSpatiotemporalNormalizationWeight<ReSTIR_DI_MISWeightsType, /* Is ReSTIR GI */ false> normalization_function;
+#if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(render_data, 
 		spatiotemporal_output_reservoir.weight_sum, initial_candidates_reservoir.M, 
 		center_pixel_surface, 
 		temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 		normalization_numerator, normalization_denominator, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 	normalization_function.get_normalization(render_data, 
 		spatiotemporal_output_reservoir.sample, spatiotemporal_output_reservoir.weight_sum, 
 		center_pixel_surface, temporal_neighbor_surface,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, 
 		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), 
 		normalization_numerator, normalization_denominator, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 	normalization_function.get_normalization(render_data, 
 		spatiotemporal_output_reservoir.sample, spatiotemporal_output_reservoir.weight_sum,
 		center_pixel_surface, temporal_neighbor_surface, 
 		selected_neighbor, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 		normalization_numerator, normalization_denominator, 
 		random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 	spatiotemporal_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	spatiotemporal_output_reservoir.sanity_check(center_pixel_coords);
 
 	// Only these 3 weighting schemes are affected
-#if (ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z \
-	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS \
-	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE \
-	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO \
-	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO) \
-	&& ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_TRUE \
+#if (ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z \
+	|| ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS \
+	|| ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE \
+	|| ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO \
+	|| ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO) \
+	&& ReSTIR_DI_MISWeightsUseVisibility == KERNEL_OPTION_TRUE \
 	&& (ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE || (ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE && ReSTIR_DI_SpatialTargetFunctionVisibility == KERNEL_OPTION_TRUE))
 	// Why is this needed?
 	//
 	// Picture the case where we have visibility reuse (at the end of the initial candidates sampling pass),
-	// visibility term in the bias correction target function (when counting the neighbors that could
+	// visibility term in the mis weight target function (when counting the neighbors that could
 	// have produced the picked sample) and 2 spatial reuse passes.
 	//
 	// The first spatial reuse pass reuses from samples that were produced with visibility in mind

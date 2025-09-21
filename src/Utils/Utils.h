@@ -47,12 +47,6 @@ public:
      */
     static Image32Bit OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor);
 
-    /**
-     * Breaks the debugger when calling this function as if a breakpoint was hit. 
-     * Useful to be able to inspect the callstack at a given point in the program
-     */
-    static void debugbreak();
-
 #ifdef _WIN32
     enum AddEnvVarError
     {

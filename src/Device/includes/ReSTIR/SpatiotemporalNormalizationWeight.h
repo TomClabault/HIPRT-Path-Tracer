@@ -16,7 +16,7 @@ template <int BiasCorrectionMode, bool IsReSTIRGI>
 struct ReSTIRSpatiotemporalNormalizationWeight {};
 
 template <bool IsReSTIRGI>
-struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		float final_reservoir_weight_sum, int initial_candidates_reservoir_M,
@@ -87,7 +87,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
@@ -146,10 +146,10 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 
 			if (target_function_at_neighbor > 0.0f)
 			{
@@ -166,10 +166,10 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 		bool target_function_at_neighbor_gt_0;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			target_function_at_neighbor_gt_0 = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
+			target_function_at_neighbor_gt_0 = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
 		else
 			// ReSTIR DI target function
-			target_function_at_neighbor_gt_0 = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
+			target_function_at_neighbor_gt_0 = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
 
 		if (target_function_at_neighbor_gt_0)
 			out_normalization_denom += temporal_neighbor_M;
@@ -177,7 +177,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
@@ -235,10 +235,10 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIK
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 
 			if (target_function_at_neighbor > 0.0f)
 			{
@@ -266,10 +266,10 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIK
 		float target_function_at_temporal_neighbor;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			target_function_at_temporal_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+			target_function_at_temporal_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 		else
 			// ReSTIR DI target function
-			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 
 		if (selected_neighbor == TEMPORAL_NEIGHBOR_ID)
 			out_normalization_nume += target_function_at_temporal_neighbor;
@@ -280,7 +280,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIK
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -291,7 +291,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -302,7 +302,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWIS
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -313,7 +313,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWIS
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -324,7 +324,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETR
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

@@ -148,7 +148,7 @@ T* OpenGLInteropBuffer<T>::map()
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Mapping a buffer that hasn't been initialized!");
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 
 		return nullptr;
 	}

@@ -140,7 +140,7 @@ public:
 				// trying to join on a dependecy that has already been joined by join_all_threads() so we're going to need
 				// some kind of way for join_all_threads() to wait for all threads to at least have started
 				if (thread.native_handle() == 0)
-					Utils::debugbreak();
+					Debug::debugbreak();
 
 				if (thread.joinable())
 					thread.join();

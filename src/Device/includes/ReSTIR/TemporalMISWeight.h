@@ -40,7 +40,7 @@ template <int BiasCorrectionMode, bool IsReSTIRGI>
 struct ReSTIRTemporalResamplingMISWeight {};
 
 template<bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
@@ -52,7 +52,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsR
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
@@ -65,7 +65,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsR
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
@@ -91,7 +91,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsR
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
@@ -115,10 +115,10 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsRe
 
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_at_temporal_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_at_temporal_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
-				target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 		}
 
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID && target_function_at_temporal_neighbor == 0.0f)
@@ -133,10 +133,10 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsRe
 		float target_function_at_center;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			target_function_at_center = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
+			target_function_at_center = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample, center_pixel_surface, random_number_generator);
 		else
 			// ReSTIR DI target function
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
+			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample, center_pixel_surface, random_number_generator);
 
 		int temporal_M = temporal_neighbor_reservoir_M;
 		int center_reservoir_M = initial_candidates_reservoir_M;
@@ -161,8 +161,10 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsRe
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, IsReSTIRGI>
 {
+	static constexpr float NO_NEIGHBOR_RESAMPLING = -1.0f;
+
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		ReSTIRReservoirType<IsReSTIRGI>& temporal_neighbor_reservoir,
 		ReSTIRReservoirType<IsReSTIRGI>& initial_candidates_reservoir,
@@ -174,6 +176,9 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS,
 	{
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
 		{
+			// Setting to 0.0f to remove the 'NO_NEIGHBOR_RESAMPLING' value
+			mc = 0.0f;
+
 			// Resampling the temporal neighbor
 
 			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
@@ -192,7 +197,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS,
 			if constexpr (IsReSTIRGI)
 			{
 				// ReSTIR GI target function
-				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
 				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -216,7 +221,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS,
 			}
 			else
 				// ReSTIR DI target function
-				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
 
@@ -236,11 +241,13 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS,
 		{
 			// Resampling the center pixel (initial candidates)
 
-			if (mc == 0.0f)
+			if (mc == NO_NEIGHBOR_RESAMPLING)
 				// If there was no neighbor resampling (and mc hasn't been accumulated),
 				// then the MIS weight should be 1 for the center pixel. It gets all the weight
 				// since no neighbor was resampled
 				return 1.0f;
+			else if (mc == 0.0f)
+				return 0.0f;
 			else
 				// Returning the weight accumulated so far when resampling the neighbors.
 				// 
@@ -250,11 +257,11 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS,
 	}
 
 	// Weight for the canonical sample (center pixel)
-	float mc = 0.0f;
+	float mc = NO_NEIGHBOR_RESAMPLING;
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		ReSTIRReservoirType<IsReSTIRGI>& temporal_neighbor_reservoir,
@@ -288,7 +295,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_
 			if constexpr (IsReSTIRGI)
 			{
 				// ReSTIR GI target function
-				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
 				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -312,7 +319,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_
 			}
 			else
 				// ReSTIR DI target function
-				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
 
@@ -365,7 +372,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		ReSTIRReservoirType<IsReSTIRGI>& temporal_neighbor_reservoir,
@@ -399,7 +406,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RAT
 			if constexpr (IsReSTIRGI)
 			{
 				// ReSTIR GI target function
-				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
 				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -423,7 +430,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RAT
 			}
 			else
 				// ReSTIR DI target function
-				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			float target_function_center_sample_at_center = initial_candidates_reservoir.sample.target_function;
 
@@ -467,7 +474,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RAT
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		ReSTIRReservoirType<IsReSTIRGI>& temporal_neighbor_reservoir,
@@ -514,7 +521,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RA
 			if constexpr (IsReSTIRGI)
 			{
 				// ReSTIR GI target function
-				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 				// Because we're using the target function as a PDF here, we need to scale the PDF
 				// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -538,7 +545,7 @@ struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RA
 			}
 			else
 				// ReSTIR DI target function
-				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 			float nume_mc, denom_mc;
 

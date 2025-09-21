@@ -57,7 +57,20 @@ HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& rende
 	// target function stored in the reservoir anyways
 	// Note: the center pixel has index 'spatial_settings.reuse_neighbor_count'
 	// while actual *neighbors* have index between [0, spatial_settings.reuse_neighbor_count - 1]
-	include_target_function_visibility &= current_neighbor_index != spatial_settings.reuse_neighbor_count;
+	bool is_center_sample = current_neighbor_index == spatial_settings.reuse_neighbor_count;
+	include_target_function_visibility &= !is_center_sample;
+
+	// Pairwise MIS schemes just reuse the target function compute for the resampling weight
+	// for the pairwise MIS PDFs.
+	// If we have visibility in the MIS weight, we want visibility in the PDF so we need visibility in
+	// the target function
+	constexpr bool bias_correction_use_visibility = IsReSTIRGI ? ReSTIR_GI_MISWeightsUseVisibility  : ReSTIR_DI_MISWeightsUseVisibility;
+	constexpr int mis_weights_type = IsReSTIRGI ? ReSTIR_GI_MISWeightsType : ReSTIR_DI_MISWeightsType;
+	include_target_function_visibility |= bias_correction_use_visibility &&
+		(mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS ||
+		mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||
+		mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+		mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO);
 
 	return include_target_function_visibility;
 }

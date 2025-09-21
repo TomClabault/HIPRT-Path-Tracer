@@ -90,7 +90,7 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Image given to OrochiTexture is 0 in width or height");
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 	}
 
 	int bits_channel_x = (channels >= 1) ? 8 : 0; // First channel (e.g., Red)
@@ -125,7 +125,7 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Image given to OrochiTexture is 0 in width or height");
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 	}
 
 	int bits_channel_x = (channels >= 1) ? 32 : 0; // First channel (e.g., Red)

@@ -243,7 +243,7 @@ void GPURendererThread::render()
 	if (!m_renderer->m_updated)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "render() was called on the GPURenderer without update() being called.");
-		Utils::debugbreak();
+		Debug::debugbreak();
 
 		return;
 	}

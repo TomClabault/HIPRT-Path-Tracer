@@ -185,7 +185,7 @@ void GPUKernelCompiler::read_includes_of_file(const std::string& include_file_pa
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not generate additional cache key for kernel with path \"%s\": %s", include_file_path.c_str(), strerror(errno));
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 	}
 }
 

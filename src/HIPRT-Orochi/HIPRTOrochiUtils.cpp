@@ -20,7 +20,7 @@ void orochi_check_error(oroError res, const char* file, uint32_t line)
 		oroGetErrorString(res, &msg);
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Orochi error: '%s' on line %d in '%s'.", msg, line, file);
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 		exit(EXIT_FAILURE);
 	}
 }
@@ -31,7 +31,7 @@ void orochi_rtc_check_error(orortcResult res, const char* file, uint32_t line)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ORORTC error: '%s' [ %d ] on line %d in '%s'", orortcGetErrorString(res), res, line, file);
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 		exit(EXIT_FAILURE);
 	}
 }
@@ -42,7 +42,7 @@ void hiprt_check_error(hiprtError res, const char* file, uint32_t line)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPRT error: '%d' on line %d in '%s'.", res, line, file);
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 		exit(EXIT_FAILURE);
 	}
 }

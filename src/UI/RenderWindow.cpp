@@ -70,6 +70,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - Remove debug kernel unused feature
 // - Crash in scenes with 0 emissive triangles
+// - remove restir di spatial reuse spatial_settings.do_visibility_only_last_pass and neighbor_visibility_count;
 // 
 // - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
 //		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead
@@ -541,7 +542,7 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 
 	// The following breaks into the debugger to help pinpoint what OpenGL
 	// call errored
-	Utils::debugbreak();
+	Debug::debugbreak();
 }
 
 const std::string RenderWindow::PERF_METRICS_CPU_OVERHEAD_TIME_KEY = "CPUDisplayTime";
@@ -968,7 +969,7 @@ void RenderWindow::set_ImGui_status_text(const std::string& status_text)
 		// Do not call RenderWindow::set_ImGui_status_text with an empty text.
 		//
 		// To clear the status text, call clear_status_text()
-		Utils::debugbreak();
+		Debug::debugbreak();
 	m_imgui_renderer->set_status_text(status_text);
 }
 

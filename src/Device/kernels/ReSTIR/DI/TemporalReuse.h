@@ -116,7 +116,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		return;
 	}
 
-	ReSTIRTemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIR GI */ false> mis_weight_function;
+	ReSTIRTemporalResamplingMISWeight<ReSTIR_DI_MISWeightsType, /* IsReSTIR GI */ false> mis_weight_function;
+	ReSTIRTemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, /* IsReSTIR GI */ false> mis_weight_function_gbh;
 
 
 	// Only used with MIS-like weight
@@ -134,27 +135,39 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	{
 		float target_function_at_center = 0.0f;
 		if (temporal_neighbor_reservoir.UCW > 0.0f)
+		{
 			// Only resampling if the temporal neighbor isn't empty
 			//
 			// If the temporal neighbor's reservoir is empty, then we do not get
 			// inside that if() and the target function stays at 0.0f which eliminates
 			// most of the computations afterwards
 			//
-			// Matching the visibility used here with the bias correction mode for ease 
+			// Matching the visibility used here with the mis weight type for ease 
 			// of use (and because manually handling the visibility in the target 
 			// function of the temporal reuse is tricky for the user to use in 
 			// combination with other parameters and on top of that, it makes little 
 			// technical sense since our temporal neighbor is supposed to be unoccluded 
 			// (unless geometry moves around in the scene but that's another problem)
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+			constexpr bool bias_correction_use_visibility = ReSTIR_DI_MISWeightsUseVisibility;
+			constexpr int mis_weights_type = ReSTIR_DI_MISWeightsType;
+			
+			constexpr bool need_visibility = bias_correction_use_visibility &&
+				(mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS ||
+					mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||
+					mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+					mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO);
+
+			target_function_at_center = ReSTIR_DI_evaluate_target_function<need_visibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+		}
+
+#if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
 
 			temporal_neighbor_reservoir.sample,
@@ -162,21 +175,33 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 			temporal_neighbor_surface, center_pixel_surface, 
 			temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 			
 			temporal_neighbor_reservoir, initial_candidates_reservoir,
 			center_pixel_surface, temporal_neighbor_surface, 
 			target_function_at_center, TEMPORAL_NEIGHBOR_ID, 
 			random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+
+#if DO_DEBUG
+		float gbh_mis = mis_weight_function_gbh.get_resampling_MIS_weight(render_data,
+
+			temporal_neighbor_reservoir.sample,
+			initial_candidates_reservoir.M,
+
+			temporal_neighbor_surface, center_pixel_surface,
+			temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+		if (temporal_neighbor_resampling_mis_weight != gbh_mis)
+			hippt::debugbreak();
+#endif
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 			temporal_neighbor_reservoir, initial_candidates_reservoir,
 			center_pixel_surface, temporal_neighbor_surface,
 
 			target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 		// Combining as in Alg. 6 of the paper
@@ -186,8 +211,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			// Only used with MIS-like weight
 			selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 
-			// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
-#if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
+			// Using ReSTIR_DI_MISWeightsUseVisibility here because that's what we use in the resampling target function
+#if ReSTIR_DI_MISWeightsUseVisibility == KERNEL_OPTION_FALSE
 			// We cannot be certain that the visibility of the temporal neighbor
 			// chosen is exactly the same so we're clearing the unoccluded flag
 			temporal_reuse_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
@@ -202,16 +227,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	}
 
 	// /* ------------------------------- */
-	// Resampling the initial candidates
+	// Resampling the initial candidate
 	// /* ------------------------------- */
 
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+#if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(initial_candidates_reservoir);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(initial_candidates_reservoir);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
 		initial_candidates_reservoir.sample,
@@ -219,21 +244,32 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 		temporal_neighbor_surface, center_pixel_surface, 
 		temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 		
 		temporal_neighbor_reservoir, initial_candidates_reservoir, 
 		center_pixel_surface, temporal_neighbor_surface, 
 		/* unused */ 0.0f, INITIAL_CANDIDATES_ID, 
 		random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO ||ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+
+#if DO_DEBUG
+	if (initial_candidates_mis_weight != mis_weight_function_gbh.get_resampling_MIS_weight(render_data,
+
+		initial_candidates_reservoir.sample,
+		initial_candidates_reservoir.M,
+
+		temporal_neighbor_surface, center_pixel_surface,
+		temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator))
+		hippt::debugbreak();
+#endif
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 		temporal_neighbor_reservoir, initial_candidates_reservoir,
 		center_pixel_surface, temporal_neighbor_surface,
 
 		/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 	if (temporal_reuse_output_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
@@ -241,8 +277,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Only used with MIS-like weight
 		selected_neighbor = INITIAL_CANDIDATES_ID;
 
-		// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
-#if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
+		// Using ReSTIR_DI_MISWeightsUseVisibility here because that's what we use in the resampling target function
+#if ReSTIR_DI_MISWeightsUseVisibility == KERNEL_OPTION_FALSE
 		// We resampled the center pixel so we can copy the unoccluded flag
 		temporal_reuse_output_reservoir.sample.flags |= initial_candidates_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #else
@@ -256,28 +292,28 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRTemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights, /* Is ReSTIR GI */ false> normalization_function;
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+	ReSTIRTemporalNormalizationWeight<ReSTIR_DI_MISWeightsType, /* Is ReSTIR GI */ false> normalization_function;
+#if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	normalization_function.get_normalization(temporal_reuse_output_reservoir.weight_sum,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 	normalization_function.get_normalization(render_data, 
 		temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface, 
 		normalization_numerator, normalization_denominator, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 	normalization_function.get_normalization(render_data, 
 		temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface,
 		selected_neighbor, normalization_numerator, normalization_denominator, random_number_generator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+#elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 	temporal_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
@@ -287,6 +323,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	if (render_data.render_settings.restir_di_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
 		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
+
+	ReSTIR_DI_visibility_test_kill_reservoir(render_data, temporal_reuse_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.primitive_index, random_number_generator);
 
 	render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = temporal_reuse_output_reservoir;
 }

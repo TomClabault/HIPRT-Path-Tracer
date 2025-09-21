@@ -28,7 +28,7 @@ void create_texture_from_array_cuda(void* m_texture_array, void* m_texture, void
 
 	cudaError_t error = cudaCreateTextureObject_oro(reinterpret_cast<cudaTextureObject_t*>(m_texture), &resource_descriptor, &texture_descriptor, nullptr);
 	if (error != cudaError::cudaSuccess)
-		Utils::debugbreak();
+		Debug::debugbreak();
 }
 
 #endif

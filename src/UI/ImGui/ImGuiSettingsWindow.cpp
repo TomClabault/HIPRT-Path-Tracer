@@ -699,8 +699,8 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_di_settings.m_cap = 5;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
@@ -732,8 +732,8 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_di_settings.m_cap = 3;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
@@ -783,15 +783,15 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_gi_settings.m_cap = 3;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_RESTIR_GI);
@@ -824,8 +824,8 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_gi_settings.m_cap = 3;
 
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS, RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS);
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY, KERNEL_OPTION_TRUE);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_RESTIR_GI);
@@ -3121,13 +3121,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 	else
 		restir_settings = &m_renderer->get_render_settings().restir_di_settings;
 
-	if (ImGui::CollapsingHeader("Bias correction"))
+	if (ImGui::CollapsingHeader("MIS Weights"))
 	{
 		ImGui::PushID(restir_settings);
-		ImGui::TreePush("Bias correction tree ReSTIR");
+		ImGui::TreePush("MIS Weights tree ReSTIR");
 
 		{
-			const char* bias_correction_mode_items[] = {
+			const char* mis_weights_types_items[] = {
 				"- 1/M (Biased)",
 				"- 1/Z",
 				"- MIS-like",
@@ -3172,8 +3172,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 				"Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]"
 			};
 
-			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);
-			if (ImGuiRenderer::ComboWithTooltips("MIS Weights", bias_correction_weights_option_pointer, bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items), tooltips))
+			int* mis_weights_type_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE);
+			if (ImGuiRenderer::ComboWithTooltips("MIS Weights", mis_weights_type_option_pointer, mis_weights_types_items, IM_ARRAYSIZE(mis_weights_types_items), tooltips))
 			{
 				m_renderer->recompile_kernels();
 
@@ -3181,13 +3181,13 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			}
 			ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
 
-			bool disable_confidence_weights = *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_M : RESTIR_DI_BIAS_CORRECTION_1_OVER_M)
-										   || *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_Z : RESTIR_DI_BIAS_CORRECTION_1_OVER_Z);
+			bool disable_confidence_weights = *mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M)
+										   || *mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z);
 
-			if (*bias_correction_weights_option_pointer == RESTIR_DI_BIAS_CORRECTION_SYMMETRIC_RATIO ||
-				*bias_correction_weights_option_pointer == RESTIR_DI_BIAS_CORRECTION_ASYMMETRIC_RATIO ||
-				*bias_correction_weights_option_pointer == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO ||
-				*bias_correction_weights_option_pointer == RESTIR_GI_BIAS_CORRECTION_ASYMMETRIC_RATIO)
+			if (*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO ||
+				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO)
 			{
 				if (ImGui::SliderFloat("Beta exponent", &restir_settings->symmetric_ratio_mis_weights_beta_exponent, 1.0f, 5.0f))
 					m_render_window->set_render_dirty(true);
@@ -3204,24 +3204,24 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			ImGuiRenderer::show_help_marker(confidence_weight_help_string);
 			ImGui::EndDisabled();
 
-			// No visibility bias correction for 1/M weights
-			bool bias_correction_visibility_disabled = *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_M : RESTIR_DI_BIAS_CORRECTION_1_OVER_M);
-			bool bias_correction_use_visibility;
+			// No visibility for 1/M weights
+			bool bias_correction_visibility_disabled = *mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M);
+			bool mis_weights_use_visibility;
 			if constexpr (IsReSTIRGI)
-				bias_correction_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY);
+				mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY);
 			else
-				bias_correction_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY);
+				mis_weights_use_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY);
 			ImGui::BeginDisabled(bias_correction_visibility_disabled);
-			if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
+			if (ImGui::Checkbox("Use visibility in MIS weights", &mis_weights_use_visibility))
 			{
-				int* bias_correction_use_visibility_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY);
-				*bias_correction_use_visibility_option_pointer = bias_correction_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
+				int* bias_correction_use_visibility_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY : GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY);
+				*bias_correction_use_visibility_option_pointer = mis_weights_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 			if (bias_correction_visibility_disabled)
-				ImGuiRenderer::show_help_marker("Visibility bias correction cannot be used with 1/M weights.");
+				ImGuiRenderer::show_help_marker("Visibility in MIS weights cannot be used with 1/M weights.");
 			ImGui::EndDisabled();
 		}
 
@@ -3569,7 +3569,7 @@ void ImGuiSettingsWindow::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKerne
 
 	std::vector<std::string> bias_reasons;
 	std::vector<std::string> hover_explanations;
-	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M)
+	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M)
 	{
 		bias_reasons.push_back("- 1/M biased weights");
 		hover_explanations.push_back("1/M weights do not take the number of neighbors that "
@@ -3579,9 +3579,9 @@ void ImGuiSettingsWindow::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKerne
 	}
 
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_TRUE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
 	{
-		bias_reasons.push_back("- Visibility reuse without visibility in bias correction");
+		bias_reasons.push_back("- Visibility reuse without visibility in MIS weights");
 		hover_explanations.push_back("When using the visibility reuse pass at the end of the "
 			"initial candidates sampling pass, light samples that are occluded are discarded.\n"
 			"Temporal & spatial reuse pass will then only resample on unoccluded samples.\n"
@@ -3594,7 +3594,7 @@ void ImGuiSettingsWindow::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKerne
 
 	if ((kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE
 		|| (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
 	{
 		std::string prefix;
 		if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE)
@@ -3603,11 +3603,11 @@ void ImGuiSettingsWindow::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKerne
 			prefix = " - Spatial ";
 
 		bias_reasons.push_back(prefix + "target function visibility without\n"
-			"    visibility in bias correction");
+			"    visibility in MIS weights");
 		hover_explanations.push_back("When using the visibility term in the target function used to "
 			"produce initial candidate samples (or temporally/spatially resample), all remaining samples are unoccluded.\n"
 			"Temporal & spatial reuse passes will then only resample on unoccluded samples.\n"
-			"If not accounting for visibility when counting valid neighbors (visibility in bias correction), we may determine "
+			"If not accounting for visibility when counting valid neighbors (visibility in MIS weights), we may determine "
 			"that a neighbor could have produced the picked sample when actually, it couldn't "
 			"because from the neighbor's point of view, the sample could have been occluded "
 			"(visibility term in target function).\n"
@@ -3616,15 +3616,15 @@ void ImGuiSettingsWindow::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKerne
 
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
-		&& (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-			|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
-			|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE))
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY) == KERNEL_OPTION_TRUE
+		&& (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
+			|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS
+			|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE) == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE))
 	{
-		bias_reasons.push_back("- Visibility in bias correction without\n"
+		bias_reasons.push_back("- Visibility in MIS weights without\n"
 			"visibility reuse (or initial candidates visibility)");
 		hover_explanations.push_back("When taking visibility into account in the counting of "
-			"valid neighbors (visibility in bias correction), we're going to assume that if the picked sample (from resampling "
+			"valid neighbors (visibility in MIS weights), we're going to assume that if the picked sample (from resampling "
 			"the neighbors) is occluded from the neighbor's point of view, then that neighbor "
 			"couldn't have produced that sample.\n\n"
 			"However, that's incorrect.\n\n"

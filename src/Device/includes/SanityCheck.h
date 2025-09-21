@@ -92,7 +92,7 @@ HIPRT_DEVICE bool sanity_check(const HIPRTRenderData& render_data, ColorRGB32F& 
     if (!valid)
     {
 #ifndef __KERNELCC__
-        Utils::debugbreak();
+        Debug::debugbreak();
 #endif
 
         if (render_data.render_settings.display_NaNs 

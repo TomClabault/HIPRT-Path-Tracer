@@ -427,17 +427,6 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
     return output_image;
 }
 
-void Utils::debugbreak()
-{
-#if defined( _WIN32 )
-   __debugbreak();
-#elif defined( __GNUC__ )
-    raise(SIGTRAP);
-#else
-    ;
-#endif
-}
-
 #ifdef _WIN32
 // Code from @jpownby from the GraphicsProgramming Discord
 Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_name, std::wstring extra_string)

@@ -51,6 +51,8 @@ struct ReSTIRDISample
 
 struct ReSTIRDIReservoir
 {
+    static constexpr float VISIBILITY_REUSE_KILLED_UCW = -42.0f;
+
     HIPRT_DEVICE void add_one_candidate(ReSTIRDISample new_sample, float weight, Xorshift32Generator& random_number_generator)
     {
         M++;
@@ -76,14 +78,6 @@ struct ReSTIRDIReservoir
      */
     HIPRT_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
     {
-        if (other_reservoir.UCW <= 0.0f)
-        {
-            // Not going to be resampled anyways because of invalid UCW so quit exit
-            M += other_reservoir.M;
-
-            return false;
-        }
-
         float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
 
         M += other_reservoir.M;
@@ -111,7 +105,7 @@ struct ReSTIRDIReservoir
     HIPRT_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
     {
         // Checking some limit values
-        if (weight_sum == 0.0f || weight_sum < 1.0e-10f || weight_sum > 1.0e10f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
+        if (weight_sum == 0.0f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
@@ -127,49 +121,49 @@ struct ReSTIRDIReservoir
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "Negative reservoir M value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << M << std::endl;
-            Utils::debugbreak();
+            Debug::debugbreak();
         }
         else if (std::isnan(weight_sum) || std::isinf(weight_sum))
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "NaN or inf reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
-            Utils::debugbreak();
+            Debug::debugbreak();
         }
         else if (weight_sum < 0)
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "Negative reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
-            Utils::debugbreak();
+            Debug::debugbreak();
         }
         else if (std::abs(weight_sum) < std::numeric_limits<float>::min() && weight_sum != 0.0f)
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "Denormalized weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
-            Utils::debugbreak();
+            Debug::debugbreak();
         }
         else if (std::isnan(UCW) || std::isinf(UCW))
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "NaN or inf reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
-            Utils::debugbreak();
+            Debug::debugbreak();
         }
         else if (UCW < 0)
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;
-            Utils::debugbreak();
+            Debug::debugbreak();
         }
         else if (std::isnan(sample.target_function) || std::isinf(sample.target_function))
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "NaN or inf reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
-            Utils::debugbreak();
+            Debug::debugbreak();
         }
         else if (sample.target_function < 0)
         {
             std::lock_guard<std::mutex> lock(restir_di_log_mutex);
             std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
-            Utils::debugbreak();
+            Debug::debugbreak();
         }
 #else
         (void)pixel_coords;

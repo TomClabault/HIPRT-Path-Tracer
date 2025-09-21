@@ -400,7 +400,7 @@ void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to download data async from a non-allocated buffer!");
 
-		Utils::debugbreak();
+		Debug::debugbreak();
 
 		return;
 	}

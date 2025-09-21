@@ -96,7 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	ReSTIRGIReservoir temporal_reuse_output_reservoir;
 	ReSTIRSurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
-	ReSTIRTemporalResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, true> mis_weight_function;
+	ReSTIRTemporalResamplingMISWeight<ReSTIR_GI_MISWeightsType, true> mis_weight_function;
 
 	// /* ------------------------------- */
 	// Resampling the temporal neighbor
@@ -113,11 +113,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 			// inside that if() and the target function stays at 0.0f which eliminates
 			// most of the computations afterwards
 			//
-			// Matching the visibility used here with the bias correction mode for ease 
+			// Matching the visibility used here with the mis weight type for ease 
 			// of use (and because manually handling the visibility in the target 
 			// function of the temporal reuse is tricky for the user to use in 
 			// combination with other parameters
-			target_function_at_center = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+			target_function_at_center = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
 		float shift_mapping_jacobian = 1.0f;
 		if (temporal_neighbor_reservoir.UCW > 0.0f && !temporal_neighbor_reservoir.sample.is_envmap_path())
@@ -129,23 +129,23 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 			shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(temporal_neighbor_reservoir.sample.sample_point, temporal_neighbor_reservoir.sample.sample_point_geometric_normal.unpack(), center_pixel_surface.shading_point, render_data.g_buffer_prev_frame.primary_hit_position[temporal_neighbor_pixel_index], render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 		}
 
-#if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M
+#if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_Z
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_GBH
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
 			initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface,
 			temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 			temporal_neighbor_reservoir, initial_candidates_reservoir,
 			center_pixel_surface, temporal_neighbor_surface,
 			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID,
 			random_number_generator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 			temporal_neighbor_reservoir, initial_candidates_reservoir,
 			center_pixel_surface, temporal_neighbor_surface,
@@ -153,7 +153,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 			target_function_at_center * shift_mapping_jacobian, TEMPORAL_NEIGHBOR_ID,
 			random_number_generator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 		// Combining as in Alg. 6 of the paper
@@ -165,23 +165,23 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	// Resampling the initial candidates
 	// /* ------------------------------- */
 
-#if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M
+#if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(initial_candidates_reservoir);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_Z
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(initial_candidates_reservoir);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_GBH
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, initial_candidates_reservoir,
 		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface,
 		temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
 		temporal_neighbor_reservoir, initial_candidates_reservoir,
 		center_pixel_surface, temporal_neighbor_surface, 
 
 		/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 		temporal_neighbor_reservoir, initial_candidates_reservoir,
 		center_pixel_surface, temporal_neighbor_surface,
@@ -189,7 +189,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		/* unused */ 0.0f, INITIAL_CANDIDATES_ID,
 		random_number_generator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 	temporal_reuse_output_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator);
@@ -198,17 +198,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRTemporalNormalizationWeight<ReSTIR_GI_BiasCorrectionWeights, true> normalization_function;
-#if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_GBH
+	ReSTIRTemporalNormalizationWeight<ReSTIR_GI_MISWeightsType, true> normalization_function;
+#if ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
-#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_SYMMETRIC_RATIO || ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_ASYMMETRIC_RATIO
+#elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #else
-#error "Unsupported bias correction mode"
+#error "Unsupported mis weight type"
 #endif
 
 	temporal_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);

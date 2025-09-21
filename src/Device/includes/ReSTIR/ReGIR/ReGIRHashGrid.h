@@ -70,8 +70,8 @@ struct ReGIRHashGrid
 		build_ONB(surface_normal, T, B);
 
 		// Some deterministic random numbers from the position, in [-1, 1]
-		float jitter_x = Xorshift32Generator(h2_xxhash32(pos.x * 0xFFFFFFFF))() * 2.0f - 1.0f;
-		float jitter_y = Xorshift32Generator(h2_xxhash32(pos.y * 0xFFFFFFFF))() * 2.0f - 1.0f;
+		float jitter_x = Xorshift32Generator(h2_xxhash32(pos.x * static_cast<float>(0xFFFFFFFF)))() * 2.0f - 1.0f;
+		float jitter_y = Xorshift32Generator(h2_xxhash32(pos.y * static_cast<float>(0xFFFFFFFF)))() * 2.0f - 1.0f;
 
 		// Jittering our normal in the tangent plane
 		float3 jittered = surface_normal + (T * jitter_x + B * jitter_y) * fuzzy_normals_strength;

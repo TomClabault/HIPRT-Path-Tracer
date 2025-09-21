@@ -51,7 +51,8 @@ HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData
 	if (!visible)
 	{
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
-		reservoir.UCW = -1.0f;
+		reservoir.UCW = ReSTIRDIReservoir::VISIBILITY_REUSE_KILLED_UCW;
+		reservoir.sample.target_function = 0.0f;
 
 		return true;
 	}
