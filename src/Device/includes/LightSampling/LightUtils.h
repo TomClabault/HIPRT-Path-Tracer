@@ -393,7 +393,7 @@ struct ReGIRPairwiseMIS
     HIPRT_DEVICE float compute_MIS_weight_normalization(const HIPRTRenderData& render_data, unsigned int valid_non_canonical_neighbors)
     {
         unsigned int number_of_samples = 0;
-        number_of_samples += valid_non_canonical_neighbors * render_data.render_settings.regir_settings.shading.reservoir_tap_count_per_neighbor; // non canonical samples
+        number_of_samples += valid_non_canonical_neighbors * render_data.render_settings.regir_settings.shading_settings.reservoir_tap_count_per_neighbor; // non canonical samples
         if (number_of_samples == 0)
             return 0.0f;
 
@@ -508,6 +508,349 @@ struct ReGIRPairwiseMIS
     float m_sum_canonical_weight_3 = 0.0f;
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK -42
+
+HIPRT_DEVICE static LightSampleInformation TEST_sample_one_emissive_triangle_with_cell_light_distribution(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
+{
+    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+    CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
+    if (cell_light_distribution.cdf_u16 == nullptr)
+    {
+        // No light distribution available for that cell. This can happen if new cells have been discovered
+        // by rays bouncing around but we haven't recomputed light distributions yet
+
+        LightSampleInformation fallback_needed;
+        fallback_needed.emissive_triangle_global_index = REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK;
+
+        return fallback_needed;
+    }
+    int index_in_distribution = cell_light_distribution.sample(rng);
+
+    unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_emissive_mesh_index(hash_grid_cell_index, index_in_distribution);
+    float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, index_in_distribution);
+    if (mesh_PDF == 0.0f)
+    {
+        // No light distribution available for that cell. This can happen if new cells have been discovered
+        // by rays bouncing around but we haven't recomputed light distributions yet
+
+        LightSampleInformation fallback_needed;
+        fallback_needed.emissive_triangle_global_index = REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK;
+
+        return fallback_needed;
+    }
+
+    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(emissive_mesh_index);
+
+    // Now that we have importance sampled a mesh, we're importance sampling a triangle
+    // on that mesh
+    float triangle_PDF;
+    int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+
+    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+    if (light_sample.emissive_triangle_global_index == -1)
+        // Probably a degenerate triangle
+        return LightSampleInformation();
+
+    // Area measure PDF already contains the PDF for sampling the point *on the triangle*.
+    // We need to add (multiply) the PDF of sampling the triangle itself within the sampled mesh
+    light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
+
+    sanity_check<true>(render_data, ColorRGB32F(1.0f / light_sample.area_measure_pdf), -1, -1);
+
+    return light_sample;
+}
+
+HIPRT_DEVICE static float TEST_get_cell_distribution_PDF_of_light_sample(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, float light_area, ColorRGB32F light_emission, unsigned int mesh_index)
+{
+    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+    CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
+
+    float mesh_sampling_PDF = 0.0f;
+    // TODO absolutely need to replace that with a perfect hash table (or any fast membership data structure)
+    // for performance instead of brute forcing
+    for (int i = 0; i < cell_light_distribution.size; i++)
+    {
+        if (regir_settings.get_cell_distributions_soa(primary_hit).get_emissive_mesh_index(hash_grid_cell_index, i) == mesh_index)
+        {
+            mesh_sampling_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, i);
+
+            break;
+        }
+    }
+
+    float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_data.get_power_sampled_triangle_PDF_in_mesh(mesh_index, light_area, light_emission);
+    float point_on_triangle_PDF = 1.0f / light_area;
+
+    return mesh_sampling_PDF * triangle_within_mesh_sampling_PDF * point_on_triangle_PDF;
+}
+
+HIPRT_DEVICE static float TEST_get_cell_distribution_PDF_of_light_sample(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, const LightSampleInformation& light_sample, unsigned int mesh_index)
+{
+    return TEST_get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, hippt::length(get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index) * 0.5f), light_sample.emission, mesh_index);
+}
+
+template <int samplingStrategy>
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data,
+    const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
+    int last_hit_primitive_index, RayPayload& ray_payload,
+    Xorshift32Generator& random_number_generator);
+
+/**
+ * Overload of the function used when sampling lights without a world shading point (as in ReSTIR DI light presampling for example)
+ *
+ * This means that positional light sampling schemes such as ReGIR or light trees cannot be used as the template argument here
+ * and will produced incorrect results if used anyways
+ */
+template <int samplingStrategy>
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator);
+
+HIPRT_DEVICE static ReGIRReservoir TEST_grid_fill_with_per_cell_light_distributions(const HIPRTRenderData& render_data,
+    float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, int last_hit_primitive_index,
+    unsigned int hash_grid_cell_index, bool primary_hit,
+
+    ColorRGB32F& selected_sample_radiance,
+
+    Xorshift32Generator& rng)
+{
+    ReGIRReservoir reservoir;
+
+    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+    // Sampling some samples with per-cell light distributions
+    for (int light_sample_index = 0; light_sample_index < regir_settings.shading_settings.number_of_neighbors; light_sample_index++)
+    {
+        LightSampleInformation light_sample;
+
+        light_sample = TEST_sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
+        if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
+            // Falling back on the base strategy
+            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+
+        if (light_sample.emissive_triangle_global_index == -1)
+            continue;
+
+        ColorRGB32F sample_radiance;
+        float target_function = ReGIR_shading_evaluate_target_function<
+            ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+            ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                shading_point, view_direction, shading_normal, geometric_normal,
+                last_hit_primitive_index, ray_payload,
+                light_sample.point_on_light, light_sample.light_source_normal, light_sample.emission, rng, sample_radiance);
+     
+        if (target_function == 0.0f)
+            continue;
+
+        float bsdf_pdf_area_measure = 0.0f;
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
+        BSDFIncidentLightInfo incident_light_no_info = BSDFIncidentLightInfo::NO_INFO;
+        BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, hippt::normalize(light_sample.point_on_light - shading_point), incident_light_no_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+        // BSDF PDF here is approximate because it should contain visibility but the increase in variance is fine
+        bsdf_pdf_area_measure = solid_angle_to_area_pdf(bsdf_dispatcher_pdf(render_data, bsdf_context), hippt::length(light_sample.point_on_light - shading_point), compute_cosine_term_at_light_source(light_sample.light_source_normal, hippt::normalize(shading_point - light_sample.point_on_light)));
+#endif
+        float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, light_sample.light_area, light_sample.emission);
+        float mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.shading_settings.number_of_neighbors, simple_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
+
+        if (reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng))
+            selected_sample_radiance = sample_radiance;
+        sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
+    }
+
+    // Sampling some samples with a simple 'cover-all-triangles" strategy (power sampling for example)
+    // for unbiasedness
+    for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillCellDistributionsCanonicalSampleCount; light_sample_index++)
+    {
+        float mesh_PDF;
+        unsigned int mesh_index;
+        EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
+
+        float triangle_PDF;
+        int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+
+        LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+        if (light_sample.emissive_triangle_global_index == -1)
+            // Can happen if the triangle sampled is degenerate and thus rejected
+            continue;
+
+        // That point on this triangle on that emissive mesh
+        light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
+
+        ColorRGB32F sample_radiance;
+        float target_function = ReGIR_shading_evaluate_target_function<
+            ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+            ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                shading_point, view_direction, shading_normal, geometric_normal,
+                last_hit_primitive_index, ray_payload,
+                light_sample.point_on_light, light_sample.light_source_normal, light_sample.emission, rng, sample_radiance);
+
+        if (target_function == 0.0f)
+            continue;
+
+        float bsdf_pdf_area_measure = 0.0f;
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
+        BSDFIncidentLightInfo incident_light_no_info = BSDFIncidentLightInfo::NO_INFO;
+        BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, hippt::normalize(light_sample.point_on_light - shading_point), incident_light_no_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+        // BSDF PDF here is approximate because it should contain visibility but the increase in variance is fine
+        bsdf_pdf_area_measure = solid_angle_to_area_pdf(bsdf_dispatcher_pdf(render_data, bsdf_context), hippt::length(light_sample.point_on_light - shading_point), compute_cosine_term_at_light_source(light_sample.light_source_normal, hippt::normalize(shading_point - light_sample.point_on_light)));
+#endif
+        float cell_light_distributions_pdf = TEST_get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, mesh_index);
+        // 3-way balance heuristic for simplicity (pairwise MIS would probably be more performant)
+        float mis_weight = balance_heuristic(light_sample.area_measure_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount, cell_light_distributions_pdf, regir_settings.shading_settings.number_of_neighbors, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
+
+        if (reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng))
+            selected_sample_radiance = sample_radiance;
+        sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
+    }
+
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
+    float bsdf_sample_pdf;
+    float3 sampled_bsdf_direction;
+
+    BSDFIncidentLightInfo incident_light_info;
+    BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+    ColorRGB32F bsdf_contribution = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, rng);
+
+    bool intersection_found = false;
+    BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
+    if (bsdf_sample_pdf > 0.0f)
+    {
+        hiprtRay bsdf_ray;
+        bsdf_ray.origin = shading_point;
+        bsdf_ray.direction = sampled_bsdf_direction;
+
+#if ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay == KERNEL_OPTION_TRUE
+        intersection_found = evaluate_bsdf_light_sample_ray_simplified(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, rng);
+#else
+        intersection_found = evaluate_bsdf_light_sample_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, rng);
+#endif
+
+        float bsdf_sample_pdf_area_measure = solid_angle_to_area_pdf(bsdf_sample_pdf, shadow_light_ray_hit_info.hit_distance, compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -bsdf_ray.direction));
+
+        if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() && bsdf_sample_pdf_area_measure > 0.0f)
+        {
+            ColorRGB32F sample_radiance;
+            float target_function = ReGIR_shading_evaluate_target_function<
+                ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+                ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+                    shading_point, view_direction, shading_normal, geometric_normal,
+                    last_hit_primitive_index, ray_payload,
+                    shading_point + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance, shadow_light_ray_hit_info.hit_geometric_normal, shadow_light_ray_hit_info.hit_emission, rng, sample_radiance);
+
+            float mis_weight = 0.0f;
+            int mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[shadow_light_ray_hit_info.hit_prim_index];
+            if (mesh_index != -1)
+            {
+                // The mesh index of the emissive triangle hit can be -1 if the emissive mesh is only
+                // emissive thanks to using an emissive texture
+
+                float PDF_light_distributions = TEST_get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, hippt::length(get_triangle_normal_not_normalized(render_data, shadow_light_ray_hit_info.hit_prim_index)) * 0.5f, shadow_light_ray_hit_info.hit_emission, mesh_index);
+                float simple_technique_pdf = pdf_of_emissive_triangle_hit_area_measure<LSS_BASE_POWER>(render_data, shadow_light_ray_hit_info);
+                mis_weight = balance_heuristic(bsdf_sample_pdf_area_measure, 1, PDF_light_distributions, regir_settings.shading_settings.number_of_neighbors, simple_technique_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount);
+            }
+            else
+                // If we couldn't find the emissive mesh index of the emissive triangle that we just hit,
+                // this has to be because this is a mesh that is using an emissive texture
+                //
+                // Emissive texture sampling isn't available at the time of writing this code so light
+                // sampling can't sample so the BSDF sampling gets all the weight
+                mis_weight = 1.0f;
+
+            if (reservoir.stream_sample_raw(mis_weight, target_function, bsdf_sample_pdf_area_measure, shadow_light_ray_hit_info.hit_prim_index, 0u, rng))
+                selected_sample_radiance = sample_radiance;
+            sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
+        }
+    }
+#endif
+
+    return reservoir;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
@@ -516,6 +859,47 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
     Xorshift32Generator& random_number_generator,
     ReGIRShadingAdditionalInfo& out_infos)
 {
+    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+
+#if ReGIR_ShadingResamplingSampleOnlyLightDistributions == KERNEL_OPTION_TRUE && ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE
+
+    unsigned int canonical_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<true>(
+        shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
+        ReGIR_ShadingResamplingJitterCanonicalCandidates && regir_settings.shading_settings.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
+        regir_settings.shading_settings.jittering_radius_canonical_candidates, random_number_generator);
+    
+    if (canonical_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
+    {
+        out_need_fallback_sampling = true;
+
+        return LightSampleInformation();
+    }
+    else
+        out_need_fallback_sampling = false;
+
+    ReGIRReservoir reservoir = TEST_grid_fill_with_per_cell_light_distributions(render_data, 
+        view_direction, shading_point, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index,
+        canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), out_infos.sample_radiance, random_number_generator);
+    // No normalization because we're already using proper MIS weights
+    reservoir.finalize_resampling(1.0f, 1.0f);
+
+    if (reservoir.sample.emissive_triangle_global_index == -1)
+        return LightSampleInformation();
+
+    float3 normal = get_triangle_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index);
+    float area = hippt::length(normal) * 0.5f;
+    normal = hippt::normalize(normal);
+
+    LightSampleInformation out_sample2;
+    out_sample2.area_measure_pdf = 1.0f / reservoir.UCW;
+    out_sample2.emission = get_emission_of_triangle_from_index(render_data, reservoir.sample.emissive_triangle_global_index);
+    out_sample2.emissive_triangle_global_index = reservoir.sample.emissive_triangle_global_index;
+    out_sample2.light_area = area;
+    out_sample2.point_on_light = reconstruct_sample_point_on_light(render_data, reservoir.sample.point_on_light_random_seed, reservoir.sample.emissive_triangle_global_index, out_sample2.light_source_normal);
+    out_sample2.sample_random_seed = 0;
+
+    return out_sample2;
+#else
     // Starting with this at true and if we find a single good neighbor,
     // this will be set to false
     out_need_fallback_sampling = true;
@@ -536,15 +920,13 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
     Xorshift32Generator non_canonical_neighbor_rng(non_cano_neighbor_rng_seed);
     Xorshift32Generator neighbor_rng(neighbor_rng_seed);
 
-    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
-
     unsigned int valid_non_canonical_neighbors = 0;
-    for (int neighbor = 0; neighbor < regir_settings.shading.number_of_neighbors; neighbor++)
+    for (int neighbor = 0; neighbor < regir_settings.shading_settings.number_of_neighbors; neighbor++)
     {
         unsigned int neighbor_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<false>(
             shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
-            regir_settings.shading.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
-            regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
+            regir_settings.shading_settings.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
+            regir_settings.shading_settings.jittering_radius, non_canonical_neighbor_rng);
         if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
             // Not a valid neighbor
             continue;
@@ -558,8 +940,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
 
     unsigned int canonical_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<true>(
         shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
-        ReGIR_ShadingResamplingJitterCanonicalCandidates && regir_settings.shading.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
-        regir_settings.shading.jittering_radius_canonical_candidates, neighbor_rng);
+        ReGIR_ShadingResamplingJitterCanonicalCandidates && regir_settings.shading_settings.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
+        regir_settings.shading_settings.jittering_radius_canonical_candidates, neighbor_rng);
 
     float UCW_1 = 0.0f, UCW_2 = 0.0f;
     int triangle_index_1 = -1, triangle_index_2 = -1, triangle_index_3 = -1;
@@ -598,42 +980,41 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
             ReGIRReservoir canonical_technique_1_reservoir = regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), random_number_generator);
             ReGIRReservoir canonical_technique_2_reservoir = regir_settings.get_random_reservoir_in_grid_cell_for_shading<true>(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), random_number_generator);
 
-            if constexpr (ReGIR_ShadingResamplingDoBSDFMIS)
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
+            float bsdf_sample_pdf;
+            float3 sampled_bsdf_direction;
+
+            BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, make_float3(0.0f, 0.0f, 0.0f), canonical_technique_3_sample_ili, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+            bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+
+            bool intersection_found = false;
+            BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
+            if (bsdf_sample_pdf > 0.0f)
             {
-                float bsdf_sample_pdf;
-                float3 sampled_bsdf_direction;
-
-                BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, make_float3(0.0f, 0.0f, 0.0f), canonical_technique_3_sample_ili, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-                bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
-
-                bool intersection_found = false;
-                BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
-                if (bsdf_sample_pdf > 0.0f)
-                {
-                    hiprtRay new_ray;
-                    new_ray.origin = shading_point;
-                    new_ray.direction = sampled_bsdf_direction;
+                hiprtRay new_ray;
+                new_ray.origin = shading_point;
+                new_ray.direction = sampled_bsdf_direction;
 
 #if ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay == KERNEL_OPTION_TRUE
-                    intersection_found = evaluate_bsdf_light_sample_ray_simplified(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
+                intersection_found = evaluate_bsdf_light_sample_ray_simplified(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
 #else
-                    intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
+                intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, last_hit_primitive_index, ray_payload.bounce, random_number_generator);
 #endif
 
-                    // Checking that we did hit something and if we hit something,
-                    // it needs to be emissive
-                    if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black())
-                    {
-                        triangle_index_3 = shadow_light_ray_hit_info.hit_prim_index;
-                        point_on_light_3 = shading_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-                        light_source_normal_3 = shadow_light_ray_hit_info.hit_geometric_normal;
-                        emission_3 = shadow_light_ray_hit_info.hit_emission;
+                // Checking that we did hit something and if we hit something,
+                // it needs to be emissive
+                if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+                {
+                    triangle_index_3 = shadow_light_ray_hit_info.hit_prim_index;
+                    point_on_light_3 = shading_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+                    light_source_normal_3 = shadow_light_ray_hit_info.hit_geometric_normal;
+                    emission_3 = shadow_light_ray_hit_info.hit_emission;
 
-                        // We want ReGIR to produce PDFs that are in area measure so we're converting from solid angle to area measure here
-                        canonical_technique_3_canonical_reservoir_3_pdf = solid_angle_to_area_pdf(bsdf_sample_pdf, shadow_light_ray_hit_info.hit_distance, compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction));
-                    }
+                    // We want ReGIR to produce PDFs that are in area measure so we're converting from solid angle to area measure here
+                    canonical_technique_3_canonical_reservoir_3_pdf = solid_angle_to_area_pdf(bsdf_sample_pdf, shadow_light_ray_hit_info.hit_distance, compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction));
                 }
             }
+#endif
 
             // Extracting the data of the canonical reservoirs 1 and 2
             if (canonical_technique_1_reservoir.UCW > 0.0f)
@@ -713,12 +1094,12 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
         return LightSampleInformation();
     }
 
-    for (int neighbor = 0; neighbor < regir_settings.shading.number_of_neighbors; neighbor++)
+    for (int neighbor = 0; neighbor < regir_settings.shading_settings.number_of_neighbors; neighbor++)
     {
         unsigned int neighbor_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<false>(
             shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
-            regir_settings.shading.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
-            regir_settings.shading.jittering_radius, non_canonical_neighbor_rng);
+            regir_settings.shading_settings.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
+            regir_settings.shading_settings.jittering_radius, non_canonical_neighbor_rng);
         if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
             // Couldn't find a valid neighbor
             continue;
@@ -733,7 +1114,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
         if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
             neighbor_RIS_integral = 1.0f;
 
-        for (int i = 0; i < regir_settings.shading.reservoir_tap_count_per_neighbor; i++)
+        for (int i = 0; i < regir_settings.shading_settings.reservoir_tap_count_per_neighbor; i++)
         {
             // Will be set to true if the jittering causes the current shading point to be jittered out of the scene
             ReGIRReservoir non_canonical_reservoir = regir_settings.get_random_reservoir_in_grid_cell_for_shading<false>(neighbor_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), neighbor_rng);
@@ -970,6 +1351,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
     out_sample.incident_light_info = selected_incident_light_info;
 
     return out_sample;
+#endif
 }
 
 HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir(

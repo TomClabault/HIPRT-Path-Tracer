@@ -54,14 +54,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+#define DEBUG_FLIP_Y 0
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 921
-#define DEBUG_PIXEL_Y 379
+#define DEBUG_PIXEL_X 88
+#define DEBUG_PIXEL_Y 114
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -124,7 +124,7 @@ void CPURenderer::resize_buffers()
     m_regir_state.non_canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.non_canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.non_canonical_pre_integration_factors_primary_hit.end(), 0.0f);
     m_regir_state.canonical_pre_integration_factors_primary_hit = std::vector<AtomicType<float>>(new_cell_count_primary_hits); std::fill(m_regir_state.canonical_pre_integration_factors_primary_hit.begin(), m_regir_state.canonical_pre_integration_factors_primary_hit.end(), 0.0f);
 
-#if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE
+#if ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE
     unsigned int light_distribution_size = hippt::min((unsigned int)m_render_data.render_settings.regir_settings.light_distribution_maximum_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
     m_regir_state.cells_light_distributions_primary_hit.resize(new_cell_count_primary_hits, light_distribution_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
     m_regir_state.cells_light_distributions_secondary_hit.resize(new_cell_count_secondary_hits, light_distribution_size, m_emissive_meshes_alias_tables.get_emissive_mesh_count());
@@ -419,7 +419,7 @@ void CPURenderer::update_render_data()
     m_render_data.render_settings.restir_gi_settings.common_spatial_pass.spatial_reuse_hit_rate_hits = &m_restir_gi_state.spatial_reuse_hit_rate_hits;
 
     m_render_data.buffers.emissive_meshes_data = m_emissive_meshes_alias_tables.to_device();
-#if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE
+#if ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE
     m_render_data.render_settings.regir_settings.cells_light_distributions_primary_hits = m_regir_state.cells_light_distributions_primary_hit.to_device(m_render_data);
     m_render_data.render_settings.regir_settings.cells_light_distributions_secondary_hits = m_regir_state.cells_light_distributions_secondary_hit.to_device(m_render_data);
 #endif
@@ -821,7 +821,7 @@ void CPURenderer::ReGIR_pre_integration()
 
 void CPURenderer::ReGIR_compute_cells_light_distributions()
 {
-#if ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_FALSE
+#if ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_FALSE
     return;
 #endif
 

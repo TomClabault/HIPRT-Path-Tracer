@@ -146,10 +146,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 
         float target_function;
         if (reservoir_is_canonical)
+        {
             // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
             target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data,
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+        }
         else
         {
             target_function = ReGIR_grid_fill_evaluate_target_function<
@@ -261,7 +263,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill(const HIPRTRenderData& render_data, const 
 {
     ReGIRReservoir grid_fill_reservoir;
 
-    if constexpr (ReGIR_GridFillUsePerCellDistributions == KERNEL_OPTION_TRUE)
+    if constexpr (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE)
         grid_fill_reservoir = grid_fill_with_per_cell_light_distributions(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit, rng);
     else
         grid_fill_reservoir = grid_fill_classic<accumulatePreIntegration>(render_data, hash_grid_cell_index, reservoir_index_in_cell, surface, primary_hit, rng);

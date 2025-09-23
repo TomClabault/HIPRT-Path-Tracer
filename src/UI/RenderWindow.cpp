@@ -71,7 +71,10 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove debug kernel unused feature
 // - Crash in scenes with 0 emissive triangles
 // - remove restir di spatial reuse spatial_settings.do_visibility_only_last_pass and neighbor_visibility_count;
+// - remove the RNG parameter from bsdf_dispatcher_eval
+// - Cleanup the light distribution sampling / Pdf functions in a separate file
 // 
+// - Now that we have a triangle_index to mesh_index buffer, can we simplify some code somewhere?
 // - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
 //		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead
 // - To have a good cell distribution at least for the primary hits (we can probably drop the secondary hits), what about using a screen space mask built with that "good cache placement" paper? That mask could then be used and fetched by the hash function to know whether or not we should subdivide the cell or something
@@ -886,6 +889,7 @@ bool RenderWindow::is_rendering_done()
 
 bool RenderWindow::needs_viewport_refresh()
 {
+	return true;
 	// Update every X seconds
 	bool enough_time_has_passed = get_time_ms_before_viewport_refresh() <= 0.0f;
 	// The render was reset and one frame has been rendered

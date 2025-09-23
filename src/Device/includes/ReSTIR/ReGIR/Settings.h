@@ -86,7 +86,7 @@ struct ReGIRGridFillSettings
 		
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
-		light_sample_count_per_cell_reservoir = 32;
+		light_sample_count_per_cell_reservoir = 1;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 64 : 8; // 64
 		reservoirs_count_per_grid_cell_canonical = primary_hit ? 12 : 4; // 12
@@ -660,7 +660,7 @@ struct ReGIRSettings
 	ReGIRGridFillSettings grid_fill_settings_secondary_hits = ReGIRGridFillSettings(false);
 
 	ReGIRSpatialReuseSettings spatial_reuse;
-	ReGIRShadingSettings shading;
+	ReGIRShadingSettings shading_settings;
 	ReGIRCorrelationReductionSettings correlation_reduction;
 
 	AtomicType<float>* non_canonical_pre_integration_factors_primary_hits = nullptr;
@@ -671,7 +671,7 @@ struct ReGIRSettings
 
 	ReGIRCellsLightDistributionsSoADevice cells_light_distributions_primary_hits;
 	ReGIRCellsLightDistributionsSoADevice cells_light_distributions_secondary_hits;
-	bool use_per_cell_light_distributions = ReGIR_GridFillUsePerCellDistributions;
+	bool use_per_cell_light_distributions = ReGIR_GridFillUsePerCellLightDistributions;
 	int light_distribution_maximum_size = 1024;
 
 	// Multiplicative factor to multiply the output of some debug views

@@ -147,11 +147,8 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 	to_light_direction /= distance_to_light; // Normalization
 
 	float bsdf_pdf;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-	BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
-	BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif
+	MicrofacetRegularization::RegularizationMode regularization_mode = ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC;
+	BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, regularization_mode);
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng);
 
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction));

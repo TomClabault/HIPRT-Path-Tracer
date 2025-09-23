@@ -42,6 +42,11 @@ struct ParsedEmissiveMeshes
     //
     // The PDF is assumed to be power proportional
     std::vector<float> emissive_meshes_triangles_PDFs;
+
+    // For a given triangle index in the whole scene, gives the index of the emissive mesh in
+    // [0, alias_table_count - 1] that this triangle belongs to. If the given triangle index doesn't
+    // belong to an emissive mesh, the buffer contains -1 at that index
+    std::vector<int> global_triangle_index_to_emissive_mesh_index;
 };
 
 #endif

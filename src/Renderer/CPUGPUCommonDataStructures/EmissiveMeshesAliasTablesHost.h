@@ -125,6 +125,7 @@ struct EmissiveMeshesAliasTablesHost
 		upload_to_device_buffer(m_meshes_emissive_triangles_PDFs, parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs);
 		upload_to_device_buffer(m_meshes_emissive_triangles_indices, parsed_scene.emissive_triangles_primitive_indices);
 		upload_to_device_buffer(m_meshes_PDFs, meshes_PDFs);
+		upload_to_device_buffer(m_global_triangle_index_to_emissive_mesh_index, parsed_scene.parsed_emissive_meshes.global_triangle_index_to_emissive_mesh_index);
 	}
 
 	unsigned int get_emissive_mesh_count() const
@@ -150,6 +151,7 @@ struct EmissiveMeshesAliasTablesHost
 		out.alias_tables_probas = m_alias_tables_probas.data();
 		out.meshes_emissive_triangles_PDFs = m_meshes_emissive_triangles_PDFs.data();
 		out.meshes_triangle_indices = m_meshes_emissive_triangles_indices.data();
+		out.global_triangle_index_to_emissive_mesh_index = m_global_triangle_index_to_emissive_mesh_index.data();
 
 		return out;
 	}
@@ -173,6 +175,8 @@ struct EmissiveMeshesAliasTablesHost
 	DataContainer<int> m_alias_tables_aliases;
 	DataContainer<float> m_meshes_emissive_triangles_PDFs;
 	DataContainer<int> m_meshes_emissive_triangles_indices;
+
+	DataContainer<int> m_global_triangle_index_to_emissive_mesh_index;
 };
 
 #endif

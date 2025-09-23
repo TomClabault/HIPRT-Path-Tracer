@@ -79,12 +79,6 @@ HIPRT_DEVICE float power_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int n
     float p_a_sqr = (nb_pdf_a * pdf_a) * (nb_pdf_a * pdf_a);
     float p_b_sqr = (nb_pdf_b * pdf_b) * (nb_pdf_b * pdf_b);
 
-    // Note that we should have a multiplication by nb_pdf_a^2 in the
-    // numerator but because we're going to divide by nb_pdf_a in the
-    // function evaluation that use this MIS weight according to the
-    // MIS estimator, we're only multiplying by nb_pdf_a (not squared)
-    // since the squared nb_pdf_a would be cancelled by the division by
-    // nb_pdf_a
     return nb_pdf_a * pdf_a * pdf_a / (p_a_sqr + p_b_sqr);
 }
 
@@ -95,38 +89,20 @@ HIPRT_DEVICE float power_heuristic(float pdf_a, float pdf_b)
 
 /**
  * Balance heuristic for MIS weights computation
- *
- * This implementation already contains the 1/nb_pdf_a fraction of the MIS estimator. This means
- * that you should not divide by 1/nb_pdf_a in the evaluation of your function where you use
- * the MIS weight
  */
-HIPRT_DEVICE float balance_heuristic(float pdf_a, float nb_pdf_a, float pdf_b, float nb_pdf_b)
+HIPRT_DEVICE float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
 {
     if (pdf_a == 0.0f)
         return 0.0f;
 
-    // Note that we should have a multiplication by nb_pdf_a in the
-    // numerator but because we're going to divide by nb_pdf_a in the
-    // function evaluation that use this MIS weight according to the
-    // MIS estimator, this multiplication in the numerator that we
-    // would have here would be canceled and that would be basically
-    // wasted maths so we're not doing it and we should not do it
-    // in the function evaluation either.
     return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b);
 }
 
 /**
  * Balance heuristic for 3 strategies
  */
-HIPRT_DEVICE float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b, int pdf_c, int nb_pdf_c)
+HIPRT_DEVICE float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b, float pdf_c, int nb_pdf_c)
 {
-    // Note that we should have a multiplication by nb_pdf_a in the
-    // numerator but because we're going to divide by nb_pdf_a in the
-    // function evaluation that use this MIS weight according to the
-    // MIS estimator, this multiplication in the numerator that we
-    // would have here would be canceled and that would be basically
-    // wasted maths so we're not doing it and we should not do it
-    // in the function evaluation either.
     return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b + nb_pdf_c * pdf_c);
 }
 

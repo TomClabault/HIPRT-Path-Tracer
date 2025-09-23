@@ -1867,34 +1867,12 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
-
-		if (ImGui::CollapsingHeader("Grid fill pass"))
+		
+		if (ImGui::CollapsingHeader("Cell light distributions"))
 		{
-			ImGui::TreePush("ReGIR grid build tree");
-
-			if (ImGui::Checkbox("Do light presampling", &render_data.render_settings.regir_settings.do_light_presampling))
+			if (ImGui::Checkbox("Use cell light distributions", &regir_settings.use_per_cell_light_distributions))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING, render_data.render_settings.regir_settings.do_light_presampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Whether or not to enable light presampling to improve grid fill performance"
-				"on scenes with many many lights.");
-			ImGui::BeginDisabled(!render_data.render_settings.regir_settings.do_light_presampling);
-			if (ImGui::SliderInt("Stratification size", &regir_settings.presampled_lights.stratification_size, 8, 64))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Subset size", &regir_settings.presampled_lights.subset_size, 128, 2048))
-				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Subset count", &regir_settings.presampled_lights.subset_count, 32, 256))
-				m_render_window->set_render_dirty(true);
-			ImGui::EndDisabled();
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			ImGui::SeparatorText("Per-cell light distributions");
-			if (ImGui::Checkbox("Cache cells light distributions", &regir_settings.use_per_cell_light_distributions))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_DISTRIBUTIONS, regir_settings.use_per_cell_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS, regir_settings.use_per_cell_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1905,6 +1883,18 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"Those per-cell sampling distribution will then be used during the grid fill to provide higher "
 				"quality initial light samples");
+
+			static bool only_use_cell_light_distributions = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS);
+			if (ImGui::Checkbox("Only use cell light distributions", &only_use_cell_light_distributions))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS, only_use_cell_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("If true, ReGIR will not be used to shade points at path tracing time.Only the light distributions precomputed "
+				"ahead of time will be used to compute NEE.");
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			if (regir_settings.use_per_cell_light_distributions)
 			{
@@ -1979,7 +1969,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				static int cache_cells_list_distribution_canonical_samples_count = ReGIR_GridFillCellDistributionsCanonicalSampleCount;
-				ImGui::SliderInt("Canonical samples count", &cache_cells_list_distribution_canonical_samples_count, 1, 16);
+				ImGui::SliderInt("Canonical samples count", &cache_cells_list_distribution_canonical_samples_count, 0, 16);
 				ImGuiRenderer::show_help_marker("How many canonical samples(simple power sampling) to draw and combine with cell-light-distribution "
 					"samples to guarantee unbiasedness.\n\n"
 					""
@@ -2021,14 +2011,37 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::TreePush("VRAM saving ReGIR");
 				ImGui::Text("VRAM saving 1st hits: %f%%", regir_render_pass->get_light_distributions_compaction_VRAM_savings(true));
 				ImGui::Text("VRAM saving 2nd hits: %f%%", regir_render_pass->get_light_distributions_compaction_VRAM_savings(false));
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::TreePop();
 
 			} // regir_settings.use_per_cell_light_distributions
-			
+		}
+
+		if (ImGui::CollapsingHeader("Grid fill pass"))
+		{
+			ImGui::TreePush("ReGIR grid build tree");
+
+			if (ImGui::Checkbox("Do light presampling", &render_data.render_settings.regir_settings.do_light_presampling))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING, render_data.render_settings.regir_settings.do_light_presampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to enable light presampling to improve grid fill performance"
+				"on scenes with many many lights.");
+			ImGui::BeginDisabled(!render_data.render_settings.regir_settings.do_light_presampling);
+			if (ImGui::SliderInt("Stratification size", &regir_settings.presampled_lights.stratification_size, 8, 64))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Subset size", &regir_settings.presampled_lights.subset_size, 128, 2048))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::SliderInt("Subset count", &regir_settings.presampled_lights.subset_count, 32, 256))
+				m_render_window->set_render_dirty(true);
+			ImGui::EndDisabled();			
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Primary hits grid cells");
-			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir, 0, 64))
+			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir, 0, 32))
 				m_render_window->set_render_dirty(true);
 			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
 				m_render_window->set_render_dirty(true);
@@ -2204,9 +2217,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		{
 			ImGui::TreePush("ReGIR shading tree");
 
-			if (ImGui::SliderInt("Neighbors resampled", &regir_settings.shading.number_of_neighbors, 1, 8))
+			if (ImGui::SliderInt("Neighbors resampled", &regir_settings.shading_settings.number_of_neighbors, 1, 8))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Resample per neighbor", &regir_settings.shading.reservoir_tap_count_per_neighbor, 1, 8))
+			if (ImGui::SliderInt("Resample per neighbor", &regir_settings.shading_settings.reservoir_tap_count_per_neighbor, 1, 8))
 				m_render_window->set_render_dirty(true);
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -2271,9 +2284,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Jittering");
-			if (ImGui::Checkbox("Do cell jittering (1st hits)", &regir_settings.shading.do_cell_jittering_first_hits))
+			if (ImGui::Checkbox("Do cell jittering (1st hits)", &regir_settings.shading_settings.do_cell_jittering_first_hits))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::Checkbox("Do cell jittering (2nd hits)", &regir_settings.shading.do_cell_jittering_secondary_hits))
+			if (ImGui::Checkbox("Do cell jittering (2nd hits)", &regir_settings.shading_settings.do_cell_jittering_secondary_hits))
 				m_render_window->set_render_dirty(true);
 			static bool jitter_canonical = ReGIR_ShadingResamplingJitterCanonicalCandidates;
 			if (ImGui::Checkbox("Jitter canonical candidates", &jitter_canonical))
@@ -2285,11 +2298,11 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			}
 			ImGuiRenderer::show_help_marker("Whether or not to jitter canonical candidates during the shading resampling.\n"
 				"This reduces grid artifacts but increases variance.");
-			ImGui::BeginDisabled(!regir_settings.shading.do_cell_jittering_first_hits && !regir_settings.shading.do_cell_jittering_secondary_hits && !global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES));
-			if (ImGui::SliderFloat("Jitter radius", &regir_settings.shading.jittering_radius, 0.5f, 2.0f))
+			ImGui::BeginDisabled(!regir_settings.shading_settings.do_cell_jittering_first_hits && !regir_settings.shading_settings.do_cell_jittering_secondary_hits && !global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES));
+			if (ImGui::SliderFloat("Jitter radius", &regir_settings.shading_settings.jittering_radius, 0.5f, 2.0f))
 				m_render_window->set_render_dirty(true);
 			ImGui::BeginDisabled(!global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESMAPLING_JITTER_CANONICAL_CANDIDATES));
-			if (ImGui::SliderFloat("Jitter radius can. candidates", &regir_settings.shading.jittering_radius_canonical_candidates, 0.0f, 1.0f))
+			if (ImGui::SliderFloat("Jitter radius can. candidates", &regir_settings.shading_settings.jittering_radius_canonical_candidates, 0.0f, 1.0f))
 				m_render_window->set_render_dirty(true);
 			ImGui::EndDisabled();
 

@@ -62,6 +62,15 @@ struct EmissiveMeshesAliasTablesDevice
 	float* meshes_emissive_triangles_PDFs = nullptr;
 	int* meshes_triangle_indices = nullptr;
 
+	// For a given triangle index in the whole scene, gives the index of the emissive mesh in
+	// [0, alias_table_count - 1] that this triangle belongs to. If the given triangle index doesn't
+	// belong to an emissive mesh, the buffer contains -1 at that index
+	//
+	// This does not contain emissive meshes that use emissive textures. Only non emissive-textured
+	// mesh indices are in there so if you're reading into that buffer, you probably want to check that
+	// you're not getting -1 back to avoid GPU crashes afterwards
+	int* global_triangle_index_to_emissive_mesh_index = nullptr;
+
 	HIPRT_DEVICE float get_power_sampled_triangle_PDF_in_mesh(unsigned int emissive_mesh_index, float sampled_triangle_area, const ColorRGB32F& sampled_triangle_emission) const
 	{
 		return sampled_triangle_area * sampled_triangle_emission.luminance() / meshes_total_power[emissive_mesh_index];

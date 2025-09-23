@@ -224,13 +224,14 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
     {
         parsed_scene.parsed_emissive_meshes.emissive_meshes.resize(emissive_meshes_indices.size());
         parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.resize(parsed_scene.emissive_triangles_primitive_indices.size());
+        parsed_scene.parsed_emissive_meshes.global_triangle_index_to_emissive_mesh_index.resize(parsed_scene.triangles_vertex_indices.size() / 3, -1);
 
         // Another loop to compute emissive meshes, multithreaded
 
 #pragma omp parallel for
-        for (int i = 0; i < emissive_meshes_indices.size(); i++)
+        for (int emissive_mesh_index = 0; emissive_mesh_index < emissive_meshes_indices.size(); emissive_mesh_index++)
         {
-            aiMesh* mesh = scene->mMeshes[emissive_meshes_indices[i]];
+            aiMesh* mesh = scene->mMeshes[emissive_meshes_indices[emissive_mesh_index]];
 
             int material_index = mesh->mMaterialIndex;
             CPUMaterial& renderer_material = parsed_scene.materials[material_index];
@@ -239,7 +240,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
             // emissive power and an alias table for sampling the emissive triangles of that mesh
 
             float total_mesh_power = 0.0f;
-            unsigned int mesh_offset = emissive_meshes_offsets[i];
+            unsigned int mesh_offset = emissive_meshes_offsets[emissive_mesh_index];
             std::vector<float> power_per_face; power_per_face.reserve(mesh->mNumFaces);
 
             float3 average_normal = make_float3(0.0f, 0.0f, 0.0f);
@@ -260,7 +261,8 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
                 // This assumes that emissive triangles within a mesh are always sampled according to power but
                 // this is the case for now
                 parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.at(mesh_offset + face_index) = face_power;
-
+                parsed_scene.parsed_emissive_meshes.global_triangle_index_to_emissive_mesh_index[emissive_triangle_global_index] = emissive_mesh_index;
+                
                 power_per_face.push_back(face_power);
                 total_mesh_power += face_power;
 
@@ -276,15 +278,15 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
             float3 average_vertex = make_float3(0.0f, 0.0f, 0.0f);
             for (int j = 0; j < mesh->mNumVertices; j++)
                 average_vertex += *reinterpret_cast<float3*>(&mesh->mVertices[j]);
-            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].average_mesh_point = average_vertex / mesh->mNumVertices;
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].average_mesh_point = average_vertex / mesh->mNumVertices;
             if (hippt::length(average_normal) <= 0.01f)
-                parsed_scene.parsed_emissive_meshes.emissive_meshes[i].representative_normal = make_float3(EmissiveMeshesAliasTablesDevice::INVALID_NORMAL, 0.0f, 0.0f);
+                parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].representative_normal = make_float3(EmissiveMeshesAliasTablesDevice::INVALID_NORMAL, 0.0f, 0.0f);
             else
-                parsed_scene.parsed_emissive_meshes.emissive_meshes[i].representative_normal = hippt::normalize(average_normal / mesh->mNumFaces);
-            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].emissive_triangle_count = mesh->mNumFaces;
-            parsed_scene.parsed_emissive_meshes.emissive_meshes[i].total_mesh_emissive_power = total_mesh_power;
+                parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].representative_normal = hippt::normalize(average_normal / mesh->mNumFaces);
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].emissive_triangle_count = mesh->mNumFaces;
+            parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].total_mesh_emissive_power = total_mesh_power;
 
-            Utils::compute_alias_table(power_per_face, total_mesh_power, parsed_scene.parsed_emissive_meshes.emissive_meshes[i].alias_probas, parsed_scene.parsed_emissive_meshes.emissive_meshes[i].alias_aliases);
+            Utils::compute_alias_table(power_per_face, total_mesh_power, parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].alias_probas, parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].alias_aliases);
         }
     }
 
