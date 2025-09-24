@@ -106,13 +106,6 @@ struct ReSTIRCommonSpatialPassSettings
 	// probability instead of always/never. This helps trade performance for bias.
 	float converged_neighbor_reuse_probability;
 
-	// If true, the visibility in the target function will only be used on the last spatial reuse
-	// pass (and also if visibility is wanted)
-	bool do_visibility_only_last_pass;
-	// Visibility term in the target function will only be used for the first
-	// 'neighbor_visibility_count' neighbors, not all.
-	int neighbor_visibility_count;
-
 	unsigned int* per_pixel_spatial_reuse_directions_mask_u = nullptr;
 	unsigned long long int* per_pixel_spatial_reuse_directions_mask_ull = nullptr;
 	// Framebuffer that contains per-pixel spatial radius for use in the spatial reuse passes of ReSTIR.

@@ -2841,38 +2841,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				int max_neighbor_count = restir_settings.reuse_neighbor_count;
 				if (restir_settings.do_disocclusion_reuse_boost)
 					max_neighbor_count = std::max(max_neighbor_count, restir_settings.disocclusion_reuse_count);
-				static int partial_visibility_neighbor_count = max_neighbor_count;
-				if (use_spatial_target_function_visibility)
-				{
-					ImGui::TreePush("VisibilitySpatialReuseLastPassOnly Tree");
-
-					{
-						if (ImGui::SliderInt("Partial neighbor visibility", &partial_visibility_neighbor_count, 0, max_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
-						{
-							// Using -1 so that the user manipulates intuitive numbers between 0 and
-							// 'restir_settings.reuse_neighbor_count'
-							// but the shader actually wants value between -1 and
-							// 'restir_settings.reuse_neighbor_count' for it to be meaningful
-							restir_settings.neighbor_visibility_count = partial_visibility_neighbor_count;
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("How many neighbors will actually use a visibility term, can be useful to balance "
-							"performance/variance but lowering this value below the maximum amount of neighbors may actually reduce "
-							"performance because the final shading pass will have more visibility tests to do: if all neighbors use "
-							"visibility during spatial resampling, then the final shading pass can be certain that all neighbors "
-							"already take occlusion into account and so the final shading pass doesn't compute visibility. "
-							"However, if 1 or 2 neighbors do not include visibility for example, then the final shading pass will "
-							"have to trace rays for these neighbors and this will slow down the final shading pass quite a bit.");
-
-						if (ImGui::Checkbox("Only on the last pass", &restir_settings.do_visibility_only_last_pass))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("If checked, the visibility in the resampling target function will only be used on the last spatial reuse pass");
-					}
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-					ImGui::TreePop();
-				}
 
 				static bool do_optimal_vis_sampling = IsReSTIRGI ? ReSTIR_GI_DoOptimalVisibilitySampling : ReSTIR_DI_DoOptimalVisibilitySampling;
 				if (ImGui::Checkbox("Do optimal visibility sampling", &do_optimal_vis_sampling))
@@ -2895,7 +2863,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				// Checking the value before the "Neighbor Reuse Count" slider is modified
 				// so that we know whether or not we'll have to keep the
 				// 'partial_visibility_neighbor_count' value updated for the "Partial Neighbor Visibility" slider
-				bool will_need_to_update_partial_visibility = partial_visibility_neighbor_count == max_neighbor_count;
 				if (ImGui::SliderInt("Neighbor reuse count", &restir_settings.reuse_neighbor_count, 0, 16))
 				{
 					// Updating the maximum
@@ -2905,13 +2872,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 					bool reuse_count_is_the_max = max_neighbor_count == restir_settings.reuse_neighbor_count;
 					reuse_count_is_the_max |= !restir_settings.do_disocclusion_reuse_boost;
-					if (will_need_to_update_partial_visibility && reuse_count_is_the_max)
-					{
-						// Also updating the partial visibility neighbor index slider if it was set to the maximum
-						// amount of neighbors
-						partial_visibility_neighbor_count = restir_settings.reuse_neighbor_count;
-						restir_settings.neighbor_visibility_count = partial_visibility_neighbor_count;
-					}
 
 					if (restir_settings.disocclusion_reuse_count < restir_settings.reuse_neighbor_count)
 						// If disocclusion boost is now below the spatial neighbor count, bumping it up
@@ -3007,20 +2967,10 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				{
 					m_render_window->set_render_dirty(true);
 					if (restir_settings.do_disocclusion_reuse_boost)
-					{
 						// We just enabled disocclusion boost
-
+						// 
 						// Recomputing the max neighbor with the disocclusion boost taken into account
 						max_neighbor_count = std::max(max_neighbor_count, restir_settings.disocclusion_reuse_count);
-
-						partial_visibility_neighbor_count = max_neighbor_count;
-					}
-					else
-						// Disabled disocclusion boost, bringing the value back to its maximum before
-						// disocclusion boost which is just the number of reused spatial neighbors
-						partial_visibility_neighbor_count = restir_settings.reuse_neighbor_count;
-
-					restir_settings.neighbor_visibility_count = partial_visibility_neighbor_count;
 				}
 				ImGuiRenderer::show_help_marker("If checked, the given number of neighbors will be reused for pixels that just got "
 					"disoccluded due to camera movement (and thus that have no temporal history). This helps "
@@ -3038,23 +2988,8 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 							max_neighbor_count = restir_settings.reuse_neighbor_count;
 							if (restir_settings.do_disocclusion_reuse_boost)
 								max_neighbor_count = std::max(max_neighbor_count, restir_settings.disocclusion_reuse_count);
-
-							if (will_need_to_update_partial_visibility)
-							{
-								// If the number of neighbors using visibility is set at the maximum, then we should
-								// keep that value at the maximum as we modify the disoccluded neighbor reuse count
-								max_neighbor_count = restir_settings.disocclusion_reuse_count;
-								partial_visibility_neighbor_count = max_neighbor_count;
-								restir_settings.neighbor_visibility_count = max_neighbor_count;
-							}
 						}
 						ImGuiRenderer::show_help_marker("How many neighbors a pixel will reuse if that pixel just got disoccluded.");
-
-						if (restir_settings.neighbor_visibility_count == restir_settings.reuse_neighbor_count)
-							// If the user is using the visibility in the target function of all spatial neighbors,
-							// modifying that maximum number should still keep the visibility target function count
-							// to the maximum
-							restir_settings.neighbor_visibility_count = std::max(restir_settings.disocclusion_reuse_count, restir_settings.reuse_neighbor_count);
 
 						ImGui::TreePop();
 					}

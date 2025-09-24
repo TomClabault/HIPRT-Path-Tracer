@@ -39,19 +39,9 @@ template <bool IsReSTIRGI>
 HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
 {
 	const ReSTIRCommonSpatialPassSettings& spatial_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-	bool visibility_only_on_last_pass = spatial_settings.do_visibility_only_last_pass;
-	bool is_last_pass = spatial_settings.spatial_pass_index == spatial_settings.number_of_passes - 1;
-
-	// Only using the visibility term on the last pass if so desired
-	bool include_target_function_visibility = visibility_only_on_last_pass && is_last_pass;
-	// Also allowing visibility if we want it at every pass
-	include_target_function_visibility |= !spatial_settings.do_visibility_only_last_pass;
-
-	// Only doing visibility for a few neighbors depending on 'neighbor_visibility_count'
-	include_target_function_visibility &= current_neighbor_index < spatial_settings.neighbor_visibility_count;
 
 	// Only doing visibility if we want it at all
-	include_target_function_visibility &= (IsReSTIRGI ? ReSTIR_GI_SpatialTargetFunctionVisibility : ReSTIR_DI_SpatialTargetFunctionVisibility);
+	bool include_target_function_visibility = IsReSTIRGI ? ReSTIR_GI_SpatialTargetFunctionVisibility : ReSTIR_DI_SpatialTargetFunctionVisibility;
 
 	// We don't want visibility for the center pixel because we're going to reuse the
 	// target function stored in the reservoir anyways
