@@ -80,18 +80,9 @@ public:
 	void render();
 
 	/**
-	 * This just renders a frame by calling all the path tracing kernels.
-	 * Nothing special.
-	 *
-	 * This function is basically the "opposite" of 'render_debug_kernel'
+	 * This renders a frame by calling all the path tracing kernels.
 	 */
 	void render_path_tracing();
-	/**
-	 * This function launches the 'm_debug_trace_kernel' and saves its execution time
-	 * in 'm_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]'
-	 */
-	void render_debug_kernel();
-	GPUKernel& get_debug_trace_kernel();
 
 	RenderGraph& get_render_graph();
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
@@ -127,8 +118,6 @@ private:
 	 */
 	void internal_pre_render_update_global_stack_buffer();
 
-	void launch_debug_kernel(HIPRTRenderData& render_data);	
-
 	GPURenderer* m_renderer = nullptr;
 	// This is the render data structure that is going to be used for all
 	// render pass dispatches to avoid concurrency races with the ImGui UI
@@ -149,14 +138,6 @@ private:
 	// Whether or not the frame queued on the GPU by the last call to render() 
 	// is done rendering or not
 	bool m_frame_rendered = true;
-
-	// If this kernel isn't empty, then it will be used instead of all the regular path tracing
-	// kernels.
-	// 
-	// This can be useful for debugging performance for example: write a very simple trace kernel
-	// that just trace camera rays and set this kernel as the debug kernel and you'll be able to
-	// see the raw ray tracing performance without any scuff
-	GPUKernel m_debug_trace_kernel;
 
 	std::thread m_render_std_thread;
 

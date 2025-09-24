@@ -52,7 +52,6 @@ public:
 	// This key is for the time of the whole frame
 	static const std::string ALL_RENDER_PASSES_TIME_KEY;
 	static const std::string FULL_FRAME_TIME_WITH_CPU_KEY;
-	static const std::string DEBUG_KERNEL_TIME_KEY;
 
 	/**
 	 * Constructs a renderer that will be using the given HIPRT/Orochi
@@ -322,18 +321,6 @@ public:
 	 * The map values are the kernel themselves
 	 */
 	std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels();
-
-	//std::vector<std::string> get_all_kernel_ids();
-	/**
-	 * Sets the debug kernel to be used.
-	 * 
-	 * The kernel is expected to be in a file called {kernel_name}.h and the entry point
-	 * function is expected to be {kernel_name}
-	 * 
-	 * Calling this function with an empty string as parameter clears the debug kernel
-	 */
-	void set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options = GPUKernelCompilerOptions());
-	bool is_using_debug_kernel();
 
 	static std::string read_debug_buffer_string(char* DEBUG_BUFFER_STRINGS, int index);
 

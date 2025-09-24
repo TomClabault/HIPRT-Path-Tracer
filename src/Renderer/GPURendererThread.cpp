@@ -254,64 +254,7 @@ void GPURendererThread::render()
 	// Making sure kernels are compiled
 	ThreadManager::join_threads(ThreadManager::COMPILE_KERNELS_THREAD_KEY);
 
-	if (m_debug_trace_kernel.has_been_compiled())
-		render_debug_kernel();
-	else
-		render_path_tracing();
-}
-
-void GPURendererThread::render_debug_kernel()
-{
-	m_frame_rendered = false;
-
-	GPUKernelCompilerOptions compiler_options_copy = m_renderer->m_global_compiler_options->deep_copy();
-	// Copying the render data here to avoid race concurrency issues with
-	// the asynchronous ImGui UI which may also modifiy the render data
-	HIPRTRenderData render_data_copy = m_renderer->get_render_data();
-
-	// Updating the previous and current camera
-	render_data_copy.current_camera = m_renderer->m_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
-	render_data_copy.prev_camera = m_renderer->m_previous_frame_camera.to_hiprt(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
-
-	launch_debug_kernel(render_data_copy);
-
-	// Recording GPU frame time stop timestamp and computing the frame time
-	struct CallbackPayload
-	{
-		bool* frame_rendered;
-		bool* currently_rendering;
-		std::condition_variable* render_completed_condition_variable;
-	};
-
-	CallbackPayload* payload = new CallbackPayload;
-	payload->currently_rendering = &m_currently_rendering;
-	payload->frame_rendered = &m_frame_rendered;
-	payload->render_completed_condition_variable = &m_render_completed_condition_variable;
-
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), [](void* payload) 
-	{
-		CallbackPayload* payload_struct = reinterpret_cast<CallbackPayload*>(payload);
-		*payload_struct->frame_rendered = true;
-		*payload_struct->currently_rendering = false;
-		payload_struct->render_completed_condition_variable->notify_all();
-
-		delete payload_struct;
-	}, payload));
-
-	post_sample_update(render_data_copy, compiler_options_copy);
-}
-
-GPUKernel& GPURendererThread::get_debug_trace_kernel()
-{
-	return m_debug_trace_kernel;
-}
-
-void GPURendererThread::launch_debug_kernel(HIPRTRenderData& render_data)
-{
-	void* launch_args[] = { &render_data, &m_renderer->m_render_resolution };
-
-	m_renderer->get_render_data().random_number = m_renderer->m_rng.xorshift32();
-	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+	render_path_tracing();
 }
 
 void GPURendererThread::render_path_tracing()

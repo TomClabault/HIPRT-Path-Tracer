@@ -68,16 +68,15 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
-// - Remove debug kernel unused feature
-// - Crash in scenes with 0 emissive triangles
 // - remove restir di spatial reuse spatial_settings.do_visibility_only_last_pass and neighbor_visibility_count;
 // - remove the RNG parameter from bsdf_dispatcher_eval
 // - Cleanup the light distribution sampling / Pdf functions in a separate file
-// 
 // - Now that we have a triangle_index to mesh_index buffer, can we simplify some code somewhere?
+// 
 // - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
 //		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead
 // - To have a good cell distribution at least for the primary hits (we can probably drop the secondary hits), what about using a screen space mask built with that "good cache placement" paper? That mask could then be used and fetched by the hash function to know whether or not we should subdivide the cell or something
+// - Estimate variance in world space and allocate more neighbor resampling in difficult places: ADDR / EARS?
 // - Let's add a feature to precompute cell distributions over triangles instead of meshes
 // - Should we use the standard canonical samples to defensively cover light distribution bias or should we stick to MIS during grid fill? Canonical samples are probably much higher quality no?
 // - Try hardcoding a lot of constants instead of using RenderData to see if it helps with register & perf
@@ -100,6 +99,7 @@ extern ImGuiLogger g_imgui_logger;
 // - What about sampling directly from the grid cell light distributions instead of going through ReGIR? Would it be worth it? We could do RIS at shading time on multiple samples of the light distribution
 // - We may need to blur spatially the light distributions to avoid the fireflies in the city many lights scene for example
 // - Mesh integration seems very good for low triangle count meshes? Maybe we should automatically use that for low triangle meshes and keep the approximation for higher triangle count meshes
+// - How to estimate where visibility is difficult in the scene to use visibility in the target function there but no elsewhere where it's not needed? MARS paper maybe?
 // - We should allow jittering of canonical samples but jitter in the tangent plane of the surface to avoid the big variane increase which actually comes from the missed jittered position rather than the jittering of canonical samples themselves
 // - Can we do something to allow more jitter somehow without to big of a loss in variance? Jittering is nice for quality, removes correlations
 // - There's probably a way to learn visibility in a more precise way than NEE++ for our light cell distributions no ?
@@ -1191,9 +1191,7 @@ void RenderWindow::render()
 			render_settings.wants_render_low_resolution = is_interacting();
 			bool samples_per_frame_auto_mode = m_application_settings->auto_sample_per_frame;
 			bool current_or_last_frame_low_res = render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution();
-			bool using_debug_kernel = m_renderer->is_using_debug_kernel();
-			if ((samples_per_frame_auto_mode && current_or_last_frame_low_res && render_settings.accumulate)
-				|| using_debug_kernel)
+			if (samples_per_frame_auto_mode && current_or_last_frame_low_res && render_settings.accumulate)
 				// Only one sample when low resolution rendering.
 				// 
 				// Also, we only want to apply this if we're accumulating. If we're not accumulating, 

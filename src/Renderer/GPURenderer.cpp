@@ -29,7 +29,6 @@ const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZ
 
 const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY = "FullFrameTime";
 const std::string GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY = "FullFrameTimeWithCPU";
-const std::string GPURenderer::DEBUG_KERNEL_TIME_KEY = "DebugKernelTime";
 
 GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings)
 {
@@ -676,26 +675,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kerne
 	return kernels;
 }
 
-void GPURenderer::set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options)
-{
-	if (kernel_name == "")
-		// Clearing the debug kernel
-		m_render_thread.get_debug_trace_kernel() = GPUKernel();
-	else
-	{
-		m_render_thread.get_debug_trace_kernel() = GPUKernel(DEVICE_KERNELS_DIRECTORY "/" + kernel_name + ".h", kernel_name);
-
-		// Setting all the custom options
-		m_render_thread.get_debug_trace_kernel().get_kernel_options() = options;
-		m_render_thread.get_debug_trace_kernel().compile(m_hiprt_orochi_ctx);
-	}
-}
-
-bool GPURenderer::is_using_debug_kernel()
-{
-	return m_render_thread.get_debug_trace_kernel().has_been_compiled();
-}
-
 std::string GPURenderer::read_debug_buffer_string(char* DEBUG_BUFFER_STRINGS, int index)
 {
 	std::vector<char> debug_string_CPU = OrochiBuffer<char>::download_data(DEBUG_BUFFER_STRINGS, 1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
@@ -712,13 +691,6 @@ void GPURenderer::compute_render_pass_times()
 {
 	// Registering the render times of all the kernels by iterating over all the kernels
 	m_render_thread.get_render_graph().compute_render_times();
-
-	if (m_render_thread.get_debug_trace_kernel().has_been_compiled())
-		// If the debug kernel is being used... read its execution time
-		// Note that we check for 'has_been_compiled()' because if the debug kernel isn't in use,
-		// then the kernel (m_render_thread.get_debug_trace_kernel()) is empty, and if it's empty, then it hasn't
-		// been compiled yet
-		m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY] = m_render_thread.get_debug_trace_kernel().compute_execution_time();
 
 	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = m_render_thread.get_render_graph().get_full_frame_time();
 }
@@ -740,10 +712,6 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 	m_render_thread.get_render_graph().update_perf_metrics(perf_metrics);
 
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
-
-	if (m_render_thread.get_debug_trace_kernel().has_been_compiled())
-		// Adding the time for the debug kernel if it is in use
-		perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 }
 
 void GPURenderer::reset(bool reset_by_camera_movement)
