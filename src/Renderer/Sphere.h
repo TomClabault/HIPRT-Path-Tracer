@@ -6,7 +6,7 @@
 #ifndef SPHERE_H
 #define SPHERE_H
 
-#include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/HitInfo.h"
 #include <hiprt/hiprt_types.h> // for hiprtRay
 
 struct Sphere

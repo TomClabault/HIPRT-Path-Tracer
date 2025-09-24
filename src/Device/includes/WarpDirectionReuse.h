@@ -9,7 +9,7 @@
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 
-#include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/HitInfo.h"
 
 /**
  * Experimental implementation of [Generate Coherent Rays Directly, Liu et al., 2024]

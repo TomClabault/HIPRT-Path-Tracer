@@ -7,9 +7,9 @@
 #define DEVICE_KERNELS_REGIR_SPATIAL_REUSE_H
  
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/TriangleSampling.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
-#include "Device/includes/ReSTIR/ReGIR/LightUtils.h"
+#include "Device/includes/TriangleLoadUtils.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -97,7 +97,7 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
 
-            ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
+            ColorRGB32F emission = triangle_load_emission(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
             float3 light_source_normal;
             float light_source_area;
             float3 point_on_light = reconstruct_sample_point_on_light(render_data, neighbor_reservoir.sample, light_source_normal, light_source_area);
@@ -132,7 +132,7 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
 
     if (output_reservoir.weight_sum > 0.0f)
     {
-        ColorRGB32F emission = get_emission_of_triangle_from_index(render_data, output_reservoir.sample.emissive_triangle_global_index);
+        ColorRGB32F emission = triangle_load_emission(render_data, output_reservoir.sample.emissive_triangle_global_index);
 
         float3 light_source_normal;
         float light_source_area;

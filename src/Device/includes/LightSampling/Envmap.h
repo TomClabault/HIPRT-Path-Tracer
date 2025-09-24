@@ -12,7 +12,7 @@
 #include "Device/includes/Sampling.h"
 #include "Device/includes/Texture.h"
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 

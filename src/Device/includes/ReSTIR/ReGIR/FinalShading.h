@@ -7,7 +7,9 @@
 #define DEVICE_INCLUDE_REGIR_FINAL_SHADING_H
 
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/ReSTIR/ReGIR/ShadingAdditionalInfo.h"
+#include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 
 #include "HostDeviceCommon/RenderData.h"
 

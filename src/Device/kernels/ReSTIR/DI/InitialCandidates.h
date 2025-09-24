@@ -10,10 +10,12 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/PDFTriangles.h"
+#include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/DI/PresampledLight.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
+#include "Device/includes/TriangleLoadUtils.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Math.h"
@@ -192,7 +194,7 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, co
                 light_pdf_solid_angle = light_pdf_area_measure;
             else
             {
-                float3 light_normal = get_triangle_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
+                float3 light_normal = triangle_load_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
                 float normal_length = hippt::length(light_normal);
                 float light_area = normal_length * 0.5f;
                 light_normal /= normal_length;

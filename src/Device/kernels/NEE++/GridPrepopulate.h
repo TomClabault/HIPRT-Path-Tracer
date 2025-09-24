@@ -7,7 +7,7 @@
 #define KERNELS_NEE_PLUS_PLUS_GRID_PREPOPULATE_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/LightSampling/Lights.h"
+#include "Device/includes/LightSampling/NEEEstimators.h"
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Material.h"

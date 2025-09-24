@@ -9,7 +9,7 @@
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 

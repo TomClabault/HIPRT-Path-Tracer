@@ -8,11 +8,12 @@
 
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/LightSampling/PDFTriangles.h"
 #include "Device/includes/RIS/RIS_Reservoir.h"
 
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE ColorRGB32F evaluate_reservoir_sample(HIPRTRenderData& render_data, RayPayload& ray_payload, 

@@ -6,7 +6,7 @@
 #ifndef DEVICE_KERNELS_REGIR_LIGHT_PRESAMPLING_H
 #define DEVICE_KERNELS_REGIR_LIGHT_PRESAMPLING_H
 
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 
 #include "HostDeviceCommon/RenderData.h"
 

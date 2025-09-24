@@ -6,7 +6,7 @@
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 
-#include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/HitInfo.h"
 #include <hiprt/hiprt_types.h> // for hiprtRay
 
 struct Triangle

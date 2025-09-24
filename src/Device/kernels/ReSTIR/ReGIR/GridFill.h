@@ -8,84 +8,14 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
+#include "Device/includes/ReSTIR/ReGIR/LightDistributionsGridFill.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
-
-#define REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK -42
-
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light_distribution(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
-{
-    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
-
-    CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
-    if (cell_light_distribution.cdf_u16 == nullptr)
-    {
-        // No light distribution available for that cell. This can happen if new cells have been discovered
-        // by rays bouncing around but we haven't recomputed light distributions yet
-
-        LightSampleInformation fallback_needed;
-        fallback_needed.emissive_triangle_global_index = REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK;
-
-        return fallback_needed;
-    }
-    int index_in_distribution = cell_light_distribution.sample(rng);
-
-    unsigned int emissive_mesh_index = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_emissive_mesh_index(hash_grid_cell_index, index_in_distribution);
-    float mesh_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, index_in_distribution);
-    if (mesh_PDF == 0.0f)
-        // No valid mesh for this cell, early exit by returning
-        // an empty sample
-        return LightSampleInformation();
-
-    EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(emissive_mesh_index);
-
-    // Now that we have importance sampled a mesh, we're importance sampling a triangle
-    // on that mesh
-    float triangle_PDF;
-    int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
-
-    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
-    if (light_sample.emissive_triangle_global_index == -1)
-        // Probably a degenerate triangle
-        return LightSampleInformation();
-
-    // Area measure PDF already contains the PDF for sampling the point *on the triangle*.
-    // We need to add (multiply) the PDF of sampling the triangle itself within the sampled mesh
-    light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
-
-    sanity_check<true>(render_data, ColorRGB32F(1.0f / light_sample.area_measure_pdf), -1, -1);
-
-    return light_sample;
-}
-
-HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, const LightSampleInformation& light_sample, unsigned int mesh_index, Xorshift32Generator& rng)
-{
-    const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
-
-    CDFDeviceU16 cell_light_distribution = regir_settings.get_cell_light_distributions(hash_grid_cell_index, primary_hit);
-
-    float mesh_sampling_PDF = 0.0f;
-    // TODO absolutely need to replace that with a perfect hash table (or any fast membership data structure)
-    // for performance instead of brute forcing
-    for (int i = 0; i < cell_light_distribution.size; i++)
-    {
-        if (regir_settings.get_cell_distributions_soa(primary_hit).get_emissive_mesh_index(hash_grid_cell_index, i) == mesh_index)
-        {
-            mesh_sampling_PDF = render_data.render_settings.regir_settings.get_cell_distributions_soa(primary_hit).get_PDF(hash_grid_cell_index, i);
-
-            break;
-        }
-    }
-
-    float triangle_within_mesh_sampling_PDF = render_data.buffers.emissive_meshes_data.get_power_sampled_triangle_PDF_in_mesh(mesh_index, light_sample.light_area, light_sample.emission);
-    float point_on_triangle_PDF = 1.0f / light_sample.light_area;
-
-    return mesh_sampling_PDF * triangle_within_mesh_sampling_PDF * point_on_triangle_PDF;
-}
 
 HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRenderData& render_data, 
     unsigned int hash_grid_cell_index, int reservoir_index_in_cell, bool primary_hit,
@@ -122,7 +52,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
     Xorshift32Generator& rng)
 {
     ReGIRReservoir reservoir;
-    
+
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
     bool reservoir_is_canonical = regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell);
 
@@ -130,7 +60,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
     for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
     {
         LightSampleInformation light_sample;
-        
+
         if (reservoir_is_canonical)
             light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
         else
@@ -159,8 +89,8 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
                 ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF,
                 /* We don't need NEE++ here because it's already included in the sampling distribution of the grid cell.
                    We don't need that in RIS*/ ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation&& ReGIR_GridFillCellDistributionsUnbiasedNEEPlusPlus>(
-                    render_data, surface, primary_hit,
-                    light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
+                       render_data, surface, primary_hit,
+                       light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         }
 
         float mis_weight;
@@ -200,7 +130,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
             float target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
-            float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, mesh_index, rng);
+            float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, mesh_index);
             float mis_weight = balance_heuristic(light_sample.area_measure_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount, cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
 
             reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);

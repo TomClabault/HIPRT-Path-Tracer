@@ -14,7 +14,7 @@
 #include "Device/includes/ReSTIR/ReGIR/Representative.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
-#include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)

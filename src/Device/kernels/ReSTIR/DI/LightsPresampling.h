@@ -9,7 +9,7 @@
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
 
 #include "HostDeviceCommon/RenderData.h"

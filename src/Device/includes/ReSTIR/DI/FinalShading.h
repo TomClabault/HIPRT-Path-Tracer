@@ -6,10 +6,11 @@
 #ifndef DEVICE_RESTIR_DI_FINAL_SHADING_H
 #define DEVICE_RESTIR_DI_FINAL_SHADING_H
 
+#include "Device/includes/TriangleLoadUtils.h"
 #include "Device/includes/LightSampling/Envmap.h"
 
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
  // TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
@@ -88,7 +89,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& ren
                 area_measure_to_solid_angle_conversion = 1.0f;
             else
             {
-                float3 emissive_triangle_normal = hippt::normalize(get_triangle_normal_not_normalized(render_data, sample.emissive_triangle_global_index));
+                float3 emissive_triangle_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, sample.emissive_triangle_global_index));
                 area_measure_to_solid_angle_conversion = compute_cosine_term_at_light_source(emissive_triangle_normal, -shadow_ray_direction);
                 area_measure_to_solid_angle_conversion /= hippt::square(distance_to_light);
             }

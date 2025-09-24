@@ -8,9 +8,13 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
+#include "Device/includes/LightSampling/TriangleSampling.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/SanityCheck.h"
+#include "Device/includes/ReSTIR/ReGIR/GridFillSurface.h"
+#include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
+#include "Device/includes/TriangleLoadUtils.h"
 
 #include "HostDeviceCommon/Xorshift.h"
 
@@ -56,9 +60,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 
             LightSampleInformation light_sample;
             light_sample.area_measure_pdf = 1.0f / non_canonical_reservoir.UCW;
-            light_sample.emission = get_emission_of_triangle_from_index(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
+            light_sample.emission = triangle_load_emission(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
             light_sample.emissive_triangle_global_index = non_canonical_reservoir.sample.emissive_triangle_global_index;
-            light_sample.light_area = triangle_area(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
+            light_sample.light_area = triangle_load_area(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
             light_sample.point_on_light = reconstruct_sample_point_on_light(render_data, non_canonical_reservoir.sample.point_on_light_random_seed, non_canonical_reservoir.sample.emissive_triangle_global_index, light_sample.light_source_normal);
 
             if (light_sample.area_measure_pdf <= 0.0f)
@@ -87,9 +91,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 
             LightSampleInformation light_sample;
             light_sample.area_measure_pdf = 1.0f / canonical_reservoir.UCW;
-            light_sample.emission = get_emission_of_triangle_from_index(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
+            light_sample.emission = triangle_load_emission(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
             light_sample.emissive_triangle_global_index = canonical_reservoir.sample.emissive_triangle_global_index;
-            light_sample.light_area = triangle_area(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
+            light_sample.light_area = triangle_load_area(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
             light_sample.point_on_light = reconstruct_sample_point_on_light(render_data, canonical_reservoir.sample.point_on_light_random_seed, canonical_reservoir.sample.emissive_triangle_global_index, light_sample.light_source_normal);
 
             if (light_sample.area_measure_pdf <= 0.0f)

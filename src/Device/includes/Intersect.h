@@ -6,6 +6,7 @@
 #ifndef DEVICE_INTERSECT_H
 #define DEVICE_INTERSECT_H
 
+#include "Device/includes/BSDFSampleHitInfo.h"
 #include "Device/includes/Dispersion.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Material.h"

@@ -6,7 +6,7 @@
 #ifndef DEVICE_RESTIR_JACOBIAN_H
 #define DEVICE_RESTIR_JACOBIAN_H
 
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
 
 #include "HostDeviceCommon/RenderData.h"
 

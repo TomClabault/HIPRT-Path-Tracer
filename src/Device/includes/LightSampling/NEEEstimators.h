@@ -3,21 +3,23 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_LIGHTS_H
-#define DEVICE_LIGHTS_H
+#ifndef DEVICE_NEE_ESTIMATORS_H
+#define DEVICE_NEE_ESTIMATORS_H
 
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/HitInfo.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/DI/FinalShading.h"
 #include "Device/includes/ReSTIR/ReGIR/FinalShading.h"
 #include "Device/includes/RIS/RIS.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
-#include "HostDeviceCommon/HitInfo.h"
+
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
@@ -225,41 +227,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
     return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
-HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
-{
-    ColorRGB32F direct_light_contribution;
-
-    // Any of these light sampling strategy support sampling multiple lights
-    // per each shading point, effectively "amortizing" camera and bounce rays
-    for (int i = 0; i < DirectLightSamplingNEESampleCount; i++)
-    {
-#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && DirectLightSamplingStrategy != LSS_BSDF
-        // ReGIR has its own special path to optimize things a bit.
-        // 
-        // Also, BSDF sampling only can be handled by the usual path because then
-        // ReGIR isn't used
-        direct_light_contribution += sample_one_light_ReGIR(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-
-#else // Not ReGIR
-
-#if DirectLightSamplingStrategy == LSS_ONE_LIGHT
-        direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightSamplingStrategy == LSS_BSDF
-        direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightSamplingStrategy == LSS_MIS_LIGHT_BSDF
-        direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
-        direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#endif
-
-#endif // #if ReGIR
-    }
-
-    return direct_light_contribution / DirectLightSamplingNEESampleCount;
-}
-
-HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
-    const float3& view_direction, 
+HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info,
+    const float3& view_direction,
     Xorshift32Generator& random_number_generator, int2 pixel_coords)
 {
     // ReSTIR DI doesn't support explicitely looping to sample
@@ -291,6 +260,39 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data
     }
 
     return direct_light_contribution;
+}
+
+HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+{
+    ColorRGB32F direct_light_contribution;
+
+    // Any of these light sampling strategy support sampling multiple lights
+    // per each shading point, effectively "amortizing" camera and bounce rays
+    for (int i = 0; i < DirectLightSamplingNEESampleCount; i++)
+    {
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && DirectLightSamplingStrategy != LSS_BSDF
+        // ReGIR has its own special path to optimize things a bit.
+        // 
+        // Also, BSDF sampling only can be handled by the usual path because then
+        // ReGIR isn't used
+        direct_light_contribution += sample_one_light_ReGIR(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+
+#else // Not ReGIR
+
+#if DirectLightSamplingStrategy == LSS_ONE_LIGHT
+        direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_BSDF
+        direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_MIS_LIGHT_BSDF
+        direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
+        direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#endif
+
+#endif // #if ReGIR
+    }
+
+    return direct_light_contribution / DirectLightSamplingNEESampleCount;
 }
 
 /**

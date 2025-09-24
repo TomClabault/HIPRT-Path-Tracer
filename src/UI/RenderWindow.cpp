@@ -68,7 +68,6 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
-// - Cleanup the light distribution sampling / Pdf functions in a separate file
 // - Now that we have a triangle_index to mesh_index buffer, can we simplify some code somewhere?
 // 
 // - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.

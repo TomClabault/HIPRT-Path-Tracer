@@ -10,6 +10,7 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/RayPayload.h"
+#include "Device/includes/ReSTIR/ReGIR/Representative.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"

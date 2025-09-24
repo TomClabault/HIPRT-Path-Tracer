@@ -10,7 +10,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/ReSTIR/SpatialMISWeight.h"
 #include "Device/includes/ReSTIR/SpatiotemporalMISWeight.h"
 #include "Device/includes/ReSTIR/SpatiotemporalNormalizationWeight.h"
@@ -23,7 +23,7 @@
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
  /** References:

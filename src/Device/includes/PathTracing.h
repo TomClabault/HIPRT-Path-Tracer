@@ -9,7 +9,7 @@
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightUtils.h"
+#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/RussianRoulette.h"
 #include "Device/includes/WarpDirectionReuse.h"
 
