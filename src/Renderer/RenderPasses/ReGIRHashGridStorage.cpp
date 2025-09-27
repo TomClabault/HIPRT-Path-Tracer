@@ -91,7 +91,9 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 	if ((grid_not_allocated || grid_res_changed) && render_data.render_settings.regir_settings.use_per_cell_light_distributions)
 	{
-		get_cell_light_distributions(primary_hit).resize(get_total_number_of_cells(primary_hit), regir_settings.light_distribution_maximum_size, m_regir_render_pass->get_renderer()->get_emissive_mesh_count());
+		// Cell light distribution allocations are done on the fly when the light distributions are computed, not here
+		// (that's why we're resizing with a dummy size of 1).
+		get_cell_light_distributions(primary_hit).resize(1, regir_settings.light_distribution_maximum_size, m_regir_render_pass->get_renderer()->get_emissive_mesh_count());
 
 		updated = true;
 	}
@@ -416,7 +418,13 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 	render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_primary_hits = get_non_canonical_factors(true).get_atomic_device_pointer();
 	render_data.render_settings.regir_settings.canonical_pre_integration_factors_primary_hits = get_canonical_factors(true).get_atomic_device_pointer();
 
-	if (render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+	if (render_data.render_settings.regir_settings.use_per_cell_light_distributions && get_cell_light_distributions(true).get_byte_size() > 0)
+		// Checking that the cell light distributions buffer are allocated before setting the device pointers.
+		// 
+		// It may happen that the buffers are not allocated if update_render_data is called before the light distributions
+		// have been computed by a call to launch_async(). That's light distributions are computed and allocated and device
+		// pointers are set when the light distributions are actually computed in lauch_async(). This process isn't
+		// done ahead of time in pre_render_update() like the rest of the buffers so we may get here with unallocated buffers.
 		render_data.render_settings.regir_settings.cells_light_distributions_primary_hits = get_cell_light_distributions(true).to_device(render_data);
 
 
@@ -435,20 +443,8 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 		render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
 		
-		if (render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+		if (render_data.render_settings.regir_settings.use_per_cell_light_distributions && get_cell_light_distributions(false).get_byte_size() > 0)
 			render_data.render_settings.regir_settings.cells_light_distributions_secondary_hits = get_cell_light_distributions(false).to_device(render_data);
-	}
-}
-
-void ReGIRHashGridStorage::update_light_distributions_buffer_pointers(HIPRTRenderData& render_data)
-{
-	if (render_data.render_settings.regir_settings.use_per_cell_light_distributions)
-		render_data.render_settings.regir_settings.cells_light_distributions_primary_hits = get_cell_light_distributions(true).to_device(render_data, true);
-
-	if (render_data.render_settings.nb_bounces > 0)
-	{
-		if (render_data.render_settings.regir_settings.use_per_cell_light_distributions)
-			render_data.render_settings.regir_settings.cells_light_distributions_secondary_hits = get_cell_light_distributions(false).to_device(render_data, true);
 	}
 }
 
