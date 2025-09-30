@@ -5,6 +5,8 @@
 
 #include "Utils/Debug.h"
 
+#include <signal.h>
+
 void Debug::debugbreak()
 {
 #if defined( _WIN32 )

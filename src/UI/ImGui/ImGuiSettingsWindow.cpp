@@ -1870,6 +1870,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		
 		if (ImGui::CollapsingHeader("Cell light distributions"))
 		{
+			ImGui::TreePush("Use per cell llight distributions");
+
 			if (ImGui::Checkbox("Use cell light distributions", &regir_settings.use_per_cell_light_distributions))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS, regir_settings.use_per_cell_light_distributions ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -2012,9 +2014,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGui::Text("VRAM saving 1st hits: %f%%", regir_render_pass->get_light_distributions_compaction_VRAM_savings(true));
 				ImGui::Text("VRAM saving 2nd hits: %f%%", regir_render_pass->get_light_distributions_compaction_VRAM_savings(false));
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				ImGui::TreePop();
-
+				ImGui::TreePop(); // VRAM saving tree
 			} // regir_settings.use_per_cell_light_distributions
+
+			ImGui::TreePop(); // Per cell light distributions tree
 		}
 
 		if (ImGui::CollapsingHeader("Grid fill pass"))
@@ -2044,9 +2047,23 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			if (ImGui::SliderInt("Light samples per reservoir", &regir_settings.grid_fill_settings_primary_hits.light_sample_count_per_cell_reservoir, 0, 32))
 				m_render_window->set_render_dirty(true);
 			if (ImGui::SliderInt("Non-canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr(), 1, 64))
+			{
+				int& non_cano_reservoir_count = *regir_settings.grid_fill_settings_primary_hits.get_non_canonical_reservoir_count_per_cell_ptr();
+
+				// Minimum of 1
+				non_cano_reservoir_count = hippt::max(1, non_cano_reservoir_count);
+
 				m_render_window->set_render_dirty(true);
+			}
 			if (ImGui::SliderInt("Canonical reservoirs per grid cell", regir_settings.grid_fill_settings_primary_hits.get_canonical_reservoir_count_per_cell_ptr(), 1, 16))
+			{
+				int& cano_reservoir_count = *regir_settings.grid_fill_settings_primary_hits.get_canonical_reservoir_count_per_cell_ptr();
+
+				// Minimum of 1
+				cano_reservoir_count = hippt::max(1, cano_reservoir_count);
+
 				m_render_window->set_render_dirty(true);
+			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 

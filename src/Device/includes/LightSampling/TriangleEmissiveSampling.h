@@ -11,6 +11,8 @@
 #include "Device/includes/ReSTIR/ReGIR/ShadingPairwiseMIS.h"
 #include "Device/includes/ReSTIR/ReGIR/Shading.h"
 
+#include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
+
  /**
  * The PDF is computed in area measure
  */

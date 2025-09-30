@@ -9,6 +9,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/LightSampling/TriangleSampling.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 

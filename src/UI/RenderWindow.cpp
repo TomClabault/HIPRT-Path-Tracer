@@ -42,6 +42,8 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
+// - Is multiple temporal buffers a good idea for reducing correlations? Such that temporal reuse has more potential candidates to choose from. We need something to avoid duplicated in the temporal buffer though.
+//		Said otherwise, it's about having multiple temporal reservoirs per pixel. RIS without duplicates? What's research on that?
 // - Sample space filtering paper: really good for diffuse. Advances in rendering IV in mega
 // - We shouldn't shoot a shadow ray in the light evaluation if the BSDF sample was chosen because this already has visibility
 // - Can we do something for restir that has a hash grid for the first hits of the rays and then for spatial reuse, each pixel looks up its cell and reuse paths from the same cell (and thus same geometry if we include the normals in the hash grid). This would basically be a more accurate version of the directional spatial reuse
@@ -70,8 +72,11 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - Now that we have a triangle_index to mesh_index buffer, can we simplify some code somewhere?
 // 
+// - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?
+// - Can we do anthitetic sampling on the light distributions sampling?
 // - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
 //		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead
+// - Find a better NEE++ pre population pass because it samples according to power and so that's bad for caching visibility, important lights are hardly going to be sampled with that
 // - To have a good cell distribution at least for the primary hits (we can probably drop the secondary hits), what about using a screen space mask built with that "good cache placement" paper? That mask could then be used and fetched by the hash function to know whether or not we should subdivide the cell or something
 // - Estimate variance in world space and allocate more neighbor resampling in difficult places: ADDR / EARS?
 // - Let's add a feature to precompute cell distributions over triangles instead of meshes
@@ -345,7 +350,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Radiance caching for feeding russian roulette
 // - Tokuyoshi (2023), Efficient Spatial Resampling Using the PDF Similarity
 //		- Not for offline?
-// - Some automatic metric to determine automatically what GMoN blend factor to use
+// - A Dynamically-Updating Hierarchical Stopping Condition for Monte Carlo Illumination
 // - software opacity micromaps
 // - Add parameters to increase the strength of specular / coat darkening
 // - sample BSDF diffuse lobe proba based on its luminance?

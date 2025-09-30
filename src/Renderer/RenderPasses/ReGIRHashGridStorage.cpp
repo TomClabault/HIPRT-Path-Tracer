@@ -83,6 +83,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 
 		get_hash_cell_data_soa(primary_hit).resize(get_total_number_of_cells(primary_hit));
 
+
 		get_non_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 		get_canonical_factors(primary_hit).resize(get_total_number_of_cells(primary_hit));
 

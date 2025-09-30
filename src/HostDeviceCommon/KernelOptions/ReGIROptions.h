@@ -79,13 +79,13 @@
  *
  * This has no effect is representative points are not being used
  */
-#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_FALSE
 
 /**
  * Takes the cosine term at the light source (i.e. the cosine term of the geometry term) into account when
  * evaluating the target function during grid fill
  */
-#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to include the BSDF in the target function used for the resampling of the initial candidates
@@ -95,7 +95,7 @@
  * 
  * This option applies to primary hits only and should generally be set to true for better sampling.
  */
-#define ReGIR_GridFillPrimaryHitsTargetFunctionBSDF KERNEL_OPTION_TRUE
+#define ReGIR_GridFillPrimaryHitsTargetFunctionBSDF KERNEL_OPTION_FALSE
 
 /**
  * Same as 'ReGIR_GridFillPrimaryHitsTargetFunctionBSDF' but only applies to secondary hits
@@ -109,7 +109,7 @@
 /**
  * Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.
  */
-#define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_TRUE
+#define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_FALSE
 
 /**
  * This option must be set to true and a grid fill + spatial reuse kernels compiled with this option set
@@ -131,7 +131,13 @@
  * Those per-cell sampling distribution will then be used during the grid fill to provide higher
  * quality initial light samples
  */
-#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_TRUE
+#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_FALSE
+
+/**
+ * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed
+ * ahead of time will be used to compute NEE
+ */
+#define ReGIR_ShadingResamplingSampleOnlyLightDistributions KERNEL_OPTION_TRUE
 
 /**
  * How many canonical samples (simple power sampling) to draw and combine with cell-light-distribution
@@ -221,12 +227,6 @@
  * too hard to trace (where shadow rays are expensive).
  */
 #define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_FALSE
-
-/**
- * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed
- * ahead of time will be used to compute NEE
- */
-#define ReGIR_ShadingResamplingSampleOnlyLightDistributions KERNEL_OPTION_TRUE
 
 /**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
