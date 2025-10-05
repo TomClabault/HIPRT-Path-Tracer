@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_H
  
+#include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "Device/includes/TriangleLoadUtils.h"
 
 /**
@@ -86,7 +87,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, co
  * The PDF field of the LightSampleInformation is only field with the probability of sampling the
  * point on the triangle. The rest of the PDF must be computed by the caller
  */
-HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, int triangle_index, Xorshift32Generator& rng)
+HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, int global_triangle_index, Xorshift32Generator& rng)
 {
     LightSampleInformation light_sample;
 
@@ -94,14 +95,14 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     float3 sampled_triangle_normal;
     float3 random_point_on_triangle;
     unsigned int point_on_light_random_seed;
-    if (!sample_point_on_generic_triangle(triangle_index, render_data.buffers.vertices_positions,
+    if (!sample_point_on_generic_triangle(global_triangle_index, render_data.buffers.vertices_positions,
         render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, point_on_light_random_seed))
         return LightSampleInformation();
 
-    light_sample.emissive_triangle_global_index = triangle_index;
+    light_sample.emissive_triangle_global_index = global_triangle_index;
     light_sample.light_source_normal = sampled_triangle_normal;
     light_sample.light_area = sampled_triangle_area;
-    light_sample.emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[triangle_index]);
+    light_sample.emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[global_triangle_index]);
     light_sample.point_on_light = random_point_on_triangle;
     light_sample.area_measure_pdf = 1.0f / light_sample.light_area;
     light_sample.sample_random_seed = point_on_light_random_seed;

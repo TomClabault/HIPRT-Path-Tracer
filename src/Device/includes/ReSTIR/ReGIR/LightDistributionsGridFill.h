@@ -8,6 +8,7 @@
 
 #define REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK -42
 
+#include "Device/includes/LightSampling/EmissiveMeshAliasTableDevice.h"
 #include "Device/includes/LightSampling/PDFTriangles.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 #include "Device/includes/TriangleLoadUtils.h"

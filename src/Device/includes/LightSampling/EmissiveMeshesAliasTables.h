@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_EMISSIVE_MESHES_ALIAS_TABLES_H
 #define DEVICE_INCLUDES_EMISSIVE_MESHES_ALIAS_TABLES_H
 
-#include "Device/includes/EmissiveMeshAliasTableDevice.h"
+#include "Device/includes/LightSampling/EmissiveMeshAliasTableDevice.h"
 #include "Device/includes/AliasTable.h"
 
 /**

@@ -1,20 +1,20 @@
-#ifndef BOUNDING_BOX_H
-#define BOUNDING_BOX_H
+#ifndef SCENE_AABB_H
+#define SCENE_AABB_H
 
 #include "HostDeviceCommon/Math.h"
 
 /**
  * Axis Aligned Bounding Box class
  */
-struct BoundingBox
+struct AABB
 {
-	BoundingBox() {}
-	BoundingBox(float3 mini, float3 maxi) : mini(mini), maxi(maxi) {}
+	AABB() {}
+	AABB(float3 mini, float3 maxi) : mini(mini), maxi(maxi) {}
 
 	/**
 	 * Extends this bounding box with the given one
 	 */
-	void extend(const BoundingBox& other)
+	void extend(const AABB& other)
 	{
 		mini = hippt::min(mini, other.mini);
 		maxi = hippt::max(maxi, other.maxi);
@@ -55,6 +55,12 @@ struct BoundingBox
 	float3 get_center() const
 	{
 		return (mini + maxi) * 0.5f;
+	}
+
+	float area() const
+	{
+		float3 extents = get_extents();
+		return 2.0f * (extents.x * extents.y + extents.y * extents.z + extents.z * extents.x);
 	}
 
 	float3 mini = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() , std::numeric_limits<float>::max() };

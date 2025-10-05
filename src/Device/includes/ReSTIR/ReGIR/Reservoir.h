@@ -6,8 +6,8 @@
 #ifndef DEVICE_KERNELS_REGIR_RESERVOIR_H
 #define DEVICE_KERNELS_REGIR_RESERVOIR_H
 
+#include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "HostDeviceCommon/Xorshift.h"
-#include "HostDeviceCommon/LightSampleInformation.h"
 #include "HostDeviceCommon/Packing.h"
 
 struct ReGIRSample

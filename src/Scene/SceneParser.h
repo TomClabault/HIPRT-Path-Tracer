@@ -13,7 +13,7 @@
 #include "HostDeviceCommon/Material/MaterialCPU.h"
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 #include "Image/Image.h"
-#include "Scene/BoundingBox.h"
+#include "Scene/AABB.h"
 #include "Scene/Camera.h"
 #include "Scene/ParsedEmissiveMeshes.h"
 #include "Renderer/Sphere.h"
@@ -101,10 +101,10 @@ struct SceneMetadata
     std::vector<int> mesh_material_indices;
 
     // AABBs of the meshes of the scene
-    std::vector<BoundingBox> mesh_bounding_boxes;
+    std::vector<AABB> mesh_bounding_boxes;
 
     // AABB of the whole scene
-    BoundingBox scene_bounding_box;
+    AABB scene_bounding_box;
 };
 
 struct Scene
@@ -157,18 +157,6 @@ struct Scene
 
     bool has_camera = false;
     Camera camera;
-
-    Sphere add_sphere(const float3& center, float radius, const CPUMaterial& material, int primitive_index)
-    {
-        int material_index = materials.size();
-
-        materials.push_back(material);
-        material_indices.push_back(material_index);
-
-        Sphere sphere(center, radius, primitive_index);
-
-        return sphere;
-    }
 
     std::vector<Triangle> get_triangles(const std::vector<int> triangle_indices_to_get)
     {

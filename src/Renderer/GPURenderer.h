@@ -17,6 +17,7 @@
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/GPURendererThread.h"
 #include "Renderer/HardwareAccelerationSupport.h"
+#include "Renderer/LightTreeBuilder.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
@@ -100,6 +101,8 @@ public:
 	void recompute_emissives_power_alias_table();
 	void free_emissives_power_alias_table();
 	bool needs_emissives_power_alias_table(unsigned int emissive_count);
+
+	void build_light_tree(const Scene& scene);
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
@@ -253,7 +256,7 @@ public:
 	 */
 	void update_one_material(CPUMaterial& material, int material_index);
 
-	const std::vector<BoundingBox>& get_mesh_bounding_boxes();
+	const std::vector<AABB>& get_mesh_bounding_boxes();
 	const std::vector<std::string>& get_mesh_names();
 	const std::vector<int>& get_mesh_material_indices();
 
@@ -462,7 +465,9 @@ private:
 	std::vector<CPUMaterial> m_current_materials;
 	// The material names are used for displaying in the ImGui editor
 	// AABB of the meshes of the scene
-	std::vector<BoundingBox> m_mesh_bounding_boxes;
+	std::vector<AABB> m_mesh_bounding_boxes;
+
+	LightTreeBuilder<OrochiBuffer> m_light_tree_builder;
 
 	// Options used for compiling the render passes of this renderer.
 	// 
@@ -513,7 +518,6 @@ private:
 
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
-
 
 	// 32x32 texture containing the precomputed parameters of the LTC
 	// fitted to approximate the SSGX sheen volumetric layer.

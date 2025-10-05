@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_BSDFS_SHEEN_LTC
 
 #include "Device/includes/BSDFs/SheenLTCFittedParameters.h"
+#include "Device/includes/ONB.h"
 #include "Device/includes/Texture.h"
 
 #include "HostDeviceCommon/Color.h"
@@ -69,17 +70,6 @@ HIPRT_DEVICE float get_phi(const float3& direction)
 		p += M_TWO_PI;
 
 	return p;
-}
-
-/**
- * Rotates 'u' by 'angle' radians around 'axis'
- */
-HIPRT_DEVICE float3 rotate_vector(const float3& vec, const float3& axis, float angle) 
-{
-	float sin_angle = sin(angle);
-	float cos_angle = cos(angle);
-
-	return vec * cos_angle + axis * hippt::dot(vec, axis) * (1.0f - cos_angle) + sin_angle * hippt::cross(axis, vec);
 }
 
 HIPRT_DEVICE float get_sheen_ltc_reflectance(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction)

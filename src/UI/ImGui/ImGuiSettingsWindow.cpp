@@ -1094,11 +1094,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGui::EndDisabled();
 
-			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- ReGIR + Cache cells (Experimental)"};
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)", "- ReGIR + Cache cells (Experimental)"};
 			const char* tooltips_base_strategy[] = {
 				"All lights are sampled uniformly.",
 
 				"Lights are sampled proportionally to their power.",
+
+				"Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]",
 
 				"Uses ReGIR to sample lights.\n\n"
 				"Highly custom implementation of [Rendering many lights with grid - based reservoirs, Boksansky, 2021]"
@@ -2270,6 +2272,18 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGuiRenderer::show_help_marker("Shortcut for enabling for enabling NEE++");
 				ImGui::TreePop();
 			}
+
+			static bool include_canonical = ReGIR_ShadingResamplingIncludeCanonicalCandidates;
+			if (ImGui::Checkbox("Do canonical candidates", &include_canonical))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_CANONICAL_CANDIDATES, include_canonical ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to include canonical candidates at all during the shading.\n\n"
+				""
+				"Disabling this is biased but useful basically only for debug purposes.");
 
 			static bool do_resampling_bsdf_mis = ReGIR_ShadingResamplingDoBSDFMIS;
 			if (ImGui::Checkbox("Do BSDF MIS during resampling", &do_resampling_bsdf_mis))

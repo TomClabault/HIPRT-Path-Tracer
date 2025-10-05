@@ -63,8 +63,11 @@ struct NEEPlusPlusDevice
 	bool m_enable_nee_plus_plus_RR_for_envmap = false;
 
 	unsigned int m_total_number_of_cells = 0;
+	/*float m_grid_cell_min_size = 0.25f;
+	float m_grid_cell_target_projected_size = 25.0f;*/
+
 	float m_grid_cell_min_size = 0.25f;
-	float m_grid_cell_target_projected_size = 25.0f;
+	float m_grid_cell_target_projected_size = 1.0f;
 
 	// After how many samples to stop updating the visibility map
 	// (because it's probably converged enough)

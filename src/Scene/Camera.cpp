@@ -75,7 +75,7 @@ void Camera::set_FOV_radians(float new_fov)
     projection_matrix = glm::perspective(new_fov, aspect, near_plane, far_plane);
 }
 
-void Camera::auto_adjust_speed(const BoundingBox& scene_bounding_box)
+void Camera::auto_adjust_speed(const AABB& scene_bounding_box)
 {
     if (scene_bounding_box.get_max_extent() > 1.0e35f)
         // Probably an empty scene, we can't adjust the camera speed based on the scene
@@ -105,7 +105,7 @@ void Camera::zoom(float offset)
  * 
  * https://stackoverflow.com/questions/12435671/quaternion-lookat-function
  */
-void Camera::look_at_object(const BoundingBox& object_bounding_box)
+void Camera::look_at_object(const AABB& object_bounding_box)
 {
     float3 object_center = object_bounding_box.get_center();
     float3 new_camera_position = object_center;

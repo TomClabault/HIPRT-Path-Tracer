@@ -7,7 +7,7 @@
 #define CAMERA_H
 
 #include "HostDeviceCommon/HIPRTCamera.h"
-#include "Scene/BoundingBox.h"
+#include "Scene/AABB.h"
 
 #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
@@ -46,7 +46,7 @@ struct Camera
     /**
      * Adjusts the speed attributes of this camera so that the camera
      */
-    void auto_adjust_speed(const BoundingBox& scene_bounding_box);
+    void auto_adjust_speed(const AABB& scene_bounding_box);
 
     void translate(glm::vec3 translation_vec);
     void translate(float3 translation_vec);
@@ -57,7 +57,7 @@ struct Camera
      */
     void zoom(float offset);
 
-    void look_at_object(const BoundingBox& object_bounding_box);
+    void look_at_object(const AABB& object_bounding_box);
 
     void rotate(glm::vec3 rotation_angles);
     void rotate(float3 rotation_angles);

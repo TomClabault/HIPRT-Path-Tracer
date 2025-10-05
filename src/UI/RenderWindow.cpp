@@ -46,6 +46,7 @@ extern ImGuiLogger g_imgui_logger;
 //		Said otherwise, it's about having multiple temporal reservoirs per pixel. RIS without duplicates? What's research on that?
 // - Sample space filtering paper: really good for diffuse. Advances in rendering IV in mega
 // - We shouldn't shoot a shadow ray in the light evaluation if the BSDF sample was chosen because this already has visibility
+// - What about replacing visibility reuse with NEE++?
 // - Can we do something for restir that has a hash grid for the first hits of the rays and then for spatial reuse, each pixel looks up its cell and reuse paths from the same cell (and thus same geometry if we include the normals in the hash grid). This would basically be a more accurate version of the directional spatial reuse
 //		- One issue that we're going to have is: for a given pixel, we can compute it hash cell but then how do we know which other reservoirs (neighbors) are in the same hash cell?
 //			- Fix that by: counting how different hash cell the primary hits create
@@ -71,8 +72,12 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Now that we have a triangle_index to mesh_index buffer, can we simplify some code somewhere?
+// - Disabling light distributions at compile time and enabling them only at runtime is buggued
+// - 1SPP NEE++ seems imperfect? We need to reset for it to olook good, just enabling NEE++ isn't enough
 // 
 // - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?
+// - Jitter spatial reuse in tangent plane
+// - We should be able to include NEE++ in the canonical candidates target function if NEE++ is clamped at > 0
 // - Can we do anthitetic sampling on the light distributions sampling?
 // - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
 //		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead

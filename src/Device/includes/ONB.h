@@ -29,6 +29,11 @@ HIPRT_DEVICE static void build_ONB(const float3& N, float3& T, float3& B)
     B = make_float3(T.y, 1.0f - N.y * N.y / (1.0f + N.z), -N.y);
 }
 
+HIPRT_DEVICE static float3 rotate_vector(float3 vector, float3 rotate_around, float theta)
+{
+    return vector * cos(theta) + hippt::cross(rotate_around, vector) * sin(theta) + rotate_around * hippt::dot(rotate_around, vector) * (1.0f - cos(theta));
+}
+
 /*
  * Rotation of the basis around the normal by 'basis_rotation' radians
  */
@@ -38,7 +43,7 @@ HIPRT_DEVICE static void build_rotated_ONB(const float3& N, float3& T, float3& B
     T = hippt::normalize(hippt::cross(up, N));
 
     // Rodrigues' rotation
-    T = T * cos(basis_rotation) + hippt::cross(N, T) * sin(basis_rotation) + N * hippt::dot(N, T) * (1.0f - cos(basis_rotation));
+    T = rotate_vector(T, N, basis_rotation);
     B = hippt::cross(N, T);
 }
 

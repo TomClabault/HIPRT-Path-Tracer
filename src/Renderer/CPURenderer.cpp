@@ -46,7 +46,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -60,8 +60,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 88
-#define DEBUG_PIXEL_Y 114
+#define DEBUG_PIXEL_X 959
+#define DEBUG_PIXEL_Y 433
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -339,6 +339,14 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 #if DirectLightSamplingBaseStrategy == LSS_BASE_POWER || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER)
     std::cout << "Building scene's power alias table" << std::endl;
     compute_emissives_power_alias_table(parsed_scene);
+#elif DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS)
+    m_light_tree_builder.build_light_tree(
+        parsed_scene.emissive_triangles_primitive_indices,
+        parsed_scene.triangles_vertex_indices,
+        parsed_scene.vertices_positions,
+        parsed_scene.material_indices,
+        parsed_scene.materials);
+    m_light_tree_builder.to_device(m_render_data);
 #endif
 }
 
@@ -700,6 +708,10 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 
 void CPURenderer::nee_plus_plus_cache_visibility_pass()
 {
+#if DirectLightUseNEEPlusPlus == KERNEL_OPTION_FALSE
+    return;
+#endif
+
     debug_render_pass([this](int x, int y) {
         NEEPlusPlus_Grid_Prepopulate(m_render_data, x, y);
     });

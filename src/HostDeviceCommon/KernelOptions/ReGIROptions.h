@@ -79,13 +79,13 @@
  *
  * This has no effect is representative points are not being used
  */
-#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_FALSE
+#define ReGIR_GridFillTargetFunctionCosineTerm KERNEL_OPTION_TRUE
 
 /**
  * Takes the cosine term at the light source (i.e. the cosine term of the geometry term) into account when
  * evaluating the target function during grid fill
  */
-#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_FALSE
+#define ReGIR_GridFillTargetFunctionCosineTermLightSource KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to include the BSDF in the target function used for the resampling of the initial candidates
@@ -95,7 +95,7 @@
  * 
  * This option applies to primary hits only and should generally be set to true for better sampling.
  */
-#define ReGIR_GridFillPrimaryHitsTargetFunctionBSDF KERNEL_OPTION_FALSE
+#define ReGIR_GridFillPrimaryHitsTargetFunctionBSDF KERNEL_OPTION_TRUE
 
 /**
  * Same as 'ReGIR_GridFillPrimaryHitsTargetFunctionBSDF' but only applies to secondary hits
@@ -109,7 +109,7 @@
 /**
  * Whether or not to estimate the visibility probability of samples with NEE++ during the grid fill.
  */
-#define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_FALSE
+#define ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation KERNEL_OPTION_TRUE
 
 /**
  * This option must be set to true and a grid fill + spatial reuse kernels compiled with this option set
@@ -192,7 +192,7 @@
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */
-#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during
@@ -209,9 +209,16 @@
 #define ReGIR_ShadingResamplingJitterCanonicalCandidates KERNEL_OPTION_TRUE
 
 /**
+ * Whether or not to include canonical candidates at all during the shading.
+ * 
+ * Setting this to false is biased but useful basically only for debug purposes
+ */
+#define ReGIR_ShadingResamplingIncludeCanonicalCandidates KERNEL_OPTION_FALSE
+
+/**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
  */
-#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
 
 /**
  * If this is true, BSDF sample rays will be traced in a BVH that contains only the lights of the scene,

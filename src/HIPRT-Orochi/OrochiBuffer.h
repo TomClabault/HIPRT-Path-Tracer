@@ -135,6 +135,8 @@ OrochiBuffer<T>::OrochiBuffer(const std::vector<T>& data)
 		return;
 
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * data.size()));
+	m_element_count = data.size();
+
 	upload_data(data);
 }
 

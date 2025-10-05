@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
 
     // Joining everyone before starting the render except the precompilation threads
     ThreadManager::join_all_threads({ ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY, ThreadManager::RENDERER_PRECOMPILE_KERNELS, ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS });
-    
+
     parsed_scene.print_statistics(std::cout);
 
     stop_full = std::chrono::high_resolution_clock::now();
@@ -85,9 +85,6 @@ int main(int argc, char* argv[])
     cpu_renderer.get_render_settings().output_debug_sample_N = cmd_arguments.render_samples - 1;
     cpu_renderer.set_envmap(envmap_image);
     cpu_renderer.set_camera(parsed_scene.camera);
-
-    for (float3& pos : parsed_scene.vertices_positions)
-        pos += make_float3(0, 0.1, 0);
 
     cpu_renderer.set_scene(parsed_scene);
     cpu_renderer.resize_buffers();

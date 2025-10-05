@@ -6,7 +6,7 @@
 #ifndef RENDERER_EMISSIVE_MESH_ALIAS_TABLE_GPU_DATA_H
 #define RENDERER_EMISSIVE_MESH_ALIAS_TABLE_GPU_DATA_H
 
-#include "Device/includes/EmissiveMeshesAliasTables.h"
+#include "Device/includes/LightSampling/EmissiveMeshesAliasTables.h"
 
 #include "Renderer/CPUGPUCommonDataStructures/AliasTableHost.h"
 

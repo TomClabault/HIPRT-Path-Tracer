@@ -157,7 +157,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 	ImGui::TreePush("Global material overrider tree");
 
 	std::vector<const char*> items = { "- None", "- Lambertian BRDF", "- Oren Nayar BRDF", "- Principled BSDF" };
-	if (ImGui::Combo("All Objects BSDF Override", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE), items.data(), items.size()))
+	if (ImGui::Combo("Global BSDF override", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE), items.data(), items.size()))
 	{
 		m_renderer->recompile_kernels();
 

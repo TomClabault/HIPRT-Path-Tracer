@@ -39,9 +39,17 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
         area_measure_pdf = 1.0f / light_area;
         area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
     }
+    else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
+    {
+        area_measure_pdf = 1.0f;
+    }
     else if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
         // Faking the ReGIR PDF with the PDF of its base sampling strategy
         area_measure_pdf = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, light_area, light_emission);
+    else
+    {
+        area_measure_pdf = 1.0f / 0.0f;
+    }
 
 
     return area_measure_pdf;

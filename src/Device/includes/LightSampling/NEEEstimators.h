@@ -383,7 +383,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, 
 
     total_direct_lighting += hit_emission * custom_ray_throughput;
 #else
-    if (ray_payload.bounce == 0)
+    if (ray_payload.bounce == 0 && compute_cosine_term_at_light_source(closest_hit_info.shading_normal, view_direction) > 0.0f)
         // If we do have emissive geometry sampling, we only want to take
         // it into account on the first bounce, otherwise we would be
         // accounting for direct light sampling twice (bounce on emissive

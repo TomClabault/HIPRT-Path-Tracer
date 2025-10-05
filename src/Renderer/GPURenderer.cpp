@@ -322,6 +322,18 @@ bool GPURenderer::needs_emissives_power_alias_table(unsigned int emissive_count)
 	return (directly_using_power || using_regir_power || restir_di_presampling_using_power_sampling) && emissive_count > 0;
 }
 
+void GPURenderer::build_light_tree(const Scene& scene)
+{
+	m_light_tree_builder.build_light_tree(
+		scene.emissive_triangles_primitive_indices,
+		scene.triangles_vertex_indices,
+		scene.vertices_positions,
+		scene.material_indices,
+		scene.materials);
+	m_light_tree_builder.to_device(m_render_data);
+	m_light_tree_builder.cleanup();
+}
+
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 {
 	return m_render_thread.get_gmon_render_pass();
@@ -932,6 +944,7 @@ void GPURenderer::set_scene(const Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
 	compute_emissives_power_alias_table(scene);
+	build_light_tree(scene);
 
 	m_original_materials = scene.materials;
 	m_current_materials = scene.materials;
@@ -1033,7 +1046,7 @@ void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
 }
 
 
-const std::vector<BoundingBox>& GPURenderer::get_mesh_bounding_boxes()
+const std::vector<AABB>& GPURenderer::get_mesh_bounding_boxes()
 {
 	return m_parsed_scene_metadata.mesh_bounding_boxes;
 }

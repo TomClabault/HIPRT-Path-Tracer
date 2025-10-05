@@ -642,6 +642,11 @@ namespace hippt
 	static unsigned int warp_2D_thread_index() { return 1; }
 
 	static void debugbreak() { Debug::debugbreak(); }
+
+	static float idx(float3 v, int index)
+	{
+		return *(&v.x + index);
+	}
 #endif
 }
 
