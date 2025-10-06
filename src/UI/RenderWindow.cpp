@@ -75,6 +75,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
 // - 1SPP NEE++ seems imperfect? We need to reset for it to olook good, just enabling NEE++ isn't enough
 // 
+// - We don't need to integrate in multiple passes for the regir pre integration, all that matters is that we have the integral value at the grid cell for the target function being used
 // - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?
 // - Jitter spatial reuse in tangent plane
 // - We should be able to include NEE++ in the canonical candidates target function if NEE++ is clamped at > 0

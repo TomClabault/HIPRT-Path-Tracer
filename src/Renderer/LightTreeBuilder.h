@@ -108,7 +108,7 @@ public:
 
 	int bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const;
 
-	float3 get_triangle_vertex(unsigned int emissive_triangle_index, unsigned int vertex_index, const BuilderTrianglesPayload& payload) const;
+	float3 get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const BuilderTrianglesPayload& payload) const;
 
 	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials);
 
@@ -143,9 +143,9 @@ int LightTreeBuilder<DataContainer>::bvh_triangle_index_to_emissive_triangle_ind
 }
 
 template <template <typename> typename DataContainer>
-float3 LightTreeBuilder<DataContainer>::get_triangle_vertex(unsigned int bvh_triangle_index, unsigned int vertex_index, const BuilderTrianglesPayload& payload) const
+float3 LightTreeBuilder<DataContainer>::get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const BuilderTrianglesPayload& payload) const
 {
-	int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(bvh_triangle_index);
+	int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(linear_emissive_triangle_index);
 	return payload.vertices_positions[payload.triangle_vertex_indices[payload.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + vertex_index]];
 }
 
@@ -187,8 +187,8 @@ template <template <typename> typename DataContainer>
 void LightTreeBuilder<DataContainer>::update_node_bounds(unsigned int node_index, const BuilderTrianglesPayload& triangles_payload)
 {
 	LightTreeNode& node = m_nodes[node_index];
-	node.node_bounds.mini = float3(1e30f);
-	node.node_bounds.maxi = float3(-1e30f);
+	node.node_bounds.mini = float3(1e30f, 1e30f, 1e30f);
+	node.node_bounds.maxi = float3(-1e30f, -1e30f, -1e30f);
 
 	for (unsigned int first = node.first_triangle_index, i = 0; i < node.triangle_count; i++)
 	{

@@ -367,6 +367,8 @@ namespace hippt
 	}
 
 	__device__ void debugbreak() { }
+	
+	__device__ float idx(float3 v, int index) { return *(&v.x + index); }
 
 #else
 #undef M_PI
@@ -643,10 +645,7 @@ namespace hippt
 
 	static void debugbreak() { Debug::debugbreak(); }
 
-	static float idx(float3 v, int index)
-	{
-		return *(&v.x + index);
-	}
+	static float idx(float3 v, int index) { return *(&v.x + index); }
 #endif
 }
 
