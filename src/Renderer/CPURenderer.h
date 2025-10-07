@@ -146,7 +146,8 @@ private:
     // to sample an emissive triangle proportional to its power within a given mesh
     EmissiveMeshesAliasTablesHost<std::vector> m_emissive_meshes_alias_tables;
     
-    LightTreeBuilder<std::vector> m_light_tree_builder;
+    LightTreeBuilder m_light_tree_builder;
+    LightTreeBuilderDeviceData<std::vector> m_light_tree_device_data;
 
     NEEPlusPlusCPUData m_nee_plus_plus;
 

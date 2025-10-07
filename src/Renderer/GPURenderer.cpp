@@ -330,7 +330,8 @@ void GPURenderer::build_light_tree(const Scene& scene)
 		scene.vertices_positions,
 		scene.material_indices,
 		scene.materials);
-	m_light_tree_builder.to_device(m_render_data);
+	m_light_tree_device_data = m_light_tree_builder.compute_device_data<OrochiBuffer>();
+	m_light_tree_builder.to_device(m_render_data, m_light_tree_device_data);
 	m_light_tree_builder.cleanup();
 }
 

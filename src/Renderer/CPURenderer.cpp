@@ -346,7 +346,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
         parsed_scene.vertices_positions,
         parsed_scene.material_indices,
         parsed_scene.materials);
-    m_light_tree_builder.to_device(m_render_data);
+    m_light_tree_device_data = m_light_tree_builder.compute_device_data<std::vector>();
+    m_light_tree_builder.to_device(m_render_data, m_light_tree_device_data);
+    m_light_tree_builder.cleanup();
 #endif
 }
 

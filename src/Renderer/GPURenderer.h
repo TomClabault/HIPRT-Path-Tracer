@@ -467,7 +467,8 @@ private:
 	// AABB of the meshes of the scene
 	std::vector<AABB> m_mesh_bounding_boxes;
 
-	LightTreeBuilder<OrochiBuffer> m_light_tree_builder;
+	LightTreeBuilder m_light_tree_builder;
+	LightTreeBuilderDeviceData<OrochiBuffer> m_light_tree_device_data;
 
 	// Options used for compiling the render passes of this renderer.
 	// 
