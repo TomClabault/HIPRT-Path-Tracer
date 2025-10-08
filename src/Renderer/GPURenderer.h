@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef GPU_RENDERER_H
-#define GPU_RENDERER_H
+#ifndef RENDERER_GPU_RENDERER_H
+#define RENDERER_GPU_RENDERER_H
 
 #include "Compiler/GPUKernel.h"
 #include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
@@ -18,7 +18,9 @@
 #include "Renderer/GPURendererThread.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/LightTreeBuilder.h"
+#include "Renderer/LightTreeSamplingDataStructure.h"
 #include "Renderer/OpenImageDenoiser.h"
+#include "Renderer/PowerSamplingDataStructure.h"
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
@@ -87,22 +89,11 @@ public:
 	 */
 	void load_GGX_glass_energy_compensation_textures(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
-	/**
-	 * Computes the alias table for sampling emissive triangles according to power
-	 */
-	void compute_emissives_power_alias_table(const Scene& scene);
-	/**
-	 * Overload for computing the alias table at runtime.
-	 * This will read the data from the GPU and is thus slower than the overload with the 'scene' parameter
-	 * 
-	 * This function is mainly used because at runtime, we don't have the scene data anymore since it's been freed
-	 * from the CPU to save on RAM
-	 */
-	void recompute_emissives_power_alias_table();
-	void free_emissives_power_alias_table();
-	bool needs_emissives_power_alias_table(unsigned int emissive_count);
+	void compute_emissives_sampling_data_structure_from_scene(const Scene& scene);
+	void recompute_emissives_sampling_data_structure();
 
-	void build_light_tree(const Scene& scene);
+	LightTreeBuilderOptions& get_light_tree_build_options();
+	LightTreeSamplingDataStructure& get_light_tree_sampling_data_structure();
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
@@ -362,20 +353,6 @@ private:
 	void update_render_data();
 
 	/**
-	 * Private function that does the actual alias table recomputation
-	 */
-	void compute_emissives_power_alias_table(
-		const std::vector<int>& emissive_triangle_indices,
-		const std::vector<float3>& vertices_positions,
-		const std::vector<int>& triangles_indices,
-		const std::vector<int>& material_indices,
-		const std::vector<CPUMaterial>& materials,
-
-		OrochiBuffer<float>& alias_table_probas_buffer,
-		OrochiBuffer<int>& alias_table_alias_buffer,
-		AliasTableDevice& power_alias_table);
-
-	/**
 	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
 	 */
 	bool needs_global_bvh_stack_buffer();
@@ -467,9 +444,6 @@ private:
 	// AABB of the meshes of the scene
 	std::vector<AABB> m_mesh_bounding_boxes;
 
-	LightTreeBuilder m_light_tree_builder;
-	LightTreeBuilderDeviceData<OrochiBuffer> m_light_tree_device_data;
-
 	// Options used for compiling the render passes of this renderer.
 	// 
 	// Most of the options in there are shared with all the passes. For example,
@@ -519,6 +493,8 @@ private:
 
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
+	PowerSamplingDataStructure m_power_sampling_data_structure;
+	LightTreeSamplingDataStructure m_light_tree_sampling_data_structure;
 
 	// 32x32 texture containing the precomputed parameters of the LTC
 	// fitted to approximate the SSGX sheen volumetric layer.

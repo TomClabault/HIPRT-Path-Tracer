@@ -45,6 +45,8 @@ private:
 
 	void draw_sampling_panel();
 	void draw_ReGIR_settings_panel();
+	void draw_light_tree_ATS_settings_panel();
+
 	template <bool IsReSTIRGI>
 	void draw_ReSTIR_neighbor_heuristics_panel();
 	template<bool IsReSTIRGI>

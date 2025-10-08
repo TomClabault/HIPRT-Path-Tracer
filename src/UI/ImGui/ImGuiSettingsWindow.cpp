@@ -1109,7 +1109,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 			{
 				// Will recompute the alias table if necessary
-				m_renderer->recompute_emissives_power_alias_table();
+				m_renderer->recompute_emissives_sampling_data_structure();
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1141,8 +1141,18 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY))
+			{
+			case LSS_BASE_REGIR:	
 				draw_ReGIR_settings_panel();
+
+				break;
+
+			case LSS_BASE_LIGHT_TREE_ATS:
+				draw_light_tree_ATS_settings_panel();
+
+				break;
+			}
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)
@@ -1271,7 +1281,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 								if (ImGuiRenderer::ComboWithTooltips("Presampling light strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 								{
 									// Will recompute the alias table if necessary
-									m_renderer->recompute_emissives_power_alias_table();
+									m_renderer->recompute_emissives_sampling_data_structure();
 
 									m_renderer->recompile_kernels();
 									m_render_window->set_render_dirty(true);
@@ -1861,7 +1871,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 		{
 			// Will recompute the alias table if necessary
-			m_renderer->recompute_emissives_power_alias_table();
+			m_renderer->recompute_emissives_sampling_data_structure();
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
@@ -2608,8 +2618,60 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePop();
 		}
 
-		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	LightTreeBuilderOptions& build_options = m_renderer->get_light_tree_build_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("Light tree ATS settings"))
+	{
+		ImGui::TreePush("Light tree ATS settings tree");
+
+		std::vector<const char*> build_mode_items = { "- Midpoint", "- Binned SAH" };
+		if (ImGui::Combo("Build split function", &build_options.build_split_method, build_mode_items.data(), build_mode_items.size()))
+		{
+			m_renderer->recompute_emissives_sampling_data_structure();
+
+			m_render_window->set_render_dirty(true);
+		}
+
+		switch (build_options.build_split_method)
+		{
+		case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
+		{
+			static int current_bin_count = build_options.bin_count;
+			ImGui::SliderInt("Bin count", &current_bin_count, 2, 96);
+
+			if (current_bin_count != build_options.bin_count)
+			{
+				ImGui::TreePush("Apply button light tree bin count");
+
+				if (ImGui::Button("Apply"))
+				{
+					current_bin_count = hippt::clamp(2, 2000000000, current_bin_count);
+					build_options.bin_count = current_bin_count;
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+
+			break;
+		}
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
 	}
 }
 

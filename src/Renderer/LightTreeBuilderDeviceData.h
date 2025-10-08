@@ -13,6 +13,23 @@
 template <template <typename> typename DataContainer>
 struct LightTreeBuilderDeviceData
 {
+	void free()
+	{
+		if (m_device_nodes_buffer.size() == 0)
+			return;
+
+		if constexpr (std::is_same_v<std::vector<int>, DataContainer<int>>)
+		{
+			m_device_nodes_buffer = std::vector<LightTreeNodeDevice>();
+			m_device_indices_array_buffer = std::vector<int>();
+		}
+		else
+		{
+			m_device_nodes_buffer.free();
+			m_device_indices_array_buffer.free();
+		}
+	}
+
 	std::vector<LightTreeNodeDevice> nodes_device;
 
 	DataContainer<LightTreeNodeDevice> m_device_nodes_buffer;

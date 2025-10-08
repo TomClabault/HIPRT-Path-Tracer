@@ -10,6 +10,7 @@
 #include "HostDeviceCommon/Material/MaterialCPU.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/LightTreeBuilderDeviceData.h"
+#include "Renderer/LightTreeBuilderOptions.h"
 #include "Scene/AABB.h"
 
 class LightTreeBuilder
@@ -36,7 +37,7 @@ public:
 			if (theta_o_b > theta_o_a)
 				std::swap(theta_o_a, theta_o_b);
 
-			float theta_d = acos(hippt::dot(axis_a, axis_b));
+			float theta_d = acos(hippt::clamp(-1.0f, 1.0f, hippt::dot(axis_a, axis_b)));
 			float theta_e = hippt::max(theta_e_a, theta_e_b);
 
 			if (hippt::min(theta_d + theta_o_b, (float)M_PI) <= theta_o_a)
@@ -93,9 +94,15 @@ public:
 		unsigned int first_triangle_index, triangle_count;
 	};
 
-	struct BuilderTrianglesPayload
+	struct Bin
 	{
-		BuilderTrianglesPayload(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_vertex_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
+		AABB bounds;
+		unsigned int tri_count = 0;
+	};
+
+	struct BuilderTrianglesData
+	{
+		BuilderTrianglesData(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_vertex_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 			: emissive_triangles_primitive_indices(emissive_triangles_primitive_indices)
 			, triangle_vertex_indices(triangle_vertex_indices)
 			, vertices_positions(vertices_positions)
@@ -111,15 +118,15 @@ public:
 
 	int bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const;
 
-	float3 get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const BuilderTrianglesPayload& payload) const;
+	float3 get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const BuilderTrianglesData& triangles_data) const;
 
 	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials);
 
-	void update_node_bounds(unsigned int node_index, const BuilderTrianglesPayload& triangles_payload);
-	void subdivide_node(unsigned int node_index, const BuilderTrianglesPayload& triangles_payload);
-	float compute_split_position(const LightTreeNode& node, int& out_split_axis, float& out_split_position, const BuilderTrianglesPayload& triangles_payload);
+	void update_node_bounds(unsigned int node_index, const BuilderTrianglesData& triangles_data);
+	void subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data);
+	float compute_split_position(const LightTreeNode& node, int& out_split_axis, float& out_split_position, const BuilderTrianglesData& triangles_data);
 	float compute_node_cost(const LightTreeNode& node);
-	float compute_sah_cost(const LightTreeNode& node, int axis_index, float split_position, const BuilderTrianglesPayload& triangles_payload);
+	float compute_sah_cost(const LightTreeNode& node, int axis_index, float split_position, const BuilderTrianglesData& triangles_data);
 	int partition_node_primitives(unsigned int node_index, int axis, float split_position);
 
 	template <template <typename> typename DataContainer>
@@ -133,7 +140,11 @@ public:
 	 */
 	void cleanup();
 
+	LightTreeBuilderOptions& get_options();
+
 private:
+	LightTreeBuilderOptions m_build_options;
+
 	unsigned int m_current_node_index = 0;
 	std::vector<LightTreeNode> m_nodes;
 

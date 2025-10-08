@@ -92,7 +92,7 @@ HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, f
 #if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE
 	float cos_theta_prime = hippt::abs(cos(theta_prime));
 #else
-	float cos_theta_prime = hippt::max(0.0f, cos(theta_prime));
+	float cos_theta_prime = hippt::max(0.0f, cosf(theta_prime));
 #endif
 	
 	return hippt::abs(cos(theta_i_prime)) * node.total_power.luminance() / distance_to_center_2 * cos_theta_prime;
@@ -133,7 +133,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 		}
 	}
 
-	int triangle_index = render_data.buffers.light_tree.indices_array[current_node.first_triangle_index + rng.random_index(current_node.triangle_count)];
+	int index = current_node.first_triangle_index + rng.random_index(current_node.triangle_count);
+	int triangle_index = render_data.buffers.light_tree.indices_array[index];
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);

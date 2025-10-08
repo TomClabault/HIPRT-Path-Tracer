@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     renderer->set_scene(parsed_scene);
 
     // Joining everyone before starting the render except the precompilation threads
-    ThreadManager::join_all_threads({ ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY, ThreadManager::RENDERER_PRECOMPILE_KERNELS, ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS });
+    ThreadManager::join_all_threads();
 
     parsed_scene.print_statistics(std::cout);
 

@@ -51,14 +51,6 @@ public:
 	ReSTIRDIRenderPass() {}
 	ReSTIRDIRenderPass(GPURenderer* renderer);
 
-	/**
-	 * Precompiles all kernels of this render pass to fill to shader cache in advance.
-	 * 
-	 * Kernels will be compiled with their *current* options but with the options contained
-	 * in 'partial_options' overriding the corresponding options of the kernels
-	 */
-	void precompile_kernels(GPUKernelCompilerOptions partial_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
-
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;	

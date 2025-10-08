@@ -42,10 +42,6 @@ public:
 	static std::string COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY;
 	static std::string COMPILE_NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_KERNEL_KEY;
 	static std::string COMPILE_KERNELS_THREAD_KEY;
-	// Key for the thread that will ** launch ** the threads that will precompile kernels
-	// in the background (needed because ** launching ** the precompilation itself takes quite a
-	// bit of time so we're doing that on a thread with this key
-	static std::string GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY;
 
 	static std::string RENDER_WINDOW_CONSTRUCTOR;
 	static std::string RENDER_WINDOW_RENDERER_INITIAL_RESIZE;
@@ -57,9 +53,7 @@ public:
 	static std::string RENDERER_UPLOAD_EMISSIVE_TRIANGLES;
 	static std::string RENDERER_UPLOAD_TRIANGLE_AREAS;
 	static std::string RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE;
-
-	static std::string RENDERER_PRECOMPILE_KERNELS;
-	static std::string RESTIR_DI_PRECOMPILE_KERNELS;
+	static std::string RENDERER_COMPUTE_LIGHT_TREE;
 
 	static std::string SCENE_TEXTURES_LOADING_THREAD_KEY;
 	static std::string SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES;
