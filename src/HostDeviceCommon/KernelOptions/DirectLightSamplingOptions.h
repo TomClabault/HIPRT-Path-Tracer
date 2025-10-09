@@ -30,6 +30,15 @@
 #endif
 #endif
 
+/**
+ * If the length of the normal is less than that, the triangle is going to be rejected
+ * from light sampling.
+ *
+ * This is to avoid having NaN troubles with degenerate triangles (that have no surface mostly
+ * and so a normal of length 0)
+ */
+#define TriangleSamplingNormalLengthRejectionThreshold 1.0e-9f
+
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option

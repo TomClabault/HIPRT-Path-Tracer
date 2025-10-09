@@ -8,6 +8,7 @@
  
 #include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "Device/includes/TriangleLoadUtils.h"
+#include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
 /**
  * Reference: [A Low-Distortion Map Between Triangle and Square, Heitz, 2019]
@@ -62,7 +63,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, co
     float3 normal = hippt::cross(AB, AC);
 
     float length_normal = hippt::length(normal);
-    if (length_normal <= 1.0e-6f)
+    if (length_normal <= TriangleSamplingNormalLengthRejectionThreshold)
         return false;
 
     float3 random_point_on_triangle = vertex_A + AB * u + AC * v;

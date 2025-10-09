@@ -129,20 +129,29 @@ void ImGuiSettingsWindow::draw_header()
 			ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
 
 			// Adding some information on what noise threshold is being used
-			std::string text = "Current noise threshold is: ";
+			std::string text = "Noise threshold: ";
 			if (render_settings.enable_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
 			{
 				if (render_settings.stop_pixel_noise_threshold > render_settings.adaptive_sampling_noise_threshold)
+				{
 					// If the pixel noise threshold is stronger, then the displayed convergence counter
 					// is going to be according to the stop noise threshold so that's what we're adding in the tooltip
 					// there
-					text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
+					text += std::format("{:.3f}", render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)\n";
+					text += "Pixel proportion: " + std::format("{:.3f}", render_settings.stop_pixel_percentage_converged) + "%%";
+				}
 				else
 					text += std::to_string(render_settings.adaptive_sampling_noise_threshold) + " (adaptive sampling)";
 			}
 			else if (render_settings.stop_pixel_noise_threshold > 0.0f)
-				text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
-			ImGuiRenderer::show_help_marker(text);
+			{
+				text += std::format("{:.3f}", render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)\n";
+				text += "Pixel proportion: " + std::format("{:.3f}", render_settings.stop_pixel_percentage_converged) + "%%";
+			}
+
+			ImGui::TreePush("Convergence info tree");
+			ImGui::Text(text.c_str());
+			ImGui::TreePop();
 		}
 		else
 		{
@@ -2634,7 +2643,7 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 	{
 		ImGui::TreePush("Light tree ATS settings tree");
 
-		std::vector<const char*> build_mode_items = { "- Midpoint", "- Binned SAH" };
+		std::vector<const char*> build_mode_items = { "- Midpoint", "- Binned + cost function" };
 		if (ImGui::Combo("Build split function", &build_options.build_split_method, build_mode_items.data(), build_mode_items.size()))
 		{
 			m_renderer->recompute_emissives_sampling_data_structure();
@@ -2646,6 +2655,8 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 		{
 		case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
 		{
+			ImGui::TreePush("Bin count tree");
+
 			static int current_bin_count = build_options.bin_count;
 			ImGui::SliderInt("Bin count", &current_bin_count, 2, 96);
 
@@ -2666,8 +2677,38 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 				ImGui::TreePop();
 			}
 
+			std::vector<const char*> cost_function_items = { "- SAH", "- SAOH" };
+			if (ImGui::Combo("Cost function", &build_options.cost_function, cost_function_items.data(), cost_function_items.size()))
+			{
+				m_renderer->recompute_emissives_sampling_data_structure();
+
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
+
 			break;
 		}
+		}
+
+		static int previous_triangles_per_leaf = build_options.max_triangles_per_leaf;
+		ImGui::SliderInt("Max triangles per leaf", &previous_triangles_per_leaf, 1, 32);
+
+		if (previous_triangles_per_leaf != build_options.max_triangles_per_leaf)
+		{
+			ImGui::TreePush("Apply button triangles per leaf light tree");
+
+			if (ImGui::Button("Apply"))
+			{
+				previous_triangles_per_leaf = hippt::clamp(1, 2000000000, previous_triangles_per_leaf);
+				build_options.max_triangles_per_leaf = previous_triangles_per_leaf;
+
+				m_renderer->recompute_emissives_sampling_data_structure();
+
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

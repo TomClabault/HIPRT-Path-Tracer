@@ -16,35 +16,40 @@
 class LightTreeBuilder
 {
 public:
-	struct LightTreeNode
+	struct LightTreeNodeOrientationData
 	{
 		static constexpr float UNINITIALIZED_AXIS = -42.0f;
 
-		static void cones_union(
-			float3 axis_a, float theta_o_a, float theta_e_a,
-			float3 axis_b, float theta_o_b, float theta_e_b,
-			float3& axis_out, float& theta_o_out, float& theta_e_out)
+		void cone_union_with(float3 axis_b, float theta_o_b, float theta_e_b)
 		{
-			if (axis_a.x == LightTreeNode::UNINITIALIZED_AXIS)
+			float3 axis_a = this->axis;
+			float theta_o_a = this->theta_o;
+			float theta_e_a = this->theta_e;
+
+			if (axis_a.x == UNINITIALIZED_AXIS)
 			{
-				axis_out = axis_b;
-				theta_o_out = theta_o_b;
-				theta_e_out = theta_e_b;
+				this->axis = axis_b;
+				this->theta_o = theta_o_b;
+				this->theta_e = theta_e_b;
 
 				return;
 			}
 
 			if (theta_o_b > theta_o_a)
+			{
 				std::swap(theta_o_a, theta_o_b);
+				std::swap(axis_a, axis_b);
+				std::swap(theta_e_a, theta_e_b);
+			}
 
 			float theta_d = acos(hippt::clamp(-1.0f, 1.0f, hippt::dot(axis_a, axis_b)));
 			float theta_e = hippt::max(theta_e_a, theta_e_b);
 
 			if (hippt::min(theta_d + theta_o_b, (float)M_PI) <= theta_o_a)
 			{
-				axis_out = axis_a;
-				theta_o_out = theta_o_a;
-				theta_e_out = theta_e;
+				this->axis = axis_a;
+				this->theta_o = theta_o_a;
+				this->theta_e = theta_e;
 
 				return;
 			}
@@ -53,9 +58,9 @@ public:
 				float theta_o = (theta_o_a + theta_d + theta_o_b) / 2.0f;
 				if (M_PI <= theta_o)
 				{
-					axis_out = axis_a;
-					theta_o_out = M_PI;
-					theta_e_out = theta_e;
+					this->axis = axis_a;
+					this->theta_o = M_PI;
+					this->theta_e = theta_e;
 
 					return;
 				}
@@ -63,30 +68,37 @@ public:
 				float theta_r = theta_o - theta_o_a;
 				float3 axis = rotate_vector(axis_a, hippt::cross(axis_a, axis_b), theta_r);
 
-
-				axis_out = axis;
-				theta_o_out = M_PI;
-				theta_e_out = theta_e;
+				this->axis = axis;
+				this->theta_o = theta_o;
+				this->theta_e = theta_e;
 
 				return;
 			}
 		}
 
-		void cones_union(float3 other_axis, float other_theta_o, float other_theta_e)
+		void cone_union_with(const LightTreeNodeOrientationData& other)
 		{
-			cones_union(
-				axis, theta_o, theta_e, 
-				other_axis, other_theta_o, other_theta_e,
-				axis, theta_o, theta_e);
+			cone_union_with(other.axis, other.theta_o, other.theta_e);
 		}
 
 		// Axis of the cluster
 		float3 axis = make_float3(UNINITIALIZED_AXIS, UNINITIALIZED_AXIS, UNINITIALIZED_AXIS);
 		// Normal bounds
-		float theta_o;
+		float theta_o = 0.0f;
 		// Emission extents
-		float theta_e;
-		// Total emissive powxer of the node
+		float theta_e = 0.0f;
+	};
+
+	struct LightTreeNode
+	{
+		void cone_union_with(float3 other_axis, float other_theta_o, float other_theta_e)
+		{
+			orientation_data.cone_union_with(other_axis, other_theta_o, other_theta_e);
+		}
+
+		LightTreeNodeOrientationData orientation_data;
+
+		// Total emissive power of the node
 		ColorRGB32F total_power;
 
 		AABB node_bounds;
@@ -98,6 +110,20 @@ public:
 	{
 		AABB bounds;
 		unsigned int tri_count = 0;
+
+		// For SAOH
+		LightTreeNodeOrientationData orientation_data;
+		ColorRGB32F total_power;
+	};
+
+	struct BinCostInfo
+	{
+		float area = 0.0f;
+		unsigned int tri_count = 0;
+
+		// Needed for SAOH
+		float energy = 0.0f;
+		float m_omega = 0.0f;
 	};
 
 	struct BuilderTrianglesData
@@ -124,6 +150,7 @@ public:
 
 	void update_node_bounds(unsigned int node_index, const BuilderTrianglesData& triangles_data);
 	void subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data);
+	float compute_saoh_m_omega(const LightTreeNodeOrientationData& orientation_data) const;
 	float compute_split_position(const LightTreeNode& node, int& out_split_axis, float& out_split_position, const BuilderTrianglesData& triangles_data);
 	float compute_node_cost(const LightTreeNode& node);
 	float compute_sah_cost(const LightTreeNode& node, int axis_index, float split_position, const BuilderTrianglesData& triangles_data);
@@ -163,9 +190,9 @@ LightTreeBuilderDeviceData<DataContainer> LightTreeBuilder::compute_device_data(
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
-		device_data_out.nodes_device[i].axis = m_nodes[i].axis;
-		device_data_out.nodes_device[i].theta_o = m_nodes[i].theta_o;
-		device_data_out.nodes_device[i].theta_e = m_nodes[i].theta_e;
+		device_data_out.nodes_device[i].axis = m_nodes[i].orientation_data.axis;
+		device_data_out.nodes_device[i].theta_o = m_nodes[i].orientation_data.theta_o;
+		device_data_out.nodes_device[i].theta_e = m_nodes[i].orientation_data.theta_e;
 		device_data_out.nodes_device[i].total_power = m_nodes[i].total_power;
 
 		device_data_out.nodes_device[i].bounds_min = m_nodes[i].node_bounds.mini;

@@ -20,6 +20,7 @@ float3 LightTreeBuilder::get_triangle_vertex(unsigned int linear_emissive_triang
 
 void LightTreeBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_vertex_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 {
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building light tree...");
 	auto start = std::chrono::high_resolution_clock::now();
 
 	BuilderTrianglesData triangles_data(emissive_triangles_primitive_indices, triangle_vertex_indices, vertices_positions, material_indices, materials);
@@ -28,12 +29,6 @@ void LightTreeBuilder::build_light_tree(const std::vector<int>& emissive_triangl
 	m_centroids.resize(emissive_triangles_primitive_indices.size());
 	m_triangle_indices.resize(emissive_triangles_primitive_indices.size());
 	std::iota(m_triangle_indices.begin(), m_triangle_indices.end(), 0);
-
-	/*m_bins_temp_buffer.resize(m_build_options.bin_count);
-	m_left_area_bins_temp_buffer.resize(m_build_options.bin_count);
-	m_right_area_bins_temp_buffer.resize(m_build_options.bin_count);
-	m_tri_count_left_bins_temp_buffer.resize(m_build_options.bin_count); 
-	m_tri_count_right_bins_temp_buffer.resize(m_build_options.bin_count);*/
 
 	for (int i = 0; i < emissive_triangles_primitive_indices.size(); i++)
 	{
@@ -70,6 +65,13 @@ void LightTreeBuilder::update_node_bounds(unsigned int node_index, const Builder
 		float3 v1 = get_triangle_vertex(first + i, 1, triangles_data);
 		float3 v2 = get_triangle_vertex(first + i, 2, triangles_data);
 
+		float3 triangle_normal = hippt::cross(v1 - v0, v2 - v0);
+		float normal_length = hippt::length(triangle_normal);
+		if (normal_length < TriangleSamplingNormalLengthRejectionThreshold)
+			continue;
+		float triangle_area = normal_length * 0.5f;
+		triangle_normal /= normal_length;
+
 		node.node_bounds.extend(v0);
 		node.node_bounds.extend(v1);
 		node.node_bounds.extend(v2);
@@ -77,26 +79,32 @@ void LightTreeBuilder::update_node_bounds(unsigned int node_index, const Builder
 		int index = bvh_triangle_index_to_emissive_triangle_index(first + i);
 		const CPUMaterial& mat = triangles_data.materials[triangles_data.material_indices[triangles_data.emissive_triangles_primitive_indices[index]]];
 
-		float3 triangle_normal = hippt::cross(v1 - v0, v2 - v0);
-		float triangle_area = hippt::length(triangle_normal) * 0.5f;
-		triangle_normal /= triangle_area * 2.0f;
-
-		node.total_power += mat.emission * mat.emission_strength * triangle_area;
-		node.cones_union(triangle_normal, 0.0f, (float)M_PI / 2.0f);
+		node.total_power += mat.get_total_emission() * triangle_area;
+		node.cone_union_with(triangle_normal, 0.0f, (float)M_PI / 2.0f);
 	}
 }
 
 void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data)
 {
 	LightTreeNode& node = m_nodes[node_index];
+	if (node.triangle_count <= m_build_options.max_triangles_per_leaf)
+		return;
 
 	int split_axis;
 	float split_position;
 	float split_cost = compute_split_position(node, split_axis, split_position, triangles_data);
 
-	float no_split_cost = compute_node_cost(node);
-	if (split_cost >= no_split_cost)
-		return;
+	if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAH)
+	{
+		float no_split_cost = compute_node_cost(node);
+		if (split_cost >= no_split_cost)
+			return;
+	}
+	else if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAOH)
+	{
+		if (node.triangle_count <= 1)
+			return;
+	}
 
 	int right_node_start = partition_node_primitives(node_index, split_axis, split_position);
 	int left_count = right_node_start - node.first_triangle_index;
@@ -123,6 +131,14 @@ void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTria
 
 	subdivide_node(left_child_index, triangles_data);
 	subdivide_node(right_child_index, triangles_data);
+}
+
+float LightTreeBuilder::compute_saoh_m_omega(const LightTreeNodeOrientationData& orientation_data) const
+{
+	float sin_theta_o = sinf(orientation_data.theta_o);
+	float cos_theta_o = cosf(orientation_data.theta_o);// sqrtf(1.0f - hippt::square(sin_theta_o));
+	float theta_w = hippt::min(orientation_data.theta_o + orientation_data.theta_e, static_cast<float>(M_PI));
+	return 2.0f * M_PI * (1.0f - cos_theta_o) + M_PI * 0.5f * (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) - 2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
 }
 
 float LightTreeBuilder::compute_split_position(const LightTreeNode& node, int& out_split_axis, float& out_split_position, const BuilderTrianglesData& triangles_data)
@@ -161,71 +177,117 @@ float LightTreeBuilder::compute_split_position(const LightTreeNode& node, int& o
 			prims_bounds.extend(v2);
 		}
 
+		// For SAOH
+		float3 bounds_extents = prims_bounds.get_extents();
+		float longest_bounds_axis = hippt::max(bounds_extents.x, hippt::max(bounds_extents.y, bounds_extents.z));
+		float node_m_omega = compute_saoh_m_omega(node.orientation_data);
+
 		for (int axis_index = 0; axis_index < 3; axis_index++)
 		{
 			if (hippt::idx(prims_bounds.maxi, axis_index) == hippt::idx(prims_bounds.mini, axis_index))
 				continue;
 
 			std::vector<Bin> m_bins_temp_buffer(m_build_options.bin_count);
-			std::vector<float> m_left_area_bins_temp_buffer(m_build_options.bin_count, 0.0f);
-			std::vector<float> m_right_area_bins_temp_buffer(m_build_options.bin_count, 0.0f);
-			std::vector<int> m_tri_count_left_bins_temp_buffer(m_build_options.bin_count, 0);
-			std::vector<int> m_tri_count_right_bins_temp_buffer(m_build_options.bin_count, 0);
+			std::vector<BinCostInfo> m_left_bins_info(m_build_options.bin_count);
+			std::vector<BinCostInfo> m_right_bins_info(m_build_options.bin_count);
 
 			// Computing the bounds of the bins
 			// TODO bin 3 axis at the same time
 			float scale = m_build_options.bin_count / hippt::idx(prims_bounds.maxi - prims_bounds.mini, axis_index);
 			for (unsigned int first = node.first_triangle_index, i = 0; i < node.triangle_count; i++)
 			{
-				float3 centroid = m_centroids[bvh_triangle_index_to_emissive_triangle_index(first + i)];
-				int bin_index_no_clamp = (int)((hippt::idx(centroid, axis_index) - hippt::idx(prims_bounds.mini, axis_index)) * scale);
-				int bin_index = hippt::clamp(0, m_build_options.bin_count - 1, bin_index_no_clamp);
-
 				float3 v0 = get_triangle_vertex(first + i, 0, triangles_data);
 				float3 v1 = get_triangle_vertex(first + i, 1, triangles_data);
 				float3 v2 = get_triangle_vertex(first + i, 2, triangles_data);
+
+				float3 triangle_normal = hippt::cross(v1 - v0, v2 - v0);
+				float normal_length = hippt::length(triangle_normal);
+				if (normal_length < TriangleSamplingNormalLengthRejectionThreshold)
+					continue;
+				float triangle_area = normal_length * 0.5f;
+				triangle_normal /= normal_length;
+
+				int index = bvh_triangle_index_to_emissive_triangle_index(first + i);
+				float3 centroid = m_centroids[index];
+				int bin_index_no_clamp = (int)((hippt::idx(centroid, axis_index) - hippt::idx(prims_bounds.mini, axis_index)) * scale);
+				int bin_index = hippt::clamp(0, m_build_options.bin_count - 1, bin_index_no_clamp);
 
 				m_bins_temp_buffer[bin_index].bounds.extend(v0);
 				m_bins_temp_buffer[bin_index].bounds.extend(v1);
 				m_bins_temp_buffer[bin_index].bounds.extend(v2);
 				m_bins_temp_buffer[bin_index].tri_count++;
+
+				const CPUMaterial& mat = triangles_data.materials[triangles_data.material_indices[triangles_data.emissive_triangles_primitive_indices[index]]];
+
+				m_bins_temp_buffer[bin_index].total_power += mat.get_total_emission() * triangle_area;
+				m_bins_temp_buffer[bin_index].orientation_data.cone_union_with(triangle_normal, 0.0f, static_cast<float>(M_PI) / 2.0f);
 			}
 
 			AABB left_box, right_box;
+			LightTreeNodeOrientationData left_orientation_data, right_orientation_data;
+			ColorRGB32F left_energy, right_energy;
 			int left_tri_count_sum = 0, right_tri_count_sum = 0;
 			for (int i = 0; i < m_build_options.bin_count - 1; i++)
 			{
 				left_tri_count_sum += m_bins_temp_buffer[i].tri_count;
 				left_box.extend(m_bins_temp_buffer[i].bounds);
+				left_energy += m_bins_temp_buffer[i].total_power;
+				left_orientation_data.cone_union_with(m_bins_temp_buffer[i].orientation_data);
 
-				m_tri_count_left_bins_temp_buffer[i] = left_tri_count_sum;
-				m_left_area_bins_temp_buffer[i] = left_box.area();
+				m_left_bins_info[i].tri_count = left_tri_count_sum;
+				m_left_bins_info[i].area = left_box.area();
+				m_left_bins_info[i].energy = left_energy.luminance();
+				m_left_bins_info[i].m_omega = compute_saoh_m_omega(left_orientation_data);
 
 
 
 				right_tri_count_sum += m_bins_temp_buffer[m_build_options.bin_count - 1 - i].tri_count;
 				right_box.extend(m_bins_temp_buffer[m_build_options.bin_count - 1 - i].bounds);
+				right_energy += m_bins_temp_buffer[m_build_options.bin_count - 1 - i].total_power;
+				right_orientation_data.cone_union_with(m_bins_temp_buffer[m_build_options.bin_count - 1 - i].orientation_data);
 
-				m_tri_count_right_bins_temp_buffer[m_build_options.bin_count - 2 - i] = right_tri_count_sum;
-				m_right_area_bins_temp_buffer[m_build_options.bin_count - 2 - i] = right_box.area();
+				m_right_bins_info[m_build_options.bin_count - 2 - i].tri_count = right_tri_count_sum;
+				m_right_bins_info[m_build_options.bin_count - 2 - i].area = right_box.area();
+				m_right_bins_info[m_build_options.bin_count - 2 - i].energy = right_energy.luminance();
+				m_right_bins_info[m_build_options.bin_count - 2 - i].m_omega = compute_saoh_m_omega(right_orientation_data);
 			}
 
 
 			float scale_sah = hippt::idx(prims_bounds.maxi - prims_bounds.mini, axis_index) / m_build_options.bin_count;
 			for (int split_plane_index = 0; split_plane_index < m_build_options.bin_count; split_plane_index++)
 			{
-				if (m_tri_count_left_bins_temp_buffer[split_plane_index] == 0 || m_tri_count_right_bins_temp_buffer[split_plane_index] == 0)
+				if (m_left_bins_info[split_plane_index].tri_count == 0 || m_right_bins_info[split_plane_index].tri_count == 0)
 					continue;
 
 				float candidate_split_position = hippt::idx(prims_bounds.mini, axis_index) + (split_plane_index + 1) * scale_sah;
-				float sah_cost = m_tri_count_left_bins_temp_buffer[split_plane_index] * m_left_area_bins_temp_buffer[split_plane_index] + 
-								 m_tri_count_right_bins_temp_buffer[split_plane_index] * m_right_area_bins_temp_buffer[split_plane_index];
-				//float sah_cost = compute_sah_cost(node, axis_index, candidate_split_position, triangles_data);
-				if (sah_cost < best_cost)
+
+				float cost = 1.0e30f;
+				if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAOH)
+				{
+					cost = 0.0f;
+					
+					// Numerator
+					cost += m_left_bins_info[split_plane_index].area * m_left_bins_info[split_plane_index].energy * m_left_bins_info[split_plane_index].m_omega;
+					cost += m_right_bins_info[split_plane_index].area * m_right_bins_info[split_plane_index].energy * m_right_bins_info[split_plane_index].m_omega;
+
+					// Denominator
+					cost /= prims_bounds.area() * node_m_omega;
+
+					// Kr
+					float Kr = longest_bounds_axis / hippt::idx(bounds_extents, axis_index);
+					cost *= Kr;
+				}
+				else if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAH)
+				{
+					cost = m_left_bins_info[split_plane_index].tri_count * m_left_bins_info[split_plane_index].area +
+						   m_right_bins_info[split_plane_index].tri_count * m_right_bins_info[split_plane_index].area;
+				}
+
+				if (cost < best_cost)
 				{
 					best_axis = axis_index;
 					best_position = candidate_split_position;
-					best_cost = sah_cost;
+					best_cost = cost;
 				}
 			}
 		}
@@ -307,13 +369,6 @@ void LightTreeBuilder::cleanup()
 	m_nodes = std::vector<LightTreeNode>();
 	m_centroids = std::vector<float3>();
 	m_triangle_indices = std::vector<int>();
-
-	/*m_bins_temp_buffer = std::vector<Bin>();
-
-	m_left_area_bins_temp_buffer = std::vector<float>();
-	m_right_area_bins_temp_buffer = std::vector<float>();
-	m_tri_count_left_bins_temp_buffer = std::vector<int>();
-	m_tri_count_right_bins_temp_buffer = std::vector<int>();*/
 }
 
 LightTreeBuilderOptions& LightTreeBuilder::get_options()

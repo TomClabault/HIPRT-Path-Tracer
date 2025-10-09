@@ -141,6 +141,11 @@ struct CPUMaterial
         return mat;
     }
 
+    HIPRT_HOST_DEVICE ColorRGB32F get_total_emission() const
+    {
+        return emission * emission_strength * global_emissive_factor;
+    }
+
     HIPRT_HOST_DEVICE bool is_emissive() const
     {
         return !hippt::is_zero(emission.r)
