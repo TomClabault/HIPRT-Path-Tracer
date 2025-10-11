@@ -115,7 +115,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 	while (current_node.triangle_count == 0)
 	{
 		LightTreeNodeDevice left_child = nodes[current_node.left_child_index];
-		LightTreeNodeDevice right_child = nodes[current_node.left_child_index + 1];
+		LightTreeNodeDevice right_child = nodes[current_node.right_child_index];
 
 		float left_importance = light_tree_node_importance(left_child, shading_point, surface_normal);
 		float right_importance = light_tree_node_importance(right_child, shading_point, surface_normal);
@@ -164,7 +164,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree(const HIPRTRenderData& re
 	while (current_node.triangle_count == 0)
 	{
 		LightTreeNodeDevice left_child = nodes[current_node.left_child_index];
-		LightTreeNodeDevice right_child = nodes[current_node.left_child_index + 1];
+		LightTreeNodeDevice right_child = nodes[current_node.right_child_index];
 
 		float left_importance = light_tree_node_importance(left_child, shading_point, surface_normal);
 		float right_importance = light_tree_node_importance(right_child, shading_point, surface_normal);

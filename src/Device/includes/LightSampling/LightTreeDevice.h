@@ -29,6 +29,7 @@ struct LightTreeNodeDevice
 	float3 bounds_max;
 
 	unsigned int left_child_index;
+	unsigned int right_child_index;
 	unsigned int first_triangle_index, triangle_count;
 };
 

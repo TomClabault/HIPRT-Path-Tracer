@@ -5,6 +5,7 @@
 
 #include "Renderer/LightTreeBuilder.h"
 
+#include <future>
 #include <numeric>
 
 int LightTreeBuilder::bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const
@@ -25,12 +26,11 @@ void LightTreeBuilder::build_light_tree(const std::vector<int>& emissive_triangl
 
 	BuilderTrianglesData triangles_data(emissive_triangles_primitive_indices, triangle_vertex_indices, vertices_positions, material_indices, materials);
 
+	m_current_node_index = std::make_shared<std::atomic<unsigned int>>(0);
+
 	m_nodes.resize(emissive_triangles_primitive_indices.size() * 2 - 1);
 	m_triangle_indices.resize(emissive_triangles_primitive_indices.size());
 	m_bit_trails.resize(emissive_triangles_primitive_indices.size(), 0u);
-	m_bins_temp_buffer.resize(m_build_options.bin_count);
-	m_left_bins_info_temp_buffer.resize(m_build_options.bin_count);
-	m_right_bins_info_temp_buffer.resize(m_build_options.bin_count);
 	std::iota(m_triangle_indices.begin(), m_triangle_indices.end(), 0);
 
 	m_prefetched_triangles.resize(emissive_triangles_primitive_indices.size());
@@ -60,15 +60,15 @@ void LightTreeBuilder::build_light_tree(const std::vector<int>& emissive_triangl
 		m_prefetched_triangles[i].power = mat.get_total_emission() * triangle_area;
 	}
 
-	m_current_node_index = 0;
+	m_current_node_index->store(0);
 
-	LightTreeNode& root = m_nodes[m_current_node_index];
+	LightTreeNode& root = m_nodes[*m_current_node_index];
 	root.left_child_index = 0;
 	root.first_triangle_index = 0;
 	root.triangle_count = (unsigned int)emissive_triangles_primitive_indices.size();
 
-	update_node_bounds(m_current_node_index, triangles_data);
-	subdivide_node(m_current_node_index++, triangles_data, 0);
+	update_node_bounds(*m_current_node_index, triangles_data);
+	subdivide_node((*m_current_node_index)++, triangles_data, 0);
 
 	auto stop = std::chrono::high_resolution_clock::now();
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light tree construction time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
@@ -139,8 +139,8 @@ void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTria
 		return;
 	}
 
-	int left_child_index = m_current_node_index++;
-	int right_child_index = m_current_node_index++;
+	int left_child_index = (*m_current_node_index)++;
+	int right_child_index = (*m_current_node_index)++;
 
 	LightTreeNode& left_child = m_nodes[left_child_index];
 	left_child.first_triangle_index = node.first_triangle_index;
@@ -154,13 +154,31 @@ void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTria
 	right_child.bit_trail |= 1 << depth;
 
 	node.left_child_index = left_child_index;
+	node.right_child_index = right_child_index;
 	node.triangle_count = 0;
 
 	update_node_bounds(left_child_index, triangles_data);
 	update_node_bounds(right_child_index, triangles_data);
 
-	subdivide_node(left_child_index, triangles_data, depth + 1);
-	subdivide_node(right_child_index, triangles_data, depth + 1);
+	// Only parallelize near the top of the tree to avoid blowing up the thread count
+	if (depth < 6)
+	{
+		auto left_future = std::async(std::launch::async, [&]() {
+			subdivide_node(left_child_index, triangles_data, depth + 1);
+		});
+
+		// run right subtree in current thread
+		subdivide_node(right_child_index, triangles_data, depth + 1);
+
+		// wait for left subtree
+		left_future.get();
+	}
+	else
+	{
+		// sequential recursion deeper down
+		subdivide_node(left_child_index, triangles_data, depth + 1);
+		subdivide_node(right_child_index, triangles_data, depth + 1);
+	}
 }
 
 float LightTreeBuilder::compute_saoh_m_omega(const LightTreeNodeOrientationData& orientation_data) const
@@ -213,9 +231,13 @@ float LightTreeBuilder::compute_split_position(const LightTreeNode& node, int& o
 			if (hippt::idx(prims_bounds.maxi, axis_index) == hippt::idx(prims_bounds.mini, axis_index))
 				continue;
 
-			std::fill(m_bins_temp_buffer.begin(), m_bins_temp_buffer.end(), Bin());
+			std::vector<Bin> m_bins_temp_buffer(m_build_options.bin_count);
+			std::vector<BinCostInfo> m_left_bins_info_temp_buffer(m_build_options.bin_count);
+			std::vector<BinCostInfo> m_right_bins_info_temp_buffer(m_build_options.bin_count);
+
+			/*std::fill(m_bins_temp_buffer.begin(), m_bins_temp_buffer.end(), Bin());
 			std::fill(m_left_bins_info_temp_buffer.begin(), m_left_bins_info_temp_buffer.end(), BinCostInfo());
-			std::fill(m_right_bins_info_temp_buffer.begin(), m_right_bins_info_temp_buffer.end(), BinCostInfo());
+			std::fill(m_right_bins_info_temp_buffer.begin(), m_right_bins_info_temp_buffer.end(), BinCostInfo());*/
 
 			// Computing the bounds of the bins
 			// TODO bin 3 axis at the same time
@@ -389,6 +411,7 @@ void LightTreeBuilder::cleanup()
 	m_nodes = std::vector<LightTreeNode>();
 	m_prefetched_triangles = std::vector<PrefetchedTriangle>();
 	m_triangle_indices = std::vector<int>();
+	m_bit_trails = std::vector<unsigned int>();
 }
 
 LightTreeBuilderOptions& LightTreeBuilder::get_options()

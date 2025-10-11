@@ -42,6 +42,7 @@ public:
 
 		AABB node_bounds;
 		unsigned int left_child_index;
+		unsigned int right_child_index;
 		unsigned int first_triangle_index, triangle_count;
 		unsigned int bit_trail = 0;
 	};
@@ -113,14 +114,10 @@ public:
 private:
 	LightTreeBuilderOptions m_build_options;
 
-	unsigned int m_current_node_index = 0;
+	std::shared_ptr<std::atomic<unsigned int>> m_current_node_index = 0;
 	std::vector<LightTreeNode> m_nodes;
 
 	std::vector<PrefetchedTriangle> m_prefetched_triangles;
-	std::vector<Bin> m_bins_temp_buffer;
-	std::vector<BinCostInfo> m_left_bins_info_temp_buffer;
-	std::vector<BinCostInfo> m_right_bins_info_temp_buffer;
-
 	std::vector<int> m_triangle_indices; // Indices of the emissive triangles from 0 to N - 1
 	std::vector<unsigned int> m_bit_trails; // Indices of the emissive triangles from 0 to N - 1
 };
@@ -144,6 +141,7 @@ LightTreeBuilderDeviceData<DataContainer> LightTreeBuilder::compute_device_data(
 		device_data_out.nodes_device[i].bounds_min = m_nodes[i].node_bounds.mini;
 		device_data_out.nodes_device[i].bounds_max = m_nodes[i].node_bounds.maxi;
 		device_data_out.nodes_device[i].left_child_index = m_nodes[i].left_child_index;
+		device_data_out.nodes_device[i].right_child_index = m_nodes[i].right_child_index;
 		device_data_out.nodes_device[i].first_triangle_index = m_nodes[i].first_triangle_index;
 		device_data_out.nodes_device[i].triangle_count = m_nodes[i].triangle_count;
 	}

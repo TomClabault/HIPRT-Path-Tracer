@@ -82,7 +82,7 @@
 // If you were only rendering the precise pixel at the given debug coordinates, you
 // wouldn't be able to debug correctly since all the neighborhood wouldn't have been
 // rendered which means no reservoir which means improper rendering
-#define DEBUG_RENDER_NEIGHBORHOOD 0
+#define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
 #define DEBUG_NEIGHBORHOOD_SIZE 150
