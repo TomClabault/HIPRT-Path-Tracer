@@ -17,6 +17,17 @@
 class LightTreeBuilder
 {
 public:
+	struct PrefetchedTriangle
+	{
+		AABB bounds;
+
+		float3 centroid;
+		float3 normal;
+		float area;
+
+		ColorRGB32F power;
+	};
+
 	struct LightTreeNode
 	{
 		void cone_union_with(float3 other_axis, float other_theta_o, float other_theta_e)
@@ -105,7 +116,11 @@ private:
 	unsigned int m_current_node_index = 0;
 	std::vector<LightTreeNode> m_nodes;
 
-	std::vector<float3> m_centroids;
+	std::vector<PrefetchedTriangle> m_prefetched_triangles;
+	std::vector<Bin> m_bins_temp_buffer;
+	std::vector<BinCostInfo> m_left_bins_info_temp_buffer;
+	std::vector<BinCostInfo> m_right_bins_info_temp_buffer;
+
 	std::vector<int> m_triangle_indices; // Indices of the emissive triangles from 0 to N - 1
 	std::vector<unsigned int> m_bit_trails; // Indices of the emissive triangles from 0 to N - 1
 };
