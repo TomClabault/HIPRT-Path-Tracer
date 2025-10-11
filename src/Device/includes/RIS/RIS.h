@@ -207,7 +207,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
                 ColorRGB32F light_contribution = bsdf_color * shadow_light_ray_hit_info.hit_emission * cosine_at_evaluated_point;
                 target_function = light_contribution.luminance();
 
-                float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
+                float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, shadow_light_ray_hit_info, sampled_bsdf_direction);
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 

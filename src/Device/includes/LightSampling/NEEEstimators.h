@@ -204,7 +204,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
         // We're also checking if the light is backfacing maybe with compute_cosine_term()
         if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
         {
-            float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
+            float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, shadow_light_ray_hit_info, sampled_bsdf_direction);
             float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf_solid_angle);
 
             // Using abs here because we want the dot product to be positive.

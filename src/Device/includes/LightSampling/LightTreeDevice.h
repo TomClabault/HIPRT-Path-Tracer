@@ -7,9 +7,15 @@
 #define DEVICE_INCLUDES_LIGHT_TREE_DEVICE_H
 
 #include "HostDeviceCommon/Color.h"
+#include "Renderer/LightTreeConstants.h"
 
 struct LightTreeNodeDevice
 {
+	HIPRT_DEVICE bool is_invalid() const
+	{
+		return axis.x == UNINITIALIZED_AXIS;
+	}
+
 	// Axis of the cluster
 	float3 axis = make_float3(0.0f, 0.0f, 0.0f);
 	// Normal bounds
@@ -30,6 +36,7 @@ struct LightTreeDevice
 {
 	LightTreeNodeDevice* nodes = nullptr;
 	int* indices_array = nullptr;
+	unsigned int* bit_trails = nullptr;
 };
 
 #endif

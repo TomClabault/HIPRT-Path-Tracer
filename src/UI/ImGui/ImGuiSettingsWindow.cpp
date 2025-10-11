@@ -1871,11 +1871,13 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling" };
+		const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)" };
 		const char* tooltips_base_strategy[] = {
 			"All lights are sampled uniformly",
 
 			"Lights are sampled proportionally to their power",
+
+			"Lights are sampled using a light hierarchy with orientation bounds as proposed in the paper of Conty & Kulla, 2018.",
 		};
 		if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 		{

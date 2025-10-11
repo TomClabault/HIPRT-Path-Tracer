@@ -67,7 +67,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
         // BSDF PDF here is approximate because it should contain visibility but the increase in variance is fine
         bsdf_pdf_area_measure = solid_angle_to_area_pdf(bsdf_dispatcher_pdf(render_data, bsdf_context), hippt::length(light_sample.point_on_light - shading_point), compute_cosine_term_at_light_source(light_sample.light_source_normal, hippt::normalize(shading_point - light_sample.point_on_light)));
 #endif
-        float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, light_sample.light_area, light_sample.emission);
+        float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, shading_point, shading_normal, light_sample.light_area, light_sample.emission);
         float mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.shading_settings.number_of_neighbors, simple_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
 
         if (reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng))
@@ -163,7 +163,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
                 // emissive thanks to using an emissive texture
 
                 float PDF_light_distributions = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, hippt::length(triangle_load_normal_not_normalized(render_data, shadow_light_ray_hit_info.hit_prim_index)) * 0.5f, shadow_light_ray_hit_info.hit_emission, mesh_index);
-                float simple_technique_pdf = pdf_of_emissive_triangle_hit_area_measure<LSS_BASE_POWER>(render_data, shadow_light_ray_hit_info);
+                float simple_technique_pdf = pdf_of_emissive_triangle_hit_area_measure<LSS_BASE_POWER>(render_data, shading_point, shading_normal, shadow_light_ray_hit_info);
                 mis_weight = balance_heuristic(bsdf_sample_pdf_area_measure, 1, PDF_light_distributions, regir_settings.shading_settings.number_of_neighbors, simple_technique_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount);
             }
             else

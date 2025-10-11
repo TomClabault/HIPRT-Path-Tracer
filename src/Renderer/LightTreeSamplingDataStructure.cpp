@@ -18,12 +18,12 @@ void LightTreeSamplingDataStructure::compute_from_scene(const Scene& scene)
 		scene.materials);
 }
 
-void LightTreeSamplingDataStructure::compute(const std::vector<int>& emissive_triangle_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
+void LightTreeSamplingDataStructure::compute(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE, 
 		[this,
-		&emissive_triangle_indices,
+		&emissive_triangles_primitive_indices,
 		&triangles_vertex_indices,
 		&vertices_positions,
 		&material_indices,
@@ -31,7 +31,7 @@ void LightTreeSamplingDataStructure::compute(const std::vector<int>& emissive_tr
 	{
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
 
-		if (!is_needed(emissive_triangle_indices.size()))
+		if (!is_needed(emissive_triangles_primitive_indices.size()))
 		{
 			free();
 
@@ -39,13 +39,13 @@ void LightTreeSamplingDataStructure::compute(const std::vector<int>& emissive_tr
 		}
 
 		m_light_tree_builder.build_light_tree(
-			emissive_triangle_indices,
+			emissive_triangles_primitive_indices,
 			triangles_vertex_indices,
 			vertices_positions,
 			material_indices,
 			materials);
 		m_light_tree_device_data = m_light_tree_builder.compute_device_data<OrochiBuffer>();
-		m_light_tree_builder.to_device(m_renderer->get_render_data(), m_light_tree_device_data);
+		m_light_tree_builder.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices, triangles_vertex_indices.size() / 3, m_light_tree_device_data);
 		m_light_tree_builder.cleanup();
 	});
 }

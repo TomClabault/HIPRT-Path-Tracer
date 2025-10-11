@@ -311,9 +311,9 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
                     // and this is going to cause darkening as the number of light samples grows)
 
 #if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
-                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle<ReSTIR_DI_LightPresamplingStrategy>(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle<ReSTIR_DI_LightPresamplingStrategy>(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, shadow_light_ray_hit_info, bsdf_sampled_direction);
 #else
-                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, shadow_light_ray_hit_info, bsdf_sampled_direction);
+                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, closest_hit_info.shading_normal, shadow_light_ray_hit_info, bsdf_sampled_direction);
 #endif
                 }
 

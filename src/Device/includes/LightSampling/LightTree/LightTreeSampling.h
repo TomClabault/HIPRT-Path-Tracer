@@ -51,6 +51,9 @@ HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3 aabb_min
 
 HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, float3 shading_point, float3 surface_normal)
 {
+	if (node.is_invalid())
+		return 0.0f;
+
 	// If the whole node is behind the surface, quick exit
 	//
 	// Not doing it this way and relying on the bounding sphere of the node as done
@@ -142,6 +145,53 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 	light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
 
 	return light_sample;
+}
+
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree(const HIPRTRenderData& render_data, float3 shading_point, float3 surface_normal, int global_emissive_triangle_index)
+{
+	const LightTreeNodeDevice* nodes = render_data.buffers.light_tree.nodes;
+
+	LightTreeNodeDevice current_node = nodes[0];
+
+	float root_node_importance = light_tree_node_importance(current_node, shading_point, surface_normal);
+	if (root_node_importance <= 0.0f)
+		return 0.0f;
+
+	unsigned int bit_trail = render_data.buffers.light_tree.bit_trails[global_emissive_triangle_index];
+	unsigned char current_depth = 0;
+
+	float cumulative_probability = 1.0f;
+	while (current_node.triangle_count == 0)
+	{
+		LightTreeNodeDevice left_child = nodes[current_node.left_child_index];
+		LightTreeNodeDevice right_child = nodes[current_node.left_child_index + 1];
+
+		float left_importance = light_tree_node_importance(left_child, shading_point, surface_normal);
+		float right_importance = light_tree_node_importance(right_child, shading_point, surface_normal);
+		if (left_importance == 0.0f && right_importance == 0.0f)
+			return 0.0f;
+
+		float p_left = left_importance / (left_importance + right_importance);
+
+		if (!(bit_trail & (1 << current_depth)))
+		{
+			// If the bit is not set we're going to the left
+			current_node = left_child;
+
+			cumulative_probability *= p_left;
+		}
+		else
+		{
+			current_node = right_child;
+
+			cumulative_probability *= 1.0f - p_left;
+		}
+
+		current_depth++;
+	}
+
+	// Probability of going down the tree + probability of sampling that triangle in the node
+	return cumulative_probability * 1.0f / (current_node.triangle_count);
 }
 
 #endif

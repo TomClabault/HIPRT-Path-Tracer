@@ -34,6 +34,7 @@ struct LightTreeBuilderDeviceData
 
 	DataContainer<LightTreeNodeDevice> m_device_nodes_buffer;
 	DataContainer<int> m_device_indices_array_buffer;
+	DataContainer<unsigned int> m_bit_trails_buffer;
 };
 
 #endif

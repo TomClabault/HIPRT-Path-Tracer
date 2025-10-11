@@ -73,13 +73,14 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - Now that we have a triangle_index to mesh_index buffer, can we simplify some code somewhere?
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
-// - 1SPP NEE++ seems imperfect? We need to reset for it to olook good, just enabling NEE++ isn't enough
+// - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
 // 
 // - We don't need to integrate in multiple passes for the regir pre integration, all that matters is that we have the integral value at the grid cell for the target function being used
 // - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?
 // - Jitter spatial reuse in tangent plane
 // - We should be able to include NEE++ in the canonical candidates target function if NEE++ is clamped at > 0
 // - Can we do anthitetic sampling on the light distributions sampling?
+// - Use the light tree for the canonical sample of the light distribution grid fill instead of power sampling
 // - Use a perfect hash table for testing whether or not a given mesh index is in a cell light distribution.
 //		If using a perfect hash table has too much memory overhead, use a simple binary search on sorted mesh indices instead
 // - Find a better NEE++ pre population pass because it samples according to power and so that's bad for caching visibility, important lights are hardly going to be sampled with that

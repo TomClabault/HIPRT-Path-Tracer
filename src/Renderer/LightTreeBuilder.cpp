@@ -28,7 +28,10 @@ void LightTreeBuilder::build_light_tree(const std::vector<int>& emissive_triangl
 	m_nodes.resize(emissive_triangles_primitive_indices.size() * 2 - 1);
 	m_centroids.resize(emissive_triangles_primitive_indices.size());
 	m_triangle_indices.resize(emissive_triangles_primitive_indices.size());
+	m_bit_trails.resize(emissive_triangles_primitive_indices.size(), 0u);
 	std::iota(m_triangle_indices.begin(), m_triangle_indices.end(), 0);
+
+	// m_prefetched_triangles
 
 	for (int i = 0; i < emissive_triangles_primitive_indices.size(); i++)
 	{
@@ -47,7 +50,7 @@ void LightTreeBuilder::build_light_tree(const std::vector<int>& emissive_triangl
 	root.triangle_count = (unsigned int)emissive_triangles_primitive_indices.size();
 
 	update_node_bounds(m_current_node_index, triangles_data);
-	subdivide_node(m_current_node_index++, triangles_data);
+	subdivide_node(m_current_node_index++, triangles_data, 0);
 
 	auto stop = std::chrono::high_resolution_clock::now();
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light tree construction time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
@@ -84,11 +87,15 @@ void LightTreeBuilder::update_node_bounds(unsigned int node_index, const Builder
 	}
 }
 
-void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data)
+void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data, int depth)
 {
 	LightTreeNode& node = m_nodes[node_index];
 	if (node.triangle_count <= m_build_options.max_triangles_per_leaf)
+	{
+		register_node_bit_trail(node, triangles_data);
+
 		return;
+	}
 
 	int split_axis;
 	float split_position;
@@ -98,19 +105,31 @@ void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTria
 	{
 		float no_split_cost = compute_node_cost(node);
 		if (split_cost >= no_split_cost)
+		{
+			register_node_bit_trail(node, triangles_data);
+
 			return;
+		}
 	}
 	else if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAOH)
 	{
 		if (node.triangle_count <= 1)
+		{
+			register_node_bit_trail(node, triangles_data);
+
 			return;
+		}
 	}
 
 	int right_node_start = partition_node_primitives(node_index, split_axis, split_position);
 	int left_count = right_node_start - node.first_triangle_index;
 	if (left_count == 0 || // Zero triangles on the left
 		left_count == node.triangle_count) // Zero triangles on the right
+	{
+		register_node_bit_trail(node, triangles_data);
+
 		return;
+	}
 
 	int left_child_index = m_current_node_index++;
 	int right_child_index = m_current_node_index++;
@@ -118,10 +137,13 @@ void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTria
 	LightTreeNode& left_child = m_nodes[left_child_index];
 	left_child.first_triangle_index = node.first_triangle_index;
 	left_child.triangle_count = left_count;
+	left_child.bit_trail = node.bit_trail;
 
 	LightTreeNode& right_child = m_nodes[right_child_index];
 	right_child.first_triangle_index = right_node_start;
 	right_child.triangle_count = node.triangle_count - left_count;
+	right_child.bit_trail = node.bit_trail;
+	right_child.bit_trail |= 1 << depth;
 
 	node.left_child_index = left_child_index;
 	node.triangle_count = 0;
@@ -129,8 +151,8 @@ void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTria
 	update_node_bounds(left_child_index, triangles_data);
 	update_node_bounds(right_child_index, triangles_data);
 
-	subdivide_node(left_child_index, triangles_data);
-	subdivide_node(right_child_index, triangles_data);
+	subdivide_node(left_child_index, triangles_data, depth + 1);
+	subdivide_node(right_child_index, triangles_data, depth + 1);
 }
 
 float LightTreeBuilder::compute_saoh_m_omega(const LightTreeNodeOrientationData& orientation_data) const
@@ -362,6 +384,12 @@ int LightTreeBuilder::partition_node_primitives(unsigned int node_index, int axi
 	}
 
 	return start;
+}
+
+void LightTreeBuilder::register_node_bit_trail(const LightTreeNode& node, const BuilderTrianglesData& data)
+{
+	for (int triangle_index = 0; triangle_index < node.triangle_count; triangle_index++)
+		m_bit_trails[node.first_triangle_index + triangle_index] = node.bit_trail;
 }
 
 void LightTreeBuilder::cleanup()
