@@ -131,13 +131,13 @@
  * Those per-cell sampling distribution will then be used during the grid fill to provide higher
  * quality initial light samples
  */
-#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_FALSE
+#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_TRUE
 
 /**
  * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed
  * ahead of time will be used to compute NEE
  */
-#define ReGIR_ShadingResamplingSampleOnlyLightDistributions KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingSampleOnlyLightDistributions KERNEL_OPTION_FALSE
 
 /**
  * How many canonical samples (simple power sampling) to draw and combine with cell-light-distribution
@@ -192,7 +192,7 @@
  * Whether or not to use a shadow ray in the target function when shading a point at path tracing time.
  * This reduces visibility noise
  */
-#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingTargetFunctionVisibility KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use NEE++ to estimate the visibility probability of the reservoir being resampled during
@@ -213,12 +213,12 @@
  * 
  * Setting this to false is biased but useful basically only for debug purposes
  */
-#define ReGIR_ShadingResamplingIncludeCanonicalCandidates KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingIncludeCanonicalCandidates KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.
  */
-#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingDoBSDFMIS KERNEL_OPTION_TRUE
 
 /**
  * If this is true, BSDF sample rays will be traced in a BVH that contains only the lights of the scene,

@@ -1795,7 +1795,7 @@ HIPRT_DEVICE float principled_bsdf_pdf(const HIPRTRenderData& render_data, BSDFC
 }
 
 /**
- * If sampleDirectionOnly is 'true',, this function samples only the BSDF without 
+ * If sampleDirectionOnly is 'true', this function samples only the BSDF without 
  * evaluating the contribution or the PDF of the BSDF. This function will then always return
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */

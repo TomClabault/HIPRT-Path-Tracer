@@ -78,6 +78,7 @@ extern ImGuiLogger g_imgui_logger;
 // - We don't need to integrate in multiple passes for the regir pre integration, all that matters is that we have the integral value at the grid cell for the target function being used
 // - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?
 // - Jitter spatial reuse in tangent plane
+// - Can we re normalize the MIS weights instead of having multi pairwise MIS?
 // - We should be able to include NEE++ in the canonical candidates target function if NEE++ is clamped at > 0
 // - Can we do anthitetic sampling on the light distributions sampling?
 // - Use the light tree for the canonical sample of the light distribution grid fill instead of power sampling
