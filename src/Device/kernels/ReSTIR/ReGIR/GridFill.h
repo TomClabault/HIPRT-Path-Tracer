@@ -62,7 +62,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         LightSampleInformation light_sample;
 
         if (reservoir_is_canonical)
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, rng);
         else
         {
             light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
@@ -98,7 +98,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
             mis_weight = 1.0f / regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir;
         else
         {
-            float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, surface.cell_point, surface.cell_normal, light_sample.emissive_triangle_global_index, light_sample.light_area, light_sample.emission);
+            float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<LSS_BASE_POWER>(render_data, surface.cell_point, surface.cell_normal, light_sample.emissive_triangle_global_index, light_sample.light_area, light_sample.emission);
             mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount);
         }
 

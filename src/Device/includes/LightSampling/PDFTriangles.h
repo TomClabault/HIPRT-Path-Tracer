@@ -46,12 +46,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
         area_measure_pdf *= pdf_of_emissive_triangle_light_tree(render_data, shading_point, shading_normal, emissive_triangle_global_index);
     }
     else if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
-        // Faking the ReGIR PDF with the PDF of its base sampling strategy
-        area_measure_pdf = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, shading_point, shading_normal, emissive_triangle_global_index, light_area, light_emission);
+        // We should never ask that question, we can't get the PDF of ReGIR
+        area_measure_pdf = 1.0e15f;
     else
-    {
-        area_measure_pdf = 1.0f / 0.0f;
-    }
+        area_measure_pdf = area_measure_pdf;
 
 
     return area_measure_pdf;

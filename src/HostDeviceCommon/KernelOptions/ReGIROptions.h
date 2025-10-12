@@ -63,8 +63,16 @@
 *
 *	- LSS_BASE_POWER
 *		Lights are sampled proportionally to their power
+*
+*	- LSS_BASE_LIGHT_TREE_ATS
+*		Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]
 */
-#define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_POWER
+#define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_ATS
+
+/**
+ * The light sampling strategy used for sampling canonical samples during grid fill
+ */
+#define ReGIR_GridFillLightSamplingBaseStrategyCanonical LSS_BASE_POWER
 
 /**
  * Whether or not to use a visibility term in the target function used to resample the reservoirs of the grid cells.
@@ -225,7 +233,7 @@
  * not the rest of the geometry. This can increase variance but make the traces way way faster to the point
  * where BSDF MIS rays are almost free
  */
-#define ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay KERNEL_OPTION_FALSE
+#define ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay KERNEL_OPTION_TRUE
 
 /**
  * If true, all samples resampled will be shaded instead of shading only the reservoir result of the resampling.

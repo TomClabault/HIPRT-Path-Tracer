@@ -137,6 +137,7 @@ void PowerSamplingDataStructure::free()
 
 bool PowerSamplingDataStructure::is_needed(unsigned int emissive_count)
 {
+	return true;
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 	bool directly_using_power = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_POWER;
 	bool using_regir_power =
