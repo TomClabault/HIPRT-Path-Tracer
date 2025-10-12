@@ -93,7 +93,7 @@
 *		Uses ReGIR to sample lights
 *		Implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021]
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_ATS
+#define DirectLightSamplingBaseStrategy LSS_BASE_POWER
 
 
 /**
