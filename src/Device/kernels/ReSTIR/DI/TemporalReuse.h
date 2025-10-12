@@ -18,6 +18,7 @@
 #include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/UtilsTemporal.h"
 #include "Device/includes/Sampling.h"
+#include "Device/includes/TriangleLoadUtils.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Color.h"

@@ -8,6 +8,7 @@
 
 #include "Device/includes/BSDFSampleHitInfo.h"
 #include "Device/includes/TriangleLoadUtils.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSampling.h"
 
 #include "HostDeviceCommon/RenderData.h"
 

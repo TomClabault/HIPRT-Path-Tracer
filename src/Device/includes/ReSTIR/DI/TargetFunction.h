@@ -7,6 +7,7 @@
 #define DEVICE_RESTIR_DI_TARGET_FUNCTION_H
 
 #include "Device/includes/ReSTIR/Utils.h"
+#include "Device/includes/TriangleLoadUtils.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE float3 ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, 

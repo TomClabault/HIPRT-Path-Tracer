@@ -225,7 +225,7 @@
  * not the rest of the geometry. This can increase variance but make the traces way way faster to the point
  * where BSDF MIS rays are almost free
  */
-#define ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay KERNEL_OPTION_FALSE
 
 /**
  * If true, all samples resampled will be shaded instead of shading only the reservoir result of the resampling.

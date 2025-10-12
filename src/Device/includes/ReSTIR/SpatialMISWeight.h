@@ -11,6 +11,7 @@
 #include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
+#include "Device/includes/TriangleLoadUtils.h"
 
 template <int BiasCorrectionMode, bool IsReSTIRGI>
 struct ReSTIRSpatialResamplingMISWeight {};
