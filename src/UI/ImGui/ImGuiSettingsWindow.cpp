@@ -15,6 +15,7 @@
 #include "UI/ImGui/ImGuiSettingsWindow.h"
 #include "UI/RenderWindow.h"
 
+#include <format>
 #include <iostream>
 
 extern GPUKernelCompiler g_gpu_kernel_compiler;
@@ -150,7 +151,7 @@ void ImGuiSettingsWindow::draw_header()
 			}
 
 			ImGui::TreePush("Convergence info tree");
-			ImGui::Text(text.c_str());
+			ImGui::Text("%s", text.c_str());
 			ImGui::TreePop();
 		}
 		else
