@@ -799,6 +799,8 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRender
 	if (!render_data.render_settings.regir_settings.use_per_cell_light_distributions)
 		return false;
 
+	auto start = std::chrono::high_resolution_clock::now();
+
 	bool recomputed = false;
 
 	recomputed |= launch_cell_light_distributions_precomputation_internal(render_data, true);
@@ -809,6 +811,9 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRender
 	// is a race condition with the UI but this modifies mostly pointers to buffers
 	// which the UI doesn't use so this should be fine...
 	m_hash_grid_storage.to_device(m_renderer->get_render_data());
+	
+	auto stop = std::chrono::high_resolution_clock::now();
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light distribution precomputation time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 
 	return recomputed;
 }

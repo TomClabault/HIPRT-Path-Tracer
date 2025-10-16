@@ -155,13 +155,21 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
     {
         LightSampleInformation light_sample;
 
+        float3 view_direction = hippt::normalize(render_data.current_camera.position - surface.cell_point);
         if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)
             // Never using presampling lights for pre integration because pre integration needs
             // different samples to pre integrate properly and using presampled lights severely restricts
             // the number of different samples we have available
             light_sample = sample_one_presampled_light(render_data, hash_grid_cell_index, reservoir_index_in_cell, primary_hit, rng);
         else
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+        {
+            // Unused
+            RayPayload dummy_ray_payload;
+
+            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
+                render_data,
+                surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+        }
 
         if (light_sample.emissive_triangle_global_index == -1)
             continue;
@@ -180,6 +188,8 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
         float mis_weight = 1.0f / regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir;
         float source_pdf = light_sample.area_measure_pdf;
 
+        sanity_check<true>(render_data, source_pdf, -1, -1);
+        sanity_check<true>(render_data, target_function, -1, -1);
         reservoir.stream_sample(mis_weight, target_function, source_pdf, light_sample, rng);
     }
 

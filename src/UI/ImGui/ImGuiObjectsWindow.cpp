@@ -1139,8 +1139,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
 
-			ImGui::EndDisabled();
-
 			ImGui::TreePop();
 		}
 

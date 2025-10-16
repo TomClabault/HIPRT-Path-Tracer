@@ -119,6 +119,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 
 		float left_importance = light_tree_node_importance(left_child, shading_point, surface_normal);
 		float right_importance = light_tree_node_importance(right_child, shading_point, surface_normal);
+		if (left_importance == 0.0f && right_importance == 0.0f)
+			return LightSampleInformation();
 
 		float p_left = left_importance / (left_importance + right_importance);
 
@@ -172,7 +174,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree(const HIPRTRenderData& re
 			return 0.0f;
 
 		float p_left = left_importance / (left_importance + right_importance);
-
 		if (!(bit_trail & (1 << current_depth)))
 		{
 			// If the bit is not set we're going to the left
