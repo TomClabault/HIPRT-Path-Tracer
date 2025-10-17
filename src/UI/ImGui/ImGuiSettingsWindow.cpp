@@ -1924,6 +1924,16 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			if (regir_settings.use_per_cell_light_distributions)
 			{
+				const char* items[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS" };
+				static int light_distributions_defensive_sampling_technique = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE);
+				if (ImGui::Combo("Defensive sampling technique", &light_distributions_defensive_sampling_technique, items, IM_ARRAYSIZE(items)))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE, light_distributions_defensive_sampling_technique);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
 				static bool use_representative_normal = ReGIR_GridFillCellDistributionsUseRepresentativeNormal;
 				if (ImGui::Checkbox("Use representative normal", &use_representative_normal))
 				{

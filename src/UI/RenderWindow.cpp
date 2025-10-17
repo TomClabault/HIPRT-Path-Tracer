@@ -72,9 +72,13 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Now that we have a triangle_index to mesh_index buffer, can we simplify some code somewhere?
+//		- Probably the power sampling of defensive light distribution samp^ling: just sample one power triangle and then
+//		look up the mesh idnex with the buffer ionstead of sampling a mesh in the whole according to power and then a trian,gle in that
+//		mesh according to power
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
 // 
+// - TODO CURRENTLY DOING: COMPARING THE VARIANCE DEPENDING ON THE DZEFENSIVE SAMPLING STRATEGY USED FOR LIGHT CELL DISTRIBUTIONS
 // - Use the light tree for ReGIR interactivity
 // - We don't need to integrate in multiple passes for the regir pre integration, all that matters is that we have the integral value at the grid cell for the target function being used
 // - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?

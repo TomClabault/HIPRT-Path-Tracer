@@ -139,7 +139,7 @@
  * Those per-cell sampling distribution will then be used during the grid fill to provide higher
  * quality initial light samples
  */
-#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_FALSE
+#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_TRUE
 
 /**
  * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed
@@ -155,6 +155,11 @@
  * cell-light-distribution is poor
  */
 #define ReGIR_GridFillCellDistributionsCanonicalSampleCount 1
+
+/**
+ * What defensive sampling technique to use to cover the bias of the light distributions
+ */
+#define ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique LSS_BASE_LIGHT_TREE_ATS
 
 /**
  * Whether or not to use a repsentative normal when computing the contribution of an emissive

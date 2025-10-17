@@ -336,10 +336,19 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
     m_light_bvh = std::make_shared<BVH>(&m_emissive_triangles_buffer);
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER)
+#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER ||                        \
+    (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && (                     \
+        ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER ||            \
+        ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_POWER ||   \
+        (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE && ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)))
     std::cout << "Building scene's power alias table" << std::endl;
     compute_emissives_power_alias_table(parsed_scene);
-#elif DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS || (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS)
+#endif
+
+#if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS ||               \
+    (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && (                     \
+        ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS ||   \
+        (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE && ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_LIGHT_TREE_ATS)))
     m_light_tree_builder.build_light_tree(
         parsed_scene.emissive_triangles_primitive_indices,
         parsed_scene.triangles_vertex_indices,

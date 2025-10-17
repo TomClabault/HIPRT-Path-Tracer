@@ -47,6 +47,49 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
     return full_sample_information;
 }
 
+HIPRT_DEVICE LightSampleInformation grid_fill_with_per_cell_light_distributions_canonical_sample(
+    const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, unsigned int& out_sampled_mesh_index, Xorshift32Generator& rng)
+{
+    if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_UNIFORM)
+    {
+        LightSampleInformation light_sample = sample_one_emissive_triangle<LSS_BASE_UNIFORM>(render_data, rng);
+        if (light_sample.emissive_triangle_global_index == -1)
+            return light_sample;
+
+        out_sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_sample.emissive_triangle_global_index];
+
+        return light_sample;
+    }
+    else if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)
+    {
+        float mesh_PDF;
+        EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.sample_one_emissive_mesh(rng, mesh_PDF, out_sampled_mesh_index);
+
+        float triangle_PDF;
+        int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
+
+        LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+        if (light_sample.emissive_triangle_global_index == -1)
+            // Can happen if the triangle sampled is degenerate and thus rejected
+            return LightSampleInformation();
+
+        // That point on this triangle on that emissive mesh
+        light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
+
+        return light_sample;
+    }
+    else if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_LIGHT_TREE_ATS)
+    {
+        LightSampleInformation light_sample = sample_one_emissive_triangle_light_tree(render_data, surface.cell_point, surface.cell_normal, rng);
+        if (light_sample.emissive_triangle_global_index == -1)
+            return light_sample;
+
+        out_sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_sample.emissive_triangle_global_index];
+
+        return light_sample;
+    }
+}
+
 HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HIPRTRenderData& render_data,
     unsigned int hash_grid_cell_index, int reservoir_index_in_cell, const ReGIRGridFillSurface& surface, bool primary_hit,
     Xorshift32Generator& rng)
@@ -68,7 +111,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
             light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
             if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
                 // Falling back on the base strategy
-                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+                light_sample = sample_one_emissive_triangle<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, rng);
         }
 
         if (light_sample.emissive_triangle_global_index == -1)
@@ -98,7 +141,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
             mis_weight = 1.0f / regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir;
         else
         {
-            float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<LSS_BASE_POWER>(render_data, surface.cell_point, surface.cell_normal, light_sample.emissive_triangle_global_index, light_sample.light_area, light_sample.emission);
+            float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, surface.cell_point, surface.cell_normal, light_sample.emissive_triangle_global_index, light_sample.light_area, light_sample.emission);
             mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir, simple_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount);
         }
 
@@ -112,25 +155,17 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         // for unbiasedness
         for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillCellDistributionsCanonicalSampleCount; light_sample_index++)
         {
-            float mesh_PDF;
-            unsigned int mesh_index;
-            EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
-
-            float triangle_PDF;
-            int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
-
-            LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+            unsigned int sampled_mesh_index;
+            LightSampleInformation light_sample = grid_fill_with_per_cell_light_distributions_canonical_sample(render_data, surface, sampled_mesh_index, rng);
             if (light_sample.emissive_triangle_global_index == -1)
-                // Can happen if the triangle sampled is degenerate and thus rejected
+                // Can happen if the triangle sampled is degenerate (for example) and thus rejected
+                // during sampling
                 continue;
-
-            // That point on this triangle on that emissive mesh
-            light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
 
             float target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
-            float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, mesh_index);
+            float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_sample, sampled_mesh_index);
             float mis_weight = balance_heuristic(light_sample.area_measure_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount, cell_light_distributions_pdf, regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir);
 
             reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng);
@@ -163,12 +198,24 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
             light_sample = sample_one_presampled_light(render_data, hash_grid_cell_index, reservoir_index_in_cell, primary_hit, rng);
         else
         {
-            // Unused
-            RayPayload dummy_ray_payload;
+            if (reservoir_is_canonical)
+            {
+                // Unused
+                RayPayload dummy_ray_payload;
 
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
-                render_data,
-                surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(
+                    render_data,
+                    surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+            }
+            else
+            {
+                // Unused
+                RayPayload dummy_ray_payload;
+
+                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
+                    render_data,
+                    surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+            }
         }
 
         if (light_sample.emissive_triangle_global_index == -1)

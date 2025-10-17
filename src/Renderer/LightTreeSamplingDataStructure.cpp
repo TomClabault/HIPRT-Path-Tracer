@@ -84,8 +84,12 @@ bool LightTreeSamplingDataStructure::is_needed(unsigned int emissive_count)
 	bool using_regir_light_tree =
 		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR &&
 		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS;
+	bool regir_using_light_distributions_using_light_tree =
+		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR &&
+		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE &&
+		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE) == LSS_BASE_LIGHT_TREE_ATS;
 
-	return (directly_using_light_tree || using_regir_light_tree) && emissive_count > 0;
+	return (directly_using_light_tree || using_regir_light_tree || regir_using_light_distributions_using_light_tree) && emissive_count > 0;
 }
 
 LightTreeBuilderOptions& LightTreeSamplingDataStructure::get_builder_options()

@@ -44,6 +44,7 @@ const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY = "
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING = "ReGIR_GridFillDoLightPresampling";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS = "ReGIR_GridFillUsePerCellLightDistributions";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT = "ReGIR_GridFillCellDistributionsCanonicalSampleCount";
+const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE = "ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL = "ReGIR_GridFillCellDistributionsUseRepresentativeNormal";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH = "ReGIR_GridFillCellDistributionsIntegrateMesh";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT = "ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount";
@@ -145,6 +146,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT,
+	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT,
@@ -250,6 +252,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING] = std::make_shared<int>(ReGIR_GridFillDoLightPresampling);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS] = std::make_shared<int>(ReGIR_GridFillUsePerCellLightDistributions);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT] = std::make_shared<int>(ReGIR_GridFillCellDistributionsCanonicalSampleCount);
+	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE] = std::make_shared<int>(ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_USE_REPRESENTATIVE_NORMAL] = std::make_shared<int>(ReGIR_GridFillCellDistributionsUseRepresentativeNormal);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH] = std::make_shared<int>(ReGIR_GridFillCellDistributionsIntegrateMesh);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTION_INTEGRATE_MESH_SAMPLE_COUNT] = std::make_shared<int>(ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount);
