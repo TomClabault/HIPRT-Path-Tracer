@@ -7,7 +7,7 @@
 #define DEVICE_NEE_ESTIMATORS_H
 
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
-#include "Device/includes/Dispatcher.h"
+#include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/Intersect.h"

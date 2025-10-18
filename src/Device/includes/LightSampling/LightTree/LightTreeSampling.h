@@ -6,9 +6,11 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SAMPLING_H
 
+#include "Device/includes/BSDFs/MicrofacetRegularization.h"
+#include "Device/includes/BSDFs/Dispatcher.h"
+#include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
-#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"

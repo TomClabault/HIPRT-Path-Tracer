@@ -6,7 +6,7 @@
 #ifndef DEVICE_RIS_H
 #define DEVICE_RIS_H
 
-#include "Device/includes/Dispatcher.h"
+#include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/PDFTriangles.h"

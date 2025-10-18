@@ -6,7 +6,7 @@
 #ifndef DEVICE_SAMPLING_H
 #define DEVICE_SAMPLING_H
 
-#include "Device/includes/Fresnel.h"
+#include "Device/includes/BSDFs/Fresnel.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/Texture.h"
 

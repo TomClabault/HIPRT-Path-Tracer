@@ -7,7 +7,7 @@
 #define DEVICE_INTERSECT_H
 
 #include "Device/includes/BSDFSampleHitInfo.h"
-#include "Device/includes/Dispersion.h"
+#include "Device/includes/BSDFs/Dispersion.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Material.h"
 #include "Device/includes/ONB.h"

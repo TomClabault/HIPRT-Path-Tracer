@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_WARP_DIRECTION_REUSE_H
 #define DEVICE_INCLUDES_WARP_DIRECTION_REUSE_H
 
-#include "Device/includes/Dispatcher.h"
+#include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 
 #include "Device/includes/HitInfo.h"

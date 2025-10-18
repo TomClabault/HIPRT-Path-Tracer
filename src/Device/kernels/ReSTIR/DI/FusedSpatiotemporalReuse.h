@@ -6,7 +6,7 @@
 #ifndef DEVICE_RESTIR_DI_SPATIOTEMPORAL_REUSE_H
 #define DEVICE_RESTIR_DI_SPATIOTEMPORAL_REUSE_H
 
-#include "Device/includes/Dispatcher.h"
+#include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"

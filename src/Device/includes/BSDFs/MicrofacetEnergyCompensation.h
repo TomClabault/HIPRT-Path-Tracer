@@ -6,7 +6,7 @@
 #ifndef DEVICE_BSDF_MICROFACET_ENERGY_COMPENSATION_H
 #define DEVICE_BSDF_MICROFACET_ENERGY_COMPENSATION_H
 
-#include "Device/includes/Fresnel.h"
+#include "Device/includes/BSDFs/Fresnel.h"
 #include "Device/includes/Texture.h"
 
 #include "Device/includes/SanityCheck.h"

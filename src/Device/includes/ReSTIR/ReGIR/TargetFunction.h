@@ -7,7 +7,7 @@
 #define DEVICE_INCLUDES_REGIR_TARGET_FUNCTION_H
 
 #include "Device/includes/BSDFs/BSDFContext.h"
-#include "Device/includes/Dispatcher.h"
+#include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/PDFConversion.h"
 #include "Device/includes/ReSTIR/ReGIR/GridFillSurface.h"

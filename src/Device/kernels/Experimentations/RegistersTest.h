@@ -394,7 +394,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 //    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
 //}
 
-//#include "Device/includes/Dispatcher.h"
+//#include "Device/includes/BSDFs/Dispatcher.h"
 //
 //#ifdef __KERNELCC__
 //GLOBAL_KERNEL_SIGNATURE(void) TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)

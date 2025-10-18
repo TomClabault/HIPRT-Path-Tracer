@@ -6,7 +6,7 @@
 #ifndef KERNELS_RESTIR_DI_INITIAL_CANDIDATES_H
 #define KERNELS_RESTIR_DI_INITIAL_CANDIDATES_H
 
-#include "Device/includes/Dispatcher.h"
+#include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"

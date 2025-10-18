@@ -6,7 +6,7 @@
 #ifndef DEVICE_PRINCIPLED_H
 #define DEVICE_PRINCIPLED_H
 
-#include "Device/includes/Dispersion.h"
+#include "Device/includes/BSDFs/Dispersion.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/BSDFs/Lambertian.h"

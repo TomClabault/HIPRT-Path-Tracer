@@ -6,7 +6,7 @@
 #ifndef DEVICE_RESTIR_DI_UTILS_H
 #define DEVICE_RESTIR_DI_UTILS_H 
 
-#include "Device/includes/Dispatcher.h"
+#include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
