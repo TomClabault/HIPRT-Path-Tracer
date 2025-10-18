@@ -92,6 +92,11 @@ const std::string GPUKernelCompilerOptions::NEE_PLUS_PLUS_DEBUG_MODE = "NEEPlusP
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION = "DirectLightSamplingDeltaDistributionOptimization";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS = "DirectLightSamplingAllowBackfacingLights";
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
+
+const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING = "LightTreeATSDoSplitting";
+const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES = "LightTreeATSSplittingMaxLightSamples";
+const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY = "LightTreeATSSplittingIncludeVisibility";
+
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "EnvmapSamplingDoBSDFMIS";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING = "EnvmapSamplingDoBilinearFiltering";
@@ -194,6 +199,11 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS,
 	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
+
+	GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING,
+	GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES,
+	GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY,
+
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BILINEAR_FILTERING,
@@ -300,6 +310,10 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BSDF_DELTA_DISTRIBUTION_OPTIMIZATION] = std::make_shared<int>(DirectLightSamplingDeltaDistributionOptimization);
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS] = std::make_shared<int>(DirectLightSamplingAllowBackfacingLights);
 	m_options_macro_map[GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION] = std::make_shared<int>(RISUseVisiblityTargetFunction);
+
+	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING] = std::make_shared<int>(LightTreeATSDoSplitting);
+	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES] = std::make_shared<int>(LightTreeATSSplittingMaxLightSamples);
+	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY] = std::make_shared<int>(LightTreeATSSplittingIncludeVisibility);
 
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS] = std::make_shared<int>(EnvmapSamplingDoBSDFMIS);

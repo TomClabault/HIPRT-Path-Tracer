@@ -2724,6 +2724,65 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 			ImGui::TreePop();
 		}
 
+		static bool do_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING);
+		if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING, do_splitting ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
+		if (do_splitting)
+		{
+			ImGui::TreePush("Split variance threshold ATS tree");
+
+			if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_ats_settings.light_tree_ats_splitting_variance, 0.2f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("User defined split threshold proposed in the paper of Conty & Kulla 2018."
+				" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");
+
+			static int splitting_max_light_samples_count = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES);
+			ImGui::SliderInt("Max light samples", &splitting_max_light_samples_count, 1, 16);
+			ImGuiRenderer::show_help_marker("If splitting is enabled, how many light samples, at most, per shading point is allowed.\n"
+				"Higher values result in higher quality but at a higher performance cost.");
+
+			if (splitting_max_light_samples_count != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES))
+			{
+				ImGui::TreePush("Apply button tree splitting max light sample count");
+
+				if (ImGui::Button("Apply"))
+				{
+					splitting_max_light_samples_count = hippt::clamp(1, 2000000000, splitting_max_light_samples_count);
+
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES, splitting_max_light_samples_count);
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+
+			static bool include_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY);
+			if (ImGui::Checkbox("Include visibility", &include_visibility))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY, include_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("If true, the various light samples produced by splitting will all be \"shaded\" with visibility, which "
+				"may be very costly and inefficient on scenes where visibility isn't an issue.\n\n"
+				""
+				"If false, visibility noise won't be improved but efficiency may improve drastically depending on the scene.\n\n"
+				""
+				"Not using visibility does not introduce bias because the light tree splitting samples aren't really "
+				"shaded for real, rather, one light sample of all the split samples is chosen proportional to its "
+				"contribution. It is that contribution which includes visibility or not.");
+
+			ImGui::TreePop();
+		}
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}

@@ -80,7 +80,12 @@ HIPRT_DEVICE LightSampleInformation grid_fill_with_per_cell_light_distributions_
     }
     else if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_LIGHT_TREE_ATS)
     {
-        LightSampleInformation light_sample = sample_one_emissive_triangle_light_tree(render_data, surface.cell_point, surface.cell_normal, rng);
+        RayPayload dummy_ray_payload;
+
+        LightSampleInformation light_sample = sample_one_emissive_triangle_light_tree(render_data,
+            surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal,
+            surface.cell_primitive_index, dummy_ray_payload,
+            rng);
         if (light_sample.emissive_triangle_global_index == -1)
             return light_sample;
 
@@ -190,7 +195,6 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
     {
         LightSampleInformation light_sample;
 
-        float3 view_direction = hippt::normalize(render_data.current_camera.position - surface.cell_point);
         if constexpr (ReGIR_GridFillDoLightPresampling == KERNEL_OPTION_TRUE && !accumulatePreIntegration)
             // Never using presampling lights for pre integration because pre integration needs
             // different samples to pre integrate properly and using presampled lights severely restricts
@@ -205,7 +209,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
 
                 light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(
                     render_data,
-                    surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+                    surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
             }
             else
             {
@@ -214,7 +218,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
 
                 light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
                     render_data,
-                    surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+                    surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
             }
         }
 

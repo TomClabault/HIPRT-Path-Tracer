@@ -37,6 +37,11 @@ public:
 
 		LightTreeNodeOrientationData orientation_data;
 
+		// For adaptive splitting
+		float energy_average = 0.0f;
+		float energy_variance = 0.0f;
+		unsigned int total_emitter_count = 0;
+
 		// Total emissive power of the node
 		ColorRGB32F total_power;
 
@@ -137,6 +142,9 @@ LightTreeBuilderDeviceData<DataContainer> LightTreeBuilder::compute_device_data(
 		device_data_out.nodes_device[i].theta_o = m_nodes[i].orientation_data.theta_o;
 		device_data_out.nodes_device[i].theta_e = m_nodes[i].orientation_data.theta_e;
 		device_data_out.nodes_device[i].total_power = m_nodes[i].total_power;
+		device_data_out.nodes_device[i].energy_average = m_nodes[i].energy_average;
+		device_data_out.nodes_device[i].energy_variance = m_nodes[i].energy_variance;
+		device_data_out.nodes_device[i].total_emitter_count = m_nodes[i].total_emitter_count;
 
 		device_data_out.nodes_device[i].bounds_min = m_nodes[i].node_bounds.mini;
 		device_data_out.nodes_device[i].bounds_max = m_nodes[i].node_bounds.maxi;

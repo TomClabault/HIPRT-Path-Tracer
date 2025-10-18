@@ -80,6 +80,8 @@ void LightTreeBuilder::update_node_bounds(unsigned int node_index, const Builder
 	node.node_bounds.mini = float3(1e30f, 1e30f, 1e30f);
 	node.node_bounds.maxi = float3(-1e30f, -1e30f, -1e30f);
 
+	double sum_energy = 0.0f;
+	double sum_energy_squared = 0.0f;
 	for (unsigned int first = node.first_triangle_index, i = 0; i < node.triangle_count; i++)
 	{
 		int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(first + i);
@@ -92,7 +94,14 @@ void LightTreeBuilder::update_node_bounds(unsigned int node_index, const Builder
 		node.node_bounds.extend(m_prefetched_triangles[emissive_triangle_index].bounds);
 		node.total_power += m_prefetched_triangles[emissive_triangle_index].power;
 		node.cone_union_with(triangle_normal, 0.0f, (float)M_PI / 2.0f);
+
+		sum_energy += m_prefetched_triangles[emissive_triangle_index].power.luminance();
+		sum_energy_squared += hippt::square(m_prefetched_triangles[emissive_triangle_index].power.luminance());
 	}
+
+	node.energy_average = sum_energy / node.triangle_count;
+	node.energy_variance = hippt::max(0.0f, static_cast<float>(sum_energy_squared / node.triangle_count - hippt::square(sum_energy / node.triangle_count)));
+	node.total_emitter_count = node.triangle_count;
 }
 
 void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data, int depth)

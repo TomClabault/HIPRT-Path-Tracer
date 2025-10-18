@@ -42,6 +42,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Power-proportional light sampling
 	- Light hierarchies:
 		- Importance Sampling of Many Lights with Adaptive Tree Splitting [\[Conty et al., 2018\]](https://dl.acm.org/doi/10.1145/3233305)
+			- SAH and SAOH tree build cost functions
+			- Adaptive tree splitting
 	
 - Next-event estimation strategies (built on-top of base techniques):
 	- ReGIR [\[Boksansky et al., 2021\]](https://cwyman.org/papers/rtg2-manyLightReGIR.pdf) for many-lights sampling augmented with:

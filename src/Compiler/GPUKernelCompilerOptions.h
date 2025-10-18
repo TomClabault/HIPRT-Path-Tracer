@@ -94,6 +94,10 @@ public:
 	static const std::string DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS;
 	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
 
+	static const std::string LIGHT_TREE_ATS_DO_SPLITTING;
+	static const std::string LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES;
+	static const std::string LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY;
+
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;
 	static const std::string ENVMAP_SAMPLING_DO_BILINEAR_FILTERING;

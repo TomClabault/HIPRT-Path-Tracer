@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
+#include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/KernelOptions/NEEPlusPlusOptions.h"
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"

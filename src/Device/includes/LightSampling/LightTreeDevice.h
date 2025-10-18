@@ -25,6 +25,11 @@ struct LightTreeNodeDevice
 	// Total emissive powxer of the node
 	ColorRGB32F total_power;
 
+	// For adaptive tree splitting
+	float energy_average = 0.0f; // TODO pack as total_power / total_emitter_count
+	float energy_variance = 0.0f;
+	unsigned int total_emitter_count = 0;
+
 	float3 bounds_min;
 	float3 bounds_max;
 

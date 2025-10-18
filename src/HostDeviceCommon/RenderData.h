@@ -13,6 +13,7 @@
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
+#include "HostDeviceCommon/LightTreeATSSettings.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"
@@ -69,6 +70,8 @@ struct HIPRTRenderData
 
 	// Data for NEE++
 	NEEPlusPlusDevice nee_plus_plus;
+	// Data for sampling the ATS light tree
+	LightTreeATSSettings light_tree_ats_settings;
 
 	// Camera for the current frame
 	HIPRTCamera current_camera;
