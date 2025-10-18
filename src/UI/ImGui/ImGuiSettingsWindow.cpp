@@ -2643,6 +2643,10 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
+
+	bool light_tree_used_by_regir = m_renderer->get_light_tree_sampling_data_structure().is_needed(m_renderer->get_emissive_mesh_count());
+	if (light_tree_used_by_regir)
+		draw_light_tree_ATS_settings_panel();
 }
 
 void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
