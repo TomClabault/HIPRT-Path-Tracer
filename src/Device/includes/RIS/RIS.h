@@ -86,7 +86,14 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
     int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
+
+#if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
+    // BSDF MIS isn't allowed with the light tree & splitting, we don't have the PDF for the light tree
+    // splitting implementation so it's biased
+    int nb_bsdf_candidates = 0;
+#else
     int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
+#endif
 
     if (!MaterialUtils::can_do_light_sampling(ray_payload.material))
         nb_light_candidates = 0;

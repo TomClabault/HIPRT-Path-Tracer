@@ -389,9 +389,14 @@ HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& 
     // for better interactive framerates
     int initial_nb_light_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
     int initial_nb_bsdf_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
-#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR || \
+    DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
+
     // With ReGIR, initial BSDF candidates are controlled by the ReGIR sampling, not by
     // ReSTIR DI
+    //
+    // Also with a light tree + splitting, we don't have the PDF so we can't do MIS without it
+    // being biased
     initial_nb_bsdf_cand = 0;
 #endif
 

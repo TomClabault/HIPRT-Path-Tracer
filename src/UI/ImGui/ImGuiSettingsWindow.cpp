@@ -1138,15 +1138,53 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool no_direct_light_sampling_disabled = false;
 			const bool uniform_one_light_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
 			const bool bsdf_sampling_disabled = false;
-			const bool mis_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+
+			const bool light_tree_ats_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE;
+			const bool regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+			const bool mis_disabled = regir || light_tree_ats_splitting;
+
 			const bool ris_disabled = false;
 			const bool restir_di_disabled = false;
+
 			bool disabled_items[] = { no_direct_light_sampling_disabled, uniform_one_light_disabled, bsdf_sampling_disabled, mis_disabled, ris_disabled, restir_di_disabled };
+			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
+			// we're going to fallback automatically to something that is allowed and this array gives the default
+			// fallback for the techniques in the same order that they are in the 'items_base_strategy' array.
+			int preferred_fallback_technique[] = { LSS_ONE_LIGHT , LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_RIS_BSDF_AND_LIGHT };
 
 			if (ImGuiRenderer::ComboWithTooltips("NEE strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips, disabled_items))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+			}
+
+			if (disabled_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY)])
+			{
+				int preferred_base_strategy = preferred_fallback_technique[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY)];
+				if (disabled_items[preferred_base_strategy])
+				{
+					// If also the preferred technique is disabled, choosing the first enabled one
+					for (int i = 1; i < IM_ARRAYSIZE(disabled_items); i++)
+					{
+						if (!disabled_items[i])
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, i);
+
+							m_renderer->recompile_kernels();
+							m_render_window->set_render_dirty(true);
+
+							break;
+						}
+					}
+				}
+				else 
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, preferred_base_strategy);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1199,6 +1237,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							m_render_window->set_render_dirty(true);
 						}
 
+						const bool light_tree_ats_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE;
+						const bool ris_bsdf_candidates_disabled = light_tree_ats_splitting;
+						if (ris_bsdf_candidates_disabled)
+							ImGuiRenderer::add_warning("We don't have the PDF for the light tree splitting implementation so BSDF MIS isn't allowed, it's biased.");
+						ImGui::BeginDisabled(ris_bsdf_candidates_disabled);
 						if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
 						{
 							// Clamping to 0
@@ -1206,6 +1249,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 							m_render_window->set_render_dirty(true);
 						}
+						ImGui::EndDisabled();
 
 						if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
 						{
@@ -1312,10 +1356,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
 								"resampling initial candidates");
 
-							bool bsdf_samples_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
-							if (bsdf_samples_disabled)
+							const bool bsdf_samples_disabled_regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+							const bool bsdf_samples_disabled_light_tree_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE;
+							const bool bsdf_samples_disabled = bsdf_samples_disabled_regir || bsdf_samples_disabled_light_tree_splitting;
+							if (bsdf_samples_disabled_regir)
 								ImGuiRenderer::add_warning("BSDF samples are disabled in ReSTIR DI because they are controlled by "
 									"the ReGIR settings (use BSDF MIS in ReGIR for BSDF samples).");
+							else if (bsdf_samples_disabled_light_tree_splitting)
+								ImGuiRenderer::add_warning("We don't have the PDF for the light tree splitting implementation so BSDF MIS isn't allowed, it's biased.");
 							ImGui::BeginDisabled(bsdf_samples_disabled);
 							if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
 							{
