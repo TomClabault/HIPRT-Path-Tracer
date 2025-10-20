@@ -116,6 +116,8 @@ public:
 	 */
 	void step_animations(float delta_time);
 
+	void prepare_light_sampling_data_structures();
+
 	/**
 	 * Blocking that waits for all the operations queued on
 	 * the main stream to complete

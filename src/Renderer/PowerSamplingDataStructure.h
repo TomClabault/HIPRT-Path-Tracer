@@ -28,7 +28,7 @@ public:
 
 		AliasTableDevice& power_alias_table);
 
-	void recompute();
+	void recompute_if_needed(bool skip_if_already_computed = false);
 	void free();
 
 	bool is_needed(unsigned int emissive_count);

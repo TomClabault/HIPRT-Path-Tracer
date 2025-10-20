@@ -22,8 +22,15 @@ void PowerSamplingDataStructure::compute_from_scene(const Scene& scene)
 	// the initialization of the renderer
 }
 
-void PowerSamplingDataStructure::recompute()
+void PowerSamplingDataStructure::recompute_if_needed(bool skip_if_already_computed)
 {
+	if (skip_if_already_computed && m_alias_table_aliases.get_byte_size() > 0)
+		// Already computed
+		return;
+
+	if (!is_needed(m_renderer->get_render_data().buffers.emissive_triangles_count))
+		return;
+
 	m_renderer->synchronize_all_kernels();
 
 	HIPRTScene& hiprt_scene = m_renderer->get_hiprt_scene();
@@ -151,5 +158,5 @@ bool PowerSamplingDataStructure::is_needed(unsigned int emissive_count)
 		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI &&
 		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY) == LSS_BASE_POWER;
 
-	return (directly_using_power || using_regir_power || restir_di_presampling_using_power_sampling) && emissive_count > 0;
+	return (directly_using_power || using_regir_power || regir_using_light_distributions_using_power_sampling || restir_di_presampling_using_power_sampling) && emissive_count > 0;
 }

@@ -157,7 +157,7 @@ struct ReGIRSpatialReuseSettings
 
 struct ReGIRCorrelationReductionSettings
 {
-	bool do_correlation_reduction = true;
+	bool do_correlation_reduction = false;
 
 	int correlation_reduction_factor = 2;
 	int correl_frames_available = 0;

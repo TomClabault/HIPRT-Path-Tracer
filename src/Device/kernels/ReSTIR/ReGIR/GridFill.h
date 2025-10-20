@@ -62,19 +62,11 @@ HIPRT_DEVICE LightSampleInformation grid_fill_with_per_cell_light_distributions_
     }
     else if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)
     {
-        float mesh_PDF;
-        EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.sample_one_emissive_mesh(rng, mesh_PDF, out_sampled_mesh_index);
-
-        float triangle_PDF;
-        int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
-
-        LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+        LightSampleInformation light_sample = sample_one_emissive_triangle<LSS_BASE_POWER>(render_data, rng);
         if (light_sample.emissive_triangle_global_index == -1)
-            // Can happen if the triangle sampled is degenerate and thus rejected
-            return LightSampleInformation();
+            return light_sample;
 
-        // That point on this triangle on that emissive mesh
-        light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
+        out_sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_sample.emissive_triangle_global_index];
 
         return light_sample;
     }

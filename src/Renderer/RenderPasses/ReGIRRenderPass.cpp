@@ -380,9 +380,13 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 
 	// Launching the computation of grid-cells light distributions at each frame in case new grid
 	// cells have been added to the grid because of rays hitting unexplored parts of the scene
+	// 
+	// NOTE: Without this, light distributions seem to be a bit biased. Probably because not all cells
+	// contain light distributions and so the grid fill is assuming that there is a light distribution there
+	// able to produce light samples whereas there are none
 	//if (render_data.render_settings.sample_number % 64 == 0 && !m_render_window->is_interacting())
 	//{
-	//	if (launch_cell_light_distributions_precomputation(render_data, true))
+	//	if (launch_cell_light_distributions_precomputation(render_data))
 	//		// If we indeed recomputed some cell light distributions, we're going to need to update
 	//		// the pre-integrated RIS integral factors
 	//		launch_pre_integration(render_data);

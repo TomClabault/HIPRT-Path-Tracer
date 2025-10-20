@@ -1928,6 +1928,11 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			"Lights are sampled using a light hierarchy with orientation bounds as proposed in the paper of Conty & Kulla, 2018.",
 		};
+
+		bool base_light_sampling_strategy_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
+		if (base_light_sampling_strategy_disabled)
+			ImGuiRenderer::add_warning("Cell light distributions are being used as the main sampling strategy");
+		ImGui::BeginDisabled(base_light_sampling_strategy_disabled);
 		if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
 		{
 			// Will recompute the alias table if necessary
@@ -1936,6 +1941,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
 		}
+		ImGui::EndDisabled();
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
@@ -2784,12 +2791,14 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
 		}
+		if (do_splitting)
+			ImGuiRenderer::add_warning("The splitting implementation is biased with most MIS schemes (including ReGIR) due to not being able to compute the PDF of a splitting sample.");
 
 		if (do_splitting)
 		{
 			ImGui::TreePush("Split variance threshold ATS tree");
 
-			if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_ats_settings.light_tree_ats_splitting_variance, 0.2f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+			if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_ats_settings.light_tree_ats_splitting_variance, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("User defined split threshold proposed in the paper of Conty & Kulla 2018."
 				" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");

@@ -50,8 +50,15 @@ void LightTreeSamplingDataStructure::compute(const std::vector<int>& emissive_tr
 	});
 }
 
-void LightTreeSamplingDataStructure::recompute()
+void LightTreeSamplingDataStructure::recompute_if_needed(bool skip_if_already_computed)
 {
+	if (skip_if_already_computed && m_light_tree_device_data.m_device_nodes_buffer.get_byte_size() > 0)
+		// Already computed
+		return;
+
+	if (!is_needed(m_renderer->get_render_data().buffers.emissive_triangles_count))
+		return;
+
 	m_renderer->synchronize_all_kernels();
 
 	HIPRTScene& hiprt_scene = m_renderer->get_hiprt_scene();

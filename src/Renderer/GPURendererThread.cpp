@@ -122,6 +122,7 @@ void GPURendererThread::wait_on_render_completion()
 void GPURendererThread::pre_render_update(float delta_time, RenderWindow* render_window)
 {
 	m_renderer->step_animations(delta_time);
+	m_renderer->prepare_light_sampling_data_structures();
 
 	m_renderer->update_render_data();
 

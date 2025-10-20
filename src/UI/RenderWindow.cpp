@@ -71,15 +71,15 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
-// - Now that we have a triangle_index to mesh_index buffer, can we simplify some code somewhere?
-//		- Probably the power sampling of defensive light distribution samp^ling: just sample one power triangle and then
-//		look up the mesh idnex with the buffer ionstead of sampling a mesh in the whole according to power and then a trian,gle in that
-//		mesh according to power
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
 // 
 // - TODO CURRENTLY DOING: COMPARING THE VARIANCE DEPENDING ON THE DZEFENSIVE SAMPLING STRATEGY USED FOR LIGHT CELL DISTRIBUTIONS
+// - Can we have some form of 2 stage resampling during shading where we only keep the best sample for shooting shadow rays instead of shooting shadow rays for everyone, resampled tree 2024 style
 // - Use the light tree for ReGIR interactivity
+// - Can we extend the tail of the light distributions wxith clusters from the light tree?
+//		Careful about having lights in the head of the light distribution s as well as in clusters, that's doubling the lights
+// - What if we use ReSTIR DI for the first hit and only ReGIR for the secondary hits?
 // - We don't need to integrate in multiple passes for the regir pre integration, all that matters is that we have the integral value at the grid cell for the target function being used
 // - Can we compact light distributions per blocks of "scratch buffer size" with only one iteration of light distributions computation?
 // - Jitter spatial reuse in tangent plane
@@ -267,7 +267,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
-// - Remove HIPRT INLINE everywhere
+// - Cache we maybe have some kind of adaptive sampling for the lighting at the priamry hit? So like run ReSTIR DI or something until some variance is reached for DI and then stop sampling DI and only sample DI
 // - Vertex cache optimization buffer arrangement for better triangle pairing and better tracing performance?
 // - Thread is swizzling (reorder ray invocations) https://github.com/BoyBaykiller/IDKEngine/blob/95a15c1db02f11bd2f47bb81bcfccf0943d3e703/IDKEngine/Resource/Shaders/PathTracing/FirstHit/compute.glsl#L206
 // - Option for terminating rays on emissive hits? --> this is going to be biased but may help performance

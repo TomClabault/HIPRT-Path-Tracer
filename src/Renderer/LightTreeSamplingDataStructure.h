@@ -26,7 +26,7 @@ public:
 		const std::vector<int>& material_indices,
 		const std::vector<CPUMaterial>& materials);
 
-	void recompute();
+	void recompute_if_needed(bool skip_if_already_computed = false);
 	void free();
 
 	bool is_needed(unsigned int emissive_count);
