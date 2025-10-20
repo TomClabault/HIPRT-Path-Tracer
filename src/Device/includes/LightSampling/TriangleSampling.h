@@ -106,7 +106,10 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     light_sample.emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[global_triangle_index]);
     light_sample.point_on_light = random_point_on_triangle;
     light_sample.area_measure_pdf = 1.0f / light_sample.light_area;
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+    // Only needed for ReGIR
     light_sample.sample_random_seed = point_on_light_random_seed;
+#endif
 
     return light_sample;
 }

@@ -556,7 +556,10 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
     out_sample.light_area = selected_light_source_area;
     out_sample.light_source_normal = selected_light_source_normal;
     out_sample.point_on_light = selected_point_on_light;
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+    // Compile guard because 'out_sample.incident_light_info' is only defined if ReGIR is enabled
     out_sample.incident_light_info = selected_incident_light_info;
+#endif
 
     return out_sample;
 #endif

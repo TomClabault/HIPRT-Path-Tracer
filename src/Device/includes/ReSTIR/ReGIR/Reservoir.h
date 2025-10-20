@@ -45,7 +45,12 @@ struct ReGIRReservoir
 
 	HIPRT_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
 	{
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+		// Compile guard because 'light_sample.sample_random_seed' is only defined if ReGIR is enabled
 		return stream_sample_raw(mis_weight, target_function, source_pdf, light_sample.emissive_triangle_global_index, light_sample.sample_random_seed, rng);
+#else
+		return stream_sample_raw(mis_weight, target_function, source_pdf, light_sample.emissive_triangle_global_index, -1, rng);
+#endif
 	}
 
 	HIPRT_DEVICE bool stream_reservoir(float mis_weight, float target_function, const ReGIRReservoir& other_reservoir, Xorshift32Generator& rng)

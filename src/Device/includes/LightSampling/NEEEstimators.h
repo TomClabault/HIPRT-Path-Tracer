@@ -61,7 +61,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
         {
             float bsdf_pdf;
 
-            BSDFIncidentLightInfo incident_light_info = light_sample.incident_light_info;
+            BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
             BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 #else
