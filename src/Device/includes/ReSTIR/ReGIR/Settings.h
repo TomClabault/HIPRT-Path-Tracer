@@ -89,7 +89,7 @@ struct ReGIRGridFillSettings
 		light_sample_count_per_cell_reservoir = 4;
 
 		reservoirs_count_per_grid_cell_non_canonical = primary_hit ? 64 : 8; // 64
-		reservoirs_count_per_grid_cell_canonical = primary_hit ? 12 : 4; // 12
+		reservoirs_count_per_grid_cell_canonical = primary_hit ? 1 : 4; // 12
 	}
 
 	// How many light samples are resampled into each reservoir of the grid cell

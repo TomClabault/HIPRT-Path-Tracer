@@ -73,8 +73,12 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
+// - Remove shade all samples feature
+//		Should also be able to remove ReGIRAdditionalInfo stuff
+// - Remove register test files
+// - Remove tap per neighbor shading resampling
+// - Remove light presampling
 // 
-// - TODO CURRENTLY DOING: COMPARING THE VARIANCE DEPENDING ON THE DZEFENSIVE SAMPLING STRATEGY USED FOR LIGHT CELL DISTRIBUTIONS
 // - Can we have some form of 2 stage resampling during shading where we only keep the best sample for shooting shadow rays instead of shooting shadow rays for everyone, resampled tree 2024 style
 // - Use the light tree for ReGIR interactivity
 // - Can we extend the tail of the light distributions wxith clusters from the light tree?

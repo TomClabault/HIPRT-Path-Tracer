@@ -60,8 +60,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 701
-#define DEBUG_PIXEL_Y 315
+#define DEBUG_PIXEL_X 1050
+#define DEBUG_PIXEL_Y 335
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -85,7 +85,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 100
+#define DEBUG_NEIGHBORHOOD_SIZE 75
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -345,10 +345,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     compute_emissives_power_alias_table(parsed_scene);
 #endif
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS ||               \
-    (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && (                     \
-        ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS ||   \
-        (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE && ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_LIGHT_TREE_ATS)))
+#if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS || DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
     m_light_tree_builder.build_light_tree(
         parsed_scene.emissive_triangles_primitive_indices,
         parsed_scene.triangles_vertex_indices,
