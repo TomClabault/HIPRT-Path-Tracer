@@ -90,10 +90,10 @@ HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, f
 	else
 		theta_u = asin(hippt::min(1.0f, sphere_radius / sqrtf(hippt::length2(node_center - shading_point))));
 	//float theta_u = subtended_angle_aabb_to_point_average_corners(node.bounds_min, node.bounds_max, shading_point);
-	float theta_i = acos(hippt::dot(shading_normal, hippt::normalize(node_center - shading_point)));
+	float theta_i = acos(hippt::clamp(0.0f, 1.0f, hippt::dot(shading_normal, hippt::normalize(node_center - shading_point))));
 	float theta_i_prime = hippt::max(0.0f, theta_i - theta_u);
 
-	float theta = acos(hippt::dot(node.axis, hippt::normalize(shading_point - node_center)));
+	float theta = acos(hippt::clamp(0.0f, 1.0f, hippt::dot(node.axis, hippt::normalize(shading_point - node_center))));
 	float theta_prime = hippt::max(0.0f, theta - node.theta_o - theta_u);
 
 #if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE
