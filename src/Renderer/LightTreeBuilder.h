@@ -47,7 +47,6 @@ public:
 
 		AABB node_bounds;
 		unsigned int left_child_index;
-		unsigned int right_child_index;
 		unsigned int first_triangle_index, triangle_count;
 		unsigned int bit_trail = 0;
 	};
@@ -139,19 +138,17 @@ LightTreeBuilderDeviceData<DataContainer> LightTreeBuilder::compute_device_data(
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
 		device_data_out.nodes_device[i].axis = m_nodes[i].orientation_data.axis;
-		device_data_out.nodes_device[i].theta_o = m_nodes[i].orientation_data.theta_o;
-		device_data_out.nodes_device[i].theta_e = m_nodes[i].orientation_data.theta_e;
-		device_data_out.nodes_device[i].total_power = m_nodes[i].total_power;
-		device_data_out.nodes_device[i].energy_average = m_nodes[i].energy_average;
-		device_data_out.nodes_device[i].energy_variance = m_nodes[i].energy_variance;
+		device_data_out.nodes_device[i].cos_theta_o = cosf(m_nodes[i].orientation_data.theta_o);
+		device_data_out.nodes_device[i].sin_theta_o = sinf(m_nodes[i].orientation_data.theta_o);
+		device_data_out.nodes_device[i].total_power_luminance = m_nodes[i].total_power.luminance();
 		device_data_out.nodes_device[i].total_emitter_count = m_nodes[i].total_emitter_count;
-
 		device_data_out.nodes_device[i].bounds_min = m_nodes[i].node_bounds.mini;
 		device_data_out.nodes_device[i].bounds_max = m_nodes[i].node_bounds.maxi;
-		device_data_out.nodes_device[i].left_child_index = m_nodes[i].left_child_index;
-		device_data_out.nodes_device[i].right_child_index = m_nodes[i].right_child_index;
-		device_data_out.nodes_device[i].first_triangle_index = m_nodes[i].first_triangle_index;
 		device_data_out.nodes_device[i].triangle_count = m_nodes[i].triangle_count;
+		if (m_nodes[i].triangle_count == 0)
+			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].left_child_index;
+		else
+			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].first_triangle_index;
 	}
 
 	return device_data_out;

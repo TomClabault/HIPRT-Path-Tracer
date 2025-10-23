@@ -148,8 +148,9 @@ void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTria
 		return;
 	}
 
-	int left_child_index = (*m_current_node_index)++;
-	int right_child_index = (*m_current_node_index)++;
+	unsigned int current_index = m_current_node_index->fetch_add(2);
+	int left_child_index = current_index;
+	int right_child_index = current_index + 1;
 
 	LightTreeNode& left_child = m_nodes[left_child_index];
 	left_child.first_triangle_index = node.first_triangle_index;
@@ -163,7 +164,6 @@ void LightTreeBuilder::subdivide_node(unsigned int node_index, const BuilderTria
 	right_child.bit_trail |= 1 << depth;
 
 	node.left_child_index = left_child_index;
-	node.right_child_index = right_child_index;
 	node.triangle_count = 0;
 
 	update_node_bounds(left_child_index, triangles_data);
@@ -243,10 +243,6 @@ float LightTreeBuilder::compute_split_position(const LightTreeNode& node, int& o
 			std::vector<Bin> m_bins_temp_buffer(m_build_options.bin_count);
 			std::vector<BinCostInfo> m_left_bins_info_temp_buffer(m_build_options.bin_count);
 			std::vector<BinCostInfo> m_right_bins_info_temp_buffer(m_build_options.bin_count);
-
-			/*std::fill(m_bins_temp_buffer.begin(), m_bins_temp_buffer.end(), Bin());
-			std::fill(m_left_bins_info_temp_buffer.begin(), m_left_bins_info_temp_buffer.end(), BinCostInfo());
-			std::fill(m_right_bins_info_temp_buffer.begin(), m_right_bins_info_temp_buffer.end(), BinCostInfo());*/
 
 			// Computing the bounds of the bins
 			// TODO bin 3 axis at the same time

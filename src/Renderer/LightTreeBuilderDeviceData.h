@@ -6,7 +6,7 @@
 #ifndef RENDERER_LIGHT_TREE_BUILDER_DEVICE_DATA_H
 #define RENDERER_LIGHT_TREE_BUILDER_DEVICE_DATA_H
 
-#include "Device/includes/LightSampling/LightTreeDevice.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeDevice.h"
 
 #include <vector>
 

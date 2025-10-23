@@ -15,7 +15,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE bool point_inside_AABB(float3 aabb_min, float3 aabb_max, float3 point)
+HIPRT_DEVICE HIPRT_INLINE bool point_inside_AABB(float3 aabb_min, float3 aabb_max, float3 point)
 {
 	return (point.x <= aabb_max.x && point.x >= aabb_min.x) &&
 		(point.y <= aabb_max.y && point.y >= aabb_min.y) &&
@@ -58,52 +58,116 @@ HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, f
 	if (node.is_invalid())
 		return 0.0f;
 
-	// If the whole node is behind the surface, quick exit
+	// If the whole node is behind the surface, quick exit (if even the corner that maximizes
+	// the dot product yields a dot product negative, then every corners are going to be behind
+	// the surface)
 	//
 	// Not doing it this way and relying on the bounding sphere of the node as done
 	// later isn't enough sometimes so this helps a lot in cases where the bounding
 	// sphere is too conservative
-	if (hippt::dot(make_float3(node.bounds_min.x, node.bounds_min.y, node.bounds_min.z) - shading_point, shading_normal) <= 0.0f &&
-		hippt::dot(make_float3(node.bounds_max.x, node.bounds_min.y, node.bounds_min.z) - shading_point, shading_normal) <= 0.0f &&
-		hippt::dot(make_float3(node.bounds_min.x, node.bounds_max.y, node.bounds_min.z) - shading_point, shading_normal) <= 0.0f &&
-		hippt::dot(make_float3(node.bounds_max.x, node.bounds_max.y, node.bounds_min.z) - shading_point, shading_normal) <= 0.0f &&
-		hippt::dot(make_float3(node.bounds_min.x, node.bounds_min.y, node.bounds_max.z) - shading_point, shading_normal) <= 0.0f &&
-		hippt::dot(make_float3(node.bounds_max.x, node.bounds_min.y, node.bounds_max.z) - shading_point, shading_normal) <= 0.0f &&
-		hippt::dot(make_float3(node.bounds_min.x, node.bounds_max.y, node.bounds_max.z) - shading_point, shading_normal) <= 0.0f &&
-		hippt::dot(make_float3(node.bounds_max.x, node.bounds_max.y, node.bounds_max.z) - shading_point, shading_normal) <= 0.0f)
+	float3 max_corner;
+	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
+	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
+	max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
+
+	if (hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f)
 		return 0.0f;
 
 	float3 node_center = (node.bounds_max + node.bounds_min) * 0.5f;
+	float3 to_center = node_center - shading_point;
+	float dist_to_center = hippt::length(to_center);
+	float3 to_center_normalized = to_center / dist_to_center;
+	float3 node_diag = node.bounds_max - node.bounds_min;
+	float half_diag_length = hippt::length(node_diag) * 0.5f;
 	// Using a minimum for the distance squared to avoid large errors if a point is very close to the center
 	// of the node for example
-	float distance_to_center_2 = hippt::length2(node_center - shading_point);
-	distance_to_center_2 = hippt::max(distance_to_center_2, hippt::length(node.bounds_max - node.bounds_min));
+	float distance_to_center_2 = hippt::max(dist_to_center * dist_to_center, hippt::square(half_diag_length));
 
-	// cos_theta_u is going to be computed as a conservative bound using a sphere
-	// bounding the node
-	float3 half_extents = (node.bounds_max - node.bounds_min) * 0.5f;
-	float sphere_radius = hippt::length(half_extents);
+	float sphere_radius = half_diag_length;
+	bool inside_aabb = point_inside_AABB(node.bounds_min, node.bounds_max, shading_point);
+	float sin_theta_u = 0.0f;
+	float cos_theta_u = 1.0f;
+	if (inside_aabb) 
+	{
+		// If the shading point is inside the bounds, treat theta_u as PI
+		sin_theta_u = 0.0f;
+		cos_theta_u = -1.0f;
+	}
+	else 
+	{
+		float ratio = sphere_radius / dist_to_center;
+		if (ratio >= 1.0f) 
+		{
+			sin_theta_u = 1.0f;
+			cos_theta_u = 0.0f;
+		}
+		else 
+		{
+			sin_theta_u = ratio;
+			cos_theta_u = sqrtf(hippt::max(0.0f, 1.0f - sin_theta_u * sin_theta_u));
+		}
+	}
 
-	float theta_u;
-	if (point_inside_AABB(node.bounds_min, node.bounds_max, shading_point))
-		theta_u = M_PI;
-	else
-		theta_u = asin(hippt::min(1.0f, sphere_radius / sqrtf(hippt::length2(node_center - shading_point))));
-	//float theta_u = subtended_angle_aabb_to_point_average_corners(node.bounds_min, node.bounds_max, shading_point);
-	float theta_i = acos(hippt::clamp(0.0f, 1.0f, hippt::dot(shading_normal, hippt::normalize(node_center - shading_point))));
-	float theta_i_prime = hippt::max(0.0f, theta_i - theta_u);
+	float cos_theta_i_prime;
+	if (inside_aabb)
+		// Inside:
+		// => theta_u == PI 
+		// => theta_i_prime = max(0, theta_i - PI) = 0 
+		// => cos = 1
+		cos_theta_i_prime = 1.0f;
+	else 
+	{
+		// theta_i <= theta_u <=> cos(theta_i) >= cos(theta_u)
+		float cos_theta_i = hippt::dot(shading_normal, to_center_normalized);
+		if (cos_theta_i >= cos_theta_u)
+			cos_theta_i_prime = 1.0f;
+		else 
+		{
+			// cos(theta_i - theta_u) = cos(theta_i) * cos(theta_u) + sin(theta_i) * sin(theta_u)
+			float sin_theta_i = sqrtf(hippt::max(0.0f, 1.0f - cos_theta_i * cos_theta_i));
+			cos_theta_i_prime = cos_theta_i * cos_theta_u + sin_theta_i * sin_theta_u;
+		}
+	}
 
-	float theta = acos(hippt::clamp(0.0f, 1.0f, hippt::dot(node.axis, hippt::normalize(shading_point - node_center))));
-	float theta_prime = hippt::max(0.0f, theta - node.theta_o - theta_u);
+	float cos_theta = hippt::clamp(hippt::dot(node.axis, -to_center_normalized), 0.0f, 1.0f);
+	float sin_theta = sqrtf(hippt::max(0.0f, 1.0f - cos_theta * cos_theta));
 
-#if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_TRUE
-	float cos_theta_prime = hippt::abs(cos(theta_prime));
+	// For T = node.theta_o + theta_u
+	// Compute cos_T and sin_T
+	float cos_T = node.cos_theta_o * cos_theta_u - node.sin_theta_o * sin_theta_u;
+	float sin_T = node.sin_theta_o * cos_theta_u + node.cos_theta_o * sin_theta_u;
+
+	float cos_theta_prime;
+	if (sin_T <= 0.0f)
+		// T >= pi (which is sin_T <= 0.0f)
+		// -> theta (in [0,pi/2]) <= T
+		// always -> theta' == 0 -> cos(theta') == 1
+		cos_theta_prime = 1.0f;
+	else 
+	{
+		// Now T in (0, pi) so cos is monotonic and we can compare cosines
+		if (cos_theta >= cos_T) 
+			cos_theta_prime = 1.0f;
+		else 
+		{
+			// cos(theta - T) = cos(theta) * cos(T) + sin(theta) * sin(T)
+			cos_theta_prime = cos_theta * cos_T + sin_theta * sin_T;
+
+#if DirectLightSamplingAllowBackfacingLights
+			cos_theta_prime = hippt::abs(cos_theta_prime);
 #else
-	float cos_theta_prime = hippt::max(0.0f, cosf(theta_prime));
+			cos_theta_prime = hippt::max(0.0f, cos_theta_prime);
 #endif
+		}
+	}
+
 	
-	return hippt::abs(cos(theta_i_prime)) * node.total_power.luminance() / distance_to_center_2 * cos_theta_prime;
+	return cos_theta_i_prime * node.total_power_luminance / distance_to_center_2 * cos_theta_prime;
 }
+
+#if LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
+
+#define ATS_LIGHT_TREE_SPLITTING_STACK_SIZE 64
 
 HIPRT_DEVICE float light_tree_node_variance(const LightTreeNodeDevice& node, float3 shading_point)
 {
@@ -121,14 +185,10 @@ HIPRT_DEVICE float light_tree_node_variance(const LightTreeNodeDevice& node, flo
 
 	float mean_geometric = 1.0f / (a * b);
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
-	float variance = (node.energy_variance * variance_geometric + node.energy_variance * hippt::square(mean_geometric) + hippt::square(node.energy_average) * variance_geometric) * hippt::square(node.total_emitter_count);
+	float variance = (node.get_energy_variance() * variance_geometric + node.get_energy_variance() * hippt::square(mean_geometric) + hippt::square(node.get_energy_average()) * variance_geometric) * hippt::square(node.total_emitter_count);
 
 	return sqrtf(sqrtf(1.0f / (1.0f + sqrtf(variance))));
 }
-
-#if LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
-
-#define ATS_LIGHT_TREE_SPLITTING_STACK_SIZE 64
 
 struct LightTreeATSWRSReservoir
 {
@@ -426,6 +486,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 	return final_light_sample;
 }
 #else
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_power(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator);
+
 HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(const HIPRTRenderData& render_data,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
@@ -435,15 +497,11 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 
 	LightTreeNodeDevice current_node = nodes[0];
 
-	float root_node_importance = light_tree_node_importance(current_node, shading_point, shading_normal);
-	if (root_node_importance <= 0)
-		return LightSampleInformation();
-
 	float cumulative_probability = 1.0f;
 	while (current_node.triangle_count == 0)
 	{
-		LightTreeNodeDevice left_child = nodes[current_node.left_child_index];
-		LightTreeNodeDevice right_child = nodes[current_node.right_child_index];
+		LightTreeNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
+		LightTreeNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
 		float left_importance = light_tree_node_importance(left_child, shading_point, shading_normal);
 		float right_importance = light_tree_node_importance(right_child, shading_point, shading_normal);
@@ -466,7 +524,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 		}
 	}
 
-	int index = current_node.first_triangle_index + rng.random_index(current_node.triangle_count);
+	int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
 	int triangle_index = render_data.buffers.light_tree.indices_array[index];
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
@@ -494,8 +552,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree(const HIPRTRenderData& re
 	float cumulative_probability = 1.0f;
 	while (current_node.triangle_count == 0)
 	{
-		LightTreeNodeDevice left_child = nodes[current_node.left_child_index];
-		LightTreeNodeDevice right_child = nodes[current_node.right_child_index];
+		LightTreeNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
+		LightTreeNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
 		float left_importance = light_tree_node_importance(left_child, shading_point, shading_normal);
 		float right_importance = light_tree_node_importance(right_child, shading_point, shading_normal);

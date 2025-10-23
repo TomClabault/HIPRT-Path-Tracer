@@ -126,12 +126,9 @@ size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
 	m_ray_volume_state_byte_size_kernel->launch_synchronous(1, 1, 1, 1, launch_args, 0);
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(0));
 
-	//std::cout << out_size_buffer.download_data()[0] << " GPU";
-	//std::cout << sizeof(RayVolumeState) << " CPU" << std::endl;
-	//std::exit(0);
-	//return 0;
-	size_t size = out_size_buffer.download_data()[0];
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "RayVolumeState size on CPU/GPU: %lld/%lld bytes", sizeof(RayVolumeState), out_size_buffer.download_data()[0]);
 
+	size_t size = out_size_buffer.download_data()[0];
 	return size;
 }
 

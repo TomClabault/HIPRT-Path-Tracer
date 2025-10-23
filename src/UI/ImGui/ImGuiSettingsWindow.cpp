@@ -2844,6 +2844,8 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 			ImGui::TreePop();
 		}
 
+		ImGui::SeparatorText("Importance function");
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}

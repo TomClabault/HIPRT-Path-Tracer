@@ -8,7 +8,7 @@
 
 #include "Device/includes/AliasTable.h"
 #include "Device/includes/LightSampling/EmissiveMeshesAliasTables.h"
-#include "Device/includes/LightSampling/LightTreeDevice.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeDevice.h"
 #include "Device/includes/GMoN/GMoNDevice.h"
 
 #include "HostDeviceCommon/Material/MaterialPackedSoA.h"

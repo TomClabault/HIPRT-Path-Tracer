@@ -257,27 +257,6 @@ public:
 	unsigned int get_total_triangle_count() const;
 
 	/**
-	 * Returns the size of the RayVolumeState struct on the GPU.
-	 * 
-	 * Useful when the size of the struct changes because the nested dielectrics
-	 * stack size changed but we have no easy way to find out what's the new size
-	 * of the struct on the CPU to upload the correct data size.
-	 * 
-	 * There's no easy way to find the new size of the struct on the CPU because
-	 * the RayVolumeState struct includes a NestedDielectricsInteriorStack struct whose size
-	 * is defined at compilation time. If the nested dielectrics stack size changes
-	 * at runtime (possible through ImGui), then we need to recompute the size of
-	 * the RayVolumeState structure on the CPU to be able to properly resize the
-	 * GPU buffers that use the RayVolumeState (in the GBuffer for example).
-	 * However, again, that size is determined at compilation time so we can't
-	 * know on the CPU what's going to be the new size. To circumvent that, we
-	 * use the fact that shader are recompiled on the GPU and so the shaders know
-	 * the new size. This function thus launches a kernel on the GPU to querry
-	 * the size of the structure.
-	 */
-	// size_t get_ray_volume_state_byte_size();
-
-	/**
 	 * Resizes the ray_volume_states array of the GBuffers
 	 * (current frame and previous frames if used) so that it matches the size of RayVolumeState being used on the GPU
 	 */

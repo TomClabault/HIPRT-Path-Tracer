@@ -17,7 +17,7 @@ struct LightTreeNodeOrientationData
 		float theta_o_a = this->theta_o;
 		float theta_e_a = this->theta_e;
 
-		if (axis_a.x == UNINITIALIZED_AXIS)
+		if (axis_a.x == LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS)
 		{
 			this->axis = axis_b;
 			this->theta_o = theta_o_b;
@@ -73,7 +73,7 @@ struct LightTreeNodeOrientationData
 	}
 
 	// Axis of the cluster
-	float3 axis = make_float3(UNINITIALIZED_AXIS, UNINITIALIZED_AXIS, UNINITIALIZED_AXIS);
+	float3 axis = make_float3(LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS, LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS, LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS);
 	// Normal bounds
 	float theta_o = 0.0f;
 	// Emission extents
