@@ -3,13 +3,13 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_LIGHT_TREE_NODE_ORIENTATION_DATA_H
-#define RENDERER_LIGHT_TREE_NODE_ORIENTATION_DATA_H
+#ifndef RENDERER_LIGHT_TREE_ATS_NODE_ORIENTATION_DATA_H
+#define RENDERER_LIGHT_TREE_ATS_NODE_ORIENTATION_DATA_H
 
 #include "Device/includes/ONB.h"
-#include "Renderer/LightTreeConstants.h"
+#include "Renderer/LightTree/LightTreeATSConstants.h"
 
-struct LightTreeNodeOrientationData
+struct LightTreeATSNodeOrientationData
 {
 	HIPRT_HOST void cone_union_with(float3 axis_b, float theta_o_b, float theta_e_b)
 	{
@@ -67,7 +67,7 @@ struct LightTreeNodeOrientationData
 		}
 	}
 
-	HIPRT_HOST void cone_union_with(const LightTreeNodeOrientationData& other)
+	HIPRT_HOST void cone_union_with(const LightTreeATSNodeOrientationData& other)
 	{
 		cone_union_with(other.axis, other.theta_o, other.theta_e);
 	}

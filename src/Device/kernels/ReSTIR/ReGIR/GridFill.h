@@ -52,7 +52,7 @@ HIPRT_DEVICE LightSampleInformation grid_fill_sample_canonical_candidate(const H
 #if ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_LIGHT_TREE_ATS
 	RayPayload dummy_ray_payload;
 
-    return sample_one_emissive_triangle_light_tree<false>(render_data,
+    return sample_one_emissive_triangle_light_tree_ats<false>(render_data,
         shading_point, view_direction, cell_normal, cell_normal,
         last_hit_primitive_index, dummy_ray_payload, rng);
 #else
@@ -87,7 +87,7 @@ HIPRT_DEVICE LightSampleInformation grid_fill_with_per_cell_light_distributions_
     {
         RayPayload dummy_ray_payload;
 
-        LightSampleInformation light_sample = sample_one_emissive_triangle_light_tree(render_data,
+        LightSampleInformation light_sample = sample_one_emissive_triangle_light_tree_ats(render_data,
             surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal,
             surface.cell_primitive_index, dummy_ray_payload,
             rng);

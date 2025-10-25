@@ -3,13 +3,13 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_LIGHT_TREE_DEVICE_H
-#define DEVICE_INCLUDES_LIGHT_TREE_DEVICE_H
+#ifndef DEVICE_INCLUDES_LIGHT_TREE_ATS_DEVICE_H
+#define DEVICE_INCLUDES_LIGHT_TREE_ATS_DEVICE_H
 
 #include "HostDeviceCommon/Color.h"
-#include "Renderer/LightTreeConstants.h"
+#include "Renderer/LightTree/LightTreeATSConstants.h"
 
-struct LightTreeNodeDevice
+struct LightTreeATSNodeDevice
 {
 	HIPRT_DEVICE bool is_invalid() const
 	{
@@ -39,9 +39,9 @@ struct LightTreeNodeDevice
 	unsigned int triangle_count;
 };
 
-struct LightTreeDevice
+struct LightTreeATSDevice
 {
-	LightTreeNodeDevice* nodes = nullptr;
+	LightTreeATSNodeDevice* nodes = nullptr;
 	int* indices_array = nullptr;
 	unsigned int* bit_trails = nullptr;
 };

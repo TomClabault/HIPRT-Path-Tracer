@@ -57,7 +57,7 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 		m_global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
 
 	m_power_sampling_data_structure = PowerSamplingDataStructure(this);
-	m_light_tree_sampling_data_structure = LightTreeSamplingDataStructure(this);
+	m_light_tree_sampling_data_structure = LightTreeATSSamplingDataStructure(this);
 
 	m_render_thread.init(this);
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
@@ -194,12 +194,12 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 		m_light_tree_sampling_data_structure.free();
 }
 
-LightTreeBuilderOptions& GPURenderer::get_light_tree_build_options()
+LightTreeATSBuilderOptions& GPURenderer::get_light_tree_build_options()
 {
 	return m_light_tree_sampling_data_structure.get_builder_options();
 }
 
-LightTreeSamplingDataStructure& GPURenderer::get_light_tree_sampling_data_structure()
+LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_sampling_data_structure()
 {
 	return m_light_tree_sampling_data_structure;
 }

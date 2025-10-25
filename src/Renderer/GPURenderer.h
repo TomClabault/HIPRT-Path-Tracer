@@ -17,8 +17,8 @@
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/GPURendererThread.h"
 #include "Renderer/HardwareAccelerationSupport.h"
-#include "Renderer/LightTreeBuilder.h"
-#include "Renderer/LightTreeSamplingDataStructure.h"
+#include "Renderer/LightTree/LightTreeATSBuilder.h"
+#include "Renderer/LightTree/LightTreeATSSamplingDataStructure.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/PowerSamplingDataStructure.h"
 #include "Renderer/RendererAnimationState.h"
@@ -92,8 +92,8 @@ public:
 	void compute_emissives_sampling_data_structure_from_scene(const Scene& scene);
 	void recompute_emissives_sampling_data_structure();
 
-	LightTreeBuilderOptions& get_light_tree_build_options();
-	LightTreeSamplingDataStructure& get_light_tree_sampling_data_structure();
+	LightTreeATSBuilderOptions& get_light_tree_build_options();
+	LightTreeATSSamplingDataStructure& get_light_tree_sampling_data_structure();
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
@@ -475,7 +475,7 @@ private:
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
 	PowerSamplingDataStructure m_power_sampling_data_structure;
-	LightTreeSamplingDataStructure m_light_tree_sampling_data_structure;
+	LightTreeATSSamplingDataStructure m_light_tree_sampling_data_structure;
 
 	// 32x32 texture containing the precomputed parameters of the LTC
 	// fitted to approximate the SSGX sheen volumetric layer.

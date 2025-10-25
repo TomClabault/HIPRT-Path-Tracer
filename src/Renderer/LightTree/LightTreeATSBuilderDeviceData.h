@@ -3,15 +3,15 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_LIGHT_TREE_BUILDER_DEVICE_DATA_H
-#define RENDERER_LIGHT_TREE_BUILDER_DEVICE_DATA_H
+#ifndef RENDERER_LIGHT_TREE_ATS_BUILDER_DEVICE_DATA_H
+#define RENDERER_LIGHT_TREE_ATS_BUILDER_DEVICE_DATA_H
 
-#include "Device/includes/LightSampling/LightTree/LightTreeDevice.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
 
 #include <vector>
 
 template <template <typename> typename DataContainer>
-struct LightTreeBuilderDeviceData
+struct LightTreeATSBuilderDeviceData
 {
 	void free()
 	{
@@ -20,7 +20,7 @@ struct LightTreeBuilderDeviceData
 
 		if constexpr (std::is_same_v<std::vector<int>, DataContainer<int>>)
 		{
-			m_device_nodes_buffer = std::vector<LightTreeNodeDevice>();
+			m_device_nodes_buffer = std::vector<LightTreeATSNodeDevice>();
 			m_device_indices_array_buffer = std::vector<int>();
 		}
 		else
@@ -30,9 +30,9 @@ struct LightTreeBuilderDeviceData
 		}
 	}
 
-	std::vector<LightTreeNodeDevice> nodes_device;
+	std::vector<LightTreeATSNodeDevice> nodes_device;
 
-	DataContainer<LightTreeNodeDevice> m_device_nodes_buffer;
+	DataContainer<LightTreeATSNodeDevice> m_device_nodes_buffer;
 	DataContainer<int> m_device_indices_array_buffer;
 	DataContainer<unsigned int> m_bit_trails_buffer;
 };

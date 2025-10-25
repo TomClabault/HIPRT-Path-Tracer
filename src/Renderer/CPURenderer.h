@@ -24,7 +24,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRPresampledLightsSoAHost.h"
-#include "Renderer/LightTreeBuilder.h"
+#include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -146,8 +146,8 @@ private:
     // to sample an emissive triangle proportional to its power within a given mesh
     EmissiveMeshesAliasTablesHost<std::vector> m_emissive_meshes_alias_tables;
     
-    LightTreeBuilder m_light_tree_builder;
-    LightTreeBuilderDeviceData<std::vector> m_light_tree_device_data;
+    LightTreeATSBuilder m_light_tree_builder;
+    LightTreeATSBuilderDeviceData<std::vector> m_light_tree_device_data;
 
     NEEPlusPlusCPUData m_nee_plus_plus;
 

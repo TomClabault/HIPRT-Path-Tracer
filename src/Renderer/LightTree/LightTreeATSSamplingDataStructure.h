@@ -3,20 +3,20 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_LIGHT_TREE_SAMPLING_DATA_STRUCTURE_H
-#define RENDERER_LIGHT_TREE_SAMPLING_DATA_STRUCTURE_H
+#ifndef RENDERER_LIGHT_TREE_ATS_SAMPLING_DATA_STRUCTURE_H
+#define RENDERER_LIGHT_TREE_ATS_SAMPLING_DATA_STRUCTURE_H
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#include "Renderer/LightTreeBuilder.h"
+#include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Scene/SceneParser.h"
 
 class GPURenderer;
 
-class LightTreeSamplingDataStructure
+class LightTreeATSSamplingDataStructure
 {
 public:
-	LightTreeSamplingDataStructure() : m_renderer(nullptr) {}
-	LightTreeSamplingDataStructure(GPURenderer* renderer) : m_renderer(renderer) {}
+	LightTreeATSSamplingDataStructure() : m_renderer(nullptr) {}
+	LightTreeATSSamplingDataStructure(GPURenderer* renderer) : m_renderer(renderer) {}
 
 	void compute_from_scene(const Scene& scene);
 	void compute(
@@ -31,11 +31,11 @@ public:
 
 	bool is_needed(unsigned int emissive_count);
 
-	LightTreeBuilderOptions& get_builder_options();
+	LightTreeATSBuilderOptions& get_builder_options();
 
 private:
-	LightTreeBuilder m_light_tree_builder;
-	LightTreeBuilderDeviceData<OrochiBuffer> m_light_tree_device_data;
+	LightTreeATSBuilder m_light_tree_builder;
+	LightTreeATSBuilderDeviceData<OrochiBuffer> m_light_tree_device_data;
 
 	GPURenderer* m_renderer = nullptr;
 };

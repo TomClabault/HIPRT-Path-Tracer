@@ -3,12 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "LightTreeSamplingDataStructure.h"
+#include "Renderer/LightTree/LightTreeATSSamplingDataStructure.h"
 #include "Renderer/GPURenderer.h"
-#include "Renderer/LightTreeSamplingDataStructure.h"
 #include "Threads/ThreadManager.h"
 
-void LightTreeSamplingDataStructure::compute_from_scene(const Scene& scene)
+void LightTreeATSSamplingDataStructure::compute_from_scene(const Scene& scene)
 {
 	compute(
 		scene.emissive_triangles_primitive_indices,
@@ -18,7 +17,7 @@ void LightTreeSamplingDataStructure::compute_from_scene(const Scene& scene)
 		scene.materials);
 }
 
-void LightTreeSamplingDataStructure::compute(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
+void LightTreeATSSamplingDataStructure::compute(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE, 
@@ -50,7 +49,7 @@ void LightTreeSamplingDataStructure::compute(const std::vector<int>& emissive_tr
 	});
 }
 
-void LightTreeSamplingDataStructure::recompute_if_needed(bool skip_if_already_computed)
+void LightTreeATSSamplingDataStructure::recompute_if_needed(bool skip_if_already_computed)
 {
 	if (skip_if_already_computed && m_light_tree_device_data.m_device_nodes_buffer.get_byte_size() > 0)
 		// Already computed
@@ -79,12 +78,12 @@ void LightTreeSamplingDataStructure::recompute_if_needed(bool skip_if_already_co
 	ThreadManager::join_threads(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE);
 }
 
-void LightTreeSamplingDataStructure::free()
+void LightTreeATSSamplingDataStructure::free()
 {
 	m_light_tree_device_data.free();
 }
 
-bool LightTreeSamplingDataStructure::is_needed(unsigned int emissive_count)
+bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count)
 {
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 	bool directly_using_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS;
@@ -93,7 +92,7 @@ bool LightTreeSamplingDataStructure::is_needed(unsigned int emissive_count)
 	return (directly_using_light_tree || using_regir_light_tree) && emissive_count > 0;
 }
 
-LightTreeBuilderOptions& LightTreeSamplingDataStructure::get_builder_options()
+LightTreeATSBuilderOptions& LightTreeATSSamplingDataStructure::get_builder_options()
 {
 	return m_light_tree_builder.get_options();
 }

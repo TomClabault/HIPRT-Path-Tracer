@@ -3,18 +3,18 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_LIGHT_TREE_BUILDER_H
-#define RENDERER_LIGHT_TREE_BUILDER_H
+#ifndef RENDERER_LIGHT_TREE_ATS_BUILDER_H
+#define RENDERER_LIGHT_TREE_ATS_BUILDER_H
 
 #include "Device/includes/ONB.h"
 #include "HostDeviceCommon/Material/MaterialCPU.h"
 #include "HostDeviceCommon/RenderData.h"
-#include "Renderer/LightTreeBuilderDeviceData.h"
-#include "Renderer/LightTreeBuilderOptions.h"
-#include "Renderer/LightTreeNodeOrientationData.h"
+#include "Renderer/LightTree/LightTreeATSBuilderDeviceData.h"
+#include "Renderer/LightTree/LightTreeATSBuilderOptions.h"
+#include "Renderer/LightTree/LightTreeATSNode.h"
 #include "Scene/AABB.h"
 
-class LightTreeBuilder
+class LightTreeATSBuilder
 {
 public:
 	struct PrefetchedTriangle
@@ -28,36 +28,13 @@ public:
 		ColorRGB32F power;
 	};
 
-	struct LightTreeNode
-	{
-		void cone_union_with(float3 other_axis, float other_theta_o, float other_theta_e)
-		{
-			orientation_data.cone_union_with(other_axis, other_theta_o, other_theta_e);
-		}
-
-		LightTreeNodeOrientationData orientation_data;
-
-		// For adaptive splitting
-		float energy_average = 0.0f;
-		float energy_variance = 0.0f;
-		unsigned int total_emitter_count = 0;
-
-		// Total emissive power of the node
-		ColorRGB32F total_power;
-
-		AABB node_bounds;
-		unsigned int left_child_index;
-		unsigned int first_triangle_index, triangle_count;
-		unsigned int bit_trail = 0;
-	};
-
 	struct Bin
 	{
 		AABB bounds;
 		unsigned int tri_count = 0;
 
 		// For SAOH
-		LightTreeNodeOrientationData orientation_data;
+		LightTreeATSNodeOrientationData orientation_data;
 		ColorRGB32F total_power;
 	};
 
@@ -95,31 +72,32 @@ public:
 
 	void update_node_bounds(unsigned int node_index, const BuilderTrianglesData& triangles_data);
 	void subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data, int depth);
-	float compute_saoh_m_omega(const LightTreeNodeOrientationData& orientation_data) const;
-	float compute_split_position(const LightTreeNode& node, int& out_split_axis, float& out_split_position, const BuilderTrianglesData& triangles_data);
-	float compute_node_cost(const LightTreeNode& node);
-	float compute_sah_cost(const LightTreeNode& node, int axis_index, float split_position, const BuilderTrianglesData& triangles_data);
+	float compute_saoh_m_omega(const LightTreeATSNodeOrientationData& orientation_data) const;
+	float compute_split_position(const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const BuilderTrianglesData& triangles_data);
+	float compute_node_cost(const LightTreeATSNode& node);
+	float compute_sah_cost(const LightTreeATSNode& node, int axis_index, float split_position, const BuilderTrianglesData& triangles_data);
 	int partition_node_primitives(unsigned int node_index, int axis, float split_position);
-	void register_node_bit_trail(const LightTreeNode& node, const BuilderTrianglesData& triangles_data);
+	void register_node_bit_trail(const LightTreeATSNode& node, const BuilderTrianglesData& triangles_data);
 
 	template <template <typename> typename DataContainer>
-	LightTreeBuilderDeviceData<DataContainer> compute_device_data() const;
+	LightTreeATSBuilderDeviceData<DataContainer> compute_device_data() const;
 
 	template <template <typename> typename DataContainer>
-	void to_device(HIPRTRenderData& render_data, const std::vector<int>& emissive_triangles_primitive_indices, unsigned int total_scene_triangle_count, LightTreeBuilderDeviceData<DataContainer>& device_data);
+	void to_device(HIPRTRenderData& render_data, const std::vector<int>& emissive_triangles_primitive_indices, unsigned int total_scene_triangle_count, LightTreeATSBuilderDeviceData<DataContainer>& device_data);
 
 	/**
 	 * Frees up the memory that was needed for building the tree
 	 */
 	void cleanup();
 
-	LightTreeBuilderOptions& get_options();
+	const std::vector<LightTreeATSNode>& get_nodes();
+	LightTreeATSBuilderOptions& get_options();
 
 private:
-	LightTreeBuilderOptions m_build_options;
+	LightTreeATSBuilderOptions m_build_options;
 
 	std::shared_ptr<std::atomic<unsigned int>> m_current_node_index = 0;
-	std::vector<LightTreeNode> m_nodes;
+	std::vector<LightTreeATSNode> m_nodes;
 
 	std::vector<PrefetchedTriangle> m_prefetched_triangles;
 	std::vector<int> m_triangle_indices; // Indices of the emissive triangles from 0 to N - 1
@@ -127,12 +105,12 @@ private:
 };
 
 template <template <typename> typename DataContainer>
-LightTreeBuilderDeviceData<DataContainer> LightTreeBuilder::compute_device_data() const
+LightTreeATSBuilderDeviceData<DataContainer> LightTreeATSBuilder::compute_device_data() const
 {
 	if (m_nodes.empty())
-		return LightTreeBuilderDeviceData<DataContainer>();
+		return LightTreeATSBuilderDeviceData<DataContainer>();
 
-	LightTreeBuilderDeviceData<DataContainer> device_data_out;
+	LightTreeATSBuilderDeviceData<DataContainer> device_data_out;
 	device_data_out.nodes_device.resize(m_nodes.size());
 
 	for (int i = 0; i < m_nodes.size(); i++)
@@ -155,7 +133,7 @@ LightTreeBuilderDeviceData<DataContainer> LightTreeBuilder::compute_device_data(
 }
 
 template <template <typename> typename DataContainer>
-void LightTreeBuilder::to_device(HIPRTRenderData& render_data, const std::vector<int>& emissive_triangles_primitive_indices, unsigned int total_scene_triangle_count, LightTreeBuilderDeviceData<DataContainer>& device_data)
+void LightTreeATSBuilder::to_device(HIPRTRenderData& render_data, const std::vector<int>& emissive_triangles_primitive_indices, unsigned int total_scene_triangle_count, LightTreeATSBuilderDeviceData<DataContainer>& device_data)
 {
 	if (device_data.nodes_device.size() == 0)
 		return;
@@ -172,7 +150,7 @@ void LightTreeBuilder::to_device(HIPRTRenderData& render_data, const std::vector
 	}
 	else
 	{
-		device_data.m_device_nodes_buffer = OrochiBuffer<LightTreeNodeDevice>(device_data.nodes_device);
+		device_data.m_device_nodes_buffer = OrochiBuffer<LightTreeATSNodeDevice>(device_data.nodes_device);
 		device_data.m_device_indices_array_buffer = OrochiBuffer<int>(m_triangle_indices);
 		device_data.m_bit_trails_buffer = OrochiBuffer<unsigned int>(converted_bit_trails);
 	}

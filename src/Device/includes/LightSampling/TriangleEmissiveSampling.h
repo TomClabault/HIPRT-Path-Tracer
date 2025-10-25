@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_EMISSIVE_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_EMISSIVE_SAMPLING_H
  
-#include "Device/includes/LightSampling/LightTree/LightTreeSampling.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeATSSampling.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingAdditionalInfo.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingPairwiseMIS.h"
@@ -228,7 +228,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
             }
 
 #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
-            LightSampleInformation canonical_sample = sample_one_emissive_triangle_light_tree(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
+            LightSampleInformation canonical_sample = sample_one_emissive_triangle_light_tree_ats(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
             if (canonical_sample.emissive_triangle_global_index != -1)
             {
                 UCW_2 = 1.0f / canonical_sample.area_measure_pdf;
@@ -259,7 +259,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
                 canonical_technique_1_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, point_on_light_1, light_source_normal_1, emission_1, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), random_number_generator);
 #if ReGIR_ShadingResamplingIncludeCanonicalCandidates == KERNEL_OPTION_TRUE
 #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
-                canonical_technique_2_canonical_reservoir_1_pdf = pdf_of_emissive_triangle_light_tree(render_data, shading_point, shading_normal, triangle_index_canonical_technique_1) / triangle_load_area(render_data, triangle_index_canonical_technique_1);
+                canonical_technique_2_canonical_reservoir_1_pdf = pdf_of_emissive_triangle_light_tree_ats(render_data, shading_point, shading_normal, triangle_index_canonical_technique_1) / triangle_load_area(render_data, triangle_index_canonical_technique_1);
 #else
                 canonical_technique_2_canonical_reservoir_1_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, point_on_light_1, light_source_normal_1, emission_1, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), random_number_generator);
 #endif
@@ -274,7 +274,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
                 canonical_technique_1_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, point_on_light_2, light_source_normal_2, emission_2, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), random_number_generator);
 #if ReGIR_ShadingResamplingIncludeCanonicalCandidates == KERNEL_OPTION_TRUE
 #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
-                canonical_technique_2_canonical_reservoir_2_pdf = pdf_of_emissive_triangle_light_tree(render_data, shading_point, shading_normal, triangle_index_canonical_technique_2) / triangle_load_area(render_data, triangle_index_canonical_technique_2);
+                canonical_technique_2_canonical_reservoir_2_pdf = pdf_of_emissive_triangle_light_tree_ats(render_data, shading_point, shading_normal, triangle_index_canonical_technique_2) / triangle_load_area(render_data, triangle_index_canonical_technique_2);
 #else
                 canonical_technique_2_canonical_reservoir_2_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, point_on_light_2, light_source_normal_2, emission_2, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), random_number_generator);
 #endif
@@ -290,7 +290,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
                 canonical_technique_1_canonical_reservoir_3_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<false>(render_data, point_on_light_3, light_source_normal_3, emission_3, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), random_number_generator);
 #if ReGIR_ShadingResamplingIncludeCanonicalCandidates == KERNEL_OPTION_TRUE
 #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
-                canonical_technique_2_canonical_reservoir_3_pdf = pdf_of_emissive_triangle_light_tree(render_data, shading_point, shading_normal, triangle_index_canonical_technique_3) / triangle_load_area(render_data, triangle_index_canonical_technique_3);
+                canonical_technique_2_canonical_reservoir_3_pdf = pdf_of_emissive_triangle_light_tree_ats(render_data, shading_point, shading_normal, triangle_index_canonical_technique_3) / triangle_load_area(render_data, triangle_index_canonical_technique_3);
 #else
                 canonical_technique_2_canonical_reservoir_3_pdf = ReGIR_get_reservoir_sample_ReGIR_PDF<true>(render_data, point_on_light_3, light_source_normal_3, emission_3, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), random_number_generator);
 #endif
@@ -605,7 +605,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRend
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
     {
-        return sample_one_emissive_triangle_light_tree(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
+        return sample_one_emissive_triangle_light_tree_ats(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_REGIR)
     {
