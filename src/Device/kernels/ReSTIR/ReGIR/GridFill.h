@@ -49,8 +49,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
 
 HIPRT_DEVICE LightSampleInformation grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 cell_normal, int last_hit_primitive_index, Xorshift32Generator& rng)
 {
-    // TODO this shouldn't be cell distribution kernel option here.
-    // We want this grid_fill_sample_canonical_candidate function to sample pure canonical candidates only
 #if ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_LIGHT_TREE_ATS
 	RayPayload dummy_ray_payload;
 
@@ -132,7 +130,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         if (reservoir_is_canonical)
         {
             // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
+            target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data,
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         }
