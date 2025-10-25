@@ -66,7 +66,7 @@ struct RenderBuffers
 	// Alias table for sampling emissives lights according to power
 	AliasTableDevice emissive_triangles_power_alias_table;
 	EmissiveMeshesAliasTablesDevice emissive_meshes_data;
-	LightTreeATSDevice light_tree;
+	LightTreeATSDevice light_tree_ats;
 
 	// A pointer either to an array of Image8Bit or to an array of
 	// oroTextureObject_t whether if CPU or GPU rendering respectively

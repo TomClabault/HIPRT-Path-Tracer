@@ -819,6 +819,7 @@ void GPURenderer::rebuild_whole_scene_bvh(hiprtBuildFlags build_flags, bool do_c
 void GPURenderer::set_scene(const Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
+	// TODO multithread this call here
 	compute_emissives_sampling_data_structure_from_scene(scene);
 
 	m_original_materials = scene.materials;

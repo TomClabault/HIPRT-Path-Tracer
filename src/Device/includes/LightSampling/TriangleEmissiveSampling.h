@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_EMISSIVE_SAMPLING_H
  
 #include "Device/includes/LightSampling/LightTree/LightTreeATSSampling.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingAdditionalInfo.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingPairwiseMIS.h"
@@ -606,6 +607,10 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRend
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
     {
         return sample_one_emissive_triangle_light_tree_ats(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
+    }
+    else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
+    {
+        return sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_REGIR)
     {

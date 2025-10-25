@@ -2834,7 +2834,7 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 		{
 			ImGui::TreePush("Split variance threshold ATS tree");
 
-			if (ImGui::SliderFloat("Split threshold", &render_data.light_tree_ats_settings.light_tree_ats_splitting_variance, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+			if (ImGui::SliderFloat("Split threshold", &render_data.buffers.light_tree_ats.settings.light_tree_ats_splitting_variance, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("User defined split threshold proposed in the paper of Conty & Kulla 2018."
 				" The higher this threshold, the more nodes will be split. This parameter is quite scene dependent unfortunately.");

@@ -12,6 +12,7 @@
 #include "Renderer/LightTree/LightTreeATSBuilderDeviceData.h"
 #include "Renderer/LightTree/LightTreeATSBuilderOptions.h"
 #include "Renderer/LightTree/LightTreeATSNode.h"
+#include "Renderer/LightTree/LightTreeBuilderCommon.h"
 #include "Scene/AABB.h"
 
 class LightTreeATSBuilder
@@ -25,7 +26,7 @@ public:
 		float3 normal;
 		float area;
 
-		ColorRGB32F power;
+		float power;
 	};
 
 	struct Bin
@@ -35,7 +36,7 @@ public:
 
 		// For SAOH
 		LightTreeATSNodeOrientationData orientation_data;
-		ColorRGB32F total_power;
+		float total_power;
 	};
 
 	struct BinCostInfo
@@ -48,36 +49,20 @@ public:
 		float m_omega = 0.0f;
 	};
 
-	struct BuilderTrianglesData
-	{
-		BuilderTrianglesData(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_vertex_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
-			: emissive_triangles_primitive_indices(emissive_triangles_primitive_indices)
-			, triangle_vertex_indices(triangle_vertex_indices)
-			, vertices_positions(vertices_positions)
-			, material_indices(material_indices)
-			, materials(materials) {}
-
-		const std::vector<int>& emissive_triangles_primitive_indices;
-		const std::vector<int>& triangle_vertex_indices;
-		const std::vector<float3>& vertices_positions;
-		const std::vector<int>& material_indices;
-		const std::vector<CPUMaterial>& materials;
-	};
-
 	int bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const;
 
-	float3 get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const BuilderTrianglesData& triangles_data) const;
+	float3 get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const LightTreeBuilderTrianglesData& triangles_data) const;
 
 	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials);
 
-	void update_node_bounds(unsigned int node_index, const BuilderTrianglesData& triangles_data);
-	void subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data, int depth);
+	void update_node_bounds(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data);
+	void subdivide_node(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data, int depth);
 	float compute_saoh_m_omega(const LightTreeATSNodeOrientationData& orientation_data) const;
-	float compute_split_position(const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const BuilderTrianglesData& triangles_data);
+	float compute_split_position(const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const LightTreeBuilderTrianglesData& triangles_data);
 	float compute_node_cost(const LightTreeATSNode& node);
-	float compute_sah_cost(const LightTreeATSNode& node, int axis_index, float split_position, const BuilderTrianglesData& triangles_data);
+	float compute_sah_cost(const LightTreeATSNode& node, int axis_index, float split_position, const LightTreeBuilderTrianglesData& triangles_data);
 	int partition_node_primitives(unsigned int node_index, int axis, float split_position);
-	void register_node_bit_trail(const LightTreeATSNode& node, const BuilderTrianglesData& triangles_data);
+	void register_node_bit_trail(const LightTreeATSNode& node, const LightTreeBuilderTrianglesData& triangles_data);
 
 	template <template <typename> typename DataContainer>
 	LightTreeATSBuilderDeviceData<DataContainer> compute_device_data() const;
@@ -90,7 +75,8 @@ public:
 	 */
 	void cleanup();
 
-	const std::vector<LightTreeATSNode>& get_nodes();
+	const std::vector<LightTreeATSNode>& get_nodes() const;
+	const std::vector<PrefetchedTriangle>& get_prefetched_triangles() const;
 	LightTreeATSBuilderOptions& get_options();
 
 private:
@@ -118,7 +104,7 @@ LightTreeATSBuilderDeviceData<DataContainer> LightTreeATSBuilder::compute_device
 		device_data_out.nodes_device[i].axis = m_nodes[i].orientation_data.axis;
 		device_data_out.nodes_device[i].cos_theta_o = cosf(m_nodes[i].orientation_data.theta_o);
 		device_data_out.nodes_device[i].sin_theta_o = sinf(m_nodes[i].orientation_data.theta_o);
-		device_data_out.nodes_device[i].total_power_luminance = m_nodes[i].total_power.luminance();
+		device_data_out.nodes_device[i].total_power_luminance = m_nodes[i].total_power;
 		device_data_out.nodes_device[i].total_emitter_count = m_nodes[i].total_emitter_count;
 		device_data_out.nodes_device[i].bounds_min = m_nodes[i].node_bounds.mini;
 		device_data_out.nodes_device[i].bounds_max = m_nodes[i].node_bounds.maxi;
@@ -155,9 +141,9 @@ void LightTreeATSBuilder::to_device(HIPRTRenderData& render_data, const std::vec
 		device_data.m_bit_trails_buffer = OrochiBuffer<unsigned int>(converted_bit_trails);
 	}
 
-	render_data.buffers.light_tree.nodes = device_data.m_device_nodes_buffer.data();
-	render_data.buffers.light_tree.indices_array = device_data.m_device_indices_array_buffer.data();
-	render_data.buffers.light_tree.bit_trails = device_data.m_bit_trails_buffer.data();
+	render_data.buffers.light_tree_ats.nodes = device_data.m_device_nodes_buffer.data();
+	render_data.buffers.light_tree_ats.indices_array = device_data.m_device_indices_array_buffer.data();
+	render_data.buffers.light_tree_ats.bit_trails = device_data.m_bit_trails_buffer.data();
 }
 
 #endif

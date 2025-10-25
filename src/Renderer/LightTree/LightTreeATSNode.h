@@ -26,7 +26,7 @@ struct LightTreeATSNode
 	unsigned int total_emitter_count = 0;
 
 	// Total emissive power of the node
-	ColorRGB32F total_power;
+	float total_power;
 
 	AABB node_bounds;
 	unsigned int left_child_index;

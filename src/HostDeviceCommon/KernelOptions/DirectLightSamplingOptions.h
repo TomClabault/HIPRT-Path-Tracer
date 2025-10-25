@@ -18,7 +18,8 @@
 #define LSS_BASE_UNIFORM 0
 #define LSS_BASE_POWER 1
 #define LSS_BASE_LIGHT_TREE_ATS 2
-#define LSS_BASE_REGIR 3
+#define LSS_BASE_LIGHT_TREE_SG 3
+#define LSS_BASE_REGIR 4
 
 // This block is a security to make sure that we have everything defined otherwise this can lead
 // to weird behavior because of the compiler not knowing about some macros
@@ -89,11 +90,14 @@
 *	- LSS_BASE_LIGHT_TREE_ATS
 *		Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]
 * 
+*	- LSS_BASE_LIGHT_TREE_SG
+*		Implementation of [Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting, Tokuyoshi et al., 2024]
+*
 *	- LSS_BASE_REGIR
 *		Uses ReGIR to sample lights
 *		Implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021]
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_REGIR
+#define DirectLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_SG
 
 
 /**

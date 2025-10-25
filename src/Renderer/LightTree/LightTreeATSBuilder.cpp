@@ -13,7 +13,7 @@ int LightTreeATSBuilder::bvh_triangle_index_to_emissive_triangle_index(int bvh_t
 	return m_triangle_indices[bvh_triangle_index];
 }
 
-float3 LightTreeATSBuilder::get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const BuilderTrianglesData& triangles_data) const
+float3 LightTreeATSBuilder::get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const LightTreeBuilderTrianglesData& triangles_data) const
 {
 	int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(linear_emissive_triangle_index);
 	return triangles_data.vertices_positions[triangles_data.triangle_vertex_indices[triangles_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + vertex_index]];
@@ -24,7 +24,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building light tree...");
 	auto start = std::chrono::high_resolution_clock::now();
 
-	BuilderTrianglesData triangles_data(emissive_triangles_primitive_indices, triangle_vertex_indices, vertices_positions, material_indices, materials);
+	LightTreeBuilderTrianglesData triangles_data(emissive_triangles_primitive_indices, triangle_vertex_indices, vertices_positions, material_indices, materials);
 
 	m_current_node_index = std::make_shared<std::atomic<unsigned int>>(0);
 
@@ -57,7 +57,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 		m_prefetched_triangles[i].centroid = (v0 + v1 + v2) / 3.0f;
 		m_prefetched_triangles[i].normal = triangle_normal;
 		m_prefetched_triangles[i].area = triangle_area;
-		m_prefetched_triangles[i].power = mat.get_total_emission() * triangle_area;
+		m_prefetched_triangles[i].power = mat.get_total_emission().luminance() * triangle_area;
 	}
 
 	m_current_node_index->store(0);
@@ -74,7 +74,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light tree construction time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 }
 
-void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const BuilderTrianglesData& triangles_data)
+void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data)
 {
 	LightTreeATSNode& node = m_nodes[node_index];
 	node.node_bounds.mini = float3(1e30f, 1e30f, 1e30f);
@@ -95,8 +95,8 @@ void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const Buil
 		node.total_power += m_prefetched_triangles[emissive_triangle_index].power;
 		node.cone_union_with(triangle_normal, 0.0f, (float)M_PI / 2.0f);
 
-		sum_energy += m_prefetched_triangles[emissive_triangle_index].power.luminance();
-		sum_energy_squared += hippt::square(m_prefetched_triangles[emissive_triangle_index].power.luminance());
+		sum_energy += m_prefetched_triangles[emissive_triangle_index].power;
+		sum_energy_squared += hippt::square(m_prefetched_triangles[emissive_triangle_index].power);
 	}
 
 	node.energy_average = sum_energy / node.triangle_count;
@@ -104,7 +104,7 @@ void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const Buil
 	node.total_emitter_count = node.triangle_count;
 }
 
-void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const BuilderTrianglesData& triangles_data, int depth)
+void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data, int depth)
 {
 	LightTreeATSNode& node = m_nodes[node_index];
 	if (node.triangle_count <= m_build_options.max_triangles_per_leaf)
@@ -198,7 +198,7 @@ float LightTreeATSBuilder::compute_saoh_m_omega(const LightTreeATSNodeOrientatio
 	return 2.0f * M_PI * (1.0f - cos_theta_o) + M_PI * 0.5f * (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) - 2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
 }
 
-float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const BuilderTrianglesData& triangles_data)
+float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const LightTreeBuilderTrianglesData& triangles_data)
 {
 	if (m_build_options.build_split_method == LIGHT_TREE_BUILD_OPTION_SPLIT_MIDPOINT)
 	{
@@ -270,30 +270,30 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 
 			AABB left_box, right_box;
 			LightTreeATSNodeOrientationData left_orientation_data, right_orientation_data;
-			ColorRGB32F left_energy, right_energy;
+			float left_power = 0.0f, right_power = 0.0f;
 			int left_tri_count_sum = 0, right_tri_count_sum = 0;
 			for (int i = 0; i < m_build_options.bin_count - 1; i++)
 			{
 				left_tri_count_sum += m_bins_temp_buffer[i].tri_count;
 				left_box.extend(m_bins_temp_buffer[i].bounds);
-				left_energy += m_bins_temp_buffer[i].total_power;
+				left_power += m_bins_temp_buffer[i].total_power;
 				left_orientation_data.cone_union_with(m_bins_temp_buffer[i].orientation_data);
 
 				m_left_bins_info_temp_buffer[i].tri_count = left_tri_count_sum;
 				m_left_bins_info_temp_buffer[i].area = left_box.area();
-				m_left_bins_info_temp_buffer[i].energy = left_energy.luminance();
+				m_left_bins_info_temp_buffer[i].energy = left_power;
 				m_left_bins_info_temp_buffer[i].m_omega = compute_saoh_m_omega(left_orientation_data);
 
 
 
 				right_tri_count_sum += m_bins_temp_buffer[m_build_options.bin_count - 1 - i].tri_count;
 				right_box.extend(m_bins_temp_buffer[m_build_options.bin_count - 1 - i].bounds);
-				right_energy += m_bins_temp_buffer[m_build_options.bin_count - 1 - i].total_power;
+				right_power  += m_bins_temp_buffer[m_build_options.bin_count - 1 - i].total_power;
 				right_orientation_data.cone_union_with(m_bins_temp_buffer[m_build_options.bin_count - 1 - i].orientation_data);
 
 				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].tri_count = right_tri_count_sum;
 				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].area = right_box.area();
-				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].energy = right_energy.luminance();
+				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].energy = right_power;
 				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].m_omega = compute_saoh_m_omega(right_orientation_data);
 			}
 
@@ -354,7 +354,7 @@ float LightTreeATSBuilder::compute_node_cost(const LightTreeATSNode& node)
 	return cost;
 }
 
-float LightTreeATSBuilder::compute_sah_cost(const LightTreeATSNode& node, int axis_index, float split_position, const BuilderTrianglesData& triangles_data)
+float LightTreeATSBuilder::compute_sah_cost(const LightTreeATSNode& node, int axis_index, float split_position, const LightTreeBuilderTrianglesData& triangles_data)
 {
 	AABB box_left;
 	AABB box_right;
@@ -405,7 +405,7 @@ int LightTreeATSBuilder::partition_node_primitives(unsigned int node_index, int 
 	return start;
 }
 
-void LightTreeATSBuilder::register_node_bit_trail(const LightTreeATSNode& node, const BuilderTrianglesData& data)
+void LightTreeATSBuilder::register_node_bit_trail(const LightTreeATSNode& node, const LightTreeBuilderTrianglesData& data)
 {
 	for (int triangle_index = 0; triangle_index < node.triangle_count; triangle_index++)
 		m_bit_trails[node.first_triangle_index + triangle_index] = node.bit_trail;
@@ -419,9 +419,14 @@ void LightTreeATSBuilder::cleanup()
 	m_bit_trails = std::vector<unsigned int>();
 }
 
-const std::vector<LightTreeATSNode>& LightTreeATSBuilder::get_nodes()
+const std::vector<LightTreeATSNode>& LightTreeATSBuilder::get_nodes() const
 {
 	return m_nodes;
+}
+
+const std::vector<LightTreeATSBuilder::PrefetchedTriangle>& LightTreeATSBuilder::get_prefetched_triangles() const
+{
+	return m_prefetched_triangles;
 }
 
 LightTreeATSBuilderOptions& LightTreeATSBuilder::get_options()

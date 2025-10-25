@@ -346,15 +346,25 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 #endif
 
 #if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS || DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-    m_light_tree_builder.build_light_tree(
+    m_light_tree_builder_ats.build_light_tree(
         parsed_scene.emissive_triangles_primitive_indices,
         parsed_scene.triangles_vertex_indices,
         parsed_scene.vertices_positions,
         parsed_scene.material_indices,
         parsed_scene.materials);
-    m_light_tree_device_data = m_light_tree_builder.compute_device_data<std::vector>();
-    m_light_tree_builder.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3, m_light_tree_device_data);
-    m_light_tree_builder.cleanup();
+    m_light_tree_ats_device_data = m_light_tree_builder_ats.compute_device_data<std::vector>();
+    m_light_tree_builder_ats.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3, m_light_tree_ats_device_data);
+    m_light_tree_builder_ats.cleanup();
+#elif DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_SG
+    m_light_tree_builder_sg.build_light_tree(
+        parsed_scene.emissive_triangles_primitive_indices,
+        parsed_scene.triangles_vertex_indices,
+        parsed_scene.vertices_positions,
+        parsed_scene.material_indices,
+        parsed_scene.materials);
+    /*m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<std::vector>();
+    m_light_tree_builder_sg.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3, m_light_tree_sg_device_data);
+    m_light_tree_builder_sg.cleanup();*/
 #endif
 }
 

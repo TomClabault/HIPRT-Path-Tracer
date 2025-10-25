@@ -291,7 +291,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
 {
-	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree.nodes;
+	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree_ats.nodes;
 
 	int stack_pointer = 0;
 	unsigned int node_index_stack[ATS_LIGHT_TREE_SPLITTING_STACK_SIZE] = { 0 };
@@ -311,7 +311,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 		if (node_importance > 0.0f)
 		{
 			float node_variance = light_tree_ats_node_variance(current_node, shading_point);
-			if (node_variance < render_data.light_tree_ats_settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
+			if (node_variance < render_data.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
 			{
 				// Variance threshold exceeded, exploring both branches of the tree
 
@@ -413,7 +413,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 		if (cumulative_probability != -1.0f)
 		{
 			int index = current_node.first_triangle_index + rng.random_index(current_node.triangle_count);
-			int triangle_index = render_data.buffers.light_tree.indices_array[index];
+			int triangle_index = render_data.buffers.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
@@ -469,7 +469,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 		if (cumulative_probability != -1.0f)
 		{
 			int index = current_node.first_triangle_index + rng.random_index(current_node.triangle_count);
-			int triangle_index = render_data.buffers.light_tree.indices_array[index];
+			int triangle_index = render_data.buffers.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
@@ -502,7 +502,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
 {
-	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree.nodes;
+	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree_ats.nodes;
 
 	LightTreeATSNodeDevice current_node = nodes[0];
 
@@ -534,7 +534,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	}
 
 	int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
-	int triangle_index = render_data.buffers.light_tree.indices_array[index];
+	int triangle_index = render_data.buffers.light_tree_ats.indices_array[index];
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
@@ -548,7 +548,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_emissive_triangle_index)
 {
-	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree.nodes;
+	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree_ats.nodes;
 
 	LightTreeATSNodeDevice current_node = nodes[0];
 
@@ -556,7 +556,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
-	unsigned int bit_trail = render_data.buffers.light_tree.bit_trails[global_emissive_triangle_index];
+	unsigned int bit_trail = render_data.buffers.light_tree_ats.bit_trails[global_emissive_triangle_index];
 	unsigned char current_depth = 0;
 
 	float cumulative_probability = 1.0f;

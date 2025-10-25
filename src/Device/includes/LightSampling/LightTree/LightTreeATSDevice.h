@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_LIGHT_TREE_ATS_DEVICE_H
 
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/LightTreeATSSettings.h"
 #include "Renderer/LightTree/LightTreeATSConstants.h"
 
 struct LightTreeATSNodeDevice
@@ -41,6 +42,8 @@ struct LightTreeATSNodeDevice
 
 struct LightTreeATSDevice
 {
+	LightTreeATSSettings settings;
+
 	LightTreeATSNodeDevice* nodes = nullptr;
 	int* indices_array = nullptr;
 	unsigned int* bit_trails = nullptr;

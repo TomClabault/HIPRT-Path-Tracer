@@ -45,6 +45,11 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
         area_measure_pdf = 1.0f / light_area;
         area_measure_pdf *= pdf_of_emissive_triangle_light_tree_ats(render_data, shading_point, shading_normal, emissive_triangle_global_index);
     }
+    else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
+    {
+        area_measure_pdf = 1.0f / light_area;
+        area_measure_pdf *= pdf_of_emissive_triangle_light_tree_sg(render_data, shading_point, shading_normal, emissive_triangle_global_index);
+    }
     else if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
         // We should never ask that question, we can't get the PDF of ReGIR
         area_measure_pdf = 1.0e15f;
