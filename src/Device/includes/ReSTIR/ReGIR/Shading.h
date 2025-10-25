@@ -44,7 +44,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
         light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
         if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
             // Falling back on the base strategy
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(render_data, rng);
 
         if (light_sample.emissive_triangle_global_index == -1)
             continue;
@@ -67,7 +67,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
         // BSDF PDF here is approximate because it should contain visibility but the increase in variance is fine
         bsdf_pdf_area_measure = solid_angle_to_area_pdf(bsdf_dispatcher_pdf(render_data, bsdf_context), hippt::length(light_sample.point_on_light - shading_point), compute_cosine_term_at_light_source(light_sample.light_source_normal, hippt::normalize(shading_point - light_sample.point_on_light)));
 #endif
-        float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, shading_point, shading_normal, light_sample.light_area, light_sample.emission);
+        float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(render_data, shading_point, shading_normal, light_sample.light_area, light_sample.emission);
         float mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.shading_settings.number_of_neighbors, simple_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
 
         if (reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng))

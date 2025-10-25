@@ -67,7 +67,7 @@
 *	- LSS_BASE_LIGHT_TREE_ATS
 *		Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]
 */
-#define ReGIR_GridFillLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_ATS
+#define ReGIR_GridFillLightSamplingBaseStrategyNonCanonical LSS_BASE_LIGHT_TREE_ATS
 
 /**
  * The light sampling strategy used for sampling canonical samples during grid fill
@@ -139,7 +139,7 @@
  * Those per-cell sampling distribution will then be used during the grid fill to provide higher
  * quality initial light samples
  */
-#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_FALSE
+#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_TRUE
 
 /**
  * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed
@@ -227,6 +227,12 @@
  * Setting this to false is biased but useful basically only for debug purposes
  */
 #define ReGIR_ShadingResamplingIncludeCanonicalCandidates KERNEL_OPTION_TRUE
+
+/**
+ * If true, uses the ATS light tree for sampling canonical candidates during shading resampling to avoid
+ * bias instead of using the grid fill canonical candidates
+ */
+#define ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to incorporate BSDF samples with MIS during shading resampling.

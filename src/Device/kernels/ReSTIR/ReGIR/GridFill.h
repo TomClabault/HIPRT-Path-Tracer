@@ -36,15 +36,30 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
 
     // PDF of that point on that triangle
     full_sample_information.area_measure_pdf = 1.0f / full_sample_information.light_area;
-#if ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_UNIFORM
+#if ReGIR_GridFillLightSamplingBaseStrategyNonCanonical == LSS_BASE_UNIFORM
     // PDF of sampling that triangle uniformly
     full_sample_information.area_measure_pdf *= 1.0f / render_data.buffers.emissive_triangles_count;
-#elif ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER
+#elif ReGIR_GridFillLightSamplingBaseStrategyNonCanonical == LSS_BASE_POWER
     // PDF of sampling that triangle according to its power
     full_sample_information.area_measure_pdf *= (full_sample_information.emission.luminance() * full_sample_information.light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
 #endif
 
     return full_sample_information;
+}
+
+HIPRT_DEVICE LightSampleInformation grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 cell_normal, int last_hit_primitive_index, Xorshift32Generator& rng)
+{
+    // TODO this shouldn't be cell distribution kernel option here.
+    // We want this grid_fill_sample_canonical_candidate function to sample pure canonical candidates only
+#if ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_LIGHT_TREE_ATS
+	RayPayload dummy_ray_payload;
+
+    return sample_one_emissive_triangle_light_tree<false>(render_data,
+        shading_point, view_direction, cell_normal, cell_normal,
+        last_hit_primitive_index, dummy_ray_payload, rng);
+#else
+    return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, rng);
+#endif
 }
 
 HIPRT_DEVICE LightSampleInformation grid_fill_with_per_cell_light_distributions_canonical_sample(
@@ -102,13 +117,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         LightSampleInformation light_sample;
 
         if (reservoir_is_canonical)
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, rng);
+			light_sample = grid_fill_sample_canonical_candidate(render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_primitive_index, rng);
         else
         {
             light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
             if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
-                // Falling back on the base strategy
-                light_sample = sample_one_emissive_triangle<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, rng);
+                light_sample = grid_fill_sample_canonical_candidate(render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_primitive_index, rng);
         }
 
         if (light_sample.emissive_triangle_global_index == -1)
@@ -118,7 +132,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         if (reservoir_is_canonical)
         {
             // This reservoir is canonical, simple target function to keep it canonical (no visibility / cosine terms)
-            target_function = ReGIR_grid_fill_evaluate_canonical_target_function(render_data,
+            target_function = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data,
                 surface, primary_hit,
                 light_sample.emission, light_sample.light_source_normal, light_sample.point_on_light, rng);
         }
@@ -195,20 +209,13 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
         else
         {
             if (reservoir_is_canonical)
-            {
-                // Unused
-                RayPayload dummy_ray_payload;
-
-                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(
-                    render_data,
-                    surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
-            }
+                light_sample = grid_fill_sample_canonical_candidate(render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_primitive_index, rng);
             else
             {
                 // Unused
                 RayPayload dummy_ray_payload;
 
-                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(
+                light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(
                     render_data,
                     surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
             }

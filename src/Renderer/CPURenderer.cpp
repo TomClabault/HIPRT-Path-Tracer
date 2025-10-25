@@ -338,7 +338,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 #if DirectLightSamplingBaseStrategy == LSS_BASE_POWER ||                        \
     (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && (                     \
-        ReGIR_GridFillLightSamplingBaseStrategy == LSS_BASE_POWER ||            \
+        ReGIR_GridFillLightSamplingBaseStrategyNonCanonical == LSS_BASE_POWER ||            \
         ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_POWER ||   \
         (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE && ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)))
     std::cout << "Building scene's power alias table" << std::endl;

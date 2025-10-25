@@ -12,6 +12,7 @@
 #include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
 
+#include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
@@ -53,6 +54,7 @@ HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3 aabb_min
 	return acos(cos_theta);
 }
 
+template <bool UseOrientation>
 HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, float3 shading_point, float3 shading_normal)
 {
 	if (node.is_invalid())
@@ -65,13 +67,16 @@ HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, f
 	// Not doing it this way and relying on the bounding sphere of the node as done
 	// later isn't enough sometimes so this helps a lot in cases where the bounding
 	// sphere is too conservative
-	float3 max_corner;
-	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
-	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
-	max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
+	if constexpr (UseOrientation)
+	{
+		float3 max_corner;
+		max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
+		max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
+		max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
 
-	if (hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f)
-		return 0.0f;
+		if (hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f)
+			return 0.0f;
+	}
 
 	float3 node_center = (node.bounds_max + node.bounds_min) * 0.5f;
 	float3 to_center = node_center - shading_point;
@@ -87,21 +92,21 @@ HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, f
 	bool inside_aabb = point_inside_AABB(node.bounds_min, node.bounds_max, shading_point);
 	float sin_theta_u = 0.0f;
 	float cos_theta_u = 1.0f;
-	if (inside_aabb) 
+	if (inside_aabb)
 	{
 		// If the shading point is inside the bounds, treat theta_u as PI
 		sin_theta_u = 0.0f;
 		cos_theta_u = -1.0f;
 	}
-	else 
+	else
 	{
 		float ratio = sphere_radius / dist_to_center;
-		if (ratio >= 1.0f) 
+		if (ratio >= 1.0f)
 		{
 			sin_theta_u = 1.0f;
 			cos_theta_u = 0.0f;
 		}
-		else 
+		else
 		{
 			sin_theta_u = ratio;
 			cos_theta_u = sqrtf(hippt::max(0.0f, 1.0f - sin_theta_u * sin_theta_u));
@@ -115,13 +120,13 @@ HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, f
 		// => theta_i_prime = max(0, theta_i - PI) = 0 
 		// => cos = 1
 		cos_theta_i_prime = 1.0f;
-	else 
+	else
 	{
 		// theta_i <= theta_u <=> cos(theta_i) >= cos(theta_u)
 		float cos_theta_i = hippt::dot(shading_normal, to_center_normalized);
 		if (cos_theta_i >= cos_theta_u)
 			cos_theta_i_prime = 1.0f;
-		else 
+		else
 		{
 			// cos(theta_i - theta_u) = cos(theta_i) * cos(theta_u) + sin(theta_i) * sin(theta_u)
 			float sin_theta_i = sqrtf(hippt::max(0.0f, 1.0f - cos_theta_i * cos_theta_i));
@@ -143,12 +148,12 @@ HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, f
 		// -> theta (in [0,pi/2]) <= T
 		// always -> theta' == 0 -> cos(theta') == 1
 		cos_theta_prime = 1.0f;
-	else 
+	else
 	{
 		// Now T in (0, pi) so cos is monotonic and we can compare cosines
-		if (cos_theta >= cos_T) 
+		if (cos_theta >= cos_T)
 			cos_theta_prime = 1.0f;
-		else 
+		else
 		{
 			// cos(theta - T) = cos(theta) * cos(T) + sin(theta) * sin(T)
 			cos_theta_prime = cos_theta * cos_T + sin_theta * sin_T;
@@ -161,8 +166,10 @@ HIPRT_DEVICE float light_tree_node_importance(const LightTreeNodeDevice& node, f
 		}
 	}
 
-	
-	return cos_theta_i_prime * node.total_power_luminance / distance_to_center_2 * cos_theta_prime;
+	if constexpr (UseOrientation)
+		return cos_theta_i_prime * node.total_power_luminance / distance_to_center_2 * cos_theta_prime;
+	else
+		return node.total_power_luminance / distance_to_center_2;
 }
 
 #if LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
@@ -278,6 +285,7 @@ struct LightTreeATSWRSReservoir
 	LightSampleInformation selected_light_sample;
 };
 
+template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(const HIPRTRenderData& render_data, 
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal, 
 	int last_hit_primitive_index, RayPayload& ray_payload,
@@ -299,7 +307,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 
 		light_samples_counter--;
 
-		float node_importance = light_tree_node_importance(current_node, shading_point, shading_normal);
+		float node_importance = light_tree_node_importance<UseOrientation>(current_node, shading_point, shading_normal);
 		if (node_importance > 0.0f)
 		{
 			float node_variance = light_tree_node_variance(current_node, shading_point);
@@ -307,8 +315,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 			{
 				// Variance threshold exceeded, exploring both branches of the tree
 
-				float node_importance_left = light_tree_node_importance(nodes[current_node.left_child_index], shading_point, shading_normal);
-				float node_importance_right = light_tree_node_importance(nodes[current_node.right_child_index], shading_point, shading_normal);
+				float node_importance_left = light_tree_node_importance<UseOrientation>(nodes[current_node.left_child_index], shading_point, shading_normal);
+				float node_importance_right = light_tree_node_importance<UseOrientation>(nodes[current_node.right_child_index], shading_point, shading_normal);
 
 				if (node_importance_left > node_importance_right)
 				{
@@ -376,8 +384,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 			LightTreeNodeDevice left_child = nodes[current_node.left_child_index];
 			LightTreeNodeDevice right_child = nodes[current_node.right_child_index];
 
-			float left_importance = light_tree_node_importance(left_child, shading_point, shading_normal);
-			float right_importance = light_tree_node_importance(right_child, shading_point, shading_normal);
+			float left_importance = light_tree_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
+			float right_importance = light_tree_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 
 			float p_left = left_importance / (left_importance + right_importance);
 			if (left_importance == 0.0f && right_importance == 0.0f)
@@ -432,8 +440,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 			LightTreeNodeDevice left_child = nodes[current_node.left_child_index];
 			LightTreeNodeDevice right_child = nodes[current_node.right_child_index];
 
-			float left_importance = light_tree_node_importance(left_child, shading_point, shading_normal);
-			float right_importance = light_tree_node_importance(right_child, shading_point, shading_normal);
+			float left_importance = light_tree_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
+			float right_importance = light_tree_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 
 			float p_left = left_importance / (left_importance + right_importance);
 			if (left_importance == 0.0f && right_importance == 0.0f)
@@ -485,9 +493,10 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 
 	return final_light_sample;
 }
-#else
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_power(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator);
 
+#else
+
+template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(const HIPRTRenderData& render_data,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
@@ -503,8 +512,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 		LightTreeNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
 		LightTreeNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-		float left_importance = light_tree_node_importance(left_child, shading_point, shading_normal);
-		float right_importance = light_tree_node_importance(right_child, shading_point, shading_normal);
+		float left_importance = light_tree_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
+		float right_importance = light_tree_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return LightSampleInformation();
 
@@ -536,13 +545,14 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree(cons
 }
 #endif
 
+template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_emissive_triangle_index)
 {
 	const LightTreeNodeDevice* nodes = render_data.buffers.light_tree.nodes;
 
 	LightTreeNodeDevice current_node = nodes[0];
 
-	float root_node_importance = light_tree_node_importance(current_node, shading_point, shading_normal);
+	float root_node_importance = light_tree_node_importance<UseOrientation>(current_node, shading_point, shading_normal);
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
@@ -555,8 +565,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree(const HIPRTRenderData& re
 		LightTreeNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
 		LightTreeNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-		float left_importance = light_tree_node_importance(left_child, shading_point, shading_normal);
-		float right_importance = light_tree_node_importance(right_child, shading_point, shading_normal);
+		float left_importance = light_tree_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
+		float right_importance = light_tree_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 

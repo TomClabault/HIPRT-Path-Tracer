@@ -33,7 +33,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Light_Presampling(HIPRTRenderData ren
 
     Xorshift32Generator rng(wang_hash(thread_index ^ render_data.random_number));
 
-    LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategy>(render_data, rng);
+    LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(render_data, rng);
 
     ReGIRPresampledLight presampled_light;
     presampled_light.emissive_triangle_global_index = light_sample.emissive_triangle_global_index;

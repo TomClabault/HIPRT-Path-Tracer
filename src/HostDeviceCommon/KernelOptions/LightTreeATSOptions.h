@@ -18,6 +18,18 @@
 #ifndef __KERNELCC__
 
 /**
+ * If true, the orientation bounds of the node will be used in the importance function
+ * used to sample from the tree at runtime.
+ * 
+ * This improves quality and should basically always be enabled and is mainly there for comparison
+ * purposes
+ * 
+ * This option is also disabled for producing ReGIR canonical candidates which need to be conservative
+ * to avoid bias
+ */
+#define LightTreeATSImportanceFunctionUseOrientation KERNEL_OPTION_TRUE
+
+/**
  * If this is true, adaptive tree splitting will be used as described in section 5.4 of
  * [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla 2018]
  */

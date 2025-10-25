@@ -1920,31 +1920,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)" };
-		const char* tooltips_base_strategy[] = {
-			"All lights are sampled uniformly",
-
-			"Lights are sampled proportionally to their power",
-
-			"Lights are sampled using a light hierarchy with orientation bounds as proposed in the paper of Conty & Kulla, 2018.",
-		};
-
-		bool base_light_sampling_strategy_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
-		if (base_light_sampling_strategy_disabled)
-			ImGuiRenderer::add_warning("Cell light distributions are being used as the main sampling strategy");
-		ImGui::BeginDisabled(base_light_sampling_strategy_disabled);
-		if (ImGuiRenderer::ComboWithTooltips("Base ReGIR light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
-		{
-			// Will recompute the alias table if necessary
-			m_renderer->recompute_emissives_sampling_data_structure();
-
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-		ImGui::EndDisabled();
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
 		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
 		
 		if (ImGui::CollapsingHeader("Cell light distributions"))
@@ -2276,6 +2251,50 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				""
 				"The frame skips can be different for filling the primary or secondary hits grid.");
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Sampling strategies");
+
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)" };
+			const char* tooltips_base_strategy_non_canonical[] = {
+				"All lights are sampled uniformly",
+
+				"Lights are sampled proportionally to their power",
+
+				"Lights are sampled using a light hierarchy with orientation bounds as proposed in the paper of Conty & Kulla, 2018.",
+			};
+			const char* tooltips_base_strategy_canonical[] = {
+				"All lights are sampled uniformly",
+
+				"Lights are sampled proportionally to their power",
+
+				"Lights are sampled using a light hierarchy **without** orientation bounds as proposed in the paper of Conty & Kulla, 2018.\n"
+				"Canonical candidates do not use the orientation bounds to remain conservative.",
+			};
+
+			bool base_light_sampling_strategy_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
+			if (base_light_sampling_strategy_disabled)
+				ImGuiRenderer::add_warning("Cell light distributions are being used as the main sampling strategy");
+			ImGui::BeginDisabled(base_light_sampling_strategy_disabled);
+			if (ImGuiRenderer::ComboWithTooltips("Non canonical", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_NON_CANONICAL), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy_non_canonical))
+			{
+				// Will recompute the alias table if necessary
+				m_renderer->recompute_emissives_sampling_data_structure();
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGui::EndDisabled();
+
+			static int canonical_candidates_strategy = 0;
+			if (ImGuiRenderer::ComboWithTooltips("Canonical", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_LIGHT_SAMPLING_BASE_STRATEGY_CANONICAL), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy_canonical))
+			{
+				// Will recompute the alias table if necessary
+				m_renderer->recompute_emissives_sampling_data_structure();
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
@@ -2371,6 +2390,23 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Whether or not to include canonical candidates at all during the shading.\n\n"
 				""
 				"Disabling this is biased but useful basically only for debug purposes.");
+			if (include_canonical)
+			{
+				ImGui::TreePush("Do canonical candidatres tree ReGIR");
+
+				static bool regir_shading_light_tree_canonical_candidates = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS);
+				if (ImGui::Checkbox("Use light tree", &regir_shading_light_tree_canonical_candidates))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS, regir_shading_light_tree_canonical_candidates ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("If true, uses the ATS light tree for sampling canonical candidates during shading resampling to avoid"
+					"bias instead of using the grid fill canonical candidates.");
+
+				ImGui::TreePop();
+			}
 
 			static bool do_resampling_bsdf_mis = ReGIR_ShadingResamplingDoBSDFMIS;
 			if (ImGui::Checkbox("Do BSDF MIS during resampling", &do_resampling_bsdf_mis))
@@ -2844,7 +2880,16 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 			ImGui::TreePop();
 		}
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Importance function");
+		static bool importance_function_use_orientation = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION);
+		if (ImGui::Checkbox("Use orientation", &importance_function_use_orientation))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION, importance_function_use_orientation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
