@@ -2353,8 +2353,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			if (ImGui::SliderInt("Neighbors resampled", &regir_settings.shading_settings.number_of_neighbors, 1, 8))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::SliderInt("Resample per neighbor", &regir_settings.shading_settings.reservoir_tap_count_per_neighbor, 1, 8))
-				m_render_window->set_render_dirty(true);
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			static bool use_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionVisibility;

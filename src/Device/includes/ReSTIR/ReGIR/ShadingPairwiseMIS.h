@@ -124,7 +124,7 @@ struct ReGIRPairwiseMIS
     HIPRT_DEVICE float compute_MIS_weight_normalization(const HIPRTRenderData& render_data, unsigned int valid_non_canonical_neighbors)
     {
         unsigned int number_of_samples = 0;
-        number_of_samples += valid_non_canonical_neighbors * render_data.render_settings.regir_settings.shading_settings.reservoir_tap_count_per_neighbor; // non canonical samples
+        number_of_samples += valid_non_canonical_neighbors; // non canonical samples
         if (number_of_samples == 0)
             return 0.0f;
 
