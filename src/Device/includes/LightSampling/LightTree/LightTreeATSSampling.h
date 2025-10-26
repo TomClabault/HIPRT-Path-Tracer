@@ -86,7 +86,7 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 	float half_diag_length = hippt::length(node_diag) * 0.5f;
 	// Using a minimum for the distance squared to avoid large errors if a point is very close to the center
 	// of the node for example
-	float distance_to_center_2 = hippt::max(dist_to_center * dist_to_center, hippt::square(half_diag_length));
+	float distance_to_center_2 = hippt::max(hippt::length2(node_center - shading_point), half_diag_length * 2.0f);
 
 	float sphere_radius = half_diag_length;
 	bool inside_aabb = point_inside_AABB(node.bounds_min, node.bounds_max, shading_point);
