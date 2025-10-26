@@ -33,7 +33,7 @@ struct LightTreeSGNodeDevice
 		SGLight sg_light;
 		sg_light.position = gaussian_spatial_mean;
 		sg_light.variance = gaussian_spatial_variance;
-		sg_light.axis = -vmf_axis;
+		sg_light.axis = vmf_axis;
 		sg_light.sharpness = vmf_sharpness;
 		sg_light.power = total_power;
 		return sg_light;
@@ -45,8 +45,13 @@ struct LightTreeSGNodeDevice
 	float3 gaussian_spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
 	float gaussian_spatial_variance = 0.0f;
 
+	ColorRGB32F total_emission = ColorRGB32F(0.0f, 0.0f, 0.0f);
+	float bounding_sphere_radius = 0.0f;
+
+	float3 bounds_min;
 	float total_power = 0.0f;
 
+	float3 bounds_max;
 	// If triangle count is 0, this contains the left child index
 	// If triangle count is > 0, this is the first triangle index in the leaf node
 	unsigned int left_child_index_or_first_triangle_index;

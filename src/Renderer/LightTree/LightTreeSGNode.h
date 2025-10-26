@@ -26,9 +26,14 @@ struct LightTreeSGNode
 
 	float3 mean_axis = make_float3(0.0f, 0.0f, 0.0f);
 	float total_power = 0.0f;
+	ColorRGB32F total_emission = ColorRGB32F(0.0f, 0.0f, 0.0f);
+
+	AABB bounds;
 
 	float3 vmf_axis = make_float3(0.0f, 0.0f, 0.0f);
 	float vmf_sharpness = 0.0f;
+
+	float bounding_sphere_radius = 0.0f;
 
 	unsigned int left_child_index;
 	unsigned int first_triangle_index;

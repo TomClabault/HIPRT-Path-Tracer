@@ -25,7 +25,7 @@ HIPRT_DEVICE float3 GGXDominantVisibleNormal(const float3 wi, const float2 rough
 	// Similar manner to Tokuyoshi and Eto 2024 "Bounded VNDF Sampling for the Smith-GGX BRDF" Appendix C.
 	const float2 v = roughness * make_float2(wi.x, wi.y);
 	const float len2 = hippt::dot(v, v);
-	const float t = sqrt(len2 + wi.z * wi.z);
+	const float t = sqrtf(len2 + wi.z * wi.z);
 	const float z = wi.z >= 0.0f ? t + wi.z : len2 / (t - wi.z);
 
 	return hippt::normalize(make_float3(roughness.x * roughness.x * wi.x, roughness.y * roughness.y * wi.y, z));
@@ -47,20 +47,20 @@ HIPRT_DEVICE float SGGX(const float3 m, const float2x2 roughnessMat)
 	const float2x2 roughnessMatAdj = float2x2(roughnessMat.m[1][1], -roughnessMat.m[0][1], -roughnessMat.m[1][0], roughnessMat.m[0][0]);
 	const float length2 = hippt::dot(make_float2(m.x, m.y), roughnessMatAdj * make_float2(m.x, m.y)) / det + m.z * m.z; // TODO: Use Kahan's algorithm for precise mul and dot [https://pharr.org/matt/blog/2019/11/03/difference-of-floatshttps://pharr.org/matt/blog/2019/11/03/difference-of-floats].
 
-	return 1.0f / (M_PI * sqrt(det) * (length2 * length2));
+	return 1.0f / (M_PI * sqrtf(det) * (length2 * length2));
 }
 
 // Reflection lobe based on the symmetric GGX VNDF.
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5.2]
 HIPRT_DEVICE float SGGXReflectionPDF(const float3 wi, const float3 m, const float2x2 roughnessMat)
 {
-	return SGGX(m, roughnessMat) / (4.0f * sqrt(hippt::dot(make_float2(wi.x, wi.y), roughnessMat * make_float2(wi.x, wi.y)) + wi.z * wi.z)); // TODO: Use Kahan's algorithm for precise mul and dot. [https://pharr.org/matt/blog/2019/11/03/difference-of-floats]
+	return SGGX(m, roughnessMat) / (4.0f * sqrtf(hippt::dot(make_float2(wi.x, wi.y), roughnessMat * make_float2(wi.x, wi.y)) + wi.z * wi.z)); // TODO: Use Kahan's algorithm for precise mul and dot. [https://pharr.org/matt/blog/2019/11/03/difference-of-floats]
 }
 
 // Exact solution of an SG integral.
 HIPRT_DEVICE float SGIntegral(const float sharpness)
 {
-	return 4.0 * M_PI * hippt::expm1_over_x(-2.0 * sharpness);
+	return 4.0f * M_PI * hippt::expm1_over_x(-2.0f * sharpness);
 }
 
 // Product of two SGs.
@@ -90,19 +90,19 @@ HIPRT_DEVICE float UpperSGClampedCosineIntegralOverTwoPi(const float sharpness)
 {
 	if (sharpness <= 0.5f)
 		// Taylor-series approximation for the numerical stability.
-		return (((((((-1.0 / 362880.0f) * sharpness + 1.0f / 40320.0f) * sharpness - 1.0f / 5040.0f) * sharpness + 1.0f / 720.0f) * sharpness - 1.0f / 120.0f) * sharpness + 1.0f / 24.0f) * sharpness - 1.0f / 6.0f) * sharpness + 0.5f;
+		return (((((((-1.0f / 362880.0f) * sharpness + 1.0f / 40320.0f) * sharpness - 1.0f / 5040.0f) * sharpness + 1.0f / 720.0f) * sharpness - 1.0f / 120.0f) * sharpness + 1.0f / 24.0f) * sharpness - 1.0f / 6.0f) * sharpness + 0.5f;
 
-	return (1.0 - hippt::expm1_over_x(-sharpness)) / sharpness;
+	return (1.0f - hippt::expm1_over_x(-sharpness)) / sharpness;
 }
 
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)" Listing. 6]
 HIPRT_DEVICE float LowerSGClampedCosineIntegralOverTwoPi(const float sharpness)
 {
-	const float e = exp(-sharpness);
+	const float e = expf(-sharpness);
 
 	if (sharpness <= 0.5f)
 		// Taylor-series approximation for the numerical stability.
-		return e * (((((((((1.0 / 403200.0f) * sharpness - 1.0f / 45360.0f) * sharpness + 1.0f / 5760.0f) * sharpness - 1.0f / 840.0f) * sharpness + 1.0f / 144.0f) * sharpness - 1.0f / 30.0f) * sharpness + 1.0f / 8.0f) * sharpness - 1.0f / 3.0f) * sharpness + 0.5f);
+		return e * (((((((((1.0f / 403200.0f) * sharpness - 1.0f / 45360.0f) * sharpness + 1.0f / 5760.0f) * sharpness - 1.0f / 840.0f) * sharpness + 1.0f / 144.0f) * sharpness - 1.0f / 30.0f) * sharpness + 1.0f / 8.0f) * sharpness - 1.0f / 3.0f) * sharpness + 0.5f);
 
 	return e * (hippt::expm1_over_x(-sharpness) - e) / sharpness;
 }
@@ -117,7 +117,7 @@ HIPRT_DEVICE float SGClampedCosineProductIntegralOverPi2024(const float cosine, 
 	const float C = 4.0100826728510421403939290030394f;
 	const float D = 15.219156263147210594866010069381f;
 	const float E = 76.087896272360737270901154261082f;
-	const float t = sharpness * sqrt(0.5f * ((sharpness + A) * sharpness + B) / (((sharpness + C) * sharpness + D) * sharpness + E));
+	const float t = sharpness * sqrtf(0.5f * ((sharpness + A) * sharpness + B) / (((sharpness + C) * sharpness + D) * sharpness + E));
 	const float tz = t * cosine;
 
 	// In this HLSL implementation, we roughly implement erfc(x) = 1 - erf(x) which can have a numerical error for large x.
@@ -126,7 +126,7 @@ HIPRT_DEVICE float SGClampedCosineProductIntegralOverPi2024(const float cosine, 
 	// The original implementation [Tokuyoshi et al. 2024] uses a precise erfc function and does not clamp the lerp factor.
 	const float INV_SQRTPI = 0.56418958354775628694807945156077f; // = 1/sqrt(pi).
 	const float CLAMPING_THRESHOLD = 0.5f * hippt::FLOAT_EPSILON; // Set zero if a precise erfc function is available.
-	const float lerpFactor = hippt::clamp(0.0f, 1.0f, hippt::max(0.5f * (cosine * erfc(-tz) + erfc(t)) - 0.5f * INV_SQRTPI * exp(-tz * tz) * expm1f(t * t * (cosine * cosine - 1.0)) / t, CLAMPING_THRESHOLD));
+	const float lerpFactor = hippt::clamp(0.0f, 1.0f, hippt::max(0.5f * (cosine * erfcf(-tz) + erfcf(t)) - 0.5f * INV_SQRTPI * expf(-tz * tz) * expm1f(t * t * (cosine * cosine - 1.0f)) / t, CLAMPING_THRESHOLD));
 
 	// Interpolation between lower and upper hemispherical integrals.
 	const float lowerIntegral = LowerSGClampedCosineIntegralOverTwoPi(sharpness);
@@ -143,8 +143,8 @@ HIPRT_DEVICE float VMFHemisphericalIntegral(const float cosine, const float shar
 	const float A = 0.6517328826907056171791055021459f;
 	const float B = 1.3418280033141287699294252888649f;
 	const float C = 7.2216687798956709087860872386955f;
-	const float steepness = sharpness * sqrt((0.5f * sharpness + A) / ((sharpness + B) * sharpness + C));
-	const float lerpFactor = hippt::clamp(0.0f, 1.0f, 0.5f + 0.5f * (erf(steepness * hippt::clamp(-1.0f, 1.0f, cosine)) / erf(steepness)));
+	const float steepness = sharpness * sqrtf((0.5f * sharpness + A) / ((sharpness + B) * sharpness + C));
+	const float lerpFactor = hippt::clamp(0.0f, 1.0f, 0.5f + 0.5f * (erff(steepness * hippt::clamp(-1.0f, 1.0f, cosine)) / erff(steepness)));
 
 	// Interpolation between upper and lower hemispherical integrals .
 	const float e = expf(-sharpness);
@@ -156,11 +156,13 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	if (node.total_power == 0.0f)
 		return 0.0f;
 
-	float3 T, B;
-	build_ONB(shading_normal, T, B);
+	float3 max_corner;
+	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
+	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
+	max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
 
-	// Compute the Jacobian matrix J for the transformation between halfvetors and reflection vectors at halfvector = normal.
-	const float3 wi = world_to_local_frame(T, B, shading_normal, view_direction);
+	if (hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f)
+		return 0.0f;
 
 	// Load an SG light.
 	const SGLight sgLight = node.to_spherical_gaussian_light();
@@ -168,19 +170,16 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	const float squaredDistance = hippt::dot(lightVec, lightVec);
 	const float3 to_light_direction = lightVec / sqrtf(squaredDistance);
 
-//#if DirectLightSamplingAllowBackfacingLights == KERNEL_OPTION_FALSE
-//	if (hippt::dot(sgLight.axis, to_light_direction) > 0.0f)
-//		// Backfacing light
-//		return 0.0f;
-//#endif
-
+	// Use conservative spatial variance for outliers
+	float c = hippt::clamp(0.0f, 1.0f, hippt::dot(shading_normal, -to_light_direction));
 	// Clamp the variance for the numerical stability.
-	const float variance = hippt::max(sgLight.variance, squaredDistance / SG_LIGHT_SHARPNESS_MAX);
+	float variance = hippt::max(sgLight.variance, squaredDistance / SG_LIGHT_SHARPNESS_MAX);
+	variance = variance * (1.0f - c) + 0.5f * hippt::square(node.bounding_sphere_radius) * c;
 
 	// Compute the maximum emissive radiance of the SG light.
 	// (maximum radiant intensity)/(2*pi*variance) where (maximum radiant intensity)/(2*pi) is given by sgLight.intensity.
 	// This value can be precomputed in the SG light generation if we don't clamp the variance.
-	const float emissive = sgLight.power / variance;
+	const float emissive = sgLight.power / (variance * SGIntegral(sgLight.sharpness));
 
 	// Compute SG sharpness for a light distribution viewed from the shading point.
 	const float lightSharpness = squaredDistance / variance;
@@ -195,6 +194,12 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	const float diffuseIllumination = amplitude * SGClampedCosineProductIntegralOverPi2024(cosine, lightLobe.sharpness);
 
 //	{
+//		float3 T, B;
+//		build_ONB(shading_normal, T, B);
+//
+//		// Compute the Jacobian matrix J for the transformation between halfvetors and reflection vectors at halfvector = normal.
+//		const float3 wi = world_to_local_frame(T, B, shading_normal, view_direction);
+//
 //		// Convert the roughness parameter from slope space to the orthographically projected space.
 //		// [Tokuyoshi and Kaplanyan 2021 "Stable Geometric Specular Antialiasing with Projected-Space NDF Filtering", Eq. 4]
 //		const float2 roughness2 = roughness * roughness;
@@ -269,7 +274,8 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
-	int last_hit_primitive_index, RayPayload& ray_payload,
+	const DeviceUnpackedEffectiveMaterial& material,
+	int last_hit_primitive_index,
 	Xorshift32Generator& rng)
 {
 	const LightTreeSGNodeDevice* nodes = render_data.buffers.light_tree_sg.nodes;
@@ -282,8 +288,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 		LightTreeSGNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
 		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, make_float2(ray_payload.material.roughness, ray_payload.material.roughness));
-		float right_importance = light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, make_float2(ray_payload.material.roughness, ray_payload.material.roughness));
+		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, make_float2(material.roughness, material.roughness));
+		float right_importance = light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, make_float2(material.roughness, material.roughness));
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return LightSampleInformation();
 
@@ -314,9 +320,52 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	return light_sample;
 }
 
-HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_emissive_triangle_index)
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 shading_normal, 
+	const DeviceUnpackedEffectiveMaterial& material,
+	int global_emissive_triangle_index)
 {
-	return 0.0f;
+	const LightTreeSGNodeDevice* nodes = render_data.buffers.light_tree_sg.nodes;
+
+	LightTreeSGNodeDevice current_node = nodes[0];
+
+	float root_node_importance = light_tree_sg_node_importance(current_node, shading_point, view_direction, shading_normal, make_float2(material.roughness, material.roughness));
+	if (root_node_importance <= 0.0f)
+		return 0.0f;
+
+	unsigned int bit_trail = render_data.buffers.light_tree_sg.bit_trails[global_emissive_triangle_index];
+	unsigned char current_depth = 0;
+
+	float cumulative_probability = 1.0f;
+	while (current_node.triangle_count == 0)
+	{
+		LightTreeSGNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
+		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
+
+		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, make_float2(material.roughness, material.roughness));
+		float right_importance = light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, make_float2(material.roughness, material.roughness));
+		if (left_importance == 0.0f && right_importance == 0.0f)
+			return 0.0f;
+
+		float p_left = left_importance / (left_importance + right_importance);
+		if (!(bit_trail & (1 << current_depth)))
+		{
+			// If the bit is not set we're going to the left
+			current_node = left_child;
+
+			cumulative_probability *= p_left;
+		}
+		else
+		{
+			current_node = right_child;
+
+			cumulative_probability *= 1.0f - p_left;
+		}
+
+		current_depth++;
+	}
+
+	// Probability of going down the tree + probability of sampling that triangle in the node
+	return cumulative_probability * 1.0f / (current_node.triangle_count);
 }
 
 #endif

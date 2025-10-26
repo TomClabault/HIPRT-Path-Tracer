@@ -34,23 +34,33 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		float left_weight = 1.0f, right_weight = 1.0f;
 		if (left_node.total_power == 0.0f)
 			left_weight = 0.0f;
-		else if (right_node.total_power == 0.0f)
+		if (right_node.total_power == 0.0f)
 			right_weight = 0.0f;
 
 		if (left_weight == 0.0f && right_weight == 0.0f)
+		{
 			// Both children are empty
+			sg_node.total_power = 0.0f;
+
 			return;
+		}
 
 		left_weight = left_node.total_power / (left_node.total_power + right_node.total_power);
 		right_weight = right_node.total_power / (left_node.total_power + right_node.total_power);
 
 		sg_node.mean_axis = left_weight * left_node.mean_axis + right_weight * right_node.mean_axis;
 		sg_node.total_power = left_node.total_power + right_node.total_power;
+		sg_node.total_emission = left_node.total_emission + right_node.total_emission;
+		sg_node.bounds.extend(left_node.bounds);
+		sg_node.bounds.extend(right_node.bounds);
 		sg_node.spatial_mean = left_weight * left_node.spatial_mean + right_weight * right_node.spatial_mean;
 		sg_node.spatial_variance = left_weight * left_node.spatial_variance + right_weight * right_node.spatial_variance + left_weight * right_weight * hippt::length2(left_node.spatial_mean - right_node.spatial_mean);
 
 		sg_node.compute_vmf();
 
+		sg_node.bounding_sphere_radius = hippt::max(
+			hippt::length(left_node.spatial_mean - sg_node.spatial_mean) + left_node.bounding_sphere_radius,
+			hippt::length(right_node.spatial_mean - sg_node.spatial_mean) + right_node.bounding_sphere_radius);
 		sg_node.left_child_index = ats_node.left_child_index;
 		sg_node.triangle_count = 0;
 	}
@@ -58,11 +68,12 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 	{
 		// Leaf node, compute data necessary for building the spherical gaussian
 		sg_node.mean_axis = make_float3(0.0f, 0.0f, 0.0f);
-		sg_node.spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
-		sg_node.spatial_variance = 0.0f;
 		sg_node.total_power = 0.0f;
 
-		float4 sum_positions = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+		float3 sum_positions = make_float3(0.0f, 0.0f, 0.0f);
+		float sum_positions_squared = 0.0f;
+
+		float single_triangle_variance = 0.0f;
 		unsigned int valid_triangle_count = 0;
 		for (int i = 0; i < ats_node.triangle_count; i++)
 		{
@@ -73,12 +84,25 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 				// Degenerate triangle
 				continue;
 
-			// 0.5f * triangle normal from the paper
-			sg_node.mean_axis += 0.5f * triangle.normal;
-			sg_node.total_power += triangle.power;
-			sg_node.spatial_mean += triangle.centroid;
+			float3 p0 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
+			float3 p1 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 1]];
+			float3 p2 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
 
-			sum_positions += make_float4(triangle.centroid.x, triangle.centroid.y, triangle.centroid.z, hippt::dot(triangle.centroid, triangle.centroid)) * triangle.power;
+			float3 e1 = p1 - p0;
+			float3 e2 = p2 - p0;
+			// Formula from the paper to use when there is a single triangle in the leaf
+			single_triangle_variance = (hippt::dot(e1, e1) + hippt::dot(e2, e2) - hippt::dot(e1, e2)) / 18.0f;
+
+			// 0.5f * triangle normal from the paper
+			// 
+			// The axis needs to be negated, not sure why but the reference implementation does the same
+			// as well and without that it's completely broken
+			sg_node.mean_axis += -0.5f * triangle.normal * triangle.power;
+			sg_node.total_power += triangle.power;
+			sg_node.total_emission += triangle_data.materials[triangle_data.material_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index]]].get_total_emission();
+
+			sum_positions += triangle.centroid * triangle.power;
+			sum_positions_squared += hippt::dot(triangle.centroid, triangle.centroid) * triangle.power;
 
 			valid_triangle_count++;
 		}
@@ -86,34 +110,45 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		if (valid_triangle_count == 0)
 			return;
 
-		sg_node.mean_axis /= valid_triangle_count;
-		sg_node.spatial_mean /= valid_triangle_count;
-		
-		// Computing the variance of the leaf for all triangles it contains
-		float4 positions_avg = sum_positions / sg_node.total_power;
+		sum_positions /= sg_node.total_power;
+		sum_positions_squared /= sg_node.total_power;
+
+		sg_node.mean_axis /= sg_node.total_power;
+		sg_node.spatial_mean = sum_positions;
+		if (valid_triangle_count == 1)
+			sg_node.spatial_variance = single_triangle_variance;
+		else
+			sg_node.spatial_variance = sum_positions_squared - hippt::dot(sg_node.spatial_mean, sg_node.spatial_mean);
+
+		float bounding_sphere_radius = 0.0f;
 		for (int i = 0; i < ats_node.triangle_count; i++)
 		{
 			unsigned int linear_emissive_triangle_index = ats_node.first_triangle_index + i;
 			int emissive_triangle_index = m_light_tree_ats_builder.bvh_triangle_index_to_emissive_triangle_index(linear_emissive_triangle_index);
 			const LightTreeATSBuilder::PrefetchedTriangle& triangle = prefetched_triangles[emissive_triangle_index];
-
 			if (triangle.area == 0.0f)
+				// Degenerate triangle
 				continue;
 
 			float3 p0 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
 			float3 p1 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 1]];
 			float3 p2 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
 
-			float3 edge1 = p1 - p0;
-			float3 edge2 = p2 - p0;
+			sg_node.bounds.extend(p0);
+			sg_node.bounds.extend(p1);
+			sg_node.bounds.extend(p2);
 
-			sg_node.spatial_variance = (positions_avg.w - hippt::dot(make_float3(positions_avg.x, positions_avg.y, positions_avg.z), make_float3(positions_avg.x, positions_avg.y, positions_avg.z)));
+			bounding_sphere_radius = hippt::max(bounding_sphere_radius, hippt::max(hippt::max(
+				hippt::length(sg_node.spatial_mean - p0),
+				hippt::length(sg_node.spatial_mean - p1)),
+				hippt::length(sg_node.spatial_mean - p2)));
 		}
 
 		// Computes vMF parameters with the mean axis (normalized by the function)
 		sg_node.compute_vmf();
 		sg_node.triangle_count = valid_triangle_count;
 		sg_node.first_triangle_index = ats_node.first_triangle_index;
+		sg_node.bounding_sphere_radius = bounding_sphere_radius;
 	}
 }
 

@@ -610,7 +610,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRend
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
     {
-        return sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
+        return sample_one_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, geometric_normal, ray_payload.material, 
+            last_hit_primitive_index, random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_REGIR)
     {

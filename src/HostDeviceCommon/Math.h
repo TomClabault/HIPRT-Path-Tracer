@@ -517,7 +517,7 @@ namespace hippt
 
 		const float y = u - 1.0f;
 
-		if (abs(x) < 1.0f)
+		if (hippt::abs(x) < 1.0f)
 			return y / logf(u);
 
 		return y / x;
