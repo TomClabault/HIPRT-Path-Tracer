@@ -57,7 +57,7 @@ struct LightTreeATSNodeOrientationData
 			}
 
 			float theta_r = theta_o - theta_o_a;
-			float3 axis = rotate_vector(axis_a, hippt::cross(axis_a, axis_b), theta_r);
+			float3 axis = rotate_vector(axis_a, hippt::normalize(hippt::cross(axis_a, axis_b)), theta_r);
 
 			this->axis = axis;
 			this->theta_o = theta_o;

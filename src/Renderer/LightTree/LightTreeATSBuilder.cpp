@@ -193,7 +193,7 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 float LightTreeATSBuilder::compute_saoh_m_omega(const LightTreeATSNodeOrientationData& orientation_data) const
 {
 	float sin_theta_o = sinf(orientation_data.theta_o);
-	float cos_theta_o = cosf(orientation_data.theta_o);// sqrtf(1.0f - hippt::square(sin_theta_o));
+	float cos_theta_o = cosf(orientation_data.theta_o);
 	float theta_w = hippt::min(orientation_data.theta_o + orientation_data.theta_e, static_cast<float>(M_PI));
 	return 2.0f * M_PI * (1.0f - cos_theta_o) + M_PI * 0.5f * (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) - 2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
 }
@@ -312,8 +312,8 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 					cost = 0.0f;
 					
 					// Numerator
-					cost += m_left_bins_info_temp_buffer[split_plane_index].area * m_left_bins_info_temp_buffer[split_plane_index].energy * m_left_bins_info_temp_buffer[split_plane_index].m_omega;
-					cost += m_right_bins_info_temp_buffer[split_plane_index].area * m_right_bins_info_temp_buffer[split_plane_index].energy * m_right_bins_info_temp_buffer[split_plane_index].m_omega;
+					cost += m_left_bins_info_temp_buffer[split_plane_index].energy * m_left_bins_info_temp_buffer[split_plane_index].m_omega;
+					cost += m_right_bins_info_temp_buffer[split_plane_index].energy * m_right_bins_info_temp_buffer[split_plane_index].m_omega;
 
 					// Denominator
 					cost /= prims_bounds.area() * node_m_omega;
