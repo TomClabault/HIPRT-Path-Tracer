@@ -80,6 +80,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove light presampling
 // 
 // - Can we have some form of 2 stage resampling during shading where we only keep the best sample for shooting shadow rays instead of shooting shadow rays for everyone, resampled tree 2024 style
+// - Can we have something that disables the big spherical gaussian stuff when the nodes are small enough (in solid angle)? Because at some point, the spherical gaussian approximation is not needed anymore
 // - Use the light tree for ReGIR interactivity
 // - Can we extend the tail of the light distributions wxith clusters from the light tree?
 //		Careful about having lights in the head of the light distribution s as well as in clusters, that's doubling the lights
@@ -908,7 +909,6 @@ bool RenderWindow::is_rendering_done()
 
 bool RenderWindow::needs_viewport_refresh()
 {
-	return true;
 	// Update every X seconds
 	bool enough_time_has_passed = get_time_ms_before_viewport_refresh() <= 0.0f;
 	// The render was reset and one frame has been rendered

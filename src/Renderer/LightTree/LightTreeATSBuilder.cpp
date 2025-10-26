@@ -116,7 +116,7 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 
 	int split_axis;
 	float split_position;
-	float split_cost = compute_split_position(node, split_axis, split_position, triangles_data);
+	float split_cost = compute_split_position(node, split_axis, split_position, triangles_data, m_build_options.build_split_method);
 
 	if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAH)
 	{
@@ -198,9 +198,9 @@ float LightTreeATSBuilder::compute_saoh_m_omega(const LightTreeATSNodeOrientatio
 	return 2.0f * M_PI * (1.0f - cos_theta_o) + M_PI * 0.5f * (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) - 2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
 }
 
-float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const LightTreeBuilderTrianglesData& triangles_data)
+float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const LightTreeBuilderTrianglesData& triangles_data, int split_method)
 {
-	if (m_build_options.build_split_method == LIGHT_TREE_BUILD_OPTION_SPLIT_MIDPOINT)
+	if (split_method == LIGHT_TREE_BUILD_OPTION_SPLIT_MIDPOINT)
 	{
 		if (node.triangle_count <= 2)
 			return 1.0e30f;
@@ -215,7 +215,7 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 
 		return 0.0f;
 	}
-	else if (m_build_options.build_split_method == LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED)
+	else if (split_method == LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED)
 	{
 		int best_axis = -1;
 		float best_position = 0.0f;
@@ -427,6 +427,16 @@ const std::vector<LightTreeATSNode>& LightTreeATSBuilder::get_nodes() const
 const std::vector<LightTreeATSBuilder::PrefetchedTriangle>& LightTreeATSBuilder::get_prefetched_triangles() const
 {
 	return m_prefetched_triangles;
+}
+
+const std::vector<unsigned int>& LightTreeATSBuilder::get_bit_trails() const
+{
+	return m_bit_trails;
+}
+
+const std::vector<int>& LightTreeATSBuilder::get_triangle_indices() const
+{
+	return m_triangle_indices;
 }
 
 LightTreeATSBuilderOptions& LightTreeATSBuilder::get_options()

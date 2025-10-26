@@ -54,6 +54,18 @@ struct float3x3
 	float m[3][3] = { {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 };
 
+struct float2x2
+{
+	HIPRT_DEVICE float2x2() {}
+	HIPRT_DEVICE float2x2(float m00, float m01, float m10, float m11)
+	{
+		m[0][0] = m00; m[0][1] = m01;
+		m[1][0] = m10; m[1][1] = m11;
+	}
+
+	float m[2][2];
+};
+
 // Here we're defining aliases for common functions used in shader code.
 // 
 // Because the same shader code can be used both on the CPU and the GPU,
@@ -76,6 +88,10 @@ namespace hippt
 #define M_TWO_PI_SQUARED	19.73920880217871723767f
 #define NEAR_ZERO	1.0e-10f
 
+	constexpr float FLOAT_MAX = 3.402823466e+38f;
+	constexpr float FLOAT_MIN = 1.175494351e-38f;
+	constexpr float FLOAT_EPSILON = 1.192092896e-07f;
+
 	/**
 	 * Returns the 'warpSize' runtime constant of the GPU
 	 */
@@ -91,6 +107,7 @@ namespace hippt
 
 	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
+	__device__ float dot(float2 u, float2 v) { return u.x * v.x + u.y * v.y; }
 
 	__device__ float length(float3 u) { return sqrt(hiprt::dot(u, u)); }
 	__device__ float length2(float3 u) { return hiprt::dot(u, u); }
@@ -133,6 +150,12 @@ namespace hippt
 	__device__ float3 min(float3 a, float x) { return make_float3(hiprt::min(a.x, x), hiprt::min(a.y, x), hiprt::min(a.z, x)); }
 	__device__ float3 min(float x, float3 a) { return hippt::min(a, x); }
 
+	/**
+	 * Minimum of each component of the mat 2x2 against x
+	 */
+	__device__ float2x2 min(float x, float2x2 a) { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
+	__device__ float2x2 min(float2x2 a, float x) { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
+
 
 
 
@@ -158,6 +181,23 @@ namespace hippt
 	__device__ float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
 	__device__ float3 ldexp(float3 x, int exp) { return make_float3(ldexpf(x.x, exp), ldexpf(x.y, exp), ldexpf(x.z, exp)); }
 
+	// (exp(x) - 1)/x with cancellation of rounding errors.
+	// [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p. 19]
+	__device__ float expm1_over_x(const float x)
+	{
+		const float u = expf(x);
+
+		if (u == 1.0f)
+			return 1.0f;
+
+		const float y = u - 1.0f;
+
+		if (abs(x) < 1.0f)
+			return y / logf(u);
+
+		return y / x;
+	}
+
 	template <typename T>
 	__device__ T square(T x) { return x * x; }
 
@@ -181,10 +221,7 @@ namespace hippt
 	__device__ bool is_inf(const T& v) { return isinf(v); }
 	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
-	__device__ unsigned int float_as_uint(float float_num)
-	{
-		return __float_as_uint(float_num);
-	}
+	__device__ unsigned int float_as_uint(float float_num) { return __float_as_uint(float_num); }
 
 	/**
 	 * Reads the 32-bit or 64-bit word old located at the address 'address' 
@@ -380,6 +417,10 @@ namespace hippt
 #define M_TWO_PI_SQUARED	19.73920880217871723767f // 2.0f * pi^2
 #define NEAR_ZERO	1.0e-10f
 
+	constexpr float FLOAT_MAX = 3.402823466e+38f;
+	constexpr float FLOAT_MIN = 1.175494351e-38f;
+	constexpr float FLOAT_EPSILON = 1.192092896e-07f;
+
 	/**
 	 * Returns the 'warpSize' runtime constant of the GPU
 	 */
@@ -395,6 +436,7 @@ namespace hippt
 
 	static float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	static float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
+	static float dot(float2 u, float2 v) { return u.x * v.x + u.y * v.y; }
 
 	static float length(float3 u) { return sqrtf(dot(u, u)); }
 	static float length2(float3 u) { return dot(u, u); }
@@ -441,6 +483,12 @@ namespace hippt
 	static float3 min(float3 a, float x) { return make_float3(hiprt::min(a.x, x), hiprt::min(a.y, x), hiprt::min(a.z, x)); }
 	static float3 min(float x, float3 a) { return hippt::min(a, x); }
 
+	/**
+	 * Minimum of each component of the mat 2x2 against x
+	 */
+	static float2x2 min(float x, float2x2 a)  { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
+	static float2x2 min(float2x2 a, float x)  { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
+
 	template <typename T>
 	static T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
@@ -457,6 +505,23 @@ namespace hippt
 	static float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
 	static float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
 	static float3 ldexp(float3 x, int exp) { return make_float3(std::ldexp(x.x, exp), std::ldexp(x.y, exp), std::ldexp(x.z, exp)); }
+
+	// (exp(x) - 1)/x with cancellation of rounding errors.
+	// [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p. 19]
+	static float expm1_over_x(const float x)
+	{
+		const float u = expf(x);
+
+		if (u == 1.0f)
+			return 1.0f;
+
+		const float y = u - 1.0f;
+
+		if (abs(x) < 1.0f)
+			return y / logf(u);
+
+		return y / x;
+	}
 
 	template <typename T>
 	static T square(T x) { return x * x; }
@@ -699,6 +764,87 @@ HIPRT_DEVICE static float3 matrix_X_vec(const float4x4& m, const float3& u)
 		inv_w = 1.0f / wt;
 
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
+}
+
+HIPRT_DEVICE static float2x2 operator+(const float2x2& a, const float2x2& b)
+{
+	float2x2 result;
+
+	result.m[0][0] = a.m[0][0] + b.m[0][0];
+	result.m[0][1] = a.m[0][1] + b.m[0][1];
+	result.m[1][0] = a.m[1][0] + b.m[1][0];
+	result.m[1][1] = a.m[1][1] + b.m[1][1];
+
+	return result;
+}
+
+HIPRT_DEVICE static float2x2 operator*(const float2x2& a, const float2x2& b)
+{
+	float2x2 result;
+
+	result.m[0][0] = a.m[0][0] * b.m[0][0] + a.m[0][1] * b.m[1][0];
+	result.m[0][1] = a.m[0][0] * b.m[0][1] + a.m[0][1] * b.m[1][1];
+	result.m[1][0] = a.m[1][0] * b.m[0][0] + a.m[1][1] * b.m[1][0];
+	result.m[1][1] = a.m[1][0] * b.m[0][1] + a.m[1][1] * b.m[1][1];
+
+	return result;
+}
+
+HIPRT_DEVICE static float2x2 operator*(const float k, const float2x2& a)
+{
+	float2x2 result;
+
+	result.m[0][0] = k * a.m[0][0];
+	result.m[0][1] = k * a.m[0][1];
+	result.m[1][0] = k * a.m[1][0];
+	result.m[1][1] = k * a.m[1][1];
+
+	return result;
+}
+
+HIPRT_DEVICE static float2x2 operator*(const float2x2& a, const float k)
+{
+	return k * a;
+}
+
+HIPRT_DEVICE static float2 operator*(const float2x2& a, const float2& v)
+{
+	float2 result;
+
+	result.x = a.m[0][0] * v.x + a.m[0][1] * v.y;
+	result.y = a.m[1][0] * v.x + a.m[1][1] * v.y;
+
+	return result;
+}
+
+HIPRT_DEVICE static float2x2 operator/(const float2x2& a, const float k)
+{ 
+	float inv_k = 1.0f / k;
+	float2x2 result;
+
+	result.m[0][0] = a.m[0][0] * inv_k;
+	result.m[0][1] = a.m[0][1] * inv_k;
+	result.m[1][0] = a.m[1][0] * inv_k;
+	result.m[1][1] = a.m[1][1] * inv_k;
+
+	return result;
+}
+
+HIPRT_DEVICE static float2x2 transpose(const float2x2& m)
+{
+	float2x2 result;
+
+	result.m[0][0] = m.m[0][0];
+	result.m[0][1] = m.m[1][0];
+	result.m[1][0] = m.m[0][1];
+	result.m[1][1] = m.m[1][1];
+
+	return result;
+}
+
+HIPRT_DEVICE static float determinant(const float2x2& m)
+{
+	return m.m[0][0] * m.m[1][1] - m.m[0][1] * m.m[1][0];
 }
 
 #ifndef __KERNELCC__

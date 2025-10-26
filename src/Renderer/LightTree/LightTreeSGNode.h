@@ -6,12 +6,18 @@
 #ifndef RENDERER_LIGHT_TREE_SG_NODE_H
 #define RENDERER_LIGHT_TREE_SG_NODE_H
 
+#include "HostDeviceCommon/Math.h"
+
 struct LightTreeSGNode
 {
 	void compute_vmf()
 	{
 		float mean_axis_length = hippt::length(mean_axis);
-		vmf_axis = mean_axis / mean_axis_length;
+		if (mean_axis_length < 1.0e-10f)
+			vmf_axis = make_float3(0.0f, 1.0f, 0.0f);
+		else
+			vmf_axis = mean_axis / mean_axis_length;
+
 		vmf_sharpness = (3.0f * mean_axis_length - hippt::pow_3(mean_axis_length)) / (1.0f - hippt::square(mean_axis_length));
 	}
 
@@ -23,6 +29,10 @@ struct LightTreeSGNode
 
 	float3 vmf_axis = make_float3(0.0f, 0.0f, 0.0f);
 	float vmf_sharpness = 0.0f;
+
+	unsigned int left_child_index;
+	unsigned int first_triangle_index;
+	unsigned int triangle_count;
 };
 
 #endif

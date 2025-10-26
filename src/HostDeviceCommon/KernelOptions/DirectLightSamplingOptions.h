@@ -75,7 +75,7 @@
 *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
 *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
 */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_ONE_LIGHT
 
 /**
 * How to sample lights in the scene.
@@ -95,7 +95,10 @@
 *
 *	- LSS_BASE_REGIR
 *		Uses ReGIR to sample lights
-*		Implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021]
+*		Very custom and advanced implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021] +
+*		Disney's cache points: [Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]
+* 
+*       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
 */
 #define DirectLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_SG
 

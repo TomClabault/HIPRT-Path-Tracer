@@ -9,6 +9,7 @@
 #include "Device/includes/AliasTable.h"
 #include "Device/includes/LightSampling/EmissiveMeshesAliasTables.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 #include "Device/includes/GMoN/GMoNDevice.h"
 
 #include "HostDeviceCommon/Material/MaterialPackedSoA.h"
@@ -66,7 +67,9 @@ struct RenderBuffers
 	// Alias table for sampling emissives lights according to power
 	AliasTableDevice emissive_triangles_power_alias_table;
 	EmissiveMeshesAliasTablesDevice emissive_meshes_data;
+
 	LightTreeATSDevice light_tree_ats;
+	LightTreeSGDevice light_tree_sg;
 
 	// A pointer either to an array of Image8Bit or to an array of
 	// oroTextureObject_t whether if CPU or GPU rendering respectively

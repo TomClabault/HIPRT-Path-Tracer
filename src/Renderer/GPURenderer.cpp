@@ -57,7 +57,8 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 		m_global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
 
 	m_power_sampling_data_structure = PowerSamplingDataStructure(this);
-	m_light_tree_sampling_data_structure = LightTreeATSSamplingDataStructure(this);
+	m_light_tree_ats_sampling_data_structure = LightTreeATSSamplingDataStructure(this);
+	m_light_tree_sg_sampling_data_structure = LightTreeSGSamplingDataStructure(this);
 
 	m_render_thread.init(this);
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
@@ -177,8 +178,8 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 void GPURenderer::compute_emissives_sampling_data_structure_from_scene(const Scene& scene)
 {
 	m_power_sampling_data_structure.compute_from_scene(scene);
-
-	m_light_tree_sampling_data_structure.compute_from_scene(scene);
+	m_light_tree_ats_sampling_data_structure.compute_from_scene(scene);
+	m_light_tree_sg_sampling_data_structure.compute_from_scene(scene);
 }
 
 void GPURenderer::recompute_emissives_sampling_data_structure()
@@ -188,20 +189,30 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 	else
 		m_power_sampling_data_structure.free();
 
-	if (m_light_tree_sampling_data_structure.is_needed(m_render_data.buffers.emissive_triangles_count))
-		m_light_tree_sampling_data_structure.recompute_if_needed();
+	if (m_light_tree_ats_sampling_data_structure.is_needed(m_render_data.buffers.emissive_triangles_count))
+		m_light_tree_ats_sampling_data_structure.recompute_if_needed();
 	else
-		m_light_tree_sampling_data_structure.free();
+		m_light_tree_ats_sampling_data_structure.free();
+
+	if (m_light_tree_sg_sampling_data_structure.is_needed(m_render_data.buffers.emissive_triangles_count))
+		m_light_tree_sg_sampling_data_structure.recompute_if_needed();
+	else
+		m_light_tree_sg_sampling_data_structure.free();
 }
 
 LightTreeATSBuilderOptions& GPURenderer::get_light_tree_build_options()
 {
-	return m_light_tree_sampling_data_structure.get_builder_options();
+	return m_light_tree_ats_sampling_data_structure.get_builder_options();
 }
 
-LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_sampling_data_structure()
+LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data_structure()
 {
-	return m_light_tree_sampling_data_structure;
+	return m_light_tree_ats_sampling_data_structure;
+}
+
+LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_structure()
+{
+	return m_light_tree_sg_sampling_data_structure;
 }
 
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
@@ -257,7 +268,8 @@ void GPURenderer::step_animations(float delta_time)
 void GPURenderer::prepare_light_sampling_data_structures()
 {
 	m_power_sampling_data_structure.recompute_if_needed(true);
-	m_light_tree_sampling_data_structure.recompute_if_needed(true);
+	m_light_tree_ats_sampling_data_structure.recompute_if_needed(true);
+	m_light_tree_sg_sampling_data_structure.recompute_if_needed(true);
 }
 
 void GPURenderer::download_status_buffers()

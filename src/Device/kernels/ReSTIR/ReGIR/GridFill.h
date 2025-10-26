@@ -47,14 +47,17 @@ HIPRT_DEVICE LightSampleInformation sample_one_presampled_light(const HIPRTRende
     return full_sample_information;
 }
 
-HIPRT_DEVICE LightSampleInformation grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 cell_normal, int last_hit_primitive_index, Xorshift32Generator& rng)
+HIPRT_DEVICE LightSampleInformation grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, Xorshift32Generator& rng)
 {
 #if ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_LIGHT_TREE_ATS
 	RayPayload dummy_ray_payload;
+	dummy_ray_payload.material.roughness = surface.cell_roughness;
+	dummy_ray_payload.material.metallic = surface.cell_metallic;
+	dummy_ray_payload.material.specular = surface.cell_specular;
 
     return sample_one_emissive_triangle_light_tree_ats<false>(render_data,
-        shading_point, view_direction, cell_normal, cell_normal,
-        last_hit_primitive_index, dummy_ray_payload, rng);
+        surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal,
+        surface.cell_primitive_index, dummy_ray_payload, rng);
 #else
     return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, rng);
 #endif
@@ -86,6 +89,9 @@ HIPRT_DEVICE LightSampleInformation grid_fill_with_per_cell_light_distributions_
     else if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_LIGHT_TREE_ATS)
     {
         RayPayload dummy_ray_payload;
+        dummy_ray_payload.material.roughness = surface.cell_roughness;
+        dummy_ray_payload.material.metallic = surface.cell_metallic;
+        dummy_ray_payload.material.specular = surface.cell_specular;
 
         LightSampleInformation light_sample = sample_one_emissive_triangle_light_tree_ats(render_data,
             surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal,
@@ -115,12 +121,12 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         LightSampleInformation light_sample;
 
         if (reservoir_is_canonical)
-			light_sample = grid_fill_sample_canonical_candidate(render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_primitive_index, rng);
+			light_sample = grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
         else
         {
             light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
             if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
-                light_sample = grid_fill_sample_canonical_candidate(render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_primitive_index, rng);
+                light_sample = grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
         }
 
         if (light_sample.emissive_triangle_global_index == -1)
@@ -207,11 +213,13 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
         else
         {
             if (reservoir_is_canonical)
-                light_sample = grid_fill_sample_canonical_candidate(render_data, surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_primitive_index, rng);
+                light_sample = grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
             else
             {
-                // Unused
                 RayPayload dummy_ray_payload;
+                dummy_ray_payload.material.roughness = surface.cell_roughness;
+                dummy_ray_payload.material.metallic = surface.cell_metallic;
+                dummy_ray_payload.material.specular = surface.cell_specular;
 
                 light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(
                     render_data,

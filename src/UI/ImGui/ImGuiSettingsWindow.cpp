@@ -1104,7 +1104,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGui::EndDisabled();
 
-			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)", "- ReGIR + Cache cells (Experimental)"};
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)", "- SG light tree (Tokuyoshi et al. 2024)", "- ReGIR + Cache cells (Experimental)"};
 			const char* tooltips_base_strategy[] = {
 				"All lights are sampled uniformly.",
 
@@ -1112,8 +1112,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				"Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]",
 
+				"Implementation of [Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting, Tokuyoshi et al., 2024]",
+
 				"Uses ReGIR to sample lights.\n\n"
-				"Highly custom implementation of [Rendering many lights with grid - based reservoirs, Boksansky, 2021]"
+				"Highly custom implementation of [Rendering many lights with grid - based reservoirs, Boksansky, 2021] + Disney's cache points: "
+				"[Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]"
 			};
 
 			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
@@ -1954,7 +1957,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			if (regir_settings.use_per_cell_light_distributions)
 			{
-				const char* items[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS" };
+				const char* items[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS", "- SG light tree" };
 				static int light_distributions_defensive_sampling_technique = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE);
 				if (ImGui::Combo("Defensive sampling technique", &light_distributions_defensive_sampling_technique, items, IM_ARRAYSIZE(items)))
 				{
@@ -2254,13 +2257,15 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Sampling strategies");
 
-			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)" };
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)", "- SG light tree (Tokuyoshi et al. 2024)" };
 			const char* tooltips_base_strategy_non_canonical[] = {
 				"All lights are sampled uniformly",
 
 				"Lights are sampled proportionally to their power",
 
 				"Lights are sampled using a light hierarchy with orientation bounds as proposed in the paper of Conty & Kulla, 2018.",
+
+				"Lights are sampled using a light hierarchy of spherical gaussian lights as proposed in the paper of Tokuyoshi et al., 2024.",
 			};
 			const char* tooltips_base_strategy_canonical[] = {
 				"All lights are sampled uniformly",
@@ -2269,6 +2274,9 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 				"Lights are sampled using a light hierarchy **without** orientation bounds as proposed in the paper of Conty & Kulla, 2018.\n"
 				"Canonical candidates do not use the orientation bounds to remain conservative.",
+
+				"Lights are sampled using a light hierarchy of spherical gaussian lights as proposed in the paper of Tokuyoshi et al., 2024.\n"
+				"Orientation is not considered to remain conservative",
 			};
 
 			bool base_light_sampling_strategy_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE;
@@ -2735,7 +2743,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::TreePop();
 	}
 
-	bool light_tree_used_by_regir = m_renderer->get_light_tree_sampling_data_structure().is_needed(m_renderer->get_emissive_mesh_count());
+	bool light_tree_used_by_regir = m_renderer->get_light_tree_ats_sampling_data_structure().is_needed(m_renderer->get_emissive_mesh_count());
 	if (light_tree_used_by_regir)
 		draw_light_tree_ATS_settings_panel();
 }

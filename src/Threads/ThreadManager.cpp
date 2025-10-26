@@ -26,7 +26,8 @@ std::string ThreadManager::RENDERER_UPLOAD_TEXTURES = "RendererUploadTextures";
 std::string ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES = "RendererUploadEmissiveTriangles";
 std::string ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS = "RendererUploadTriangleAreas";
 std::string ThreadManager::RENDERER_COMPUTE_EMISSIVES_POWER_ALIAS_TABLE = "RendererComputeEmissivesPowerAreaAliasTable";
-std::string ThreadManager::RENDERER_COMPUTE_LIGHT_TREE = "RendererComputeLightTree";
+std::string ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_ATS = "RendererComputeLightTreeATS";
+std::string ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG = "RendererComputeLightTreeSG";
 
 std::string ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY = "TextureThreadsKey";
 std::string ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES = "ParseEmissiveTrianglesKey";

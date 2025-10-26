@@ -3,11 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Renderer/LightTree/LightTreeATSSamplingDataStructure.h"
+#include "Renderer/LightTree/LightTreeSGSamplingDataStructure.h"
 #include "Renderer/GPURenderer.h"
 #include "Threads/ThreadManager.h"
 
-void LightTreeATSSamplingDataStructure::compute_from_scene(const Scene& scene)
+void LightTreeSGSamplingDataStructure::compute_from_scene(const Scene& scene)
 {
 	compute(
 		scene.emissive_triangles_primitive_indices,
@@ -17,10 +17,10 @@ void LightTreeATSSamplingDataStructure::compute_from_scene(const Scene& scene)
 		scene.materials);
 }
 
-void LightTreeATSSamplingDataStructure::compute(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
+void LightTreeSGSamplingDataStructure::compute(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 {
-	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_ATS, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_ATS,
+	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG, 
 		[this,
 		&emissive_triangles_primitive_indices,
 		&triangles_vertex_indices,
@@ -37,21 +37,21 @@ void LightTreeATSSamplingDataStructure::compute(const std::vector<int>& emissive
 			return;
 		}
 
-		m_light_tree_builder.build_light_tree(
+		m_light_tree_builder_sg.build_light_tree(
 			emissive_triangles_primitive_indices,
 			triangles_vertex_indices,
 			vertices_positions,
 			material_indices,
 			materials);
-		m_light_tree_ats_device_data = m_light_tree_builder.compute_device_data<OrochiBuffer>();
-		m_light_tree_builder.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices, triangles_vertex_indices.size() / 3, m_light_tree_ats_device_data);
-		m_light_tree_builder.cleanup();
+		m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<OrochiBuffer>();
+		m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices, triangles_vertex_indices.size() / 3, m_light_tree_sg_device_data);
+		m_light_tree_builder_sg.cleanup();
 	});
 }
 
-void LightTreeATSSamplingDataStructure::recompute_if_needed(bool skip_if_already_computed)
+void LightTreeSGSamplingDataStructure::recompute_if_needed(bool skip_if_already_computed)
 {
-	if (skip_if_already_computed && m_light_tree_ats_device_data.m_device_nodes_buffer.get_byte_size() > 0)
+	if (skip_if_already_computed && m_light_tree_sg_device_data.m_device_nodes_buffer.get_byte_size() > 0)
 		// Already computed
 		return;
 
@@ -75,24 +75,19 @@ void LightTreeATSSamplingDataStructure::recompute_if_needed(bool skip_if_already
 		material_indices,
 		m_renderer->get_current_materials());
 
-	ThreadManager::join_threads(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_ATS);
+	ThreadManager::join_threads(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG);
 }
 
-void LightTreeATSSamplingDataStructure::free()
+void LightTreeSGSamplingDataStructure::free()
 {
-	m_light_tree_ats_device_data.free();
+	m_light_tree_sg_device_data.free();
 }
 
-bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count)
+bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count)
 {
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
-	bool directly_using_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS;
+	bool directly_using_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
 	bool using_regir_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
 
 	return (directly_using_light_tree || using_regir_light_tree) && emissive_count > 0;
-}
-
-LightTreeATSBuilderOptions& LightTreeATSSamplingDataStructure::get_builder_options()
-{
-	return m_light_tree_builder.get_options();
 }
