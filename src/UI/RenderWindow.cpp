@@ -76,6 +76,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove shade all samples feature
 //		Should also be able to remove ReGIRAdditionalInfo stuff
 // - Remove light presampling
+// - Remove warp direction reuse constants
 // 
 // - The SG tree seems poorly built because PJ's diffuse function doesn't help, so it has to be the tree build
 // - Can we introduce the bounds of the ATS tree in the SG tree to easily reject obviously facing away nodes since the SG tree seems to struggle a bit with that

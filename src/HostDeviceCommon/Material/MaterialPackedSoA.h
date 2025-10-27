@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_MATERIAL_PACKED_SOA_H
 
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 
@@ -411,18 +412,23 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
             // the base color parameter anyway)
             out.set_base_color(this->get_base_color(material_index));
 
-        if (out.get_roughness_texture_index() == MaterialConstants::NO_TEXTURE && out.get_roughness_metallic_texture_index() == MaterialConstants::NO_TEXTURE)
+        bool using_roughness_texture = UseMaterialTextures == KERNEL_OPTION_TRUE && (out.get_roughness_texture_index() != MaterialConstants::NO_TEXTURE || out.get_roughness_metallic_texture_index() != MaterialConstants::NO_TEXTURE);
+        if (!using_roughness_texture)
             // Same for the roughness
             out.set_roughness(this->get_roughness(material_index));
 
         out.set_oren_nayar_sigma(this->get_oren_nayar_sigma(material_index));
 
         // Parameters for Adobe 2023 F82-tint model
+        // 
         // Only reading the metallic if no metallic texture is used
         // (because if we have a metallic texture, it's going to override
         // the metallic parameter anyway)
-        out.set_metallic(this->get_metallic(material_index));
-        if (out.get_metallic() > 0.0f || out.get_metallic_texture_index() != MaterialConstants::NO_TEXTURE || out.get_roughness_metallic_texture_index() != MaterialConstants::NO_TEXTURE)
+        bool using_metallic_texture = UseMaterialTextures == KERNEL_OPTION_TRUE && (out.get_metallic_texture_index() != MaterialConstants::NO_TEXTURE || out.get_roughness_metallic_texture_index() != MaterialConstants::NO_TEXTURE);
+        if (!using_metallic_texture)
+            out.set_metallic(this->get_metallic(material_index));
+
+        if (out.get_metallic() > 0.0f || using_metallic_texture)
         {
             // If the metallic parameter isn't 0.0f, i.e. the material does have a metallic lobe,
             // then and only then do we need to load the metallic parameters
@@ -440,13 +446,16 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 #endif
         }
 
-        if(out.get_anisotropic_texture_index() == MaterialConstants::NO_TEXTURE)
+        bool using_anisotropic_texture = out.get_anisotropic_texture_index() != MaterialConstants::NO_TEXTURE && UseMaterialTextures == KERNEL_OPTION_TRUE;
+        if (!using_anisotropic_texture)
             out.set_anisotropy(this->get_anisotropy(material_index));
         out.set_anisotropy_rotation(this->get_anisotropy_rotation(material_index));
 
         // Specular intensity
-        out.set_specular(this->get_specular(material_index));
-        if (out.get_specular() > 0.0f || out.get_specular_texture_index() != MaterialConstants::NO_TEXTURE)
+        bool using_specular_texture = UseMaterialTextures == KERNEL_OPTION_TRUE && out.get_specular_texture_index() != MaterialConstants::NO_TEXTURE;
+        if (!using_specular_texture)
+            out.set_specular(this->get_specular(material_index));
+        if (out.get_specular() > 0.0f || using_specular_texture)
         {
             // We only need to read the various specular parameters if the material actually has a specular lobe
 
@@ -465,8 +474,10 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 #endif
         }
 
-        out.set_coat(this->get_coat(material_index));
-        if (out.get_coat() > 0.0f || out.get_coat_texture_index() != MaterialConstants::NO_TEXTURE)
+        bool using_coat_texture = UseMaterialTextures == KERNEL_OPTION_TRUE && out.get_coat_texture_index() != MaterialConstants::NO_TEXTURE;
+        if (!using_coat_texture)
+            out.set_coat(this->get_coat(material_index));
+        if (out.get_coat() > 0.0f || using_coat_texture)
         {
             // We only need to read the coat parameters if the material has a coat lobe
             // (which is when out.get_coat() > 0.0f)
@@ -495,8 +506,10 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 #endif
         }
 
-        out.set_sheen(this->get_sheen(material_index)); // Sheen strength
-        if (out.get_sheen() > 0.0f || out.get_sheen_texture_index() != MaterialConstants::NO_TEXTURE)
+        bool using_sheen_texture = UseMaterialTextures == KERNEL_OPTION_TRUE && out.get_sheen_texture_index() != MaterialConstants::NO_TEXTURE;
+        if (!using_sheen_texture)
+            out.set_sheen(this->get_sheen(material_index)); // Sheen strength
+        if (out.get_sheen() > 0.0f || using_sheen_texture)
         {
             out.set_sheen_roughness(this->get_sheen_roughness(material_index));
             out.set_sheen_color(this->get_sheen_color(material_index));
@@ -505,8 +518,10 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
         out.set_ior(this->get_ior(material_index));
 
         out.set_diffuse_transmission(this->get_diffuse_transmission(material_index));
-        out.set_specular_transmission(this->get_specular_transmission(material_index));
-        if (out.get_specular_transmission() > 0.0f || out.get_specular_transmission_texture_index() != MaterialConstants::NO_TEXTURE)
+        bool using_specular_transmission_texture = UseMaterialTextures == KERNEL_OPTION_TRUE && out.get_specular_transmission_texture_index() != MaterialConstants::NO_TEXTURE;
+        if (!using_specular_transmission_texture)
+            out.set_specular_transmission(this->get_specular_transmission(material_index));
+        if (out.get_specular_transmission() > 0.0f || using_specular_transmission_texture)
         {
             // This is all specific to specular transmission
             out.set_dispersion_scale(this->get_dispersion_scale(material_index));
@@ -518,7 +533,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 #endif
         }
 
-        if (out.get_specular_transmission() > 0.0f || out.get_diffuse_transmission() > 0.0f || out.get_specular_transmission_texture_index() != MaterialConstants::NO_TEXTURE)
+        if (out.get_specular_transmission() > 0.0f || out.get_diffuse_transmission() > 0.0f || using_specular_transmission_texture)
         {
             // This is also applicable to diffuse transmission
             

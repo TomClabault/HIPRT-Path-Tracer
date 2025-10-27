@@ -42,6 +42,9 @@ public:
 
 	static const std::string TRIANGLE_POINT_SAMPLING_STRATEGY;
 
+	static const std::string USE_MATERIAL_TEXTURES;
+	static const std::string USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE;
+
 	static const std::string REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING;
 	static const std::string REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS;
 	static const std::string REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT;

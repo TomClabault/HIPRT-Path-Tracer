@@ -60,8 +60,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 406
-#define DEBUG_PIXEL_Y 189
+#define DEBUG_PIXEL_X 494
+#define DEBUG_PIXEL_Y 349
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -329,7 +329,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_emissive_meshes_alias_tables.load_from_emissive_meshes(parsed_scene);
 
-    std::cout << "Building scene's BVH..." << std::endl;
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building scene's BVH...");
     m_triangle_buffer = parsed_scene.get_triangles(parsed_scene.triangles_vertex_indices);
     m_emissive_triangles_buffer = parsed_scene.get_triangles(parsed_scene.emissive_triangle_vertex_indices);
 
@@ -341,7 +341,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
         ReGIR_GridFillLightSamplingBaseStrategyNonCanonical == LSS_BASE_POWER ||            \
         ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_POWER ||   \
         (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE && ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)))
-    std::cout << "Building scene's power alias table" << std::endl;
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Building scene's power alias table");
     compute_emissives_power_alias_table(parsed_scene);
 #endif
 

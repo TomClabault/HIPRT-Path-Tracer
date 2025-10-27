@@ -4326,12 +4326,38 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Normal mapping"))
+	if (ImGui::CollapsingHeader("Textures"))
 	{
-		ImGui::TreePush("Normal mapping tree");
+		ImGui::TreePush("Quality settings textures tree");
 
 		if (ImGui::Checkbox("Do normal mapping", &render_settings.do_normal_mapping))
 			m_render_window->set_render_dirty(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		bool use_material_textures = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES);
+		if (ImGui::Checkbox("Use material textures", &use_material_textures))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES, use_material_textures ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
+		if (!use_material_textures)
+		{
+			ImGui::TreePush("Use material texture base color texture override");
+
+			bool use_material_textures_base_color_override = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE);
+			if (ImGui::Checkbox("Use base color texture anyway", &use_material_textures_base_color_override))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE, use_material_textures_base_color_override ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
+		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -4382,10 +4408,10 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		bool allow_backfacing_lihts = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS);
-		if (ImGui::Checkbox("Allow backfacing lights", &allow_backfacing_lihts))
+		bool allow_backfacing_lights = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS);
+		if (ImGui::Checkbox("Allow backfacing lights", &allow_backfacing_lights))
 		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS, allow_backfacing_lihts ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_ALLOW_BACKFACING_LIGHTS, allow_backfacing_lights ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);

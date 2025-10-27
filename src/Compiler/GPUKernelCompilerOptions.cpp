@@ -41,6 +41,9 @@ const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION
 
 const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY = "TrianglePointSamplingStrategy";
 
+const std::string GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES = "UseMaterialTextures";
+const std::string GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE = "UseMaterialBaseColorTextureOverride";
+
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING = "ReGIR_GridFillDoLightPresampling";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS = "ReGIR_GridFillUsePerCellLightDistributions";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT = "ReGIR_GridFillCellDistributionsCanonicalSampleCount";
@@ -151,6 +154,9 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
 
 	GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY,
+
+	GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES,
+	GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE,
 
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS,
@@ -266,6 +272,9 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION] = std::make_shared<int>(NestedDielectricsStackSize);
 
 	m_options_macro_map[GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY] = std::make_shared<int>(TrianglePointSamplingStrategy);
+
+	m_options_macro_map[GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES] = std::make_shared<int>(UseMaterialTextures);
+	m_options_macro_map[GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE] = std::make_shared<int>(UseMaterialBaseColorTextureOverride);
 
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING] = std::make_shared<int>(ReGIR_GridFillDoLightPresampling);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS] = std::make_shared<int>(ReGIR_GridFillUsePerCellLightDistributions);

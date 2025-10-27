@@ -462,7 +462,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
     float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
     if (emission_texture_index != MaterialConstants::NO_TEXTURE)
-        out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
+        out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
         // Getting the shading normal
     else
         out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
@@ -519,7 +519,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
         float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
         if (emission_texture_index != MaterialConstants::NO_TEXTURE)
-            out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
+            out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
         else
             out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
 
@@ -571,7 +571,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
     float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
     if (emission_texture_index != MaterialConstants::NO_TEXTURE)
-        out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
+        out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
         // Getting the shading normal
     else
         out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
@@ -625,7 +625,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
         float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
         if (emission_texture_index != MaterialConstants::NO_TEXTURE)
-            out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
+            out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
         else 
             out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
 
