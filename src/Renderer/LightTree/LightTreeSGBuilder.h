@@ -26,6 +26,8 @@ public:
 
 	void cleanup();
 
+	LightTreeATSBuilderOptions& get_build_options();
+
 private:
 	LightTreeATSBuilder m_light_tree_ats_builder;
 

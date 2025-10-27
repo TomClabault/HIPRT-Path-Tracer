@@ -94,5 +94,5 @@ bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count)
 
 LightTreeATSBuilderOptions& LightTreeATSSamplingDataStructure::get_builder_options()
 {
-	return m_light_tree_builder.get_options();
+	return m_light_tree_builder.get_build_options();
 }

@@ -1204,6 +1204,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				draw_light_tree_ATS_settings_panel();
 
 				break;
+
+			case LSS_BASE_LIGHT_TREE_SG:
+				draw_light_tree_SG_settings_panel();
+
+				break;
 			}
 
 			// Display additional widgets to control the parameters of the direct light
@@ -2751,7 +2756,7 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
-	LightTreeATSBuilderOptions& build_options = m_renderer->get_light_tree_build_options();
+	LightTreeATSBuilderOptions& build_options = m_renderer->get_light_tree_ats_build_options();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	if (ImGui::CollapsingHeader("Light tree ATS settings"))
@@ -2766,6 +2771,7 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
+		ImGui::SeparatorText("Build");
 		switch (build_options.build_split_method)
 		{
 		case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
@@ -2893,6 +2899,82 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 		if (ImGui::Checkbox("Use orientation", &importance_function_use_orientation))
 		{
 			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION, importance_function_use_orientation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	LightTreeATSBuilderOptions& build_options = m_renderer->get_light_tree_sg_build_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("Light tree SG settings"))
+	{
+		ImGui::TreePush("Light tree SG settings tree");
+
+		ImGui::SeparatorText("Build");
+		switch (build_options.build_split_method)
+		{
+		case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
+		{
+			static int current_bin_count = build_options.bin_count;
+			ImGui::SliderInt("Bin count", &current_bin_count, 2, 96);
+
+			if (current_bin_count != build_options.bin_count)
+			{
+				ImGui::TreePush("Apply button light tree bin count");
+
+				if (ImGui::Button("Apply"))
+				{
+					current_bin_count = hippt::clamp(2, 2000000000, current_bin_count);
+					build_options.bin_count = current_bin_count;
+
+					m_renderer->recompute_emissives_sampling_data_structure();
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::TreePop();
+			}
+
+			break;
+		}
+		}
+
+		static int previous_triangles_per_leaf = build_options.max_triangles_per_leaf;
+		ImGui::SliderInt("Max triangles per leaf", &previous_triangles_per_leaf, 1, 32);
+
+		if (previous_triangles_per_leaf != build_options.max_triangles_per_leaf)
+		{
+			ImGui::TreePush("Apply button triangles per leaf light tree");
+
+			if (ImGui::Button("Apply"))
+			{
+				previous_triangles_per_leaf = hippt::clamp(1, 2000000000, previous_triangles_per_leaf);
+				build_options.max_triangles_per_leaf = previous_triangles_per_leaf;
+
+				m_renderer->recompute_emissives_sampling_data_structure();
+
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Importance function");
+		static bool importance_function_do_specular = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE);
+		if (ImGui::Checkbox("Do specular", &importance_function_do_specular))
+		{
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE, importance_function_do_specular ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);

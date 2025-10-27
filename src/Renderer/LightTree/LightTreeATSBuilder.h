@@ -41,7 +41,7 @@ public:
 
 	struct BinCostInfo
 	{
-		float area = 0.0f;
+		float surface_area = 0.0f;
 		unsigned int tri_count = 0;
 
 		// Needed for SAOH
@@ -80,12 +80,13 @@ public:
 	const std::vector<unsigned int>& get_bit_trails() const;
 	const std::vector<int>& get_triangle_indices() const;
 
-	LightTreeATSBuilderOptions& get_options();
+	LightTreeATSBuilderOptions& get_build_options();
 
 private:
 	LightTreeATSBuilderOptions m_build_options;
 
-	std::shared_ptr<std::atomic<unsigned int>> m_current_node_index = 0;
+	std::shared_ptr<std::atomic<unsigned int>> m_max_tree_depth = nullptr;
+	std::shared_ptr<std::atomic<unsigned int>> m_current_node_index = nullptr;
 	std::vector<LightTreeATSNode> m_nodes;
 
 	std::vector<PrefetchedTriangle> m_prefetched_triangles;
@@ -104,6 +105,11 @@ LightTreeATSBuilderDeviceData<DataContainer> LightTreeATSBuilder::compute_device
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
+		if (hippt::is_nan(m_nodes[i].orientation_data.theta_o) || hippt::is_inf(m_nodes[i].orientation_data.theta_o) ||
+			hippt::is_nan(m_nodes[i].orientation_data.axis.x) || hippt::is_nan(m_nodes[i].orientation_data.axis.y) || hippt::is_nan(m_nodes[i].orientation_data.axis.z) ||
+			hippt::is_inf(m_nodes[i].orientation_data.axis.x) || hippt::is_inf(m_nodes[i].orientation_data.axis.y) || hippt::is_inf(m_nodes[i].orientation_data.axis.z) )
+			Debug::debugbreak();
+
 		device_data_out.nodes_device[i].axis = m_nodes[i].orientation_data.axis;
 		device_data_out.nodes_device[i].cos_theta_o = cosf(m_nodes[i].orientation_data.theta_o);
 		device_data_out.nodes_device[i].sin_theta_o = sinf(m_nodes[i].orientation_data.theta_o);

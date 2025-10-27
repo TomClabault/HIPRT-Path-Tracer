@@ -9,6 +9,7 @@
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
+#include "HostDeviceCommon/KernelOptions/LightTreeSGOptions.h"
 #include "HostDeviceCommon/KernelOptions/NEEPlusPlusOptions.h"
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
@@ -114,7 +115,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_LAMBERTIAN
+#define BSDFOverride BSDF_NONE
 
 /**
  * The stack size for handling nested dielectrics

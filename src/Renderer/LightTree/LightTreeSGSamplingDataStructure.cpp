@@ -1,3 +1,4 @@
+#include "LightTreeSGSamplingDataStructure.h"
 /*
  * Copyright 2025 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
@@ -90,4 +91,9 @@ bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count)
 	bool using_regir_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
 
 	return (directly_using_light_tree || using_regir_light_tree) && emissive_count > 0;
+}
+
+LightTreeATSBuilderOptions& LightTreeSGSamplingDataStructure::get_builder_options()
+{
+	return m_light_tree_builder_sg.get_build_options();
 }

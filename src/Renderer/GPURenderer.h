@@ -93,8 +93,10 @@ public:
 	void compute_emissives_sampling_data_structure_from_scene(const Scene& scene);
 	void recompute_emissives_sampling_data_structure();
 
-	LightTreeATSBuilderOptions& get_light_tree_build_options();
+	LightTreeATSBuilderOptions& get_light_tree_ats_build_options();
 	LightTreeATSSamplingDataStructure& get_light_tree_ats_sampling_data_structure();
+
+	LightTreeATSBuilderOptions& get_light_tree_sg_build_options();
 	LightTreeSGSamplingDataStructure& get_light_tree_sg_sampling_data_structure();
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();

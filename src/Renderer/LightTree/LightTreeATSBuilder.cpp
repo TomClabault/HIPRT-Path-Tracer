@@ -27,6 +27,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	LightTreeBuilderTrianglesData triangles_data(emissive_triangles_primitive_indices, triangle_vertex_indices, vertices_positions, material_indices, materials);
 
 	m_current_node_index = std::make_shared<std::atomic<unsigned int>>(0);
+	m_max_tree_depth = std::make_shared<std::atomic<unsigned int>>(0);
 
 	m_nodes.resize(emissive_triangles_primitive_indices.size() * 2 - 1);
 	m_triangle_indices.resize(emissive_triangles_primitive_indices.size());
@@ -72,6 +73,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 
 	auto stop = std::chrono::high_resolution_clock::now();
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light tree construction time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Maximum tree depth: %d", m_max_tree_depth->load());
 }
 
 void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data)
@@ -106,6 +108,11 @@ void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const Ligh
 
 void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data, int depth)
 {
+	if (depth > 100)
+		Debug::debugbreak();
+
+	hippt::atomic_max(m_max_tree_depth.get(), static_cast<unsigned int>(depth));
+
 	LightTreeATSNode& node = m_nodes[node_index];
 	if (node.triangle_count <= m_build_options.max_triangles_per_leaf)
 	{
@@ -176,15 +183,15 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 			subdivide_node(left_child_index, triangles_data, depth + 1);
 		});
 
-		// run right subtree in current thread
+		// Run right subtree in current thread
 		subdivide_node(right_child_index, triangles_data, depth + 1);
 
-		// wait for left subtree
+		// Wait for left subtree
 		left_future.get();
 	}
 	else
 	{
-		// sequential recursion deeper down
+		// Sequential recursion deeper down
 		subdivide_node(left_child_index, triangles_data, depth + 1);
 		subdivide_node(right_child_index, triangles_data, depth + 1);
 	}
@@ -280,7 +287,7 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 				left_orientation_data.cone_union_with(m_bins_temp_buffer[i].orientation_data);
 
 				m_left_bins_info_temp_buffer[i].tri_count = left_tri_count_sum;
-				m_left_bins_info_temp_buffer[i].area = left_box.area();
+				m_left_bins_info_temp_buffer[i].surface_area = left_box.area();
 				m_left_bins_info_temp_buffer[i].energy = left_power;
 				m_left_bins_info_temp_buffer[i].m_omega = compute_saoh_m_omega(left_orientation_data);
 
@@ -288,15 +295,14 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 
 				right_tri_count_sum += m_bins_temp_buffer[m_build_options.bin_count - 1 - i].tri_count;
 				right_box.extend(m_bins_temp_buffer[m_build_options.bin_count - 1 - i].bounds);
-				right_power  += m_bins_temp_buffer[m_build_options.bin_count - 1 - i].total_power;
+				right_power += m_bins_temp_buffer[m_build_options.bin_count - 1 - i].total_power;
 				right_orientation_data.cone_union_with(m_bins_temp_buffer[m_build_options.bin_count - 1 - i].orientation_data);
 
 				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].tri_count = right_tri_count_sum;
-				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].area = right_box.area();
+				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].surface_area = right_box.area();
 				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].energy = right_power;
 				m_right_bins_info_temp_buffer[m_build_options.bin_count - 2 - i].m_omega = compute_saoh_m_omega(right_orientation_data);
 			}
-
 
 			float scale_sah = hippt::idx(prims_bounds.maxi - prims_bounds.mini, axis_index) / m_build_options.bin_count;
 			for (int split_plane_index = 0; split_plane_index < m_build_options.bin_count; split_plane_index++)
@@ -312,8 +318,8 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 					cost = 0.0f;
 					
 					// Numerator
-					cost += m_left_bins_info_temp_buffer[split_plane_index].energy * m_left_bins_info_temp_buffer[split_plane_index].m_omega;
-					cost += m_right_bins_info_temp_buffer[split_plane_index].energy * m_right_bins_info_temp_buffer[split_plane_index].m_omega;
+					cost += m_left_bins_info_temp_buffer[split_plane_index].surface_area * m_left_bins_info_temp_buffer[split_plane_index].energy * m_left_bins_info_temp_buffer[split_plane_index].m_omega;
+					cost += m_right_bins_info_temp_buffer[split_plane_index].surface_area * m_right_bins_info_temp_buffer[split_plane_index].energy * m_right_bins_info_temp_buffer[split_plane_index].m_omega;
 
 					// Denominator
 					cost /= prims_bounds.area() * node_m_omega;
@@ -324,8 +330,8 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 				}
 				else if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAH)
 				{
-					cost = m_left_bins_info_temp_buffer[split_plane_index].tri_count * m_left_bins_info_temp_buffer[split_plane_index].area +
-						   m_right_bins_info_temp_buffer[split_plane_index].tri_count * m_right_bins_info_temp_buffer[split_plane_index].area;
+					cost = m_left_bins_info_temp_buffer[split_plane_index].tri_count * m_left_bins_info_temp_buffer[split_plane_index].surface_area +
+						   m_right_bins_info_temp_buffer[split_plane_index].tri_count * m_right_bins_info_temp_buffer[split_plane_index].surface_area;
 				}
 
 				if (cost < best_cost)
@@ -439,7 +445,7 @@ const std::vector<int>& LightTreeATSBuilder::get_triangle_indices() const
 	return m_triangle_indices;
 }
 
-LightTreeATSBuilderOptions& LightTreeATSBuilder::get_options()
+LightTreeATSBuilderOptions& LightTreeATSBuilder::get_build_options()
 {
 	return m_build_options;
 }

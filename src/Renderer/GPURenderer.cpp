@@ -200,7 +200,7 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 		m_light_tree_sg_sampling_data_structure.free();
 }
 
-LightTreeATSBuilderOptions& GPURenderer::get_light_tree_build_options()
+LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options()
 {
 	return m_light_tree_ats_sampling_data_structure.get_builder_options();
 }
@@ -208,6 +208,11 @@ LightTreeATSBuilderOptions& GPURenderer::get_light_tree_build_options()
 LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data_structure()
 {
 	return m_light_tree_ats_sampling_data_structure;
+}
+
+LightTreeATSBuilderOptions& GPURenderer::get_light_tree_sg_build_options()
+{
+	return m_light_tree_sg_sampling_data_structure.get_builder_options();
 }
 
 LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_structure()

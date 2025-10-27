@@ -33,7 +33,7 @@ struct LightTreeSGNodeDevice
 		SGLight sg_light;
 		sg_light.position = gaussian_spatial_mean;
 		sg_light.variance = gaussian_spatial_variance;
-		sg_light.axis = vmf_axis;
+		sg_light.axis = -vmf_axis;
 		sg_light.sharpness = vmf_sharpness;
 		sg_light.power = total_power;
 		return sg_light;

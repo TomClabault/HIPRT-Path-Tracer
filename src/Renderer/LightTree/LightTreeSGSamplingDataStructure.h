@@ -31,6 +31,8 @@ public:
 
 	bool is_needed(unsigned int emissive_count);
 
+	LightTreeATSBuilderOptions& get_builder_options();
+
 private:
 	LightTreeSGBuilder m_light_tree_builder_sg;
 	LightTreeSGBuilderDeviceData<OrochiBuffer> m_light_tree_sg_device_data;

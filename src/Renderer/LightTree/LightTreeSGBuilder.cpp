@@ -31,6 +31,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 		LightTreeSGNode& left_node = m_nodes[ats_node.left_child_index];
 		LightTreeSGNode& right_node = m_nodes[ats_node.left_child_index + 1];
+
 		float left_weight = 1.0f, right_weight = 1.0f;
 		if (left_node.total_power == 0.0f)
 			left_weight = 0.0f;
@@ -97,7 +98,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			// 
 			// The axis needs to be negated, not sure why but the reference implementation does the same
 			// as well and without that it's completely broken
-			sg_node.mean_axis += -0.5f * triangle.normal * triangle.power;
+			sg_node.mean_axis += 0.5f * triangle.normal * triangle.power;
 			sg_node.total_power += triangle.power;
 			sg_node.total_emission += triangle_data.materials[triangle_data.material_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index]]].get_total_emission();
 
@@ -156,4 +157,9 @@ void LightTreeSGBuilder::cleanup()
 {
 	m_light_tree_ats_builder.cleanup();
 	m_nodes.clear();
+}
+
+LightTreeATSBuilderOptions& LightTreeSGBuilder::get_build_options()
+{
+	return m_light_tree_ats_builder.get_build_options();
 }
