@@ -1103,6 +1103,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			ImGui::TreePop();
 		}
 
+		bool emission_changed = false;
 		if (ImGui::CollapsingHeader("Emission Properties"))
 		{
 			ImGui::TreePush("Emission material tree");
@@ -1110,7 +1111,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			bool emission_controlled_by_texture = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
 			ImGui::BeginDisabled(emission_controlled_by_texture);
 			
-			bool emission_changed = false;
 			// TODO we would need to recompute the alias table for the emissive lights here
 			emission_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			ImGui::EndDisabled();
@@ -1121,12 +1121,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			emission_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
 
 			material_changed |= emission_changed;
-			if (emission_changed)
-			{
-				m_renderer->get_NEE_plus_plus_render_pass()->reset(false);
-
-				m_renderer->recompute_emissives_sampling_data_structure();
-			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -1153,6 +1147,10 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material.make_safe();
 
 			m_renderer->update_one_material(material, currently_selected_material_index);
+
+			if (emission_changed)
+				m_renderer->recompute_emissives_sampling_data_structure();
+
 			m_render_window->set_render_dirty(true);
 		}
 	}

@@ -8,6 +8,8 @@
 #include <future>
 #include <numeric>
 
+// DELETEBISTROSGTREEEDBUG.glt
+
 int LightTreeATSBuilder::bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const
 {
 	return m_triangle_indices[bvh_triangle_index];
@@ -59,6 +61,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 		m_prefetched_triangles[i].normal = triangle_normal;
 		m_prefetched_triangles[i].area = triangle_area;
 		m_prefetched_triangles[i].power = mat.get_total_emission().luminance() * triangle_area;
+		m_prefetched_triangles[i].DEBUG_FULL_EMISSION = mat.get_total_emission();
 	}
 
 	m_current_node_index->store(0);
@@ -81,9 +84,11 @@ void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const Ligh
 	LightTreeATSNode& node = m_nodes[node_index];
 	node.node_bounds.mini = float3(1e30f, 1e30f, 1e30f);
 	node.node_bounds.maxi = float3(-1e30f, -1e30f, -1e30f);
+	node.total_power = 0.0f;
 
 	double sum_energy = 0.0f;
 	double sum_energy_squared = 0.0f;
+	unsigned int valid_triangle_count = 0;
 	for (unsigned int first = node.first_triangle_index, i = 0; i < node.triangle_count; i++)
 	{
 		int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(first + i);
@@ -99,10 +104,11 @@ void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const Ligh
 
 		sum_energy += m_prefetched_triangles[emissive_triangle_index].power;
 		sum_energy_squared += hippt::square(m_prefetched_triangles[emissive_triangle_index].power);
+		valid_triangle_count++;
 	}
 
-	node.energy_average = sum_energy / node.triangle_count;
-	node.energy_variance = hippt::max(0.0f, static_cast<float>(sum_energy_squared / node.triangle_count - hippt::square(sum_energy / node.triangle_count)));
+	node.energy_average = sum_energy / valid_triangle_count;
+	node.energy_variance = hippt::max(0.0f, static_cast<float>(sum_energy_squared / valid_triangle_count - hippt::square(sum_energy / valid_triangle_count)));
 	node.total_emitter_count = node.triangle_count;
 }
 
@@ -137,7 +143,8 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 	}
 	else if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAOH)
 	{
-		if (node.triangle_count <= 1)
+		float no_split_cost_saoh = node.total_power;
+		if (no_split_cost_saoh <= split_cost || node.triangle_count <= 1)
 		{
 			register_node_bit_trail(node, triangles_data);
 

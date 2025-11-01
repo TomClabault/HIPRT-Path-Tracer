@@ -27,6 +27,8 @@ public:
 		float area;
 
 		float power;
+
+		ColorRGB32F DEBUG_FULL_EMISSION;
 	};
 
 	struct Bin
@@ -36,7 +38,7 @@ public:
 
 		// For SAOH
 		LightTreeATSNodeOrientationData orientation_data;
-		float total_power;
+		float total_power = 0.0f;
 	};
 
 	struct BinCostInfo

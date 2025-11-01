@@ -198,6 +198,8 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 		m_light_tree_sg_sampling_data_structure.recompute_if_needed();
 	else
 		m_light_tree_sg_sampling_data_structure.free();
+
+	get_NEE_plus_plus_render_pass()->reset(false);
 }
 
 LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options()

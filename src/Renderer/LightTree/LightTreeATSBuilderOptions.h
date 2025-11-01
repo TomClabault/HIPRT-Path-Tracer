@@ -15,7 +15,7 @@
 struct LightTreeATSBuilderOptions
 {
 	int build_split_method = LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED;
-	int bin_count = 64;
+	int bin_count = 4;
 
 	int cost_function = LIGHT_TREE_BUILD_COST_FUNCTION_SAOH;
 

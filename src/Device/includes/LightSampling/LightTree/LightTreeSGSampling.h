@@ -232,7 +232,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 	float specular_illumination = 0.0f;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR
 	{
 		float3 T, B;
 		build_ONB(shading_normal, T, B);

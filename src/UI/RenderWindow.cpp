@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO known bugs / incorrectness:
+// - Updating the emissive property of a material in ImGui should update the emissive triangle primitive indices buffer: a material that goes from emission 1 to emission 0 should be removed from that buffer but it's not at the moment
 // - There is some weird color corruption issue with NEE++ linear probing max steps = 16 + ReGIR 
 // - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implementing proper volumes?
 // - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
@@ -274,6 +275,10 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - Cache we maybe have some kind of adaptive sampling for the lighting at the priamry hit? So like run ReSTIR DI or something until some variance is reached for DI and then stop sampling DI and only sample DI
+//		- For that we would need 2 buffers:
+//			A) 1 buffer that accumulates the NEE estimator at the primary hit
+//			B) 1 buffer that accumulates the GI (later hits NEE with the BSDF term at the primary hit
+//				- The image that we display is A) + B)
 // - Vertex cache optimization buffer arrangement for better triangle pairing and better tracing performance?
 // - Thread is swizzling (reorder ray invocations) https://github.com/BoyBaykiller/IDKEngine/blob/95a15c1db02f11bd2f47bb81bcfccf0943d3e703/IDKEngine/Resource/Shaders/PathTracing/FirstHit/compute.glsl#L206
 // - Option for terminating rays on emissive hits? --> this is going to be biased but may help performance

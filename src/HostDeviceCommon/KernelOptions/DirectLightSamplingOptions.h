@@ -100,7 +100,7 @@
 * 
 *       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_ATS
+#define DirectLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_SG
 
 
 /**
@@ -140,7 +140,7 @@
  * the outside. There will thus be no visual difference but a non negligeable boost in 
  * performance/sampling quality as backfacing lights will not be sampled anymore (depending on the sampling strategy)
  */
-#define DirectLightSamplingAllowBackfacingLights KERNEL_OPTION_FALSE
+#define DirectLightSamplingAllowBackfacingLights KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 

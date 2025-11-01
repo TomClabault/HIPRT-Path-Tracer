@@ -95,9 +95,6 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			single_triangle_variance = (hippt::dot(e1, e1) + hippt::dot(e2, e2) - hippt::dot(e1, e2)) / 18.0f;
 
 			// 0.5f * triangle normal from the paper
-			// 
-			// The axis needs to be negated, not sure why but the reference implementation does the same
-			// as well and without that it's completely broken
 			sg_node.mean_axis += 0.5f * triangle.normal * triangle.power;
 			sg_node.total_power += triangle.power;
 			sg_node.total_emission += triangle_data.materials[triangle_data.material_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index]]].get_total_emission();

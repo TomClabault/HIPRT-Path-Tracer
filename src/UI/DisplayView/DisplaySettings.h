@@ -23,7 +23,7 @@ struct DisplaySettings
 	// Tone mapping gamma
 	float tone_mapping_gamma = 2.2f;
 	// Tone mapping exposure
-	float tone_mapping_exposure = 1.8f;
+	float tone_mapping_exposure = 100.0f;
 
 	// If true, the white furnace threshold shader will display
 	// pixel that lose energy as green. Pixels will not be highlighted
