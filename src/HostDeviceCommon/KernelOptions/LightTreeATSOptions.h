@@ -53,6 +53,13 @@
  */
 #define LightTreeATSSplittingIncludeVisibility KERNEL_OPTION_TRUE
 
+/**
+ * If true, NEE++ will be used to estimate the visibility of a light sample during splitting.
+ * 
+ * If false, a full shadow ray will be used instead
+ */
+#define LightTreeATSSplittingDoNEEPlusPlusVisibility KERNEL_OPTION_FALSE
+
 #endif // #ifndef __KERNELCC__
 
 #endif

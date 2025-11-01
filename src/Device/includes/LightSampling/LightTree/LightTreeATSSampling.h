@@ -222,7 +222,11 @@ struct LightTreeATSWRSReservoir
 			nee_plus_plus_context.shaded_point = shadow_ray_origin;
 
 #if LightTreeATSSplittingIncludeVisibility == KERNEL_OPTION_TRUE
+#if LightTreeATSSplittingDoNEEPlusPlusVisibility == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+			bool in_shadow = false;
+#else
 			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(const_cast<HIPRTRenderData&>(render_data), shadow_ray, distance_to_light, last_hit_primitive_index, nee_plus_plus_context, rng, ray_payload.bounce);
+#endif
 #else
 			bool in_shadow = false;
 #endif
@@ -247,6 +251,10 @@ struct LightTreeATSWRSReservoir
 					{
 						float cosine_term = hippt::abs(hippt::dot(shading_normal, shadow_ray.direction));
 						float weight = (light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability).luminance();
+
+#if LightTreeATSSplittingIncludeVisibility == KERNEL_OPTION_TRUE && LightTreeATSSplittingDoNEEPlusPlusVisibility == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+						weight *= hippt::max(0.025f, render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, render_data.current_camera));
+#endif
 
 						return weight;
 					}
