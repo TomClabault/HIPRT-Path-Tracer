@@ -45,7 +45,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 			- SAH and SAOH tree build cost functions
 			- Adaptive tree splitting
 		- Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting \[[Tokuyoshi et al., 2024](https://gpuopen.com/download/Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting.pdf)\]
-	- ReGIR with all its improvements
+	- ReGIR
 	- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation)
 	
 - Next-event estimation strategies (built on-top of base techniques):

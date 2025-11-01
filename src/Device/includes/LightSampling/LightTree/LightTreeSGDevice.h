@@ -17,28 +17,8 @@ struct SGLobe
 	float  logAmplitude;
 };
 
-struct SGLight
-{
-	float3 position;
-	float  variance;
-	float3 axis;
-	float power;
-	float  sharpness;
-};
-
 struct LightTreeSGNodeDevice
 {
-	HIPRT_DEVICE SGLight to_spherical_gaussian_light() const
-	{
-		SGLight sg_light;
-		sg_light.position = gaussian_spatial_mean;
-		sg_light.variance = gaussian_spatial_variance;
-		sg_light.axis = -vmf_axis;
-		sg_light.sharpness = vmf_sharpness;
-		sg_light.power = total_power;
-		return sg_light;
-	}
-
 	float3 vmf_axis = make_float3(0.0f, 0.0f, 0.0f);
 	float vmf_sharpness = 0.0f;
 
