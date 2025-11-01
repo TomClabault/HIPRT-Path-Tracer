@@ -177,14 +177,17 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 	right_child.bit_trail = node.bit_trail;
 	right_child.bit_trail |= 1 << depth;
 
+	// Saving the number of triangles of the node before it goes to 0
+	// for multithreading
+	unsigned int triangle_count_to_split = node.triangle_count;
 	node.left_child_index = left_child_index;
 	node.triangle_count = 0;
 
 	update_node_bounds(left_child_index, triangles_data);
 	update_node_bounds(right_child_index, triangles_data);
 
-	// Only parallelize near the top of the tree to avoid blowing up the thread count
-	if (depth < 6)
+	// Only multithread if it's worth it
+	if (triangle_count_to_split > 5000)
 	{
 		auto left_future = std::async(std::launch::async, [&]() {
 			subdivide_node(left_child_index, triangles_data, depth + 1);
