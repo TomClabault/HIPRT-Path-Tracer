@@ -13,6 +13,7 @@ class MegaKernelRenderPass : public RenderPass
 public:
 	static const std::string MEGAKERNEL_RENDER_PASS_NAME;
 	static const std::string MEGAKERNEL_KERNEL;
+	static const std::string MEGAKERNEL_KERNEL_REGIR_INTERACTION;
 
 	MegaKernelRenderPass();
 	MegaKernelRenderPass(GPURenderer* renderer);

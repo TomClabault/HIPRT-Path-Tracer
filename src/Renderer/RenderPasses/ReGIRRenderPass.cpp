@@ -322,6 +322,9 @@ bool ReGIRRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 		return false;
 	else if (render_data.buffers.emissive_triangles_count == 0)
 		return false;
+	if (m_render_window->is_interacting())
+		// ReGIR isn't used when interacting 
+		return false;
 
 	synchronize_async_compute();
 
