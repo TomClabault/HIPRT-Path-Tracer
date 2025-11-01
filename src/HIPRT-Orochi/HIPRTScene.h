@@ -88,13 +88,6 @@ struct HIPRTGeometry
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 
-		if (m_geometry != nullptr)
-		{
-			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
-
-			m_geometry = nullptr;
-		}
-
 		if (m_mesh.vertexCount == 0 || m_mesh.triangleCount == 0)
 			// No BVH to build
 			return;
@@ -116,7 +109,7 @@ struct HIPRTGeometry
 		HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
 
 		oroError_t error = oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size);
-		if (error != oroSuccess && error == oroErrorOutOfMemory && disable_spatial_splits_on_OOM)
+		if (error == oroErrorOutOfMemory && disable_spatial_splits_on_OOM)
 		{
 			if (error == oroErrorOutOfMemory && disable_spatial_splits_on_OOM)
 			{
@@ -138,6 +131,12 @@ struct HIPRTGeometry
 		else
 			OROCHI_CHECK_ERROR(error);
 
+		if (m_geometry != nullptr)
+		{
+			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
+
+			m_geometry = nullptr;
+		}
 		HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry));
 		HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, build_stream, m_geometry));
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));

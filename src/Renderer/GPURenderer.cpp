@@ -827,6 +827,8 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 void GPURenderer::rebuild_bvh(HIPRTGeometry& geometry, hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM)
 {
+	synchronize_all_kernels();
+
 	geometry.build_bvh(build_flags, do_compaction, disable_spatial_splits_on_OOM, m_main_stream);
 }
 
