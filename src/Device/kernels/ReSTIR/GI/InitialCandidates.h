@@ -125,7 +125,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.sample_point_geometric_normal.pack(closest_hit_info.geometric_normal);
                     restir_gi_initial_sample.sample_point = closest_hit_info.inter_point;
                     restir_gi_initial_sample.sample_point_primitive_index = closest_hit_info.primitive_index;
-                    restir_gi_initial_sample.sample_point_rough_enough = MaterialUtils::can_do_light_sampling(ray_payload.material, render_data.render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold);
+                    restir_gi_initial_sample.sample_point_rough_enough = ray_payload.material.can_do_light_sampling(render_data.render_settings.restir_gi_settings.neighbor_sample_point_roughness_threshold);
                 }
 
                 if (bounce > 0)

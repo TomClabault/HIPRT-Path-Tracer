@@ -63,7 +63,7 @@ HIPRT_DEVICE ColorRGB32F principled_coat_eval(const HIPRTRenderData& render_data
     // yield 0.0f anyways
     //
     // All the conditions are handled in 'is_specular_delta_reflection_sampled'
-    MaterialUtils::SpecularDeltaReflectionSampled coat_delta_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
+    SpecularDeltaReflectionSampled coat_delta_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
 
     ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(HoL, incident_medium_ior, bsdf_context.material.coat_ior));
 
@@ -89,7 +89,7 @@ HIPRT_DEVICE float principled_coat_pdf(const HIPRTRenderData& render_data, const
     // yield 0.0f anyways
     //
     // All the conditions are handled in 'is_specular_delta_reflection_sampled'
-    MaterialUtils::SpecularDeltaReflectionSampled coat_delta_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
+    SpecularDeltaReflectionSampled coat_delta_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
 
     return torrance_sparrow_GGX_pdf_reflect(render_data, regularized_roughness, bsdf_context.material.coat_anisotropy,
         local_view_direction, local_to_light_direction, local_halfway_vector, coat_delta_direction_sampled);
@@ -129,8 +129,8 @@ HIPRT_DEVICE ColorRGB32F principled_metallic_eval(const HIPRTRenderData& render_
 {
     float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
-    MaterialUtils::SpecularDeltaReflectionSampled metal_delta_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, regularized_roughness, anisotropy, bsdf_context.incident_light_info);
-    if (metal_delta_direction_sampled == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
+    SpecularDeltaReflectionSampled metal_delta_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, anisotropy, bsdf_context.incident_light_info);
+    if (metal_delta_direction_sampled == SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
     {
         // The distribution isn't worth evaluating because it's specular but we the incident
         // light direction wasn't sampled from a specular distribution
@@ -158,8 +158,8 @@ HIPRT_DEVICE float principled_metallic_pdf(const HIPRTRenderData& render_data, B
 {
     float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
-    MaterialUtils::SpecularDeltaReflectionSampled metal_delta_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, regularized_roughness, anisotropy, bsdf_context.incident_light_info);
-    if (metal_delta_direction_sampled == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
+    SpecularDeltaReflectionSampled metal_delta_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, anisotropy, bsdf_context.incident_light_info);
+    if (metal_delta_direction_sampled == SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
         // The distribution isn't worth evaluating because it's specular but we the incident
         // light direction wasn't sampled from a specular distribution
         return 0.0f;
@@ -293,7 +293,7 @@ HIPRT_DEVICE ColorRGB32F principled_specular_eval(const HIPRTRenderData& render_
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
 {
     float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-    MaterialUtils::SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
+    SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
     // The specular lobe is just another GGX lobe
     // 
@@ -316,7 +316,7 @@ HIPRT_DEVICE float principled_specular_pdf(const HIPRTRenderData& render_data, B
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector)
 {
     float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-    MaterialUtils::SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
+    SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
     return torrance_sparrow_GGX_pdf_reflect(render_data, regularized_roughness, bsdf_context.material.anisotropy,
         local_view_direction, local_to_light_direction, local_half_vector,
@@ -492,7 +492,7 @@ HIPRT_DEVICE ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_dat
         else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
             regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
-        MaterialUtils::SpecularDeltaReflectionSampled delta_glass_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
+        SpecularDeltaReflectionSampled delta_glass_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
         color = torrance_sparrow_GGX_eval_reflect<0>(render_data, regularized_roughness, bsdf_context.material.anisotropy, false, F,
             local_view_direction, local_to_light_direction, local_half_vector,
@@ -692,7 +692,7 @@ HIPRT_DEVICE float principled_glass_pdf(const HIPRTRenderData& render_data, BSDF
         else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC && PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
             regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
-        MaterialUtils::SpecularDeltaReflectionSampled delta_glass_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(bsdf_context.material, scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
+        SpecularDeltaReflectionSampled delta_glass_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
 
         pdf = torrance_sparrow_GGX_pdf_reflect(render_data, regularized_roughness, bsdf_context.material.anisotropy,
             local_view_direction, local_to_light_direction, local_half_vector,

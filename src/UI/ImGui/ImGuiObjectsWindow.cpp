@@ -558,7 +558,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 2:
-					material_override_changed |= draw_material_override_line("Thin film thickness", override_state.override_thin_film_thickness, material_override.thin_film_thickness, 1.0f, 3.0f, "%.3f nm");
+					material_override_changed |= draw_material_override_line("Thin film thickness", override_state.override_thin_film_thickness, material_override.thin_film_thickness, 1.0f, 2000.0f, "%.3f nm");
 					break;
 
 				case 3:

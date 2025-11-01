@@ -125,6 +125,7 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 
 
     DeviceUnpackedEffectiveMaterial unpacked_effective_material(material);
+    unpacked_effective_material.base_color = material.base_color;
 
     unpacked_effective_material.emissive_texture_used = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
     unpacked_effective_material.emission = emission;

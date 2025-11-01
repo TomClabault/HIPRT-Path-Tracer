@@ -78,7 +78,7 @@ HIPRT_DEVICE float G1_Smith(float alpha_x, float alpha_y, const float3& local_di
 template <bool useMultipleScatteringEnergyCompensation>
 HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
                                                                              const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
-                                                                             float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
+                                                                             float& out_pdf, SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                              int current_bounce)
 {
     out_pdf = -1.0f;
@@ -102,7 +102,7 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRenderData
 template <>
 HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F,
                                                                                 const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
-                                                                                float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
+                                                                                float& out_pdf, SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                                 int current_bounce)
 {
     out_pdf = 0.0f;
@@ -110,7 +110,7 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderD
     if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
     {
         // Fast path for perfectly specular BRDF
-        if (incident_light_direction_is_from_GGX_sample == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
+        if (incident_light_direction_is_from_GGX_sample == SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
             // For a perfectly smooth GGX distribution (a delta distribution), anything other than a
             // perfectly sampled reflection direction is going to yield 0 contribution
             return ColorRGB32F(0.0f);
@@ -199,7 +199,7 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderD
 template <>
 HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
                                                                                 const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
-                                                                                float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
+                                                                                float& out_pdf, SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                                 int current_bounce)
 {
     ColorRGB32F ms_compensation_term = get_GGX_energy_compensation_conductors(render_data, F, material_roughness, material_do_energy_compensation, local_view_direction, current_bounce);
@@ -226,12 +226,12 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderD
  */
 HIPRT_DEVICE float torrance_sparrow_GGX_pdf_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy,
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector,
-    MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
+    SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
 {
     if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
     {
         // Fast path for perfectly specular BRDF
-        if (incident_light_direction_is_from_GGX_sample == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
+        if (incident_light_direction_is_from_GGX_sample == SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
             // For a perfectly smooth GGX distribution (a delta distribution), anything other than a
             // perfectly sampled reflection direction is going to yield 0 contribution
             return 0.0f;

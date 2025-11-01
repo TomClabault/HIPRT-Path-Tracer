@@ -95,7 +95,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
     int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
 #endif
 
-    if (!MaterialUtils::can_do_light_sampling(ray_payload.material))
+    if (!ray_payload.material.can_do_light_sampling())
         nb_light_candidates = 0;
 
     // Sampling candidates with weighted reservoir sampling

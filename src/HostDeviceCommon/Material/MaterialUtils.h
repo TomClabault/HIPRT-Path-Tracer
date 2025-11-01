@@ -6,11 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_MATERIAL_UTILS_H
 #define HOST_DEVICE_COMMON_MATERIAL_UTILS_H
 
-#include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
-
 #include "HostDeviceCommon/Material/MaterialConstants.h"
-#include "HostDeviceCommon/Material/MaterialPacked.h"
-#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
 
 struct MaterialUtils
@@ -92,88 +88,44 @@ struct MaterialUtils
         return true;
     }
 
-    HIPRT_HOST_DEVICE static bool can_do_light_sampling(const DeviceUnpackedEffectiveMaterial& material, float roughness_threshold = MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD)
+    HIPRT_DEVICE static bool use_base_color_texture(unsigned short int base_color_texture_index)
     {
-        return can_do_light_sampling(material.roughness, material.metallic, material.specular_transmission, material.coat, material.coat_roughness, material.second_roughness, material.second_roughness_weight, roughness_threshold);
+        return base_color_texture_index == MaterialConstants::NO_TEXTURE || (UseMaterialTextures == KERNEL_OPTION_FALSE && UseMaterialBaseColorTextureOverride == KERNEL_OPTION_FALSE);
     }
 
-    HIPRT_HOST_DEVICE static bool can_do_light_sampling(const DevicePackedEffectiveMaterial& material, float roughness_threshold = MaterialConstants::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD)
+    HIPRT_DEVICE static bool use_roughness_texture(unsigned short int roughness_texture_index, unsigned short int roughness_metallic_texture_index)
     {
-        return can_do_light_sampling(material.get_roughness(), material.get_metallic(), material.get_specular_transmission(), material.get_coat(), material.get_coat_roughness(), material.get_second_roughness(), material.get_second_roughness_weight(), roughness_threshold);
+        return UseMaterialTextures == KERNEL_OPTION_FALSE || (roughness_texture_index == MaterialConstants::NO_TEXTURE && roughness_metallic_texture_index == MaterialConstants::NO_TEXTURE);
     }
 
-    /**
-	 * Returns the minimum roughness of the material looking at all the active lobes
-     */
-    HIPRT_HOST_DEVICE static float minimum_roughness(const DeviceUnpackedEffectiveMaterial& material)
+    HIPRT_DEVICE static bool use_metallic_texture(unsigned short int metallic_texture_index, unsigned short int roughness_metallic_texture_index)
     {
-		float coat_roughness = material.coat > 0.0f ? material.coat_roughness : 1.0f;
-		float specular_roughness = material.specular > 0.0f ? material.roughness : 1.0f;
-		float glass_roughness = material.specular_transmission > 0.0f ? material.roughness : 1.0f;
-		float metallic_roughness = (material.metallic > 0.0f && material.second_roughness_weight < 1.0f) ? material.roughness : 1.0f;
-		float metallic_2_roughness = (material.metallic > 0.0f && material.second_roughness_weight > 0.0f) ? material.second_roughness : 1.0f;
-     
-		return hippt::min(coat_roughness, hippt::min(specular_roughness, hippt::min(glass_roughness, hippt::min(metallic_roughness, metallic_2_roughness))));
+        return UseMaterialTextures == KERNEL_OPTION_FALSE || (metallic_texture_index == MaterialConstants::NO_TEXTURE && roughness_metallic_texture_index == MaterialConstants::NO_TEXTURE);
     }
 
-    enum SpecularDeltaReflectionSampled : int
+    HIPRT_DEVICE static bool use_anisotropy_texture(unsigned short int anisotropy_texture_index)
     {
-        NOT_SPECULAR = -1,
-        SPECULAR_PEAK_NOT_SAMPLED = 0,
-        SPECULAR_PEAK_SAMPLED = 1,
-    };
+        return anisotropy_texture_index == MaterialConstants::NO_TEXTURE || UseMaterialTextures == KERNEL_OPTION_FALSE;
+    }
 
-    /**
-     * Determines whether a perfectly smooth lobe has any chance of evaluating to non-0.
-     * 
-     * This is only relevant for perfectly smooth materials/lobe where we don't want to evaluate the specular BRDF
-     * with anything other than a direction that was sampled directly from that specular BRDF.
-     * 
-     * The 'delta_distribution_oughness' and 'delta_distribution_anisotropy' parameters here describe the BRDF lobe
-     * that is being evaluated.
-     * 
-     * 'incident_light_info' is some additional information about the incident light direction used for
-     * evaluating the current lobe
-     * 
-     * Returns 1 only if the specular distribution is worth evaluating, 0 if there's no point because it's going to
-     * evaluate to 0 anyways
-     * 
-     * Returns -1 if the distribution given isn't specular in the first place (delta_distribution_roughness isn't very close to 0)
-     */
-    HIPRT_HOST_DEVICE static SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled(const DeviceUnpackedEffectiveMaterial& material, float delta_distribution_roughness, float delta_distribution_anisotropy, BSDFIncidentLightInfo incident_light_info)
+    HIPRT_DEVICE static bool use_specular_texture(unsigned short int specular_texture_index)
     {
-        if (!MaterialUtils::is_perfectly_smooth(delta_distribution_roughness))
-            return SpecularDeltaReflectionSampled::NOT_SPECULAR;
+        return specular_texture_index == MaterialConstants::NO_TEXTURE || UseMaterialTextures == KERNEL_OPTION_FALSE;
+    }
 
-        // For the glass lobe sampled direction to match, we only need it to be a reflection
-        // and we need the glass lobe to be perfectly smooth
-        bool matching_base_substrate_anisotropy = hippt::abs(delta_distribution_anisotropy - material.anisotropy) < 1.0e-3f;
-        bool sampled_from_glass = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE && MaterialUtils::is_perfectly_smooth(material.roughness) && matching_base_substrate_anisotropy;
-        if (sampled_from_glass)
-            // We can stop here
-            return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
+    HIPRT_DEVICE static bool use_coat_texture(unsigned short int coat_texture_index)
+    {
+        return coat_texture_index == MaterialConstants::NO_TEXTURE || UseMaterialTextures == KERNEL_OPTION_FALSE;
+    }
 
-        // Same for the metal lobe (except that it's alawys a reflection, so it's easy there)
-        bool sampled_from_first_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE && MaterialUtils::is_perfectly_smooth(material.roughness) && matching_base_substrate_anisotropy;
-        bool sampled_from_second_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE && MaterialUtils::is_perfectly_smooth(material.second_roughness) && matching_base_substrate_anisotropy;
-        if (sampled_from_first_metal || sampled_from_second_metal)
-            // We can stop here
-            return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
+    HIPRT_DEVICE static bool use_sheen_texture(unsigned short int sheen_texture_index)
+    {
+        return sheen_texture_index == MaterialConstants::NO_TEXTURE || UseMaterialTextures == KERNEL_OPTION_FALSE;
+    }
 
-        // Same for the coat
-        bool matching_coat_anisotropy = hippt::abs(delta_distribution_anisotropy - material.coat_anisotropy) < 1.0e-3f;
-        bool sampled_from_coat = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE && matching_coat_anisotropy && MaterialUtils::is_perfectly_smooth(material.coat_roughness);
-        if (sampled_from_coat)
-            // We can stop here
-            return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
-
-        // Same for the specular layer
-        bool sampled_from_specular = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE && MaterialUtils::is_perfectly_smooth(material.roughness) && matching_base_substrate_anisotropy;
-        if (sampled_from_specular)
-            // We can stop here
-            return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
-
-        return SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
+    HIPRT_DEVICE static bool use_specular_transmission_texture(unsigned short int specular_transmission_texture_index)
+    {
+        return specular_transmission_texture_index == MaterialConstants::NO_TEXTURE || UseMaterialTextures == KERNEL_OPTION_FALSE;
     }
 };
 

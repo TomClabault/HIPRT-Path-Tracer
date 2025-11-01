@@ -74,6 +74,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
+// - Remove ReSTIR DI light presampling
 // - Remove shade all samples feature
 //		Should also be able to remove ReGIRAdditionalInfo stuff
 // - Remove warp direction reuse constants

@@ -41,4 +41,11 @@ enum BSDFIncidentLightInfo
 	LIGHT_DIRECTION_NOT_SAMPLED_FROM_BSDF
 };
 
+enum SpecularDeltaReflectionSampled : int
+{
+	NOT_SPECULAR = -1,
+	SPECULAR_PEAK_NOT_SAMPLED = 0,
+	SPECULAR_PEAK_SAMPLED = 1,
+};
+
 #endif

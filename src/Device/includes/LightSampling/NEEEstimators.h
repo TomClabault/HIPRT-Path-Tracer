@@ -26,7 +26,7 @@
 
 HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
-    if (!MaterialUtils::can_do_light_sampling(ray_payload.material))
+    if (!ray_payload.material.can_do_light_sampling())
         return ColorRGB32F(0.0f);
 
     LightSampleInformation light_sample = sample_one_emissive_triangle(render_data, 
@@ -126,7 +126,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
 {
     ColorRGB32F light_source_radiance_mis;
 
-    if (MaterialUtils::can_do_light_sampling(ray_payload.material))
+    if (ray_payload.material.can_do_light_sampling())
     {
         LightSampleInformation light_sample = sample_one_emissive_triangle(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 

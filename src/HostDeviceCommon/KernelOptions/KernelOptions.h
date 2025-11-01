@@ -140,13 +140,13 @@
  * If false, material textures will not be read and so the global material overrider
  * of ImGui will work properly
  */
-#define UseMaterialTextures KERNEL_OPTION_TRUE
+#define UseMaterialTextures KERNEL_OPTION_FALSE
 
 /**
  * If this is true, the base color texture of the material will always be used
  * even if UseMaterialTextures is set to false
  */
-#define UseMaterialBaseColorTextureOverride KERNEL_OPTION_TRUE
+#define UseMaterialBaseColorTextureOverride KERNEL_OPTION_FALSE
 
 /**
  * What envmap sampling strategy to use
