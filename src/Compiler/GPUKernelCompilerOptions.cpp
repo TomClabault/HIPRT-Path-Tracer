@@ -44,7 +44,6 @@ const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY = "
 const std::string GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES = "UseMaterialTextures";
 const std::string GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE = "UseMaterialBaseColorTextureOverride";
 
-const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING = "ReGIR_GridFillDoLightPresampling";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS = "ReGIR_GridFillUsePerCellLightDistributions";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT = "ReGIR_GridFillCellDistributionsCanonicalSampleCount";
 const std::string GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE = "ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique";
@@ -158,7 +157,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES,
 	GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE,
 
-	GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT,
 	GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE,
@@ -276,7 +274,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES] = std::make_shared<int>(UseMaterialTextures);
 	m_options_macro_map[GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE] = std::make_shared<int>(UseMaterialBaseColorTextureOverride);
 
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_DO_LIGHT_PRESAMPLING] = std::make_shared<int>(ReGIR_GridFillDoLightPresampling);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS] = std::make_shared<int>(ReGIR_GridFillUsePerCellLightDistributions);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLE_COUNT] = std::make_shared<int>(ReGIR_GridFillCellDistributionsCanonicalSampleCount);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE] = std::make_shared<int>(ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique);

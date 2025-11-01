@@ -126,12 +126,6 @@
 #define ReGIR_GridFillSpatialReuse_AccumulatePreIntegration KERNEL_OPTION_FALSE
 
 /**
- * Whether or not to enable light presampling to improve grid fill performance
- * on scenes with many many lights
- */
-#define ReGIR_GridFillDoLightPresampling KERNEL_OPTION_FALSE
-
-/**
  * If true, the contribution of each emissive mesh of the scene will be precomputed
  * at each cell of the hash grid to build a sampling distribution based on the contribution
  * of the emissive meshes.

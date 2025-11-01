@@ -12,7 +12,6 @@
 #include <numeric>
 
 const std::string ReGIRRenderPass::REGIR_GRID_PRE_POPULATE = "ReGIR Pre-population";
-const std::string ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING = "ReGIR Light presampling";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID = "ReGIR Grid fill 1st hits";
 const std::string ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID = "ReGIR Grid fill 2nd hits";
 const std::string ReGIRRenderPass::REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID = "ReGIR Spatial reuse 1st hits";
@@ -29,7 +28,6 @@ const std::string ReGIRRenderPass::REGIR_RENDER_PASS_NAME = "ReGIR Render Pass";
 const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCTION_NAMES =
 {
 	{ REGIR_GRID_PRE_POPULATE, "ReGIR_Grid_Prepopulate" },
-	{ REGIR_GRID_FILL_LIGHT_PRESAMPLING, "ReGIR_Light_Presampling" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID, "ReGIR_Grid_Fill" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID, "ReGIR_Grid_Fill" },
 	{ REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID, "ReGIR_Spatial_Reuse" },
@@ -45,7 +43,6 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FUNCT
 const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES =
 {
 	{ REGIR_GRID_PRE_POPULATE, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridPrepopulate.h" },
-	{ REGIR_GRID_FILL_LIGHT_PRESAMPLING, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/LightPresampling.h" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h" },
 	{ REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/GridFill.h" },
 	{ REGIR_SPATIAL_REUSE_FIRST_HITS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/SpatialReuse.h" },
@@ -79,11 +76,6 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer) : RenderPass(renderer, R
 
 
 
-
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING] = std::make_shared<GPUKernel>();
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING));
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->set_kernel_function_name(ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING));
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->set_kernel_file_path(ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID));
@@ -178,12 +170,6 @@ bool ReGIRRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 
 
 
-
-	if (!m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->has_been_compiled())
-	{
-		updated = true;
-		m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-	}
 
 	if (!m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_FIRST_HITS_KERNEL_ID]->has_been_compiled())
 	{
@@ -435,8 +421,6 @@ void ReGIRRenderPass::launch_sync_grid_fill(HIPRTRenderData& render_data, bool b
 {
 	// Execute a full grid fill synchronously (from the point of view of the GPU
 	// CUDA/HIP streams, this is still asynchronous for the CPU: not blocking for the CPU)
-	launch_light_presampling(render_data, m_renderer->get_main_stream());
-
 	bool skip_frame_primary_hits = render_data.render_settings.sample_number % (render_data.render_settings.regir_settings.frame_skip_primary_hit_grid + 1) != 0;
 	if (m_number_of_cells_alive_primary_hits > 0 && (!skip_frame_primary_hits || bypass_skip_frame))
 	{
@@ -469,8 +453,6 @@ void ReGIRRenderPass::launch_async_grid_fill(HIPRTRenderData& render_data)
 	// We're going to launch the grid fill for the next frame now on an async stream such
 	// that we can fill the grid of the *next* frame while the path tracing of the *current* frame
 	// is running
-
-	launch_light_presampling(render_data, m_grid_fill_async_stream_primary_hits);
 
 	// 2 iterations for first hits and secondary hits
 	for (int i = 0; i < 2; i++)
@@ -563,20 +545,6 @@ bool ReGIRRenderPass::rehash(HIPRTRenderData& render_data)
 	}
 
 	return false;
-}
-
-void ReGIRRenderPass::launch_light_presampling(HIPRTRenderData& render_data, oroStream_t stream)
-{
-	if (!render_data.render_settings.regir_settings.do_light_presampling)
-		return;
-
-	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
-
-	unsigned int nb_threads = render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count();
-
-	void* launch_args[] = { &render_data };
-
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_LIGHT_PRESAMPLING]->launch_asynchronous(64, 1, nb_threads, 1, launch_args, stream);
 }
 
 void ReGIRRenderPass::launch_grid_fill(HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream)
@@ -686,7 +654,6 @@ void ReGIRRenderPass::launch_correlation_reduction_fill(HIPRTRenderData& render_
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
-		launch_light_presampling(render_data, m_renderer->get_main_stream());
 		launch_grid_fill(render_data, true, false, m_renderer->get_main_stream());
 		ReGIRHashGridSoADevice spatial_output = launch_spatial_reuse(render_data, true, false, m_renderer->get_main_stream());
 		launch_correlation_reduction_copy(render_data, spatial_output);
@@ -793,7 +760,6 @@ void ReGIRRenderPass::launch_pre_integration_internal(HIPRTRenderData& render_da
 	{
 		render_data.random_number = m_local_rng.xorshift32();
 
-		launch_light_presampling(render_data, stream);
 		launch_grid_fill(render_data, primary_hit, true, stream);
 		launch_spatial_reuse(render_data, primary_hit, true, stream);
 	}

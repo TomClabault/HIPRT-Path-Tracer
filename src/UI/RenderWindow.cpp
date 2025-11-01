@@ -76,14 +76,12 @@ extern ImGuiLogger g_imgui_logger;
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
 // - Remove shade all samples feature
 //		Should also be able to remove ReGIRAdditionalInfo stuff
-// - Remove light presampling
 // - Remove warp direction reuse constants
 // 
 // - The SG tree seems poorly built because PJ's diffuse function doesn't help, so it has to be the tree build
 // - Can we introduce the bounds of the ATS tree in the SG tree to easily reject obviously facing away nodes since the SG tree seems to struggle a bit with that
 // - Can we have some form of 2 stage resampling during shading where we only keep the best sample for shooting shadow rays instead of shooting shadow rays for everyone, resampled tree 2024 style
 // - Can we have something that disables the big spherical gaussian stuff when the nodes are small enough (in solid angle)? Because at some point, the spherical gaussian approximation is not needed anymore
-// - Use the light tree for ReGIR interactivity
 // - Can we extend the tail of the light distributions wxith clusters from the light tree?
 //		Careful about having lights in the head of the light distribution s as well as in clusters, that's doubling the lights
 // - What if we use ReSTIR DI for the first hit and only ReGIR for the secondary hits?

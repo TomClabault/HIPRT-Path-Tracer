@@ -14,9 +14,7 @@ void ReGIRHashGridStorage::set_regir_render_pass(ReGIRRenderPass* regir_render_p
 
 std::size_t ReGIRHashGridStorage::get_byte_size() const
 {
-	return m_presampled_lights.get_byte_size() + 
-
-		m_initial_reservoirs_primary_hits_grid.get_byte_size() +
+	return m_initial_reservoirs_primary_hits_grid.get_byte_size() +
 		m_initial_reservoirs_secondary_hits_grid.get_byte_size() +
 
 		m_spatial_output_primary_hits_grid.get_byte_size() +
@@ -162,24 +160,6 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		{
 			if (m_correlation_reduction_grid_primary_hits.m_total_number_of_cells > 0)
 				m_correlation_reduction_grid_primary_hits.free();
-		}
-
-		// Only allocate light presampling if the if(primary_hit) branch because we only want to do the allocation
-		// once for both primary hits and secondary hits
-		if (render_data.render_settings.regir_settings.do_light_presampling)
-		{
-			unsigned int presampled_lights_count_needed = render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count();
-			if (m_presampled_lights.size() != presampled_lights_count_needed)
-			{
-				// The async grid fill is using the presampled lights so we need
-				// to make sure that it's finihsed before resizing
-				m_regir_render_pass->synchronize_async_compute();
-
-				// If the current presampled light buffer isn't the right size, resizing
-				m_presampled_lights.resize(presampled_lights_count_needed);
-
-				updated = true;
-			}
 		}
 	}
 
@@ -377,10 +357,6 @@ bool ReGIRHashGridStorage::free_internal(bool primary_hit)
 		updated = true;
 	}
 
-	if (primary_hit && m_presampled_lights.get_byte_size() > 0)
-		// Only freeing the presampled lights on the first hit by convention
-		m_presampled_lights.free();
-
 	if (primary_hit)
 		m_total_number_of_cells_primary_hits = 0;
 	else
@@ -401,9 +377,6 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 		// Buffers are not going to be properly allocated if there are no emissives in the scene
 		// (nothing for ReGIR to work on)
 		return;
-
-	if (render_data.render_settings.regir_settings.do_light_presampling)
-		m_presampled_lights.to_device(render_data.render_settings.regir_settings.presampled_lights.presampled_lights_soa);
 
 	// Primary hits grid cells
 	m_initial_reservoirs_primary_hits_grid.to_device(render_data.render_settings.regir_settings.initial_reservoirs_primary_hits_grid);

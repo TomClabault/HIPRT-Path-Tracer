@@ -14,7 +14,6 @@
 #include "Device/kernels/ReSTIR/ReGIR/CorrelationReductionCopy.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridFill.h"
 #include "Device/kernels/ReSTIR/ReGIR/GridPrepopulate.h"
-#include "Device/kernels/ReSTIR/ReGIR/LightPresampling.h"
 #include "Device/kernels/ReSTIR/ReGIR/PreIntegration.h"
 #include "Device/kernels/ReSTIR/ReGIR/Rehash.h"
 #include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
@@ -110,8 +109,6 @@ void CPURenderer::resize_buffers()
 
     unsigned int new_cell_count_primary_hits = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_PRIMARY_HITS;
     unsigned int new_cell_count_secondary_hits = ReGIRHashGridStorage::DEFAULT_GRID_CELL_COUNT_SECONDARY_HITS;
-
-    m_regir_state.presampled_lights.resize(m_render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count());
 
     m_regir_state.grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true), m_triangle_buffer.size());
     m_regir_state.spatial_grid_buffer_primary_hit.resize(new_cell_count_primary_hits, m_render_data.render_settings.regir_settings.get_number_of_reservoirs_per_cell(true), m_triangle_buffer.size());
@@ -402,8 +399,6 @@ void CPURenderer::update_render_data()
 
 
 
-
-    m_regir_state.presampled_lights.to_device(m_render_data.render_settings.regir_settings.presampled_lights.presampled_lights_soa);
 
     m_regir_state.grid_buffer_primary_hit.to_device(m_render_data.render_settings.regir_settings.initial_reservoirs_primary_hits_grid);
     m_regir_state.spatial_grid_buffer_primary_hit.to_device(m_render_data.render_settings.regir_settings.spatial_output_primary_hits_grid);
@@ -756,21 +751,11 @@ void CPURenderer::ReGIR_pass()
     else
         ReGIR_compute_cells_light_distributions();
 
-    ReGIR_presample_lights();
-
     ReGIR_grid_fill_pass<false>(true);
     ReGIR_grid_fill_pass<false>(false);
 
     m_render_data.render_settings.regir_settings.actual_spatial_output_buffers_primary_hits = ReGIR_spatial_reuse_pass<false>(true);
     m_render_data.render_settings.regir_settings.actual_spatial_output_buffers_secondary_hits = ReGIR_spatial_reuse_pass<false>(false);
-}
-
-void CPURenderer::ReGIR_presample_lights()
-{
-    for (int index = 0; index < m_render_data.render_settings.regir_settings.presampled_lights.get_presampled_light_count(); index++)
-    {
-        ReGIR_Light_Presampling(m_render_data, index);
-    }
 }
 
 template <bool accumulatePreIntegration>
@@ -840,7 +825,6 @@ void CPURenderer::ReGIR_pre_integration()
         {
             m_render_data.random_number = m_rng.xorshift32();
 
-            ReGIR_presample_lights();
             ReGIR_grid_fill_pass<true>(primary_hit);
             ReGIR_spatial_reuse_pass<true>(primary_hit);
         }

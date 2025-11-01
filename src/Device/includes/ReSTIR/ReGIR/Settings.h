@@ -33,53 +33,6 @@ struct ReGIRPresampledLightsSoADevice
 	Float3xLengthUint10bPacked* emission = nullptr;
 };
 
-struct ReGIRGridFillPresampledLights
-{
-	HIPRT_DEVICE ReGIRPresampledLight sample_one_presampled_light(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, unsigned int reservoir_count_per_grid_cell, float& out_pdf, Xorshift32Generator& rng) const
-	{
-		// Computing a subset index in [0, subset_count - 1]
-		unsigned int subset_index_seed = (hash_grid_cell_index * reservoir_count_per_grid_cell + reservoir_index_in_cell) / stratification_size;
-		unsigned int subset_index_random_seed = wang_hash(subset_index_seed) ^ rng.xorshift32();
-		unsigned int random_subset = Xorshift32Generator(subset_index_random_seed).xorshift32() % subset_count;
-
-		unsigned int index_in_subset = (hash_grid_cell_index * reservoir_count_per_grid_cell + reservoir_index_in_cell) % subset_size;
-
-		ReGIRPresampledLight sample;
-		sample.emissive_triangle_global_index = presampled_lights_soa.emissive_triangle_global_index[random_subset * subset_size + index_in_subset];
-		sample.triangle_area = presampled_lights_soa.light_area[random_subset * subset_size + index_in_subset];
-		sample.point_on_light = presampled_lights_soa.point_on_light[random_subset * subset_size + index_in_subset];
-		sample.normal = presampled_lights_soa.light_normal[random_subset * subset_size + index_in_subset];
-
-		out_pdf = 1.0f / subset_count;
-
-		return sample;
-	}
-
-	HIPRT_DEVICE void store_one_presampled_light(const ReGIRPresampledLight& presampled_light, unsigned int presampled_light_index)
-	{
-		presampled_lights_soa.emissive_triangle_global_index[presampled_light_index] = presampled_light.emissive_triangle_global_index;
-		presampled_lights_soa.light_area[presampled_light_index] = presampled_light.triangle_area;
-		presampled_lights_soa.point_on_light[presampled_light_index] = presampled_light.point_on_light;
-		presampled_lights_soa.light_normal[presampled_light_index] = presampled_light.normal;
-		presampled_lights_soa.emission[presampled_light_index].pack(presampled_light.emission);
-	}
-
-	HIPRT_DEVICE unsigned int get_presampled_light_count() const
-	{
-		return subset_count * subset_size;
-	}
-
-	ReGIRPresampledLightsSoADevice presampled_lights_soa;
-
-	// How many consecutive reservoirs in the ReGIR grid
-	// will sample from the same subset of presampled lights?
-	int stratification_size = 64;
-	// How many presampled lights per subset
-	int subset_size = 256;
-	// How many subsets in total
-	int subset_count = 128;
-};
-
 struct ReGIRGridFillSettings
 {
 	HIPRT_DEVICE ReGIRGridFillSettings() : ReGIRGridFillSettings(true) {}
@@ -182,11 +135,6 @@ struct ReGIRSettings
 		// a higher number of reservoirs will be used for the grid fill and we'll avoid the artifacts.
 
 		return ray_payload.bounce == 0 || ray_payload.accumulated_roughness < 0.1f;
-	}
-
-	HIPRT_DEVICE ReGIRPresampledLight sample_one_presampled_light(unsigned int hash_grid_cell_index, unsigned int reservoir_index_in_cell, bool primary_hit, float& out_pdf, Xorshift32Generator& rng) const
-	{
-		return presampled_lights.sample_one_presampled_light(hash_grid_cell_index, reservoir_index_in_cell, get_number_of_reservoirs_per_cell(primary_hit), out_pdf, rng);
 	}
 
 	HIPRT_DEVICE const ReGIRHashGridSoADevice& get_initial_reservoirs_grid(bool primary_hit) const { return primary_hit ? initial_reservoirs_primary_hits_grid : initial_reservoirs_secondary_hits_grid; }
@@ -621,7 +569,6 @@ struct ReGIRSettings
 	//
 	// Async compute is only supported with spatial reuse enabled though.
 	bool do_asynchronous_compute = false;
-	bool do_light_presampling = ReGIR_GridFillDoLightPresampling;
 
 	bool DEBUG_CORRELATE_rEGIR = true;
 	bool DEBUG_DO_RIS_INTEGRAL_NORMALIZATION = true;
@@ -655,7 +602,6 @@ struct ReGIRSettings
 	ReGIRHashCellDataSoADevice hash_cell_data_primary_hits;
 	ReGIRHashCellDataSoADevice hash_cell_data_secondary_hits;
 
-	ReGIRGridFillPresampledLights presampled_lights;
 	ReGIRGridFillSettings grid_fill_settings_primary_hits = ReGIRGridFillSettings(true);
 	ReGIRGridFillSettings grid_fill_settings_secondary_hits = ReGIRGridFillSettings(false);
 

@@ -12,7 +12,6 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRPresampledLightsSoAHost.h"
 
 class ReGIRRenderPass;
 
@@ -78,8 +77,6 @@ public:
 	bool free_internal(bool primary_hit);
 
 	ReGIRRenderPass* m_regir_render_pass = nullptr;
-
-	ReGIRPresampledLightsSoAHost<OrochiBuffer> m_presampled_lights;
 
 	// Buffer that contains the ReGIR grid. If temporal reuse is enabled,
 	// this buffer will contain one more than one grid worth of space to
