@@ -85,7 +85,7 @@ private:
 			if (hippt::length(cross_prod) < 1.0e-10f)
 			{
 				this->axis = axis_a;
-				this->theta_o = hippt::max(theta_o_a, theta_o_b);
+				this->theta_o = theta_o;
 				this->theta_e = theta_e;
 
 				return;
@@ -93,7 +93,6 @@ private:
 
 			float theta_r = theta_o - theta_o_a;
 			float3 axis = hippt::normalize(rotate_vector(axis_a, hippt::normalize(cross_prod), theta_r));
-			//float3 axis = hippt::normalize(rotate_vector(axis_a, hippt::normalize(cross_prod), theta_r));
 
 			this->axis = axis;
 			this->theta_o = theta_o;
