@@ -87,9 +87,9 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data, const std::vect
 		device_data.m_bit_trails_buffer = OrochiBuffer<unsigned int>(converted_bit_trails);
 	}
 
-	render_data.buffers.light_tree_sg.nodes = device_data.m_device_nodes_buffer.data();
-	render_data.buffers.light_tree_sg.indices_array = device_data.m_device_indices_array_buffer.data();
-	render_data.buffers.light_tree_sg.bit_trails = device_data.m_bit_trails_buffer.data();
+	render_data.light_tree_sg.nodes = device_data.m_device_nodes_buffer.data();
+	render_data.light_tree_sg.indices_array = device_data.m_device_indices_array_buffer.data();
+	render_data.light_tree_sg.bit_trails = device_data.m_bit_trails_buffer.data();
 }
 
 #endif

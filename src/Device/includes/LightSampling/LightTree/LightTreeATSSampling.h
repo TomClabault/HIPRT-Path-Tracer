@@ -192,7 +192,7 @@ HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& no
 
 	float mean_geometric = 1.0f / (a * b);
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
-	float variance = (node.get_energy_variance() * variance_geometric + node.get_energy_variance() * hippt::square(mean_geometric) + hippt::square(node.get_energy_average()) * variance_geometric) * hippt::square(node.total_emitter_count);
+	float variance = (node.energy_variance * variance_geometric + node.energy_variance * hippt::square(mean_geometric) + hippt::square(node.get_energy_average()) * variance_geometric) * hippt::square(node.total_emitter_count);
 
 	return sqrtf(sqrtf(1.0f / (1.0f + sqrtf(variance))));
 }
@@ -231,7 +231,7 @@ struct LightTreeATSWRSReservoir
 			{
 				float bsdf_pdf;
 
-				BSDFIncidentLightInfo incident_light_info = light_sample.incident_light_info;
+				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
 				BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 #else
@@ -291,7 +291,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
 {
-	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree_ats.nodes;
+	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
 
 	int stack_pointer = 0;
 	unsigned int node_index_stack[ATS_LIGHT_TREE_SPLITTING_STACK_SIZE] = { 0 };
@@ -311,12 +311,12 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 		if (node_importance > 0.0f)
 		{
 			float node_variance = light_tree_ats_node_variance(current_node, shading_point);
-			if (node_variance < render_data.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
+			if (node_variance < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
 			{
 				// Variance threshold exceeded, exploring both branches of the tree
 
-				float node_importance_left = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index], shading_point, shading_normal);
-				float node_importance_right = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.right_child_index], shading_point, shading_normal);
+				float node_importance_left = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index], shading_point, shading_normal);
+				float node_importance_right = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index + 1], shading_point, shading_normal);
 
 				if (node_importance_left > node_importance_right)
 				{
@@ -325,7 +325,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 					// So inserting the right child first
 					if (stack_pointer < ATS_LIGHT_TREE_SPLITTING_STACK_SIZE - 1 && node_importance_right > 0.0f)
 					{
-						node_index_stack[++stack_pointer] = current_node.right_child_index;
+						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index + 1;
 						light_samples_counter++;
 					}
 
@@ -333,7 +333,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 					// and explored first
 					if (stack_pointer < ATS_LIGHT_TREE_SPLITTING_STACK_SIZE - 1 && node_importance_left > 0.0f)
 					{
-						node_index_stack[++stack_pointer] = current_node.left_child_index;
+						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index;
 						light_samples_counter++;
 					}
 				}
@@ -344,7 +344,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 					// So inserting the left child first
 					if (stack_pointer < ATS_LIGHT_TREE_SPLITTING_STACK_SIZE - 1 && node_importance_left > 0.0f)
 					{
-						node_index_stack[++stack_pointer] = current_node.left_child_index;
+						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index;
 						light_samples_counter++;
 					}
 
@@ -352,7 +352,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 					// and explored first
 					if (stack_pointer < ATS_LIGHT_TREE_SPLITTING_STACK_SIZE - 1 && node_importance_right > 0.0f)
 					{
-						node_index_stack[++stack_pointer] = current_node.right_child_index;
+						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index + 1;
 						light_samples_counter++;
 					}
 				}
@@ -381,8 +381,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 		float cumulative_probability = 1.0f;
 		while (current_node.triangle_count == 0)
 		{
-			LightTreeATSNodeDevice left_child = nodes[current_node.left_child_index];
-			LightTreeATSNodeDevice right_child = nodes[current_node.right_child_index];
+			LightTreeATSNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
+			LightTreeATSNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
 			float left_importance = light_tree_ats_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
 			float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
@@ -412,8 +412,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 
 		if (cumulative_probability != -1.0f)
 		{
-			int index = current_node.first_triangle_index + rng.random_index(current_node.triangle_count);
-			int triangle_index = render_data.buffers.light_tree_ats.indices_array[index];
+			int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
+			int triangle_index = render_data.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
@@ -437,8 +437,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 		float cumulative_probability = 1.0f;
 		while (current_node.triangle_count == 0)
 		{
-			LightTreeATSNodeDevice left_child = nodes[current_node.left_child_index];
-			LightTreeATSNodeDevice right_child = nodes[current_node.right_child_index];
+			LightTreeATSNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
+			LightTreeATSNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
 			float left_importance = light_tree_ats_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
 			float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
@@ -468,8 +468,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 
 		if (cumulative_probability != -1.0f)
 		{
-			int index = current_node.first_triangle_index + rng.random_index(current_node.triangle_count);
-			int triangle_index = render_data.buffers.light_tree_ats.indices_array[index];
+			int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
+			int triangle_index = render_data.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
@@ -502,7 +502,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
 {
-	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree_ats.nodes;
+	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
 
 	LightTreeATSNodeDevice current_node = nodes[0];
 
@@ -534,7 +534,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	}
 
 	int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
-	int triangle_index = render_data.buffers.light_tree_ats.indices_array[index];
+	int triangle_index = render_data.light_tree_ats.indices_array[index];
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
@@ -548,7 +548,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_emissive_triangle_index)
 {
-	const LightTreeATSNodeDevice* nodes = render_data.buffers.light_tree_ats.nodes;
+	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
 
 	LightTreeATSNodeDevice current_node = nodes[0];
 
@@ -556,7 +556,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
-	unsigned int bit_trail = render_data.buffers.light_tree_ats.bit_trails[global_emissive_triangle_index];
+	unsigned int bit_trail = render_data.light_tree_ats.bit_trails[global_emissive_triangle_index];
 	unsigned char current_depth = 0;
 
 	float cumulative_probability = 1.0f;

@@ -325,7 +325,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	int last_hit_primitive_index,
 	Xorshift32Generator& rng)
 {
-	const LightTreeSGNodeDevice* nodes = render_data.buffers.light_tree_sg.nodes;
+	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 
 	LightTreeSGNodeDevice current_node = nodes[0];
 
@@ -357,7 +357,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	}
 
 	int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
-	int triangle_index = render_data.buffers.light_tree_sg.indices_array[index];
+	int triangle_index = render_data.light_tree_sg.indices_array[index];
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
@@ -371,7 +371,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	const DeviceUnpackedEffectiveMaterial& material,
 	int global_emissive_triangle_index)
 {
-	const LightTreeSGNodeDevice* nodes = render_data.buffers.light_tree_sg.nodes;
+	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 
 	LightTreeSGNodeDevice current_node = nodes[0];
 
@@ -379,7 +379,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
-	unsigned int bit_trail = render_data.buffers.light_tree_sg.bit_trails[global_emissive_triangle_index];
+	unsigned int bit_trail = render_data.light_tree_sg.bit_trails[global_emissive_triangle_index];
 	unsigned char current_depth = 0;
 
 	float cumulative_probability = 1.0f;

@@ -7,14 +7,13 @@
 #define HOST_DEVICE_COMMON_RENDER_DATA_H
 
 #include "Device/includes/GBufferDevice.h"
-#include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/NEE++/NEE++.h"
 
 #include "HostDeviceCommon/AuxiliaryBuffers.h"
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
-#include "HostDeviceCommon/LightTreeATSSettings.h"
-#include "HostDeviceCommon/Math.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeATSDevice.h"
+#include "Device/includes/LightSampling/LightTree/LightTreeSGDevice.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "HostDeviceCommon/WorldSettings.h"
@@ -70,6 +69,8 @@ struct HIPRTRenderData
 
 	// Data for NEE++
 	NEEPlusPlusDevice nee_plus_plus;
+	LightTreeATSDevice light_tree_ats;
+	LightTreeSGDevice light_tree_sg;
 
 	// Camera for the current frame
 	HIPRTCamera current_camera;

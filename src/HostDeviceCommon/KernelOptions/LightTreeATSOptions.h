@@ -33,13 +33,13 @@
  * If this is true, adaptive tree splitting will be used as described in section 5.4 of
  * [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla 2018]
  */
-#define LightTreeATSDoSplitting KERNEL_OPTION_FALSE
+#define LightTreeATSDoSplitting KERNEL_OPTION_TRUE
 
 /**
  * If splitting is enabled, how many light samples, at most, per shading point
  * is allowed
  */
-#define LightTreeATSSplittingMaxLightSamples 4
+#define LightTreeATSSplittingMaxLightSamples 8
 
 /**
  * If true, the various light samples produced by splitting will all be "shaded" with visibility, which
