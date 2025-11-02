@@ -190,12 +190,15 @@ struct GenericSoA
         // Applies clear() on each buffer in the tuple
         std::apply([](auto&... buffer)
         {
-            // decltype here gives us the exact type of 'buffer' which can be std::vector<float>& for example,
-            // **with** the reference type
-            //
-            // But we want to clear the buffer by overriding it with a newly instantiated buffer so we don't want
-            // the reference, hence the use of std::decay_t
-            ((buffer = std::decay_t<decltype(buffer)>{}), ...);
+            if constexpr (IsCPUBuffer::value)
+                // decltype here gives us the exact type of 'buffer' which can be std::vector<float>& for example,
+                // **with** the reference type
+                //
+                // But we want to clear the buffer by overriding it with a newly instantiated buffer so we don't want
+                // the reference, hence the use of std::decay_t
+                ((buffer = std::decay_t<decltype(buffer)>{}), ...);
+            else
+                ((buffer.free()), ...);
         }, buffers);
     }
 

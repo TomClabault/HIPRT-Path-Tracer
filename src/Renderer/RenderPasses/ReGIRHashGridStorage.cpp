@@ -97,7 +97,7 @@ bool ReGIRHashGridStorage::pre_render_update_internal(HIPRTRenderData& render_da
 		updated = true;
 	}
 
-	if (!render_data.render_settings.regir_settings.use_per_cell_light_distributions)
+	if (get_cell_light_distributions(primary_hit).get_byte_size() > 0 && !render_data.render_settings.regir_settings.use_per_cell_light_distributions)
 	{
 		get_cell_light_distributions(primary_hit).free();
 
