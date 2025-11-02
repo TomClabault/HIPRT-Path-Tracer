@@ -5,151 +5,12 @@
 
 #include "Device/includes/ONB.h"
 #include "Device/includes/Sampling.h" // For reflect_ray()
+#include "Device/includes/LightSampling/LightTree/SphericalGaussianUtils.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_H
-
- /**
-  * Adapted from: https://github.com/yusuketokuyoshi/VSGL
-  */
-
-#define SG_LIGHT_SHARPNESS_MAX 2199023255552.0f
-
-// A dominant visible microfacet normal for the GGX NDF.
-// This normal vector is given by sampling the center of the spherical-cap VNDF [Dupuy and Benyoub 2023 "Sampling Visible GGX Normals with Spherical Caps"].
-HIPRT_DEVICE float3 GGX_dominant_visible_normal(const float3 wi, const float2 roughness)
-{
-	// Numerically stable implementation for wi.x < 0
-	// Similar manner to Tokuyoshi and Eto 2024 "Bounded VNDF Sampling for the Smith-GGX BRDF" Appendix C.
-	const float2 v = roughness * make_float2(wi.x, wi.y);
-	const float len2 = hippt::dot(v, v);
-	const float t = sqrtf(len2 + wi.z * wi.z);
-	const float z = wi.z >= 0.0f ? t + wi.z : len2 / (t - wi.z);
-
-	return hippt::normalize(make_float3(roughness.x * roughness.x * wi.x, roughness.y * roughness.y * wi.y, z));
-}
-
-// Symmetric GGX using anisotropic alpha roughness.
-HIPRT_DEVICE float SGGX(const float3 m, const float2 roughness)
-{
-	const float3 stretched = make_float3(m.x / roughness.x, m.y / roughness.y, m.z);
-	const float length2 = hippt::dot(stretched, stretched);
-
-	return 1.0f / (M_PI * (roughness.x * roughness.y) * (length2 * length2));
-}
-
-// Symmetric GGX using a 2x2 roughness matrix (i.e., Non-axis-aligned GGX w/o the Heaviside function).
-HIPRT_DEVICE float SGGX(const float3 m, const float2x2 roughness_matrix)
-{
-	const float det = hippt::max(determinant(roughness_matrix), hippt::FLOAT_MIN);
-	const float2x2 roughness_matrix_adjugate = float2x2(roughness_matrix.m[1][1], -roughness_matrix.m[0][1], -roughness_matrix.m[1][0], roughness_matrix.m[0][0]);
-	const float length2 = hippt::dot(make_float2(m.x, m.y), roughness_matrix_adjugate * make_float2(m.x, m.y)) / det + m.z * m.z;
-
-	return 1.0f / (M_PI * sqrtf(det) * (length2 * length2));
-}
-
-// Reflection lobe based on the symmetric GGX VNDF.
-// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5.2]
-HIPRT_DEVICE float SGGX_reflection_PDF(const float3 wi, const float3 m, const float2x2 roughness_matrix)
-{
-	return SGGX(m, roughness_matrix) / (4.0f * sqrtf(hippt::dot(make_float2(wi.x, wi.y), roughness_matrix * make_float2(wi.x, wi.y)) + wi.z * wi.z));
-}
-
-// Exact solution of an SG integral.
-HIPRT_DEVICE float SG_integral(const float sharpness)
-{
-	return 4.0f * M_PI * hippt::expm1_over_x(-2.0f * sharpness);
-}
-
-// Product of two SGs.
-HIPRT_DEVICE SGLobe SG_product(const float3 axis1, const float sharpness1, const float3 axis2, const float sharpness2)
-{
-	const float3 axis = axis1 * sharpness1 + axis2 * sharpness2;
-	const float sharpness = hippt::length(axis);
-
-	// Compute logAmplitude = sharpness - (sharpness1 + sharpness2).
-	// Since sharpness - sharpness1 - sharpness2 in floating point arithmetic can produce a significant numerical error, we use a numerically stable form derived by
-	// logAmplitude = sharpness - (sharpness1 + sharpness2)
-	//              = (||axis1 * sharpness1 + axis2 * sharpness2||^2 - (sharpness1 + sharpness2)^2) / (sharpness + sharpness1 + sharpness2)
-	//              = (sharpness1^2 + 2 * sharpness1 * sharpness2 * dot(axis1, axis2) + sharpness2^2 - (sharpness1^2 + 2 * sharpness1 * sharpness2 + sharpness2^2) / (sharpness + sharpness1 + sharpness2)
-	//              = 2 * sharpness1 * sharpness2 * (dot(axis1, axis2) - 1) / (sharpness + sharpness1 + sharpness2)
-	//              = -sharpness1 * sharpness2 * ||axis1 - axis2||^2 / (sharpness + sharpness1 + sharpness2).
-	const float3 d = axis1 - axis2;
-	const float len2 = hippt::dot(d, d); // -0.5 * len2 = dot(axis1, axis2) - 1. Using len2 improves the numerical stability when axis1 \approx axis2.
-	const float log_amplitude = -sharpness1 * sharpness2 * len2 / hippt::max(sharpness + sharpness1 + sharpness2, hippt::FLOAT_MIN);
-
-	const SGLobe result = { axis / hippt::max(sharpness, hippt::FLOAT_MIN), sharpness, log_amplitude };
-
-	return result;
-}
-
-// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)" Listing. 5]
-HIPRT_DEVICE float upper_SG_clamped_cosine_integral_over_two_pi(const float sharpness)
-{
-	if (sharpness <= 0.5f)
-		// Taylor-series approximation for the numerical stability.
-		return (((((((-1.0f / 362880.0f) * sharpness + 1.0f / 40320.0f) * sharpness - 1.0f / 5040.0f) * sharpness + 1.0f / 720.0f) * sharpness - 1.0f / 120.0f) * sharpness + 1.0f / 24.0f) * sharpness - 1.0f / 6.0f) * sharpness + 0.5f;
-
-	return (1.0f - hippt::expm1_over_x(-sharpness)) / sharpness;
-}
-
-// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)" Listing. 6]
-HIPRT_DEVICE float lower_SG_clamped_cosine_integral_over_two_pi(const float sharpness)
-{
-	const float e = expf(-sharpness);
-
-	if (sharpness <= 0.5f)
-		// Taylor-series approximation for the numerical stability.
-		return e * (((((((((1.0f / 403200.0f) * sharpness - 1.0f / 45360.0f) * sharpness + 1.0f / 5760.0f) * sharpness - 1.0f / 840.0f) * sharpness + 1.0f / 144.0f) * sharpness - 1.0f / 30.0f) * sharpness + 1.0f / 8.0f) * sharpness - 1.0f / 3.0f) * sharpness + 0.5f);
-
-	return e * (hippt::expm1_over_x(-sharpness) - e) / sharpness;
-}
-
-// Approximate product integral of an SG and clamped cosine / pi.
-// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)" Listing. 7]
-HIPRT_DEVICE float SG_clamped_cosine_product_integral_over_pi(const float cosine, const float sharpness)
-{
-	// Fitted approximation for t(sharpness).
-	const float A = 2.7360831611272558028247203765204f;
-	const float B = 17.02129778174187535455530451145f;
-	const float C = 4.0100826728510421403939290030394f;
-	const float D = 15.219156263147210594866010069381f;
-	const float E = 76.087896272360737270901154261082f;
-	const float t = sharpness * sqrtf(0.5f * ((sharpness + A) * sharpness + B) / (((sharpness + C) * sharpness + D) * sharpness + E));
-	const float tz = t * cosine;
-
-	// In this HLSL implementation, we roughly implement erfc(x) = 1 - erf(x) which can have a numerical error for large x.
-	// Therefore, unlike the original impelemntation [Tokuyoshi et al. 2024], we clamp the lerp factor with the machine epsilon / 2 for a conservative approximation.
-	// This clamping is unnecessary for languages that have a precise erfc function (e.g., C++).
-	// The original implementation [Tokuyoshi et al. 2024] uses a precise erfc function and does not clamp the lerp factor.
-	const float INV_SQRTPI = 0.56418958354775628694807945156077f; // = 1/sqrt(pi).
-	const float CLAMPING_THRESHOLD = 0.5f * hippt::FLOAT_EPSILON; // Set zero if a precise erfc function is available.
-	const float lerp_factor = hippt::clamp(0.0f, 1.0f, hippt::max(0.5f * (cosine * erfcf(-tz) + erfcf(t)) - 0.5f * INV_SQRTPI * expf(-tz * tz) * expm1f(t * t * (cosine * cosine - 1.0f)) / t, CLAMPING_THRESHOLD));
-
-	// Interpolation between lower and upper hemispherical integrals.
-	const float lower_integral = lower_SG_clamped_cosine_integral_over_two_pi(sharpness);
-	const float upper_integral = upper_SG_clamped_cosine_integral_over_two_pi(sharpness);
-	return 2.0f * hippt::lerp(lower_integral, upper_integral, lerp_factor);
-}
-
-// Approximate hemispherical integral for a vMF distribution (i.e. normalized SG).
-// The parameter "cosine" is the cosine of the angle between the SG axis and the pole axis of the hemisphere.
-// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting (Supplementary Document)" Listing. 4]
-HIPRT_DEVICE float VMF_hemispherical_integral(const float cosine, const float sharpness)
-{
-	// Interpolation factor [Tokuyoshi 2022].
-	const float A = 0.6517328826907056171791055021459f;
-	const float B = 1.3418280033141287699294252888649f;
-	const float C = 7.2216687798956709087860872386955f;
-	const float steepness = sharpness * sqrtf((0.5f * sharpness + A) / ((sharpness + B) * sharpness + C));
-	const float lerp_factor = hippt::clamp(0.0f, 1.0f, 0.5f + 0.5f * (erff(steepness * hippt::clamp(-1.0f, 1.0f, cosine)) / erff(steepness)));
-
-	// Interpolation between upper and lower hemispherical integrals .
-	const float e = expf(-sharpness);
-	return hippt::lerp(e, 1.0f, lerp_factor) / (e + 1.0f);
-}
 
 HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node, float3 shading_point, float3 view_direction, float3 shading_normal, 
 	float specular, float alpha_x, float alpha_y)
@@ -157,13 +18,13 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	if (node.total_power == 0.0f)
 		return 0.0f;
 
-	float3 max_corner;
+	/*float3 max_corner;
 	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
 	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
 	max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
 
 	if (hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f)
-		return 0.0f;
+		return 0.0f;*/
 
 	// Load an SG light.
 	const float3 lightVec = node.gaussian_spatial_mean - shading_point;
@@ -178,8 +39,12 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 	// Compute the maximum emissive radiance of the SG light.
 	// (maximum radiant intensity)/(2*pi*variance) where (maximum radiant intensity)/(2*pi) is given by spherical_gaussian_light.intensity.
+	// 
 	// This value can be precomputed in the SG light generation if we don't clamp the variance.
-	const float emissive = node.total_power / (variance * SG_integral(node.vmf_sharpness));
+	//
+	// 'emissive' should be divided by SG_integral(node.vmf_sharpness) but this is already baked in
+	// node.total_power
+	const float emissive = node.total_power / variance;
 
 	// Compute SG sharpness for a light distribution viewed from the shading point.
 	const float light_sharpness = squaredDistance / variance;
@@ -189,7 +54,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 	// Diffuse SG lighting.
 	// [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 4]
-	const float amplitude = expf(lightLobe.logAmplitude);
+	const float amplitude = hippt::intrin_expf(lightLobe.logAmplitude);
 	const float cosine = hippt::clamp(-1.0f, 1.0f, hippt::dot(lightLobe.axis, shading_normal));
 	const float diffuse_illumination = amplitude * SG_clamped_cosine_product_integral_over_pi(cosine, lightLobe.sharpness);
 

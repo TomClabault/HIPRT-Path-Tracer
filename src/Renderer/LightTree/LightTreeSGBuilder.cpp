@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "LightTreeSGBuilder.h"
+#include "Renderer/LightTree/LightTreeSGBuilder.h"
 
 void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 {
@@ -51,7 +51,6 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 		sg_node.mean_axis = left_weight * left_node.mean_axis + right_weight * right_node.mean_axis;
 		sg_node.total_power = left_node.total_power + right_node.total_power;
-		sg_node.total_emission = left_node.total_emission + right_node.total_emission;
 		sg_node.bounds.extend(left_node.bounds);
 		sg_node.bounds.extend(right_node.bounds);
 		sg_node.spatial_mean = left_weight * left_node.spatial_mean + right_weight * right_node.spatial_mean;
@@ -97,7 +96,6 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 			// 0.5f * triangle normal from the paper
 			sg_node.mean_axis += 0.5f * triangle.normal * triangle.power;
 			sg_node.total_power += triangle.power;
-			sg_node.total_emission += triangle_data.materials[triangle_data.material_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index]]].get_total_emission();
 
 			sum_positions += triangle.centroid * triangle.power;
 			sum_positions_squared += hippt::dot(triangle.centroid, triangle.centroid) * triangle.power;

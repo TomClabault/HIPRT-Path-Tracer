@@ -10,13 +10,6 @@
 #include "HostDeviceCommon/LightTreeSGSettings.h"
 #include "Renderer/LightTree/LightTreeATSConstants.h"
 
-struct SGLobe
-{
-	float3 axis;
-	float  sharpness;
-	float  logAmplitude;
-};
-
 struct LightTreeSGNodeDevice
 {
 	float3 vmf_axis = make_float3(0.0f, 0.0f, 0.0f);
@@ -25,13 +18,11 @@ struct LightTreeSGNodeDevice
 	float3 gaussian_spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
 	float gaussian_spatial_variance = 0.0f;
 
-	ColorRGB32F total_emission = ColorRGB32F(0.0f, 0.0f, 0.0f);
 	float bounding_sphere_radius = 0.0f;
 
-	float3 bounds_min;
+	// This contains a baked in division by SG_integral(node.vmf_sharpness)
 	float total_power = 0.0f;
 
-	float3 bounds_max;
 	// If triangle count is 0, this contains the left child index
 	// If triangle count is > 0, this is the first triangle index in the leaf node
 	unsigned int left_child_index_or_first_triangle_index;

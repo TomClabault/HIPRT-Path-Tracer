@@ -115,7 +115,13 @@ namespace hippt
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
 	__device__ float abs(float a) { return fabsf(a); }
 
-
+	/**
+	 * a * b + c
+	 */
+	__device__ float fmaf(float a, float b, float c)
+	{
+		return fmaf(a, b, c);
+	}
 
 
 
@@ -156,15 +162,16 @@ namespace hippt
 	__device__ float2x2 min(float x, float2x2 a) { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
 	__device__ float2x2 min(float2x2 a, float x) { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
 
-
-
-
-
 	template <typename T>
 	__device__ T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
 	__device__ float max(float a, float b) { return a > b ? a : b; }
 	__device__ float min(float a, float b) { return a < b ? a : b; }
+
+
+
+
+
 	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(val, min_val, max_val); }
 
 	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
@@ -175,27 +182,71 @@ namespace hippt
 	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
 	__device__ float intrin_sinf(float x) { return __sinf(x); }
 
+	__device__ float intrin_expf(float x) { return __expf(x); }
+	__device__ float intrin_logf(float x) { return __logf(x); }
+
 	__device__ float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
 
 	__device__ float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
 	__device__ float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
+	__device__ float intrin_expm1f(float x) { return hippt::intrin_expf(x) - 1.0f; }
 	__device__ float3 ldexp(float3 x, int exp) { return make_float3(ldexpf(x.x, exp), ldexpf(x.y, exp), ldexpf(x.z, exp)); }
 
 	// (exp(x) - 1)/x with cancellation of rounding errors.
 	// [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p. 19]
-	__device__ float expm1_over_x(const float x)
+	__device__ float expm1_over_x_precise(const float x)
 	{
-		const float u = expf(x);
+		const float u = hippt::intrin_expf(x);
 
 		if (u == 1.0f)
 			return 1.0f;
 
 		const float y = u - 1.0f;
 
-		if (abs(x) < 1.0f)
-			return y / logf(u);
+		if (hippt::abs(x) < 1.0f)
+			return y / hippt::intrin_logf(u);
 
 		return y / x;
+	}
+
+	// Uses intrin_expm1f instead of the builtin expm1f()
+	__device__ float expm1_over_x_fast(const float x)
+	{
+		float exp_x = hippt::intrin_expf(x);
+		if (exp_x == 1.0f)
+			return 1.0f;
+
+		return (exp_x - 1.0f) / x;
+	}
+
+	__device__ float erfcf_fast(float x)
+	{
+		constexpr float TWO_OVER_ROOT_PI = 1.1283791670955125738961589031215f;
+		constexpr float ERFC_SMALL = 0.0053854f;
+
+		if (hippt::abs(x) < ERFC_SMALL)
+			return 1.0f - TWO_OVER_ROOT_PI * x;
+
+		float a, c, e, p, q, r, s;
+		a = hippt::abs(x);
+		c = hippt::min(a, 10.5f);
+		s = -c * c;
+		e = hippt::intrin_expf(s);
+		q = 0.374177223624056f;
+		p = -5.00032254520701E-05f;
+		q = q * c + 1.29051354328887f;
+		p = p * c + 0.212358010453875f;
+		q = q * c + 1.84437448399707f;
+		p = p * c + 0.715675302663111f;
+		q = q * c + 1.0f;
+		p = p * c + 1.0f;
+
+		r = e / q;
+		r = r * p;
+		if (x < 0.0f)
+			r = 2.0f - r;
+
+		return r;
 	}
 
 	template <typename T>
@@ -203,6 +254,7 @@ namespace hippt
 
 	__device__ float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
 	__device__ float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
+	__device__ float rsqrtf(float x) { return rsqrtf(x); }
 
 	__device__ float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
 	__device__ constexpr float pow_3(float x) { return x * x * x; }
@@ -444,6 +496,10 @@ namespace hippt
 	static float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
 	static float abs(float a) { return std::abs(a); }
 
+	static float fmaf(float a, float b, float c)
+	{
+		return a * b + c;
+	}
 
 
 
@@ -500,17 +556,21 @@ namespace hippt
 	static float3 sin(float3 x) { return make_float3(std::sin(x.x), std::sin(x.y), std::sin(x.z)); }
 	static float intrin_sinf(float x) { return std::sin(x); }
 
+	static float intrin_expf(float x) { return expf(x); }
+	static float intrin_logf(float x) { return logf(x); }
+
 	static float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
 
 	static float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
 	static float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
+	static float intrin_expm1f(float x) { return hippt::intrin_expf(x) - 1.0f; }
 	static float3 ldexp(float3 x, int exp) { return make_float3(std::ldexp(x.x, exp), std::ldexp(x.y, exp), std::ldexp(x.z, exp)); }
 
 	// (exp(x) - 1)/x with cancellation of rounding errors.
 	// [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p. 19]
-	static float expm1_over_x(const float x)
+	static float expm1_over_x_precise(const float x)
 	{
-		const float u = expf(x);
+		const float u = hippt::intrin_expf(x);
 
 		if (u == 1.0f)
 			return 1.0f;
@@ -518,9 +578,48 @@ namespace hippt
 		const float y = u - 1.0f;
 
 		if (hippt::abs(x) < 1.0f)
-			return y / logf(u);
+			return y / hippt::intrin_logf(u);
 
 		return y / x;
+	}
+
+	static float expm1_over_x_fast(const float x)
+	{
+		float exp_x = hippt::intrin_expf(x);
+		if (exp_x == 1.0f)
+			return 1.0f;
+
+		return (exp_x - 1.0f) / x;
+	}
+
+	static float erfcf_fast(float x)
+	{
+		constexpr float TWO_OVER_ROOT_PI = 1.1283791670955125738961589031215f;
+		constexpr float ERFC_SMALL = 0.0053854f;
+
+		if (hippt::abs(x) < ERFC_SMALL)
+			return 1.0f - TWO_OVER_ROOT_PI * x;
+
+		float a, c, e, p, q, r, s;
+		a = hippt::abs(x);
+		c = hippt::min(a, 10.5f);
+		s = -c * c;
+		e = hippt::intrin_expf(s);
+		q = 0.374177223624056f;
+		p = -5.00032254520701E-05f;
+		q = q * c + 1.29051354328887f;
+		p = p * c + 0.212358010453875f;
+		q = q * c + 1.84437448399707f;
+		p = p * c + 0.715675302663111f;
+		q = q * c + 1.0f;
+		p = p * c + 1.0f;
+
+		r = e / q;
+		r = r * p;
+		if (x < 0.0f)
+			r = 2.0f - r;
+
+		return r;
 	}
 
 	template <typename T>
@@ -528,6 +627,8 @@ namespace hippt
 
 	static float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
 	static float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
+	static float rsqrtf(float x) { return 1.0f / sqrtf(x); }
+
 	static float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
 	static constexpr float pow_3(float x) { return x * x * x; }
 	static constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
