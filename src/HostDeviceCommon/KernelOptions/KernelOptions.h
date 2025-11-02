@@ -115,7 +115,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_NONE
+#define BSDFOverride BSDF_LAMBERTIAN
 
 /**
  * The stack size for handling nested dielectrics
@@ -140,13 +140,13 @@
  * If false, material textures will not be read and so the global material overrider
  * of ImGui will work properly
  */
-#define UseMaterialTextures KERNEL_OPTION_FALSE
+#define UseMaterialTextures KERNEL_OPTION_TRUE
 
 /**
  * If this is true, the base color texture of the material will always be used
  * even if UseMaterialTextures is set to false
  */
-#define UseMaterialBaseColorTextureOverride KERNEL_OPTION_FALSE
+#define UseMaterialBaseColorTextureOverride KERNEL_OPTION_TRUE
 
 /**
  * What envmap sampling strategy to use

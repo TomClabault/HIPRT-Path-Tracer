@@ -79,7 +79,7 @@ extern ImGuiLogger g_imgui_logger;
 //		Should also be able to remove ReGIRAdditionalInfo stuff
 // - Remove warp direction reuse constants
 // 
-// - The SG tree seems poorly built because PJ's diffuse function doesn't help, so it has to be the tree build
+// - Auto correlation reduction if doing 1 or 2SPPs renders
 // - Can we introduce the bounds of the ATS tree in the SG tree to easily reject obviously facing away nodes since the SG tree seems to struggle a bit with that
 // - Can we have some form of 2 stage resampling during shading where we only keep the best sample for shooting shadow rays instead of shooting shadow rays for everyone, resampled tree 2024 style
 // - Can we have something that disables the big spherical gaussian stuff when the nodes are small enough (in solid angle)? Because at some point, the spherical gaussian approximation is not needed anymore

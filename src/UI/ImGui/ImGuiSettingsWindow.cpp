@@ -2495,21 +2495,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				m_render_window->set_render_dirty(true);
 			if (ImGui::SliderInt("Correlation reduction factor", &regir_settings.correlation_reduction.correlation_reduction_factor, 1, 8))
 				m_render_window->set_render_dirty(true);
-			
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Multiple shading");
-			static bool shade_all_samples = ReGIR_ShadingResamplingShadeAllSamples;
-			if (ImGui::Checkbox("Shade all samples", &shade_all_samples))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES, shade_all_samples ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If true, all samples resampled will be shaded instead of shading only the reservoir result of the resampling.\n\n"
-				""
-				"This massively improves quality at the cost of performance and is very likely to be worth it for scenes that are not\n"
-				"too hard to trace (where shadow rays are expensive).");
 
 			ImGui::TreePop();
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

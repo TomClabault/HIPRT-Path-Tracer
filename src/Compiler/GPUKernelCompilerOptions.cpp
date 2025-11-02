@@ -67,7 +67,6 @@ const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_INCLUDE_CAN
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS = "ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS = "ReGIR_ShadingResamplingDoBSDFMIS";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY = "ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay";
-const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES = "ReGIR_ShadingResamplingShadeAllSamples";
 const std::string GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS = "ReGIR_ShadingResamplingSampleOnlyLightDistributions";
 const std::string GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY = "ReGIR_FallbackLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE = "ReGIR_JitterInTangentPlane";
@@ -181,7 +180,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY,
-	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES,
 	GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS,
 	GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE,
@@ -299,7 +297,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_CANONICAL_CANDIDATES_LIGHT_TREE_ATS] = std::make_shared<int>(ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS] = std::make_shared<int>(ReGIR_ShadingResamplingDoBSDFMIS);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_DO_BSDF_MIS_SIMPLIFIED_RAY] = std::make_shared<int>(ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay);
-	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SHADE_ALL_SAMPLES] = std::make_shared<int>(ReGIR_ShadingResamplingShadeAllSamples);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_SHADING_RESAMPLING_SAMPLE_ONLY_LIGHT_DISTRIBUTIONS] = std::make_shared<int>(ReGIR_ShadingResamplingSampleOnlyLightDistributions);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_FALLBACK_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(ReGIR_FallbackLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE] = std::make_shared<int>(ReGIR_JitterInTangentPlane);

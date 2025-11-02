@@ -7,8 +7,6 @@
 #define DEVICE_INCLUDE_REGIR_FINAL_SHADING_H
 
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightClamping.h"
-#include "Device/includes/ReSTIR/ReGIR/ShadingAdditionalInfo.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 
 #include "HostDeviceCommon/RenderData.h"
@@ -20,11 +18,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
 
     bool point_outside_grid = false;
 
-	ReGIRShadingAdditionalInfo additional_infos;
+    ColorRGB32F selected_sample_radiance;
     LightSampleInformation light_sample = sample_one_emissive_triangle_regir_with_info(render_data,
         closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-        closest_hit_info.primitive_index, ray_payload, 
-        point_outside_grid, random_number_generator, additional_infos);
+        closest_hit_info.primitive_index, ray_payload,
+        point_outside_grid, selected_sample_radiance, random_number_generator);
 
     if (!point_outside_grid)
     {
@@ -32,39 +30,34 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
             // Can happen for very small triangles
             return ColorRGB32F(0.0f);
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
-        // If we're shading all samples, we already have the perfectly computed
-        // radiance in additional_infos so we can just return that
-        return additional_infos.sample_radiance;
-#endif
+#if ReGIR_ShadingResamplingTargetFunctionVisibility == KERNEL_OPTION_TRUE
+        // We already know that a selected sample isn't in shadow otherwise its target
+        // function would have been 0 and it would have never been selected
+        return selected_sample_radiance / light_sample.area_measure_pdf;
+#else
         // ReGIR succeeded with sampling, just shooting a shadow ray to validate visibility
-
         float3 shadow_ray_origin = closest_hit_info.inter_point;
         float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
         float distance_to_light = hippt::length(shadow_ray_direction);
         float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-    
+
         hiprtRay shadow_ray;
         shadow_ray.origin = shadow_ray_origin;
         shadow_ray.direction = shadow_ray_direction_normalized;
-    
+
         // NEE++ context for the shadow ray
         NEEPlusPlusContext nee_plus_plus_context;
         nee_plus_plus_context.point_on_light = light_sample.point_on_light;
         nee_plus_plus_context.shaded_point = shadow_ray_origin;
 
-#if ReGIR_ShadingResamplingTargetFunctionVisibility == KERNEL_OPTION_TRUE
-        // We already know that a selected sample isn't in shadow otherwise its target
-        // function would have been 0 and it would have never been selected
-        bool in_shadow = false;
-#else
         bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
-#endif
 
         if (!in_shadow)
-            return additional_infos.sample_radiance / light_sample.area_measure_pdf / nee_plus_plus_context.unoccluded_probability;
+            return selected_sample_radiance / light_sample.area_measure_pdf / nee_plus_plus_context.unoccluded_probability;
         else
             return ColorRGB32F(0.0f);
+#endif
+
     }
     else
     {

@@ -241,19 +241,11 @@
 #define ReGIR_ShadingResamplingDoBSDFMISSimplifiedRay KERNEL_OPTION_TRUE
 
 /**
- * If true, all samples resampled will be shaded instead of shading only the reservoir result of the resampling.
- * 
- * This massively improves quality at the cost of performance and is very likely to be worth it for scenes that are not
- * too hard to trace (where shadow rays are expensive).
- */
-#define ReGIR_ShadingResamplingShadeAllSamples KERNEL_OPTION_FALSE
-
-/**
  * Light sampling technique used in case the position that we are shading is falling outside of the ReGIR grid
  * 
  * All LSS_BASE_XXX strategies are allowed except LSS_BASE_REGIR
  */
-#define ReGIR_FallbackLightSamplingStrategy LSS_BASE_POWER
+#define ReGIR_FallbackLightSamplingStrategy LSS_BASE_LIGHT_TREE_SG
 
 /**
  * If true, shading point jittering will only jitter the point in the tangent plane of the surface.

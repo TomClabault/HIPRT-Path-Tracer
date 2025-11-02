@@ -184,6 +184,8 @@ void GPURenderer::compute_emissives_sampling_data_structure_from_scene(const Sce
 
 void GPURenderer::recompute_emissives_sampling_data_structure()
 {
+	synchronize_all_kernels();
+
 	if (m_power_sampling_data_structure.is_needed(m_render_data.buffers.emissive_triangles_count))
 		m_power_sampling_data_structure.recompute_if_needed();
 	else

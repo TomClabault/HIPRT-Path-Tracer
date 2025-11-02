@@ -51,7 +51,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 
         ColorRGB32F sample_radiance;
         float target_function = ReGIR_shading_evaluate_target_function<
-            ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+            ReGIR_ShadingResamplingTargetFunctionVisibility,
             ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
@@ -98,7 +98,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 
         ColorRGB32F sample_radiance;
         float target_function = ReGIR_shading_evaluate_target_function<
-            ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+            ReGIR_ShadingResamplingTargetFunctionVisibility,
             ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
@@ -151,7 +151,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
         {
             ColorRGB32F sample_radiance;
             float target_function = ReGIR_shading_evaluate_target_function<
-                ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+                ReGIR_ShadingResamplingTargetFunctionVisibility,
                 ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                     shading_point, view_direction, shading_normal, geometric_normal,
                     last_hit_primitive_index, ray_payload,

@@ -40,7 +40,7 @@
 /**
 * Whether or not to use NEE++ features at all
 */
-#define DirectLightUseNEEPlusPlus KERNEL_OPTION_TRUE
+#define DirectLightUseNEEPlusPlus KERNEL_OPTION_FALSE
 
 /**
 * Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility

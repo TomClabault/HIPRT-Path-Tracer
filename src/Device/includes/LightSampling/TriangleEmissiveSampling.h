@@ -9,9 +9,8 @@
 #include "Device/includes/LightSampling/LightTree/LightTreeATSSampling.h"
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSampling.h"
 #include "Device/includes/LightSampling/TriangleSampling.h"
-#include "Device/includes/ReSTIR/ReGIR/ShadingAdditionalInfo.h"
+#include "Device/includes/ReSTIR/ReGIR/ShadingLightDistributions.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingPairwiseMIS.h"
-#include "Device/includes/ReSTIR/ReGIR/Shading.h"
 
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 
@@ -55,8 +54,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
     bool& out_need_fallback_sampling,
-    Xorshift32Generator& random_number_generator,
-    ReGIRShadingAdditionalInfo& out_infos)
+    ColorRGB32F& out_selected_sample_radiance,
+    Xorshift32Generator& random_number_generator)
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
@@ -78,7 +77,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
 
     ReGIRReservoir reservoir = ReGIR_shading_sample_light_distributions(render_data,
         view_direction, shading_point, shading_normal, geometric_normal, ray_payload, last_hit_primitive_index,
-        canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), out_infos.sample_radiance, random_number_generator);
+        canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload), out_selected_sample_radiance, 
+        random_number_generator);
     // No normalization because we're already using proper MIS weights
     reservoir.finalize_resampling(1.0f, 1.0f);
 
@@ -95,7 +95,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
     out_sample2.emissive_triangle_global_index = reservoir.sample.emissive_triangle_global_index;
     out_sample2.light_area = area;
     out_sample2.point_on_light = reconstruct_sample_point_on_light(render_data, reservoir.sample.point_on_light_random_seed, reservoir.sample.emissive_triangle_global_index, out_sample2.light_source_normal);
-    out_sample2.sample_random_seed = 0;
 
     return out_sample2;
 #else
@@ -376,7 +375,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
 
         ColorRGB32F sample_radiance;
         float shading_target_function = ReGIR_shading_evaluate_target_function<
-            ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+            ReGIR_ShadingResamplingTargetFunctionVisibility,
             ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
@@ -412,14 +411,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
             selected_light_source_area = light_source_area;
             selected_emission = emission;
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
-            out_infos.sample_radiance = sample_radiance;
-#endif
+            out_selected_sample_radiance = sample_radiance;
         }
-
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
-        out_infos.sample_radiance += sample_radiance * non_canonical_reservoir.UCW * mis_weight;
-#endif
     }
     
 
@@ -436,7 +429,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
             // or if we're shading all candidates because then we want the target function to produce
             // the radiance towards the shading point directly which means that we need the visibility in the target function
             ColorRGB32F sample_radiance;
-            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
                 point_on_light_1, light_source_normal_1, emission_1, random_number_generator, sample_radiance);
@@ -462,14 +455,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
                 selected_light_source_area = hippt::length(triangle_load_normal_not_normalized(render_data, triangle_index_canonical_technique_1)) * 0.5f;
                 selected_emission = emission_1;
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
-                out_infos.sample_radiance = sample_radiance;
-#endif
+                out_selected_sample_radiance = sample_radiance;
             }
-
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
-            out_infos.sample_radiance += sample_radiance * canonical_technique_1_reservoir.UCW * mis_weight;
-#endif
         }
     }
 
@@ -491,7 +478,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
             // or if we're shading all candidates because then we want the target function to produce
             // the radiance towards the shading point directly which means that we need the visibility in the target function
             ColorRGB32F sample_radiance;
-            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
+            float target_function = ReGIR_shading_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility || ReGIR_ShadingResamplingTargetFunctionVisibility, ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
                 point_on_light_2, light_source_normal_2, emission_2, random_number_generator, sample_radiance);
@@ -508,14 +495,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
                 selected_light_source_area = hippt::length(triangle_load_normal_not_normalized(render_data, triangle_index_canonical_technique_2)) * 0.5f;
                 selected_emission = emission_2;
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
-                out_infos.sample_radiance = sample_radiance;
-#endif
+                out_selected_sample_radiance = sample_radiance;
             }
-
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
-            out_infos.sample_radiance += sample_radiance * canonical_technique_2_reservoir.UCW * mis_weight;
-#endif
         }
     }
 
@@ -525,7 +506,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
         float mis_weight = pairwise.get_canonical_MIS_weight_3(canonical_technique_1_canonical_reservoir_3_pdf, canonical_technique_2_canonical_reservoir_3_pdf, canonical_technique_3_canonical_reservoir_3_pdf, mis_weight_normalization);
 
         ColorRGB32F sample_radiance;
-        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility || ReGIR_ShadingResamplingShadeAllSamples,
+        float target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,
             ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index,
                 ray_payload, point_on_light_3, light_source_normal_3, emission_3,
@@ -542,14 +523,8 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info
             selected_emission = emission_3;
             selected_incident_light_info = canonical_technique_3_sample_ili;
 
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_FALSE
-            out_infos.sample_radiance = sample_radiance;
-#endif
+            out_selected_sample_radiance = sample_radiance;
         }
-
-#if ReGIR_ShadingResamplingShadeAllSamples == KERNEL_OPTION_TRUE
-        out_infos.sample_radiance += sample_radiance / canonical_technique_3_canonical_reservoir_3_pdf * mis_weight;
-#endif
     }
 #endif
 
@@ -584,9 +559,9 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir(
     bool& out_need_fallback_sampling,
     Xorshift32Generator& random_number_generator)
 {
-    ReGIRShadingAdditionalInfo trash_info;
+    ColorRGB32F trash_selected_sample_color;
     return sample_one_emissive_triangle_regir_with_info(render_data, shading_point, view_direction, shading_normal, geometric_normal,
-        last_hit_primitive_index, ray_payload, out_need_fallback_sampling, random_number_generator, trash_info);
+        last_hit_primitive_index, ray_payload, out_need_fallback_sampling, trash_selected_sample_color, random_number_generator);
 }
 
 template <int samplingStrategy = DirectLightSamplingBaseStrategy>
