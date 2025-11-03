@@ -11,7 +11,6 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/RussianRoulette.h"
-#include "Device/includes/WarpDirectionReuse.h"
 
 #include "HostDeviceCommon/RenderData.h"
 

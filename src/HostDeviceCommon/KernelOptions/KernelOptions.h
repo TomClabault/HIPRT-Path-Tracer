@@ -93,12 +93,6 @@
 #define SharedStackBVHTraversalSize 16
 
 /**
- * Partial and (very) experimental implementation of [Generate Coherent Rays Directly, Liu et al., 2024]
- * for reuse sampled directions on the first hit accross the threads of warps
- */
-#define DoFirstBounceWarpDirectionReuse KERNEL_OPTION_FALSE
-
-/**
  * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,
  * the material retains its properties (color, roughness, ...) but only the parameters relevant
  * to the overriden BSDF are used.

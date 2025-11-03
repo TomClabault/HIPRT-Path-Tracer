@@ -77,7 +77,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Remove ReSTIR DI light presampling
 // - Remove shade all samples feature
 //		Should also be able to remove ReGIRAdditionalInfo stuff
-// - Remove warp direction reuse constants
 // 
 // - Auto correlation reduction if doing 1 or 2SPPs renders
 // - Can we introduce the bounds of the ATS tree in the SG tree to easily reject obviously facing away nodes since the SG tree seems to struggle a bit with that

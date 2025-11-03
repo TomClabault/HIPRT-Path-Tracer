@@ -4523,17 +4523,6 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		draw_russian_roulette_options();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		bool do_direction_reuse = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE);
-		if (ImGui::Checkbox("Warp BSDF sampled directions reuse", &do_direction_reuse))
-		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE, do_direction_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-			m_renderer->recompile_kernels();
-
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("Partial and experimental implementation of[Generate Coherent Rays Directly, Liu et al., 2024] "
-			"for reuse sampled directions on the first hit accross the threads of warps");
-
 		bool delta_distrib_opti = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION);
 		if (ImGui::Checkbox("BSDF delta distribution optimization", &delta_distrib_opti))
 		{
