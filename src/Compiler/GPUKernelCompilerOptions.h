@@ -115,8 +115,6 @@ public:
 	static const std::string RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY;
 	static const std::string RESTIR_DI_MIS_WEIGHTS_TYPE;
 	static const std::string RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY;
-	static const std::string RESTIR_DI_DO_LIGHT_PRESAMPLING;
-	static const std::string RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY;
 	static const std::string RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
 	static const std::string RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING;
 

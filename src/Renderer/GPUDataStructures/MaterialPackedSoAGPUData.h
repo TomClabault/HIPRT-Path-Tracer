@@ -7,7 +7,7 @@
 #define HOST_DEVICE_COMMON_MATERIAL_PACKED_SOA_GPU_DATA_H
 
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/Material/MaterialPacked.h"
+#include "HostDeviceCommon/Material/MaterialPackedSoA.h"
 
 #define DECLARE_ALL_MEMBERS_STD_TIE                                     \
   auto all_members = std::tie(                                          \

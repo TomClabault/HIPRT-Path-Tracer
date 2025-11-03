@@ -15,7 +15,6 @@
 #include "Device/kernels/Megakernel.h"
 //#include "Device/kernels/ReSTIR/ReGIR/GridFill.h"
 //#include "Device/kernels/ReSTIR/ReGIR/SpatialReuse.h"
-//#include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 //#include "Device/kernels/ReSTIR/DI/SpatialReuse.h"
 
 __device__ bool filter_function(const hiprtRay& ray, const void* data, void* payload, const hiprtHit& hit);

@@ -7,7 +7,7 @@
 #define HOST_DEVICE_COMMON_MATERIAL_UTILS_H
 
 #include "HostDeviceCommon/Material/MaterialConstants.h"
-#include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 
 struct MaterialUtils
 {

@@ -7,7 +7,6 @@
 #define RESTIR_DI_RENDER_PASS_H
 
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
-#include "Device/includes/ReSTIR/DI/PresampledLight.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/RenderPasses/RenderPass.h"
@@ -26,7 +25,6 @@ public:
 	static const std::string RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID;
-	static const std::string RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID;
 	static const std::string RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
 
 	static const std::string RESTIR_DI_RENDER_PASS_NAME;
@@ -69,7 +67,6 @@ public:
 	virtual void compute_render_times() override;
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
-	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 	
 	virtual bool is_render_pass_used() const override;
 	void request_temporal_bufffers_clear();
@@ -80,7 +77,6 @@ public:
 	float get_VRAM_usage() const;
 
 private:
-	LightPresamplingParameters configure_light_presampling_pass(HIPRTRenderData& render_data);
 	void configure_initial_pass(HIPRTRenderData& render_data);
 	void configure_temporal_pass(HIPRTRenderData& render_data);
 	void configure_temporal_pass_for_fused_spatiotemporal(HIPRTRenderData& render_data);
@@ -90,7 +86,6 @@ private:
 	void configure_output_buffer(HIPRTRenderData& render_data);
 
 	void compute_optimal_spatial_reuse_radii(HIPRTRenderData& render_data);
-	void launch_presampling_lights_pass(HIPRTRenderData& render_data);
 	void launch_initial_candidates_pass(HIPRTRenderData& render_data);
 	void launch_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void launch_spatial_reuse_passes(HIPRTRenderData& render_data);
@@ -105,13 +100,6 @@ private:
 	// Those are the reservoirs that are carried over between frames for
 	// the temporal reuse pass to feed upon
 	OrochiBuffer<ReSTIRDIReservoir> m_spatial_output_reservoirs_2;
-
-	// Buffer that holds the presampled lights if light presampling is enabled 
-	// (GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING)
-	//
-	// Implementation from the paper
-	// [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
-	OrochiBuffer<ReSTIRDIPresampledLight> m_presampled_lights_buffer;
 
 	ReSTIRDIReservoir* m_last_restir_output_reservoirs = nullptr;
 

@@ -11,7 +11,6 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/ReSTIR/ReGIR/CellsLightDistributionsSoADevice.h"
-#include "Device/includes/ReSTIR/ReGIR/PresampledLight.h"
 #include "Device/includes/ReSTIR/ReGIR/ReGIRHashGrid.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridSoADevice.h"
 #include "Device/includes/ReSTIR/ReGIR/ReservoirSoA.h"
@@ -19,19 +18,6 @@
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
-
-struct ReGIRPresampledLightsSoADevice
-{
-	int* emissive_triangle_global_index = nullptr;
-
-	float* light_area = nullptr;
-
-	float3* point_on_light = nullptr;
-
-	Octahedral24BitNormalPadded32b* light_normal = nullptr;
-
-	Float3xLengthUint10bPacked* emission = nullptr;
-};
 
 struct ReGIRGridFillSettings
 {

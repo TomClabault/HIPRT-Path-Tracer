@@ -13,7 +13,6 @@ const std::string ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID = "
 const std::string ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Temporal reuse";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID = "ReSTIR DI Spatial reuse";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Spatiotemporal reuse";
-const std::string ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID = "ReSTIR DI Lights presampling";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID = "ReSTIR DI Directional reuse compute";
 
 const std::string ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME = "ReSTIR DI Render Pass";
@@ -24,7 +23,6 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FU
 	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_TemporalReuse" },
 	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatialReuse" },
 	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatiotemporalReuse" },
-	{ RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, "ReSTIR_DI_LightsPresampling" },
 	{ RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FUNCTION_NAME },
 };
 
@@ -34,7 +32,6 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FI
 	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/TemporalReuse.h" },
 	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/SpatialReuse.h" },
 	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/FusedSpatiotemporalReuse.h" },
-	{ RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/LightsPresampling.h" },
 	{ RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
 };
 
@@ -73,13 +70,6 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(rende
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 24);
 
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = std::make_shared<GPUKernel>();
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 0);
-
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
@@ -117,27 +107,6 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 
 
 
-		// Also allocating / deallocating the presampled lights buffer
-		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
-		{
-			ReSTIRDISettings& restir_di_settings = m_renderer->get_render_settings().restir_di_settings;
-			int presampled_light_count = restir_di_settings.light_presampling.number_of_subsets * restir_di_settings.light_presampling.subset_size;
-			bool presampled_lights_needs_allocation = m_presampled_lights_buffer.size() != presampled_light_count;
-
-			if (presampled_lights_needs_allocation)
-			{
-				m_presampled_lights_buffer.resize(presampled_light_count);
-
-				// At least on buffer is going to be resized so buffers are invalidated
-				render_data_invalidated = true;
-			}
-		}
-		else
-		{
-			if (m_presampled_lights_buffer.size() > 0)
-				m_presampled_lights_buffer.free();
-		}
-
 		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_directional_reuse_buffers<false>(render_data, m_renderer,
 			m_per_pixel_spatial_reuse_radius,
 			m_per_pixel_spatial_reuse_direction_mask_u,
@@ -165,13 +134,6 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		if (m_spatial_output_reservoirs_2.size() > 0)
 		{
 			m_spatial_output_reservoirs_2.free();
-
-			render_data_invalidated = true;
-		}
-
-		if (m_presampled_lights_buffer.size() > 0)
-		{
-			m_presampled_lights_buffer.free();
 
 			render_data_invalidated = true;
 		}
@@ -255,12 +217,6 @@ bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 		// Spatial needed
 		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
-	bool need_presampling = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE && !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->has_been_compiled();
-	recompiled |= need_presampling;
-	if (need_presampling)
-		// Light pre sampling needed
-		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-
 	bool need_directional_spatial_reuse = !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->has_been_compiled() && render_data.render_settings.restir_di_settings.common_spatial_pass.use_adaptive_directional_spatial_reuse;
 	recompiled |= need_directional_spatial_reuse;
 	if (need_directional_spatial_reuse)
@@ -312,9 +268,6 @@ bool ReSTIRDIRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 	m_spatial_reuse_events_recorded = false;
 
 	// If ReSTIR DI is enabled
-
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
-		launch_presampling_lights_pass(render_data);
 
 	compute_optimal_spatial_reuse_radii(render_data);
 
@@ -374,44 +327,10 @@ void ReSTIRDIRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& re
 	}
 }
 
-LightPresamplingParameters ReSTIRDIRenderPass::configure_light_presampling_pass(HIPRTRenderData& render_data)
-{
-	LightPresamplingParameters parameters;
-	/**
-	 * Parameters specific to the kernel
-	 */
-
-	 // From all the lights of the scene, how many subsets to presample
-	parameters.number_of_subsets = render_data.render_settings.restir_di_settings.light_presampling.number_of_subsets;
-	// How many lights to presample in each subset
-	parameters.subset_size = render_data.render_settings.restir_di_settings.light_presampling.subset_size;
-	// Buffer that holds the presampled lights
-	parameters.out_light_samples = m_presampled_lights_buffer.get_device_pointer();
-
-	// For each presampled light, the probability that this is going to be an envmap sample
-	parameters.envmap_sampling_probability = render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
-
-	return parameters;
-}
-
-void ReSTIRDIRenderPass::launch_presampling_lights_pass(HIPRTRenderData& render_data)
-{
-	LightPresamplingParameters launch_parameters = configure_light_presampling_pass(render_data);
-
-	void* launch_args[] = { &launch_parameters, &render_data };
-	int thread_count = render_data.render_settings.restir_di_settings.light_presampling.number_of_subsets * render_data.render_settings.restir_di_settings.light_presampling.subset_size;
-
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->launch_asynchronous(32, 1, thread_count, 1, launch_args, m_renderer->get_main_stream());
-}
-
 void ReSTIRDIRenderPass::configure_initial_pass(HIPRTRenderData& render_data)
 {
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
-		render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_presampled_lights_buffer.get_device_pointer();
-	else
-		render_data.render_settings.restir_di_settings.light_presampling.light_samples = nullptr;
 	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_initial_candidates_reservoirs.get_device_pointer();
 }
 
@@ -648,9 +567,6 @@ void ReSTIRDIRenderPass::compute_render_times()
 	std::unordered_map<std::string, float>& ms_time_per_pass = m_renderer->get_render_pass_times();
 	ReSTIRDISettings& restir_di_settings = render_data.render_settings.restir_di_settings;
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_TRUE)
-		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->compute_execution_time();
-
 	ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->compute_execution_time();
 	if (restir_di_settings.do_fused_spatiotemporal)
 	{
@@ -693,21 +609,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_ke
 		// Not using fused spatiotemporal
 		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID);
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING) == KERNEL_OPTION_FALSE)
-		// Not using light presampling
-		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID);
-
 	return active_kernels;
-}
-
-std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_tracing_kernels()
-{
-	std::map<std::string, std::shared_ptr<GPUKernel>> out = m_kernels;
-
-	// The presampling light kernel isn't a trace kernel
-	out.erase(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID);
-
-	return out;
 }
 
 bool ReSTIRDIRenderPass::is_render_pass_used() const
@@ -729,6 +631,5 @@ float ReSTIRDIRenderPass::get_VRAM_usage() const
 		m_per_pixel_spatial_reuse_direction_mask_ull.get_byte_size() +
 		m_per_pixel_spatial_reuse_radius.get_byte_size() +
 		m_spatial_reuse_statistics_hit_hits.get_byte_size() +
-		m_spatial_reuse_statistics_hit_total.get_byte_size() +
-		m_presampled_lights_buffer.get_byte_size()) / 1000000.0f;
+		m_spatial_reuse_statistics_hit_total.get_byte_size()) / 1000000.0f;
 }

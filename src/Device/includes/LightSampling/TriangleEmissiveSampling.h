@@ -615,21 +615,21 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRend
     }
 }
 
-/**
- * Overload of the function used when sampling lights without a world shading point (as in ReSTIR DI light presampling for example)
- *
- * This means that positional light sampling schemes such as ReGIR or light trees cannot be used as the template argument here
- * and will produced incorrect results if used anyways
- */
-template <int samplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
-{
-    RayPayload dummy_ray_payload;
-
-    return sample_one_emissive_triangle<samplingStrategy>(render_data,
-        make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f),
-        -1, dummy_ray_payload,
-        random_number_generator);
-}
+///**
+// * Overload of the function used when sampling lights without a world shading point (as in ReSTIR DI light presampling for example)
+// *
+// * This means that positional light sampling schemes such as ReGIR or light trees cannot be used as the template argument here
+// * and will produced incorrect results if used anyways
+// */
+//template <int samplingStrategy = DirectLightSamplingBaseStrategy>
+//HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
+//{
+//    RayPayload dummy_ray_payload;
+//
+//    return sample_one_emissive_triangle<samplingStrategy>(render_data,
+//        make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 0.0f),
+//        -1, dummy_ray_payload,
+//        random_number_generator);
+//}
 
 #endif

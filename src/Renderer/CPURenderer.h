@@ -8,7 +8,6 @@
 
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
-#include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -81,10 +80,7 @@ public:
     void ReGIR_compute_cells_light_distributions_internal(bool primary_hit);
     void ReGIR_compute_cell_light_compute_and_sort_internal(bool primary_hit, bool only_compute_sizes);
 
-    LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
-
-    void launch_ReSTIR_DI_presampling_lights_pass();
     void launch_ReSTIR_DI_initial_candidates_pass();
 
     void compute_ReSTIR_DI_optimal_spatial_reuse_radii();
@@ -170,7 +166,6 @@ private:
         std::vector<ReSTIRDIReservoir> initial_candidates_reservoirs;
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
-        std::vector<ReSTIRDIPresampledLight> presampled_lights_buffer;
 
         std::vector<unsigned int> per_pixel_spatial_reuse_directions_mask_u;
         std::vector<unsigned long long int> per_pixel_spatial_reuse_directions_mask_ull;

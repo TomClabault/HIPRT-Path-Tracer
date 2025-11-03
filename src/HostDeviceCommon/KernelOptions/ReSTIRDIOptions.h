@@ -136,28 +136,6 @@
 #define ReSTIR_DI_LaterBouncesSamplingStrategy RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
 
 /**
-* If true, lights are presampled in a pre-process pass as described in
-* [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]
-* https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production.
-*
-* This improves performance in scenes with dozens of thousands / millions of
-* lights by avoiding cache trashing because of the memory random walk that
-* light sampling becomes with that many lights
-*/
-#define ReSTIR_DI_DoLightPresampling KERNEL_OPTION_FALSE
-
-/**
- * What light sampling strategy to use to presample lights
- * 
- * 	- LSS_BASE_UNIFORM
- *		Lights are sampled uniformly
- *
- *	- LSS_BASE_POWER
- *		Lights are sampled proportionally to their power
- */
-#define ReSTIR_DI_LightPresamplingStrategy LSS_BASE_POWER
-
-/**
  * How many bits to use for the directional reuse masks
  *
  * More bits use more VRAM but increase the precision of the directional reuse

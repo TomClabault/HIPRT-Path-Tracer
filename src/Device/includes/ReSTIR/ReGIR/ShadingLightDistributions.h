@@ -15,14 +15,14 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRend
     int last_hit_primitive_index, RayPayload& ray_payload,
     Xorshift32Generator& random_number_generator);
 
-/**
- * Overload of the function used when sampling lights without a world shading point (as in ReSTIR DI light presampling for example)
- *
- * This means that positional light sampling schemes such as ReGIR or light trees cannot be used as the template argument here
- * and will produced incorrect results if used anyways
- */
-template <int samplingStrategy>
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator);
+///**
+// * Overload of the function used when sampling lights without a world shading point (as in ReSTIR DI light presampling for example)
+// *
+// * This means that positional light sampling schemes such as ReGIR or light trees cannot be used as the template argument here
+// * and will produced incorrect results if used anyways
+// */
+//template <int samplingStrategy>
+//HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator);
 
 HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(const HIPRTRenderData& render_data,
     float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, int last_hit_primitive_index,
@@ -44,7 +44,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
         light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
         if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
             // Falling back on the base strategy
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(render_data, rng);
+            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, rng);
 
         if (light_sample.emissive_triangle_global_index == -1)
             continue;

@@ -9,7 +9,6 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRDIDefaultSettings.h"
 
 struct ReSTIRDIReservoir;
-struct ReSTIRDIPresampledLight;
 
 struct ReSTIRDIInitialCandidatesSettings
 {
@@ -41,19 +40,6 @@ struct ReSTIRDISpatialPassSettings
 	ReSTIRDIReservoir* input_reservoirs = nullptr;
 	// Buffer that contains the output reservoir of the spatial reuse pass
 	ReSTIRDIReservoir* output_reservoirs = nullptr;
-};
-
-struct ReSTIRDILightPresamplingSettings
-{
-	// From all the lights of the scene, how many subsets to presample
-	int number_of_subsets = 128;
-	// How many lights to presample in each subset
-	int subset_size = 1024;
-	// All threads in a tile_size * tile_size block of pixels will sample from the same subset of light samples
-	int tile_size = 8;
-
-	// Buffer for the presampled light samples
-	ReSTIRDIPresampledLight* light_samples;
 };
 
 struct ReSTIRDISettings : public ReSTIRCommonSettings
@@ -126,8 +112,6 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 	ReSTIRDITemporalPassSettings temporal_pass;
 	// Settings for the spatial reuse pass
 	ReSTIRDISpatialPassSettings spatial_pass;
-	// Settings for the light presampling pass
-	ReSTIRDILightPresamplingSettings light_presampling;
 
 	// If true, the spatial and temporal pass will be fused into a single kernel call.
 	// This avois a synchronization barrier between the temporal pass and the spatial pass

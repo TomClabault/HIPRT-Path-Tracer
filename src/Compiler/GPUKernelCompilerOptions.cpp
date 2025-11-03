@@ -114,8 +114,6 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReS
 const std::string GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY = "ReSTIR_DI_MISWeightsUseVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE = "ReSTIR_DI_MISWeightsType";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY = "ReSTIR_DI_LaterBouncesSamplingStrategy";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING = "ReSTIR_DI_DoLightPresampling";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY = "ReSTIR_DI_LightPresamplingStrategy";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT = "ReSTIR_DI_SpatialDirectionalReuseBitCount";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING = "ReSTIR_DI_DoOptimalVisibilitySampling";
 
@@ -226,8 +224,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE,
 	GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY,
-	GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING,
-	GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING,
 
@@ -342,8 +338,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_MISWeightsUseVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE] = std::make_shared<int>(ReSTIR_DI_MISWeightsType);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY] = std::make_shared<int>(ReSTIR_DI_LaterBouncesSamplingStrategy);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHT_PRESAMPLING] = std::make_shared<int>(ReSTIR_DI_DoLightPresampling);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY] = std::make_shared<int>(ReSTIR_DI_LightPresamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT] = std::make_shared<int>(ReSTIR_DI_SpatialDirectionalReuseBitCount);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING] = std::make_shared<int>(ReSTIR_DI_DoOptimalVisibilitySampling);
 

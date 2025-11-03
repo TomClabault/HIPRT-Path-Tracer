@@ -231,14 +231,14 @@ public:
 	 * 
 	 * and then the execution time of this render pass should be set in the 'ms_time_per_pass' map of the renderer.
 	 * 
-	 * For example, for the light presampling pass of ReSTIR DI: 
-	 * ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].compute_execution_time();
+	 * For example, for the initial candidates pass of ReSTIR DI: 
+	 * ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].compute_execution_time();
 	 * 
 	 * The key used in the map can be arbitrary but should be unique. The practice used in this
 	 * codebase is to define the keys in the render pass itself as "static const std::string" and
 	 * use these keys to index the 'ms_time_per_pass' map.
 	 * 
-	 * In the example above, the key is 'ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID'
+	 * In the example above, the key is 'ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID'
 	 */
 	virtual void compute_render_times();
 
@@ -249,7 +249,7 @@ public:
 	 * 
 	 * For example:
 	 * std::unordered_map<std::string, float> render_pass_times = m_renderer->get_render_pass_times();
-	 * perf_metrics->add_value(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, render_pass_times[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]);
+	 * perf_metrics->add_value(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, render_pass_times[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]);
 	 * 
 	 * The performance metrics computer is what stores the timings of all the render passes to display
 	 * the "Performance metrics" panel in ImGui

@@ -20,7 +20,6 @@
 
 #include "Device/kernels/ReSTIR/DirectionalReuseCompute.h"
 
-#include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 #include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
 #include "Device/kernels/ReSTIR/DI/SpatialReuse.h"
@@ -138,7 +137,6 @@ void CPURenderer::resize_buffers()
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
-    m_restir_di_state.presampled_lights_buffer.resize(width * height);
     m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
 #if ReSTIR_DI_SpatialDirectionalReuseBitCount > 32
     m_restir_di_state.per_pixel_spatial_reuse_directions_mask_ull.resize(width * height);
@@ -416,7 +414,6 @@ void CPURenderer::update_render_data()
     m_render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = m_regir_state.non_canonical_pre_integration_factors_secondary_hit.data();
     m_render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = m_regir_state.canonical_pre_integration_factors_secondary_hit.data();
 
-    m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.render_settings.restir_di_settings.common_spatial_pass.per_pixel_spatial_reuse_directions_mask_u = m_restir_di_state.per_pixel_spatial_reuse_directions_mask_u.data();
@@ -1073,7 +1070,6 @@ void CPURenderer::ReGIR_compute_cell_light_compute_and_sort_internal(bool primar
 
 void CPURenderer::ReSTIR_DI_pass()
 {
-    launch_ReSTIR_DI_presampling_lights_pass();
     launch_ReSTIR_DI_initial_candidates_pass();
 
     if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
@@ -1114,29 +1110,6 @@ void CPURenderer::ReSTIR_GI_pass()
     launch_ReSTIR_GI_shading_pass();
 }
 
-LightPresamplingParameters CPURenderer::configure_ReSTIR_DI_light_presampling_pass()
-{
-    LightPresamplingParameters parameters;
-
-    /**
-     * Parameters specific to the kernel
-     */
-
-     // From all the lights of the scene, how many subsets to presample
-    parameters.number_of_subsets = m_render_data.render_settings.restir_di_settings.light_presampling.number_of_subsets;
-    // How many lights to presample in each subset
-    parameters.subset_size = m_render_data.render_settings.restir_di_settings.light_presampling.subset_size;
-    // Buffer that holds the presampled lights
-    parameters.out_light_samples = m_restir_di_state.presampled_lights_buffer.data();
-
-    // For each presampled light, the probability that this is going to be an envmap sample
-    parameters.envmap_sampling_probability = m_render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
-
-    m_render_data.random_number = m_rng.xorshift32();
-
-    return parameters;
-}
-
 void CPURenderer::compute_ReSTIR_DI_optimal_spatial_reuse_radii()
 {
     m_render_data.random_number = m_rng.xorshift32();
@@ -1149,21 +1122,9 @@ void CPURenderer::compute_ReSTIR_DI_optimal_spatial_reuse_radii()
         });
 }
 
-void CPURenderer::launch_ReSTIR_DI_presampling_lights_pass()
-{
-    if (ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE)
-    {
-        LightPresamplingParameters launch_parameters = configure_ReSTIR_DI_light_presampling_pass();
-
-        for (int index = 0; index < launch_parameters.number_of_subsets * launch_parameters.subset_size; index++)
-            ReSTIR_DI_LightsPresampling(launch_parameters, m_render_data, index);
-    }
-}
-
 void CPURenderer::configure_ReSTIR_DI_initial_pass()
 {
     m_render_data.random_number = m_rng.xorshift32();
-    m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
 }
 

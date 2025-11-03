@@ -154,9 +154,6 @@ bool PowerSamplingDataStructure::is_needed(unsigned int emissive_count)
 		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR &&
 		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_USE_PER_CELL_LIGHT_DISTRIBUTIONS) == KERNEL_OPTION_TRUE &&
 		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::REGIR_GRID_FILL_CELL_DISTRIBUTIONS_CANONICAL_SAMPLING_TECHNIQUE) == LSS_BASE_POWER;
-	bool restir_di_presampling_using_power_sampling =
-		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI &&
-		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LIGHT_PRESAMPLING_STRATEGY) == LSS_BASE_POWER;
 
-	return (directly_using_power || using_regir_power || regir_using_light_distributions_using_power_sampling || restir_di_presampling_using_power_sampling) && emissive_count > 0;
+	return (directly_using_power || using_regir_power || regir_using_light_distributions_using_power_sampling) && emissive_count > 0;
 }

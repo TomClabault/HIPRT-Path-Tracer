@@ -74,9 +74,6 @@ extern ImGuiLogger g_imgui_logger;
 // TODO ReGIR
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
-// - Remove ReSTIR DI light presampling
-// - Remove shade all samples feature
-//		Should also be able to remove ReGIRAdditionalInfo stuff
 // 
 // - Auto correlation reduction if doing 1 or 2SPPs renders
 // - Can we introduce the bounds of the ATS tree in the SG tree to easily reject obviously facing away nodes since the SG tree seems to struggle a bit with that
@@ -246,8 +243,6 @@ extern ImGuiLogger g_imgui_logger;
 // - Cull lights that have too low a contribution during grid fill. Maybe some power function or something to keep things unbiased, not just plain reject
 // - NEE++ mix up to help with visibility sampling?
 // - The spatial reuse seems giga compute bound, try to optimize the cell compute functions in Settings.h
-// - Is the grid fill bottleneck by random light sampling? Try on the class white room to see if perf improves
-//		A little bit yeah. Maybe we can do something with light presampling per cell
 // - Shared mem ray tracing helps a ton for ReGIR grid fill & spatial reuse ----> maybe have them in a separate kernel to be able to use max shared mem without destroying the L1 for the rest of the kernels?
 // - Can we add the canonical sample at the end of the spatial pass instead of in the shading pass?
 // - The idea to fix the bad ReGIR target function that may prioritze occluded samples is to use NEE with a visibility weight

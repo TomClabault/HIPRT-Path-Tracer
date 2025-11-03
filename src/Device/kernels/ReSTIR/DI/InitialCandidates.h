@@ -13,7 +13,6 @@
 #include "Device/includes/LightSampling/PDFTriangles.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/ReSTIR/Utils.h"
-#include "Device/includes/ReSTIR/DI/PresampledLight.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/TriangleLoadUtils.h"
 
@@ -21,58 +20,6 @@
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
-
-/**
- * Reference: https://en.wikipedia.org/wiki/Pairing_function
- */
-HIPRT_DEVICE int cantor_pairing_function(int x, int y)
-{
-    return (x + y + 1) * (x + y) / 2 + y;
-}
-
-HIPRT_DEVICE ReSTIRDISample use_presampled_light_candidate(const HIPRTRenderData& render_data, const int2& pixel_coords,
-    const float3& evaluated_point, const float3& shading_normal,
-    ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, float& out_distance_to_light, float3& out_to_light_direction,
-    Xorshift32Generator& random_number_generator)
-{
-    const ReSTIRDILightPresamplingSettings& light_presampling_settings = render_data.render_settings.restir_di_settings.light_presampling;
-
-    // We want all threads in a block of light_presampling_settings.tile_size * light_presampling_settings.tile_size
-    // pixels to sample from the same random subset of lights.
-    // We compute a unique number per each light_presampling_settings.tile_size * light_presampling_settings.tile_size
-    // tile of pixels and use that unique number as seed for our random number generator
-    int tile_index_seed = cantor_pairing_function(pixel_coords.x / light_presampling_settings.tile_size, pixel_coords.y / light_presampling_settings.tile_size);
-
-    Xorshift32Generator subset_rng(render_data.random_number * (tile_index_seed + 1));
-    int random_subset_index = subset_rng.random_index(light_presampling_settings.number_of_subsets);
-    int random_light_index_in_subset = random_number_generator.random_index(light_presampling_settings.subset_size);
-    int light_sample_index = random_subset_index * light_presampling_settings.subset_size + random_light_index_in_subset;
-
-    ReSTIRDIPresampledLight presampled_light_sample = light_presampling_settings.light_samples[light_sample_index];
-
-    ReSTIRDISample light_sample;
-    light_sample.emissive_triangle_global_index = presampled_light_sample.emissive_triangle_global_index;
-    light_sample.point_on_light_source = presampled_light_sample.point_on_light_source;
-    light_sample.flags = presampled_light_sample.flags;
-
-    out_sample_radiance = presampled_light_sample.radiance;
-    out_sample_pdf = presampled_light_sample.pdf;
-
-    if (light_sample.is_envmap_sample())
-    {
-        out_to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_sample.point_on_light_source);
-        out_distance_to_light = 1.0e35f;
-    }
-    else
-    {
-        out_to_light_direction = light_sample.point_on_light_source - evaluated_point;
-        out_to_light_direction = out_to_light_direction / (out_distance_to_light = hippt::length(out_to_light_direction)); // Normalization
-    }
-
-    out_sample_cosine_term = hippt::dot(shading_normal, out_to_light_direction);
-
-    return light_sample;
-}
 
 HIPRT_DEVICE ReSTIRDISample sample_fresh_light_candidate(const HIPRTRenderData& render_data, float envmap_candidate_probability, 
     const float3& view_direction, const HitInfo& closest_hit_info,
@@ -147,12 +94,6 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, co
 
         float distance_to_light = 0.0f;
         float3 to_light_direction{ 0.0f, 0.0f, 0.0f };
-#if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
-        ReSTIRDISample light_sample = use_presampled_light_candidate(render_data, pixel_coords, 
-            closest_hit_info.inter_point, closest_hit_info.shading_normal, 
-            sample_radiance, sample_cosine_term, light_pdf_area_measure, distance_to_light, to_light_direction, 
-            random_number_generator);
-#else
         ReSTIRDISample light_sample = sample_fresh_light_candidate(render_data, envmap_candidate_probability, 
             view_direction, closest_hit_info, ray_payload,
             sample_radiance, sample_cosine_term, light_pdf_area_measure, random_number_generator);
@@ -167,7 +108,6 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, co
             to_light_direction = light_sample.point_on_light_source - closest_hit_info.inter_point;
             to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
         }
-#endif
 
         float candidate_weight = 0.0f;
         if (sample_cosine_term > 0.0f && light_pdf_area_measure > 0.0f)
@@ -310,15 +250,9 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
                     // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
                     // and this is going to cause darkening as the number of light samples grows)
 
-#if ReSTIR_DI_DoLightPresampling == KERNEL_OPTION_TRUE
-                    light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle<ReSTIR_DI_LightPresamplingStrategy>(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, 
-                        ray_payload.material,
-                        shadow_light_ray_hit_info, bsdf_sampled_direction);
-#else
                     light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, 
                         ray_payload.material,
                         shadow_light_ray_hit_info, bsdf_sampled_direction);
-#endif
                 }
 
                 // Our light sampler is only chosen with probability '1.0f - envmap_candidate_probability'

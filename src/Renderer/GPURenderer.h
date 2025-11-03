@@ -7,7 +7,6 @@
 #define RENDERER_GPU_RENDERER_H
 
 #include "Compiler/GPUKernel.h"
-#include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/OrochiTexture3D.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
