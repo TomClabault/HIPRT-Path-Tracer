@@ -10,8 +10,26 @@
 
 #include "Device/includes/LightSampling/EmissiveMeshAliasTableDevice.h"
 #include "Device/includes/LightSampling/PDFTriangles.h"
+#include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 #include "Device/includes/TriangleLoadUtils.h"
+
+HIPRT_DEVICE LightSampleInformation grid_fill_cell_light_distributions_canonical_sample(
+    const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, unsigned int& out_sampled_mesh_index, Xorshift32Generator& rng)
+{
+    RayPayload dummy_ray_payload;
+    dummy_ray_payload.material.roughness = surface.cell_roughness;
+    dummy_ray_payload.material.metallic = surface.cell_metallic;
+    dummy_ray_payload.material.specular = surface.cell_specular;
+
+    LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+    if (light_sample.emissive_triangle_global_index == -1)
+        return light_sample;
+
+    out_sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_sample.emissive_triangle_global_index];
+
+    return light_sample;
+}
 
 HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light_distribution(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
 {

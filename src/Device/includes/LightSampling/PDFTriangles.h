@@ -56,7 +56,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
         // We should never ask that question, we can't get the PDF of ReGIR
         area_measure_pdf = 1.0e15f;
     else
-        area_measure_pdf = area_measure_pdf;
+        // Invalid strategy
+        area_measure_pdf = 1.0e15f;
 
 
     return area_measure_pdf;

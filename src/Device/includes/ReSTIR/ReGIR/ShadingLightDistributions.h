@@ -15,15 +15,6 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRend
     int last_hit_primitive_index, RayPayload& ray_payload,
     Xorshift32Generator& random_number_generator);
 
-///**
-// * Overload of the function used when sampling lights without a world shading point (as in ReSTIR DI light presampling for example)
-// *
-// * This means that positional light sampling schemes such as ReGIR or light trees cannot be used as the template argument here
-// * and will produced incorrect results if used anyways
-// */
-//template <int samplingStrategy>
-//HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator);
-
 HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(const HIPRTRenderData& render_data,
     float3 view_direction, float3 shading_point, float3 shading_normal, float3 geometric_normal, RayPayload& ray_payload, int last_hit_primitive_index,
     unsigned int hash_grid_cell_index, bool primary_hit,
@@ -44,7 +35,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
         light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, hash_grid_cell_index, primary_hit, rng);
         if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
             // Falling back on the base strategy
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, rng);
+            light_sample = sample_one_emissive_triangle<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, rng);
 
         if (light_sample.emissive_triangle_global_index == -1)
             continue;
@@ -67,34 +58,31 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
         // BSDF PDF here is approximate because it should contain visibility but the increase in variance is fine
         bsdf_pdf_area_measure = solid_angle_to_area_pdf(bsdf_dispatcher_pdf(render_data, bsdf_context), hippt::length(light_sample.point_on_light - shading_point), compute_cosine_term_at_light_source(light_sample.light_source_normal, hippt::normalize(shading_point - light_sample.point_on_light)));
 #endif
-        float simple_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(render_data, shading_point, view_direction, shading_normal, 
-            ray_payload.material, 
-            light_sample.light_area, light_sample.emission);
-        float mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.shading_settings.number_of_neighbors, simple_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
+        float canonical_strategy_PDF = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, shading_point, view_direction, shading_normal, ray_payload.material, light_sample.emissive_triangle_global_index, light_sample.emission);
+        float mis_weight = balance_heuristic(light_sample.area_measure_pdf, regir_settings.shading_settings.number_of_neighbors, canonical_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
 
         if (reservoir.stream_sample(mis_weight, target_function, light_sample.area_measure_pdf, light_sample, rng))
             selected_sample_radiance = sample_radiance;
         sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
     }
 
-    // Sampling some samples with a simple 'cover-all-triangles" strategy (power sampling for example)
+    // Sampling some samples with a canonical 'cover-all-triangles" strategy (power sampling for example)
     // for unbiasedness
     for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillCellDistributionsCanonicalSampleCount; light_sample_index++)
     {
-        float mesh_PDF;
+        ReGIRGridFillSurface surface;
+        surface.cell_roughness = ray_payload.material.roughness;
+        surface.cell_metallic = ray_payload.material.metallic;
+        surface.cell_specular = ray_payload.material.specular;
+        surface.cell_normal = shading_normal;
+        surface.cell_point = shading_point;
+        surface.cell_primitive_index = last_hit_primitive_index;
+
         unsigned int mesh_index;
-        EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.sample_one_emissive_mesh(rng, mesh_PDF, mesh_index);
-
-        float triangle_PDF;
-        int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
-
-        LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+        LightSampleInformation light_sample =  grid_fill_cell_light_distributions_canonical_sample(render_data, surface, view_direction, mesh_index, rng);
         if (light_sample.emissive_triangle_global_index == -1)
             // Can happen if the triangle sampled is degenerate and thus rejected
             continue;
-
-        // That point on this triangle on that emissive mesh
-        light_sample.area_measure_pdf *= mesh_PDF * triangle_PDF;
 
         ColorRGB32F sample_radiance;
         float target_function = ReGIR_shading_evaluate_target_function<
@@ -165,8 +153,8 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
                 // emissive thanks to using an emissive texture
 
                 float PDF_light_distributions = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, hippt::length(triangle_load_normal_not_normalized(render_data, shadow_light_ray_hit_info.hit_prim_index)) * 0.5f, shadow_light_ray_hit_info.hit_emission, mesh_index);
-                float simple_technique_pdf = pdf_of_emissive_triangle_hit_area_measure<LSS_BASE_POWER>(render_data, shading_point, view_direction, shading_normal, ray_payload.material, shadow_light_ray_hit_info);
-                mis_weight = balance_heuristic(bsdf_sample_pdf_area_measure, 1, PDF_light_distributions, regir_settings.shading_settings.number_of_neighbors, simple_technique_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount);
+                float canonical_technique_pdf = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, shading_point, view_direction, shading_normal, ray_payload.material, shadow_light_ray_hit_info);
+                mis_weight = balance_heuristic(bsdf_sample_pdf_area_measure, 1, PDF_light_distributions, regir_settings.shading_settings.number_of_neighbors, canonical_technique_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount);
             }
             else
                 // If we couldn't find the emissive mesh index of the emissive triangle that we just hit,

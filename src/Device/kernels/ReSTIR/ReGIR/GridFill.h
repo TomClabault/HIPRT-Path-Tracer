@@ -8,9 +8,9 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/ReSTIR/ReGIR/LightDistributionsGridFill.h"
+#include "Device/includes/ReSTIR/ReGIR/LightDistributionsGridFillSampleCanonical.h"
 #include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 
@@ -31,59 +31,6 @@ HIPRT_DEVICE LightSampleInformation grid_fill_sample_canonical_candidate(const H
 #else
     return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
 #endif
-}
-
-HIPRT_DEVICE LightSampleInformation grid_fill_with_per_cell_light_distributions_canonical_sample(
-    const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, unsigned int& out_sampled_mesh_index, Xorshift32Generator& rng)
-{
-    if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_UNIFORM)
-    {
-        RayPayload dummy_ray_payload;
-        dummy_ray_payload.material.roughness = surface.cell_roughness;
-        dummy_ray_payload.material.metallic = surface.cell_metallic;
-        dummy_ray_payload.material.specular = surface.cell_specular;
-
-        LightSampleInformation light_sample = sample_one_emissive_triangle<LSS_BASE_UNIFORM>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
-        if (light_sample.emissive_triangle_global_index == -1)
-            return light_sample;
-
-        out_sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_sample.emissive_triangle_global_index];
-
-        return light_sample;
-    }
-    else if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)
-    {
-        RayPayload dummy_ray_payload;
-        dummy_ray_payload.material.roughness = surface.cell_roughness;
-        dummy_ray_payload.material.metallic = surface.cell_metallic;
-        dummy_ray_payload.material.specular = surface.cell_specular;
-
-        LightSampleInformation light_sample = sample_one_emissive_triangle<LSS_BASE_POWER>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
-        if (light_sample.emissive_triangle_global_index == -1)
-            return light_sample;
-
-        out_sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_sample.emissive_triangle_global_index];
-
-        return light_sample;
-    }
-    else if constexpr (ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_LIGHT_TREE_ATS)
-    {
-        RayPayload dummy_ray_payload;
-        dummy_ray_payload.material.roughness = surface.cell_roughness;
-        dummy_ray_payload.material.metallic = surface.cell_metallic;
-        dummy_ray_payload.material.specular = surface.cell_specular;
-
-        LightSampleInformation light_sample = sample_one_emissive_triangle_light_tree_ats(render_data,
-            surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal,
-            surface.cell_primitive_index, dummy_ray_payload,
-            rng);
-        if (light_sample.emissive_triangle_global_index == -1)
-            return light_sample;
-
-        out_sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_sample.emissive_triangle_global_index];
-
-        return light_sample;
-    }
 }
 
 HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HIPRTRenderData& render_data,
@@ -158,7 +105,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillCellDistributionsCanonicalSampleCount; light_sample_index++)
         {
             unsigned int sampled_mesh_index;
-            LightSampleInformation light_sample = grid_fill_with_per_cell_light_distributions_canonical_sample(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), sampled_mesh_index, rng);
+            LightSampleInformation light_sample = grid_fill_cell_light_distributions_canonical_sample(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), sampled_mesh_index, rng);
             if (light_sample.emissive_triangle_global_index == -1)
                 // Can happen if the triangle sampled is degenerate (for example) and thus rejected
                 // during sampling

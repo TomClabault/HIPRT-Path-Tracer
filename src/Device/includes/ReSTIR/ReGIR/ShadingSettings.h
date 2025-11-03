@@ -15,7 +15,7 @@ struct ReGIRShadingSettings
 
 	// At path tracing time, how many reservoirs of the grid cell of the point we're trying to shade
 	// are going to be resampled (with the BRDF term) to produce the final light sample used for NEE
-	int number_of_neighbors = 4;
+	int number_of_neighbors = 1;
 	// Whether or not to jitter the world space position used when looking up the ReGIR grid
 	// This helps eliminate grid discretization  artifacts
 	//
