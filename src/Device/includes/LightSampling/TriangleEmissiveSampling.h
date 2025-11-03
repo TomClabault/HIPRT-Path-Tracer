@@ -49,7 +49,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_power(const HIP
     return light_sample;
 }
 
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_info(
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_selected_sample_radiance(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
@@ -560,7 +560,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir(
     Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F trash_selected_sample_color;
-    return sample_one_emissive_triangle_regir_with_info(render_data, shading_point, view_direction, shading_normal, geometric_normal,
+    return sample_one_emissive_triangle_regir_with_selected_sample_radiance(render_data, shading_point, view_direction, shading_normal, geometric_normal,
         last_hit_primitive_index, ray_payload, out_need_fallback_sampling, trash_selected_sample_color, random_number_generator);
 }
 

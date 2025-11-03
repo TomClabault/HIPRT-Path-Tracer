@@ -183,7 +183,6 @@ HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& no
 	float bounding_sphere_radius = hippt::length(half_extents);
 
 	// Compute a and b for the geometric mean and variance
-	//float a = hippt::max(hippt::length(shading_point - node_center) - bounding_sphere_radius, hippt::length(node.bounds_max - node.bounds_min));
 	float a = hippt::max(hippt::length(shading_point - node_center) - bounding_sphere_radius, 1.0e-3f);
 	float b = hippt::length(shading_point - node_center) + bounding_sphere_radius;
 
