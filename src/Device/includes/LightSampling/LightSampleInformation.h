@@ -26,8 +26,6 @@ struct LightSampleInformation
     float area_measure_pdf = 0.0f;
 
 #if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-    // Used for replaying that random sample when necessary
-    unsigned int sample_random_seed;
     // The light sample may come from BSDF sampling with ReGIR and so we may have
 	// information about the lobe that was sampled.
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;

@@ -871,10 +871,10 @@ void ImGuiSettingsWindow::draw_camera_panel_static(const std::string& panel_titl
 		if (ImGui::Checkbox("Do ray jittering", &camera.do_jittering))
 			render_window->set_render_dirty(true);
 
-		static float camera_fov = camera.vertical_fov * M_INV_PI * 180.0f;
+		static float camera_fov = camera.vertical_fov * hippt::M_INV_PI * 180.0f;
 		if (ImGui::SliderFloat("FOV", &camera_fov, 0.0f, 180.0f, "%.3fdeg", ImGuiSliderFlags_AlwaysClamp))
 		{
-			camera.set_FOV_radians(camera_fov / 180.0f * M_PI);
+			camera.set_FOV_radians(camera_fov / 180.0f * hippt::M_Pi);
 
 			render_window->set_render_dirty(true);
 		}
@@ -1186,6 +1186,22 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
+			}
+
+			const char* items_triangle_sampling[] = { "- Uniform area", "- Solid angle", "- Projected solid angle" };
+			const char* tooltips_triangle_sampling[] = {
+				"Most basic sampling method, fastest but has the highest variance. Does not take the shading point into account",
+
+				"Slower than uniformly sampling the area but has lower variance. Takes the geometry term into account but not the cosine "
+				"term at the shading point",
+
+				"Slower than sampling according to solid angle but has even lower variance. Takes the cosine term at the shading point into "
+				"account on top of the geometry term."
+			};
+			if (ImGuiRenderer::ComboWithTooltips("Triangle sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY), items_triangle_sampling, IM_ARRAYSIZE(items_triangle_sampling), tooltips_triangle_sampling))
+			{
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -2646,7 +2662,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePush("ReGIR Settings debug tree");
 
 			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
-			const char* items[] = { "- No debug", "- Grid cells", "- Average non-canonical cell-reservoirs contrib", "- Average canonical cell-reservoirs contrib", "- Cell representative points", "- Cell representative normals", "- Sampling fallback"};
+			const char* items[] = { "- No debug", "- Grid cells", "- Cell representative points", "- Cell representative normals", "- Sampling fallback"};
 			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 			{
 				if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
@@ -2655,11 +2671,6 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
-			}
-			if (regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_NON_CANONICAL_RESERVOIR_CONTRIBUTION || regir_debug_mode == REGIR_DEBUG_MODE_AVERAGE_CELL_CANONICAL_RESERVOIR_CONTRIBUTION)
-			{
-				if (ImGui::SliderFloat("Debug view scale factor", &regir_settings.debug_view_scale_factor, 0.0f, 5.0f))
-					m_render_window->set_render_dirty(true);
 			}
 			else if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
 			{
@@ -4331,7 +4342,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			"It is faster than Turk method's and better perserves the stratification of the random "
 			"number samplers"
 		};
-		if (ImGuiRenderer::ComboWithTooltips("Triangle point sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY), items_triangle_sampling, IM_ARRAYSIZE(items_triangle_sampling), tooltips_triangle_sampling))
+		if (ImGuiRenderer::ComboWithTooltips("Triangle point sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_STRATEGY), items_triangle_sampling, IM_ARRAYSIZE(items_triangle_sampling), tooltips_triangle_sampling))
 		{
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);

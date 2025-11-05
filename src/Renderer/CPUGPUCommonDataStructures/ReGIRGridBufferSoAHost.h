@@ -13,7 +13,7 @@
 template <template <typename> typename DataContainer>
 using ReGIRSampleSoAHost = GenericSoA<DataContainer, 
 	GenericAtomicType<ReGIRSampleSoADevice::ReGIRSampleEmissiveTriangleIndicesPackingType, DataContainer>, // Emissive triangle indices packed
-	unsigned int // Random seed for replaying the random point on the emissive triangle given by the emissive triangle index of this sample
+	float3 // Point on light
 >;
 
 template <template <typename> typename DataContainer>
@@ -22,8 +22,7 @@ using ReGIRReservoirSoAHost = GenericSoA<DataContainer, float>;
 enum ReGIRSampleSoAHostBuffers
 {
 	REGIR_SAMPLE_EMISSIVE_TRIANGLE_GLOBAL_INDEX,
-	REGIR_SAMPLE_RANDOM_SEED
-	//REGIR_SAMPLE_POINT_ON_LIGHT
+	REGIR_SAMPLE_POINT_ON_LIGHT
 };
 
 enum ReGIRReservoirSoAHostBuffers

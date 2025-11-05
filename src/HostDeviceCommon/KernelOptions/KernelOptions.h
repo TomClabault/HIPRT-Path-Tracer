@@ -49,9 +49,6 @@
 
 #define NESTED_DIELECTRICS_STACK_SIZE 4
 
-#define TRIANGLE_POINT_SAMPLING_TURK_1990 0
-#define TRIANGLE_POINT_SAMPLING_HEITZ_2019 1
-
 #define ESS_NO_SAMPLING 0
 #define ESS_BINARY_SEARCH 1
 #define ESS_ALIAS_TABLE 2
@@ -115,20 +112,6 @@
  * The stack size for handling nested dielectrics
  */
 #define NestedDielectricsStackSize NESTED_DIELECTRICS_STACK_SIZE
-
-/**
- * How to randomly sample a point on a triangle
- * 
- *	- TRIANGLE_POINT_SAMPLING_TURK_1990
- *		Common way of warping from a square to a triangle using square roots:
- *		V = (1.0f - sqrt(u1)) * V1 + sqrt(u1) * (s2 * V2 + (1.0f - s2) * V3)
- * 
- *	- TRIANGLE_POINT_SAMPLING_HEITZ_2019
- *		Implementation of [A Low-Distortion Map Between Triangle and Square, Heitz, 2019]
- *		It is faster than Turk method's and better perserves the stratification of the random
- *		number samplers
- */
-#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_HEITZ_2019
 
 /**
  * If false, material textures will not be read and so the global material overrider

@@ -61,7 +61,7 @@ struct ReGIRHashGridSoAHost
 	void to_device(ReGIRHashGridSoADevice& out_soa_device)
 	{
 		out_soa_device.samples.emissive_triangle_indices_packed = samples.template get_buffer_data_atomic_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_EMISSIVE_TRIANGLE_GLOBAL_INDEX>();
-		out_soa_device.samples.point_on_light_random_seed = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_RANDOM_SEED>();
+		out_soa_device.samples.point_on_light = samples.template get_buffer_data_ptr<ReGIRSampleSoAHostBuffers::REGIR_SAMPLE_POINT_ON_LIGHT>();
 
 		out_soa_device.samples.bits_per_emissive_triangle_global_index = ReGIRHashGridSoAHostUtils::get_bits_per_packed_emissive_triangle_global_index(m_total_triangle_count);
 

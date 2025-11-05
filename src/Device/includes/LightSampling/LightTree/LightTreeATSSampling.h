@@ -26,7 +26,7 @@ HIPRT_DEVICE HIPRT_INLINE bool point_inside_AABB(float3 aabb_min, float3 aabb_ma
 HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3 aabb_min, float3 aabb_max, float3 point)
 {
 	if (point_inside_AABB(aabb_min, aabb_max, point))
-		return M_PI;
+		return hippt::M_Pi;
 
 	// Compute the average vector to each of the bounding box corners to get the direction of
 	// the bounding cone
@@ -423,7 +423,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 			int triangle_index = render_data.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, shading_point, emissive_triangle_index, rng);
 			light_sample.area_measure_pdf *= cumulative_probability;
 			light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
 
@@ -479,7 +479,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 			int triangle_index = render_data.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, shading_point, emissive_triangle_index, rng);
 			light_sample.area_measure_pdf *= cumulative_probability;
 			light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
 
@@ -544,7 +544,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	int triangle_index = render_data.light_tree_ats.indices_array[index];
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_index, rng);
+	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, shading_point, emissive_triangle_index, rng);
 	light_sample.area_measure_pdf *= cumulative_probability;
 	light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
 

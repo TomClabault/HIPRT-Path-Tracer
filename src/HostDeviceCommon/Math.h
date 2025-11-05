@@ -63,6 +63,15 @@ struct float2x2
 		m[1][0] = m10; m[1][1] = m11;
 	}
 
+	/**
+	 * Construct from 2 rows
+	 */
+	HIPRT_DEVICE float2x2(float2 col0, float2 col1)
+	{
+		m[0][0] = col0.x; m[0][1] = col1.x;
+		m[1][0] = col0.y; m[1][1] = col1.y;
+	}
+
 	float m[2][2];
 };
 
@@ -80,13 +89,14 @@ struct float2x2
 namespace hippt
 {
 #ifdef __KERNELCC__
-#define M_PI hiprt::Pi
-#define M_TWO_PI	6.28318530717958647693f // 2.0f * M_PI
-#define M_FOUR_PI	12.5663706143591729539f // 4.0f * M_PI
-#define M_INV_PI	0.31830988618379067154f // 1.0f / M_PI
-#define M_INV_2_PI	0.15915494309189533577f // 1.0f / (2.0f * M_PI)
-#define M_TWO_PI_SQUARED	19.73920880217871723767f
-#define NEAR_ZERO	1.0e-10f
+	constexpr float M_INV_TWO_PI			= 0.15915494309189533577f;	// 1.0f / (2.0f * M_PI)
+	constexpr float M_INV_PI			= 0.31830988618379067154f;	// 1.0f / M_PI
+	constexpr float M_PI_TWO				= 1.57079632679489661923;	// pi/2
+	constexpr float M_Pi				= 3.14159265358979323846;	// pi
+	constexpr float M_TWO_PI				= 6.28318530717958647693f;	// 2.0f * M_PI
+	constexpr float M_FOUR_PI				= 12.5663706143591729539f;	// 4.0f * M_PI
+	constexpr float M_TWO_PI_SQUARED	= 19.73920880217871723767f;	// 2.0f * M_PI ^ 2
+	constexpr float NEAR_ZERO			= 1.0e-10f;
 
 	constexpr float FLOAT_MAX = 3.402823466e+38f;
 	constexpr float FLOAT_MIN = 1.175494351e-38f;
@@ -118,10 +128,9 @@ namespace hippt
 	/**
 	 * a * b + c
 	 */
-	__device__ float fmaf(float a, float b, float c)
-	{
-		return fmaf(a, b, c);
-	}
+	__device__ float fmaf(float a, float b, float c) { return fmaf(a, b, c); }
+	__device__ float2 fmaf(float2 a, float2 b, float2 c) { return make_float2(hippt::fmaf(a.x, b.x, c.x), hippt::fmaf(a.y, b.y, c.y)); }
+	__device__ float3 fmaf(float3 a, float3 b, float3 c) { return make_float3(hippt::fmaf(a.x, b.x, c.x), hippt::fmaf(a.y, b.y, c.y), hippt::fmaf(a.z, b.z, c.z)); }
 
 
 
@@ -177,12 +186,14 @@ namespace hippt
 	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
 	__device__ float2 cos(float2 x) { return make_float2(cosf(x.x), cosf(x.y)); }
 	__device__ float intrin_cosf(float x) { return __cosf(x); }
+	__device__ float3 intrin_cosf(float3 x) { return make_float3(__cosf(x.x), __cosf(x.y), __cosf(x.z)); }
 
 	__device__ float3 sin(float3 x) { return make_float3(sinf(x.x), sinf(x.y), sinf(x.z)); }
 	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
 	__device__ float intrin_sinf(float x) { return __sinf(x); }
 
 	__device__ float intrin_expf(float x) { return __expf(x); }
+	__device__ float3 intrin_expf(float3 x) { return make_float3(__expf(x.x), __expf(x.y), __expf(x.z)); }
 	__device__ float intrin_logf(float x) { return __logf(x); }
 
 	__device__ float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
@@ -252,6 +263,7 @@ namespace hippt
 	template <typename T>
 	__device__ T square(T x) { return x * x; }
 
+	__device__ float sqrt(float x) { return sqrtf(x); }
 	__device__ float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
 	__device__ float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
 	__device__ float rsqrtf(float x) { return rsqrtf(x); }
@@ -460,14 +472,14 @@ namespace hippt
 	__device__ float idx(float3 v, int index) { return *(&v.x + index); }
 
 #else
-#undef M_PI
-#define M_PI		3.14159265358979323846f
-#define M_TWO_PI	6.28318530717958647693f // 2.0f * M_PI
-#define M_FOUR_PI	12.5663706143591729539f // 4.0f * M_PI
-#define M_INV_PI	0.31830988618379067154f // 1.0f / M_PI
-#define M_INV_2_PI	0.15915494309189533577f // 1.0f / (2.0f * M_PI)
-#define M_TWO_PI_SQUARED	19.73920880217871723767f // 2.0f * pi^2
-#define NEAR_ZERO	1.0e-10f
+	constexpr float M_INV_TWO_PI = 0.15915494309189533577f;	// 1.0f / (2.0f * M_PI)
+	constexpr float M_INV_PI = 0.31830988618379067154f;	// 1.0f / M_PI
+	constexpr float M_PI_TWO = 1.57079632679489661923;	// pi/2
+	constexpr float M_Pi = 3.14159265358979323846;	// pi
+	constexpr float M_TWO_PI = 6.28318530717958647693f;	// 2.0f * M_PI
+	constexpr float M_FOUR_PI = 12.5663706143591729539f;	// 4.0f * M_PI
+	constexpr float M_TWO_PI_SQUARED = 19.73920880217871723767f;	// 2.0f * M_PI ^ 2
+	constexpr float NEAR_ZERO = 1.0e-10f;
 
 	constexpr float FLOAT_MAX = 3.402823466e+38f;
 	constexpr float FLOAT_MIN = 1.175494351e-38f;
@@ -496,10 +508,9 @@ namespace hippt
 	static float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
 	static float abs(float a) { return std::abs(a); }
 
-	static float fmaf(float a, float b, float c)
-	{
-		return a * b + c;
-	}
+	static float fmaf(float a, float b, float c) { return a * b + c; }
+	static float2 fmaf(float2 a, float2 b, float2 c) { return make_float2(hippt::fmaf(a.x, b.x, c.x), hippt::fmaf(a.y, b.y, c.y)); }
+	static float3 fmaf(float3 a, float3 b, float3 c) { return make_float3(hippt::fmaf(a.x, b.x, c.x), hippt::fmaf(a.y, b.y, c.y), hippt::fmaf(a.z, b.z, c.z)); }
 
 
 
@@ -551,12 +562,14 @@ namespace hippt
 	static float2 cos(float2 x) { return make_float2(std::cos(x.x), std::cos(x.y)); }
 	static float3 cos(float3 x) { return make_float3(std::cos(x.x), std::cos(x.y), std::cos(x.z)); }
 	static float intrin_cosf(float x) { return std::cos(x); }
+	static float3 intrin_cosf(float3 x) { return make_float3(std::cos(x.x), std::cos(x.y), std::cos(x.z)); }
 
 	static float2 sin(float2 x) { return make_float2(std::sin(x.x), std::sin(x.y)); }
 	static float3 sin(float3 x) { return make_float3(std::sin(x.x), std::sin(x.y), std::sin(x.z)); }
 	static float intrin_sinf(float x) { return std::sin(x); }
 
 	static float intrin_expf(float x) { return expf(x); }
+	static float3 intrin_expf(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
 	static float intrin_logf(float x) { return logf(x); }
 
 	static float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
@@ -625,6 +638,7 @@ namespace hippt
 	template <typename T>
 	static T square(T x) { return x * x; }
 
+	static float sqrt(float x) { return sqrtf(x); }
 	static float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
 	static float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
 	static float rsqrtf(float x) { return 1.0f / sqrtf(x); }

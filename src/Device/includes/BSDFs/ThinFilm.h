@@ -13,14 +13,14 @@ HIPRT_DEVICE ColorRGB32F eval_sensitivity(float opd, float shift)
 {
     // Use Gaussian fits
 
-    float phase = 2.0f * M_PI * opd * 1.0e-6f;
+    float phase = 2.0f * hippt::M_Pi * opd * 1.0e-6f;
 
     float3 val = make_float3(5.4856e-13f, 4.4201e-13f, 5.2481e-13f);
     float3 pos = make_float3(1.6810e+06f, 1.7953e+06f, 2.2084e+06f);
     float3 var = make_float3(4.3278e+09f, 9.3046e+09f, 6.6121e+09f);
-    float3 xyz = val * hippt::sqrt(2.0f * M_PI * var) * hippt::cos(pos * phase + shift) * hippt::exp(-1.0f * var * phase * phase);
+    float3 xyz = val * hippt::sqrt(2.0f * hippt::M_Pi * var) * hippt::intrin_cosf(pos * phase + shift) * hippt::intrin_expf(-1.0f * var * phase * phase);
 
-    xyz.x += 9.7470e-14f * sqrt(2.0f * M_PI * 4.5282e+09f) * cos(2.2399e+06f * phase + shift) * exp(-4.5282e+09f * phase * phase);
+    xyz.x += 9.7470e-14f * hippt::sqrt(2.0f * hippt::M_Pi * 4.5282e+09f) * hippt::intrin_cosf(2.2399e+06f * phase + shift) * hippt::intrin_expf(-4.5282e+09f * phase * phase);
 
     return ColorRGB32F(xyz / 1.0685e-7f);
 }
@@ -81,8 +81,8 @@ HIPRT_DEVICE ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hue_shift
     if (hue_shift_degrees == 0.0f)
         return color;
 
-    float cosA = cos(hue_shift_degrees / 180.0f * M_PI);
-    float sinA = sin(hue_shift_degrees / 180.0f * M_PI);
+    float cosA = cos(hue_shift_degrees / 180.0f * hippt::M_Pi);
+    float sinA = sin(hue_shift_degrees / 180.0f * hippt::M_Pi);
 
     float3x3 matrix;
     constexpr float sqrt_1_3 = 0.57735026918962576451f; // sqrtf(1.0f / 3.0f)
@@ -173,8 +173,8 @@ HIPRT_DEVICE ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveMaterial
     /* Evaluate the phase shift */
     fresnel_phase(HoL, eta1, eta2, 0.0f, phi21p, phi21s);
     fresnel_phase(cos_theta_2, eta2, eta3, kappa3, phi23p, phi23s);
-    phi21p = M_PI - phi21p;
-    phi21s = M_PI - phi21s;
+    phi21p = hippt::M_Pi - phi21p;
+    phi21s = hippt::M_Pi - phi21s;
 
     float r123p = sqrt(R12p * R23p);
     float r123s = sqrt(R12s * R23s);

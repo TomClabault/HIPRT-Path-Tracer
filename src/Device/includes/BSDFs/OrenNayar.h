@@ -54,8 +54,8 @@ HIPRT_DEVICE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMater
     float oren_nayar_B;
     MaterialUtils::get_oren_nayar_AB(material.oren_nayar_sigma, oren_nayar_A, oren_nayar_B);
 
-    pdf = local_to_light_direction.z * M_INV_PI;
-    return material.base_color * M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
+    pdf = local_to_light_direction.z * hippt::M_INV_PI;
+    return material.base_color * hippt::M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
 HIPRT_DEVICE float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction)
@@ -63,7 +63,7 @@ HIPRT_DEVICE float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMaterial& ma
     if (local_to_light_direction.z <= 0.0f)
         return 0.0f;
 
-    return local_to_light_direction.z * M_INV_PI;
+    return local_to_light_direction.z * hippt::M_INV_PI;
 }
 
 /**

@@ -31,8 +31,8 @@ HIPRT_DEVICE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings,
     // Bringing the direction in envmap space for sampling the envmap
     float3 rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
 
-    float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) * M_INV_2_PI;
-    float v = 0.5f + asin(rotated_direction.y) * M_INV_PI;
+    float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) * hippt::M_INV_TWO_PI;
+    float v = 0.5f + asin(rotated_direction.y) * hippt::M_INV_PI;
 
     return sample_environment_map_texture(world_settings, make_float2(u, v));
 }
@@ -100,10 +100,10 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings, floa
     float v = static_cast<float>(y) / world_settings.envmap_height;
 
     // Converting to polar coordinates
-    float phi = u * M_TWO_PI;
+    float phi = u * hippt::M_TWO_PI;
     // Clamping because a theta of 0.0f would mean straight up which means singularity
     // which means not good for numerical stability
-    float theta = hippt::max(1.0e-5f, v * M_PI);
+    float theta = hippt::max(1.0e-5f, v * hippt::M_Pi);
 
     // Convert to cartesian coordinates
     float cos_theta = cos(theta);
@@ -127,7 +127,7 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings, floa
 #endif
 
     // Converting the PDF from area measure on the envmap to solid angle measure
-    envmap_pdf /= (M_TWO_PI_SQUARED * sin_theta);
+    envmap_pdf /= (hippt::M_TWO_PI_SQUARED * sin_theta);
 
     return env_map_radiance;
 }
@@ -162,7 +162,7 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 #endif
 
     // Converting from "texel on envmap measure" to solid angle
-    pdf /= (M_TWO_PI_SQUARED * sin_theta);
+    pdf /= (hippt::M_TWO_PI_SQUARED * sin_theta);
 
     return envmap_radiance;
 }

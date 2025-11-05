@@ -40,6 +40,7 @@ public:
 	static const std::string NESTED_DIELETRCICS_STACK_SIZE_OPTION;
 
 	static const std::string TRIANGLE_POINT_SAMPLING_STRATEGY;
+	static const std::string TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_STRATEGY;
 
 	static const std::string USE_MATERIAL_TEXTURES;
 	static const std::string USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE;

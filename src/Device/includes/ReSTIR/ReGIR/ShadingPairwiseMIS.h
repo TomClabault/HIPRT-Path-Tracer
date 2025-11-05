@@ -65,8 +65,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     if (reservoir.UCW <= 0.0f)
         return 0.0f;
 
-    float3 light_source_normal;
-    float3 point_on_light = reconstruct_sample_point_on_light(render_data, reservoir.sample.point_on_light_random_seed, reservoir.sample.emissive_triangle_global_index, light_source_normal);
+    float3 light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+    float3 point_on_light = reservoir.sample.point_on_light;
     ColorRGB32F emission = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
     return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, primary_hit, random_number_generator);
@@ -78,8 +78,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
     if (reservoir.UCW <= 0.0f)
         return 0.0f;
 
-    float3 light_source_normal;
-    float3 point_on_light = reconstruct_sample_point_on_light(render_data, reservoir.sample.point_on_light_random_seed, reservoir.sample.emissive_triangle_global_index, light_source_normal);
+    float3 light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+    float3 point_on_light = reservoir.sample.point_on_light;
     ColorRGB32F emission = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
     return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, RIS_integral, primary_hit, random_number_generator);
@@ -110,8 +110,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
     if (reservoir.UCW <= 0.0f)
         return 0.0f;
 
-    float3 light_source_normal;
-    float3 point_on_light = reconstruct_sample_point_on_light(render_data, reservoir.sample.point_on_light_random_seed, reservoir.sample.emissive_triangle_global_index, light_source_normal);
+    float3 light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+    float3 point_on_light = reservoir.sample.point_on_light;
     ColorRGB32F emission = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
     return ReGIR_get_reservoir_sample_BSDF_PDF(render_data,

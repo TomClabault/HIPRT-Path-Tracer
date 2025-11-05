@@ -28,7 +28,7 @@ HIPRT_DEVICE float GGX_anisotropic(float alpha_x, float alpha_y, const float3& l
         (local_microfacet_normal.y * local_microfacet_normal.y) / (alpha_y * alpha_y) +
         (local_microfacet_normal.z * local_microfacet_normal.z);
 
-    return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
+    return 1.0f / (hippt::M_Pi * alpha_x * alpha_y * denom * denom);
 }
 
 /**
@@ -410,7 +410,7 @@ HIPRT_DEVICE float3 GGX_VNDF_sample(const float3 local_view_direction, float alp
 
     // Parametrization of the projected area of the hemisphere
     float r = sqrt(r1);
-    float phi = M_TWO_PI * r2;
+    float phi = hippt::M_TWO_PI * r2;
     float t1 = r * cos(phi);
     float t2 = r * sin(phi);
     float s = 0.5f * (1.0f + Vh.z);
@@ -439,11 +439,11 @@ HIPRT_DEVICE float3 GGX_VNDF_spherical_caps_sample(const float3 local_view_direc
     float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
 
     // Sample a spherical cap in (-wi.z, 1]
-    float phi = M_TWO_PI * r1;
+    float phi = hippt::M_TWO_PI * r1;
     float z = (1.0f - r2) * (1.0f + Vh.z) - Vh.z;
     float sinTheta = sqrtf(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
-    float x = sinTheta * cos(phi);
-    float y = sinTheta * sin(phi);
+    float x = sinTheta * hippt::intrin_cosf(phi);
+    float y = sinTheta * hippt::intrin_sinf(phi);
     float3 c = make_float3(x, y, z);
 
     // Compute microfacet normal

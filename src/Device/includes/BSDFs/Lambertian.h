@@ -18,8 +18,8 @@ HIPRT_DEVICE ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffectiveMater
     if (NoL <= 0.0f)
         return ColorRGB32F(0.0f);
 
-    pdf = NoL * M_INV_PI;
-    return material.base_color * M_INV_PI;
+    pdf = NoL * hippt::M_INV_PI;
+    return material.base_color * hippt::M_INV_PI;
 }
 
 HIPRT_DEVICE float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, float NoL)
@@ -29,7 +29,7 @@ HIPRT_DEVICE float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMaterial& ma
     if (NoL <= 0.0f)
         return 0.0f;
 
-    return NoL * M_INV_PI;
+    return NoL * hippt::M_INV_PI;
 }
 
 /**

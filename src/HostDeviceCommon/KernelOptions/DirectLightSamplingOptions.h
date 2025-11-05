@@ -21,6 +21,13 @@
 #define LSS_BASE_LIGHT_TREE_SG 3
 #define LSS_BASE_REGIR 4
 
+#define TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA 0
+#define TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE 1
+#define TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE 2
+
+#define TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_TURK_1990 0
+#define TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019 1
+
 // This block is a security to make sure that we have everything defined otherwise this can lead
 // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
@@ -100,8 +107,40 @@
 * 
 *       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_REGIR
+#define DirectLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_ATS
 
+/**
+ * What sampling strategy to use to sample points on triangles (most relevant
+ * for sampling points on emissive triangles for light sampling)
+ *
+ * - TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
+ *		Most basic sampling method, fastest but has the highest variance. Does not
+ *		take the shading point into consideration at all
+ *
+ * - TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
+ *		Slower than uniformly sampling the area but has lower variance. 
+ *		Takes the geometry term into account but not the cosine term at the shading point
+ *
+ * - TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
+ *		Slower than sampling according to solid angle but has even lower
+ *		variance. Takes the cosine term at the shading point into account 
+ *		on top of the geometry term.
+ */
+#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
+
+ /**
+  * How to randomly sample a point on a triangle
+  *
+  *	- TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_TURK_1990
+  *		Common way of warping from a square to a triangle using square roots:
+  *		V = (1.0f - sqrt(u1)) * V1 + sqrt(u1) * (s2 * V2 + (1.0f - s2) * V3)
+  *
+  *	- TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019
+  *		Implementation of [A Low-Distortion Map Between Triangle and Square, Heitz, 2019]
+  *		It is faster than Turk method's and better perserves the stratification of the random
+  *		number samplers
+  */
+#define TrianglePointSamplingUniformAreaStrategy TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019
 
 /**
  * How many light samples to take and shade per each vertex of the

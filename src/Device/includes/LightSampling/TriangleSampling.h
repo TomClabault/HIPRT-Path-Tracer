@@ -7,6 +7,7 @@
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_H
  
 #include "Device/includes/LightSampling/LightSampleInformation.h"
+#include "Device/includes/LightSampling/TriangleSamplingSolidAngle.h"
 #include "Device/includes/TriangleLoadUtils.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
@@ -31,32 +32,48 @@ HIPRT_DEVICE float2 square_to_triangle(float& x, float& y)
     return make_float2(x, y);
 }
 
-/**
- * Samples a point uniformly on the given triangle (given with the triangle index)
- *
- * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
- */
-HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
-    float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, unsigned int& out_point_on_light_random_seed)
+HIPRT_DEVICE float3 sample_point_on_triangle_uniform_area(float3 vertex_A, float3 edge_AB, float3 edge_AC, float triangle_area, Xorshift32Generator& rng, float& out_point_pdf)
 {
-    float3 vertex_A = vertices_positions[triangles_indices[global_triangle_index * 3 + 0]];
-    float3 vertex_B = vertices_positions[triangles_indices[global_triangle_index * 3 + 1]];
-    float3 vertex_C = vertices_positions[triangles_indices[global_triangle_index * 3 + 2]];
-
-    out_point_on_light_random_seed = rng.m_state.seed;
     float rand_1 = rng();
     float rand_2 = rng();
 
-#if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_TURK_1990
+#if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_TURK_1990
     float sqrt_r1 = sqrt(rand_1);
     float u = 1.0f - sqrt_r1;
     float v = (1.0f - rand_2) * sqrt_r1;
-#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_HEITZ_2019
+#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019
     float2 remapped = square_to_triangle(rand_1, rand_2);
 
     float u = remapped.x;
     float v = remapped.y;
 #endif
+
+    out_point_pdf = 1.0f / triangle_area;
+
+    return vertex_A + edge_AB * u + edge_AC * v;
+}
+
+HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 shading_point, float3 geometric_normal, 
+    int global_triangle_index, Xorshift32Generator& rng, float& out_point_pdf)
+{
+    solid_angle_polygon_t polygon = prepare_solid_angle_polygon_sampling(3, vertex_A, vertex_B, vertex_C, shading_point);
+
+    return sample_solid_angle_polygon(polygon, vertex_A, vertex_B, vertex_C, shading_point, geometric_normal, make_float2(rng(), rng()), out_point_pdf);
+}
+
+/**
+ * Samples a point uniformly on the given triangle (given with the triangle index)
+ *
+ * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
+ */
+HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, 
+    int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
+    float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, 
+    float& out_point_pdf)
+{
+    float3 vertex_A = vertices_positions[triangles_indices[global_triangle_index * 3 + 0]];
+    float3 vertex_B = vertices_positions[triangles_indices[global_triangle_index * 3 + 1]];
+    float3 vertex_C = vertices_positions[triangles_indices[global_triangle_index * 3 + 2]];
 
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;
@@ -66,19 +83,20 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, co
     if (length_normal <= TriangleSamplingNormalLengthRejectionThreshold)
         return false;
 
-    float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
-    out_sample_point = random_point_on_triangle;
-    out_sampled_triangle_normal = normal / length_normal;
+    normal /= length_normal;
+
+    out_sampled_triangle_normal = normal;
     out_triangle_area = 0.5f * length_normal;
 
-    return true;
-}
+#if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
+    out_sample_point = sample_point_on_triangle_uniform_area(vertex_A, AB, AC, out_triangle_area, rng, out_point_pdf);
+#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
+    out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, shading_point, normal, global_triangle_index, rng, out_point_pdf);
+#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
+    out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(vertex_A, AB, AC, rng);
+#endif
 
-HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
-    float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area)
-{
-    unsigned int trash_random_seed;
-    return sample_point_on_generic_triangle(global_triangle_index, vertices_positions, triangles_indices, rng, out_sample_point, out_sampled_triangle_normal, out_triangle_area, trash_random_seed);
+    return true;
 }
 
 /**
@@ -88,16 +106,17 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(int global_triangle_index, co
  * The PDF field of the LightSampleInformation is only field with the probability of sampling the
  * point on the triangle. The rest of the PDF must be computed by the caller
  */
-HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, int global_triangle_index, Xorshift32Generator& rng)
+HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, float3 shading_point, int global_triangle_index, Xorshift32Generator& rng)
 {
     LightSampleInformation light_sample;
 
+    float sampled_point_pdf;
     float sampled_triangle_area;
     float3 sampled_triangle_normal;
     float3 random_point_on_triangle;
     unsigned int point_on_light_random_seed;
-    if (!sample_point_on_generic_triangle(global_triangle_index, render_data.buffers.vertices_positions,
-        render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, point_on_light_random_seed))
+    if (!sample_point_on_generic_triangle(shading_point, global_triangle_index, render_data.buffers.vertices_positions,
+        render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
         return LightSampleInformation();
 
     light_sample.emissive_triangle_global_index = global_triangle_index;
@@ -105,41 +124,9 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     light_sample.light_area = sampled_triangle_area;
     light_sample.emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[global_triangle_index]);
     light_sample.point_on_light = random_point_on_triangle;
-    light_sample.area_measure_pdf = 1.0f / light_sample.light_area;
-#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-    // Only needed for ReGIR
-    light_sample.sample_random_seed = point_on_light_random_seed;
-#endif
+    light_sample.area_measure_pdf = sampled_point_pdf;
 
     return light_sample;
-}
-
-HIPRT_DEVICE float3 reconstruct_sample_point_on_light(const HIPRTRenderData& render_data, unsigned int point_on_light_random_seed, unsigned int emissive_triangle_global_index, float3& out_triangle_normal, float& out_triangle_area)
-{
-    Xorshift32Generator rng(point_on_light_random_seed);
-
-    float3 sampled_point;
-    if (!sample_point_on_generic_triangle(emissive_triangle_global_index, render_data.buffers.vertices_positions, render_data.buffers.triangles_indices, rng,
-        sampled_point, out_triangle_normal, out_triangle_area))
-        return make_float3(-1.0e35f, -1.0e35f, -1.0e35f);
-
-    return sampled_point;
-}
-
-HIPRT_DEVICE float3 reconstruct_sample_point_on_light(const HIPRTRenderData& render_data, unsigned int point_on_light_random_seed, unsigned int emissive_triangle_global_index, float3& out_triangle_normal)
-{
-    float trash_area;
-    return reconstruct_sample_point_on_light(render_data, point_on_light_random_seed, emissive_triangle_global_index, out_triangle_normal, trash_area);
-}
-
-HIPRT_DEVICE float3 reconstruct_sample_point_on_light(const HIPRTRenderData& render_data, const ReGIRSample& sample, float3& out_triangle_normal, float& out_triangle_area)
-{
-    return reconstruct_sample_point_on_light(render_data, sample.point_on_light_random_seed, sample.emissive_triangle_global_index, out_triangle_normal, out_triangle_area);
-}
-
-HIPRT_DEVICE float3 reconstruct_sample_point_on_light(const HIPRTRenderData& render_data, const ReGIRSample& sample, float3& out_triangle_normal)
-{
-    return reconstruct_sample_point_on_light(render_data, sample.point_on_light_random_seed, sample.emissive_triangle_global_index, out_triangle_normal);
 }
 
 #endif

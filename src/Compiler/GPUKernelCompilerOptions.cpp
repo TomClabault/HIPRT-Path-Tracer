@@ -39,6 +39,7 @@ const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSD
 const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION = "NestedDielectricsStackSize";
 
 const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY = "TrianglePointSamplingStrategy";
+const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_STRATEGY = "TrianglePointSamplingUniformAreaStrategy";
 
 const std::string GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES = "UseMaterialTextures";
 const std::string GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE = "UseMaterialBaseColorTextureOverride";
@@ -149,6 +150,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
 
 	GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY,
+	GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_STRATEGY,
 
 	GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES,
 	GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE,
@@ -263,6 +265,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION] = std::make_shared<int>(NestedDielectricsStackSize);
 
 	m_options_macro_map[GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY] = std::make_shared<int>(TrianglePointSamplingStrategy);
+	m_options_macro_map[GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_STRATEGY] = std::make_shared<int>(TrianglePointSamplingUniformAreaStrategy);
 
 	m_options_macro_map[GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES] = std::make_shared<int>(UseMaterialTextures);
 	m_options_macro_map[GPUKernelCompilerOptions::USE_MATERIAL_BASE_COLOR_TEXTURE_OVERRIDE] = std::make_shared<int>(UseMaterialBaseColorTextureOverride);

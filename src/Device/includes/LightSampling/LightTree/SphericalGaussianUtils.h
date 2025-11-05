@@ -41,7 +41,7 @@ HIPRT_DEVICE static float SGGX(const float3 m, const float2 roughness)
 	const float3 stretched = make_float3(m.x / roughness.x, m.y / roughness.y, m.z);
 	const float length2 = hippt::dot(stretched, stretched);
 
-	return 1.0f / (M_PI * (roughness.x * roughness.y) * (length2 * length2));
+	return 1.0f / (hippt::M_Pi * (roughness.x * roughness.y) * (length2 * length2));
 }
 
 // Symmetric GGX using a 2x2 roughness matrix (i.e., Non-axis-aligned GGX w/o the Heaviside function).
@@ -51,7 +51,7 @@ HIPRT_DEVICE static float SGGX(const float3 m, const float2x2 roughness_matrix)
 	const float2x2 roughness_matrix_adjugate = float2x2(roughness_matrix.m[1][1], -roughness_matrix.m[0][1], -roughness_matrix.m[1][0], roughness_matrix.m[0][0]);
 	const float length2 = hippt::dot(make_float2(m.x, m.y), roughness_matrix_adjugate * make_float2(m.x, m.y)) / det + m.z * m.z;
 
-	return 1.0f / (M_PI * sqrtf(det) * (length2 * length2));
+	return 1.0f / (hippt::M_Pi * sqrtf(det) * (length2 * length2));
 }
 
 // Reflection lobe based on the symmetric GGX VNDF.
@@ -81,7 +81,7 @@ HIPRT_DEVICE static float VMF_hemispherical_integral(const float cosine, const f
 // Exact solution of an SG integral.
 HIPRT_DEVICE static float SG_integral(const float sharpness)
 {
-	return 4.0f * M_PI * hippt::expm1_over_x_fast(-2.0f * sharpness);
+	return 4.0f * hippt::M_Pi * hippt::expm1_over_x_fast(-2.0f * sharpness);
 }
 
 // Product of two SGs.

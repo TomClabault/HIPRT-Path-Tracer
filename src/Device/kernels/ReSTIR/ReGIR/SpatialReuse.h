@@ -93,18 +93,20 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
             else
                 random_reservoir_index_in_cell = random_number_generator() * regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell();
 
+            ReGIRGridFillSurface neighbor_surface = ReGIR_get_cell_surface(render_data, neighbor_hash_grid_cell_index_in_grid, primary_hit);
             ReGIRReservoir neighbor_reservoir = regir_settings.get_reservoir_from_grid_cell_index(input_reservoirs, neighbor_hash_grid_cell_index_in_grid, random_reservoir_index_in_cell);
             if (neighbor_reservoir.UCW <= 0.0f)
                 continue;
 
             ColorRGB32F emission = triangle_load_emission(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
-            float3 light_source_normal;
-            float light_source_area;
-            float3 point_on_light = reconstruct_sample_point_on_light(render_data, neighbor_reservoir.sample, light_source_normal, light_source_area);
+            float3 light_source_normal = triangle_load_normal_not_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
+            float light_source_area = hippt::length(light_source_normal) * 0.5f;
+            light_source_normal /= light_source_area * 2.0f;
+            float3 point_on_light = neighbor_reservoir.sample.point_on_light;
 
             float target_function_at_center;
             if (regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
-                target_function_at_center = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
+                target_function_at_center = ReGIR_grid_fill_evaluate_canonical_target_function(render_data, neighbor_surface, primary_hit,
                     emission, light_source_normal, point_on_light, random_number_generator);
             else
                 target_function_at_center = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, hash_grid_cell_index, primary_hit,
@@ -134,9 +136,10 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data, const Re
     {
         ColorRGB32F emission = triangle_load_emission(render_data, output_reservoir.sample.emissive_triangle_global_index);
 
-        float3 light_source_normal;
-        float light_source_area;
-        float3 point_on_light = reconstruct_sample_point_on_light(render_data, output_reservoir.sample, light_source_normal, light_source_area);
+        float3 light_source_normal = triangle_load_normal_not_normalized(render_data, output_reservoir.sample.emissive_triangle_global_index);
+        float light_source_area = hippt::length(light_source_normal) * 0.5f;
+        light_source_normal /= light_source_area * 2.0f;
+        float3 point_on_light = output_reservoir.sample.point_on_light;
 
         for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
         {
@@ -263,8 +266,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Spatial_Reuse(HIPRTRenderData render_
         else
             spatial_neighbor_rng_seed = wang_hash(seed);
 
+        // Will hold the shading point of the neighbor that produced the selected sample.
+        // Used to replay generating a point on an emissive triangles (some triangle sampling schemes
+        // require the shading point to sample a point on a triangle: solid angle or projected solid angle
+        // for example)
         Xorshift32Generator spatial_neighbor_rng(spatial_neighbor_rng_seed);
-        ReGIRReservoir output_reservoir = spatial_reuse(render_data, input_reservoirs_grid, reservoir_index_in_cell, hash_grid_cell_index, primary_hit, center_cell_point, center_cell_normal, center_cell_roughness, spatial_neighbor_rng, random_number_generator);
+        ReGIRReservoir output_reservoir = spatial_reuse(render_data, input_reservoirs_grid, reservoir_index_in_cell, hash_grid_cell_index, primary_hit, 
+            center_cell_point, center_cell_normal, center_cell_roughness,
+            spatial_neighbor_rng, random_number_generator);
 
         spatial_neighbor_rng.m_state.seed = spatial_neighbor_rng_seed;
 

@@ -61,7 +61,7 @@ private:
 		float theta_d = acosf(hippt::clamp(-1.0f, 1.0f, hippt::dot(axis_a, axis_b)));
 		float theta_e = hippt::max(theta_e_a, theta_e_b);
 
-		if (hippt::min(theta_d + theta_o_b, (float)M_PI) <= theta_o_a)
+		if (hippt::min(theta_d + theta_o_b, (float)hippt::M_Pi) <= theta_o_a)
 		{
 			this->axis = axis_a;
 			this->theta_o = theta_o_a;
@@ -72,10 +72,10 @@ private:
 		else
 		{
 			float theta_o = (theta_o_a + theta_d + theta_o_b) / 2.0f;
-			if (theta_o >= M_PI)
+			if (theta_o >= hippt::M_Pi)
 			{
 				this->axis = axis_a;
-				this->theta_o = M_PI;
+				this->theta_o = hippt::M_Pi;
 				this->theta_e = theta_e;
 
 				return;

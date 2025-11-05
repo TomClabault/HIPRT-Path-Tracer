@@ -160,7 +160,7 @@ void RendererEnvmap::do_animation(GPURenderer* renderer, float delta_time)
 		// 
 		// See this picture for a visual aid on what we **don't** want (the z-up):
 		// https://www.researchgate.net/figure/xyz-and-pitch-roll-and-yaw-systems_fig4_253569466
-		rotation_matrix = glm::orientate3(glm::vec3(rotation_X * M_TWO_PI, rotation_Z * M_TWO_PI, rotation_Y * M_TWO_PI));
+		rotation_matrix = glm::orientate3(glm::vec3(rotation_X * hippt::M_TWO_PI, rotation_Z * hippt::M_TWO_PI, rotation_Y * hippt::M_TWO_PI));
 		rotation_matrix_inv = glm::inverse(rotation_matrix);
 
 		envmap_to_world_matrix = *reinterpret_cast<float3x3*>(&rotation_matrix);

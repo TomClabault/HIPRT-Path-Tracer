@@ -88,7 +88,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
     for (int radius_index = 0; radius_index < NB_RADIUS; radius_index++)
     {
         float current_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius + (radius_index / (float)NB_RADIUS) * (spatial_pass_settings.reuse_radius - spatial_pass_settings.minimum_per_pixel_reuse_radius);
-        float current_radius_circle_area = M_PI * current_radius * current_radius;
+        float current_radius_circle_area = hippt::M_Pi * current_radius * current_radius;
 
         // Now sampling a bunch of neighbors *on* that radius, exactly at that radius distance from the center (i.e. *not* within the disk of that radius)
         float area_at_current_radius = 0.0f;
@@ -99,7 +99,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
                     // If this direction wasn't accepted at the previous radius
                     continue;
 
-            float theta = sample_index / (float)NB_SAMPLES_PER_RADIUS * M_TWO_PI;
+            float theta = sample_index / (float)NB_SAMPLES_PER_RADIUS * hippt::M_TWO_PI;
             float x_circle = current_radius * cosf(theta);
             float y_circle = current_radius * sinf(theta);
 

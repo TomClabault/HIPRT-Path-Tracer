@@ -15,7 +15,7 @@
  /**
  * The PDF is computed in area measure
  */
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_uniform(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_uniform(const HIPRTRenderData& render_data, float3 shading_point, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         return LightSampleInformation();
@@ -23,7 +23,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_uniform(const H
     int random_emissive_triangle_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
     int triangle_index = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
 
-    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, triangle_index, random_number_generator);
+    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, shading_point, triangle_index, random_number_generator);
 
     // PDF of that triangle sampled uniformly amongst all emissive triangles
     light_sample.area_measure_pdf /= render_data.buffers.emissive_triangles_count;
@@ -31,7 +31,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_uniform(const H
     return light_sample;
 }
 
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_power(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_power(const HIPRTRenderData& render_data, float3 shading_point, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         return LightSampleInformation();
@@ -39,7 +39,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_power(const HIP
     int random_emissive_triangle_index = render_data.buffers.emissive_triangles_power_alias_table.sample(random_number_generator);
     int triangle_index = render_data.buffers.emissive_triangles_primitive_indices[random_emissive_triangle_index];
 
-    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, triangle_index, random_number_generator);
+    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, shading_point, triangle_index, random_number_generator);
 
     // PDF of sampling that triangle according to its power
     light_sample.area_measure_pdf *= (light_sample.emission.luminance() * light_sample.light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
@@ -62,11 +62,11 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle(const HIPRTRend
 {
     if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
     {
-        return sample_one_emissive_triangle_uniform(render_data, random_number_generator);
+        return sample_one_emissive_triangle_uniform(render_data, shading_point, random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_POWER)
     {
-        return sample_one_emissive_triangle_power(render_data, random_number_generator);
+        return sample_one_emissive_triangle_power(render_data, shading_point, random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
     {

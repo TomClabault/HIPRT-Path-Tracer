@@ -50,8 +50,8 @@ HIPRT_DEVICE float2 sample_hammersley_2D(unsigned int number_of_points, unsigned
 HIPRT_DEVICE float2 sample_in_disk_uv(float radius, float2 uv)
 {
     float r_sqrt_v = radius * sqrtf(uv.y);
-    float x = r_sqrt_v * cos(M_TWO_PI * uv.x);
-    float y = r_sqrt_v * sin(M_TWO_PI * uv.x);
+    float x = r_sqrt_v * cos(hippt::M_TWO_PI * uv.x);
+    float y = r_sqrt_v * sin(hippt::M_TWO_PI * uv.x);
 
     return make_float2(x, y);
 }
@@ -168,7 +168,7 @@ HIPRT_DEVICE float3 cosine_weighted_sample_around_normal_world_space(const float
         rand_2 += 1.0e-7f;
     }
 
-    float theta = M_TWO_PI * rand_1;
+    float theta = hippt::M_TWO_PI * rand_1;
 
     float2 xy = sqrt(1.0f - rand_2 * rand_2) * make_float2(cos(theta), sin(theta));
     float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
@@ -188,7 +188,7 @@ HIPRT_DEVICE float3 cosine_weighted_sample_z_up_frame(Xorshift32Generator& rando
     float r1 = random_number_generator();
     float r2 = random_number_generator();
 
-    float phi = M_TWO_PI * r1;
+    float phi = hippt::M_TWO_PI * r1;
     float cos_theta = sqrt(r2);
     float sin_theta = sqrt(1 - cos_theta * cos_theta);
 

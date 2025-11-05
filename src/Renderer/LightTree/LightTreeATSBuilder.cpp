@@ -82,8 +82,8 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data)
 {
 	LightTreeATSNode& node = m_nodes[node_index];
-	node.node_bounds.mini = float3(1e30f, 1e30f, 1e30f);
-	node.node_bounds.maxi = float3(-1e30f, -1e30f, -1e30f);
+	node.node_bounds.mini = make_float3(1e30f, 1e30f, 1e30f);
+	node.node_bounds.maxi = make_float3(-1e30f, -1e30f, -1e30f);
 	node.total_power = 0.0f;
 
 	double sum_energy = 0.0f;
@@ -100,7 +100,7 @@ void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const Ligh
 
 		node.node_bounds.extend(m_prefetched_triangles[emissive_triangle_index].bounds);
 		node.total_power += m_prefetched_triangles[emissive_triangle_index].power;
-		node.cone_union_with(triangle_normal, 0.0f, (float)M_PI / 2.0f);
+		node.cone_union_with(triangle_normal, 0.0f, (float)hippt::M_Pi / 2.0f);
 
 		sum_energy += m_prefetched_triangles[emissive_triangle_index].power;
 		sum_energy_squared += hippt::square(m_prefetched_triangles[emissive_triangle_index].power);
@@ -211,8 +211,8 @@ float LightTreeATSBuilder::compute_saoh_m_omega(const LightTreeATSNodeOrientatio
 {
 	float sin_theta_o = sinf(orientation_data.theta_o);
 	float cos_theta_o = cosf(orientation_data.theta_o);
-	float theta_w = hippt::min(orientation_data.theta_o + orientation_data.theta_e, static_cast<float>(M_PI));
-	return 2.0f * M_PI * (1.0f - cos_theta_o) + M_PI * 0.5f * (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) - 2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
+	float theta_w = hippt::min(orientation_data.theta_o + orientation_data.theta_e, static_cast<float>(hippt::M_Pi));
+	return 2.0f * hippt::M_Pi * (1.0f - cos_theta_o) + hippt::M_Pi * 0.5f * (2.0f * theta_w * sin_theta_o - cosf(orientation_data.theta_o - 2.0f * theta_w) - 2.0f * orientation_data.theta_o * sin_theta_o + cos_theta_o);
 }
 
 float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, int& out_split_axis, float& out_split_position, const LightTreeBuilderTrianglesData& triangles_data, int split_method)
@@ -282,7 +282,7 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 				m_bins_temp_buffer[bin_index].tri_count++;
 
 				m_bins_temp_buffer[bin_index].total_power += m_prefetched_triangles[emissive_triangle_index].power;
-				m_bins_temp_buffer[bin_index].orientation_data.cone_union_with(triangle_normal, 0.0f, static_cast<float>(M_PI) / 2.0f);
+				m_bins_temp_buffer[bin_index].orientation_data.cone_union_with(triangle_normal, 0.0f, static_cast<float>(hippt::M_Pi) / 2.0f);
 			}
 
 			AABB left_box, right_box;

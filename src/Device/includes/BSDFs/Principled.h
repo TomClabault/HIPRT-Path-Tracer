@@ -840,7 +840,7 @@ HIPRT_DEVICE ColorRGB32F principled_diffuse_transmission_eval(const HIPRTRenderD
         // Both are in the same hemisphere, incorrect for a transmission only lobe
         return ColorRGB32F(0.0f);
 
-    ColorRGB32F color = material.base_color * M_INV_PI;
+    ColorRGB32F color = material.base_color * hippt::M_INV_PI;
     if (ray_volume_state.incident_mat_index != NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX)
     {
         // If we're not coming from the air, this means that we were in a volume and we're currently
@@ -858,7 +858,7 @@ HIPRT_DEVICE ColorRGB32F principled_diffuse_transmission_eval(const HIPRTRenderD
         }
     }
 
-    diffuse_transmission_pdf = hippt::abs(local_to_light_direction.z * M_INV_PI);
+    diffuse_transmission_pdf = hippt::abs(local_to_light_direction.z * hippt::M_INV_PI);
 
     return color;
 }
@@ -869,7 +869,7 @@ HIPRT_DEVICE float principled_diffuse_transmission_pdf(const float3& local_view_
         // Both are in the same hemisphere, incorrect for a transmission only lobe
         return 0.0f;
 
-    return hippt::abs(local_to_light_direction.z * M_INV_PI);
+    return hippt::abs(local_to_light_direction.z * hippt::M_INV_PI);
 }
 
 HIPRT_DEVICE float3 principled_diffuse_transmission_sample(float3 surface_normal, Xorshift32Generator& random_number_generator)
@@ -1638,7 +1638,7 @@ HIPRT_DEVICE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data
 
     // Rotated ONB for the anisotropic GGX evaluation (metallic/glass lobes for example)
     float3 TR, BR;
-    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * M_PI);
+    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
@@ -1735,7 +1735,7 @@ HIPRT_DEVICE float principled_bsdf_pdf(const HIPRTRenderData& render_data, BSDFC
 
     // Rotated ONB for the anisotropic GGX evaluation (metallic/glass lobes for example)
     float3 TR, BR;
-    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * M_PI);
+    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
@@ -1857,7 +1857,7 @@ HIPRT_DEVICE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_da
 
     // Rotated ONB for the anisotropic GGX evaluation
     float3 TR, BR;
-    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * M_PI);
+    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
 
     if (rand_1 < cdf0)
@@ -1865,7 +1865,7 @@ HIPRT_DEVICE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_da
         // Sampling the coat lobe
 
         float3 TR_coat, BR_coat;
-        build_rotated_ONB(bsdf_context.shading_normal, TR_coat, BR_coat, bsdf_context.material.coat_anisotropy_rotation * M_PI);
+        build_rotated_ONB(bsdf_context.shading_normal, TR_coat, BR_coat, bsdf_context.material.coat_anisotropy_rotation * hippt::M_Pi);
         float3 local_view_direction_rotated_coat = world_to_local_frame(TR_coat, BR_coat, bsdf_context.shading_normal, bsdf_context.view_direction);
 
         // Giving some information about what the BSDF sampled to the caller

@@ -20,7 +20,7 @@ struct ReGIRSampleSoADevice
 	HIPRT_HOST_DEVICE void store_sample(int linear_reservoir_index, const ReGIRSample& sample)
 	{
 		set_emissive_triangle_index(linear_reservoir_index, sample.emissive_triangle_global_index);
-		point_on_light_random_seed[linear_reservoir_index] = sample.point_on_light_random_seed;
+		point_on_light[linear_reservoir_index] = sample.point_on_light;
 	}
 
 	HIPRT_HOST_DEVICE ReGIRSample read_sample(int linear_reservoir_index) const
@@ -28,12 +28,12 @@ struct ReGIRSampleSoADevice
 		ReGIRSample sample;
 
 		sample.emissive_triangle_global_index = get_emissive_triangle_index(linear_reservoir_index);
-		sample.point_on_light_random_seed = point_on_light_random_seed[linear_reservoir_index];
+		sample.point_on_light = point_on_light[linear_reservoir_index];
 
 		return sample;
 	}
 
-	unsigned int* point_on_light_random_seed = nullptr;
+	float3* point_on_light = nullptr;
 
 private:
 	AtomicType<ReGIRSampleEmissiveTriangleIndicesPackingType>* emissive_triangle_indices_packed = nullptr;

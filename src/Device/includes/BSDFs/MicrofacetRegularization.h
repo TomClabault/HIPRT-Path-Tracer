@@ -52,7 +52,7 @@ struct MicrofacetRegularization
 		float final_tau = consistent_tau;
 #endif
 
-		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * M_PI)));
+		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * hippt::M_Pi)));
 
 		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
@@ -90,7 +90,7 @@ struct MicrofacetRegularization
 		float final_tau = consistent_tau;
 #endif
 
-		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * M_PI * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
+		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
 		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
@@ -128,7 +128,7 @@ struct MicrofacetRegularization
 		float final_tau = consistent_tau;
 #endif
 
-		float regularized_roughness_reflection = sqrtf(sqrtf(1.0f / (final_tau * M_PI)));
+		float regularized_roughness_reflection = sqrtf(sqrtf(1.0f / (final_tau * hippt::M_Pi)));
 
 		if (eta_i == eta_t)
 			// Avoiding singularities.
@@ -137,7 +137,7 @@ struct MicrofacetRegularization
 			// regularization
 			return regularized_roughness_reflection;
 
-		float regularized_roughness_refraction = sqrtf(sqrtf(1.0f / (final_tau * M_PI * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
+		float regularized_roughness_refraction = sqrtf(sqrtf(1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
 		// Mixing both reflection and refraction regularized roughnesses.
 		// Refraction regularization tends to be stronger (higher resulting roughness).
@@ -157,7 +157,7 @@ struct MicrofacetRegularization
 #endif
 
 		// Eq. 16 of the paper
-		float consistent_tau = 1.0f / (2.0f * M_PI * (1.0f - hippt::intrin_cosf(atanf(powf(sample_number + 1, -1.0f / 6.0f) * sqrt(M_FOUR_PI * tau_0 - 1.0f) / (M_TWO_PI * tau_0 - 1.0f)))));
+		float consistent_tau = 1.0f / (2.0f * hippt::M_Pi * (1.0f - hippt::intrin_cosf(atanf(powf(sample_number + 1, -1.0f / 6.0f) * sqrt(hippt::M_FOUR_PI * tau_0 - 1.0f) / (hippt::M_TWO_PI * tau_0 - 1.0f)))));
 
 		return consistent_tau;
 	}
