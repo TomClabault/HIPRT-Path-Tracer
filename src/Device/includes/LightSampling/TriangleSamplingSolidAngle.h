@@ -47,13 +47,13 @@ HIPRT_DEVICE float fast_positive_atan(float y)
 	float rz;
 	rx = (abs(y) > 1.0f) ? (1.0f / abs(y)) : abs(y);
 	ry = rx * rx;
-	rz = hippt::fmaf(ry, 0.02083509974181652f, -0.08513300120830536);
-	rz = hippt::fmaf(ry, rz, 0.18014100193977356f);
-	rz = hippt::fmaf(ry, rz, -0.3302994966506958f);
-	ry = hippt::fmaf(ry, rz, 0.9998660087585449f);
-	rz = hippt::fmaf(-2.0f * ry, rx, hippt::M_PI_TWO);
+	rz = hippt::fma(ry, 0.02083509974181652f, -0.08513300120830536);
+	rz = hippt::fma(ry, rz, 0.18014100193977356f);
+	rz = hippt::fma(ry, rz, -0.3302994966506958f);
+	ry = hippt::fma(ry, rz, 0.9998660087585449f);
+	rz = hippt::fma(-2.0f * ry, rx, hippt::M_PI_TWO);
 	rz = (abs(y) > 1.0f) ? rz : 0.0f;
-	rx = hippt::fmaf(rx, ry, rz);
+	rx = hippt::fma(rx, ry, rz);
 	return (y < 0.0f) ? (hippt::M_Pi - rx) : rx;
 }
 
@@ -112,11 +112,11 @@ HIPRT_DEVICE solid_angle_polygon_t prepare_solid_angle_polygon_sampling(unsigned
 		previous_dot_1_2 = dot_1_2;
 		// Compute the bottom right minor of vertices after application of the
 		// Householder transform
-		float dot_householder_0 = hippt::fmaf(-householder_sign, vertices[0].x, dot_0_1);
-		float dot_householder_2 = hippt::fmaf(-householder_sign, vertices[2].x, dot_1_2);
+		float dot_householder_0 = hippt::fma(-householder_sign, vertices[0].x, dot_0_1);
+		float dot_householder_2 = hippt::fma(-householder_sign, vertices[2].x, dot_1_2);
 		float2x2 bottom_right_minor = float2x2(
-			hippt::fmaf(make_float2(-dot_householder_0), householder_yz, make_float2(vertices[0].y, vertices[0].z)),
-			hippt::fmaf(make_float2(-dot_householder_2), householder_yz, make_float2(vertices[2].y, vertices[2].z)));
+			hippt::fma(make_float2(-dot_householder_0), householder_yz, make_float2(vertices[0].y, vertices[0].z)),
+			hippt::fma(make_float2(-dot_householder_2), householder_yz, make_float2(vertices[2].y, vertices[2].z)));
 		// The absolute value of the determinant of vertices equals the 2x2
 		// determinant because the Householder transform turns the first column
 		// into (+/-1, 0, 0)
@@ -129,6 +129,7 @@ HIPRT_DEVICE solid_angle_polygon_t prepare_solid_angle_polygon_sampling(unsigned
 		float one_plus_dot_0_1 = 1.0f + dot_0_1;
 		float tangent = simplex_volume / (one_plus_dot_0_1 + dot_0_2_plus_1_2);
 		float triangle_solid_angle = 2.0f * positive_atan(tangent);
+
 		polygon.solid_angle += triangle_solid_angle;
 		polygon.fan_solid_angles[i] = polygon.solid_angle;
 		// Some intermediate results from above help us with sampling
@@ -146,7 +147,7 @@ HIPRT_DEVICE solid_angle_polygon_t prepare_solid_angle_polygon_sampling(unsigned
 	*/
 HIPRT_DEVICE float mix_fma(float x, float y, float a)
 {
-	return hippt::fmaf(a, y, hippt::fmaf(-a, x, x));
+	return hippt::fma(a, y, hippt::fma(-a, x, x));
 }
 
 HIPRT_DEVICE float3 map_direction_to_triangle_point(
@@ -202,19 +203,19 @@ HIPRT_DEVICE float3 sample_solid_angle_polygon(solid_angle_polygon_t polygon, fl
 
 	// Construct a new vertex 2 on the arc between vertices 0 and 2 such that
 	// the resulting triangle has solid angle subtriangle_solid_angle
-	float2 cos_sin = float2(hippt::intrin_cosf(0.5f * target_solid_angle), hippt::intrin_sinf(0.5f * target_solid_angle));
+	float2 cos_sin = make_float2(hippt::intrin_cosf(0.5f * target_solid_angle), hippt::intrin_sinf(0.5f * target_solid_angle));
 	float3 offset = vertices[0] * (parameters.x * cos_sin.x - parameters.y * cos_sin.y) + vertices[2] * (parameters.z * cos_sin.y);
-	float3 new_vertex_2 = hippt::fmaf(2.0f * make_float3(hippt::dot(vertices[0], offset) / hippt::dot(offset, offset)), offset, -vertices[0]);
+	float3 new_vertex_2 = hippt::fma(2.0f * make_float3(hippt::dot(vertices[0], offset) / hippt::dot(offset, offset)), offset, -vertices[0]);
 	// Now sample the line between vertex 1 and the newly created vertex 2
 	float s2 = hippt::dot(vertices[1], new_vertex_2);
 	float s = mix_fma(1.0f, s2, random_numbers.y);
-	float denominator = hippt::fmaf(-s2, s2, 1.0f);
-	float t_normed = sqrt(hippt::fmaf(-s, s, 1.0f) / denominator);
+	float denominator = hippt::fma(-s2, s2, 1.0f);
+	float t_normed = sqrt(hippt::fma(-s, s, 1.0f) / denominator);
 	// s2 may exceed one due to rounding error. random_numbers[1] is the
 	// limit of t_normed for s2 -> 1.
 	t_normed = (denominator > 0.0f) ? t_normed : random_numbers.y;
 
-	float3 direction = hippt::normalize(hippt::fmaf(-t_normed, s2, s) * vertices[1] + t_normed * new_vertex_2);
+	float3 direction = hippt::normalize(hippt::fma(-t_normed, s2, s) * vertices[1] + t_normed * new_vertex_2);
 
 	return map_direction_to_triangle_point(direction, vertex_B, vertex_A, vertex_C, geometric_normal, shading_point, 1.0f / polygon.solid_angle, out_area_pdf);
 }

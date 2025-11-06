@@ -126,7 +126,7 @@
  *		variance. Takes the cosine term at the shading point into account 
  *		on top of the geometry term.
  */
-#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
+#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
 
  /**
   * How to randomly sample a point on a triangle

@@ -58,7 +58,9 @@ HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(float3 vert
 {
     solid_angle_polygon_t polygon = prepare_solid_angle_polygon_sampling(3, vertex_A, vertex_B, vertex_C, shading_point);
 
-    return sample_solid_angle_polygon(polygon, vertex_A, vertex_B, vertex_C, shading_point, geometric_normal, make_float2(rng(), rng()), out_point_pdf);
+    float3 point = sample_solid_angle_polygon(polygon, vertex_A, vertex_B, vertex_C, shading_point, geometric_normal, make_float2(rng(), rng()), out_point_pdf);
+
+    return point;
 }
 
 /**

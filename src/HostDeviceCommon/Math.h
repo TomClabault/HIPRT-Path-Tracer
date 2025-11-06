@@ -128,9 +128,9 @@ namespace hippt
 	/**
 	 * a * b + c
 	 */
-	__device__ float fmaf(float a, float b, float c) { return fmaf(a, b, c); }
-	__device__ float2 fmaf(float2 a, float2 b, float2 c) { return make_float2(hippt::fmaf(a.x, b.x, c.x), hippt::fmaf(a.y, b.y, c.y)); }
-	__device__ float3 fmaf(float3 a, float3 b, float3 c) { return make_float3(hippt::fmaf(a.x, b.x, c.x), hippt::fmaf(a.y, b.y, c.y), hippt::fmaf(a.z, b.z, c.z)); }
+	__device__ float fma(float a, float b, float c) { return fmaf(a, b, c); }
+	__device__ float2 fma(float2 a, float2 b, float2 c) { return make_float2(hippt::fma(a.x, b.x, c.x), hippt::fma(a.y, b.y, c.y)); }
+	__device__ float3 fma(float3 a, float3 b, float3 c) { return make_float3(hippt::fma(a.x, b.x, c.x), hippt::fma(a.y, b.y, c.y), hippt::fma(a.z, b.z, c.z)); }
 
 
 
@@ -508,9 +508,9 @@ namespace hippt
 	static float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
 	static float abs(float a) { return std::abs(a); }
 
-	static float fmaf(float a, float b, float c) { return a * b + c; }
-	static float2 fmaf(float2 a, float2 b, float2 c) { return make_float2(hippt::fmaf(a.x, b.x, c.x), hippt::fmaf(a.y, b.y, c.y)); }
-	static float3 fmaf(float3 a, float3 b, float3 c) { return make_float3(hippt::fmaf(a.x, b.x, c.x), hippt::fmaf(a.y, b.y, c.y), hippt::fmaf(a.z, b.z, c.z)); }
+	static float fma(float a, float b, float c) { return a * b + c; }
+	static float2 fma(float2 a, float2 b, float2 c) { return make_float2(hippt::fma(a.x, b.x, c.x), hippt::fma(a.y, b.y, c.y)); }
+	static float3 fma(float3 a, float3 b, float3 c) { return make_float3(hippt::fma(a.x, b.x, c.x), hippt::fma(a.y, b.y, c.y), hippt::fma(a.z, b.z, c.z)); }
 
 
 
