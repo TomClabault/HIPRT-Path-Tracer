@@ -121,6 +121,7 @@ HIPRT_DEVICE float2 ellipse_from_edge(float3 vertex_0, float3 vertex_1)
 	// By convention, degenerate ellipses are outer ellipses, i.e. the first
 	// component is infinite
 	ellipse.x = (normal.z != 0.0f) ? ellipse.x : hippt::Infinity();
+	//ellipse.x = (normal.z != 0.0f) ? ellipse.x : 1.0e35f;
 
 	return ellipse;
 }
@@ -147,7 +148,7 @@ HIPRT_DEVICE float get_ellipse_det(float2 ellipse)
 //! get_ellipse_det().
 HIPRT_DEVICE float get_ellipse_rsqrt_det(float2 ellipse) 
 {
-	return hippt::rsqrtf(get_ellipse_det(ellipse));
+	return hippt::rsqrt(get_ellipse_det(ellipse));
 }
 
 //! \return Reciprocal square of get_ellipse_direction_factor(ellipse, dir)
@@ -166,7 +167,7 @@ HIPRT_DEVICE float get_ellipse_direction_factor_rsq(float2 ellipse, float2 dir)
 		the ellipse.*/
 HIPRT_DEVICE float get_ellipse_direction_factor(float2 ellipse, float2 dir) 
 {
-	return hippt::rsqrtf(get_ellipse_direction_factor_rsq(ellipse, dir));
+	return hippt::rsqrt(get_ellipse_direction_factor_rsq(ellipse, dir));
 }
 
 //! Like get_ellipse_direction_factor() but assumes that the given direction is
@@ -174,7 +175,7 @@ HIPRT_DEVICE float get_ellipse_direction_factor(float2 ellipse, float2 dir)
 HIPRT_DEVICE float get_ellipse_normalized_direction_factor(float2 ellipse, float2 normalized_dir) 
 {
 	float ellipse_dot_dir = hippt::dot(ellipse, normalized_dir);
-	return hippt::rsqrtf(hippt::fma(ellipse_dot_dir, ellipse_dot_dir, 1.0f));
+	return hippt::rsqrt(hippt::fma(ellipse_dot_dir, ellipse_dot_dir, 1.0f));
 }
 
 
@@ -184,6 +185,7 @@ HIPRT_DEVICE float get_area_between_ellipses_in_sector_from_tangents(float inner
 {
 	float inner_area = inner_rsqrt_det * positive_atan(inner_tangent);
 	float result = hippt::fma(outer_rsqrt_det, positive_atan(outer_tangent), -inner_area);
+
 	// Sort out NaNs and negative results
 	return (result > 0.0f) ? (0.5f * result) : 0.0f;
 }
@@ -197,8 +199,16 @@ HIPRT_DEVICE float get_area_between_ellipses_in_sector_from_tangents(float inner
 HIPRT_DEVICE float get_area_between_ellipses_in_sector(float2 inner_ellipse, float inner_rsqrt_det, float2 outer_ellipse, float outer_rsqrt_det, float2 dir_0, float2 dir_1) 
 {
 	float det_dirs = hippt::max(+0.0f, hippt::dot(dir_1, rotate_90(dir_0)));
+
+	if (hippt::is_pixel_index(50, 50))
+	{
+		printf("ellipse transform inner: %.12f %.12f\n", ellipse_transform(inner_ellipse, dir_1).x, ellipse_transform(inner_ellipse, dir_1).y);
+		printf("ellipse transform outer: %.12f %.12f\n", ellipse_transform(outer_ellipse, dir_1).x, ellipse_transform(outer_ellipse, dir_1).y);
+	}
+
 	float inner_dot = inner_rsqrt_det * hippt::dot(dir_0, ellipse_transform(inner_ellipse, dir_1));
 	float outer_dot = outer_rsqrt_det * hippt::dot(dir_0, ellipse_transform(outer_ellipse, dir_1));
+
 	return get_area_between_ellipses_in_sector_from_tangents(
 		inner_rsqrt_det, det_dirs / inner_dot,
 		outer_rsqrt_det, det_dirs / outer_dot);
@@ -238,6 +248,7 @@ HIPRT_DEVICE void compare_and_swap(projected_solid_angle_polygon_t& polygon, uns
 	// great circle through the zenith), the one with the degenerate ellipse
 	// comes first
 	bool swap = (normal_z == 0.0f) ? hippt::is_inf(polygon.ellipses[rhs].x) : (normal_z > 0.0f);
+	//bool swap = (normal_z == 0.0f) ? (polygon.ellipses[rhs].x == 1.0e35f) : (normal_z > 0.0f);
 	polygon.vertices[lhs] = swap ? polygon.vertices[rhs] : lhs_copy;
 	polygon.vertices[rhs] = swap ? lhs_copy : polygon.vertices[rhs];
 	lhs_copy = polygon.ellipses[lhs];
@@ -316,7 +327,6 @@ HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_polygon_t& 
 	compare_and_swap(polygon, 0, 1);
 }
 
-
 /*! Prepares all intermediate values to sample a convex polygon proportional to
 	projected solid angle.
 	\param vertex_count Number of vertices forming the polygon (at least 3).
@@ -332,6 +342,9 @@ HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_polygon_t& 
 	\return Intermediate values for sampling.*/
 HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polygon_sampling(unsigned int vertex_count, float3 vertices[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING])
 {
+	/*for (int i = 0; i < MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; i++)
+		vertices[i] = hippt::normalize(vertices[i]);*/
+
 	projected_solid_angle_polygon_t polygon;
 	// Copy vertices and assign ellipses
 	polygon.vertex_count = vertex_count;
@@ -404,8 +417,12 @@ HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polyg
 				outer_rsqrt_det = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
 			}
 
+			if (hippt::is_pixel_index(50, 50))
+				printf("computing sector proj: \n\tinner_ellipse [%.10f, %.10f]\n\tinner_rsqrt_det: %.10f\n\touter ellipse: [%.10f, %.10f]\n\touter_rsqrt_det: %.10f\n", inner_ellipse.x, inner_ellipse.y, inner_rsqrt_det, outer_ellipse.x, outer_ellipse.y, outer_rsqrt_det);
 			polygon.sector_projected_solid_angles[i] = get_area_between_ellipses_in_sector(
 				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.vertices[i], polygon.vertices[i + 1]);
+			if (hippt::is_pixel_index(50, 50))
+				printf("\tout: %.10f\n", polygon.sector_projected_solid_angles[i]);
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[i];
 		}
 	}
@@ -423,7 +440,7 @@ HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polyg
 		homogeneous coordinates. The result is undefined if rhs is zero.*/
 HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle) 
 {
-	float scaling = abs(rhs.x) + abs(rhs.y);
+	float scaling = hippt::abs(rhs.x) + hippt::abs(rhs.y);
 	// By flipping each bit on the exponent E, we turn it into 1 - E, which is
 	// close enough to a reciprocal.
 	scaling = hippt::uint_as_float(hippt::float_as_uint(scaling) ^ 0x7F800000u);
@@ -549,12 +566,27 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	{
 		// Avoid under- or overflow and flip the sign so that the clamping to
 		// zero below makes sense
+		if (hippt::is_pixel_index(50, 50))
+			printf("+++++++++++++ current_dir before norm: %f %f\n", current_dir.x, current_dir.y);
 		current_dir = normalize_approx_and_flip(current_dir, quad_dirs[1]);
+		if (hippt::is_pixel_index(50, 50))
+			printf("+++++++++++++ current_dir after norm: %f %f\n", current_dir.x, current_dir.y);
 		// Transform current_dir using both ellipses
 		float2 inner_dir = ellipse_transform(inner_ellipse, current_dir);
 		float2 outer_dir = ellipse_transform(outer_ellipse, current_dir);
 		// Evaluate the objective function (reusing inner_dir and outer_dir)
 		float det_dirs = hippt::max(+0.0f, hippt::dot(current_dir, rotate_90(quad_dirs[0])));
+
+		if (hippt::is_pixel_index(50, 50))
+		{
+			printf("Calling get_area_between_ellipses_in_sector_from_tangents: (inner rsqrt, inner tangent, outer sqrt, outer tangent) = (%.10f, %.10f, %.10f, %.10f)\n", inner_rsqrt_det, det_dirs / (inner_rsqrt_det * hippt::dot(quad_dirs[0], inner_dir)), outer_rsqrt_det, det_dirs / (outer_rsqrt_det * hippt::dot(quad_dirs[0], outer_dir)));
+			printf("Dots %f / %f, computed from:\n", (inner_rsqrt_det * hippt::dot(quad_dirs[0], inner_dir)), (outer_rsqrt_det * hippt::dot(quad_dirs[0], outer_dir)));
+			printf("\tInner: %f * dot([%f, %f], [%f, %f])\n", inner_rsqrt_det, quad_dirs[0].x, quad_dirs[0].y, inner_dir.x, inner_dir.y);
+			printf("\tOuter: %f * dot([%f, %f], [%f, %f])\n", inner_rsqrt_det, quad_dirs[0].x, quad_dirs[0].y, outer_dir.x, outer_dir.y);
+			printf("------------\n");
+			printf("Inner dir computed from: [%f, %f], [%f %f]\n", inner_ellipse.x, inner_ellipse.y, current_dir.x, current_dir.y);
+			printf("Outer dir computed from: [%f, %f], [%f %f]\n", outer_ellipse.x, outer_ellipse.y, current_dir.x, current_dir.y);
+		}
 		float error = target_area - get_area_between_ellipses_in_sector_from_tangents(
 			inner_rsqrt_det, det_dirs / (inner_rsqrt_det * hippt::dot(quad_dirs[0], inner_dir)),
 			outer_rsqrt_det, det_dirs / (outer_rsqrt_det * hippt::dot(quad_dirs[0], outer_dir)));
@@ -576,7 +608,6 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	return current_dir;
 }
 
-
 /*! Produces a sample in the solid angle of the given polygon. If the random
 	numbers are uniform in [0,1]^2, the sample is uniform in the projected
 	solid angle of the polygon.
@@ -589,6 +620,14 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	float& out_area_pdf,
 	Xorshift32Generator& rng)
 {
+	/*vertex_A = make_float3(0.383965284, 2.33572531, 2.89304185);
+	vertex_B = make_float3(0.383230954, 2.33723521, 2.89140749);
+	vertex_C = make_float3(0.384179711, 2.33572531, 2.89159632);
+	triangle_normal = make_float3(-0.833190918, -0.538996637, -0.123594105);
+	shading_point = make_float3(0.0596642494, 0.0287519693, 5.95387268);
+	shading_normal = make_float3(0.00000000, 1.00000000, 0.00000000);
+	rng.m_state.seed = 1438600941;*/
+
 	float3 vertex_A_local = vertex_A - shading_point;
 	float3 vertex_B_local = vertex_B - shading_point;
 	float3 vertex_C_local = vertex_C - shading_point;
@@ -656,6 +695,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 				outer_ellipse = vertex_ellipse;
 			else 
 			{
+
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
 				bool vertex_inner = is_inner_ellipse(vertex_ellipse);
 				inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
@@ -665,6 +705,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 			dir_0 = polygon.vertices[i];
 			dir_1 = polygon.vertices[i + 1];
 			sector_projected_solid_angle = polygon.sector_projected_solid_angles[i];
+
 			if ((i >= 1 && i + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
 				break;
 		}
@@ -672,7 +713,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 		// Sample it
 		rand_1 = target_projected_solid_angle / sector_projected_solid_angle;
 		if (hippt::is_pixel_index(50, 50))
-			printf("%f / %f: %d\n", target_projected_solid_angle, sector_projected_solid_angle, hippt::is_inf(hippt::Infinity()));
+			printf("rand_1: %.10f / %.10f = %.10f\n", target_projected_solid_angle, sector_projected_solid_angle, rand_1);
 
 		float2 sector = sample_sector_between_ellipses(make_float2(rand_1, rand_2), target_projected_solid_angle, inner_ellipse, outer_ellipse, dir_0, dir_1, 2);
 		sampled_dir.x = sector.x;
@@ -682,7 +723,13 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	// Construct the sample
 	sampled_dir.z = sqrt(hippt::max(0.0f, hippt::fma(-sampled_dir.x, sampled_dir.x, hippt::fma(-sampled_dir.y, sampled_dir.y, 1.0f))));
 
+	if (hippt::is_pixel_index(50, 50))
+		printf("sampled_dir: %f %f %f\n", sampled_dir.x, sampled_dir.y, sampled_dir.z);
+
 	float3 sampled_dir_world_space = local_to_world_frame(T, B, shading_normal, sampled_dir);
+
+	if (hippt::is_pixel_index(50, 50))
+		printf("\n\n\n");
 
 	return map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, hippt::dot(shading_normal, sampled_dir_world_space) / polygon.projected_solid_angle, out_area_pdf);
 }

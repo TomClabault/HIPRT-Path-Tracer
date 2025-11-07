@@ -111,7 +111,8 @@ namespace hippt
 	__device__ int thread_idx_x() { return threadIdx.x + blockIdx.x * blockDim.x; }
 	__device__ int thread_idx_y() { return threadIdx.y + blockIdx.y * blockDim.y; }
 	__device__ int thread_idx_global() { return hippt::thread_idx_x() + hippt::thread_idx_y() * blockDim.x * gridDim.x; }
-	__device__ bool is_pixel_index(int x, int y) { return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
+	// __device__ bool is_pixel_index(int x, int y) { return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
+	__device__ bool is_pixel_index(int x, int y) { return false; }
 	__device__ int current_warp_lane() { return (threadIdx.x + threadIdx.y * blockDim.x) % hippt::warp_size(); }
 
 	template <typename T>
@@ -268,7 +269,7 @@ namespace hippt
 	__device__ float sqrt(float x) { return sqrtf(x); }
 	__device__ float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
 	__device__ float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
-	__device__ float rsqrtf(float x) { return rsqrtf(x); }
+	__device__ float rsqrt(float x) { return 1.0f / hippt::sqrt(x); }
 
 	__device__ float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
 	__device__ constexpr float pow_3(float x) { return x * x * x; }
@@ -289,7 +290,7 @@ namespace hippt
 	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	__device__ unsigned int float_as_uint(float float_num) { return __float_as_uint(float_num); }
-	__device__ unsigned int uint_as_float(unsigned int uint_num) { return __uint_as_float(uint_num); }
+	__device__ float uint_as_float(unsigned int uint_num) { return __uint_as_float(uint_num); }
 
 	/**
 	 * Reads the 32-bit or 64-bit word old located at the address 'address' 
@@ -645,7 +646,7 @@ namespace hippt
 	static float sqrt(float x) { return sqrtf(x); }
 	static float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
 	static float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
-	static float rsqrtf(float x) { return 1.0f / sqrtf(x); }
+	static float rsqrt(float x) { return 1.0f / sqrtf(x); }
 
 	static float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
 	static constexpr float pow_3(float x) { return x * x * x; }

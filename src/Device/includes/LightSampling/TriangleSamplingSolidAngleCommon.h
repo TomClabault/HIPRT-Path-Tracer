@@ -30,12 +30,12 @@ HIPRT_DEVICE float fast_positive_atan(float y)
 	USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING flag.*/
 HIPRT_DEVICE float positive_atan(float tangent)
 {
-#ifdef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
-	return fast_positive_atan(tangent);
-#else
+//#ifdef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
+//	return fast_positive_atan(tangent);
+//#else
 	float offset = (tangent < 0.0f) ? hippt::M_Pi : 0.0f;
 	return atanf(tangent) + offset;
-#endif
+//#endif
 }
 
 /**
