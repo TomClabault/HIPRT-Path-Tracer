@@ -447,8 +447,8 @@ struct RGBE9995Packed
 	HIPRT_DEVICE void pack(ColorRGB32F rgb)
 	{
 		// To determine the shared exponent, we must clamp the channels to an expressible range
-		const float kMaxVal = hippt::asfloat(0x477F8000); // 1.FF x 2^+15
-		const float kMinVal = hippt::asfloat(0x37800000); // 1.00 x 2^-16
+		const float kMaxVal = hippt::uint_as_float(0x477F8000); // 1.FF x 2^+15
+		const float kMinVal = hippt::uint_as_float(0x37800000); // 1.00 x 2^-16
 
 		// Non-negative and <= kMaxVal
 		rgb.clamp(0.0f, kMaxVal);
@@ -462,15 +462,15 @@ struct RGBE9995Packed
 		// mantissa bits into the low 9 bits.  IEEE rules of float addition will round rather
 		// than truncate the discarded bits.  Channels with smaller natural exponents will be
 		// shifted further to the right (discarding more bits).
-		float Bias = hippt::asfloat((hippt::asuint(MaxChannel) + 0x07804000) & 0x7F800000);
+		float Bias = hippt::uint_as_float((hippt::float_as_uint(MaxChannel) + 0x07804000) & 0x7F800000);
 
 		// Shift bits into the right places
 		unsigned int R, G, B;
-		R = hippt::asuint(rgb.r + Bias);
-		G = hippt::asuint(rgb.g + Bias);
-		B = hippt::asuint(rgb.b + Bias);
+		R = hippt::float_as_uint(rgb.r + Bias);
+		G = hippt::float_as_uint(rgb.g + Bias);
+		B = hippt::float_as_uint(rgb.b + Bias);
 
-		unsigned int E = (hippt::asuint(Bias) << 4) + 0x10000000;
+		unsigned int E = (hippt::float_as_uint(Bias) << 4) + 0x10000000;
 		m_packed = E | B << 18 | G << 9 | (R & 0x1FF);
 	}
 

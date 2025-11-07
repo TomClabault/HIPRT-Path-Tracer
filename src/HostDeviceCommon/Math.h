@@ -89,18 +89,20 @@ struct float2x2
 namespace hippt
 {
 #ifdef __KERNELCC__
-	constexpr float M_INV_TWO_PI			= 0.15915494309189533577f;	// 1.0f / (2.0f * M_PI)
+	constexpr float M_INV_TWO_PI		= 0.15915494309189533577f;	// 1.0f / (2.0f * M_PI)
 	constexpr float M_INV_PI			= 0.31830988618379067154f;	// 1.0f / M_PI
-	constexpr float M_PI_TWO				= 1.57079632679489661923;	// pi/2
+	constexpr float M_PI_TWO			= 1.57079632679489661923;	// pi/2
 	constexpr float M_Pi				= 3.14159265358979323846;	// pi
-	constexpr float M_TWO_PI				= 6.28318530717958647693f;	// 2.0f * M_PI
-	constexpr float M_FOUR_PI				= 12.5663706143591729539f;	// 4.0f * M_PI
+	constexpr float M_TWO_PI			= 6.28318530717958647693f;	// 2.0f * M_PI
+	constexpr float M_FOUR_PI			= 12.5663706143591729539f;	// 4.0f * M_PI
 	constexpr float M_TWO_PI_SQUARED	= 19.73920880217871723767f;	// 2.0f * M_PI ^ 2
 	constexpr float NEAR_ZERO			= 1.0e-10f;
 
 	constexpr float FLOAT_MAX = 3.402823466e+38f;
 	constexpr float FLOAT_MIN = 1.175494351e-38f;
 	constexpr float FLOAT_EPSILON = 1.192092896e-07f;
+
+	__device__ float Infinity() { return __int_as_float(0x7f800000); }
 
 	/**
 	 * Returns the 'warpSize' runtime constant of the GPU
@@ -277,6 +279,7 @@ namespace hippt
 	__device__ float intrin_pow(float x, float y) { return __powf(x, y); }
 	__device__ float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
 
+	__device__ float2 normalize(float2 u) { return u / sqrtf(hippt::dot(u, u)); }
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>
@@ -286,6 +289,7 @@ namespace hippt
 	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	__device__ unsigned int float_as_uint(float float_num) { return __float_as_uint(float_num); }
+	__device__ unsigned int uint_as_float(unsigned int uint_num) { return __uint_as_float(uint_num); }
 
 	/**
 	 * Reads the 32-bit or 64-bit word old located at the address 'address' 
@@ -407,8 +411,6 @@ namespace hippt
 	}
 
 	__device__ float fract(float a) { return a - floorf(a); }
-	__device__ float asfloat(unsigned int x) { return __uint_as_float(x); }
-	__device__ unsigned int asuint(float x) { return __float_as_uint(x); }
 
 	template <typename T>
 	__device__ int popc(T bitmask) { return 0; }
@@ -484,6 +486,8 @@ namespace hippt
 	constexpr float FLOAT_MAX = 3.402823466e+38f;
 	constexpr float FLOAT_MIN = 1.175494351e-38f;
 	constexpr float FLOAT_EPSILON = 1.192092896e-07f;
+
+	constexpr float Infinity() { return ((float)(1e+300)); }
 
 	/**
 	 * Returns the 'warpSize' runtime constant of the GPU
@@ -652,18 +656,17 @@ namespace hippt
 	static float intrin_pow(float x, float y) { return powf(x, y); }
 	static float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
 
+	static float2 normalize(float2 u) { return u / sqrtf(hippt::dot(u, u)); }
 	static float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>
 	static bool is_nan(const T& v) { return std::isnan(v); }
 	template <typename T>
-	static bool is_inf(const T& v) { return std::isinf(v); }
+	static constexpr bool is_inf(const T& v) { return std::isinf(v); }
 	static bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
-	static unsigned int float_as_uint(float float_num)
-	{
-		return *reinterpret_cast<unsigned int*>(&float_num);
-	}
+	static unsigned int float_as_uint(float float_num) { return std::bit_cast<unsigned int>(float_num);}
+	static float uint_as_float(unsigned int uint_num) { return std::bit_cast<float>(uint_num); }
 
 	/**
 	 * Reads the 32-bit or 64-bit word old located at the address 'address'
@@ -772,8 +775,7 @@ namespace hippt
 	}
 
 	static float fract(float a) { return a - floorf(a); }
-	static float asfloat(unsigned int x) { return std::bit_cast<float, unsigned int>(x); }
-	static unsigned int asuint(float x) { return std::bit_cast<unsigned int, float>(x); }
+
 	template <typename T>
 	static int popc(T bitmask) { return std::popcount(bitmask); }
 
@@ -893,6 +895,18 @@ HIPRT_DEVICE static float2x2 operator+(const float2x2& a, const float2x2& b)
 	return result;
 }
 
+HIPRT_DEVICE static float2x2 operator-(const float2x2& a, const float2x2& b)
+{
+	float2x2 result;
+
+	result.m[0][0] = a.m[0][0] - b.m[0][0];
+	result.m[0][1] = a.m[0][1] - b.m[0][1];
+	result.m[1][0] = a.m[1][0] - b.m[1][0];
+	result.m[1][1] = a.m[1][1] - b.m[1][1];
+
+	return result;
+}
+
 HIPRT_DEVICE static float2x2 operator*(const float2x2& a, const float2x2& b)
 {
 	float2x2 result;
@@ -960,6 +974,20 @@ HIPRT_DEVICE static float2x2 transpose(const float2x2& m)
 HIPRT_DEVICE static float determinant(const float2x2& m)
 {
 	return m.m[0][0] * m.m[1][1] - m.m[0][1] * m.m[1][0];
+}
+
+HIPRT_DEVICE static float2x2 outer_product(const float2& a, const float2& b) 
+{
+	float2x2 out;
+
+	// row 0
+	out.m[0][0] = a.x * b.x;
+	out.m[0][1] = a.x * b.y;
+	// row 1
+	out.m[1][0] = a.y * b.x;
+	out.m[1][1] = a.y * b.y;
+
+	return out;
 }
 
 #ifndef __KERNELCC__

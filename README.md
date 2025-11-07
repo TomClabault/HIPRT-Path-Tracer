@@ -49,7 +49,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
 	- Area light sampling strategies:
 		- Uniform area sampling
-		- Solid angle sampling
+		- Solid angle sampling [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
+		- Projected solid angle [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
 	
 - Next-event estimation strategies (built on-top of base techniques):
 	- MIS with BSDF sampling

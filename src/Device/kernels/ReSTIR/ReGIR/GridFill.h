@@ -51,7 +51,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
 			light_sample = grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
         else
         {
-            light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, surface.cell_point, hash_grid_cell_index, primary_hit, rng);
+            light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, surface.cell_point, surface.cell_normal, hash_grid_cell_index, primary_hit, rng);
             if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
                 light_sample = grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
         }

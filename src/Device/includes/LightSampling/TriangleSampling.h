@@ -8,7 +8,9 @@
  
 #include "Device/includes/LightSampling/LightSampleInformation.h"
 #include "Device/includes/LightSampling/TriangleSamplingSolidAngle.h"
+#include "Device/includes/LightSampling/TriangleSamplingProjectedSolidAngle.h"
 #include "Device/includes/TriangleLoadUtils.h"
+
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
 /**
@@ -37,11 +39,11 @@ HIPRT_DEVICE float3 sample_point_on_triangle_uniform_area(float3 vertex_A, float
     float rand_1 = rng();
     float rand_2 = rng();
 
-#if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_TURK_1990
+#if TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_TURK_1990
     float sqrt_r1 = sqrt(rand_1);
     float u = 1.0f - sqrt_r1;
     float v = (1.0f - rand_2) * sqrt_r1;
-#elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019
+#elif TrianglePointSamplingUniformAreaStrategy == TRIANGLE_POINT_SAMPLING_UNIFORM_AREA_HEITZ_2019
     float2 remapped = square_to_triangle(rand_1, rand_2);
 
     float u = remapped.x;
@@ -53,22 +55,12 @@ HIPRT_DEVICE float3 sample_point_on_triangle_uniform_area(float3 vertex_A, float
     return vertex_A + edge_AB * u + edge_AC * v;
 }
 
-HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 shading_point, float3 geometric_normal, 
-    int global_triangle_index, Xorshift32Generator& rng, float& out_point_pdf)
-{
-    solid_angle_polygon_t polygon = prepare_solid_angle_polygon_sampling(3, vertex_A, vertex_B, vertex_C, shading_point);
-
-    float3 point = sample_solid_angle_polygon(polygon, vertex_A, vertex_B, vertex_C, shading_point, geometric_normal, make_float2(rng(), rng()), out_point_pdf);
-
-    return point;
-}
-
 /**
  * Samples a point uniformly on the given triangle (given with the triangle index)
  *
  * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
  */
-HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, 
+HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 shading_normal,
     int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
     float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, 
     float& out_point_pdf)
@@ -93,9 +85,9 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point,
 #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
     out_sample_point = sample_point_on_triangle_uniform_area(vertex_A, AB, AC, out_triangle_area, rng, out_point_pdf);
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
-    out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, shading_point, normal, global_triangle_index, rng, out_point_pdf);
+    out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
-    out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(vertex_A, AB, AC, rng);
+    out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, shading_normal, out_point_pdf, rng);
 #endif
 
     return true;
@@ -108,7 +100,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point,
  * The PDF field of the LightSampleInformation is only field with the probability of sampling the
  * point on the triangle. The rest of the PDF must be computed by the caller
  */
-HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, float3 shading_point, int global_triangle_index, Xorshift32Generator& rng)
+HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_triangle_index, Xorshift32Generator& rng)
 {
     LightSampleInformation light_sample;
 
@@ -117,7 +109,8 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     float3 sampled_triangle_normal;
     float3 random_point_on_triangle;
     unsigned int point_on_light_random_seed;
-    if (!sample_point_on_generic_triangle(shading_point, global_triangle_index, render_data.buffers.vertices_positions,
+    if (!sample_point_on_generic_triangle(shading_point, shading_normal,
+        global_triangle_index, render_data.buffers.vertices_positions,
         render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
         return LightSampleInformation();
 

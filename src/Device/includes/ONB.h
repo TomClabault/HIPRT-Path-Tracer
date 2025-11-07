@@ -80,4 +80,9 @@ HIPRT_DEVICE static float3 world_to_local_frame(const float3& T, const float3& B
     return hippt::normalize(make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N)));
 }
 
+HIPRT_DEVICE static float3 world_to_local_frame_non_normalized(const float3& T, const float3& B, const float3& N, const float3& V)
+{
+    return make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N));
+}
+
 #endif
