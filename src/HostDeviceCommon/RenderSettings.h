@@ -225,6 +225,11 @@ struct HIPRTRenderSettings
 	// If false, geometric normals will always be used
 	bool do_normal_mapping = true;
 
+	// If using projected solid angle sampling, the triangle must cover at least this much
+	// to be sampled with projected solid angle sampling, otherwise it will be sampled with
+	// solid angle sampling alone (not projected) which is much cheaper
+	float projected_solid_angle_sampling_threshold = 0.07f;
+
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;
 

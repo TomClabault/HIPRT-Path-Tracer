@@ -3,6 +3,8 @@
 
 #include "HostDeviceCommon/Math.h"
 
+// #define USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
+
 /*! A piecewise polynomial approximation to positive_atan(y). The maximal
 	absolute error is 1.16e-05f. At least on Turing GPUs, it is faster but also
 	significantly less accurate. The proper atan has at most 2 ulps of error
@@ -30,8 +32,6 @@ HIPRT_DEVICE float fast_positive_atan(float y)
 	USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING flag.*/
 HIPRT_DEVICE float positive_atan(float tangent)
 {
-//#define USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
-
 #ifdef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
 	return fast_positive_atan(tangent);
 #else
@@ -49,11 +49,10 @@ HIPRT_DEVICE float positive_atan(float tangent)
 HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_direction, float3 vertex_A, float3 triangle_normal, float3 shading_position,
 	float pdf_solid_angle, float& out_pdf_area)
 {
-	const float EPS = 1e-8f;
 	float3 v0_rel = vertex_A - shading_position;
 	float denom = hippt::dot(sampled_solid_angle_direction, triangle_normal);
 
-	if (fabs(denom) < EPS)
+	if (hippt::abs(denom) < 1e-8f)
 	{
 		// Nearly parallel
 		out_pdf_area = 0.0f;

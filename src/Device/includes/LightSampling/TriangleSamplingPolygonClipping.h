@@ -32,7 +32,7 @@ HIPRT_DEVICE float3 iz0(float3 lhs, float3 rhs)
 	float lerp_factor = lhs.z / (lhs.z - rhs.z);
 	// Equivalent to the following but I have trust issues regarding the
 	// stability of mix()
-	// return float3(mix(lhs.xy, rhs.xy, lerp_factor), 0.0f);
+	// return make_float3(mix(lhs.xy, rhs.xy, lerp_factor), 0.0f);
 	float2 fmaed = hippt::fma(make_float2(lerp_factor), make_float2(rhs.x, rhs.y), hippt::fma(-make_float2(lerp_factor), make_float2(lhs.x, lhs.y), make_float2(lhs.x, lhs.y)));
 	return make_float3(fmaed.x, fmaed.y, 0.0f);
 }

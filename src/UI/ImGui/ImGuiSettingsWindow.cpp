@@ -1204,6 +1204,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
+			{
+				ImGui::TreePush("Projected solid angle settings tree");
+
+				if (ImGui::SliderFloat("Minimum solid angle", &render_settings.projected_solid_angle_sampling_threshold, 0.0f, 2.0f * hippt::M_Pi, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+					m_render_window->set_render_dirty(true);
+
+				ImGui::TreePop();
+			}
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY))

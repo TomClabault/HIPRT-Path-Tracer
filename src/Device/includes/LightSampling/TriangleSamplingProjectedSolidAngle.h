@@ -517,34 +517,21 @@ HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polyg
 	\note Introduces less latency than normalize() and does not use special
 		functions. Useful to avoid under- and overflow when working with
 		homogeneous coordinates. The result is undefined if rhs is zero.*/
-//HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle) 
-//{
-//	float scaling = hippt::abs(rhs.x) + hippt::abs(rhs.y);
-//	// By flipping each bit on the exponent E, we turn it into 1 - E, which is
-//	// close enough to a reciprocal.
-//	scaling = hippt::uint_as_float(hippt::float_as_uint(scaling) ^ 0x7F800000u);
-//	// If the line above causes you any sort of trouble (e.g. because you want
-//	// to port the code to another language or you are doing differentiable
-//	// rendering), just use this one instead:
-//	// scaling = 1.0f / scaling;
-//	// Flip the sign as needed
-//	scaling = (hippt::dot(rhs, semi_circle) >= 0.0f) ? scaling : -scaling;
-//
-//	return scaling * rhs;
-//}
-
-HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle)
+HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle) 
 {
-	// safe guard: undefined on zero in original, but we return zero here to be robust
-	float len = hippt::length(rhs);
-	if (len == 0.0f) return make_float2(0.0f, 0.0f);
+	float scaling = hippt::abs(rhs.x) + hippt::abs(rhs.y);
+	// By flipping each bit on the exponent E, we turn it into 1 - E, which is
+	// close enough to a reciprocal.
+	scaling = hippt::uint_as_float(hippt::float_as_uint(scaling) ^ 0x7F800000u);
+	// If the line above causes you any sort of trouble (e.g. because you want
+	// to port the code to another language or you are doing differentiable
+	// rendering), just use this one instead:
+	// scaling = 1.0f / scaling;
+	// Flip the sign as needed
+	scaling = (hippt::dot(rhs, semi_circle) >= 0.0f) ? scaling : -scaling;
 
-	float invlen = 1.0f / len;
-	// flip sign to make the dot with semi_circle >= 0
-	invlen = (hippt::dot(rhs, semi_circle) >= 0.0f) ? invlen : -invlen;
-	return rhs * invlen; // unit-length (up to fp rounding)
+	return scaling * rhs;
 }
-
 
 /*! Returns a solution to the given homogeneous quadratic equation, i.e. a
 	non-zero vector root such that hippt::dot(root, quadratic * root) == 0.0f. The
@@ -564,7 +551,6 @@ HIPRT_DEVICE float2 solve_homogeneous_quadratic(float2x2 quadratic)
 	float scaled_root = hippt::abs(coeff_xy) + sqrt_discriminant;
 	return (coeff_xy >= 0.0f) ? make_float2(scaled_root, -quadratic.m[0][0]) : make_float2(quadratic.m[1][1], scaled_root);
 }
-
 
 /*! Generates a sample between two ellipses and in a specified sector. The
 	sample is distributed uniformly with respect to the area measure.
@@ -647,7 +633,7 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	// For boundary values, the initialization is perfect but the iteration may
 	// be unstable, so we disable it
 	float acceptable_error = 1.0e-5f;
-	iteration_count = (abs(random_numbers.x - 0.5f) <= 0.5f - acceptable_error) ? iteration_count : 0;
+	iteration_count = (hippt::abs(random_numbers.x - 0.5f) <= 0.5f - acceptable_error) ? iteration_count : 0;
 
 	// Now refine this initialization iteratively
 	float inner_rsqrt_det = get_ellipse_rsqrt_det(inner_ellipse);
@@ -699,17 +685,6 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	return current_dir;
 }
 
-HIPRT_DEVICE static float3 safe_normalize3(const float3& v)
-{
-	float ax = hippt::abs(v.x), ay = hippt::abs(v.y), az = hippt::abs(v.z);
-	float maxc = hippt::max(ax, hippt::max(ay, az));
-	if (maxc == 0.0f) return make_float3(0.0f, 0.0f, 0.0f); // degenerate
-	float3 t = v / maxc;        // now components are in [-1,1]
-	float invlen = 1.0f / hippt::sqrt(hippt::fma(t.x, t.x, hippt::fma(t.y, t.y, t.z * t.z)));
-	return t * invlen;
-}
-
-
 /*! Produces a sample in the solid angle of the given polygon. If the random
 	numbers are uniform in [0,1]^2, the sample is uniform in the projected
 	solid angle of the polygon.
@@ -722,8 +697,6 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	float& out_area_pdf,
 	Xorshift32Generator& rng)
 {
-	// TODO re-enable intrin functions in Math.h
-
 	/*if (hippt::is_pixel_index(406, 692 - 1 - 342))
 	{
 		LOGHIPRT("vertex_A = make_float3(%.20f, %.20f, %.20f);\n", vertex_A.x, vertex_A.y, vertex_A.z);
@@ -771,7 +744,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	{
 		// scale range too large or a zero-length vertex --> normalize (robustly)
 		for (unsigned int i = 0; i < clipped_vertex_count; ++i)
-			vertices_local_space[i] = safe_normalize3(vertices_local_space[i]);
+			vertices_local_space[i] = hippt::normalize(vertices_local_space[i]);
 	}
 #elif NORMALIZATION == 1
 	for (int i = 0; i < clipped_vertex_count; i++)
@@ -803,16 +776,16 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 				break;
 		}
 		// Sample a direction within the sector
-		float sqrt_det = sqrt(get_ellipse_det(outer_ellipse));
+		float sqrt_det = hippt::sqrt(get_ellipse_det(outer_ellipse));
 		float angle = 2.0f * target_projected_solid_angle * sqrt_det;
 		// TODO intrin cos intrin sin here
-		float2 dir_xy = (cos(angle) * sqrt_det) * dir_0 + sin(angle) * rotate_90(ellipse_transform(outer_ellipse, dir_0));
+		float2 dir_xy = (hippt::intrin_cosf(angle) * sqrt_det) * dir_0 + hippt::intrin_sinf(angle) * rotate_90(ellipse_transform(outer_ellipse, dir_0));
 
 		sampled_dir.x = dir_xy.x;
 		sampled_dir.y = dir_xy.y;
 
 		// Sample a squared radius uniformly within the ellipse
-		float sampled = sqrt(rand_2 / get_ellipse_direction_factor_rsq(outer_ellipse, make_float2(sampled_dir.x, sampled_dir.y)));
+		float sampled = hippt::sqrt(rand_2 / get_ellipse_direction_factor_rsq(outer_ellipse, make_float2(sampled_dir.x, sampled_dir.y)));
 		sampled_dir.x *= sampled;
 		sampled_dir.y *= sampled;
 	}
@@ -858,7 +831,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	}
 
 	// Construct the sample
-	sampled_dir.z = sqrt(hippt::max(0.0f, hippt::fma(-sampled_dir.x, sampled_dir.x, hippt::fma(-sampled_dir.y, sampled_dir.y, 1.0f))));
+	sampled_dir.z = hippt::sqrt(hippt::max(0.0f, hippt::fma(-sampled_dir.x, sampled_dir.x, hippt::fma(-sampled_dir.y, sampled_dir.y, 1.0f))));
 
 	if (hippt::is_pixel_index(406, 692 - 1 - 342))
 		LOGHIPRT("sampled_dir: %f %f %f\n", sampled_dir.x, sampled_dir.y, sampled_dir.z);

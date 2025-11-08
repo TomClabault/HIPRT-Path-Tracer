@@ -63,7 +63,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_uniform_area(float3 vertex_A, float
 HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 shading_normal,
     int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
     float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, 
-    float& out_point_pdf)
+    float& out_point_pdf, float projected_solid_angle_sampling_threshold)
 {
     float3 vertex_A = vertices_positions[triangles_indices[global_triangle_index * 3 + 0]];
     float3 vertex_B = vertices_positions[triangles_indices[global_triangle_index * 3 + 1]];
@@ -87,7 +87,21 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
     out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
-    out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, shading_normal, out_point_pdf, rng);
+	float3 vertex_A_local = hippt::normalize(vertex_A - shading_point);
+	float3 vertex_B_local = hippt::normalize(vertex_B - shading_point);
+	float3 vertex_C_local = hippt::normalize(vertex_C - shading_point);
+
+    float solid_angle = hippt::abs(2 * atan2f(
+        hippt::dot(vertex_A_local, hippt::cross(vertex_B_local, vertex_C_local)),
+        1 + hippt::dot(vertex_A_local, vertex_B_local) + hippt::dot(vertex_A_local, vertex_C_local) + hippt::dot(vertex_B_local, vertex_C_local)
+    ));
+
+    // out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
+    bool do_projected_solid_angle_sampling = solid_angle > projected_solid_angle_sampling_threshold;
+    if (do_projected_solid_angle_sampling)
+        out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, shading_normal, out_point_pdf, rng);
+    else
+        out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
 #endif
 
     return true;
@@ -111,7 +125,7 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     unsigned int point_on_light_random_seed;
     if (!sample_point_on_generic_triangle(shading_point, shading_normal,
         global_triangle_index, render_data.buffers.vertices_positions,
-        render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
+        render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf, render_data.render_settings.projected_solid_angle_sampling_threshold))
         return LightSampleInformation();
 
     light_sample.emissive_triangle_global_index = global_triangle_index;

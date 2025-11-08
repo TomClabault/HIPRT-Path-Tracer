@@ -190,23 +190,23 @@ namespace hippt
 
 	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
 	__device__ float2 cos(float2 x) { return make_float2(cosf(x.x), cosf(x.y)); }
-	__device__ float intrin_cosf(float x) { return cosf(x); }
+	__device__ float intrin_cosf(float x) { return __cosf(x); }
 	__device__ float3 intrin_cosf(float3 x) { return make_float3(hippt::intrin_cosf(x.x), hippt::intrin_cosf(x.y), hippt::intrin_cosf(x.z)); }
 
 	__device__ float3 sin(float3 x) { return make_float3(sinf(x.x), sinf(x.y), sinf(x.z)); }
 	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
-	__device__ float intrin_sinf(float x) { return sinf(x); }
+	__device__ float intrin_sinf(float x) { return __sinf(x); }
 
 	__device__ float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
 
 	__device__ float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
 	__device__ float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
-	__device__ float intrin_expf(float x) { return expf(x); }
+	__device__ float intrin_expf(float x) { return __expf(x); }
 	__device__ float3 intrin_expf(float3 x) { return make_float3(hippt::intrin_expf(x.x), hippt::intrin_expf(x.y), hippt::intrin_expf(x.z)); }
 	__device__ float intrin_expm1f(float x) { return hippt::intrin_expf(x) - 1.0f; }
 
 	__device__ float3 ldexp(float3 x, int exp) { return make_float3(ldexpf(x.x, exp), ldexpf(x.y, exp), ldexpf(x.z, exp)); }
-	__device__ float intrin_logf(float x) { return logf(x); }
+	__device__ float intrin_logf(float x) { return __logf(x); }
 
 	// (exp(x) - 1)/x with cancellation of rounding errors.
 	// [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p. 19]

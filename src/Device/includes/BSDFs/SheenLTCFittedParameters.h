@@ -24,7 +24,7 @@
    * distribution of an analytic approximation of the reference volumetric SGGX
    * sheen layer.
    *
-   * Sampled as [y][x] = float3(Ai, Bi, Ri) with:
+   * Sampled as [y][x] = make_float3(Ai, Bi, Ri) with:
    *  y = cos(theta)
    *  x = alpha
    */
