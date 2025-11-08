@@ -82,7 +82,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 		const float reflection_sharpness = (1.0f - roughness_max_2) / hippt::max(2.0f * roughness_max_2, hippt::FLOAT_MIN);
 
 		const float vlen = sqrtf(hippt::square(wi.x) + hippt::square(wi.y));
-		const float2 v = (vlen != 0.0f) ? make_float2(wi.x, wi.y) / vlen : float2(1.0f, 0.0f);
+		const float2 v = (vlen != 0.0f) ? make_float2(wi.x, wi.y) / vlen : make_float2(1.0f, 0.0f);
 		const float2x2 jacobian_matrix = float2x2(v.x, -v.y, v.y, v.x) * float2x2(0.5f, 0.0f, 0.0f, 0.5f / wi.z); // Omit abs() unlike the paper since it doesn't affect JJ^T.
 
 		// Compute JJ^T for NDF filtering.

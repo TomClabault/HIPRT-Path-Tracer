@@ -48,7 +48,7 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer,
         v = -v;
 
     const oroTextureObject_t texture = reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index];
-    if (texture == nullptr)
+    if (texture == 0)
         return ColorRGBA32F(0.0f);
 
     rgba = ColorRGBA32F(tex2D<float4>(texture, u, v));
