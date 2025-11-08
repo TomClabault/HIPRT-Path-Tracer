@@ -16,12 +16,11 @@
 #include "Utils/Utils.h"
 
 #include <chrono>
-#include <cmath>
 #include <iostream>
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {   

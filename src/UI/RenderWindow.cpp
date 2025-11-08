@@ -315,13 +315,15 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// - Constant memory for Render data such that it is available everywhere and we don't have it to pass it around all the time.
+//		- Same for more variables?
 // - Variance aware MIS weights? https://cgg.mff.cuni.cz/~jaroslav/papers/2019-variance-aware-mis/2019-grittmann-variance-aware-mis-paper.pdf
 // - RISLTC: https://data.ishaanshah.xyz/research/pdfs/risltc.pdf. Some explanations in there for projected solid angle and LTC sampling
 // - Inciteful graph to explore (started with Practical product sampling warping NVIDIA): https://inciteful.xyz/p?ids%5B%5D=W4220995884&ids%5B%5D=W3179788358&ids%5B%5D=W4403641440&ids%5B%5D=W4390345185&ids%5B%5D=W4388994411&ids%5B%5D=W4200187284&ids%5B%5D=W2885975589&ids%5B%5D=W3183450244&ids%5B%5D=W1893031899&ids%5B%5D=W3036883119&ids%5B%5D=W3044759327&ids%5B%5D=W4240396283&ids%5B%5D=W3110265079&ids%5B%5D=W2073976119&ids%5B%5D=W2988541899&ids%5B%5D=W2885239691&ids%5B%5D=W2964425571&ids%5B%5D=W2030242873&ids%5B%5D=W3044185278
 // - VisibilityCluster: Average Directional Visibility for Many-Light Rendering: https://ieeexplore.ieee.org/document/6464264
 // - Practical product sampling warping NVIDIA, there's a shadertoy for that
 // - Sample specular/diffuse lobe with the luminance of the diffuse lobe
-// - Sample specular/diffuse by taking the thrioughput of the path into account?
+// - Sample specular/diffuse by taking the throughput of the path into account? To avoid sampling a green diffuse lobe when the throughpuit is all red for example
 // - Sample by evaluating the contribution of both samples and choosing proportional to the contribution:
 //		- a next "clever way" would be to generate L with both diffuse and specular but using the sample random number, then compare their total "contributions" (whole specular+diffuse BRDF value divided by pdf of generator and multiplied by path prefix throughput), then depending on the luma of that you choose either the first or second sample.
 //		- so you're making decisions about what branch you take posteriori not a-priori.

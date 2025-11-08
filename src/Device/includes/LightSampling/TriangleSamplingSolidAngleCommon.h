@@ -12,14 +12,14 @@ HIPRT_DEVICE float fast_positive_atan(float y)
 	float rx;
 	float ry;
 	float rz;
-	rx = (abs(y) > 1.0f) ? (1.0f / abs(y)) : abs(y);
+	rx = (hippt::abs(y) > 1.0f) ? (1.0f / hippt::abs(y)) : hippt::abs(y);
 	ry = rx * rx;
 	rz = hippt::fma(ry, 0.02083509974181652f, -0.08513300120830536);
 	rz = hippt::fma(ry, rz, 0.18014100193977356f);
 	rz = hippt::fma(ry, rz, -0.3302994966506958f);
 	ry = hippt::fma(ry, rz, 0.9998660087585449f);
 	rz = hippt::fma(-2.0f * ry, rx, hippt::M_PI_TWO);
-	rz = (abs(y) > 1.0f) ? rz : 0.0f;
+	rz = (hippt::abs(y) > 1.0f) ? rz : 0.0f;
 	rx = hippt::fma(rx, ry, rz);
 	return (y < 0.0f) ? (hippt::M_Pi - rx) : rx;
 }
@@ -30,12 +30,14 @@ HIPRT_DEVICE float fast_positive_atan(float y)
 	USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING flag.*/
 HIPRT_DEVICE float positive_atan(float tangent)
 {
-//#ifdef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
-//	return fast_positive_atan(tangent);
-//#else
+//#define USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
+
+#ifdef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
+	return fast_positive_atan(tangent);
+#else
 	float offset = (tangent < 0.0f) ? hippt::M_Pi : 0.0f;
 	return atanf(tangent) + offset;
-//#endif
+#endif
 }
 
 /**

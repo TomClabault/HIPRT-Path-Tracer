@@ -22,7 +22,8 @@
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_PROJECTED_SOLID_ANGLE_CLIPPING_H
 
 #define MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING 3
-#define MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING 4
+// +1 vertex because clipping can produce one additional vertex
+#define MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING (MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING + 1)
 
 /*! Returns the intersection of the line connecting the given two points with
 	the plane z == 0.0f.*/

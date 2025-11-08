@@ -111,8 +111,9 @@ namespace hippt
 	__device__ int thread_idx_x() { return threadIdx.x + blockIdx.x * blockDim.x; }
 	__device__ int thread_idx_y() { return threadIdx.y + blockIdx.y * blockDim.y; }
 	__device__ int thread_idx_global() { return hippt::thread_idx_x() + hippt::thread_idx_y() * blockDim.x * gridDim.x; }
-	// __device__ bool is_pixel_index(int x, int y) { return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
-	__device__ bool is_pixel_index(int x, int y) { return false; }
+	__device__ bool is_pixel_index(int x, int y) { return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
+	//__device__ bool is_pixel_index(int x, int y) { if (x == 50 && y == 50) return false; return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
+	//__device__ bool is_pixel_index(int x, int y) { return false; }
 	__device__ int current_warp_lane() { return (threadIdx.x + threadIdx.y * blockDim.x) % hippt::warp_size(); }
 
 	template <typename T>
@@ -122,8 +123,9 @@ namespace hippt
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 	__device__ float dot(float2 u, float2 v) { return u.x * v.x + u.y * v.y; }
 
-	__device__ float length(float3 u) { return sqrt(hiprt::dot(u, u)); }
-	__device__ float length2(float3 u) { return hiprt::dot(u, u); }
+	__device__ float length(float3 u) { return sqrtf(hippt::dot(u, u)); }
+	__device__ float length(float2 u) { return sqrtf(hippt::dot(u, u)); }
+	__device__ float length2(float3 u) { return hippt::dot(u, u); }
 
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
 	__device__ float abs(float a) { return fabsf(a); }
@@ -188,23 +190,23 @@ namespace hippt
 
 	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
 	__device__ float2 cos(float2 x) { return make_float2(cosf(x.x), cosf(x.y)); }
-	__device__ float intrin_cosf(float x) { return __cosf(x); }
-	__device__ float3 intrin_cosf(float3 x) { return make_float3(__cosf(x.x), __cosf(x.y), __cosf(x.z)); }
+	__device__ float intrin_cosf(float x) { return cosf(x); }
+	__device__ float3 intrin_cosf(float3 x) { return make_float3(hippt::intrin_cosf(x.x), hippt::intrin_cosf(x.y), hippt::intrin_cosf(x.z)); }
 
 	__device__ float3 sin(float3 x) { return make_float3(sinf(x.x), sinf(x.y), sinf(x.z)); }
 	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
-	__device__ float intrin_sinf(float x) { return __sinf(x); }
-
-	__device__ float intrin_expf(float x) { return __expf(x); }
-	__device__ float3 intrin_expf(float3 x) { return make_float3(__expf(x.x), __expf(x.y), __expf(x.z)); }
-	__device__ float intrin_logf(float x) { return __logf(x); }
+	__device__ float intrin_sinf(float x) { return sinf(x); }
 
 	__device__ float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
 
 	__device__ float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
 	__device__ float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
+	__device__ float intrin_expf(float x) { return expf(x); }
+	__device__ float3 intrin_expf(float3 x) { return make_float3(hippt::intrin_expf(x.x), hippt::intrin_expf(x.y), hippt::intrin_expf(x.z)); }
 	__device__ float intrin_expm1f(float x) { return hippt::intrin_expf(x) - 1.0f; }
+
 	__device__ float3 ldexp(float3 x, int exp) { return make_float3(ldexpf(x.x, exp), ldexpf(x.y, exp), ldexpf(x.z, exp)); }
+	__device__ float intrin_logf(float x) { return logf(x); }
 
 	// (exp(x) - 1)/x with cancellation of rounding errors.
 	// [Nicholas J. Higham "Accuracy and Stability of Numerical Algorithms", Section 1.14.1, p. 19]
@@ -497,7 +499,7 @@ namespace hippt
 	static int thread_idx_x() { return 0; }
 	static int thread_idx_y() { return 0; }
 	static int thread_idx_global() { return 0; }
-	static bool is_pixel_index(int x, int y) { return false; }
+	static bool is_pixel_index(int x, int y) { return true; }
 	static int current_warp_lane() { return 0; }
 
 	template <typename T>
@@ -508,6 +510,7 @@ namespace hippt
 	static float dot(float2 u, float2 v) { return u.x * v.x + u.y * v.y; }
 
 	static float length(float3 u) { return sqrtf(dot(u, u)); }
+	static float length(float2 u) { return sqrtf(dot(u, u)); }
 	static float length2(float3 u) { return dot(u, u); }
 
 	static float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
