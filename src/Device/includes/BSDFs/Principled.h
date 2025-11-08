@@ -1032,8 +1032,8 @@ HIPRT_DEVICE ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& render_
             // 
             // It can happen that 'incident_refracted_angle' or 'outgoing_refracted_angle'
             // are 0.0f 
-            float incident_refracted_angle = hippt::max(1.0e-6f, sqrtf(1.0f - (1.0f - local_to_light_direction.z * local_to_light_direction.z) / (coat_ior * coat_ior)));
-            float outgoing_refracted_angle = hippt::max(1.0e-6f, sqrtf(1.0f - (1.0f - local_view_direction.z * local_view_direction.z) / (coat_ior * coat_ior)));
+            float incident_refracted_angle = hippt::max(1.0e-6f, hippt::sqrt(1.0f - (1.0f - local_to_light_direction.z * local_to_light_direction.z) / (coat_ior * coat_ior)));
+            float outgoing_refracted_angle = hippt::max(1.0e-6f, hippt::sqrt(1.0f - (1.0f - local_view_direction.z * local_view_direction.z) / (coat_ior * coat_ior)));
 
             // Reference: [11], [13]
             float traveled_distance_angle = 1.0f / incident_refracted_angle + 1.0f / outgoing_refracted_angle;

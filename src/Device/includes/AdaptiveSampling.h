@@ -16,7 +16,7 @@ HIPRT_DEVICE float get_pixel_confidence_interval(const HIPRTRenderData& render_d
     float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[pixel_index];
     float pixel_variance = (squared_luminance - luminance * average_luminance) / (pixel_sample_count + 1);
 
-    return 1.96f * sqrtf(pixel_variance) / sqrtf(pixel_sample_count + 1);
+    return 1.96f * hippt::sqrt(pixel_variance) / hippt::sqrt(pixel_sample_count + 1);
 }
 
 /**

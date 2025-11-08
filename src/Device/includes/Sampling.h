@@ -49,7 +49,7 @@ HIPRT_DEVICE float2 sample_hammersley_2D(unsigned int number_of_points, unsigned
  */
 HIPRT_DEVICE float2 sample_in_disk_uv(float radius, float2 uv)
 {
-    float r_sqrt_v = radius * sqrtf(uv.y);
+    float r_sqrt_v = radius * hippt::sqrt(uv.y);
     float x = r_sqrt_v * cos(hippt::M_TWO_PI * uv.x);
     float y = r_sqrt_v * sin(hippt::M_TWO_PI * uv.x);
 

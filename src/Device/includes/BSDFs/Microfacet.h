@@ -441,7 +441,7 @@ HIPRT_DEVICE float3 GGX_VNDF_spherical_caps_sample(const float3 local_view_direc
     // Sample a spherical cap in (-wi.z, 1]
     float phi = hippt::M_TWO_PI * r1;
     float z = (1.0f - r2) * (1.0f + Vh.z) - Vh.z;
-    float sinTheta = sqrtf(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
+    float sinTheta = hippt::sqrt(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
     float x = sinTheta * hippt::intrin_cosf(phi);
     float y = sinTheta * hippt::intrin_sinf(phi);
     float3 c = make_float3(x, y, z);

@@ -228,7 +228,9 @@ struct HIPRTRenderSettings
 	// If using projected solid angle sampling, the triangle must cover at least this much
 	// to be sampled with projected solid angle sampling, otherwise it will be sampled with
 	// solid angle sampling alone (not projected) which is much cheaper
-	float projected_solid_angle_sampling_threshold = 0.07f;
+	//
+	// The default value is arbitrary and observed to reduce variance in important places
+	float projected_solid_angle_sampling_threshold = 0.06f;
 
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;

@@ -52,7 +52,7 @@ struct MicrofacetRegularization
 		float final_tau = consistent_tau;
 #endif
 
-		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * hippt::M_Pi)));
+		float regularized_roughness = hippt::sqrt(hippt::sqrt(1.0f / (final_tau * hippt::M_Pi)));
 
 		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
@@ -90,7 +90,7 @@ struct MicrofacetRegularization
 		float final_tau = consistent_tau;
 #endif
 
-		float regularized_roughness = sqrtf(sqrtf(1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
+		float regularized_roughness = hippt::sqrt(hippt::sqrt(1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
 		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
@@ -128,7 +128,7 @@ struct MicrofacetRegularization
 		float final_tau = consistent_tau;
 #endif
 
-		float regularized_roughness_reflection = sqrtf(sqrtf(1.0f / (final_tau * hippt::M_Pi)));
+		float regularized_roughness_reflection = hippt::sqrt(hippt::sqrt(1.0f / (final_tau * hippt::M_Pi)));
 
 		if (eta_i == eta_t)
 			// Avoiding singularities.
@@ -137,7 +137,7 @@ struct MicrofacetRegularization
 			// regularization
 			return regularized_roughness_reflection;
 
-		float regularized_roughness_refraction = sqrtf(sqrtf(1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
+		float regularized_roughness_refraction = hippt::sqrt(hippt::sqrt(1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
 		// Mixing both reflection and refraction regularized roughnesses.
 		// Refraction regularization tends to be stronger (higher resulting roughness).

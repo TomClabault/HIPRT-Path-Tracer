@@ -123,8 +123,13 @@ namespace hippt
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 	__device__ float dot(float2 u, float2 v) { return u.x * v.x + u.y * v.y; }
 
-	__device__ float length(float3 u) { return sqrtf(hippt::dot(u, u)); }
-	__device__ float length(float2 u) { return sqrtf(hippt::dot(u, u)); }
+	__device__ float sqrt(float x) { return sqrtf(x); }
+	__device__ float2 sqrt(float2 uv) { return make_float2(hippt::sqrt(uv.x), hippt::sqrt(uv.y)); }
+	__device__ float3 sqrt(float3 uvw) { return make_float3(hippt::sqrt(uvw.x), hippt::sqrt(uvw.y), hippt::sqrt(uvw.z)); }
+	__device__ float rsqrt(float x) { return 1.0f / hippt::sqrt(x); }
+
+	__device__ float length(float3 u) { return hippt::sqrt(hippt::dot(u, u)); }
+	__device__ float length(float2 u) { return hippt::sqrt(hippt::dot(u, u)); }
 	__device__ float length2(float3 u) { return hippt::dot(u, u); }
 
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
@@ -268,12 +273,7 @@ namespace hippt
 	template <typename T>
 	__device__ T square(T x) { return x * x; }
 
-	__device__ float sqrt(float x) { return sqrtf(x); }
-	__device__ float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
-	__device__ float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
-	__device__ float rsqrt(float x) { return 1.0f / hippt::sqrt(x); }
-
-	__device__ float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
+	__device__ float pow_1_4(float x) { return hippt::sqrt(hippt::sqrt(x)); }
 	__device__ constexpr float pow_3(float x) { return x * x * x; }
 	__device__ constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	__device__ constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
@@ -282,7 +282,7 @@ namespace hippt
 	__device__ float intrin_pow(float x, float y) { return __powf(x, y); }
 	__device__ float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
 
-	__device__ float2 normalize(float2 u) { return u / sqrtf(hippt::dot(u, u)); }
+	__device__ float2 normalize(float2 u) { return u / hippt::sqrt(hippt::dot(u, u)); }
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>
@@ -509,8 +509,13 @@ namespace hippt
 	static float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 	static float dot(float2 u, float2 v) { return u.x * v.x + u.y * v.y; }
 
-	static float length(float3 u) { return sqrtf(dot(u, u)); }
-	static float length(float2 u) { return sqrtf(dot(u, u)); }
+	static float sqrt(float x) { return sqrtf(x); }
+	static float2 sqrt(float2 uv) { return make_float2(hippt::sqrt(uv.x), hippt::sqrt(uv.y)); }
+	static float3 sqrt(float3 uvw) { return make_float3(hippt::sqrt(uvw.x), hippt::sqrt(uvw.y), hippt::sqrt(uvw.z)); }
+	static float rsqrt(float x) { return 1.0f / hippt::sqrt(x); }
+
+	static float length(float3 u) { return hippt::sqrt(dot(u, u)); }
+	static float length(float2 u) { return hippt::sqrt(dot(u, u)); }
 	static float length2(float3 u) { return dot(u, u); }
 
 	static float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
@@ -646,12 +651,7 @@ namespace hippt
 	template <typename T>
 	static T square(T x) { return x * x; }
 
-	static float sqrt(float x) { return sqrtf(x); }
-	static float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
-	static float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
-	static float rsqrt(float x) { return 1.0f / sqrtf(x); }
-
-	static float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
+	static float pow_1_4(float x) { return hippt::sqrt(hippt::sqrt(x)); }
 	static constexpr float pow_3(float x) { return x * x * x; }
 	static constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	static constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
@@ -660,7 +660,7 @@ namespace hippt
 	static float intrin_pow(float x, float y) { return powf(x, y); }
 	static float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
 
-	static float2 normalize(float2 u) { return u / sqrtf(hippt::dot(u, u)); }
+	static float2 normalize(float2 u) { return u / hippt::sqrt(hippt::dot(u, u)); }
 	static float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>

@@ -24,7 +24,7 @@ struct ColorRGBA32F
     HIPRT_DEVICE void operator/=(float k) { r /= k; g /= k; b /= k; a /= k; }
     HIPRT_DEVICE bool operator!=(const ColorRGBA32F& other) { return r != other.r || g != other.g || b != other.g || a != other.a; }
 
-    HIPRT_DEVICE float length() const { return sqrtf(this->length2()); }
+    HIPRT_DEVICE float length() const { return hippt::sqrt(this->length2()); }
     HIPRT_DEVICE float length2() const { return r * r + g * g + b * b + a * a; }
     HIPRT_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
     HIPRT_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); a = hippt::clamp(min, max, a); }
@@ -37,7 +37,7 @@ struct ColorRGBA32F
 
     HIPRT_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, hippt::max(b, a))); }
     HIPRT_DEVICE float min_component() const { return hippt::min(r, hippt::min(g, hippt::min(b, a))); }
-    HIPRT_DEVICE ColorRGBA32F normalized() const { float length = sqrtf(r * r + g * g + b * b); return ColorRGBA32F(r / length, g / length, b / length, /* not normalizing alpha */ a); }
+    HIPRT_DEVICE ColorRGBA32F normalized() const { float length = hippt::sqrt(r * r + g * g + b * b); return ColorRGBA32F(r / length, g / length, b / length, /* not normalizing alpha */ a); }
 
     HIPRT_DEVICE ColorRGBA32F abs() { return ColorRGBA32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b), hippt::abs(this->a)); }
     HIPRT_DEVICE void max(const ColorRGBA32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); this->a = hippt::max(this->a, maxer.a); }
@@ -60,7 +60,7 @@ HIPRT_DEVICE static ColorRGBA32F operator* (const ColorRGBA32F& c, const float k
 HIPRT_DEVICE static ColorRGBA32F operator/ (const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(a.r / b.r, a.g / b.g, a.b / b.b, a.a / b.a); }
 HIPRT_DEVICE static ColorRGBA32F operator/ (const float k, const ColorRGBA32F& c) { return ColorRGBA32F(k / c.r, k / c.g, k / c.b, k / c.a); }
 HIPRT_DEVICE static ColorRGBA32F operator/ (const ColorRGBA32F& c, const float k) { return ColorRGBA32F(c.r / k, c.g / k, c.b / k, c.a / k); }
-HIPRT_DEVICE static ColorRGBA32F sqrt(const ColorRGBA32F& col) { return ColorRGBA32F(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b), sqrtf(col.a)); }
+HIPRT_DEVICE static ColorRGBA32F sqrt(const ColorRGBA32F& col) { return ColorRGBA32F(hippt::sqrt(col.r), hippt::sqrt(col.g), hippt::sqrt(col.b), hippt::sqrt(col.a)); }
 HIPRT_DEVICE static ColorRGBA32F exp(const ColorRGBA32F& col) { return ColorRGBA32F(expf(col.r), expf(col.g), expf(col.b), expf(col.a)); }
 HIPRT_DEVICE static ColorRGBA32F exp2(const ColorRGBA32F& col) { return ColorRGBA32F(exp2f(col.r), exp2f(col.g), exp2f(col.b), exp2f(col.a)); }
 HIPRT_DEVICE static ColorRGBA32F log(const ColorRGBA32F& col) { return ColorRGBA32F(logf(col.r), logf(col.g), logf(col.b), logf(col.a)); }
@@ -87,7 +87,7 @@ struct ColorRGB32F
     HIPRT_DEVICE void operator/=(float k) { r /= k; g /= k; b /= k; }
     HIPRT_DEVICE bool operator!=(const ColorRGB32F& other) { return r != other.r || g != other.g || b != other.g; }
 
-    HIPRT_DEVICE float length() const { return sqrtf(this->length2()); }
+    HIPRT_DEVICE float length() const { return hippt::sqrt(this->length2()); }
     HIPRT_DEVICE float length2() const { return r * r + g * g + b * b; }
     HIPRT_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
     HIPRT_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); }
@@ -99,7 +99,7 @@ struct ColorRGB32F
 
     HIPRT_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, b)); }
     HIPRT_DEVICE float min_component() const { return hippt::min(r, hippt::min(g, b)); }
-    HIPRT_DEVICE ColorRGB32F normalized() const { float length = sqrtf(r * r + g * g + b * b); return ColorRGB32F(r / length, g / length, b / length); }
+    HIPRT_DEVICE ColorRGB32F normalized() const { float length = hippt::sqrt(r * r + g * g + b * b); return ColorRGB32F(r / length, g / length, b / length); }
 
     HIPRT_DEVICE ColorRGB32F abs() { return ColorRGB32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b)); }
     HIPRT_DEVICE void max(const ColorRGB32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); }
@@ -133,7 +133,7 @@ HIPRT_DEVICE static ColorRGB32F operator* (const ColorRGB32F& c, const float k) 
 HIPRT_DEVICE static ColorRGB32F operator/ (const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(a.r / b.r, a.g / b.g, a.b / b.b); }
 HIPRT_DEVICE static ColorRGB32F operator/ (const float k, const ColorRGB32F& c) { return ColorRGB32F(k / c.r, k / c.g, k / c.b); }
 HIPRT_DEVICE static ColorRGB32F operator/ (const ColorRGB32F& c, const float k) { return ColorRGB32F(c.r / k, c.g / k, c.b / k); }
-HIPRT_DEVICE static ColorRGB32F sqrt(const ColorRGB32F& col) { return ColorRGB32F(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b)); }
+HIPRT_DEVICE static ColorRGB32F sqrt(const ColorRGB32F& col) { return ColorRGB32F(hippt::sqrt(col.r), hippt::sqrt(col.g), hippt::sqrt(col.b)); }
 HIPRT_DEVICE static ColorRGB32F exp(const ColorRGB32F& col) { return ColorRGB32F(expf(col.r), expf(col.g), expf(col.b)); }
 HIPRT_DEVICE static ColorRGB32F exp2(const ColorRGB32F& col) { return ColorRGB32F(exp2f(col.r), exp2f(col.g), exp2f(col.b)); }
 HIPRT_DEVICE static ColorRGB32F log(const ColorRGB32F& col) { return ColorRGB32F(logf(col.r), logf(col.g), logf(col.b)); }

@@ -20,7 +20,7 @@ struct MaterialUtils
 
     HIPRT_HOST_DEVICE static void get_alphas(float roughness, float anisotropy, float& out_alpha_x, float& out_alpha_y)
     {
-        float aspect = sqrtf(1.0f - 0.9f * anisotropy);
+        float aspect = hippt::sqrt(1.0f - 0.9f * anisotropy);
         out_alpha_x = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, roughness * roughness / aspect);
         out_alpha_y = hippt::max(MaterialConstants::ROUGHNESS_CLAMP, roughness * roughness * aspect);
     }
