@@ -345,7 +345,9 @@ HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polyg
 	polygon.ellipses[0] = ellipse_from_edge(vertices[0], vertices[1]);
 
 	float2 previous_ellipse = polygon.ellipses[0];
-	for (unsigned int i = 1; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i) 
+
+#pragma unroll
+	for (unsigned int i = 1; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 	{
 		polygon.vertices[i] = make_float2(vertices[i].x, vertices[i].y);
 		if (i > 2 && i == polygon.vertex_count) break;
@@ -371,6 +373,7 @@ HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polyg
 	{
 		// In the central case, we have polygon.vertex_count sectors, each
 		// bounded by a single ellipse
+#pragma unroll
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i) 
 		{
 			if (i > 2 && i == polygon.vertex_count) break;
@@ -390,7 +393,8 @@ HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polyg
 		float2 outer_ellipse;
 		float outer_rsqrt_det;
 
-		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; ++i) 
+#pragma unroll
+		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; ++i)
 		{
 			if (i > 1 && i + 1 == polygon.vertex_count) break;
 
@@ -551,7 +555,8 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	float inner_rsqrt_det = get_ellipse_rsqrt_det(inner_ellipse);
 	float outer_rsqrt_det = get_ellipse_rsqrt_det(outer_ellipse);
 
-	for (unsigned int i = 0; i != iteration_count; ++i) 
+#pragma unroll
+	for (unsigned int i = 0; i < iteration_count; i++)
 	{
 		// Avoid under- or overflow and flip the sign so that the clamping to
 		// zero below makes sense
@@ -612,20 +617,20 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	float3 vertices_local_space[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING] = { vertex_A_local, vertex_C_local, vertex_B_local };
 	unsigned int clipped_vertex_count = clip_polygon(3, vertices_local_space);
 
-	// Normalizing the vertices for better fp32 precision
-	float min_len = hippt::Infinity(), max_len = 0.0f;
-	for (unsigned int i = 0; i < clipped_vertex_count; ++i) 
-	{
-		float l = hippt::length(vertices_local_space[i]);
+	//// Normalizing the vertices for better fp32 precision
+	//float min_len = hippt::Infinity(), max_len = 0.0f;
+	//for (unsigned int i = 0; i < clipped_vertex_count; ++i) 
+	//{
+	//	float l = hippt::length(vertices_local_space[i]);
 
-		min_len = hippt::min(min_len, l);
-		max_len = hippt::max(max_len, l);
-	}
+	//	min_len = hippt::min(min_len, l);
+	//	max_len = hippt::max(max_len, l);
+	//}
 
-	if (min_len == 0.0f || max_len / hippt::max(min_len, 1e-30f) > 1e3f) 
-		// Scale range too large or a zero-length vertex --> normalize
-		for (unsigned int i = 0; i < clipped_vertex_count; ++i)
-			vertices_local_space[i] = hippt::normalize(vertices_local_space[i]);
+	//if (min_len == 0.0f || max_len / hippt::max(min_len, 1e-30f) > 1e3f) 
+	//	// Scale range too large or a zero-length vertex --> normalize
+	//	for (unsigned int i = 0; i < clipped_vertex_count; ++i)
+	//		vertices_local_space[i] = hippt::normalize(vertices_local_space[i]);
 
 	projected_solid_angle_polygon_t polygon = prepare_projected_solid_angle_polygon_sampling(clipped_vertex_count, vertices_local_space);
 
@@ -640,11 +645,12 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	if (is_central_case(polygon)) 
 	{
 		// Select a sector and copy the relevant attributes
+#pragma unroll
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i) 
 		{
-			if (i > 0) {
+			if (i > 0)
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
-			}
+
 			outer_ellipse = polygon.ellipses[i];
 			dir_0 = polygon.vertices[i];
 			if ((i >= 2 && i + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[i])
@@ -673,7 +679,8 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 		float2 inner_ellipse = polygon.inner_ellipse_0;
 		float2 dir_1;
 
-		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; ++i) 
+#pragma unroll
+		for (unsigned int i = 0; i < MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; i++) 
 		{
 			float2 vertex_ellipse = polygon.ellipses[i];
 
