@@ -8,6 +8,9 @@
 
 #include "Device/includes/LightSampling/TriangleSamplingPolygonClipping.h"
 #include "Device/includes/LightSampling/TriangleSamplingSolidAngleCommon.h"
+#include "Device/includes/ONB.h"
+
+#include "HostDeviceCommon/Xorshift.h"
 
 /**
  * Adapted from the implementation given with the paper from Cristoph Peters,

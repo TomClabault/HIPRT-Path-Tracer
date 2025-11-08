@@ -8,6 +8,8 @@
 
 #include "Device/includes/LightSampling/TriangleSamplingSolidAngleCommon.h"
 
+#include "HostDeviceCommon/Xorshift.h"
+
 /**
  * Adapted from the implementation given with the paper from Cristoph Peters, 
  * [BRDF Importance Sampling for Polygonal Lights, 2021]
