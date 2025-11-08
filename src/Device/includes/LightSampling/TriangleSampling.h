@@ -96,11 +96,13 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 
         1 + hippt::dot(vertex_A_local, vertex_B_local) + hippt::dot(vertex_A_local, vertex_C_local) + hippt::dot(vertex_B_local, vertex_C_local)
     ));
 
-    // out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
     bool do_projected_solid_angle_sampling = solid_angle > projected_solid_angle_sampling_threshold;
     if (do_projected_solid_angle_sampling)
+        // If the triangle is large enough in solid angle, it may be worth it to compute the heavy projected solid angle
+        // stuff
         out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, shading_normal, out_point_pdf, rng);
     else
+        // Otherwise it's not worth it and we can use the cheap solid angle (not projected) sampling
         out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
 #endif
 

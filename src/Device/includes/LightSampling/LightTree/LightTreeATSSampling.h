@@ -109,7 +109,7 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 		else
 		{
 			sin_theta_u = ratio;
-			cos_theta_u = sqrtf(hippt::max(0.0f, 1.0f - sin_theta_u * sin_theta_u));
+			cos_theta_u = hippt::sqrt(hippt::max(0.0f, 1.0f - sin_theta_u * sin_theta_u));
 		}
 	}
 
@@ -129,13 +129,13 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 		else
 		{
 			// cos(theta_i - theta_u) = cos(theta_i) * cos(theta_u) + sin(theta_i) * sin(theta_u)
-			float sin_theta_i = sqrtf(hippt::max(0.0f, 1.0f - cos_theta_i * cos_theta_i));
+			float sin_theta_i = hippt::sqrt(hippt::max(0.0f, 1.0f - cos_theta_i * cos_theta_i));
 			cos_theta_i_prime = cos_theta_i * cos_theta_u + sin_theta_i * sin_theta_u;
 		}
 	}
 
 	float cos_theta = hippt::clamp(hippt::dot(node.axis, -to_center_normalized), 0.0f, 1.0f);
-	float sin_theta = sqrtf(hippt::max(0.0f, 1.0f - cos_theta * cos_theta));
+	float sin_theta = hippt::sqrt(hippt::max(0.0f, 1.0f - cos_theta * cos_theta));
 
 	// For T = node.theta_o + theta_u
 	// Compute cos_T and sin_T
@@ -193,7 +193,7 @@ HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& no
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
 	float variance = (node.energy_variance * variance_geometric + node.energy_variance * hippt::square(mean_geometric) + hippt::square(node.get_energy_average()) * variance_geometric) * hippt::square(node.total_emitter_count);
 
-	return sqrtf(sqrtf(1.0f / (1.0f + sqrtf(variance))));
+	return hippt::sqrt(hippt::sqrt(1.0f / (1.0f + hippt::sqrt(variance))));
 }
 
 struct LightTreeATSWRSReservoir

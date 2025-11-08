@@ -29,7 +29,7 @@ HIPRT_DEVICE static float3 GGX_dominant_visible_normal(const float3 wi, const fl
 	// Similar manner to Tokuyoshi and Eto 2024 "Bounded VNDF Sampling for the Smith-GGX BRDF" Appendix C.
 	const float2 v = roughness * make_float2(wi.x, wi.y);
 	const float len2 = hippt::dot(v, v);
-	const float t = sqrtf(len2 + wi.z * wi.z);
+	const float t = hippt::sqrt(len2 + wi.z * wi.z);
 	const float z = wi.z >= 0.0f ? t + wi.z : len2 / (t - wi.z);
 
 	return hippt::normalize(make_float3(roughness.x * roughness.x * wi.x, roughness.y * roughness.y * wi.y, z));
@@ -51,14 +51,14 @@ HIPRT_DEVICE static float SGGX(const float3 m, const float2x2 roughness_matrix)
 	const float2x2 roughness_matrix_adjugate = float2x2(roughness_matrix.m[1][1], -roughness_matrix.m[0][1], -roughness_matrix.m[1][0], roughness_matrix.m[0][0]);
 	const float length2 = hippt::dot(make_float2(m.x, m.y), roughness_matrix_adjugate * make_float2(m.x, m.y)) / det + m.z * m.z;
 
-	return 1.0f / (hippt::M_Pi * sqrtf(det) * (length2 * length2));
+	return 1.0f / (hippt::M_Pi * hippt::sqrt(det) * (length2 * length2));
 }
 
 // Reflection lobe based on the symmetric GGX VNDF.
 // [Tokuyoshi et al. 2024 "Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting", Section 5.2]
 HIPRT_DEVICE static float SGGX_reflection_PDF(const float3 wi, const float3 m, const float2x2 roughness_matrix)
 {
-	return SGGX(m, roughness_matrix) / (4.0f * sqrtf(hippt::dot(make_float2(wi.x, wi.y), roughness_matrix * make_float2(wi.x, wi.y)) + wi.z * wi.z));
+	return SGGX(m, roughness_matrix) / (4.0f * hippt::sqrt(hippt::dot(make_float2(wi.x, wi.y), roughness_matrix * make_float2(wi.x, wi.y)) + wi.z * wi.z));
 }
 
 // Approximate hemispherical integral for a vMF distribution (i.e. normalized SG).
@@ -70,7 +70,7 @@ HIPRT_DEVICE static float VMF_hemispherical_integral(const float cosine, const f
 	const float A = 0.6517328826907056171791055021459f;
 	const float B = 1.3418280033141287699294252888649f;
 	const float C = 7.2216687798956709087860872386955f;
-	const float steepness = sharpness * sqrtf((0.5f * sharpness + A) / ((sharpness + B) * sharpness + C));
+	const float steepness = sharpness * hippt::sqrt((0.5f * sharpness + A) / ((sharpness + B) * sharpness + C));
 	const float lerp_factor = hippt::clamp(0.0f, 1.0f, 0.5f + 0.5f * (erff(steepness * hippt::clamp(-1.0f, 1.0f, cosine)) / erff(steepness)));
 
 	// Interpolation between upper and lower hemispherical integrals .
@@ -131,7 +131,7 @@ HIPRT_DEVICE static float SG_clamped_cosine_product_integral_over_pi(const float
 	static const float C = 4.0100826728510421403939290030394f;
 	static const float D = 15.219156263147210594866010069381f;
 	static const float E = 76.087896272360737270901154261082f;
-	const float t = sharpness * sqrtf(0.5f * ((sharpness + A) * sharpness + B) / (((sharpness + C) * sharpness + D) * sharpness + E));
+	const float t = sharpness * hippt::sqrt(0.5f * ((sharpness + A) * sharpness + B) / (((sharpness + C) * sharpness + D) * sharpness + E));
 	const float tz = t * cosine;
 
 	const float INV_SQRTPI = 0.56418958354775628694807945156077f; // = 1.0f / sqrtf(pi).
