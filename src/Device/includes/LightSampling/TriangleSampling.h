@@ -99,7 +99,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 
         out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
 #endif
 
-    return true;
+    return out_point_pdf != 0.0f;
 }
 
 /**

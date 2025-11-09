@@ -65,7 +65,7 @@ HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_d
 	float3 point = shading_point + sampled_solid_angle_direction * t;
 
 	// Conversion of the PDF to area measure
-	float cos_theta = hippt::max(0.0f, hippt::dot(triangle_normal, -sampled_solid_angle_direction));
+	float cos_theta = compute_cosine_term_at_light_source(triangle_normal, -sampled_solid_angle_direction);
 	out_pdf_area = pdf_solid_angle * (cos_theta / (t * t));
 
 	return point;
