@@ -8,7 +8,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE float get_pixel_confidence_interval(const HIPRTRenderData& render_data, int pixel_index, int pixel_sample_count, float& average_luminance)
+HIPRT_DEVICE static float get_pixel_confidence_interval(const HIPRTRenderData& render_data, int pixel_index, int pixel_sample_count, float& average_luminance)
 {
     float luminance = render_data.buffers.accumulated_ray_colors[pixel_index].luminance();
     average_luminance = luminance / (pixel_sample_count + 1);
@@ -27,7 +27,7 @@ HIPRT_DEVICE float get_pixel_confidence_interval(const HIPRTRenderData& render_d
  * Returns true if the pixel needs more sample according to adaptive sampling (or if adaptive sampling is disabled).
  * Returns false otherwise
  */
-HIPRT_DEVICE bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index, bool& pixel_converged)
+HIPRT_DEVICE static bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index, bool& pixel_converged)
 {
     const HIPRTRenderSettings& render_settings = render_data.render_settings;
     const AuxiliaryBuffers& aux_buffers = render_data.aux_buffers;

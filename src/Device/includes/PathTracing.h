@@ -31,10 +31,6 @@ HIPRT_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& rend
     out_bsdf_color = bsdf_dispatcher_sample<sampleDirectionOnly>(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
 
     ray_payload.accumulate_roughness(*out_sampled_light_info);
-
-#if DoFirstBounceWarpDirectionReuse == KERNEL_OPTION_TRUE
-    warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);
-#endif
 }
 
 /**

@@ -602,7 +602,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 	}
 
 	// Probability of going down the tree + probability of sampling that triangle in the node
-	return cumulative_probability * 1.0f / (current_node.triangle_count);
+	return cumulative_probability / current_node.triangle_count;
 }
 
 #endif

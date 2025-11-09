@@ -56,18 +56,18 @@ __shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * KernelWor
   payload.bounce = bounce;                                                                                          \
                                                                                                                     \
   hiprtSharedStackBuffer DECLARE_SHARED_STACK_BUFFER;                                                               \
-  hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
+  hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer)
 
 
 
 
 #define DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator) \
   DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator);                              \
-  CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom);
+  CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)
 
 #define DECLARE_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator) \
   DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator);                          \
-  CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom);
+  CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)
 
 #endif
 
@@ -166,7 +166,7 @@ HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3& view_d
         // and then recomputing the new shading normal as the half vector between the new reflect direction
         // and the view direction
 
-        constexpr float epsilon = 0.01;
+        constexpr float epsilon = 0.01f;
 
         perfect_reflected_direction -= hippt::normalize((hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) - epsilon) * hit_info.geometric_normal);
 

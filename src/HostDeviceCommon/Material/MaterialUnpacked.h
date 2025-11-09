@@ -114,13 +114,13 @@ struct DeviceUnpackedEffectiveMaterial
      */
     HIPRT_HOST_DEVICE float minimum_roughness() const
     {
-        float coat_roughness = coat > 0.0f ? coat_roughness : 1.0f;
+        float coat_roughness_ = coat > 0.0f ? coat_roughness : 1.0f;
         float specular_roughness = specular > 0.0f ? roughness : 1.0f;
         float glass_roughness = specular_transmission > 0.0f ? roughness : 1.0f;
         float metallic_roughness = (metallic > 0.0f && second_roughness_weight < 1.0f) ? roughness : 1.0f;
         float metallic_2_roughness = (metallic > 0.0f && second_roughness_weight > 0.0f) ? second_roughness : 1.0f;
 
-        return hippt::min(coat_roughness, hippt::min(specular_roughness, hippt::min(glass_roughness, hippt::min(metallic_roughness, metallic_2_roughness))));
+        return hippt::min(coat_roughness_, hippt::min(specular_roughness, hippt::min(glass_roughness, hippt::min(metallic_roughness, metallic_2_roughness))));
     }
 
     /**

@@ -233,7 +233,8 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3 v[MAX_P
 		// horizon.
 		vc = 0;
 		break;
-	};
+	}
+
 	return vc;
 }
 

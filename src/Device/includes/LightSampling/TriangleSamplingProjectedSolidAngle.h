@@ -23,7 +23,7 @@
 struct projected_solid_angle_triangle_t 
 {
 	//! The number of vertices that form the polygon
-	unsigned int vertex_count;
+	unsigned int vertex_count = 0;
 	/*! The x- and y-coordinates of each polygon vertex in a coordinate system
 		where the normal is the z-axis. The vertices are sorted
 		counterclockwise.*/
@@ -35,14 +35,14 @@ struct projected_solid_angle_triangle_t
 	float2 ellipses[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING];
 	//! The inner ellipse adjacent to vertex 0. If the x-component is positive,
 	//! the central case is present.
-	float2 inner_ellipse_0;
+	float2 inner_ellipse_0 = make_float2(0.0f, 0.0f);
 	/*! At index i, this array holds the projected solid angle of the polygon
 		in the sector between (sorted) vertices i and (i + 1) % vertex_count
 		In the central case, entry vertex_count - 1 is meaningful, otherwise
 		not.*/
 	float sector_projected_solid_angles[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING];
 	//! The total projected solid angle of the polygon
-	float projected_solid_angle;
+	float projected_solid_angle = 0.0f;
 };
 
 
@@ -390,8 +390,8 @@ UNROLL_LOOP
 		// and an outer ellipse
 		float2 inner_ellipse = polygon.inner_ellipse_0;
 		float inner_rsqrt_det = get_ellipse_rsqrt_det(inner_ellipse);
-		float2 outer_ellipse;
-		float outer_rsqrt_det;
+		float2 outer_ellipse = make_float2(0.0f, 0.0f);
+		float outer_rsqrt_det = 0.0f;
 
 UNROLL_LOOP
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; ++i)
@@ -644,9 +644,10 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 
 	float target_projected_solid_angle = rand_1 * polygon.projected_solid_angle;
 	// Distinguish between the central case
-	float3 sampled_dir;
-	float2 outer_ellipse;
-	float2 dir_0;
+	float3 sampled_dir = make_float3(0.0f, 0.0f, 0.0f);
+	float2 outer_ellipse = make_float2(0.0f, 0.0f);
+	float2 dir_0 = make_float2(0.0f, 0.0f);
+
 	if (is_central_case(polygon)) 
 	{
 		// Select a sector and copy the relevant attributes
@@ -680,9 +681,9 @@ UNROLL_LOOP
 	else 
 	{
 		// Select a sector and copy the relevant attributes
-		float sector_projected_solid_angle;
+		float sector_projected_solid_angle = 0.0f;
 		float2 inner_ellipse = polygon.inner_ellipse_0;
-		float2 dir_1;
+		float2 dir_1 = make_float2(0.0f, 0.0f);
 
 UNROLL_LOOP
 		for (unsigned int i = 0; i < MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; i++) 
@@ -693,7 +694,6 @@ UNROLL_LOOP
 				outer_ellipse = vertex_ellipse;
 			else 
 			{
-
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
 				bool vertex_inner = is_inner_ellipse(vertex_ellipse);
 				inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;

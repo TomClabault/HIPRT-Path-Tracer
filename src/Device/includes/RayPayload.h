@@ -85,7 +85,11 @@ struct RayPayload
 			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
 			break;
 
-		default:
+		case NO_INFO:
+		case LIGHT_DIRECTION_NOT_SAMPLED_FROM_BSDF:
+			break;
+
+		default: 
 			break;
 		}
 	}
