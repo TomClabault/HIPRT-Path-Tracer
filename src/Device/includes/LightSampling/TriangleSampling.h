@@ -87,14 +87,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
     out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
-	float3 vertex_A_local = hippt::normalize(vertex_A - shading_point);
-	float3 vertex_B_local = hippt::normalize(vertex_B - shading_point);
-	float3 vertex_C_local = hippt::normalize(vertex_C - shading_point);
-
-    float solid_angle = hippt::abs(2 * atan2f(
-        hippt::dot(vertex_A_local, hippt::cross(vertex_B_local, vertex_C_local)),
-        1 + hippt::dot(vertex_A_local, vertex_B_local) + hippt::dot(vertex_A_local, vertex_C_local) + hippt::dot(vertex_B_local, vertex_C_local)
-    ));
+    float solid_angle = triangle_solid_angle(vertex_A, vertex_B, vertex_C, shading_point);
 
     bool do_projected_solid_angle_sampling = solid_angle > projected_solid_angle_sampling_threshold;
     if (do_projected_solid_angle_sampling)

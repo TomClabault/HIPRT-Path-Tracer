@@ -46,10 +46,10 @@ HIPRT_DEVICE float positive_atan(float tangent)
  *
  * This is needed because this renderer works from sampled points on triangles, not directions.
  */
-HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_direction, float3 vertex_A, float3 triangle_normal, float3 shading_position,
+HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_direction, float3 vertex_A, float3 triangle_normal, float3 shading_point,
 	float pdf_solid_angle, float& out_pdf_area)
 {
-	float3 v0_rel = vertex_A - shading_position;
+	float3 v0_rel = vertex_A - shading_point;
 	float denom = hippt::dot(sampled_solid_angle_direction, triangle_normal);
 
 	if (hippt::abs(denom) < 1e-8f)
@@ -62,7 +62,7 @@ HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_d
 
 	float t = hippt::dot(v0_rel, triangle_normal) / denom;
 
-	float3 point = shading_position + sampled_solid_angle_direction * t;
+	float3 point = shading_point + sampled_solid_angle_direction * t;
 
 	// Conversion of the PDF to area measure
 	float cos_theta = hippt::max(0.0f, hippt::dot(triangle_normal, -sampled_solid_angle_direction));

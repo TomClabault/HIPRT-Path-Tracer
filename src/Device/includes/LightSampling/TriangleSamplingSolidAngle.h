@@ -10,6 +10,20 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
+HIPRT_DEVICE float triangle_solid_angle(float3 vertex_A_worldspace, float3 vertex_B_worldspace, float3 vertex_C_worldspace, float3 shading_point)
+{
+	float3 vertex_A_local = hippt::normalize(vertex_A_worldspace - shading_point);
+	float3 vertex_B_local = hippt::normalize(vertex_B_worldspace - shading_point);
+	float3 vertex_C_local = hippt::normalize(vertex_C_worldspace - shading_point);
+
+	float solid_angle = hippt::abs(2 * atan2f(
+		hippt::dot(vertex_A_local, hippt::cross(vertex_B_local, vertex_C_local)),
+		1 + hippt::dot(vertex_A_local, vertex_B_local) + hippt::dot(vertex_A_local, vertex_C_local) + hippt::dot(vertex_B_local, vertex_C_local)
+	));
+
+	return solid_angle;
+}
+
 /**
  * Adapted from the implementation given with the paper from Cristoph Peters, 
  * [BRDF Importance Sampling for Polygonal Lights, 2021]
@@ -42,17 +56,17 @@ struct solid_angle_triangle_t
 	(e.g. a convex polygon) proportional to solid angle using our method.
 	\param vertex_count Number of vertices forming the polygon.
 	\param vertices List of vertex locations.
-	\param shading_position The location of the shading point.
+	\param shading_point The location of the shading point.
 	\return Input for sample_point_on_triangle_solid_angle_peters_2021().*/
-HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(unsigned int vertex_count, float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 shading_position)
+HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(unsigned int vertex_count, float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 shading_point)
 {
 	solid_angle_triangle_t polygon;
 	polygon.vertex_count = vertex_count;
 
 	// Normalize vertex directions
-	polygon.vertex_dirs[0] = hippt::normalize(vertex_A - shading_position);
-	polygon.vertex_dirs[1] = hippt::normalize(vertex_B - shading_position);
-	polygon.vertex_dirs[2] = hippt::normalize(vertex_C - shading_position);
+	polygon.vertex_dirs[0] = hippt::normalize(vertex_A - shading_point);
+	polygon.vertex_dirs[1] = hippt::normalize(vertex_B - shading_point);
+	polygon.vertex_dirs[2] = hippt::normalize(vertex_C - shading_point);
 
 	// Prepare a Householder transform that maps vertex 0 onto (+/-1, 0, 0). We
 	// only store the yz-components of that Householder vector and a factor of

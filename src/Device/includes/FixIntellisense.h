@@ -27,7 +27,7 @@
 
 #define GLOBAL_KERNEL_SIGNATURE(returnType) extern "C" returnType __global__
 #define DEVICE_KERNEL_SIGNATURE(returnType) extern "C" returnType __device__
-
+#define UNROLL_LOOP #pragma unroll
 #else
 
 struct dummyVec3
@@ -41,6 +41,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define DEVICE_KERNEL_SIGNATURE(returnType) returnType
 #define __shared__
 #define __restrict__
+#define UNROLL_LOOP [[unroll]]
 
 // TODO move all of this in Math.h
 inline void __syncthreads() {}

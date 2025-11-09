@@ -20,7 +20,7 @@
  /*! This structure carries intermediate results that only need to be computed
 	once per polygon and shading point to take samples proportional to
 	projected solid angle.*/
-struct projected_solid_angle_polygon_t 
+struct projected_solid_angle_triangle_t 
 {
 	//! The number of vertices that form the polygon
 	unsigned int vertex_count;
@@ -100,7 +100,7 @@ HIPRT_DEVICE bool is_inner_ellipse(float2 ellipse)
 
 //! \return true iff the given polygon contains the zenith (also known as
 //!		normal vector).
-HIPRT_DEVICE bool is_central_case(projected_solid_angle_polygon_t polygon) 
+HIPRT_DEVICE bool is_central_case(projected_solid_angle_triangle_t polygon) 
 {
 	return polygon.inner_ellipse_0.x > 0.0f;
 }
@@ -232,7 +232,7 @@ HIPRT_DEVICE float get_ellipse_area_in_sector(float2 ellipse, float2 dir_0, floa
 	ellipses come first.
 	\note To avoid costly register spilling, lhs and rhs must be compile time
 		constants.*/
-HIPRT_DEVICE void compare_and_swap(projected_solid_angle_polygon_t& polygon, unsigned int lhs, unsigned int rhs) 
+HIPRT_DEVICE void compare_and_swap(projected_solid_angle_triangle_t& polygon, unsigned int lhs, unsigned int rhs) 
 {
 	float2 lhs_copy = polygon.vertices[lhs];
 	// This line is designed to agree with the implementation of cross_stable
@@ -254,7 +254,7 @@ HIPRT_DEVICE void compare_and_swap(projected_solid_angle_polygon_t& polygon, uns
 
 //! Sorts the vertices of the given convex polygon counterclockwise using a
 //! special sorting network. For non-convex polygons, the method may fail.
-HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_polygon_t& polygon) 
+HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t& polygon) 
 {
 	if (polygon.vertex_count == 3) {
 		compare_and_swap(polygon, 1, 2);
@@ -335,23 +335,23 @@ HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_polygon_t& 
 		the vertices as seen from the origin must be clockwise. No three
 		vertices should be collinear.
 	\return Intermediate values for sampling.*/
-HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polygon_sampling(unsigned int vertex_count, float3 vertices[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING])
+HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling(unsigned int vertex_count, float3 vertices_clockwise_order[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING])
 {
-	projected_solid_angle_polygon_t polygon;
+	projected_solid_angle_triangle_t polygon;
 	// Copy vertices and assign ellipses
 	polygon.vertex_count = vertex_count;
 	polygon.inner_ellipse_0 = make_float2(1.0f, 0.0f);
-	polygon.vertices[0] = make_float2(vertices[0].x, vertices[0].y); 
-	polygon.ellipses[0] = ellipse_from_edge(vertices[0], vertices[1]);
+	polygon.vertices[0] = make_float2(vertices_clockwise_order[0].x, vertices_clockwise_order[0].y); 
+	polygon.ellipses[0] = ellipse_from_edge(vertices_clockwise_order[0], vertices_clockwise_order[1]);
 
 	float2 previous_ellipse = polygon.ellipses[0];
 
 #pragma unroll
 	for (unsigned int i = 1; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 	{
-		polygon.vertices[i] = make_float2(vertices[i].x, vertices[i].y);
+		polygon.vertices[i] = make_float2(vertices_clockwise_order[i].x, vertices_clockwise_order[i].y);
 		if (i > 2 && i == polygon.vertex_count) break;
-		float2 ellipse = ellipse_from_edge(vertices[i], vertices[(i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
+		float2 ellipse = ellipse_from_edge(vertices_clockwise_order[i], vertices_clockwise_order[(i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
 		bool ellipse_inner = is_inner_ellipse(ellipse);
 		// If the edge is an inner edge, the order is going to flip
 		polygon.ellipses[i] = ellipse_inner ? previous_ellipse : ellipse;
@@ -424,6 +424,41 @@ HIPRT_DEVICE projected_solid_angle_polygon_t prepare_projected_solid_angle_polyg
 	return polygon;
 }
 
+HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling_from_world_space(float3 vertex_A_world_space, float3 vertex_B_worldspace, float3 vertex_C_worldspace,
+	float3 shading_point, float3 shading_normal)
+{
+	float3 vertex_A_local = vertex_A_world_space - shading_point;
+	float3 vertex_B_local = vertex_B_worldspace - shading_point;
+	float3 vertex_C_local = vertex_C_worldspace - shading_point;
+
+	float3 T, B;
+	build_ONB(shading_normal, T, B);
+
+	vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_local);
+	vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_local);
+	vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_local);
+
+	// The vertices array reorganizes the vertices in clockwise order
+	float3 vertices_local_space[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING] = { vertex_A_local, vertex_C_local, vertex_B_local };
+	unsigned int clipped_vertex_count = clip_polygon(3, vertices_local_space);
+
+	//// Normalizing the vertices for better fp32 precision
+	//float min_len = hippt::Infinity(), max_len = 0.0f;
+	//for (unsigned int i = 0; i < clipped_vertex_count; ++i) 
+	//{
+	//	float l = hippt::length(vertices_local_space[i]);
+
+	//	min_len = hippt::min(min_len, l);
+	//	max_len = hippt::max(max_len, l);
+	//}
+
+	//if (min_len == 0.0f || max_len / hippt::max(min_len, 1e-30f) > 1e3f) 
+	//	// Scale range too large or a zero-length vertex --> normalize
+	//	for (unsigned int i = 0; i < clipped_vertex_count; ++i)
+	//		vertices_local_space[i] = hippt::normalize(vertices_local_space[i]);
+
+	return prepare_projected_solid_angle_triangle_sampling(clipped_vertex_count, vertices_local_space);
+}
 
 /*! \return A scalar multiple of rhs that is not too far from being normalized.
 		For the result, length() returns something between sqrt(2.0f) and 8.0f.
@@ -593,7 +628,7 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 /*! Produces a sample in the solid angle of the given polygon. If the random
 	numbers are uniform in [0,1]^2, the sample is uniform in the projected
 	solid angle of the polygon.
-	\param polygon Output of prepare_projected_solid_angle_polygon_sampling().
+	\param polygon Output of prepare_projected_solid_angle_triangle_sampling().
 	\param random_numbers A uniform point in [0,1]^2.
 	\return A sample on the upper hemisphere (i.e. z>=0) in Cartesian
 		coordinates.*/
@@ -602,37 +637,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	float& out_area_pdf,
 	Xorshift32Generator& rng)
 {
-	float3 vertex_A_local = vertex_A - shading_point;
-	float3 vertex_B_local = vertex_B - shading_point;
-	float3 vertex_C_local = vertex_C - shading_point;
-
-	float3 T, B;
-	build_ONB(shading_normal, T, B);
-
-	vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_local);
-	vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_local);
-	vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_local);
-
-	// The vertices array reorganizes the vertices in clockwise order
-	float3 vertices_local_space[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING] = { vertex_A_local, vertex_C_local, vertex_B_local };
-	unsigned int clipped_vertex_count = clip_polygon(3, vertices_local_space);
-
-	//// Normalizing the vertices for better fp32 precision
-	//float min_len = hippt::Infinity(), max_len = 0.0f;
-	//for (unsigned int i = 0; i < clipped_vertex_count; ++i) 
-	//{
-	//	float l = hippt::length(vertices_local_space[i]);
-
-	//	min_len = hippt::min(min_len, l);
-	//	max_len = hippt::max(max_len, l);
-	//}
-
-	//if (min_len == 0.0f || max_len / hippt::max(min_len, 1e-30f) > 1e3f) 
-	//	// Scale range too large or a zero-length vertex --> normalize
-	//	for (unsigned int i = 0; i < clipped_vertex_count; ++i)
-	//		vertices_local_space[i] = hippt::normalize(vertices_local_space[i]);
-
-	projected_solid_angle_polygon_t polygon = prepare_projected_solid_angle_polygon_sampling(clipped_vertex_count, vertices_local_space);
+	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(vertex_A, vertex_B, vertex_C, shading_point, shading_normal);
 
 	float rand_1 = rng();
 	float rand_2 = rng();
@@ -714,7 +719,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(f
 	// Construct the sample
 	sampled_dir.z = hippt::sqrt(hippt::max(0.0f, hippt::fma(-sampled_dir.x, sampled_dir.x, hippt::fma(-sampled_dir.y, sampled_dir.y, 1.0f))));
 
-	float3 sampled_dir_world_space = local_to_world_frame(T, B, shading_normal, sampled_dir);
+	float3 sampled_dir_world_space = local_to_world_frame(shading_normal, sampled_dir);
 	float3 point = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, hippt::dot(shading_normal, sampled_dir_world_space) / polygon.projected_solid_angle, out_area_pdf);
 
 	return point;
