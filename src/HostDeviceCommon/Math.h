@@ -289,6 +289,7 @@ namespace hippt
 	template <typename T>
 	__device__ static bool is_inf(const T& v) { return isinf(v); }
 	__device__ static bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
+	__device__ static bool is_finite(float x) { return isfinite(x); }
 
 	__device__ static unsigned int float_as_uint(float float_num) { return __float_as_uint(float_num); }
 	__device__ static float uint_as_float(unsigned int uint_num) { return __uint_as_float(uint_num); }
@@ -667,6 +668,8 @@ namespace hippt
 	template <typename T>
 	static constexpr bool is_inf(const T& v) { return std::isinf(v); }
 	static bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
+	static bool is_finite(float x) { return std::isfinite(x); }
+
 
 	static unsigned int float_as_uint(float float_num) { return std::bit_cast<unsigned int>(float_num);}
 	static float uint_as_float(unsigned int uint_num) { return std::bit_cast<float>(uint_num); }

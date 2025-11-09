@@ -104,7 +104,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 		// See the supplementary document (Section 5.2) of the paper for the derivation.
 		const float tr = filtered_proj_roughness_mat.m[0][0] + filtered_proj_roughness_mat.m[1][1];
 		const float2x2 filtered_roughness_matrix =
-			isfinite(1.0f + tr + det) ?
+			hippt::is_finite(1.0f + tr + det) ?
 
 			hippt::min(filtered_proj_roughness_mat + float2x2(det, 0.0f, 0.0f, det), hippt::FLOAT_MAX) / (1.0f + tr + det) :
 
