@@ -102,8 +102,8 @@ namespace hippt
 	constexpr float FLOAT_MIN = 1.175494351e-38f;
 	constexpr float FLOAT_EPSILON = 1.192092896e-07f;
 
-	__device__ float Infinity() { return __int_as_float(0x7f800000); }
-
+	//__device__ float Infinity() { return __int_as_float(0x7f800000); }
+	__device__ float Infinity() { return ((float)(1e+300)); }
 	/**
 	 * Returns the 'warpSize' runtime constant of the GPU
 	 */
@@ -112,8 +112,6 @@ namespace hippt
 	__device__ int thread_idx_y() { return threadIdx.y + blockIdx.y * blockDim.y; }
 	__device__ int thread_idx_global() { return hippt::thread_idx_x() + hippt::thread_idx_y() * blockDim.x * gridDim.x; }
 	__device__ bool is_pixel_index(int x, int y) { return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
-	//__device__ bool is_pixel_index(int x, int y) { if (x == 50 && y == 50) return false; return hippt::thread_idx_x() == x && hippt::thread_idx_y() == y; }
-	//__device__ bool is_pixel_index(int x, int y) { return false; }
 	__device__ int current_warp_lane() { return (threadIdx.x + threadIdx.y * blockDim.x) % hippt::warp_size(); }
 
 	template <typename T>
