@@ -107,7 +107,7 @@
 * 
 *       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_ATS
+#define DirectLightSamplingBaseStrategy LSS_BASE_REGIR
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant
@@ -126,7 +126,7 @@
  *		variance. Takes the cosine term at the shading point into account 
  *		on top of the geometry term.
  */
-#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
+#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
 
  /**
   * How to randomly sample a point on a triangle
