@@ -60,14 +60,15 @@ HIPRT_DEVICE float3 sample_point_on_triangle_uniform_area(float3 vertex_A, float
  *
  * Returns true if the sampling was successful, false otherwise (can fail if the triangle is way too small or degenerate)
  */
-HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 shading_normal,
-    int global_triangle_index, const float3* vertices_positions, const int* triangles_indices, Xorshift32Generator& rng,
+HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render_data, 
+    float3 shading_point, float3 view_direction, float3 shading_normal,
+    int global_triangle_index, Xorshift32Generator& rng,
     float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, 
-    float& out_point_pdf, float projected_solid_angle_sampling_threshold)
+    float& out_point_pdf)
 {
-    float3 vertex_A = vertices_positions[triangles_indices[global_triangle_index * 3 + 0]];
-    float3 vertex_B = vertices_positions[triangles_indices[global_triangle_index * 3 + 1]];
-    float3 vertex_C = vertices_positions[triangles_indices[global_triangle_index * 3 + 2]];
+    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[global_triangle_index * 3 + 0]];
+    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[global_triangle_index * 3 + 1]];
+    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[global_triangle_index * 3 + 2]];
 
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;
@@ -89,11 +90,13 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
     float solid_angle = triangle_solid_angle(vertex_A, vertex_B, vertex_C, shading_point);
 
-    bool do_projected_solid_angle_sampling = solid_angle > projected_solid_angle_sampling_threshold;
+    bool do_projected_solid_angle_sampling = solid_angle > render_data.render_settings.projected_solid_angle_sampling_threshold;
     if (do_projected_solid_angle_sampling)
         // If the triangle is large enough in solid angle, it may be worth it to compute the heavy projected solid angle
         // stuff
-        out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, shading_normal, out_point_pdf, rng);
+        out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(render_data,
+            vertex_A, vertex_B, vertex_C, normal, 
+            shading_point, view_direction, shading_normal, out_point_pdf, rng);
     else
         // Otherwise it's not worth it and we can use the cheap solid angle (not projected) sampling
         out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
@@ -109,7 +112,9 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(float3 shading_point, float3 
  * The PDF field of the LightSampleInformation is only field with the probability of sampling the
  * point on the triangle. The rest of the PDF must be computed by the caller
  */
-HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_triangle_index, Xorshift32Generator& rng)
+HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, 
+    float3 shading_point, float3 view_direction, float3 shading_normal, 
+    int global_triangle_index, Xorshift32Generator& rng)
 {
     LightSampleInformation light_sample;
 
@@ -118,9 +123,10 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     float3 sampled_triangle_normal;
     float3 random_point_on_triangle;
     unsigned int point_on_light_random_seed;
-    if (!sample_point_on_generic_triangle(shading_point, shading_normal,
-        global_triangle_index, render_data.buffers.vertices_positions,
-        render_data.buffers.triangles_indices, rng, random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf, render_data.render_settings.projected_solid_angle_sampling_threshold))
+    if (!sample_point_on_generic_triangle(render_data,
+        shading_point, view_direction, shading_normal,
+        global_triangle_index, rng, 
+        random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
         return LightSampleInformation();
 
     light_sample.emissive_triangle_global_index = global_triangle_index;

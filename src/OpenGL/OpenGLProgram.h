@@ -7,7 +7,7 @@
 #define OPENGL_PROGRAM_H
 
 #include "GL/glew.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 #include "OpenGL/OpenGLShader.h"
 
 class OpenGLProgram

@@ -7,7 +7,7 @@
 #define HOST_DEVICE_COMMON_HIT_INFO_H
 
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 struct HitInfo
 {

@@ -3,6 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Device/includes/BSDFs/LTCsData/GGXSpecularLambertDiffuseLTCFitData.h"
+
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/Megakernel.h"
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
@@ -58,8 +60,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 372
-#define DEBUG_PIXEL_Y 452
+#define DEBUG_PIXEL_X 637
+#define DEBUG_PIXEL_Y 14
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -158,50 +160,14 @@ void CPURenderer::resize_buffers()
     m_g_buffer.resize(width * height);
     m_g_buffer_prev_frame.resize(width * height);
 
-    setup_brdfs_data();
+    setup_bsdfs_data();
     setup_nee_plus_plus();
     setup_gmon();
 }
 
-void CPURenderer::setup_brdfs_data()
+void CPURenderer::setup_bsdfs_data()
 {
-    m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
-    m_GGX_conductor_directional_albedo = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing), 1, true);
-
-    std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
-    for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
-    {
-        std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
-        std::string filepath = "../data/BRDFsData/GlossyDielectrics/" + filename;
-        images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
-    }
-    m_glossy_dielectrics_directional_albedo = Image32Bit3D(images);
-
-    images.resize(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
-    for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
-    {
-        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
-        std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
-        images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
-    }
-    m_GGX_glass_directional_albedo = Image32Bit3D(images);
-
-    for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
-    {
-        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_inv_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
-        std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
-        images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
-    }
-    m_GGX_glass_inverse_directional_albedo = Image32Bit3D(images);
-
-    images.resize(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
-    for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
-    {
-        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
-        std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
-        images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
-    }
-    m_GGX_thin_glass_directional_albedo = Image32Bit3D(images);
+	m_bsdf_data_cpu_data.load_bsdf_data(m_render_data);
 }
 
 void CPURenderer::setup_nee_plus_plus()
@@ -365,12 +331,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 void CPURenderer::update_render_data()
 {
-    m_render_data.bsdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
-    m_render_data.bsdfs_data.GGX_conductor_directional_albedo = &m_GGX_conductor_directional_albedo;
-    m_render_data.bsdfs_data.glossy_dielectric_directional_albedo = &m_glossy_dielectrics_directional_albedo;
-    m_render_data.bsdfs_data.GGX_glass_directional_albedo = &m_GGX_glass_directional_albedo;
-    m_render_data.bsdfs_data.GGX_glass_directional_albedo_inverse = &m_GGX_glass_inverse_directional_albedo;
-    m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo = &m_GGX_thin_glass_directional_albedo;
+    bsdfs_data_to_device();
 
     m_render_data.buffers.accumulated_ray_colors = m_framebuffer.get_data_as_ColorRGB32F();
     m_render_data.aux_buffers.pixel_active = m_pixel_active_buffer.data();
@@ -444,6 +405,11 @@ void CPURenderer::update_render_data()
 
     m_render_data.cpu_only.bvh = m_bvh.get();
     m_render_data.cpu_only.light_bvh = m_light_bvh.get();
+}
+
+void CPURenderer::bsdfs_data_to_device()
+{
+	m_bsdf_data_cpu_data.to_device(m_render_data);
 }
 
 void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)

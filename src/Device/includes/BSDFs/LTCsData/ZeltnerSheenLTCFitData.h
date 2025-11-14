@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_BSDFS_SHEEN_LTC_PARAMETERS
-#define DEVICE_INCLUDES_BSDFS_SHEEN_LTC_PARAMETERS
+#ifndef BSDFS_DATA_LTCS_ZELTNER_SHEEN_LTC_FIT_DATA_H
+#define BSDFS_DATA_LTCS_ZELTNER_SHEEN_LTC_FIT_DATA_H
 
 #ifndef __KERNELCC__
 // This file should not be included on the GPU
@@ -15,22 +15,20 @@
   * [1]: [Practical Multiple-Scattering Sheen Using Linearly Transformed Cosines - Github] [https://github.com/tizian/ltc-sheen/blob/master/fitting/python/data/ltc_table_sheen_approx.cpp]
   */
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 #include <array>
 
-  /**
-   * Precomputed parameters for the fitted LTC (Linearly Transformed Cosine)
-   * distribution of an analytic approximation of the reference volumetric SGGX
-   * sheen layer.
-   *
-   * Sampled as [y][x] = make_float3(Ai, Bi, Ri) with:
-   *  y = cos(theta)
-   *  x = alpha
-   */
-
-static std::array<float3, 32*32> ltc_parameters_table_approximation = {
-
+/**
+ * Precomputed parameters for the fitted LTC (Linearly Transformed Cosine)
+ * distribution of an analytic approximation of the reference volumetric SGGX
+ * sheen layer.
+ *
+ * Sampled as [y][x] = make_float3(Ai, Bi, Ri) with:
+ *  y = cos(theta)
+ *  x = alpha
+ */
+static const std::array<float3, 32*32> zeltner_2022_sheen_ltc_fit_parameters = {
         make_float3(0.10027f, -0.00000f, 0.33971f), make_float3(0.10760f, -0.00000f, 0.35542f), make_float3(0.11991f, 0.00001f, 0.30888f),
         make_float3(0.13148f, 0.00001f, 0.23195f), make_float3(0.14227f, 0.00001f, 0.15949f), make_float3(0.15231f, -0.00000f, 0.10356f),
         make_float3(0.16168f, -0.00000f, 0.06466f), make_float3(0.17044f, 0.00000f, 0.03925f), make_float3(0.17867f, 0.00001f, 0.02334f),

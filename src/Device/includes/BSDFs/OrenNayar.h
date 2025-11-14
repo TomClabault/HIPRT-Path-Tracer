@@ -9,13 +9,13 @@
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
-HIPRT_DEVICE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
     // sin(theta)^2 = 1.0 - cos(theta)^2
     float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
@@ -58,7 +58,7 @@ HIPRT_DEVICE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMater
     return material.base_color * hippt::M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
-HIPRT_DEVICE float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction)
+HIPRT_DEVICE static float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction)
 {
     if (local_to_light_direction.z <= 0.0f)
         return 0.0f;
@@ -69,7 +69,7 @@ HIPRT_DEVICE float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMaterial& ma
 /**
  * Override of the eval function for world space directions
  */
-HIPRT_DEVICE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3& world_space_view_direction, const float3& surface_normal, const float3& world_space_to_light_direction, float& pdf)
+HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3& world_space_view_direction, const float3& surface_normal, const float3& world_space_to_light_direction, float& pdf)
 {
     float3 T, B;
     build_ONB(surface_normal, T, B);
@@ -87,7 +87,7 @@ HIPRT_DEVICE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMater
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material, 
+HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material, 
     const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction, 
     float& pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
 {

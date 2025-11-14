@@ -6,7 +6,7 @@
 #ifndef RENDERER_LIGHT_TREE_SG_NODE_H
 #define RENDERER_LIGHT_TREE_SG_NODE_H
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 struct LightTreeSGNode
 {

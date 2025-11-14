@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SPHERICAL_GAUSSIAN_UTILS_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SPHERICAL_GAUSSIAN_UTILS_H
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 struct SGLobe
 {

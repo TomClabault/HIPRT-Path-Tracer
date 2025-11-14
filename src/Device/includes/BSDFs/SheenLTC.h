@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_BSDFS_SHEEN_LTC
 #define DEVICE_INCLUDES_BSDFS_SHEEN_LTC
 
-#include "Device/includes/BSDFs/SheenLTCFittedParameters.h"
+#include "Device/includes/BSDFs/LTCsData/ZeltnerSheenLTCFitData.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/Texture.h"
 
@@ -22,7 +22,7 @@
  * [3] [Blender's Cycles Implementation] https://github.com/blender/cycles/blob/main/src/kernel/closure/bsdf_sheen.h
  */
 
-HIPRT_DEVICE float eval_ltc(const float3& to_light_direction_standard, const ColorRGB32F& AiBiRi)
+HIPRT_DEVICE static float eval_ltc(const float3& to_light_direction_standard, const ColorRGB32F& AiBiRi)
 {
 	// AiBiRi are the parameters of the LTC such that
 	//        { Ai 0  Bi }
@@ -47,13 +47,13 @@ HIPRT_DEVICE float eval_ltc(const float3& to_light_direction_standard, const Col
 	return light_dir_original.z * hippt::M_INV_PI * jacobian;
 }
 
-HIPRT_DEVICE ColorRGB32F read_LTC_parameters(const HIPRTRenderData& render_data, float roughness, float cos_theta)
+HIPRT_DEVICE static ColorRGB32F read_LTC_parameters(const HIPRTRenderData& render_data, float roughness, float cos_theta)
 {
 	const void* ltc_parameters_texture_pointer;
 #ifdef __KERNELCC__
-	ltc_parameters_texture_pointer = &render_data.bsdfs_data.sheen_ltc_parameters_texture;
+	ltc_parameters_texture_pointer = &render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params;
 #else
-	ltc_parameters_texture_pointer = render_data.bsdfs_data.sheen_ltc_parameters_texture;
+	ltc_parameters_texture_pointer = render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params;
 #endif
 
 	float2 parameters_uv = make_float2(cos_theta, hippt::clamp(0.0f, 1.0f, roughness));
@@ -63,7 +63,7 @@ HIPRT_DEVICE ColorRGB32F read_LTC_parameters(const HIPRTRenderData& render_data,
 /**
  * Returns the phi angle of a direction given in a canonical frame with Z up
  */
-HIPRT_DEVICE float get_phi(const float3& direction) 
+HIPRT_DEVICE static float get_phi(const float3& direction) 
 {
 	float p = atan2(direction.y, direction.x);
 	if (p < 0.0f)
@@ -72,12 +72,12 @@ HIPRT_DEVICE float get_phi(const float3& direction)
 	return p;
 }
 
-HIPRT_DEVICE float get_sheen_ltc_reflectance(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction)
+HIPRT_DEVICE static float get_sheen_ltc_reflectance(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction)
 {
 	return read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z).b;
 }
 
-HIPRT_DEVICE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction, float& out_pdf, float& out_sheen_reflectance)
+HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction, float& out_pdf, float& out_sheen_reflectance)
 {
 	if (local_view_direction.z <= 0.0f || local_to_light_direction.z <= 0.0f)
 	{
@@ -111,7 +111,7 @@ HIPRT_DEVICE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, cons
 	return material.sheen_color * AiBiRi.b * Do / local_to_light_direction.z;
 }
 
-HIPRT_DEVICE float sheen_ltc_pdf(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction)
+HIPRT_DEVICE static float sheen_ltc_pdf(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction)
 {
 	if (local_view_direction.z <= 0.0f || local_to_light_direction.z <= 0.0f)
 		return 0.0f;
@@ -133,7 +133,7 @@ HIPRT_DEVICE float sheen_ltc_pdf(const HIPRTRenderData& render_data, const Devic
 	return Do;
 }
 
-HIPRT_DEVICE float3 sheen_ltc_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& shading_normal, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static float3 sheen_ltc_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& shading_normal, Xorshift32Generator& random_number_generator)
 {
 	// Sampling a direction in the original space of the LTC
 	float3 cosine_sample = cosine_weighted_sample_z_up_frame(random_number_generator);

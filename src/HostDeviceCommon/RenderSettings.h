@@ -16,7 +16,7 @@
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRDISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 #ifndef __KERNELCC__
 #include "HIPRT-Orochi/OrochiBuffer.h"

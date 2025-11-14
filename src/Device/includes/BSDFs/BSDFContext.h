@@ -12,7 +12,7 @@
 
 struct BSDFContext
 {
-	const DeviceUnpackedEffectiveMaterial& material;
+	DeviceUnpackedEffectiveMaterial& material;
 	RayVolumeState& volume_state;
 
 	float3 view_direction = make_float3(-1.0f, -1.0f, -1.0f);
@@ -43,7 +43,7 @@ struct BSDFContext
 	HIPRT_HOST_DEVICE BSDFContext(const float3& view_direction_, const float3& shading_normal_, const float3& geometric_normal_, const float3& to_light_direction_,
 		BSDFIncidentLightInfo& incident_light_info_,
 		RayVolumeState& ray_volume_state_, bool update_ray_volume_state_,
-		const DeviceUnpackedEffectiveMaterial& material_,
+		DeviceUnpackedEffectiveMaterial& material_,
 		int current_bounce_, float accumulated_path_roughness_,
 		MicrofacetRegularization::RegularizationMode regularize_bsdf = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION) :
 

@@ -17,7 +17,7 @@
 #include "Device/includes/TriangleLoadUtils.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 

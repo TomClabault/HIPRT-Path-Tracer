@@ -4,7 +4,7 @@
  */
 
 #include "Compiler/GPUKernelCompilerOptions.h"
-#include "Device/includes/BSDFs/SheenLTCFittedParameters.h"
+#include "Device/includes/BSDFs/LTCsData/ZeltnerSheenLTCFitData.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "Renderer/Baker/GPUBaker.h"
 #include "Renderer/Baker/GPUBakerConstants.h"
@@ -107,9 +107,9 @@ void GPURenderer::init_sheen_ltc_texture()
 			int padded_index = (y * 32 + x) * 4;
 			int non_padded_index = y * 32 + x;
 
-			padded_ltc[padded_index + 0] = ltc_parameters_table_approximation[non_padded_index].x;
-			padded_ltc[padded_index + 1] = ltc_parameters_table_approximation[non_padded_index].y;
-			padded_ltc[padded_index + 2] = ltc_parameters_table_approximation[non_padded_index].z;
+			padded_ltc[padded_index + 0] = zeltner_2022_sheen_ltc_fit_parameters[non_padded_index].x;
+			padded_ltc[padded_index + 1] = zeltner_2022_sheen_ltc_fit_parameters[non_padded_index].y;
+			padded_ltc[padded_index + 2] = zeltner_2022_sheen_ltc_fit_parameters[non_padded_index].z;
 			padded_ltc[padded_index + 3] = 0.0f;
 		}
 	}
@@ -120,7 +120,7 @@ void GPURenderer::init_sheen_ltc_texture()
 
 void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode)
 {
-	Image32Bit GGXEss_image = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTORY "/GGX/" + GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing), 1, true);
+	Image32Bit GGXEss_image = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/" + GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing), 1, true);
 	m_GGX_conductor_directional_albedo = OrochiTexture(GGXEss_image, filtering_mode, hipAddressModeClamp);
 
 	m_render_data_buffers_invalidated = true;
@@ -134,7 +134,7 @@ void GPURenderer::load_glossy_dielectric_energy_compensation_textures(hipTexture
 	for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
-		std::string filepath = BRDFS_DATA_DIRECTORY "/GlossyDielectrics/" + filename;
+		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GlossyDielectrics/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
 	m_glossy_dielectric_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
@@ -150,7 +150,7 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
-		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
+		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
 	m_GGX_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
@@ -158,7 +158,7 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_inv_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
-		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
+		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
 	m_GGX_glass_inverse_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
@@ -167,7 +167,7 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 	for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
-		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
+		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
 	m_GGX_thin_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
@@ -687,11 +687,11 @@ void GPURenderer::update_render_data()
 		if (m_hiprt_scene.texcoords_buffer.size() > 0)
 			m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
-		m_render_data.bsdfs_data.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
+		m_render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params = m_sheen_ltc_params.get_device_texture();
 		m_render_data.bsdfs_data.GGX_conductor_directional_albedo = m_GGX_conductor_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.glossy_dielectric_directional_albedo = m_glossy_dielectric_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.GGX_glass_directional_albedo = m_GGX_glass_directional_albedo.get_device_texture();
-		m_render_data.bsdfs_data.GGX_glass_directional_albedo_inverse = m_GGX_glass_inverse_directional_albedo.get_device_texture();
+		m_render_data.bsdfs_data.GGX_glass_inverse_directional_albedo = m_GGX_glass_inverse_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo = m_GGX_thin_glass_directional_albedo.get_device_texture();
 
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())

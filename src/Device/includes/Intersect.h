@@ -18,7 +18,7 @@
 #include "Device/functions/FilterFunction.h"
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 #if SharedStackBVHTraversalSize > 0
 // This if is necessary to avoid declaring 0 size arrays if the

@@ -817,9 +817,9 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		{
 			for (CPUMaterial& material : materials)
 			{
-					material.global_emissive_factor = global_emissive_objects_factor;
+				material.global_emissive_factor = global_emissive_objects_factor;
 
-					material.make_safe();
+				material.make_safe();
 			}
 
 			m_renderer->update_all_materials(materials);
@@ -875,272 +875,8 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 		CPUMaterial& material = materials[currently_selected_material_index];
 
-		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-
-		ImGui::Text("- "); ImGui::SameLine();
-		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.9f, 0.0f, 1.0f));
-		ImGui::Text("Selected object"); ImGui::SameLine();
-		ImGui::PopStyleColor();
-		ImGui::Text(": "); ImGui::SameLine();
-		ImGui::Text("%s", material_names[currently_selected_material_index].c_str());
-
-		if (ImGui::CollapsingHeader("Base Layer"))
-		{
-			ImGui::TreePush("Base layer material tree");
-
-			material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-			material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Anisotropy rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
-			if (material.ior < 1.0f || material.ior > 3.0f)
-			{
-				ImGui::SameLine();
-				ImGuiRenderer::show_help_marker("Energy compensation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			ImGui::TreePop();
-		}
-
-		if (ImGui::CollapsingHeader("Specular layer"))
-		{
-			ImGui::TreePush("Specular layer material tree");
-
-			material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
-			material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
-			material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Specular darkening", &material.specular_darkening, 0.0f, 1.0f);
-			ImGuiRenderer::show_help_marker("Same as coat darkening but for total internal reflection inside the specular layer "
-				"that sits on top of the diffuse base.");
-			if (material.do_specular_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
-					"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			else if (material.do_specular_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the glossy layer (specular/diffuse). This material option will have no effect.\n"
-					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			material_changed |= ImGui::Checkbox("Glossy layer energy compensation", &material.do_specular_energy_compensation);
-			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the glossy layer (specular/diffuse) lobe of this material.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::TreePop();
-		}
-
-		if (ImGui::CollapsingHeader("Metallic Layer"))
-		{
-			ImGui::TreePush("Metallic layer material tree");
-
-			material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
-			material_changed |= ImGui::ColorEdit3("F0 Reflectivity", (float*)&material.base_color);
-			ImGuiRenderer::show_help_marker("Reflectivity color at 0 degree angles: microfacet-normal "
-				"and view direction perfectly aligned: looking straigth into "
-				"the object.");
-			material_changed |= ImGui::ColorEdit3("F82 Reflectivity", (float*)&material.metallic_F82);
-			ImGuiRenderer::show_help_marker("Reflectivity color at 82 degree angles: microfacet-normal "
-				"and view direction almost orthogonal.");
-			material_changed |= ImGui::ColorEdit3("F90 Reflectivity", (float*)&material.metallic_F90);
-			ImGuiRenderer::show_help_marker("Reflectivity color at 90 degree angles: microfacet-normal "
-				"and view direction perfectly orthogonal.");
-			material_changed |= ImGui::SliderFloat("F90 Falloff exponent", &material.metallic_F90_falloff_exponent, 0.5f, 5.0f);
-			ImGuiRenderer::show_help_marker("The \"falloff\" controls how wide the influence of F90 is.\n"
-				"\n"
-				"The lower the value, the wider F90's effect will be.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			material_changed |= ImGui::SliderFloat("Second roughness weight", &material.second_roughness_weight, 0.0f, 1.0f);
-			ImGuiRenderer::show_help_marker("The principled BSDF can have two metal lobes. They are exactly the "
-				"same (F0/F82/F90, Anisotropy, ...) except that they can each have "
-				"their own roughness.\n"
-				"The first metal lobe's roughness is controlled by the general "
-				"roughness of the material and the second metal lobe's roughness "
-				"is controlled by 'Second roughness'.\n"
-				"The two lobes are then linearly blended together using "
-				"'Second roughness weight'. 'Second roughness weight' = 1 means "
-				"that the primary roughness of the material is ignored and there "
-				"is effectively only the second metallic lobe left.");
-
-			ImGui::BeginDisabled(material.second_roughness_weight == 0.0f);
-			material_changed |= ImGui::SliderFloat("Second roughness", &material.second_roughness, 0.0f, 1.0f);
-			ImGui::EndDisabled();
-
-			if (material.do_metallic_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
-					"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			else if (material.do_metallic_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the metallic layer. This material option will have no effect.\n"
-					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			material_changed |= ImGui::Checkbox("Metallic layer energy compensation", &material.do_metallic_energy_compensation);
-			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the metallic layer of this material.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::TreePop();
-		}
-
-		if (ImGui::CollapsingHeader("Sheen Layer"))
-		{
-			ImGui::TreePush("Sheen layer material tree");
-
-			material_changed |= ImGui::SliderFloat("Sheen strength", &material.sheen, 0.0f, 1.0f);
-			material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
-			material_changed |= ImGui::SliderFloat("Sheen roughness", &material.sheen_roughness, 0.0f, 1.0f);
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::TreePop();
-		}
-
-		if (ImGui::CollapsingHeader("Coat Layer"))
-		{
-			ImGui::TreePush("Coat layer material tree");
-
-			material_changed |= ImGui::SliderFloat("Coat strength", &material.coat, 0.0f, 1.0f);
-			material_changed |= ImGui::ColorEdit3("Coat medium absorption", (float*)&material.coat_medium_absorption);
-			material_changed |= ImGui::SliderFloat("Coat medium thickness", &material.coat_medium_thickness, 0.0f, 15.0f);
-			material_changed |= ImGui::SliderFloat("Coat roughness", &material.coat_roughness, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Coat roughening", &material.coat_roughening, 0.0f, 1.0f);
-			ImGuiRenderer::show_help_marker("Physical accuracy requires that a rough clearcoat also roughens what's underneath it "
-				"i.e. the specular/metallic/transmission layers.\n"
-				"The option is however given here to artistically disable "
-				"that behavior by using coat roughening = 0.0f.");
-			material_changed |= ImGui::SliderFloat("Coat darkening", &material.coat_darkening, 0.0f, 1.0f);
-			ImGuiRenderer::show_help_marker("Because of the total internal reflection that can happen inside the coat layer (i.e. "
-				"light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the clearcoat will appear will increased "
-				"saturation.\n\n"
-				""
-				"This parameter controls the strength of that darkening/increase in saturation.\n"
-				"0.0f disables the effect which is non-physically accurate but may be artistically desirable.");
-			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Coat anisotropy rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
-			if (material.do_coat_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
-					"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			else if (material.do_coat_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the clearcoat layer. This material option will have no effect.\n"
-					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			material_changed |= ImGui::Checkbox("Clearcoat layer energy compensation", &material.do_coat_energy_compensation);
-			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the clearcoat layer of this material.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::TreePop();
-		}
-
-		if (ImGui::CollapsingHeader("Transmission Layer"))
-		{
-			ImGui::TreePush("Transmission layer material tree");
-
-			material_changed |= ImGui::SliderFloat("Diffuse transmission", &material.diffuse_transmission, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Specular transmission", &material.specular_transmission, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
-			if (material.ior < 1.0f || material.ior > 3.0f && (material.do_glass_energy_compensation || material.do_specular_energy_compensation))
-			{
-				ImGui::SameLine();
-				ImGuiRenderer::show_help_marker("Energy compensation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
-			material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
-			material_changed |= ImGui::SliderFloat("Dispersion Abbe number", &material.dispersion_abbe_number, 9.0f, 91.0f);
-			ImGuiRenderer::show_help_marker("Abbe number for the dispersion of the glass. The lower the number, the stronger the dispersion.");
-			material_changed |= ImGui::SliderFloat("Dispersion scale", &material.dispersion_scale, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
-			material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
-			if (material.do_glass_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
-					"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			else if (material.do_glass_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
-			{
-				ImGui::Text("Warning: ");
-				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the glass layer. This material option will have no effect.\n"
-					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			}
-			material_changed |= ImGui::Checkbox("Transmission layer energy compensation", &material.do_glass_energy_compensation);
-			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the glass layer of this material.");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::TreePop();
-		}
-
-		if (ImGui::CollapsingHeader("Thin-Film Layer"))
-		{
-			ImGui::TreePush("Thin film layer material tree");
-
-			material_changed |= ImGui::SliderFloat("Thin film", &material.thin_film, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Thin film thickness", &material.thin_film_thickness, 0.0f, 2000.0f, "%.3f nm");
-			material_changed |= ImGui::SliderFloat("Thin film IOR", &material.thin_film_ior, 1.0f, 3.0f);
-			material_changed |= ImGui::SliderFloat("Thin film hue shift", &material.thin_film_hue_shift_degrees, 0.0f, 360.0f);
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			material_changed |= ImGui::Checkbox("Override material IOR", &material.thin_film_do_ior_override);
-			ImGui::BeginDisabled(!material.thin_film_do_ior_override);
-			material_changed |= ImGui::SliderFloat("Eta IOR override", &material.thin_film_base_ior_override, 1.0f, 3.0f);
-			ImGuiRenderer::show_help_marker("Overrides the eta parameter of the IOR of the base material. This is not physically based but allows for better artistic control.");
-			material_changed |= ImGui::SliderFloat("Kappa IOR override", &material.thin_film_kappa_3, 0.0f, 5.0f);
-			ImGuiRenderer::show_help_marker("Overrides the kappa parameter (extinction coefficient) of the base material. This is not physically based but allows for better artistic control.");
-			ImGui::EndDisabled();
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::TreePop();
-		}
-
-		bool emission_changed = false;
-		if (ImGui::CollapsingHeader("Emission Properties"))
-		{
-			ImGui::TreePush("Emission material tree");
-
-			bool emission_controlled_by_texture = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
-			ImGui::BeginDisabled(emission_controlled_by_texture);
-			
-			// TODO we would need to recompute the alias table for the emissive lights here
-			emission_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-			ImGui::EndDisabled();
-			if (emission_controlled_by_texture)
-				ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
-
-			// TODO we would need to recompute the alias table for the emissive lights here
-			emission_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
-
-			material_changed |= emission_changed;
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::TreePop();
-		}
-
-		if (ImGui::CollapsingHeader("Other properties"))
-		{
-			ImGui::TreePush("Other properties material tree");
-
-			material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-			material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
-
-			ImGui::TreePop();
-		}
-
-		ImGui::PopItemWidth();
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::Separator();
-
-		material_changed |= draw_material_presets(material);
+		bool emission_changed;
+		material_changed |= ImGuiObjectsWindow::draw_material_editor(material, material_names[currently_selected_material_index], kernel_options, emission_changed);
 
 		if (material_changed)
 		{
@@ -1157,6 +893,282 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material, const std::string& material_name, std::shared_ptr<GPUKernelCompilerOptions> kernel_options, bool& out_emission_changed)
+{
+	ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+
+	ImGui::Text("- "); ImGui::SameLine();
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.9f, 0.0f, 1.0f));
+	ImGui::Text("Selected object"); ImGui::SameLine();
+	ImGui::PopStyleColor();
+	ImGui::Text(": "); ImGui::SameLine();
+	ImGui::Text("%s", material_name.c_str());
+
+	bool material_changed = false;
+
+	out_emission_changed = false;
+
+	if (ImGui::CollapsingHeader("Base Layer"))
+	{
+		ImGui::TreePush("Base layer material tree");
+
+		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
+		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropy rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
+		if (material.ior < 1.0f || material.ior > 3.0f)
+		{
+			ImGui::SameLine();
+			ImGuiRenderer::show_help_marker("Energy compensation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Specular layer"))
+	{
+		ImGui::TreePush("Specular layer material tree");
+
+		material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
+		material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Specular darkening", &material.specular_darkening, 0.0f, 1.0f);
+		ImGuiRenderer::show_help_marker("Same as coat darkening but for total internal reflection inside the specular layer "
+			"that sits on top of the diffuse base.");
+		if (material.do_specular_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+		{
+			ImGui::Text("Warning: ");
+			ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
+				"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		else if (material.do_specular_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+		{
+			ImGui::Text("Warning: ");
+			ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the glossy layer (specular/diffuse). This material option will have no effect.\n"
+				"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		material_changed |= ImGui::Checkbox("Glossy layer energy compensation", &material.do_specular_energy_compensation);
+		ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the glossy layer (specular/diffuse) lobe of this material.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Metallic Layer"))
+	{
+		ImGui::TreePush("Metallic layer material tree");
+
+		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("F0 Reflectivity", (float*)&material.base_color);
+		ImGuiRenderer::show_help_marker("Reflectivity color at 0 degree angles: microfacet-normal "
+			"and view direction perfectly aligned: looking straigth into "
+			"the object.");
+		material_changed |= ImGui::ColorEdit3("F82 Reflectivity", (float*)&material.metallic_F82);
+		ImGuiRenderer::show_help_marker("Reflectivity color at 82 degree angles: microfacet-normal "
+			"and view direction almost orthogonal.");
+		material_changed |= ImGui::ColorEdit3("F90 Reflectivity", (float*)&material.metallic_F90);
+		ImGuiRenderer::show_help_marker("Reflectivity color at 90 degree angles: microfacet-normal "
+			"and view direction perfectly orthogonal.");
+		material_changed |= ImGui::SliderFloat("F90 Falloff exponent", &material.metallic_F90_falloff_exponent, 0.5f, 5.0f);
+		ImGuiRenderer::show_help_marker("The \"falloff\" controls how wide the influence of F90 is.\n"
+			"\n"
+			"The lower the value, the wider F90's effect will be.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		material_changed |= ImGui::SliderFloat("Second roughness weight", &material.second_roughness_weight, 0.0f, 1.0f);
+		ImGuiRenderer::show_help_marker("The principled BSDF can have two metal lobes. They are exactly the "
+			"same (F0/F82/F90, Anisotropy, ...) except that they can each have "
+			"their own roughness.\n"
+			"The first metal lobe's roughness is controlled by the general "
+			"roughness of the material and the second metal lobe's roughness "
+			"is controlled by 'Second roughness'.\n"
+			"The two lobes are then linearly blended together using "
+			"'Second roughness weight'. 'Second roughness weight' = 1 means "
+			"that the primary roughness of the material is ignored and there "
+			"is effectively only the second metallic lobe left.");
+
+		ImGui::BeginDisabled(material.second_roughness_weight == 0.0f);
+		material_changed |= ImGui::SliderFloat("Second roughness", &material.second_roughness, 0.0f, 1.0f);
+		ImGui::EndDisabled();
+
+		if (material.do_metallic_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+		{
+			ImGui::Text("Warning: ");
+			ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
+				"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		else if (material.do_metallic_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+		{
+			ImGui::Text("Warning: ");
+			ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the metallic layer. This material option will have no effect.\n"
+				"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		material_changed |= ImGui::Checkbox("Metallic layer energy compensation", &material.do_metallic_energy_compensation);
+		ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the metallic layer of this material.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Sheen Layer"))
+	{
+		ImGui::TreePush("Sheen layer material tree");
+
+		material_changed |= ImGui::SliderFloat("Sheen strength", &material.sheen, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
+		material_changed |= ImGui::SliderFloat("Sheen roughness", &material.sheen_roughness, 0.0f, 1.0f);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Coat Layer"))
+	{
+		ImGui::TreePush("Coat layer material tree");
+
+		material_changed |= ImGui::SliderFloat("Coat strength", &material.coat, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("Coat medium absorption", (float*)&material.coat_medium_absorption);
+		material_changed |= ImGui::SliderFloat("Coat medium thickness", &material.coat_medium_thickness, 0.0f, 15.0f);
+		material_changed |= ImGui::SliderFloat("Coat roughness", &material.coat_roughness, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Coat roughening", &material.coat_roughening, 0.0f, 1.0f);
+		ImGuiRenderer::show_help_marker("Physical accuracy requires that a rough clearcoat also roughens what's underneath it "
+			"i.e. the specular/metallic/transmission layers.\n"
+			"The option is however given here to artistically disable "
+			"that behavior by using coat roughening = 0.0f.");
+		material_changed |= ImGui::SliderFloat("Coat darkening", &material.coat_darkening, 0.0f, 1.0f);
+		ImGuiRenderer::show_help_marker("Because of the total internal reflection that can happen inside the coat layer (i.e. "
+			"light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the clearcoat will appear will increased "
+			"saturation.\n\n"
+			""
+			"This parameter controls the strength of that darkening/increase in saturation.\n"
+			"0.0f disables the effect which is non-physically accurate but may be artistically desirable.");
+		material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Coat anisotropy rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
+		if (material.do_coat_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+		{
+			ImGui::Text("Warning: ");
+			ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
+				"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		else if (material.do_coat_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+		{
+			ImGui::Text("Warning: ");
+			ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the clearcoat layer. This material option will have no effect.\n"
+				"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		material_changed |= ImGui::Checkbox("Clearcoat layer energy compensation", &material.do_coat_energy_compensation);
+		ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the clearcoat layer of this material.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Transmission Layer"))
+	{
+		ImGui::TreePush("Transmission layer material tree");
+
+		material_changed |= ImGui::SliderFloat("Diffuse transmission", &material.diffuse_transmission, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Specular transmission", &material.specular_transmission, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
+		if (material.ior < 1.0f || material.ior > 3.0f && (material.do_glass_energy_compensation || material.do_specular_energy_compensation))
+		{
+			ImGui::SameLine();
+			ImGuiRenderer::show_help_marker("Energy compensation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
+		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
+		material_changed |= ImGui::SliderFloat("Dispersion Abbe number", &material.dispersion_abbe_number, 9.0f, 91.0f);
+		ImGuiRenderer::show_help_marker("Abbe number for the dispersion of the glass. The lower the number, the stronger the dispersion.");
+		material_changed |= ImGui::SliderFloat("Dispersion scale", &material.dispersion_scale, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
+		material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
+		if (material.do_glass_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+		{
+			ImGui::Text("Warning: ");
+			ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
+				"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		else if (material.do_glass_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+		{
+			ImGui::Text("Warning: ");
+			ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the glass layer. This material option will have no effect.\n"
+				"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+		}
+		material_changed |= ImGui::Checkbox("Transmission layer energy compensation", &material.do_glass_energy_compensation);
+		ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the glass layer of this material.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Thin-Film Layer"))
+	{
+		ImGui::TreePush("Thin film layer material tree");
+
+		material_changed |= ImGui::SliderFloat("Thin film", &material.thin_film, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Thin film thickness", &material.thin_film_thickness, 0.0f, 2000.0f, "%.3f nm");
+		material_changed |= ImGui::SliderFloat("Thin film IOR", &material.thin_film_ior, 1.0f, 3.0f);
+		material_changed |= ImGui::SliderFloat("Thin film hue shift", &material.thin_film_hue_shift_degrees, 0.0f, 360.0f);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		material_changed |= ImGui::Checkbox("Override material IOR", &material.thin_film_do_ior_override);
+		ImGui::BeginDisabled(!material.thin_film_do_ior_override);
+		material_changed |= ImGui::SliderFloat("Eta IOR override", &material.thin_film_base_ior_override, 1.0f, 3.0f);
+		ImGuiRenderer::show_help_marker("Overrides the eta parameter of the IOR of the base material. This is not physically based but allows for better artistic control.");
+		material_changed |= ImGui::SliderFloat("Kappa IOR override", &material.thin_film_kappa_3, 0.0f, 5.0f);
+		ImGuiRenderer::show_help_marker("Overrides the kappa parameter (extinction coefficient) of the base material. This is not physically based but allows for better artistic control.");
+		ImGui::EndDisabled();
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	bool emission_changed = false;
+	if (ImGui::CollapsingHeader("Emission Properties"))
+	{
+		ImGui::TreePush("Emission material tree");
+
+		bool emission_controlled_by_texture = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
+		ImGui::BeginDisabled(emission_controlled_by_texture);
+
+		// TODO we would need to recompute the alias table for the emissive lights here
+		emission_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+		ImGui::EndDisabled();
+		if (emission_controlled_by_texture)
+			ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
+
+		// TODO we would need to recompute the alias table for the emissive lights here
+		emission_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
+
+		material_changed |= emission_changed;
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Other properties"))
+	{
+		ImGui::TreePush("Other properties material tree");
+
+		material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
+
+		ImGui::TreePop();
+	}
+
+	ImGui::PopItemWidth();
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::Separator();
+
+	material_changed |= draw_material_presets(material);
+
+	return material_changed;
 }
 
 std::unordered_set<int> ImGuiObjectsWindow::filter_displayed_materials(int material_count, const std::vector<std::string>& material_names, const std::vector<std::string>& mesh_names, const std::string& filter_string) const

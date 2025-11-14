@@ -24,7 +24,7 @@
   * [6] [Blender's Cycles codebase on Github]
   */
 
-HIPRT_DEVICE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction, int current_bounce)
+HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction, int current_bounce)
 {
 	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.metal_energy_compensation_max_bounce && render_data.bsdfs_data.metal_energy_compensation_max_bounce > -1;
 	bool smooth_enough = material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
@@ -98,7 +98,7 @@ HIPRT_DEVICE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRende
  * instead of fixing the root of the issue which probably isn't what you should do if you're
  * reading this
  */
-HIPRT_DEVICE float GGX_glass_energy_compensation_get_correction_exponent(float roughness, float relative_eta)
+HIPRT_DEVICE static float GGX_glass_energy_compensation_get_correction_exponent(float roughness, float relative_eta)
 {
     if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
         // No correction for these, returning the original 2.5f that is used in the LUT
@@ -630,7 +630,7 @@ HIPRT_DEVICE float GGX_glass_energy_compensation_get_correction_exponent(float r
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
-HIPRT_DEVICE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float custom_roughness, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
+HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float custom_roughness, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
 {
 	bool smooth_enough = custom_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glass_energy_compensation_max_bounce && render_data.bsdfs_data.glass_energy_compensation_max_bounce > -1;
@@ -675,7 +675,7 @@ HIPRT_DEVICE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData
 		}
 		else
 		{
-			void* texture = inside_object ? render_data.bsdfs_data.GGX_glass_directional_albedo_inverse : render_data.bsdfs_data.GGX_glass_directional_albedo;
+			void* texture = inside_object ? render_data.bsdfs_data.GGX_glass_inverse_directional_albedo : render_data.bsdfs_data.GGX_glass_directional_albedo;
 			int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 
 			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
@@ -702,7 +702,7 @@ HIPRT_DEVICE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData
 	return compensation_term;
 }
 
-HIPRT_DEVICE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
+HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
 {
 	return get_GGX_energy_compensation_dielectrics(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV, current_bounce);
 }

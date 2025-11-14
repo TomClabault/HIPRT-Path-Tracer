@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_PROJECTED_SOLID_ANGLE_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_PROJECTED_SOLID_ANGLE_H
 
+#include "Device/includes/LightSampling/LTCs/LTCs.h"
 #include "Device/includes/LightSampling/TriangleSamplingPolygonClipping.h"
 #include "Device/includes/LightSampling/TriangleSamplingSolidAngleCommon.h"
 #include "Device/includes/ONB.h"
@@ -424,12 +425,17 @@ UNROLL_LOOP
 	return polygon;
 }
 
-HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling_from_world_space(float3 vertex_A_world_space, float3 vertex_B_worldspace, float3 vertex_C_worldspace,
-	float3 shading_point, float3 shading_normal)
+HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling_from_world_space(const HIPRTRenderData& render_data,
+	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
+	float3 shading_point, float3 view_direction, float3 shading_normal)
 {
-	float3 vertex_A_local = vertex_A_world_space - shading_point;
-	float3 vertex_B_local = vertex_B_worldspace - shading_point;
-	float3 vertex_C_local = vertex_C_worldspace - shading_point;
+	vertex_A_world_space = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, vertex_A_world_space);
+	vertex_B_world_space = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, vertex_B_world_space);
+	vertex_C_world_space = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, vertex_C_world_space);
+
+	float3 vertex_A_local = vertex_A_world_space -shading_point;
+	float3 vertex_B_local = vertex_B_world_space -shading_point;
+	float3 vertex_C_local = vertex_C_world_space -shading_point;
 
 	float3 T, B;
 	build_ONB(shading_normal, T, B);
@@ -632,12 +638,15 @@ UNROLL_LOOP
 	\param random_numbers A uniform point in [0,1]^2.
 	\return A sample on the upper hemisphere (i.e. z>=0) in Cartesian
 		coordinates.*/
-HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal, 
-	float3 shading_point, float3 shading_normal, 
+HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(const HIPRTRenderData& render_data,
+	float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal, 
+	float3 shading_point, float3 view_direction, float3 shading_normal,
 	float& out_area_pdf,
 	Xorshift32Generator& rng)
 {
-	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(vertex_A, vertex_B, vertex_C, shading_point, shading_normal);
+	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(render_data,
+		vertex_A, vertex_B, vertex_C, 
+		shading_point, view_direction, shading_normal);
 
 	float rand_1 = rng();
 	float rand_2 = rng();
@@ -718,8 +727,10 @@ UNROLL_LOOP
 
 	// Construct the sample
 	sampled_dir.z = hippt::sqrt(hippt::max(0.0f, hippt::fma(-sampled_dir.x, sampled_dir.x, hippt::fma(-sampled_dir.y, sampled_dir.y, 1.0f))));
+	sampled_dir = hippt::normalize(local_to_world_frame(shading_normal, sampled_dir));
+	//float3 sampled_dir_world_space = hippt::normalize(ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, sampled_dir));
 
-	float3 sampled_dir_world_space = local_to_world_frame(shading_normal, sampled_dir);
+	float3 sampled_dir_world_space = hippt::normalize(ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, sampled_dir));
 	float3 point = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, hippt::dot(shading_normal, sampled_dir_world_space) / polygon.projected_solid_angle, out_area_pdf);
 
 	return point;

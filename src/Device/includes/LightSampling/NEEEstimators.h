@@ -41,7 +41,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
     float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
     float distance_to_light = hippt::length(shadow_ray_direction);
     float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
+    
     hiprtRay shadow_ray;
     shadow_ray.origin = shadow_ray_origin;
     shadow_ray.direction = shadow_ray_direction_normalized;

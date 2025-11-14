@@ -63,7 +63,7 @@ struct RayVolumeState
 	// The stack of materials being traversed. Used for nested dielectrics handling
 	NestedDielectricsInteriorStack interior_stack;
 	// Indices of the material we were in before hitting the current dielectric surface
-	int incident_mat_index = -1, outgoing_mat_index = -1;
+	int incident_mat_index = NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX, outgoing_mat_index = NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX;
 	// Whether or not we're exiting a material
 	bool inside_material = false;
 

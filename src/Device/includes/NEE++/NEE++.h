@@ -9,7 +9,7 @@
 #include "Device/includes/HashGrid.h"
 #include "Device/includes/HashGridHash.h"
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 /**
  * Context passed when tracing shadow rays 

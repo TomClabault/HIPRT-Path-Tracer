@@ -7,7 +7,7 @@
  #define DEVICE_INCLUDES_HASH_GRID_H
 
  #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 struct HashGrid
 {

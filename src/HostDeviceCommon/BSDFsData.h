@@ -6,6 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_BSDFS_DATA_H
 #define HOST_DEVICE_COMMON_BSDFS_DATA_H
 
+#include "HostDeviceCommon/LTCsData.h"
 #include "HostDeviceCommon/MicrofacetRegularizationSettings.h"
 
  /**
@@ -28,10 +29,7 @@ struct BRDFsData
 	bool white_furnace_mode = false;
 	bool white_furnace_mode_turn_off_emissives = true;
 
-	// 32x32 texture containing the precomputed parameters of the LTC
-	// fitted to approximate the SSGX sheen volumetric layer.
-	// See SheenLTCFittedParameters.h
-	void* sheen_ltc_parameters_texture = nullptr;
+	LTCsData ltcs_data;
 
 	// 2D texture for the precomputed directional albedo
 	// for the GGX BRDFs used in the principled BSDF for energy compensation
@@ -47,7 +45,7 @@ struct BRDFsData
 	// entering a medium
 	void* GGX_glass_directional_albedo = nullptr;
 	// Table when leaving a medium
-	void* GGX_glass_directional_albedo_inverse = nullptr;
+	void* GGX_glass_inverse_directional_albedo = nullptr;
 
 	// Table for energy compesantion of thin walled glass
 	// Fetching into this table should use the base roughness

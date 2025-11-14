@@ -48,8 +48,15 @@ struct WorldSettings
 	AliasTableDevice envmap_alias_table;
 
 	// Rotation matrix for rotating the envmap around in the current frame
-	float3x3 envmap_to_world_matrix = float3x3{ { {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } };
-	float3x3 world_to_envmap_matrix = float3x3{ { {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } };
+	float3x3 envmap_to_world_matrix = float3x3(
+		1.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 1.0f);
+
+	float3x3 world_to_envmap_matrix = float3x3(
+		1.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 1.0f);
 };
 
 #endif

@@ -6,7 +6,7 @@
 #ifndef DEVICE_TRIANGLE_STRUCTURES_H
 #define DEVICE_TRIANGLE_STRUCTURES_H
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 /**
  * Structure that contains the vertex index (in the vertex buffer) of the 3 vertices of a triangle

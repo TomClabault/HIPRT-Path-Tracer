@@ -9,7 +9,7 @@
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 // Evaluation XYZ sensitivity curves in Fourier space
-HIPRT_DEVICE ColorRGB32F eval_sensitivity(float opd, float shift)
+HIPRT_DEVICE static ColorRGB32F eval_sensitivity(float opd, float shift)
 {
     // Use Gaussian fits
 
@@ -29,7 +29,7 @@ HIPRT_DEVICE ColorRGB32F eval_sensitivity(float opd, float shift)
  * Reference: * [1] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, 
  *                   Belcour, Barla, 2017, Supplemental document] https://hal.science/hal-01518344v2/file/supp-mat-small%20(1).pdf
  */
-HIPRT_DEVICE void fresnel_phase(float cos_theta_i,
+HIPRT_DEVICE static void fresnel_phase(float cos_theta_i,
     float eta1,
     float eta2, float kappa2,
     float& phi_par, float& phi_perp) 
@@ -49,7 +49,7 @@ HIPRT_DEVICE void fresnel_phase(float cos_theta_i,
     phi_par = atan2(phi_par_y, phi_par_x);
 }
 
-HIPRT_DEVICE void fresnel_conductor(float cos_theta_i,
+HIPRT_DEVICE static void fresnel_conductor(float cos_theta_i,
     float eta, float k,
     float& Rp2, float& Rs2) 
 {
@@ -76,7 +76,7 @@ HIPRT_DEVICE void fresnel_conductor(float cos_theta_i,
 /**
  * Reference: https://stackoverflow.com/questions/8507885/shift-hue-of-an-rgb-color
  */
-HIPRT_DEVICE ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hue_shift_degrees)
+HIPRT_DEVICE static ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hue_shift_degrees)
 {
     if (hue_shift_degrees == 0.0f)
         return color;
@@ -112,7 +112,7 @@ HIPRT_DEVICE ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hue_shift
  *
  * [1] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, Belcour, Barla, 2017] https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html
  */
-HIPRT_DEVICE ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveMaterial& material,
+HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveMaterial& material,
     float ambient_IOR, float HoL)
 {
     if (material.thin_film == 0.0f)

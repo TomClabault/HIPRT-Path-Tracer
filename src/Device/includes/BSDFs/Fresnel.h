@@ -8,7 +8,7 @@
 
 #include "HostDeviceCommon/Color.h"
 
-HIPRT_DEVICE float F0_from_eta(float eta_t, float eta_i)
+HIPRT_DEVICE static float F0_from_eta(float eta_t, float eta_i)
 {
     float nume_F0 = (eta_t - eta_i);
     float denom_F0 = (eta_t + eta_i);
@@ -20,7 +20,7 @@ HIPRT_DEVICE float F0_from_eta(float eta_t, float eta_i)
 /**
  * relative_eta here is eta_t / eta_i
  */
-HIPRT_DEVICE float F0_from_eta_t_and_relative_ior(float eta_t, float relative_eta)
+HIPRT_DEVICE static float F0_from_eta_t_and_relative_ior(float eta_t, float relative_eta)
 {
     return F0_from_eta(eta_t, /* eta_i */ eta_t / relative_eta);
 }
@@ -28,7 +28,7 @@ HIPRT_DEVICE float F0_from_eta_t_and_relative_ior(float eta_t, float relative_et
 /**
  * Schlick's approximation for dielectric fresnel reflectance
  */
-HIPRT_DEVICE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
+HIPRT_DEVICE static ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
 {
     return F0 + (ColorRGB32F(1.0f) - F0) * hippt::pow_5(1.0f - angle);
 }
@@ -38,7 +38,7 @@ HIPRT_DEVICE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
  *
  * 'relative_eta' is eta_t / eta_i = transmitted media IOR / incident media IOR
  */
-HIPRT_DEVICE float full_fresnel_dielectric(float cos_theta_i, float relative_eta)
+HIPRT_DEVICE static float full_fresnel_dielectric(float cos_theta_i, float relative_eta)
 {
     if (hippt::abs(1.0f - relative_eta) < 1.0e-4f)
         // relative_eta of 1, no fresnel
@@ -61,7 +61,7 @@ HIPRT_DEVICE float full_fresnel_dielectric(float cos_theta_i, float relative_eta
 /**
  * Override of full_fresnel_dielectric with two separate eta
  */
-HIPRT_DEVICE float full_fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
+HIPRT_DEVICE static float full_fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
 {
     return full_fresnel_dielectric(cos_theta_i, eta_t / eta_i);
 }
@@ -75,7 +75,7 @@ HIPRT_DEVICE float full_fresnel_dielectric(float cos_theta_i, float eta_i, float
  *      ColorRGB32F F0 = <compute F0 from etas>
  *      return schlick(F0, NoL)
  */
-HIPRT_DEVICE ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, float cos_theta_i)
+HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, float cos_theta_i)
 {
     float F0 = F0_from_eta(eta_t, eta_i);
 
@@ -85,7 +85,7 @@ HIPRT_DEVICE ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, floa
 /**
  * Overload with normal and light direction
  */
-HIPRT_DEVICE ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, const float3& normal, const float3& local_to_light_direction)
+HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, const float3& normal, const float3& local_to_light_direction)
 {
     float NoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(normal, local_to_light_direction));
 
@@ -97,7 +97,7 @@ HIPRT_DEVICE ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, cons
  * computing the complex index of refraction of metals from two intuitive color parameters
  * 'reflectivity' and 'edge_tint'
  */
-HIPRT_DEVICE ColorRGB32F gulbrandsen_metallic_complex_fresnel(const ColorRGB32F& reflectivity, const ColorRGB32F& edge_tint, float cos_theta_i)
+HIPRT_DEVICE static ColorRGB32F gulbrandsen_metallic_complex_fresnel(const ColorRGB32F& reflectivity, const ColorRGB32F& edge_tint, float cos_theta_i)
 {
     // TODO we should precompute k and n on the CPU from 'reflectivity' and 'edge_tint'
 
@@ -135,7 +135,7 @@ HIPRT_DEVICE ColorRGB32F gulbrandsen_metallic_complex_fresnel(const ColorRGB32F&
  * [1] [Generalization of Adobe's Fresnel Model, Hoffman, 2023]
  * [2] [Adobe Standard Material, Technical Documentation, Kutz, Hasan, Edmondson]
  */
-HIPRT_DEVICE ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, const ColorRGB32F& F82, const ColorRGB32F& F90, float F90_falloff_exponent, float cos_theta)
+HIPRT_DEVICE static ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, const ColorRGB32F& F82, const ColorRGB32F& F90, float F90_falloff_exponent, float cos_theta)
 {
     ColorRGB32F base_term = F0 + (F90 - F0) * pow(1.0f - cos_theta, F90_falloff_exponent);
     if (base_term.max_component() < 1.0e-8f)
@@ -166,7 +166,7 @@ HIPRT_DEVICE ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, const Col
  * Hemispherical albedo (integral of directional albedos over view directions) 
  * of a perfectly smooth dielectric layer. This is an approximated fit.
  */
-HIPRT_DEVICE float fresnel_hemispherical_albedo_fit(float relative_eta)
+HIPRT_DEVICE static float fresnel_hemispherical_albedo_fit(float relative_eta)
 {
     return logf((10893.0f * relative_eta - 1438.2f) / (-774.4f * hippt::square(relative_eta) + 10212.0f * relative_eta + 1.0f));
 }

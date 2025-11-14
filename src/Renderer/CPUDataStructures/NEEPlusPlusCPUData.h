@@ -7,7 +7,7 @@
 #define RENDERER_NEE_PLUS_PLUS_CPU_DATA_H
 
 // For int3 and AtomicType
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 #include <vector>
 

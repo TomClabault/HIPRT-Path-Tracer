@@ -9,29 +9,10 @@
 #if defined( __KERNELCC__ )
 #include <hiprt/hiprt_device.h>
 #else
-#include <hiprt/hiprt_vec.h>
+#include "HostDeviceCommon/Maths/VecTypes.h"
 
 // For hippt::debugbreak()
 #include "Utils/Debug.h"
-
-#define int2 hiprtInt2
-#define int3 hiprtInt3
-#define int4 hiprtInt4
-#define uint2 hiprtUint2
-
-#define float2 hiprtFloat2
-#define float3 hiprtFloat3
-#define float4 hiprtFloat4
-
-#define make_int2 make_hiprtInt2
-#define make_int3 make_hiprtInt3
-#define make_int4 make_hiprtInt4
-#define make_uint2 make_hiprtUint2
-
-#define make_float2 make_hiprtFloat2
-#define make_float3 make_hiprtFloat3
-#define make_float4 make_hiprtFloat4
-
 #endif
 
 #if !defined(__KERNELCC__) || defined(HIPRT_BITCODE_LINKING)
@@ -45,36 +26,9 @@
 
 #include "HostDeviceCommon/AtomicType.h"
 
-struct float4x4
-{
-	float m[4][4] = { {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f} };
-};
-
-struct float3x3
-{
-	float m[3][3] = { {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
-};
-
-struct float2x2
-{
-	HIPRT_DEVICE float2x2() {}
-	HIPRT_DEVICE float2x2(float m00, float m01, float m10, float m11)
-	{
-		m[0][0] = m00; m[0][1] = m01;
-		m[1][0] = m10; m[1][1] = m11;
-	}
-
-	/**
-	 * Construct from 2 rows
-	 */
-	HIPRT_DEVICE float2x2(float2 col0, float2 col1)
-	{
-		m[0][0] = col0.x; m[0][1] = col1.x;
-		m[1][0] = col0.y; m[1][1] = col1.y;
-	}
-
-	float m[2][2];
-};
+#include "HostDeviceCommon/Maths/float2x2.h"
+#include "HostDeviceCommon/Maths/float3x3.h"
+#include "HostDeviceCommon/Maths/float4x4.h"
 
 // Here we're defining aliases for common functions used in shader code.
 // 
@@ -670,7 +624,6 @@ namespace hippt
 	static bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 	static bool is_finite(float x) { return std::isfinite(x); }
 
-
 	static unsigned int float_as_uint(float float_num) { return std::bit_cast<unsigned int>(float_num);}
 	static float uint_as_float(unsigned int uint_num) { return std::bit_cast<float>(uint_num); }
 
@@ -835,165 +788,6 @@ namespace hippt
 
 	static float idx(float3 v, int index) { return *(&v.x + index); }
 #endif
-}
-
-HIPRT_DEVICE static float3 matrix_X_point(const float4x4& m, const float3& p)
-{
-	float x = p.x;
-	float y = p.y;
-	float z = p.z;
-
-	// Assuming w = 1.0f for the point p
-	float xt = m.m[0][0] * x + m.m[0][1] * y + m.m[0][2] * z + m.m[0][3];
-	float yt = m.m[1][0] * x + m.m[1][1] * y + m.m[1][2] * z + m.m[1][3];
-	float zt = m.m[2][0] * x + m.m[2][1] * y + m.m[2][2] * z + m.m[2][3];
-	float wt = m.m[3][0] * x + m.m[3][1] * y + m.m[3][2] * z + m.m[3][3];
-
-	float inv_w = 1.0f;
-	if (!hippt::is_zero(wt))
-		inv_w = 1.0f / wt;
-
-	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
-}
-
-HIPRT_DEVICE static float3 matrix_X_vec(const float3x3& m, const float3& u)
-{
-	float x = u.x;
-	float y = u.y;
-	float z = u.z;
-
-	// Assuming w = 0.0f for the vector u
-	float xt = m.m[0][0] * x + m.m[1][0] * y + m.m[2][0] * z;
-	float yt = m.m[0][1] * x + m.m[1][1] * y + m.m[2][1] * z;
-	float zt = m.m[0][2] * x + m.m[1][2] * y + m.m[2][2] * z;
-
-	return make_float3(xt, yt, zt);
-}
-
-HIPRT_DEVICE static float3 matrix_X_vec(const float4x4& m, const float3& u)
-{
-	float x = u.x;
-	float y = u.y;
-	float z = u.z;
-
-	// Assuming w = 0.0f for the vector u
-	float xt = m.m[0][0] * x + m.m[1][0] * y + m.m[2][0] * z;
-	float yt = m.m[0][1] * x + m.m[1][1] * y + m.m[2][1] * z;
-	float zt = m.m[0][2] * x + m.m[1][2] * y + m.m[2][2] * z;
-	float wt = m.m[0][3] * x + m.m[1][3] * y + m.m[2][3] * z;
-
-	float inv_w = 1.0f;
-	if (!hippt::is_zero(wt))
-		inv_w = 1.0f / wt;
-
-	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
-}
-
-HIPRT_DEVICE static float2x2 operator+(const float2x2& a, const float2x2& b)
-{
-	float2x2 result;
-
-	result.m[0][0] = a.m[0][0] + b.m[0][0];
-	result.m[0][1] = a.m[0][1] + b.m[0][1];
-	result.m[1][0] = a.m[1][0] + b.m[1][0];
-	result.m[1][1] = a.m[1][1] + b.m[1][1];
-
-	return result;
-}
-
-HIPRT_DEVICE static float2x2 operator-(const float2x2& a, const float2x2& b)
-{
-	float2x2 result;
-
-	result.m[0][0] = a.m[0][0] - b.m[0][0];
-	result.m[0][1] = a.m[0][1] - b.m[0][1];
-	result.m[1][0] = a.m[1][0] - b.m[1][0];
-	result.m[1][1] = a.m[1][1] - b.m[1][1];
-
-	return result;
-}
-
-HIPRT_DEVICE static float2x2 operator*(const float2x2& a, const float2x2& b)
-{
-	float2x2 result;
-
-	result.m[0][0] = a.m[0][0] * b.m[0][0] + a.m[0][1] * b.m[1][0];
-	result.m[0][1] = a.m[0][0] * b.m[0][1] + a.m[0][1] * b.m[1][1];
-	result.m[1][0] = a.m[1][0] * b.m[0][0] + a.m[1][1] * b.m[1][0];
-	result.m[1][1] = a.m[1][0] * b.m[0][1] + a.m[1][1] * b.m[1][1];
-
-	return result;
-}
-
-HIPRT_DEVICE static float2x2 operator*(const float k, const float2x2& a)
-{
-	float2x2 result;
-
-	result.m[0][0] = k * a.m[0][0];
-	result.m[0][1] = k * a.m[0][1];
-	result.m[1][0] = k * a.m[1][0];
-	result.m[1][1] = k * a.m[1][1];
-
-	return result;
-}
-
-HIPRT_DEVICE static float2x2 operator*(const float2x2& a, const float k)
-{
-	return k * a;
-}
-
-HIPRT_DEVICE static float2 operator*(const float2x2& a, const float2& v)
-{
-	float2 result;
-
-	result.x = a.m[0][0] * v.x + a.m[0][1] * v.y;
-	result.y = a.m[1][0] * v.x + a.m[1][1] * v.y;
-
-	return result;
-}
-
-HIPRT_DEVICE static float2x2 operator/(const float2x2& a, const float k)
-{ 
-	float inv_k = 1.0f / k;
-	float2x2 result;
-
-	result.m[0][0] = a.m[0][0] * inv_k;
-	result.m[0][1] = a.m[0][1] * inv_k;
-	result.m[1][0] = a.m[1][0] * inv_k;
-	result.m[1][1] = a.m[1][1] * inv_k;
-
-	return result;
-}
-
-HIPRT_DEVICE static float2x2 transpose(const float2x2& m)
-{
-	float2x2 result;
-
-	result.m[0][0] = m.m[0][0];
-	result.m[0][1] = m.m[1][0];
-	result.m[1][0] = m.m[0][1];
-	result.m[1][1] = m.m[1][1];
-
-	return result;
-}
-
-HIPRT_DEVICE static float determinant(const float2x2& m)
-{
-	return m.m[0][0] * m.m[1][1] - m.m[0][1] * m.m[1][0];
-}
-
-HIPRT_DEVICE static float2x2 outer_product(const float2& a, const float2& b) 
-{
-	float2x2 out;
-
-	// row 0
-	out.m[0][0] = a.x * b.x;
-	out.m[0][1] = a.x * b.y;
-	// row 1
-	out.m[1][0] = a.y * b.x;
-	out.m[1][1] = a.y * b.y;
-
-	return out;
 }
 
 #ifndef __KERNELCC__

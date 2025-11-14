@@ -7,7 +7,7 @@
 #define DEVICE_INCLUDES_PDF_CONVERSION_H
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
  /**
   * Returns the cosine term of the given light source normal and the direction to the light source

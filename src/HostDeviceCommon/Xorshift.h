@@ -8,7 +8,7 @@
 
 #include <hiprt/hiprt_device.h>
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 struct Xorshift32State 
 {

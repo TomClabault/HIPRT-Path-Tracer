@@ -7,7 +7,7 @@
 #define DEVICE_INCLUDE_MICROFACET_REGULARIZATION_H
 
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 #include "HostDeviceCommon/MicrofacetRegularizationSettings.h"
 
 struct MicrofacetRegularization

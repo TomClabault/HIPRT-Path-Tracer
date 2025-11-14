@@ -76,6 +76,8 @@ extern ImGuiLogger g_imgui_logger;
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
 // 
 // - Auto correlation reduction if doing 1 or 2SPPs renders
+// - Autosubdivide NEE++ by having a buffer of 2 bits per cell that gives the subdivision level of NEE++ for that cell
+//		- Subdivide cells that have a high variance in their NEE++ estimate
 // - Can we introduce the bounds of the ATS tree in the SG tree to easily reject obviously facing away nodes since the SG tree seems to struggle a bit with that
 // - Can we have some form of 2 stage resampling during shading where we only keep the best sample for shooting shadow rays instead of shooting shadow rays for everyone, resampled tree 2024 style
 // - Can we have something that disables the big spherical gaussian stuff when the nodes are small enough (in solid angle)? Because at some point, the spherical gaussian approximation is not needed anymore

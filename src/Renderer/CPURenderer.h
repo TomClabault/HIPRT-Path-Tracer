@@ -18,6 +18,7 @@
 #include "Renderer/CPUDataStructures/GMoNCPUData.h"
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
+#include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
@@ -25,7 +26,6 @@
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 #include "Scene/SceneParser.h"
-#include "Utils/CommandlineArguments.h"
 
 #include <functional>
 #include <memory>
@@ -37,7 +37,8 @@ public:
     CPURenderer(int width, int height);
 
 
-    void setup_brdfs_data();
+    void setup_bsdfs_data();
+
     void setup_nee_plus_plus();
     void setup_gmon();
     void gmon_check_for_sets_accumulation();
@@ -50,6 +51,7 @@ public:
 
     void resize_buffers();
     void update_render_data();
+    void bsdfs_data_to_device();
 
     HIPRTRenderData& get_render_data();
     HIPRTRenderSettings& get_render_settings();
@@ -235,12 +237,7 @@ private:
         AtomicType<unsigned int> grid_cells_alive_count;
     } m_regir_state;
 
-    Image32Bit m_sheen_ltc_params;
-    Image32Bit m_GGX_conductor_directional_albedo;
-    Image32Bit3D m_glossy_dielectrics_directional_albedo;
-    Image32Bit3D m_GGX_glass_directional_albedo;
-    Image32Bit3D m_GGX_glass_inverse_directional_albedo;
-    Image32Bit3D m_GGX_thin_glass_directional_albedo;
+    BSDFDataHost m_bsdf_data_cpu_data;
 
     std::vector<Triangle> m_triangle_buffer;
     std::vector<Triangle> m_emissive_triangles_buffer;

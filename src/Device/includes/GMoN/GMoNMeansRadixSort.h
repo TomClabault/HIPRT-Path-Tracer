@@ -11,7 +11,7 @@
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 // Some macros to make that single function work on the CPU and GPU
 #ifdef __KERNELCC__

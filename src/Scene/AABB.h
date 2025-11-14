@@ -1,7 +1,7 @@
 #ifndef SCENE_AABB_H
 #define SCENE_AABB_H
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 /**
  * Axis Aligned Bounding Box class

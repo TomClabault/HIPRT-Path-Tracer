@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_HIPRT_CAMERA_H
 #define HOST_DEVICE_COMMON_HIPRT_CAMERA_H
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
 #include <hiprt/hiprt_types.h> // for hiprtRay
 

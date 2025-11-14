@@ -12,6 +12,7 @@
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/GPURendererThread.h"
@@ -493,6 +494,8 @@ private:
 	OrochiTexture3D m_GGX_glass_directional_albedo;
 	OrochiTexture3D m_GGX_glass_inverse_directional_albedo;
 	OrochiTexture3D m_GGX_thin_glass_directional_albedo;
+
+	//BSDFDataHost m_bsdf_data_cpu_data;
 };
 
 #endif

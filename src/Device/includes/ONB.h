@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_ONB_H
 #define DEVICE_INCLUDES_ONB_H
 
-#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Maths/Math.h"
 
  /*
   * This uses the technique from "Improved accuracy when building an orthonormal basis" by Nelson Max, 

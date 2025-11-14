@@ -15,15 +15,23 @@
 #include "Utils/CommandlineArguments.h"
 #include "Utils/Utils.h"
 
+#include "Renderer/Baker/LTC/LTCFitter.h"
+
 #include <chrono>
 #include <iostream>
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {   
+    static CPUMaterial material_to_fit;
+    LTCFitter fitter = LTCFitter(material_to_fit.pack_to_GPU().unpack());
+    fitter.fit(8, 48);
+    fitter.export_fitted_data_float4_C(true);
+    return 0;
+
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     int width = cmd_arguments.render_width;

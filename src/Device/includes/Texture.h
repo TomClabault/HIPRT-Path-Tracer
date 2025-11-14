@@ -110,6 +110,11 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_32bits(const void* texture_bu
     return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
 
+HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba_32bits(const void* texture_buffer, int texture_index, bool is_srgb, float2 uv, bool flip_uv_y = true)
+{
+    return sample_texture_rgba<Image32Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
+}
+
 #ifdef __KERNELCC__
 /**
  * Bilinearly samples around x & y on the layer z of a 3D texture configured for

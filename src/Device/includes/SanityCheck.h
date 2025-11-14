@@ -15,10 +15,10 @@
  // For logging stuff on the CPU and avoid everything being mixed
  // up in the terminal because of multithreading
 #include <mutex>
-std::mutex g_mutex;
+static std::mutex g_mutex;
 #endif
 
-HIPRT_DEVICE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, ColorRGB32F final_color)
+HIPRT_DEVICE static void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, ColorRGB32F final_color)
 {
     if (render_data.render_settings.sample_number == 0)
         render_data.buffers.accumulated_ray_colors[y * render_data.render_settings.render_resolution.x + x] = final_color;
@@ -30,7 +30,7 @@ HIPRT_DEVICE void debug_set_final_color(const HIPRTRenderData& render_data, int 
  * Returns true if the color has a negative component.
  * False otherwise
  */
-HIPRT_DEVICE bool check_for_negative_color(ColorRGB32F ray_color, int x, int y, int sample)
+HIPRT_DEVICE static bool check_for_negative_color(ColorRGB32F ray_color, int x, int y, int sample)
 {
     // To remove 'unused variable' warnings of the GPU compiler because these variables are only used
     // in the std::cout of the CPU
@@ -54,7 +54,7 @@ HIPRT_DEVICE bool check_for_negative_color(ColorRGB32F ray_color, int x, int y, 
  * Returns true if the color has a NaN or INF component.
  * False otherwise
  */ 
-HIPRT_DEVICE bool check_for_nan(ColorRGB32F ray_color, int x, int y, int sample)
+HIPRT_DEVICE static bool check_for_nan(ColorRGB32F ray_color, int x, int y, int sample)
 {
     // To avoid unused variables on the GPU
     (void)x;
@@ -75,7 +75,7 @@ HIPRT_DEVICE bool check_for_nan(ColorRGB32F ray_color, int x, int y, int sample)
 }
 
 template <bool CheckOnlyOnCPU = false>
-HIPRT_DEVICE bool sanity_check(const HIPRTRenderData& render_data, ColorRGB32F& in_out_color, int x, int y)
+HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, ColorRGB32F& in_out_color, int x, int y)
 {
     if constexpr (CheckOnlyOnCPU)
     {
@@ -107,14 +107,14 @@ HIPRT_DEVICE bool sanity_check(const HIPRTRenderData& render_data, ColorRGB32F& 
 }
 
 template <bool CheckOnlyOnCPU = false>
-HIPRT_DEVICE bool sanity_check(const HIPRTRenderData& render_data, const ColorRGB32F& in_out_color, int x, int y)
+HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, const ColorRGB32F& in_out_color, int x, int y)
 {
     ColorRGB32F copy = in_out_color;
     return sanity_check<CheckOnlyOnCPU>(render_data, copy, x, y);
 }
 
 template <bool CheckOnlyOnCPU = false>
-HIPRT_DEVICE bool sanity_check(const HIPRTRenderData& render_data, float value, int x, int y)
+HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, float value, int x, int y)
 {
     return sanity_check<CheckOnlyOnCPU>(render_data, ColorRGB32F(value), x, y);
 }
