@@ -23,7 +23,7 @@
   */
 
 // minimal roughness (avoid singularities)
-const float MIN_ALPHA = 0.0001f;
+const float MIN_ROUGHNESS = 0.0001f;
 
 struct LTC
 {
@@ -140,13 +140,13 @@ struct LTCFit
 		bool isotropic_, const float3& V_, unsigned int error_samples_, float alpha_) :
 		ltc(ltc_), 
 		render_data(render_data_), material(material_), base_bsdf_context(base_bsdf_context_), rng(rng_),
-		V(V_), error_samples(error_samples_), alpha(alpha_), isotropic(isotropic_) { }
+		V(V_), error_samples(error_samples_), roughness(alpha_), isotropic(isotropic_) { }
 
 	void update(const float* params);
 
 	// compute the error between the BRDF and the LTC
 	// using Multiple Importance Sampling
-	float compute_error(const LTC& ltc, const float3& V, const float alpha);
+	float compute_error(const LTC& ltc, const float3& V, const float roughness);
 
 	float operator()(const float* params);
 
@@ -161,7 +161,7 @@ struct LTCFit
 	bool isotropic;
 
 	float3 V;
-	float alpha;
+	float roughness;
 };
 
 class LTCFitter
@@ -179,14 +179,14 @@ public:
 	void export_fitted_data_float4_C(bool export_inverse = false, bool export_amplitude = false);
 
 private:
-	float compute_norm(const float3& V, const float alpha, Xorshift32Generator& rng);
+	float compute_norm(const float3& V, const float roughness, Xorshift32Generator& rng);
 
 	// compute the average direction of the BRDF
-	float3 compute_average_dir(const float3& V, const float alpha, Xorshift32Generator& rng);
+	float3 compute_average_dir(const float3& V, const float roughness, Xorshift32Generator& rng);
 
 	// fit brute force
 	// refine first guess by exploring parameter space
-	void fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V, const float alpha, const float epsilon = 0.05f, const bool isotropic = false);
+	void fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V, const float roughness, const float epsilon = 0.05f, const bool isotropic = false);
 	
 	DeviceUnpackedEffectiveMaterial material;
 
@@ -196,7 +196,7 @@ private:
 	BSDFDataHost m_bsdf_data_cpu_data;
 
 	RayVolumeState m_ray_volume_state;
-	BSDFIncidentLightInfo m_incident_light_info;
+	BSDFIncidentLightInfo m_incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 	std::shared_ptr<BSDFContext> m_base_bsdf_context;
 
 	bool fitting_done = false;

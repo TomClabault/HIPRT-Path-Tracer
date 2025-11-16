@@ -12,12 +12,12 @@
  // Clamping value for dot products when evaluating the GGX distribution
  // This helps with fireflies due to numerical imprecisions
  //
- // 1.0e-3f seems indistinguishable from 1.0e-8f (which is closer to
+ // 1.0e-4f seems indistinguishable from 1.0e-8f (which is closer to
  // "ground truth" since we're not clamping as hard) except that 1.0e-8f
  // has a bunch of fireflies / is not very stable at all.
  //
- // So even though 1.0e-3f may seem a bit harsh, it's actually fine
-#define GGX_DOT_PRODUCTS_CLAMP 1.0e-3f
+ // So even though 1.0e-4f may seem a bit harsh, it's actually fine
+#define GGX_DOT_PRODUCTS_CLAMP 1.0e-4f
 
 /**
  * Evaluates the GGX anisotropic normal distribution function
@@ -488,9 +488,6 @@ HIPRT_DEVICE static float3 microfacet_GGX_sample_reflection(float roughness, flo
     int below_normal = (local_view_direction.z < 0) ? -1 : 1;
     float alpha_x, alpha_y;
     MaterialUtils::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
-
-    if (below_normal == -1)
-        below_normal *= 1.0f;
 
     float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction * below_normal, alpha_x, alpha_y, random_number_generator);
     float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);

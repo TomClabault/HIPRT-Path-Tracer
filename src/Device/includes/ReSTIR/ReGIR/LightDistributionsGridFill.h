@@ -22,7 +22,9 @@ HIPRT_DEVICE LightSampleInformation grid_fill_cell_light_distributions_canonical
     dummy_ray_payload.material.metallic = surface.cell_metallic;
     dummy_ray_payload.material.specular = surface.cell_specular;
 
-    LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+    LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, 
+        surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, 
+        surface.cell_primitive_index, dummy_ray_payload, rng);
     if (light_sample.emissive_triangle_global_index == -1)
         return light_sample;
 
@@ -33,6 +35,7 @@ HIPRT_DEVICE LightSampleInformation grid_fill_cell_light_distributions_canonical
 
 HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light_distribution(const HIPRTRenderData& render_data, 
     float3 shading_point, float3 view_direction, float3 shading_normal, 
+    const DeviceUnpackedEffectiveMaterial& material,
     unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
 {
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
@@ -66,6 +69,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light
 
     LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, 
         shading_point, view_direction, shading_normal,
+        material,
         emissive_triangle_global_index, rng);
     if (light_sample.emissive_triangle_global_index == -1)
         // Probably a degenerate triangle

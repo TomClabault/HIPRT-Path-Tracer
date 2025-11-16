@@ -269,6 +269,8 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
+// - Pass is_srgb as template parameter to texture sample function to avoid the register cost of the pow() call enclosed in a simple if()
+// - Remove all raw cos() and sin() calls (we've got some in microfacet.h)
 // - Cache we maybe have some kind of adaptive sampling for the lighting at the priamry hit? So like run ReSTIR DI or something until some variance is reached for DI and then stop sampling DI and only sample DI
 //		- For that we would need 2 buffers:
 //			A) 1 buffer that accumulates the NEE estimator at the primary hit
@@ -319,6 +321,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODO Features:
 // - Constant memory for Render data such that it is available everywhere and we don't have it to pass it around all the time.
 //		- Same for more variables?
+// - Can we use LTCs for sampling the BSDFs with energy compensation? Since energy compensation has high variance, LTCs may help a lot there?
 // - Variance aware MIS weights? https://cgg.mff.cuni.cz/~jaroslav/papers/2019-variance-aware-mis/2019-grittmann-variance-aware-mis-paper.pdf
 // - RISLTC: https://data.ishaanshah.xyz/research/pdfs/risltc.pdf. Some explanations in there for projected solid angle and LTC sampling
 // - Inciteful graph to explore (started with Practical product sampling warping NVIDIA): https://inciteful.xyz/p?ids%5B%5D=W4220995884&ids%5B%5D=W3179788358&ids%5B%5D=W4403641440&ids%5B%5D=W4390345185&ids%5B%5D=W4388994411&ids%5B%5D=W4200187284&ids%5B%5D=W2885975589&ids%5B%5D=W3183450244&ids%5B%5D=W1893031899&ids%5B%5D=W3036883119&ids%5B%5D=W3044759327&ids%5B%5D=W4240396283&ids%5B%5D=W3110265079&ids%5B%5D=W2073976119&ids%5B%5D=W2988541899&ids%5B%5D=W2885239691&ids%5B%5D=W2964425571&ids%5B%5D=W2030242873&ids%5B%5D=W3044185278

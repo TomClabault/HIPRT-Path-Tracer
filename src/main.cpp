@@ -3,6 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Device/includes/BSDFs/LTCsData/GGXSpecularLambertDiffuseLTCFitData.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
 #include "Renderer/CPURenderer.h"
@@ -22,15 +23,16 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {   
-    static CPUMaterial material_to_fit;
-    LTCFitter fitter = LTCFitter(material_to_fit.pack_to_GPU().unpack());
-    fitter.fit(8, 48);
-    fitter.export_fitted_data_float4_C(true);
-    return 0;
+	/*static CPUMaterial material_to_fit;
+	material_to_fit.metallic = 1.0f;
+	LTCFitter fitter = LTCFitter(material_to_fit.pack_to_GPU().unpack());
+	fitter.fit(GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, 64);
+	fitter.export_fitted_data_float4_C(true);
+	return 0;*/
 
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 

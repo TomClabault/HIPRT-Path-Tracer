@@ -102,7 +102,7 @@
  * 
  * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
  */
-#define PrincipledBSDFDoEnergyCompensation KERNEL_OPTION_TRUE
+#define PrincipledBSDFDoEnergyCompensation KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to perform energy compensation for the glass layer of the Principled BSDF
@@ -145,7 +145,7 @@
  * 
  * Some more details in BSDFIncidentLightInfo.h
  */
-#define PrincipledBSDFDeltaDistributionEvaluationOptimization KERNEL_OPTION_TRUE
+#define PrincipledBSDFDeltaDistributionEvaluationOptimization KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to sample the glossy/diffuse base layer of the BSDF based on the fresnel or not.
@@ -168,7 +168,7 @@
  * Implementation of [Microfacet Model Regularization for Robust Light Transport, Jendersie et al. 2019]
  * for regularizing (roughening) microfacet materials and help with caustics rendering
  */
-#define PrincipledBSDFDoMicrofacetRegularization KERNEL_OPTION_TRUE
+#define PrincipledBSDFDoMicrofacetRegularization KERNEL_OPTION_FALSE
 
 /**
  * For microfacet model regularization, whether or not the use the consistent parametertization for tau_0 as

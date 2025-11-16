@@ -47,6 +47,19 @@ HIPRT_DEVICE static void build_rotated_ONB(const float3& N, float3& T, float3& B
     B = hippt::cross(N, T);
 }
 
+/**
+ * Build an ONB with the given 'N' axis as the Z axis (up) and also such that
+ * vec lies perfectly in the X/Z plane
+ */
+HIPRT_DEVICE static void build_ONB_XZ_plane(const float3& N, float3& T, float3& B, const float3& vec_xz)
+{
+    if (hippt::abs(hippt::dot(vec_xz, N)) > 0.99998796f)
+        T = N.x > 0.99998796f ? make_float3(0.0f, 1.0f, 0.0f) : make_float3(1.0f, 0.0f, 0.0f);
+    else
+        T = hippt::normalize(vec_xz - hippt::dot(vec_xz, N) * N);
+    B = hippt::cross(N, T);
+}
+
 /*
  * Transforms V from its local space to the space around the normal
  */

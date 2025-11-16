@@ -54,7 +54,7 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer,
     rgba = ColorRGBA32F(tex2D<float4>(texture, u, v));
 #else
     const ImageType& texture = reinterpret_cast<const ImageType*>(texture_buffer)[texture_index];
-
+    
     rgba = texture.sample_rgba32f(uv);
 #endif
 

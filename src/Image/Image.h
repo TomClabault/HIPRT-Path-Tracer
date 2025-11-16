@@ -14,6 +14,12 @@
 #include <string>
 #include <type_traits>
 
+enum ImageSamplingMode
+{
+    SAMPLING_MODE_NEAREST,
+    SAMPLING_MODE_BILINEAR,
+};
+
 struct ImageBin
 {
     int x0, x1;
@@ -75,6 +81,7 @@ public:
     void free();
 
     int width, height, channels;
+    ImageSamplingMode sampling_mode = ImageSamplingMode::SAMPLING_MODE_BILINEAR;
 
 protected:
     std::vector<unsigned char> m_pixel_data;
@@ -139,6 +146,7 @@ public:
     void free();
 
     int width = 0, height = 0, channels = 0;
+    ImageSamplingMode sampling_mode = ImageSamplingMode::SAMPLING_MODE_BILINEAR;
 
 protected:
     std::vector<float> m_pixel_data;
@@ -153,6 +161,7 @@ public:
     ColorRGBA32F sample_rgba32f(float3 uvw) const;
 
     int width, height, depth, channels;
+    ImageSamplingMode sampling_mode = ImageSamplingMode::SAMPLING_MODE_BILINEAR;
 
 private:
     std::vector<Image32Bit> m_images;

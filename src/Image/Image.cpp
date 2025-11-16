@@ -585,14 +585,55 @@ ColorRGBA32F Image32Bit::sample_rgba32f(float2 uv) const
     v = v < 0 ? 1.0f + v : v;
 
     // Sampling with [0, 0] bottom-left convention
+    // 
+    // Convention is reversed on the CPU vs. the GPU. On the GPU with CUDA/HIP, [0, 0] is
+    // in the bottom left corner.
+    // 
+    // On the CPU where we're using std::vectors, [0, 0] would be the
+    // top left corner so we're flipping here so that the default behavior
+    // on the CPU matches the default behavior on the GPU
     v = 1.0f - v;
 
     int x = (u * (width - 1));
     int y = (v * (height - 1));
 
     ColorRGBA32F out_color;
-    for (int i = 0; i < channels; i++)
-        out_color[i] = m_pixel_data[(x + y * width) * channels + i];
+    switch (sampling_mode)
+    {
+    case ImageSamplingMode::SAMPLING_MODE_NEAREST:
+    {
+        for (int i = 0; i < channels; i++)
+            out_color[i] = m_pixel_data[(x + y * width) * channels + i];
+        break;
+    }
+
+    case ImageSamplingMode::SAMPLING_MODE_BILINEAR:
+    {
+        int x0 = hippt::clamp(0, width - 1, x);
+        int x1 = hippt::clamp(0, width - 1, x + 1);
+        int y0 = hippt::clamp(0, height - 1, y);
+        int y1 = hippt::clamp(0, height - 1, y + 1);
+
+        float u_ratio = (u * (width - 1)) - x;
+        float v_ratio = (v * (height - 1)) - y;
+
+        float u_opposite = 1.0f - u_ratio;
+        float v_opposite = 1.0f - v_ratio;
+
+        for (int i = 0; i < channels; i++)
+        {
+            float c00 = m_pixel_data[(x0 + y0 * width) * channels + i];
+            float c10 = m_pixel_data[(x1 + y0 * width) * channels + i];
+            float c01 = m_pixel_data[(x0 + y1 * width) * channels + i];
+            float c11 = m_pixel_data[(x1 + y1 * width) * channels + i];
+
+            out_color[i] = (c00 * u_opposite + c10 * u_ratio) * v_opposite +
+                           (c01 * u_opposite + c11 * u_ratio) * v_ratio;
+        }
+		break;
+    }
+    }
+
 
     return out_color;
 }
@@ -798,6 +839,52 @@ ColorRGBA32F Image32Bit3D::sample_rgba32f(float3 uvw) const
     ColorRGBA32F out_color;
     for (int i = 0; i < channels; i++)
         out_color[i] = m_images[z][(x + y * width) * channels + i];
+
+    switch (sampling_mode)
+    {
+    case ImageSamplingMode::SAMPLING_MODE_NEAREST:
+    {
+        for (int i = 0; i < channels; i++)
+            out_color[i] = m_images[z][(x + y * width) * channels + i];
+
+        break;
+    }
+
+    case ImageSamplingMode::SAMPLING_MODE_BILINEAR:
+    {
+        // Bilinear interpolation in 3D
+        int x1 = (x + 1) % width;
+        int y1 = (y + 1) % height;
+        int z1 = (z + 1) % depth;
+
+        float u_ratio = (u * (width - 1)) - x;
+        float v_ratio = (v * (height - 1)) - y;
+        float w_ratio = (w * (depth - 1)) - z;
+
+        for (int i = 0; i < channels; i++)
+        {
+            float c000 = m_images[z][(x + y * width) * channels + i];
+            float c100 = m_images[z][(x1 + y * width) * channels + i];
+            float c010 = m_images[z][(x + y1 * width) * channels + i];
+            float c110 = m_images[z][(x1 + y1 * width) * channels + i];
+            float c001 = m_images[z1][(x + y * width) * channels + i];
+            float c101 = m_images[z1][(x1 + y * width) * channels + i];
+            float c011 = m_images[z1][(x + y1 * width) * channels + i];
+            float c111 = m_images[z1][(x1 + y1 * width) * channels + i];
+
+            float c00 = c000 * (1 - u_ratio) + c100 * u_ratio;
+            float c10 = c010 * (1 - u_ratio) + c110 * u_ratio;
+            float c01 = c001 * (1 - u_ratio) + c101 * u_ratio;
+            float c11 = c011 * (1 - u_ratio) + c111 * u_ratio;
+            
+            float c0 = c00 * (1 - v_ratio) + c10 * v_ratio;
+            float c1 = c01 * (1 - v_ratio) + c11 * v_ratio;
+
+            out_color[i] = c0 * (1 - w_ratio) + c1 * w_ratio;
+        }
+		break;
+    }
+    }
 
     return out_color;
 }

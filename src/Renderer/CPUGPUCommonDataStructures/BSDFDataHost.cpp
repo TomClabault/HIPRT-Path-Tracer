@@ -49,8 +49,8 @@ void BSDFDataHost::load_bsdf_data(HIPRTRenderData& render_data)
     }
     m_GGX_thin_glass_directional_albedo = Image32Bit3D(images);
 
-    m_GGX_specular_lambert_diffuse_ltc_params = Image32Bit(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_fit_parameters.data()), 8, 8, 4);
-    m_GGX_specular_lambert_diffuse_inverse_ltc_params = Image32Bit(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_inverse_fit_parameters.data()), 8, 8, 4);
+    m_GGX_specular_lambert_diffuse_ltc_params = Image32Bit(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_fit_parameters.data()), GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, 4);
+    m_GGX_specular_lambert_diffuse_inverse_ltc_params = Image32Bit(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_inverse_fit_parameters.data()), GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, 4);
 }
 
 void BSDFDataHost::to_device(HIPRTRenderData& render_data)

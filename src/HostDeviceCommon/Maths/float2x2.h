@@ -107,10 +107,8 @@ HIPRT_DEVICE static float2x2 transpose(const float2x2& m)
 {
 	float2x2 result;
 
-	result.m[0][0] = m.m[0][0];
 	result.m[0][1] = m.m[1][0];
 	result.m[1][0] = m.m[0][1];
-	result.m[1][1] = m.m[1][1];
 
 	return result;
 }

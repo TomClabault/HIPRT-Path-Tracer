@@ -93,7 +93,7 @@ HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_dat
 	// The LTC needs to be evaluated in a Z-up coordinate frame with view direction aligned
 	// with phi=0 (so no rotation on the X/Y plane).
 	// 
-	// We're thus computing the phi angle and then rotating the to light direction backwards
+	// We're thus computing the phi angle and then rotating the to light direction
 	// on that phi angle so that the view direction is at phi=0.
 	float phi = get_phi(local_view_direction);
 

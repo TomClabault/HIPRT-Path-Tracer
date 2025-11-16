@@ -34,6 +34,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 
         light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, 
             shading_point, view_direction, shading_normal,
+			ray_payload.material,
             hash_grid_cell_index, primary_hit, rng);
         if (light_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
             // Falling back on the base strategy

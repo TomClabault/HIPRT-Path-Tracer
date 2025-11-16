@@ -62,6 +62,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_uniform_area(float3 vertex_A, float
  */
 HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render_data, 
     float3 shading_point, float3 view_direction, float3 shading_normal,
+	const DeviceUnpackedEffectiveMaterial& material,
     int global_triangle_index, Xorshift32Generator& rng,
     float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, 
     float& out_point_pdf)
@@ -96,7 +97,9 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
         // stuff
         out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(render_data,
             vertex_A, vertex_B, vertex_C, normal, 
-            shading_point, view_direction, shading_normal, out_point_pdf, rng);
+            shading_point, view_direction, shading_normal, 
+            material,
+            out_point_pdf, rng);
     else
         // Otherwise it's not worth it and we can use the cheap solid angle (not projected) sampling
         out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
@@ -114,6 +117,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
  */
 HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, 
     float3 shading_point, float3 view_direction, float3 shading_normal, 
+    const DeviceUnpackedEffectiveMaterial& material,
     int global_triangle_index, Xorshift32Generator& rng)
 {
     LightSampleInformation light_sample;
@@ -125,6 +129,7 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     unsigned int point_on_light_random_seed;
     if (!sample_point_on_generic_triangle(render_data,
         shading_point, view_direction, shading_normal,
+        material,
         global_triangle_index, rng, 
         random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
         return LightSampleInformation();

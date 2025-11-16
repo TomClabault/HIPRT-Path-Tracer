@@ -425,6 +425,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 
 			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, 
 				shading_point, view_direction, shading_normal,
+				ray_payload.material,
 				emissive_triangle_index, rng);
 			light_sample.area_measure_pdf *= cumulative_probability;
 			light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
@@ -483,6 +484,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 
 			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, 
 				shading_point, view_direction, shading_normal,
+				ray_payload.material,
 				emissive_triangle_index, rng);
 			light_sample.area_measure_pdf *= cumulative_probability;
 			light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node

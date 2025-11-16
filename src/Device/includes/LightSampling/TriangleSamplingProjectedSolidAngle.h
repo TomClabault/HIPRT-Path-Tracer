@@ -341,6 +341,9 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	projected_solid_angle_triangle_t polygon;
 	// Copy vertices and assign ellipses
 	polygon.vertex_count = vertex_count;
+	if (vertex_count == 0)
+		return polygon;
+
 	polygon.inner_ellipse_0 = make_float2(1.0f, 0.0f);
 	polygon.vertices[0] = make_float2(vertices_clockwise_order[0].x, vertices_clockwise_order[0].y); 
 	polygon.ellipses[0] = ellipse_from_edge(vertices_clockwise_order[0], vertices_clockwise_order[1]);
@@ -427,22 +430,55 @@ UNROLL_LOOP
 
 HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling_from_world_space(const HIPRTRenderData& render_data,
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
-	float3 shading_point, float3 view_direction, float3 shading_normal)
+	float3 shading_point, float3 view_direction, float3 shading_normal,
+	const DeviceUnpackedEffectiveMaterial& material)
 {
-	vertex_A_world_space = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, vertex_A_world_space);
-	vertex_B_world_space = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, vertex_B_world_space);
-	vertex_C_world_space = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, vertex_C_world_space);
-
-	float3 vertex_A_local = vertex_A_world_space -shading_point;
-	float3 vertex_B_local = vertex_B_world_space -shading_point;
-	float3 vertex_C_local = vertex_C_world_space -shading_point;
-
-	float3 T, B;
+	/**
+	 * Simple reference
+	 */
+	/*float3 T, B;
 	build_ONB(shading_normal, T, B);
 
-	vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_local);
-	vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_local);
-	vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_local);
+	float3 vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);
+	float3 vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
+	float3 vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);*/
+
+	/**
+	 * With the view direction in the x-z plane
+	 */
+	// Building a shading space where the shading point is the origin, the shading normal
+	// is the z axis, and the view direction lies in the x-z plane
+	
+	// Removing the normal component from the view direction
+	/*float3 tangent = hippt::normalize(view_direction - hippt::dot(view_direction, shading_normal) * shading_normal);
+	float3 bitangent = hippt::cross(shading_normal, tangent);
+	float3x3 rotation_matrix = float3x3::from_rows(tangent, bitangent, shading_normal);
+	float3 shading_space_origin = rotation_matrix * shading_point;
+
+	float3 vertex_A_local = rotation_matrix * vertex_A_world_space - shading_space_origin;
+	float3 vertex_B_local = rotation_matrix * vertex_B_world_space - shading_space_origin;
+	float3 vertex_C_local = rotation_matrix * vertex_C_world_space - shading_space_origin;*/
+
+	/**
+	 * With the view direction in the x-z plane + LTC transform
+	 */
+	 // Building a shading space where the shading point is the origin, the shading normal
+	 // is the z axis, and the view direction lies in the x-z plane
+
+	 // Removing the normal component from the view direction
+	float3 T, B;
+	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
+	float3 vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);
+	float3 vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
+	float3 vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
+
+	// Shading space to ltc space
+	vertex_A_local = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), material.roughness, vertex_A_local);
+	vertex_B_local = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), material.roughness, vertex_B_local);
+	vertex_C_local = ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), material.roughness, vertex_C_local);
+
+
+
 
 	// The vertices array reorganizes the vertices in clockwise order
 	float3 vertices_local_space[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING] = { vertex_A_local, vertex_C_local, vertex_B_local };
@@ -641,12 +677,21 @@ UNROLL_LOOP
 HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(const HIPRTRenderData& render_data,
 	float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal, 
 	float3 shading_point, float3 view_direction, float3 shading_normal,
+	const DeviceUnpackedEffectiveMaterial& material,
 	float& out_area_pdf,
 	Xorshift32Generator& rng)
 {
 	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(render_data,
 		vertex_A, vertex_B, vertex_C, 
-		shading_point, view_direction, shading_normal);
+		shading_point, view_direction, shading_normal,
+		material);
+
+	if (polygon.vertex_count == 0)
+	{
+		out_area_pdf = 0.0f;
+
+		return make_float3(0.0f, 0.0f, 0.0f);
+	}
 
 	float rand_1 = rng();
 	float rand_2 = rng();
@@ -725,15 +770,46 @@ UNROLL_LOOP
 		sampled_dir.y = sector.y;
 	}
 
+
 	// Construct the sample
 	sampled_dir.z = hippt::sqrt(hippt::max(0.0f, hippt::fma(-sampled_dir.x, sampled_dir.x, hippt::fma(-sampled_dir.y, sampled_dir.y, 1.0f))));
-	sampled_dir = hippt::normalize(local_to_world_frame(shading_normal, sampled_dir));
-	//float3 sampled_dir_world_space = hippt::normalize(ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, sampled_dir));
 
-	float3 sampled_dir_world_space = hippt::normalize(ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params, hippt::dot(view_direction, shading_normal), 0.3f, sampled_dir));
-	float3 point = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, hippt::dot(shading_normal, sampled_dir_world_space) / polygon.projected_solid_angle, out_area_pdf);
+	// Transform the sample back to world space
+	
+	/**
+	 * Simple reference
+	 */
+	// sampled_dir = hippt::normalize(local_to_world_frame(shading_normal, sampled_dir)); 
 
-	return point;
+	/**
+	 * View direction lies in the x-z plane.
+	 */
+	//float3 tangent = hippt::normalize(view_direction - hippt::dot(view_direction, shading_normal) * shading_normal);
+	//float3 bitangent = hippt::cross(shading_normal, tangent);
+	//float3x3 rotation_matrix = float3x3::from_rows(tangent, bitangent, shading_normal);
+
+	//// Multiplying the vector from the left to effectively
+	//// multiply by the transpose of the rotation matrix which is its inverse.
+	//sampled_dir = hippt::normalize(sampled_dir * rotation_matrix);
+
+	/**
+	 * View direction lies in the x-z plane + LTC.
+	 */
+
+	// From ltc space to world space
+	float3 sampled_dir_shading_space = hippt::normalize(ltc_transform(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params, hippt::dot(view_direction, shading_normal), material.roughness, sampled_dir));
+
+	float3 T, B;
+	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
+	float3x3 rotation_matrix = float3x3::from_rows(T, B, shading_normal);
+	// Multiplying the vector from the left to effectively
+	// multiply by the transpose of the rotation matrix which is its inverse.
+	float3 sampled_dir_world_space = hippt::normalize(sampled_dir_shading_space * rotation_matrix);
+
+	float pdf_solid_angle = hippt::dot(shading_normal, sampled_dir_world_space) / polygon.projected_solid_angle;
+	pdf_solid_angle *= ltc_jacobian(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params, hippt::dot(view_direction, shading_normal), material.roughness, sampled_dir_shading_space);
+
+	return map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);
 }
 
 #endif

@@ -4,6 +4,7 @@
  */
 
 #include "Compiler/GPUKernelCompilerOptions.h"
+#include "Device/includes/BSDFs/LTCsData/GGXSpecularLambertDiffuseLTCFitData.h"
 #include "Device/includes/BSDFs/LTCsData/ZeltnerSheenLTCFitData.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "Renderer/Baker/GPUBaker.h"
@@ -88,14 +89,15 @@ void GPURenderer::start_render_thread()
 
 void GPURenderer::setup_brdfs_data()
 {
-	init_sheen_ltc_texture();
+	load_sheen_ltc_texture();
+	load_ltc_textures();
 
 	load_GGX_energy_compensation_textures();
 	load_glossy_dielectric_energy_compensation_textures();
 	load_GGX_glass_energy_compensation_textures();
 }
 
-void GPURenderer::init_sheen_ltc_texture()
+void GPURenderer::load_sheen_ltc_texture()
 {
 	// CUDA/HIP do not handle 3 channels textures so we're padding it to 4 channels
 	std::vector<float> padded_ltc(32 * 32 * 4);
@@ -116,6 +118,15 @@ void GPURenderer::init_sheen_ltc_texture()
 
 	Image32Bit sheen_ltc_params_image(padded_ltc.data(), 32, 32, 4);
 	m_sheen_ltc_params = OrochiTexture(sheen_ltc_params_image, hipFilterModeLinear, hipAddressModeClamp);
+}
+
+void GPURenderer::load_ltc_textures()
+{
+	Image32Bit GGX_specular_lambert_diffuse_ltc_params(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_fit_parameters.data()), GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, 4);
+	Image32Bit GGX_specular_lambert_diffuse_inverse_ltc_params(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_inverse_fit_parameters.data()), GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, 4);
+
+	m_GGX_specular_lambert_diffuse_ltc_params = OrochiTexture(GGX_specular_lambert_diffuse_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
+	m_GGX_specular_lambert_diffuse_inverse_ltc_params = OrochiTexture(GGX_specular_lambert_diffuse_inverse_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
 }
 
 void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode)
@@ -688,6 +699,9 @@ void GPURenderer::update_render_data()
 			m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
 		m_render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params = m_sheen_ltc_params.get_device_texture();
+		m_render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params = m_GGX_specular_lambert_diffuse_ltc_params.get_device_texture();
+		m_render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params = m_GGX_specular_lambert_diffuse_inverse_ltc_params.get_device_texture();
+
 		m_render_data.bsdfs_data.GGX_conductor_directional_albedo = m_GGX_conductor_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.glossy_dielectric_directional_albedo = m_glossy_dielectric_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.GGX_glass_directional_albedo = m_GGX_glass_directional_albedo.get_device_texture();

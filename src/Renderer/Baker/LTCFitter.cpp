@@ -12,7 +12,7 @@
 //// number of samples used to compute the error during fitting
 //const int Nsample = 50;
 //// minimal roughness (avoid singularities)
-//const float MIN_ALPHA = 0.0001f;
+//const float MIN_ROUGHNESS = 0.0001f;
 //
 //// compute the norm (albedo) of the BRDF
 //float computeNorm(const Brdf& brdf, const vec3& V, const float alpha)
@@ -122,8 +122,8 @@
 //
 //	void update(const float * params)
 //	{
-//		float m11 = std::max<float>(params[0], MIN_ALPHA);
-//		float m22 = std::max<float>(params[1], MIN_ALPHA);
+//		float m11 = std::max<float>(params[0], MIN_ROUGHNESS);
+//		float m22 = std::max<float>(params[1], MIN_ROUGHNESS);
 //		float m13 = params[2];
 //		float m23 = params[3];
 //
@@ -189,7 +189,7 @@
 //
 //			// alpha = roughness^2
 //			float roughness = a / float(N - 1);
-//			float alpha = std::max<float>(roughness * roughness, MIN_ALPHA);
+//			float alpha = std::max<float>(roughness * roughness, MIN_ROUGHNESS);
 //
 //			cout << "a = " << a << "\t t = " << t << endl;
 //			cout << "alpha = " << alpha << "\t theta = " << theta << endl;
@@ -215,8 +215,8 @@
 //				}
 //				else // init with roughness of previous fit
 //				{
-//					ltc.m11 = std::max<float>(tab[a + 1 + t * N][0][0], MIN_ALPHA);
-//					ltc.m22 = std::max<float>(tab[a + 1 + t * N][1][1], MIN_ALPHA);
+//					ltc.m11 = std::max<float>(tab[a + 1 + t * N][0][0], MIN_ROUGHNESS);
+//					ltc.m22 = std::max<float>(tab[a + 1 + t * N][1][1], MIN_ROUGHNESS);
 //				}
 //
 //				ltc.m13 = 0;

@@ -11,8 +11,8 @@
 
 void LTCFit::update(const float* params)
 {
-	float m11 = std::max<float>(params[0], MIN_ALPHA);
-	float m22 = std::max<float>(params[1], MIN_ALPHA);
+	float m11 = std::max<float>(params[0], MIN_ROUGHNESS);
+	float m22 = std::max<float>(params[1], MIN_ROUGHNESS);
 	float m13 = params[2];
 	float m23 = params[3];
 
@@ -36,16 +36,19 @@ void LTCFit::update(const float* params)
 
 // compute the error between the BRDF and the LTC
 // using Multiple Importance Sampling
-float LTCFit::compute_error(const LTC& ltc, const float3& V, const float alpha)
+float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughness)
 {
 	double error = 0.0;
 
+	int valid_sample_count = 0;
 	for (int j = 0; j < error_samples; ++j)
 	{
 		for (int i = 0; i < error_samples; ++i)
 		{
 			const float U1 = (i + 0.5f) / (float)error_samples;
 			const float U2 = (j + 0.5f) / (float)error_samples;
+
+			double sample_error = 0.0;
 
 			// importance sample LTC
 			{
@@ -55,16 +58,17 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float alpha)
 				BSDFContext bsdf_context = *base_bsdf_context;
 				bsdf_context.view_direction = V;
 				bsdf_context.to_light_direction = L;
-				bsdf_context.material.roughness = alpha;
+				bsdf_context.material.roughness = roughness;
 
 				// error with MIS weight
 				float pdf_brdf;
 				float eval_brdf = principled_bsdf_eval(render_data, bsdf_context, pdf_brdf).luminance() * L.z;
+
 				float eval_ltc = ltc.eval(L);
 				float pdf_ltc = eval_ltc / ltc.amplitude;
 				double error_ = fabsf(eval_brdf - eval_ltc);
 				error_ = error_ * error_ * error_;
-				error += error_ / (pdf_ltc + pdf_brdf);
+				sample_error += error_ / (pdf_ltc + pdf_brdf);
 			}
 
 			// importance sample BRDF
@@ -72,30 +76,37 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float alpha)
 				// Sample
 				BSDFContext bsdf_context = *base_bsdf_context;
 				bsdf_context.view_direction = V;
-				bsdf_context.material.roughness = alpha;
+				bsdf_context.material.roughness = roughness;
 
 				float pdf_brdf;
 				float3 sampled_direction;
 				float eval_brdf = principled_bsdf_sample(render_data, bsdf_context, sampled_direction, pdf_brdf, rng).luminance() * sampled_direction.z;
+				if (pdf_brdf == 0.0f)
+					// Bad sample
+					continue;
 
 				// error with MIS weight
 				float eval_ltc = ltc.eval(sampled_direction);
 				float pdf_ltc = eval_ltc / ltc.amplitude;
 				double error_ = fabsf(eval_brdf - eval_ltc);
 				error_ = error_ * error_ * error_;
-				error += error_ / (pdf_ltc + pdf_brdf);
+				sample_error += error_ / (pdf_ltc + pdf_brdf);
 			}
+
+			error += sample_error;
+
+			valid_sample_count++;
 		}
 	}
 
-	return (float)error / (float)(error_samples * error_samples);
+	return (float)error / (float)(valid_sample_count);
 }
 
 float LTCFit::operator()(const float* params)
 {
 	update(params);
 
-	return compute_error(ltc, V, alpha);
+	return compute_error(ltc, V, roughness);
 }
 
 LTCFitter::LTCFitter(const DeviceUnpackedEffectiveMaterial& material_) : material(material_)
@@ -120,6 +131,8 @@ LTCFitter::LTCFitter(const DeviceUnpackedEffectiveMaterial& material_) : materia
 
 void LTCFitter::fit(int resolution, int error_samples)
 {
+	fitting_done = false;
+
 	m_bsdf_data_cpu_data.to_device(m_render_data);
 
 	m_fitted_data.resize(resolution * resolution);
@@ -127,25 +140,22 @@ void LTCFitter::fit(int resolution, int error_samples)
 	m_fit_resolution = resolution;
 	m_error_samples = error_samples;
 
-	// loop over theta and alpha
-//#pragma omp parallel for
-	for (int a = resolution - 2; a >= 0; a--)
+	// loop over theta and roughness
+	for (int a = resolution - 1; a >= 0; a--)
 	{
+#pragma omp parallel for
 		for (int t = 0; t < resolution; t++)
 		{
 			Xorshift32Generator thread_rng(a * resolution + t + 1);
 
 			LTC ltc;
 
+			float roughness = std::max(MIN_ROUGHNESS, a / float(resolution - 1));
 			float theta = std::min<float>(1.57f, t / float(resolution - 1) * 1.57079f);
 			const float3 V = float3(sinf(theta), 0, cosf(theta));
 
-			// alpha = roughness^2
-			float roughness = a / float(resolution - 1);
-			float alpha = std::max<float>(roughness * roughness, MIN_ALPHA);
-
-			ltc.amplitude = compute_norm(V, alpha, thread_rng);
-			const float3 averageDir = compute_average_dir(V, alpha, thread_rng);
+			ltc.amplitude = compute_norm(V, roughness, thread_rng);
+			const float3 averageDir = compute_average_dir(V, roughness, thread_rng);
 			bool isotropic;
 
 			// 1. first guess for the fit
@@ -164,8 +174,8 @@ void LTCFitter::fit(int resolution, int error_samples)
 				}
 				else // init with roughness of previous fit
 				{
-					ltc.m11 = std::max<float>(m_fitted_data[a + 1 + t * resolution].m[0][0], MIN_ALPHA);
-					ltc.m22 = std::max<float>(m_fitted_data[a + 1 + t * resolution].m[1][1], MIN_ALPHA);
+					ltc.m11 = std::max<float>(m_fitted_data[a + 1 + t * resolution].m[0][0], MIN_ROUGHNESS);
+					ltc.m22 = std::max<float>(m_fitted_data[a + 1 + t * resolution].m[1][1], MIN_ROUGHNESS);
 				}
 
 				ltc.m13 = 0;
@@ -191,7 +201,7 @@ void LTCFitter::fit(int resolution, int error_samples)
 
 			// 2. fit (explore parameter space and refine first guess)
 			float epsilon = 0.05f;
-			fit_internal(ltc, thread_rng, V, alpha, epsilon, isotropic);
+			fit_internal(ltc, thread_rng, V, roughness, epsilon, isotropic);
 
 			// copy data
 			m_fitted_data[a + t * resolution] = ltc.M;
@@ -206,7 +216,7 @@ void LTCFitter::fit(int resolution, int error_samples)
 			m_fitted_data[a + t * resolution] = 1.0f / m_fitted_data[a + t * resolution].m[2][2] * m_fitted_data[a + t * resolution];
 
 			std::cout << "a = " << a << "\t t = " << t << std::endl;
-			std::cout << "alpha = " << alpha << "\t theta = " << theta << std::endl;
+			std::cout << "roughness = " << roughness << "\t theta = " << theta << std::endl;
 			std::cout << std::endl;
 			std::cout << "\t" << m_fitted_data[a + t * resolution].m[0][0] << "\t " << m_fitted_data[a + t * resolution].m[1][0] << "\t " << m_fitted_data[a + t * resolution].m[2][0] << std::endl;
 			std::cout << "\t" << m_fitted_data[a + t * resolution].m[0][1] << "\t " << m_fitted_data[a + t * resolution].m[1][1] << "\t " << m_fitted_data[a + t * resolution].m[2][1] << std::endl;
@@ -231,9 +241,9 @@ void LTCFitter::export_fitted_data_float3x3_C(bool export_inverse, bool export_a
 		for (int a = 0; a < m_fit_resolution; ++a)
 		{
 			file << "float3x3(";
-			file << m_fitted_data[a + t * m_fit_resolution].m[0][0] << ", " << m_fitted_data[a + t * m_fit_resolution].m[0][1] << ", " << m_fitted_data[a + t * m_fit_resolution].m[0][2] << ", ";
-			file << m_fitted_data[a + t * m_fit_resolution].m[1][0] << ", " << m_fitted_data[a + t * m_fit_resolution].m[1][1] << ", " << m_fitted_data[a + t * m_fit_resolution].m[1][2] << ", ";
-			file << m_fitted_data[a + t * m_fit_resolution].m[2][0] << ", " << m_fitted_data[a + t * m_fit_resolution].m[2][1] << ", " << m_fitted_data[a + t * m_fit_resolution].m[2][2] << ")";
+			file << m_fitted_data[a + t * m_fit_resolution].m[0][0] << "f, " << m_fitted_data[a + t * m_fit_resolution].m[0][1] << "f, " << m_fitted_data[a + t * m_fit_resolution].m[0][2] << "f, ";
+			file << m_fitted_data[a + t * m_fit_resolution].m[1][0] << "f, " << m_fitted_data[a + t * m_fit_resolution].m[1][1] << "f, " << m_fitted_data[a + t * m_fit_resolution].m[1][2] << "f, ";
+			file << m_fitted_data[a + t * m_fit_resolution].m[2][0] << "f, " << m_fitted_data[a + t * m_fit_resolution].m[2][1] << "f, " << m_fitted_data[a + t * m_fit_resolution].m[2][2] << "f)";
 			if (a != m_fit_resolution - 1 || t != m_fit_resolution - 1)
 				file << ", ";
 			file << std::endl;
@@ -252,9 +262,9 @@ void LTCFitter::export_fitted_data_float3x3_C(bool export_inverse, bool export_a
 				float3x3 Minv = inverse(m_fitted_data[a + t * m_fit_resolution]);
 
 				file << "float3x3(";
-				file << Minv.m[0][0] << ", " << Minv.m[0][1] << ", " << Minv.m[0][2] << ", ";
-				file << Minv.m[1][0] << ", " << Minv.m[1][1] << ", " << Minv.m[1][2] << ", ";
-				file << Minv.m[2][0] << ", " << Minv.m[2][1] << ", " << Minv.m[2][2] << ")";
+				file << Minv.m[0][0] << "f, " << Minv.m[0][1] << "f, " << Minv.m[0][2] << "f, ";
+				file << Minv.m[1][0] << "f, " << Minv.m[1][1] << "f, " << Minv.m[1][2] << "f, ";
+				file << Minv.m[2][0] << "f, " << Minv.m[2][1] << "f, " << Minv.m[2][2] << "f)";
 				if (a != m_fit_resolution - 1 || t != m_fit_resolution - 1)
 					file << ", ";
 				file << std::endl;
@@ -292,40 +302,56 @@ void LTCFitter::export_fitted_data_float4_C(bool export_inverse, bool export_amp
 	file << std::fixed;
 	file << std::setprecision(6);
 
-	file << "static const std::array<float4, " << m_fit_resolution << " * " << m_fit_resolution << "> fitted_data = {" << std::endl;
+	file << "static const std::array<float4, " << m_fit_resolution << " * " << m_fit_resolution << "> ggx_specular_lambert_diffuse_ltc_fit_parameters = {" << std::endl;
 	for (int t = 0; t < m_fit_resolution; ++t)
 	{
+		file << "\t/**\n\t * t = " << t << "\n\t */" << std::endl;
+
 		for (int a = 0; a < m_fit_resolution; ++a)
 		{
+			float3x3 M = m_fitted_data[a + t * m_fit_resolution];
+
+			if (a == 0 || a == m_fit_resolution / 2 || a == m_fit_resolution - 1)
+				file << "\t// a = " << a << std::endl;
 			file << "\tmake_float4(";
-			file << m_fitted_data[a + t * m_fit_resolution].m[0][0] << ", " << m_fitted_data[a + t * m_fit_resolution].m[0][2] << ", ";
-			file << m_fitted_data[a + t * m_fit_resolution].m[1][1] << ", ";
-			file << m_fitted_data[a + t * m_fit_resolution].m[2][0] << ")";
+			file << M.m[0][0] << "f, " << M.m[0][2] << "f, ";
+			file << M.m[1][1] << "f, ";
+			file << M.m[2][0] << "f)";
 			if (a != m_fit_resolution - 1 || t != m_fit_resolution - 1)
 				file << ", ";
 			file << std::endl;
 		}
+
+		if (t < m_fit_resolution - 1)
+			file << std::endl << std::endl << std::endl << std::endl << std::endl;
 	}
 	file << "};" << std::endl << std::endl;
 
 	if (export_inverse)
 	{
-		file << "static const std::array<float4, " << m_fit_resolution << " * " << m_fit_resolution << "> fitted_data_inverse = {" << std::endl;
+		file << "static const std::array<float4, " << m_fit_resolution << " * " << m_fit_resolution << "> ggx_specular_lambert_diffuse_ltc_inverse_fit_parameters = {" << std::endl;
 
 		for (int t = 0; t < m_fit_resolution; ++t)
 		{
+			file << "\t/**\n\t * t = " << t << "\n\t */" << std::endl;
+
 			for (int a = 0; a < m_fit_resolution; ++a)
 			{
 				float3x3 Minv = inverse(m_fitted_data[a + t * m_fit_resolution]);
 
+				if (a == 0 || a == m_fit_resolution / 2 || a == m_fit_resolution - 1)
+					file << "\t// a = " << a << std::endl;
 				file << "\tmake_float4(";
-				file << Minv.m[0][0] << ", " << Minv.m[0][2] << ", ";
-				file << Minv.m[1][1] << ", ";
-				file << Minv.m[2][0] << ")";
+				file << Minv.m[0][0] << "f, " << Minv.m[0][2] << "f, ";
+				file << Minv.m[1][1] << "f, ";
+				file << Minv.m[2][0] << "f)";
 				if (a != m_fit_resolution - 1 || t != m_fit_resolution - 1)
 					file << ", ";
 				file << std::endl;
 			}
+
+			if (t < m_fit_resolution - 1)
+				file << std::endl << std::endl << std::endl << std::endl << std::endl;
 		}
 
 		file << "};" << std::endl << std::endl;
@@ -352,7 +378,7 @@ void LTCFitter::export_fitted_data_float4_C(bool export_inverse, bool export_amp
 	file.close();
 }
 
-float LTCFitter::compute_norm(const float3& V, const float alpha, Xorshift32Generator& rng)
+float LTCFitter::compute_norm(const float3& V, const float roughness, Xorshift32Generator& rng)
 {
 	float norm = 0.0;
 
@@ -363,7 +389,7 @@ float LTCFitter::compute_norm(const float3& V, const float alpha, Xorshift32Gene
 			// Sample
 			BSDFContext bsdf_context = *m_base_bsdf_context;
 			bsdf_context.view_direction = V;
-			bsdf_context.material.roughness = alpha;
+			bsdf_context.material.roughness = roughness;
 
 			float pdf;
 			float3 sampled_direction;
@@ -377,7 +403,7 @@ float LTCFitter::compute_norm(const float3& V, const float alpha, Xorshift32Gene
 	return norm / (float)(m_error_samples * m_error_samples);
 }
 
-float3 LTCFitter::compute_average_dir(const float3& V, const float alpha, Xorshift32Generator& rng)
+float3 LTCFitter::compute_average_dir(const float3& V, const float roughness, Xorshift32Generator& rng)
 {
 	float3 averageDir = float3(0, 0, 0);
 
@@ -391,7 +417,7 @@ float3 LTCFitter::compute_average_dir(const float3& V, const float alpha, Xorshi
 			// Sample
 			BSDFContext bsdf_context = *m_base_bsdf_context;
 			bsdf_context.view_direction = V;
-			bsdf_context.material.roughness = alpha;
+			bsdf_context.material.roughness = roughness;
 
 			float pdf;
 			float3 sampled_direction;
@@ -408,14 +434,14 @@ float3 LTCFitter::compute_average_dir(const float3& V, const float alpha, Xorshi
 	return hippt::normalize(averageDir);
 }
 
-void LTCFitter::fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V, const float alpha, const float epsilon, const bool isotropic)
+void LTCFitter::fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V, const float roughness, const float epsilon, const bool isotropic)
 {
 	float startFit[4] = { ltc.m11, ltc.m22, ltc.m13, ltc.m23 };
 	float resultFit[4];
 
 	LTCFit fitter(ltc,
 		m_render_data, material, m_base_bsdf_context, rng,
-		isotropic, V, m_error_samples, alpha);
+		isotropic, V, m_error_samples, roughness);
 
 	// Find best-fit LTC lobe (scale, alphax, alphay)
 	float error = NelderMead<4>(resultFit, startFit, epsilon, 1e-5f, 100, fitter);
@@ -423,27 +449,3 @@ void LTCFitter::fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V
 	// Update LTC with best fitting values
 	fitter.update(resultFit);
 }
-
-//int main(int argc, char* argv[])
-//{
-//	// allocate data
-//	float3x3 * tab = new float3x3[m_fit_resolution*m_fit_resolution];
-//	vec2 * tab_amplitude = new vec2[m_fit_resolution*m_fit_resolution];
-//	
-//	// fit
-//	fitTab(tab, tab_amplitude, m_fit_resolution, brdf);
-//
-//	// export in C, matlab and DDS
-//	writeTabMatlab(tab, tab_amplitude, m_fit_resolution);
-//	writeTabC(tab, tab_amplitude, m_fit_resolution);
-//	writeDDS(tab, tab_amplitude, m_fit_resolution);
-//
-//	// spherical plots
-//	make_spherical_plots(brdf, tab, m_fit_resolution);
-//
-//	// delete data
-//	delete [] tab;
-//	delete [] tab_amplitude;
-//
-//	return 0;
-//}

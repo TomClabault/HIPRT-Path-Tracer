@@ -72,7 +72,12 @@ public:
 	 * Initializes and uploads the fitted parameters for the LTC sheen lobe
 	 * of the Principled BSDF
 	 */
-	void init_sheen_ltc_texture();
+	void load_sheen_ltc_texture();
+
+	/**
+	 * Loads the LTC textures used for fitting the various BRDFs
+	 */
+	void load_ltc_textures();
 
 	/**
  	 * Initializes the precomputed texture used for GGX energy conservation
@@ -486,6 +491,10 @@ private:
 	// fitted to approximate the SSGX sheen volumetric layer.
 	// See SheenLTCFittedParameters.h
 	OrochiTexture m_sheen_ltc_params;
+
+	// Textures containing the precomputed parameters for the various BRDFs LTC fittings
+	OrochiTexture m_GGX_specular_lambert_diffuse_ltc_params;
+	OrochiTexture m_GGX_specular_lambert_diffuse_inverse_ltc_params;
 
 	// Precomputed tables for GGX energy compensation
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
