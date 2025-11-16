@@ -141,14 +141,15 @@ void LTCFitter::fit(int resolution, int error_samples)
 	m_error_samples = error_samples;
 
 	// loop over theta and roughness
+	LTC ltc;
 	for (int a = resolution - 1; a >= 0; a--)
 	{
-#pragma omp parallel for
 		for (int t = 0; t < resolution; t++)
 		{
 			Xorshift32Generator thread_rng(a * resolution + t + 1);
 
-			LTC ltc;
+			if (a == 0)
+				a = 0;
 
 			float roughness = std::max(MIN_ROUGHNESS, a / float(resolution - 1));
 			float theta = std::min<float>(1.57f, t / float(resolution - 1) * 1.57079f);
@@ -188,8 +189,8 @@ void LTCFitter::fit(int resolution, int error_samples)
 			else
 			{
 				float3 L = hippt::normalize(averageDir);
-				float3 T1(L.z, 0, -L.x);
-				float3 T2(0, 1, 0);
+				float3 T1 = make_float3(L.z, 0, -L.x);
+				float3 T2 = make_float3(0, 1, 0);
 				ltc.X = T1;
 				ltc.Y = T2;
 				ltc.Z = L;
@@ -344,7 +345,7 @@ void LTCFitter::export_fitted_data_float4_C(bool export_inverse, bool export_amp
 				file << "\tmake_float4(";
 				file << Minv.m[0][0] << "f, " << Minv.m[0][2] << "f, ";
 				file << Minv.m[1][1] << "f, ";
-				file << Minv.m[2][0] << "f)";
+				file << Minv.m[2][0] << "f)";	
 				if (a != m_fit_resolution - 1 || t != m_fit_resolution - 1)
 					file << ", ";
 				file << std::endl;
