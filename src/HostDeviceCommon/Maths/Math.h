@@ -460,15 +460,6 @@ namespace hippt
 	static T ldg_load(T* address) { return *address; }
 
 	static float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
-	// TODO restore this, or maybe not?
-	/*static float dot(float3 u, float3 v) 
-	{ 
-		float x = u.x * v.x;
-		float y = u.y * v.y;
-		float z = u.z * v.z;
-		
-		return x + y + z;
-	}*/
 	static float dot(float3 u, float3 v) { return u.x * v.x + u.y * v.y + u.z * v.z; }
 	static float dot(float2 u, float2 v) { return u.x * v.x + u.y * v.y; }
 
