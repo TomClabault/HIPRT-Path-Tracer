@@ -1699,11 +1699,11 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
     // Rotated ONB for the anisotropic GGX evaluation (metallic/glass lobes for example)
     float3 TR, BR;
     // TODO restore this
-    //build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
-    build_ONB(bsdf_context.shading_normal, TR, BR);
-    // TODO restore this
+    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+    //build_ONB(bsdf_context.shading_normal, TR, BR);
     //float3 local_view_direction_rotated = bsdf_context.view_direction;// world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
     //float3 local_to_light_direction_rotated = bsdf_context.to_light_direction;// world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+    // TODO restore this
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
@@ -1801,8 +1801,8 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
     // Rotated ONB for the anisotropic GGX evaluation (metallic/glass lobes for example)
     float3 TR, BR;
     // TODO restore this
-    // build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
-    build_ONB(bsdf_context.shading_normal, TR, BR);
+    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+    // build_ONB(bsdf_context.shading_normal, TR, BR);
 
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);

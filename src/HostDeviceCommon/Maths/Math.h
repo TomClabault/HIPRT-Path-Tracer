@@ -461,14 +461,15 @@ namespace hippt
 
 	static float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	// TODO restore this, or maybe not?
-	static float dot(float3 u, float3 v) 
+	/*static float dot(float3 u, float3 v) 
 	{ 
 		float x = u.x * v.x;
 		float y = u.y * v.y;
 		float z = u.z * v.z;
 		
 		return x + y + z;
-	}
+	}*/
+	static float dot(float3 u, float3 v) { return u.x * v.x + u.y * v.y + u.z * v.z; }
 	static float dot(float2 u, float2 v) { return u.x * v.x + u.y * v.y; }
 
 	static float sqrt(float x) { return sqrtf(x); }
@@ -623,9 +624,7 @@ namespace hippt
 	static float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
 
 	static float2 normalize(float2 u) { return u / hippt::sqrt(hippt::dot(u, u)); }
-	// TODO restore this, or maybe not?
-	// static float3 normalize(float3 u) { return hiprt::normalize(u); }
-	static float3 normalize(float3 u) { return u * hippt::rsqrt(hippt::dot(u, u)); }
+	static float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>
 	static bool is_nan(const T& v) { return std::isnan(v); }

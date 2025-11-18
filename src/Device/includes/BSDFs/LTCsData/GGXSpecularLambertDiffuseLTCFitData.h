@@ -361,7 +361,7 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_fit_para
 	   */
 	   // a = 0
 	   make_float4(0.105901f, -0.512874f, 0.060592f, 0.051001f),
-	   make_float4(0.040827f, -0.481557f, 0.040805f, 0.019583f),
+	   make_float4(0.040831f, -0.481557f, 0.040806f, 0.019585f),
 	   make_float4(0.161967f, -0.481438f, 0.162618f, 0.078869f),
 	   make_float4(0.363265f, -0.476984f, 0.363083f, 0.164867f),
 	   // a = 4
@@ -380,7 +380,7 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_fit_para
 		*/
 		// a = 0
 		make_float4(0.142093f, -0.811477f, 0.075553f, 0.113314f),
-		make_float4(0.040843f, -0.797416f, 0.040827f, 0.032573f),
+		make_float4(0.040807f, -0.797414f, 0.040823f, 0.032544f),
 		make_float4(0.164043f, -0.795898f, 0.162635f, 0.126330f),
 		make_float4(0.377462f, -0.783156f, 0.363256f, 0.252295f),
 		// a = 4
@@ -399,7 +399,7 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_fit_para
 		 */
 		 // a = 0
 		 make_float4(0.142203f, -1.271137f, 0.171215f, 0.178315f),
-		 make_float4(0.040896f, -1.253680f, 0.040876f, 0.051178f),
+		 make_float4(0.040946f, -1.253694f, 0.040878f, 0.051241f),
 		 make_float4(0.165838f, -1.248863f, 0.164191f, 0.201745f),
 		 make_float4(0.388770f, -1.206073f, 0.361090f, 0.379379f),
 		 // a = 4
@@ -418,8 +418,8 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_fit_para
 		  */
 		  // a = 0
 		  make_float4(0.159540f, -2.253334f, 0.333287f, 0.331285f),
-		  make_float4(0.041040f, -2.075224f, 0.040777f, 0.084175f),
-		  make_float4(0.174924f, -2.052111f, 0.159724f, 0.319357f),
+		  make_float4(0.041097f, -2.075145f, 0.040707f, 0.084292f),
+		  make_float4(0.174924f, -2.052112f, 0.159724f, 0.319357f),
 		  make_float4(0.420351f, -1.866103f, 0.363622f, 0.597652f),
 		  // a = 4
 		  make_float4(0.667919f, -1.383000f, 0.600868f, 0.598133f),
@@ -437,9 +437,9 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_fit_para
 		   */
 		   // a = 0
 		   make_float4(0.226424f, -5.063429f, 0.702657f, 0.991938f),
-		   make_float4(0.042903f, -4.370028f, 0.040902f, 0.178684f),
-		   make_float4(0.219613f, -4.115229f, 0.161418f, 0.628953f),
-		   make_float4(0.580106f, -2.808151f, 0.366995f, 0.820584f),
+		   make_float4(0.043014f, -4.369349f, 0.040888f, 0.179149f),
+		   make_float4(0.219613f, -4.115228f, 0.161418f, 0.628953f),
+		   make_float4(0.580106f, -2.808150f, 0.366995f, 0.820583f),
 		   // a = 4
 		   make_float4(0.813535f, -1.555139f, 0.519659f, 0.736726f),
 		   make_float4(1.079363f, -0.804211f, 0.785772f, 0.389759f),
@@ -456,13 +456,13 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_fit_para
 			*/
 			// a = 0
 			make_float4(-0.004939f, 25.600771f, -4.984122f, -5.704031f),
-			make_float4(0.078853f, -10.170259f, 0.066797f, 0.811799f),
-			make_float4(0.348188f, -4.173560f, 0.048603f, 0.899187f),
+			make_float4(0.078937f, -10.166682f, 0.066757f, 0.812662f),
+			make_float4(0.348188f, -4.173557f, 0.048603f, 0.899186f),
 			make_float4(0.761352f, -3.477620f, 0.296710f, 1.217397f),
 			// a = 4
-			make_float4(1.161045f, -1.611642f, 0.391819f, 0.831434f),
+			make_float4(1.161045f, -1.611641f, 0.391819f, 0.831434f),
 			make_float4(1.147029f, -1.096162f, 0.990926f, 0.630455f),
-			make_float4(1.320093f, -0.360433f, 1.057816f, 0.154754f),
+			make_float4(1.320093f, -0.360432f, 1.057816f, 0.154754f),
 			// a = 7
 			make_float4(1.292780f, -0.090536f, 1.350306f, 0.078883f)
 };
@@ -472,8 +472,8 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_inverse_
 	 * t = 0
 	 */
 	 // a = 0
-	 make_float4(29.314871f, 0.000000f, 29.314871f, 0.000000f),
-	 make_float4(24.512484f, 0.000000f, 24.512484f, 0.000000f),
+	 make_float4(29.314846f, 0.000000f, 29.314846f, 0.000000f),
+	 make_float4(24.512466f, 0.000000f, 24.512466f, 0.000000f),
 	 make_float4(6.135230f, 0.000000f, 6.135230f, 0.000000f),
 	 make_float4(2.769834f, 0.000000f, 2.769834f, 0.000000f),
 	 // a = 4
@@ -491,10 +491,10 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_inverse_
 	  * t = 1
 	  */
 	  // a = 0
-	  make_float4(13.639679f, 2.904956f, 22.098558f, -0.217667f),
-	  make_float4(23.282352f, 5.314065f, 24.494793f, -0.220166f),
-	  make_float4(5.831345f, 1.330727f, 6.133396f, -0.217600f),
-	  make_float4(2.651392f, 0.603929f, 2.779230f, -0.217963f),
+	  make_float4(13.639672f, 2.904954f, 22.098543f, -0.217667f),
+	  make_float4(23.282381f, 5.314071f, 24.495068f, -0.220166f),
+	  make_float4(5.831345f, 1.330727f, 6.133395f, -0.217600f),
+	  make_float4(2.651392f, 0.603930f, 2.779230f, -0.217963f),
 	  // a = 4
 	  make_float4(1.563511f, 0.344356f, 1.655270f, -0.197315f),
 	  make_float4(1.158900f, 0.191707f, 1.195219f, -0.104918f),
@@ -510,9 +510,9 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_inverse_
 	   * t = 2
 	   */
 	   // a = 0
-	   make_float4(7.572413f, 3.883691f, 16.503765f, -0.386201f),
-	   make_float4(19.897476f, 9.581765f, 24.506701f, -0.389653f),
-	   make_float4(5.001559f, 2.407938f, 6.149391f, -0.394467f),
+	   make_float4(7.572412f, 3.883690f, 16.503756f, -0.386201f),
+	   make_float4(19.895876f, 9.581000f, 24.506355f, -0.389653f),
+	   make_float4(5.001560f, 2.407939f, 6.149392f, -0.394467f),
 	   make_float4(2.262936f, 1.079385f, 2.754189f, -0.373083f),
 	   // a = 4
 	   make_float4(1.409912f, 0.633124f, 1.634409f, -0.335365f),
@@ -529,12 +529,12 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_inverse_
 		* t = 3
 		*/
 		// a = 0
-		make_float4(4.272688f, 3.467186f, 13.235806f, -0.484156f),
-		make_float4(14.966109f, 11.934214f, 24.493801f, -0.487495f),
+		make_float4(4.272686f, 3.467185f, 13.235799f, -0.484156f),
+		make_float4(14.979373f, 11.944756f, 24.495810f, -0.487495f),
 		make_float4(3.779455f, 3.008062f, 6.148739f, -0.477458f),
 		make_float4(1.738985f, 1.361897f, 2.752883f, -0.438737f),
 		// a = 4
-		make_float4(1.168585f, 0.841611f, 1.624547f, -0.406313f),
+		make_float4(1.168585f, 0.841611f, 1.624546f, -0.406313f),
 		make_float4(0.969213f, 0.478467f, 1.119712f, -0.307297f),
 		make_float4(0.897114f, 0.228375f, 0.998408f, -0.187641f),
 		// a = 7
@@ -548,12 +548,12 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_inverse_
 		 * t = 4
 		 */
 		 // a = 0
-		 make_float4(2.711012f, 3.446069f, 5.840612f, -0.483415f),
-		 make_float4(9.518702f, 11.933412f, 24.464069f, -0.487148f),
+		 make_float4(2.711011f, 3.446068f, 5.840611f, -0.483415f),
+		 make_float4(9.506948f, 11.918801f, 24.463322f, -0.487144f),
 		 make_float4(2.393545f, 2.989209f, 6.090486f, -0.482887f),
 		 make_float4(1.181574f, 1.425065f, 2.769394f, -0.448264f),
 		 // a = 4
-		 make_float4(0.870706f, 0.898701f, 1.564541f, -0.424394f),
+		 make_float4(0.870707f, 0.898701f, 1.564541f, -0.424394f),
 		 make_float4(0.883250f, 0.582124f, 1.172952f, -0.351297f),
 		 make_float4(0.902472f, 0.234319f, 0.973567f, -0.176566f),
 		 // a = 7
@@ -567,9 +567,9 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_inverse_
 		  * t = 5
 		  */
 		  // a = 0
-		  make_float4(1.103710f, 2.487026f, 3.000418f, -0.365642f),
-		  make_float4(4.635589f, 9.619885f, 24.523718f, -0.390202f),
-		  make_float4(1.204414f, 2.471592f, 6.260814f, -0.384638f),
+		  make_float4(1.103709f, 2.487026f, 3.000418f, -0.365642f),
+		  make_float4(4.629297f, 9.606460f, 24.565584f, -0.390214f),
+		  make_float4(1.204414f, 2.471591f, 6.260813f, -0.384638f),
 		  make_float4(0.651198f, 1.215202f, 2.750110f, -0.389190f),
 		  // a = 4
 		  make_float4(0.668835f, 0.924999f, 1.664260f, -0.400053f),
@@ -586,10 +586,10 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_inverse_
 		   * t = 6
 		   */
 		   // a = 0
-		   make_float4(0.190511f, 0.964641f, 1.423169f, -0.188975f),
-		   make_float4(1.213951f, 5.304999f, 24.448862f, -0.216914f),
-		   make_float4(0.356138f, 1.465591f, 6.195110f, -0.223994f),
-		   make_float4(0.346689f, 0.973555f, 2.724831f, -0.284487f),
+		   make_float4(0.190511f, 0.964640f, 1.423169f, -0.188975f),
+		   make_float4(1.210980f, 5.291194f, 24.457043f, -0.216946f),
+		   make_float4(0.356138f, 1.465591f, 6.195113f, -0.223994f),
+		   make_float4(0.346689f, 0.973556f, 2.724832f, -0.284487f),
 		   // a = 4
 		   make_float4(0.510400f, 0.793744f, 1.924340f, -0.376025f),
 		   make_float4(0.717972f, 0.577402f, 1.272634f, -0.279836f),
@@ -606,15 +606,15 @@ static const std::array<float4, 8 * 8> ggx_specular_lambert_diffuse_ltc_inverse_
 			*/
 			// a = 0
 			make_float4(0.006848f, -0.175321f, -0.200637f, 0.039063f),
-			make_float4(0.119975f, 1.220178f, 14.970645f, -0.097396f),
-			make_float4(0.243843f, 1.017694f, 20.574856f, -0.219260f),
+			make_float4(0.119889f, 1.218878f, 14.979775f, -0.097430f),
+			make_float4(0.243843f, 1.017694f, 20.574873f, -0.219261f),
 			make_float4(0.200200f, 0.696221f, 3.370299f, -0.243723f),
 			// a = 4
 			make_float4(0.399837f, 0.644394f, 2.552201f, -0.332438f),
 			make_float4(0.544037f, 0.596353f, 1.009157f, -0.342991f),
 			make_float4(0.726812f, 0.261967f, 0.945344f, -0.112477f),
 			// a = 7
-			make_float4(0.769277f, 0.069648f, 0.740573f, -0.060683f)
+			make_float4(0.769277f, 0.069647f, 0.740573f, -0.060683f)
 };
 
 
