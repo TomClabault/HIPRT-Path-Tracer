@@ -30,12 +30,12 @@ int main(int argc, char* argv[])
     // TODO test if we're matching reference: just run this and render
     // If it's not the same, continue comparing with the ltc fit code to see where the differences are (rotated ONBs are an issue even though they do not rotate, maybe fix that, at 0.0f rotation, this should yield the exact same but it doesn't)
 	// If it is the same however and matches the ref, and bits of the original code back in slowly to see where the differences start to appear
-	static CPUMaterial material_to_fit;
+	/*static CPUMaterial material_to_fit;
 	material_to_fit.metallic = 1.0f;
 	LTCFitter fitter = LTCFitter(material_to_fit.pack_to_GPU().unpack());
 	fitter.fit(8, 32);
 	fitter.export_fitted_data_float4_C("fitted_ltc_float4.h", true);
-	return 0;
+	return 0;*/
 
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 

@@ -1702,8 +1702,10 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
     //build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
     build_ONB(bsdf_context.shading_normal, TR, BR);
     // TODO restore this
-    float3 local_view_direction_rotated = bsdf_context.view_direction;// world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
-    float3 local_to_light_direction_rotated = bsdf_context.to_light_direction;// world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+    //float3 local_view_direction_rotated = bsdf_context.view_direction;// world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
+    //float3 local_to_light_direction_rotated = bsdf_context.to_light_direction;// world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+    float3 local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
+    float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
     float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
@@ -1910,9 +1912,9 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
     float cdf6 = cdf5 + diffuse_transmission_sampling_proba;
     // The last cdf[] is implicitely 1.0f so don't need to include it
 
-    // TODO uncomment this
-    // float rand_1 = random_number_generator();
-    float rand_1 = 0.5f;
+    // TODO restore this
+    float rand_1 = random_number_generator();
+    // float rand_1 = 0.5f;
     bool sampling_diffuse_transmission_lobe = rand_1 > cdf5 && rand_1 < cdf6;
     bool sampling_glass_lobe = rand_1 > cdf6;
 
@@ -1926,9 +1928,11 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
     // Rotated ONB for the anisotropic GGX evaluation
     float3 TR, BR;
     // TODO restore this
-    // build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
-    build_ONB(bsdf_context.shading_normal, TR, BR);
+    build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
+    //build_ONB(bsdf_context.shading_normal, TR, BR);
 
+    // TODO restore this
+    //float3 local_view_direction_rotated = bsdf_context.view_direction;// world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
 
     if (rand_1 < cdf0)
@@ -1958,9 +1962,9 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
         // First metallic lobe sample
         bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE;
 
-        // TODO ubcomment local to world
-        output_direction = principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated, random_number_generator);
-        //output_direction = local_to_world_frame(TR, BR, bsdf_context.shading_normal, principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated, random_number_generator));
+        //output_direction = principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated, random_number_generator);
+        // TODO restore this
+        output_direction = local_to_world_frame(TR, BR, bsdf_context.shading_normal, principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated, random_number_generator));
     }
     else if (rand_1 < cdf3)
     {
@@ -1992,7 +1996,6 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
         // This is handled inside glass_sample because we cannot know from here if we refracted or reflected
         output_direction = local_to_world_frame(TR, BR, bsdf_context.shading_normal, principled_glass_sample(render_data, bsdf_context, local_view_direction_rotated, random_number_generator));
 
-    // TODO restore this
     if (hippt::dot(output_direction, bsdf_context.geometric_normal) < 0.0f && !sampling_glass_lobe && !sampling_diffuse_transmission_lobe)
         // It can happen that the light direction sampled is below the geometric surface.
         // 

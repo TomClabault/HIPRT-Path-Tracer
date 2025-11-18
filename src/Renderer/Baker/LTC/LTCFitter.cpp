@@ -158,19 +158,16 @@ void LTCFitter::fit(int resolution, int error_samples)
 	{
 		for (int t = 0; t < resolution; t++)
 		{
-			t = 2;
+			// t = 2;
 
 			Xorshift32Generator thread_rng(a * resolution + t + 1);
-
-			if (a == 0 && t == 7)
-				a = 0;
 
 			float roughness = std::max(MIN_ROUGHNESS, a / float(resolution - 1));
 			float theta = std::min<float>(1.57f, t / float(resolution - 1) * 1.57079f);
 			const float3 V = float3(sinf(theta), 0, cosf(theta));
 
 			ltc.amplitude = compute_norm(V, roughness, thread_rng);
-			const float3 averageDir = compute_average_dir(V, roughness, thread_rng);
+			const glm::vec3 averageDir = compute_average_dir(V, roughness, thread_rng);
 			bool isotropic;
 
 			// 1. first guess for the fit
@@ -178,9 +175,9 @@ void LTCFitter::fit(int resolution, int error_samples)
 			// if theta == 0 the lobe is rotationally symmetric and aligned with Z = (0 0 1)
 			if (t == 0)
 			{
-				ltc.X = float3(1, 0, 0);
-				ltc.Y = float3(0, 1, 0);
-				ltc.Z = float3(0, 0, 1);
+				ltc.X = glm::vec3(1, 0, 0);
+				ltc.Y = glm::vec3(0, 1, 0);
+				ltc.Z = glm::vec3(0, 0, 1);
 
 				if (a == resolution - 1) // roughness = 1
 				{
@@ -202,9 +199,9 @@ void LTCFitter::fit(int resolution, int error_samples)
 			// otherwise use previous configuration as first guess
 			else
 			{
-				float3 L = hippt::normalize(averageDir);
-				float3 T1 = make_float3(L.z, 0, -L.x);
-				float3 T2 = make_float3(0, 1, 0);
+				glm::vec3 L = glm::normalize(averageDir);
+				glm::vec3 T1 = glm::vec3(L.z, 0, -L.x);
+				glm::vec3 T2 = glm::vec3(0, 1, 0);
 				ltc.X = T1;
 				ltc.Y = T2;
 				ltc.Z = L;
@@ -219,7 +216,11 @@ void LTCFitter::fit(int resolution, int error_samples)
 			fit_internal(ltc, thread_rng, V, roughness, epsilon, isotropic);
 
 			// copy data
-			m_fitted_data[a + t * resolution] = ltc.M;
+			m_fitted_data[a + t * resolution] = float3x3::from_cols(
+				make_float3(ltc.M[0].r, ltc.M[0].g, ltc.M[0].b),
+				make_float3(ltc.M[1].r, ltc.M[1].g, ltc.M[1].b),
+				make_float3(ltc.M[2].r, ltc.M[2].g, ltc.M[2].b)
+			);
 			m_tab_amplitude[a + t * resolution].x = ltc.amplitude;
 			m_tab_amplitude[a + t * resolution].y = 0;
 
@@ -420,9 +421,9 @@ float LTCFitter::compute_norm(const float3& V, const float roughness, Xorshift32
 	return norm / (float)(m_error_samples * m_error_samples);
 }
 
-float3 LTCFitter::compute_average_dir(const float3& V, const float roughness, Xorshift32Generator& rng)
+glm::vec3 LTCFitter::compute_average_dir(const float3& V, const float roughness, Xorshift32Generator& rng)
 {
-	float3 averageDir = float3(0, 0, 0);
+	glm::vec3 averageDir = glm::vec3(0, 0, 0);
 
 	for (int j = 0; j < m_error_samples; ++j)
 	{
@@ -435,18 +436,18 @@ float3 LTCFitter::compute_average_dir(const float3& V, const float roughness, Xo
 
 			float pdf;
 			float3 sampled_direction;
-			float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance();
+			float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).r;
 			//float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance() * sampled_direction.z;
 
 			// accumulate
-			averageDir += (pdf > 0) ? eval / pdf * sampled_direction : float3(0, 0, 0);
+			averageDir += (pdf > 0) ? eval / pdf * glm::vec3(sampled_direction.x, sampled_direction.y, sampled_direction.z) : glm::vec3(0, 0, 0);
 		}
 	}
 
 	// clear y component, which should be zero with isotropic BRDFs
 	averageDir.y = 0.0f;
 
-	return hippt::normalize(averageDir);
+	return glm::normalize(averageDir);
 }
 
 void LTCFitter::fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V, const float roughness, const float epsilon, const bool isotropic)

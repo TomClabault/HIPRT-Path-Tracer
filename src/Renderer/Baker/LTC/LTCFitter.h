@@ -15,6 +15,8 @@
 #include "Renderer/Baker/LTC/NelderMead.h"
 #include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 
+#include "glm/glm.hpp"
+
 #include <iostream>
 
  /**
@@ -32,11 +34,11 @@ struct LTC
 
 	// parametric representation
 	float m11, m22, m13, m23;
-	float3 X, Y, Z;
+	glm::vec3 X, Y, Z;
 
 	// matrix representation
-	float3x3 M;
-	float3x3 invM;
+	glm::mat3 M;
+	glm::mat3 invM;
 	float detM;
 
 	LTC()
@@ -48,9 +50,9 @@ struct LTC
 		m13 = 0;
 		m23 = 0;
 
-		X = float3(1, 0, 0);
-		Y = float3(0, 1, 0);
-		Z = float3(0, 0, 1);
+		X = glm::vec3(1, 0, 0);
+		Y = glm::vec3(0, 1, 0);
+		Z = glm::vec3(0, 0, 1);
 
 		update();
 	}
@@ -75,20 +77,20 @@ struct LTC
 
 	void update() // compute matrix from parameters
 	{
-		M = float3x3(X, Y, Z) *
-			float3x3(m11, 0, 0,
+		M = glm::mat3(X, Y, Z) *
+			glm::mat3(m11, 0, 0,
 				0, m22, 0,
 				m13, m23, 1);
-		invM = inverse(M);
-		detM = abs(determinant(M));
+		invM = glm::inverse(M);
+		detM = abs(glm::determinant(M));
 	}
 
 	float eval(const float3& L) const
 	{
-		float3 Loriginal = hippt::normalize(invM * L);
-		float3 L_ = M * Loriginal;
+		glm::vec3 Loriginal = glm::normalize(invM * glm::vec3(L.x, L.y, L.z));
+		glm::vec3 L_ = M * Loriginal;
 
-		float l = hippt::length(L_);
+		float l = glm::length(L_);
 		float Jacobian = detM / (l * l * l);
 
 		float D = 1.0f / 3.14159f * hippt::max<float>(0.0f, Loriginal.z);
@@ -101,8 +103,8 @@ struct LTC
 	{
 		const float theta = acosf(sqrtf(U1));
 		const float phi = 2.0f * 3.14159f * U2;
-		const float3 L = hippt::normalize(M * make_float3(sinf(theta) * cosf(phi), sinf(theta) * sinf(phi), cosf(theta)));
-		return L;
+		const glm::vec3 L = glm::normalize(M * glm::vec3(sinf(theta) * cosf(phi), sinf(theta) * sinf(phi), cosf(theta)));
+		return make_float3(L.x, L.y, L.z);
 	}
 
 	void testNormalization() const
@@ -177,7 +179,7 @@ private:
 	float compute_norm(const float3& V, const float roughness, Xorshift32Generator& rng);
 
 	// compute the average direction of the BRDF
-	float3 compute_average_dir(const float3& V, const float roughness, Xorshift32Generator& rng);
+	glm::vec3 compute_average_dir(const float3& V, const float roughness, Xorshift32Generator& rng);
 
 	// fit brute force
 	// refine first guess by exploring parameter space
