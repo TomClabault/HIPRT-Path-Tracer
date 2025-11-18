@@ -615,7 +615,16 @@ namespace hippt
 	static float pow_2_2_fit(float x) { return (exp2f(0.718151f * x) - 1.0f - 0.503456f * x) * 7.07342f; }
 
 	static float2 normalize(float2 u) { return u / hippt::sqrt(hippt::dot(u, u)); }
-	static float3 normalize(float3 u) { return hiprt::normalize(u); }
+	// TODO restore this
+	// static float3 normalize(float3 u) { return hiprt::normalize(u); }
+	static float3 normalize(float3 u) 
+	{ 
+		float x = u.x * u.x;
+		float y = u.y * u.y;
+		float z = u.z * u.z;
+		float dotted = x + y + z;
+		return u * 1.0f / sqrt(dotted); 
+	}
 
 	template <typename T>
 	static bool is_nan(const T& v) { return std::isnan(v); }

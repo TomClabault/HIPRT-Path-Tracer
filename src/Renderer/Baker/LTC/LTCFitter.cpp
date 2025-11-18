@@ -7,6 +7,7 @@
 #include "Device/includes/BSDFs/BSDFContext.h"
 #include "Device/includes/BSDFs/Principled.h"
 #include "Renderer/Baker/LTC/LTCFitter.h"
+#include "Renderer/Baker/LTC/nelder-mead.h"
 #include "Renderer/CPURenderer.h"
 
 void LTCFit::update(const float* params)
@@ -45,14 +46,13 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughne
 	{
 		for (int i = 0; i < error_samples; ++i)
 		{
-			const float U1 = (i + 0.5f) / (float)error_samples;
-			const float U2 = (j + 0.5f) / (float)error_samples;
-
 			double sample_error = 0.0;
 
 			// importance sample LTC
 			{
 				// sample
+				float U1 = rng();
+				float U2 = rng();
 				const float3 L = ltc.sample(U1, U2);
 
 				BSDFContext bsdf_context = *base_bsdf_context;
@@ -62,7 +62,8 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughne
 
 				// error with MIS weight
 				float pdf_brdf;
-				float eval_brdf = principled_bsdf_eval(render_data, bsdf_context, pdf_brdf).luminance() * L.z;
+				float eval_brdf = principled_bsdf_eval(render_data, bsdf_context, pdf_brdf).r;
+				//float eval_brdf = principled_bsdf_eval(render_data, bsdf_context, pdf_brdf).luminance() * L.z;
 
 				float eval_ltc = ltc.eval(L);
 				float pdf_ltc = eval_ltc / ltc.amplitude;
@@ -80,7 +81,8 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughne
 
 				float pdf_brdf;
 				float3 sampled_direction;
-				float eval_brdf = principled_bsdf_sample(render_data, bsdf_context, sampled_direction, pdf_brdf, rng).luminance() * sampled_direction.z;
+				float eval_brdf = principled_bsdf_sample(render_data, bsdf_context, sampled_direction, pdf_brdf, rng).r;
+				//float eval_brdf = principled_bsdf_sample(render_data, bsdf_context, sampled_direction, pdf_brdf, rng).luminance() * sampled_direction.z;
 				if (pdf_brdf == 0.0f)
 					// Bad sample
 					continue;
@@ -89,6 +91,7 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughne
 				float eval_ltc = ltc.eval(sampled_direction);
 				float pdf_ltc = eval_ltc / ltc.amplitude;
 				double error_ = fabsf(eval_brdf - eval_ltc);
+
 				error_ = error_ * error_ * error_;
 				sample_error += error_ / (pdf_ltc + pdf_brdf);
 			}
@@ -104,6 +107,15 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughne
 
 float LTCFit::operator()(const float* params)
 {
+	update(params);
+
+	return compute_error(ltc, V, roughness);
+}
+
+float LTCFit::operator()(const std::vector<float>& params_vec)
+{
+	const float params[4] = { params_vec[0], params_vec[1], params_vec[2], params_vec[3] };
+
 	update(params);
 
 	return compute_error(ltc, V, roughness);
@@ -146,9 +158,11 @@ void LTCFitter::fit(int resolution, int error_samples)
 	{
 		for (int t = 0; t < resolution; t++)
 		{
+			t = 2;
+
 			Xorshift32Generator thread_rng(a * resolution + t + 1);
 
-			if (a == 0)
+			if (a == 0 && t == 7)
 				a = 0;
 
 			float roughness = std::max(MIN_ROUGHNESS, a / float(resolution - 1));
@@ -229,9 +243,9 @@ void LTCFitter::fit(int resolution, int error_samples)
 	fitting_done = true;
 }
 
-void LTCFitter::export_fitted_data_float3x3_C(bool export_inverse, bool export_amplitude)
+void LTCFitter::export_fitted_data_float3x3_C(const std::string& filename, bool export_inverse, bool export_amplitude)
 {
-	std::ofstream file("fitted_ltc_float3x3.h");
+	std::ofstream file(filename);
 
 	file << std::fixed;
 	file << std::setprecision(6);
@@ -296,9 +310,9 @@ void LTCFitter::export_fitted_data_float3x3_C(bool export_inverse, bool export_a
 	file.close();
 }
 
-void LTCFitter::export_fitted_data_float4_C(bool export_inverse, bool export_amplitude)
+void LTCFitter::export_fitted_data_float4_C(const std::string& filename, bool export_inverse, bool export_amplitude)
 {
-	std::ofstream file("fitted_ltc_float4.h");
+	std::ofstream file(filename);
 
 	file << std::fixed;
 	file << std::setprecision(6);
@@ -394,7 +408,9 @@ float LTCFitter::compute_norm(const float3& V, const float roughness, Xorshift32
 
 			float pdf;
 			float3 sampled_direction;
-			float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance() * sampled_direction.z;
+			// TODO uncomment sampled_direction.z
+			float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance();
+			//float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance() * sampled_direction.z;
 
 			// accumulate
 			norm += (pdf > 0) ? eval / pdf : 0.0f;
@@ -412,9 +428,6 @@ float3 LTCFitter::compute_average_dir(const float3& V, const float roughness, Xo
 	{
 		for (int i = 0; i < m_error_samples; ++i)
 		{
-			const float U1 = (i + 0.5f) / (float)m_error_samples;
-			const float U2 = (j + 0.5f) / (float)m_error_samples;
-
 			// Sample
 			BSDFContext bsdf_context = *m_base_bsdf_context;
 			bsdf_context.view_direction = V;
@@ -422,7 +435,8 @@ float3 LTCFitter::compute_average_dir(const float3& V, const float roughness, Xo
 
 			float pdf;
 			float3 sampled_direction;
-			float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance() * sampled_direction.z;
+			float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance();
+			//float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance() * sampled_direction.z;
 
 			// accumulate
 			averageDir += (pdf > 0) ? eval / pdf * sampled_direction : float3(0, 0, 0);
@@ -446,6 +460,14 @@ void LTCFitter::fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V
 
 	// Find best-fit LTC lobe (scale, alphax, alphay)
 	float error = NelderMead<4>(resultFit, startFit, epsilon, 1e-5f, 100, fitter);
+
+	/*std::vector<float> startFitVec = { startFit[0], startFit[1], startFit[2], startFit[3] };
+	std::vector<float> resultFitVec = nelder_mead::find_min(fitter, startFitVec);
+
+	resultFit[0] = resultFitVec[0];
+	resultFit[1] = resultFitVec[1];
+	resultFit[2] = resultFitVec[2];
+	resultFit[3] = resultFitVec[3];*/
 
 	// Update LTC with best fitting values
 	fitter.update(resultFit);

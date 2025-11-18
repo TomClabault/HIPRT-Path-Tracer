@@ -463,7 +463,7 @@ HIPRT_DEVICE static float3 GGX_anisotropic_sample_microfacet(const float3& local
         // For delta GGX distribution, the sampled normal is always the same as the surface normal
         // (so (0, 0, 1) in local space
         //
-        // This is basically a small optimization to avoid to whole sampling routine
+        // This is basically a small optimization to avoid the whole sampling routine
         return make_float3(0.0f, 0.0f, 1.0f);
 
 #if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
@@ -471,6 +471,7 @@ HIPRT_DEVICE static float3 GGX_anisotropic_sample_microfacet(const float3& local
 #elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SPHERICAL_CAPS
     return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
 #elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_BOUNDED
+    // TODO
 #else
 #endif
 }

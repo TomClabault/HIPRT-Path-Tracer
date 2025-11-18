@@ -83,12 +83,6 @@ struct LTC
 		detM = abs(determinant(M));
 	}
 
-	void update2()
-	{
-		invM = inverse(M);
-		detM = hippt::abs(determinant(M));
-	}
-
 	float eval(const float3& L) const
 	{
 		float3 Loriginal = hippt::normalize(invM * L);
@@ -149,6 +143,7 @@ struct LTCFit
 	float compute_error(const LTC& ltc, const float3& V, const float roughness);
 
 	float operator()(const float* params);
+	float operator()(const std::vector<float>& params_vec);
 
 	LTC& ltc;
 	const DeviceUnpackedEffectiveMaterial& material;
@@ -175,8 +170,8 @@ public:
 
 	bool is_fitting_done() const { return fitting_done; }
 
-	void export_fitted_data_float3x3_C(bool export_inverse = false, bool export_amplitude = false);
-	void export_fitted_data_float4_C(bool export_inverse = false, bool export_amplitude = false);
+	void export_fitted_data_float3x3_C(const std::string& filename, bool export_inverse = false, bool export_amplitude = false);
+	void export_fitted_data_float4_C(const std::string& filename, bool export_inverse = false, bool export_amplitude = false);
 
 private:
 	float compute_norm(const float3& V, const float roughness, Xorshift32Generator& rng);

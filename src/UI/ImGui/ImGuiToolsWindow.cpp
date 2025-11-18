@@ -130,10 +130,19 @@ void ImGuiToolsWindow::draw_ggx_energy_compensation_panel()
 
 			if (fitter.is_fitting_done())
 			{
+				ImGui::TreePush("Fit tree");
+
+				static std::string output_filename = "fitted_ltc.h";
+
+				ImGui::InputText("Output Texture Filename", &output_filename);
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 				if (ImGui::Button("Export as float3x3"))
-					fitter.export_fitted_data_float3x3_C(true);
+					fitter.export_fitted_data_float3x3_C(output_filename, true);
 				else if (ImGui::Button("Export as float4"))
-					fitter.export_fitted_data_float4_C(true);
+					fitter.export_fitted_data_float4_C(output_filename, true);
+
+				ImGui::TreePop();
 			}
 		}
 

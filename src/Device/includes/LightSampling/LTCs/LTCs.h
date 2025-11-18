@@ -35,9 +35,9 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 	return ltc_params;
 }
 
-HIPRT_DEVICE float3 ltc_transform(void* ltcs_data_param_pointer, float cos_theta_v, float roughness, float3 direction_or_position)
+HIPRT_DEVICE float3 ltc_transform_cosine_to_shading(const HIPRTRenderData& render_data, float cos_theta_v, float roughness, float3 direction_or_position)
 {
-	ColorRGBA32F ltc_params = read_ltc_params(ltcs_data_param_pointer, cos_theta_v, roughness);
+	ColorRGBA32F ltc_params = read_ltc_params(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params, cos_theta_v, roughness);
 
 	// Transform with the LTC: LTCMatrix * direction_or_position
 	return make_float3(
@@ -47,18 +47,39 @@ HIPRT_DEVICE float3 ltc_transform(void* ltcs_data_param_pointer, float cos_theta
 		ltc_params.a * direction_or_position.x + 1.0f * direction_or_position.z);
 }
 
-HIPRT_DEVICE float ltc_jacobian(void* ltcs_inverse_matrix_data, float cos_theta_v, float roughness, float3 sampled_direction_shading_space)
+HIPRT_DEVICE float3 ltc_transform_shading_to_cosine(const HIPRTRenderData& render_data, float cos_theta_v, float roughness, float3 direction_or_position)
 {
-	ColorRGBA32F ltc_params = read_ltc_params(ltcs_inverse_matrix_data, cos_theta_v, roughness);
+	ColorRGBA32F ltc_params = read_ltc_params(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params, cos_theta_v, roughness);
 
 	float3x3 ltc_matrix = float3x3(
+		ltc_params.r, 0.0f, ltc_params.g,
+		0.0f, ltc_params.b, 0.0f,
+		ltc_params.a, 0.0f, 1.0f
+	);
+
+	float3x3 ltc_matrix_inv = inverse(ltc_matrix);
+
+	return ltc_matrix_inv * direction_or_position;
+	// Transform with the LTC: LTCMatrix * direction_or_position
+	return make_float3(
+		ltc_params.r * direction_or_position.x + ltc_params.g * direction_or_position.z,
+		ltc_params.b * direction_or_position.y,
+		// Assumes LTC[2][2]is 1.0f here
+		ltc_params.a * direction_or_position.x + 1.0f * direction_or_position.z);
+}
+
+HIPRT_DEVICE float ltc_jacobian(const HIPRTRenderData& render_data, float cos_theta_v, float roughness, float3 sampled_direction_shading_space)
+{
+	ColorRGBA32F ltc_params = read_ltc_params(render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params, cos_theta_v, roughness);
+
+	float3x3 ltc_matrix_inverse = inverse(float3x3(
 		ltc_params.r,	0.0f,			ltc_params.g,
 		0.0f,			ltc_params.b,	0.0f,
 		ltc_params.a,	0.0f,			1.0f
-	);
+	));
 
-	float3 direction_cosine_space = ltc_matrix * sampled_direction_shading_space;
-	return hippt::abs(determinant(ltc_matrix)) / hippt::square(hippt::length2(direction_cosine_space));
+	float3 direction_cosine_space = ltc_matrix_inverse * sampled_direction_shading_space;
+	return hippt::abs(determinant(ltc_matrix_inverse)) / hippt::square(hippt::length2(direction_cosine_space));
 }
 
 #endif
