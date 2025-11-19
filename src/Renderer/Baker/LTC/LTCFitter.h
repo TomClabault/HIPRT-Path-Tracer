@@ -175,6 +175,8 @@ public:
 	void export_fitted_data_float3x3_C(const std::string& filename, bool export_inverse = false, bool export_amplitude = false);
 	void export_fitted_data_float4_C(const std::string& filename, bool export_inverse = false, bool export_amplitude = false);
 
+	void compute_fitted_error();
+
 private:
 	float compute_norm(const float3& V, const float roughness, Xorshift32Generator& rng);
 

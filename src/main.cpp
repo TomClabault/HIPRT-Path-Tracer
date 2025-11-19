@@ -33,7 +33,8 @@ int main(int argc, char* argv[])
 	/*static CPUMaterial material_to_fit;
 	material_to_fit.metallic = 1.0f;
 	LTCFitter fitter = LTCFitter(material_to_fit.pack_to_GPU().unpack());
-	fitter.fit(8, 32);
+	fitter.fit(8, 64);
+	fitter.compute_fitted_error();
 	fitter.export_fitted_data_float4_C("fitted_ltc_float4.h", true);
 	return 0;*/
 

@@ -2,6 +2,7 @@
 #define NELDER_MEAD_CPP_H
 
 #include <cmath>
+#include <iostream>
 #include <stdexcept>
 #include <vector>
 
@@ -250,7 +251,15 @@ std::vector<T> find_min(Function &func, std::vector<T> &initial_point,
             }
         }
         if ((max_val_diff <= tol_fun and max_point_diff <= tol_x) or
-            (func_evals_count >= max_fun_evals) or (max_iter == 0)) {
+            (func_evals_count >= max_fun_evals) or (max_iter == 0)) 
+        {
+            if (max_iter == 0)
+                std::cout << "Max iterations exceeded" << std::endl;
+            else if (func_evals_count >= max_fun_evals)
+                std::cout << "Maximum objective function eval count exceeded" << std::endl;
+            else
+                std::cout << "Target tolerance reached" << std::endl;
+
             std::vector<T> res = simplex[smallest_idx].vec();
             return res;
         }
@@ -313,6 +322,9 @@ std::vector<T> find_min(Function &func, std::vector<T> &initial_point,
             value_cache[biggest_idx].second = reflection_val;
         }
     }
+
+    std::cout << "Max iterations exceeded" << std::endl;
+
     std::vector<T> res = simplex[smallest_idx].vec();
     return res;
 }
