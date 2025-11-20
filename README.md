@@ -51,6 +51,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Uniform area sampling
 		- Solid angle sampling [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
 		- Projected solid angle [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
+		- BSDF * (projected) solid angle product sampling with LTCs \[[Heitz et al., 2016](https://eheitzresearch.wordpress.com/415-2/)\], [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
 	
 - Next-event estimation strategies (built on-top of base techniques):
 	- MIS with BSDF sampling
@@ -62,7 +63,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Hash grid
 	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 	- ReSTIR DI
-	- Next Event Estimation++ [\[Guo et al., 2020\]](https://graphics.tudelft.nl/Publications-new/2020/GEE20/GEE20-NEE++.pdf) + Custom envmap support
+	- Next Event Estimation++ [\[Guo et al., 2020\]](https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.14138) + Custom envmap support
 	- NEE for HDR environment maps using:
 		- CDF-inversion & binary search
 		- Alias Table (Vose's O(N) construction [\[Vose, 1991\]](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=f65bcde1fcf82e05388b31de80cba10bf65acc07))
