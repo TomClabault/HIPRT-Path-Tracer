@@ -61,11 +61,11 @@ HIPRT_DEVICE float3 ltc_transform_shading_to_cosine(const HIPRTRenderData& rende
 
 	return ltc_matrix_inv * direction_or_position;
 	// Transform with the LTC: LTCMatrix * direction_or_position
-	return make_float3(
-		ltc_params.r * direction_or_position.x + ltc_params.g * direction_or_position.z,
-		ltc_params.b * direction_or_position.y,
-		// Assumes LTC[2][2]is 1.0f here
-		ltc_params.a * direction_or_position.x + 1.0f * direction_or_position.z);
+	//return make_float3(
+	//	ltc_params.r * direction_or_position.x + ltc_params.g * direction_or_position.z,
+	//	ltc_params.b * direction_or_position.y,
+	//	// Assumes LTC[2][2]is 1.0f here
+	//	ltc_params.a * direction_or_position.x + 1.0f * direction_or_position.z);
 }
 
 HIPRT_DEVICE float ltc_jacobian(const HIPRTRenderData& render_data, float cos_theta_v, float roughness, float3 sampled_direction_shading_space)
@@ -79,7 +79,7 @@ HIPRT_DEVICE float ltc_jacobian(const HIPRTRenderData& render_data, float cos_th
 	));
 
 	float3 direction_cosine_space = ltc_matrix_inverse * sampled_direction_shading_space;
-	return hippt::abs(determinant(ltc_matrix_inverse)) / hippt::square(hippt::length2(direction_cosine_space));
+	return hippt::abs(determinant(ltc_matrix_inverse)) / hippt::pow_3(hippt::length(direction_cosine_space));
 }
 
 #endif

@@ -55,13 +55,14 @@ void ImGuiAnimationWindow::draw_header()
 		animation_state.do_animations = !animation_state.do_animations;
 	if (m_renderer->get_render_settings().accumulate && !animation_state.is_rendering_frame_sequence)
 	{
-		ImGui::TreePush("Animations info tree");
-		ImGui::Text("Warning: ");
-		ImGuiRenderer::show_help_marker("Animations are not playing right now because\n"
-					"accumulation is on. Nothing can move while accumulation\n"
-					"is on unless you're rendering a frame sequence, in\n"
-					"which case animations will step forward after a frame\n"
+		ImGui::TreePush("Animations warning tree");
+
+		ImGuiRenderer::add_warning("Animations are not playing right now because "
+					"accumulation is on. Nothing can move while accumulation "
+					"is on unless you're rendering a frame sequence, in "
+					"which case animations will step forward after a frame "
 					"is rendered (converged according to the renderer settings).");
+
 		ImGui::TreePop();
 	}
 
@@ -83,8 +84,8 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 		static int move_n_frames_forward = 0;
 		ImGui::InputInt("Move N frames forward", &move_n_frames_forward); 
 		ImGuiRenderer::show_help_marker("Advances all the animations N frames forward.");
-		ImGui::SameLine();
 		ImGui::BeginDisabled(animation_state.do_animations == false);
+		ImGui::TreePush("Go button tree");
 		if (ImGui::Button("Go!"))
 		{
 			bool can_step_backup = animation_state.can_step_animation;
@@ -95,10 +96,10 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 
 			animation_state.can_step_animation = can_step_backup;
 			animation_state.frames_rendered_so_far += move_n_frames_forward;
-			move_n_frames_forward = 0;
 
 			m_render_window->set_render_dirty(true);
 		}
+		ImGui::TreePop();
 		ImGui::EndDisabled();
 		if (animation_state.do_animations == false)
 			ImGuiRenderer::show_help_marker("Disabled because animations are not enabled right now.");

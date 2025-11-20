@@ -472,6 +472,9 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	float3 vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
 	float3 vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
 
+	vertex_A_local = hippt::normalize(vertex_A_local);
+	vertex_B_local = hippt::normalize(vertex_B_local);
+	vertex_C_local = hippt::normalize(vertex_C_local);
 
 	// Shading space to ltc space
 	vertex_A_local = ltc_transform_shading_to_cosine(render_data, hippt::dot(view_direction, shading_normal), material.roughness, vertex_A_local);
@@ -820,7 +823,7 @@ UNROLL_LOOP
 	// multiply by the transpose of the rotation matrix which is its inverse.
 	float3 sampled_dir_world_space = hippt::normalize(sampled_dir_shading_space * rotation_matrix);
 
-	float pdf_solid_angle = hippt::max(0.0f, hippt::dot(shading_normal, sampled_dir_world_space)) / polygon.projected_solid_angle;
+	float pdf_solid_angle = sampled_dir.z / polygon.projected_solid_angle;
 	pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_dir_shading_space);
 
 	return map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);

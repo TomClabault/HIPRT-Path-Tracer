@@ -96,8 +96,8 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
         // If the triangle is large enough in solid angle, it may be worth it to compute the heavy projected solid angle
         // stuff
         out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(render_data,
-            vertex_A, vertex_B, vertex_C, normal, 
-            shading_point, view_direction, shading_normal, 
+            vertex_A, vertex_B, vertex_C, normal,
+            shading_point, view_direction, shading_normal,
             material,
             out_point_pdf, rng);
     else
