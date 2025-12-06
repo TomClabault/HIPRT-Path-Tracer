@@ -3,9 +3,9 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Device/includes/BSDFs/LTCsData/GGXSpecularLambertDiffuseLTCFitData.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
+#include "Renderer/Baker/LTC/LTCFitter.h"
 #include "Renderer/CPURenderer.h"
 #include "Renderer/GPURenderer.h"
 #include "Scene/Camera.h"
@@ -14,8 +14,6 @@
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 #include "Utils/CommandlineArguments.h"
-
-#include "Renderer/Baker/LTC/LTCFitter.h"
 
 #include <chrono>
 #include <iostream>
@@ -29,7 +27,7 @@ int main(int argc, char* argv[])
 	static CPUMaterial material_to_fit;
 	material_to_fit.metallic = 1.0f;
 	LTCFitter fitter = LTCFitter(material_to_fit.pack_to_GPU().unpack());
-	fitter.fit(32, 64);
+	fitter.fit(64, 192);
 	fitter.export_fitted_data_float4_C("fitted_ltc_float4.h", true);
 	return 0;
 

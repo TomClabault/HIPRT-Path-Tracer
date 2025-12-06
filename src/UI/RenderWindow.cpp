@@ -46,6 +46,13 @@ extern ImGuiLogger g_imgui_logger;
 // - Is multiple temporal buffers a good idea for reducing correlations? Such that temporal reuse has more potential candidates to choose from. We need something to avoid duplicated in the temporal buffer though.
 //		Said otherwise, it's about having multiple temporal reservoirs per pixel. RIS without duplicates? What's research on that?
 // - Sample space filtering paper: really good for diffuse. Advances in rendering IV in mega
+// - For the hash grid restir spatial neighbord trick, we can probably add trivial antithetic sampling in there by sorting all neighbors within a hash grid
+//		Even build a CDF on the GPU instead of antithetic sampling
+//		We're going to need the theory of uhhhh though for unbiased sampling based on sample value
+//		Can we use the super pixel algorithm instead of hashed screen space grid for restir spatial reuse
+// - For adaptive sampling + restir we can use that idea of keeping relevant neighbors in a screen space hash grid such that we reuse good neighbors directly and never reuse stale neighbors
+// - Can we use visibility variance to guide restir DI vis reuse ?
+// - Reduce spatial reuse radius the lower the roughness
 // - We shouldn't shoot a shadow ray in the light evaluation if the BSDF sample was chosen because this already has visibility
 // - What about replacing visibility reuse with NEE++?
 // - Can we do something for restir that has a hash grid for the first hits of the rays and then for spatial reuse, each pixel looks up its cell and reuse paths from the same cell (and thus same geometry if we include the normals in the hash grid). This would basically be a more accurate version of the directional spatial reuse
@@ -72,9 +79,10 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Add some ui to graph rmse and other metrics over time / over spp and auto output a graph
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
-// 
+// - Do we need the whole prepare sampling method to get the PDFs of solid angle 1nd projected solid angle ?
 // - Auto correlation reduction if doing 1 or 2SPPs renders
 // - Autosubdivide NEE++ by having a buffer of 2 bits per cell that gives the subdivision level of NEE++ for that cell
 //		- Subdivide cells that have a high variance in their NEE++ estimate

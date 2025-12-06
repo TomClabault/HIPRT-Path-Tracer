@@ -554,7 +554,7 @@ void LTCFitter::fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V
 		isotropic, V, m_error_samples, roughness, roughness_index, theta_index, m_fit_resolution);
 
 	// Find best-fit LTC lobe (scale, alphax, alphay)
-	float error = NelderMead<4>(resultFit, startFit, epsilon, 1e-5f, 200, fitter);
+	float error = NelderMead<4>(resultFit, startFit, epsilon, 1e-5f, 100, fitter);
 
 	/*std::vector<float> startFitVec = { startFit[0], startFit[1], startFit[2], startFit[3] };
 	std::vector<float> resultFitVec = nelder_mead::find_min(fitter, startFitVec, false, {},

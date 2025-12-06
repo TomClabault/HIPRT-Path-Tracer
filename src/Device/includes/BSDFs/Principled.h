@@ -167,29 +167,32 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
   //      D = D * D;
   //      D = D / (3.14159f * alpha_x * alpha_x * H.z * H.z * H.z * H.z);
 
-  //      /*float G1V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
-  //      pdf = G1V * D * hippt::max(0.0f, hippt::dot(local_view_direction, H)) / V.z / (4.0f * hippt::dot(local_view_direction, H));*/
+  //      {
+  //          float G1V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
+  //          pdf = fabsf(D * H.z / 4.0f / hippt::dot(V, H));
+  //      }
 
-  //      // GGX visible normal distribution for evaluating the PDF
-  //      float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
-  //      float G1V = 1.0f / (1.0f + lambda_V);
-  //      float Dvisible = GGX_anisotropic_vndf(GGX_anisotropic(alpha_x, alpha_y, H), G1V, local_view_direction, H);
+  //      //{
+  //      //    // GGX visible normal distribution for evaluating the PDF
+  //      //    float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
+  //      //    float G1V = 1.0f / (1.0f + lambda_V);
+  //      //    float Dvisible = GGX_anisotropic_vndf(GGX_anisotropic(alpha_x, alpha_y, H), G1V, local_view_direction, H);
 
-  //      // Maxing to GGX_DOT_PRODUCTS_CLAMP here to avoid zeros and numerical imprecisions
-  //      // TODO note that we shouldn't need abs() here because we cannot have the view direction or to light direction below the surface
-  //      float NoV = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_view_direction.z));
-  //      float NoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_to_light_direction.z));
+  //      //    // Maxing to GGX_DOT_PRODUCTS_CLAMP here to avoid zeros and numerical imprecisions
+  //      //    // TODO note that we shouldn't need abs() here because we cannot have the view direction or to light direction below the surface
+  //      //    float NoV = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_view_direction.z));
+  //      //    float NoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_to_light_direction.z));
 
-  //      // Because we're exactly sampling the visible normals distribution function,
-  //      // that's exactly our PDF.
-  //      // 
-  //      // Additionally, because we need to take into account the reflection operator
-  //      // that we're going to apply to get our final 'to light direction' and so the
-  //      // jacobian determinant of that reflection operator is the (4.0f * HoV) in the
-  //      // denominator
-  //      pdf = Dvisible / (4.0f * hippt::dot(local_view_direction, H));
+  //      //    // Because we're exactly sampling the visible normals distribution function,
+  //      //    // that's exactly our PDF.
+  //      //    // 
+  //      //    // Additionally, because we need to take into account the reflection operator
+  //      //    // that we're going to apply to get our final 'to light direction' and so the
+  //      //    // jacobian determinant of that reflection operator is the (4.0f * HoV) in the
+  //      //    // denominator
+  //      //    pdf = Dvisible / (4.0f * hippt::dot(local_view_direction, H));
+  //      //}
 
-  //      // pdf = fabsf(D * H.z / 4.0f / hippt::dot(V, H));
   //      float res = D * G2 / 4.0f / V.z / L.z;
 
   //      ColorRGB32F F_metal = adobe_f82_tint_fresnel(bsdf_context.material.base_color, bsdf_context.material.metallic_F82, bsdf_context.material.metallic_F90, bsdf_context.material.metallic_F90_falloff_exponent, hippt::dot(local_half_vector, local_to_light_direction));
@@ -306,19 +309,19 @@ HIPRT_DEVICE static float3 principled_metallic_sample(const HIPRTRenderData& ren
     //    return -local_view_direction + 2.0f * Ne * hippt::dot(Ne, local_view_direction);
     //}
 
-    //{
-    //    float alpha_x, alpha_y;
-    //    MaterialUtils::get_alphas(regularized_roughness, anisotropy, alpha_x, alpha_y);
+    /*{
+        float alpha_x, alpha_y;
+        MaterialUtils::get_alphas(regularized_roughness, anisotropy, alpha_x, alpha_y);
 
-    //    float U1 = random_number_generator();
-    //    float U2 = random_number_generator();
+        float U1 = random_number_generator();
+        float U2 = random_number_generator();
 
-    //    const float phi = 2.0f * 3.14159f * U1;
-    //    const float r = alpha_x * sqrtf(U2 / (1.0f - U2));
-    //    const float3 N = hippt::normalize(float3(r * cosf(phi), r * sinf(phi), 1.0f));
-    //    const float3 L = -local_view_direction + 2.0f * N * hippt::dot(N, local_view_direction);
-    //    return L;
-    //}
+        const float phi = 2.0f * 3.14159f * U1;
+        const float r = alpha_x * sqrtf(U2 / (1.0f - U2));
+        const float3 N = hippt::normalize(float3(r * cosf(phi), r * sinf(phi), 1.0f));
+        const float3 L = -local_view_direction + 2.0f * N * hippt::dot(N, local_view_direction);
+        return L;
+    }*/
 
     return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator);
 }

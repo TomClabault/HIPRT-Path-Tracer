@@ -61,6 +61,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Spatial reuse
 		- Per-cell RIS integral normalization factor pre-integration for multiple importance sampling support
 		- Hash grid
+		- The implementation is detailed in my [ReGIR blog post](https://tomclabault.github.io/blog/2025/regir/).
 	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 	- ReSTIR DI
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.14138) + Custom envmap support
