@@ -160,7 +160,10 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
                 // emissive thanks to using an emissive texture
 
                 float PDF_light_distributions = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, hippt::length(triangle_load_normal_not_normalized(render_data, shadow_light_ray_hit_info.hit_prim_index)) * 0.5f, shadow_light_ray_hit_info.hit_emission, mesh_index);
-                float canonical_technique_pdf = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, shading_point, view_direction, shading_normal, ray_payload.material, shadow_light_ray_hit_info);
+                float canonical_technique_pdf = pdf_of_emissive_triangle_hit_area_measure<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, 
+                    shading_point, view_direction, shading_normal, 
+                    ray_payload.material, shading_point + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance,
+                    shadow_light_ray_hit_info);
                 mis_weight = balance_heuristic(bsdf_sample_pdf_area_measure, 1, PDF_light_distributions, regir_settings.shading_settings.number_of_neighbors, canonical_technique_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount);
             }
             else
@@ -171,7 +174,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
                 // sampling can't sample so the BSDF sampling gets all the weight
                 mis_weight = 1.0f;
 
-            if (reservoir.stream_sample_raw(mis_weight, target_function, bsdf_sample_pdf_area_measure, shadow_light_ray_hit_info.hit_prim_index, 0u, rng))
+            if (reservoir.stream_sample_raw(mis_weight, target_function, bsdf_sample_pdf_area_measure, shadow_light_ray_hit_info.hit_prim_index, shading_point + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance, rng))
                 selected_sample_radiance = sample_radiance;
             sanity_check<true>(render_data, reservoir.weight_sum, -1, -1);
         }
