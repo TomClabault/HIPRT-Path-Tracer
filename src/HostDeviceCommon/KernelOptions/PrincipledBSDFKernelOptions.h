@@ -145,7 +145,7 @@
  * 
  * Some more details in BSDFIncidentLightInfo.h
  */
-#define PrincipledBSDFDeltaDistributionEvaluationOptimization KERNEL_OPTION_FALSE
+#define PrincipledBSDFDeltaDistributionEvaluationOptimization KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to sample the glossy/diffuse base layer of the BSDF based on the fresnel or not.

@@ -164,7 +164,7 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRT
     // 
     // Additionally, because we need to take into account the reflection operator
     // that we're going to apply to get our final 'to light direction' and so the
-    // jacobian determinant of that reflection operator is the (4.0f * NoV) in the
+    // jacobian determinant of that reflection operator is the (4.0f * HoV) in the
     // denominator
     out_pdf = Dvisible / (4.0f * hippt::dot(local_view_direction, local_halfway_vector));
     if (out_pdf == 0.0f)
@@ -473,6 +473,8 @@ HIPRT_DEVICE static float3 GGX_anisotropic_sample_microfacet(const float3& local
 #elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_BOUNDED
     // TODO
 #else
+    // Not implemented
+	return make_float3(0.0f, 0.0f, 0.0f);
 #endif
 }
 
@@ -486,7 +488,7 @@ HIPRT_DEVICE static float3 microfacet_GGX_sample_reflection(float roughness, flo
 {
     // The view direction can sometimes be below the shading normal hemisphere
     // because of normal mapping / smooth normals
-    int below_normal = (local_view_direction.z < 0) ? -1 : 1;
+    int below_normal = (local_view_direction.z < 0.0f) ? -1 : 1;
     float alpha_x, alpha_y;
     MaterialUtils::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
 

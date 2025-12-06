@@ -129,51 +129,73 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 {
     float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
-    {
-        float alpha_x, alpha_y;
-		MaterialUtils::get_alphas(regularized_roughness, anisotropy, alpha_x, alpha_y);
+  //  {
+  //      float alpha_x, alpha_y;
+		//MaterialUtils::get_alphas(regularized_roughness, anisotropy, alpha_x, alpha_y);
 
-		float3 V = local_view_direction;
-		float3 L = local_to_light_direction;
+		//float3 V = local_view_direction;
+		//float3 L = local_to_light_direction;
 
-        if (V.z <= 0)
-        {
-            pdf = 0;
+  //      if (V.z <= 0)
+  //      {
+  //          pdf = 0;
 
-            return ColorRGB32F();
-        }
+  //          return ColorRGB32F();
+  //      }
 
-        // masking
-        const float a_V = 1.0f / alpha_x / tanf(acosf(V.z));
-        const float LambdaV = (V.z < 1.0f) ? 0.5f * (-1.0f + sqrtf(1.0f + 1.0f / a_V / a_V)) : 0.0f;
-        const float G1 = 1.0f / (1.0f + LambdaV);
+  //      // masking
+  //      const float a_V = 1.0f / alpha_x / tanf(acosf(V.z));
+  //      const float LambdaV = (V.z < 1.0f) ? 0.5f * (-1.0f + sqrtf(1.0f + 1.0f / a_V / a_V)) : 0.0f;
+  //      const float G1 = 1.0f / (1.0f + LambdaV);
 
-        // shadowing
-        float G2;
-        if (L.z <= 0.0f)
-            G2 = 0;
-        else
-        {
-            const float a_L = 1.0f / alpha_x / tanf(acosf(L.z));
-            const float LambdaL = (L.z < 1.0f) ? 0.5f * (-1.0f + sqrtf(1.0f + 1.0f / a_L / a_L)) : 0.0f;
-            G2 = 1.0f / (1.0f + LambdaV + LambdaL);
-        }
+  //      // shadowing
+  //      float G2;
+  //      if (L.z <= 0.0f)
+  //          G2 = 0;
+  //      else
+  //      {
+  //          const float a_L = 1.0f / alpha_x / tanf(acosf(L.z));
+  //          const float LambdaL = (L.z < 1.0f) ? 0.5f * (-1.0f + sqrtf(1.0f + 1.0f / a_L / a_L)) : 0.0f;
+  //          G2 = 1.0f / (1.0f + LambdaV + LambdaL);
+  //      }
 
-        // D
-        const float3 H = hippt::normalize(V + L);
-        const float slopex = H.x / H.z;
-        const float slopey = H.y / H.z;
-        float D = 1.0f / (1.0f + (slopex * slopex + slopey * slopey) / alpha_x / alpha_x);
-        D = D * D;
-        D = D / (3.14159f * alpha_x * alpha_x * H.z * H.z * H.z * H.z);
+  //      // D
+  //      const float3 H = hippt::normalize(V + L);
+  //      const float slopex = H.x / H.z;
+  //      const float slopey = H.y / H.z;
+  //      float D = 1.0f / (1.0f + (slopex * slopex + slopey * slopey) / alpha_x / alpha_x);
+  //      D = D * D;
+  //      D = D / (3.14159f * alpha_x * alpha_x * H.z * H.z * H.z * H.z);
 
-        pdf = fabsf(D * H.z / 4.0f / hippt::dot(V, H));
-        float res = D * G2 / 4.0f / V.z;
+  //      /*float G1V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
+  //      pdf = G1V * D * hippt::max(0.0f, hippt::dot(local_view_direction, H)) / V.z / (4.0f * hippt::dot(local_view_direction, H));*/
 
-        ColorRGB32F F_metal = adobe_f82_tint_fresnel(bsdf_context.material.base_color, bsdf_context.material.metallic_F82, bsdf_context.material.metallic_F90, bsdf_context.material.metallic_F90_falloff_exponent, hippt::dot(local_half_vector, local_to_light_direction));
+  //      // GGX visible normal distribution for evaluating the PDF
+  //      float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
+  //      float G1V = 1.0f / (1.0f + lambda_V);
+  //      float Dvisible = GGX_anisotropic_vndf(GGX_anisotropic(alpha_x, alpha_y, H), G1V, local_view_direction, H);
 
-        return F_metal * res;
-    }
+  //      // Maxing to GGX_DOT_PRODUCTS_CLAMP here to avoid zeros and numerical imprecisions
+  //      // TODO note that we shouldn't need abs() here because we cannot have the view direction or to light direction below the surface
+  //      float NoV = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_view_direction.z));
+  //      float NoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_to_light_direction.z));
+
+  //      // Because we're exactly sampling the visible normals distribution function,
+  //      // that's exactly our PDF.
+  //      // 
+  //      // Additionally, because we need to take into account the reflection operator
+  //      // that we're going to apply to get our final 'to light direction' and so the
+  //      // jacobian determinant of that reflection operator is the (4.0f * HoV) in the
+  //      // denominator
+  //      pdf = Dvisible / (4.0f * hippt::dot(local_view_direction, H));
+
+  //      // pdf = fabsf(D * H.z / 4.0f / hippt::dot(V, H));
+  //      float res = D * G2 / 4.0f / V.z / L.z;
+
+  //      ColorRGB32F F_metal = adobe_f82_tint_fresnel(bsdf_context.material.base_color, bsdf_context.material.metallic_F82, bsdf_context.material.metallic_F90, bsdf_context.material.metallic_F90_falloff_exponent, hippt::dot(local_half_vector, local_to_light_direction));
+
+  //      return F_metal * res;
+  //  }
 
     SpecularDeltaReflectionSampled metal_delta_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, anisotropy, bsdf_context.incident_light_info);
     if (metal_delta_direction_sampled == SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
@@ -224,21 +246,81 @@ HIPRT_DEVICE static float3 principled_metallic_sample(const HIPRTRenderData& ren
 {
     float regularized_roughness = MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness, bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
 
-    {
-        float alpha_x, alpha_y;
-        MaterialUtils::get_alphas(regularized_roughness, anisotropy, alpha_x, alpha_y);
+    //{
+    //    float r1 = random_number_generator();
+    //    float r2 = random_number_generator();
 
-        float U1 = random_number_generator();
-        float U2 = random_number_generator();
+    //    float alpha_x, alpha_y;
+    //    MaterialUtils::get_alphas(regularized_roughness, anisotropy, alpha_x, alpha_y);
 
-        const float phi = 2.0f * 3.14159f * U1;
-        const float r = alpha_x * sqrtf(U2 / (1.0f - U2));
-        const float3 N = hippt::normalize(float3(r * cosf(phi), r * sinf(phi), 1.0f));
-        const float3 L = -local_view_direction + 2.0f * N * hippt::dot(N, local_view_direction);
-        return L;
-    }
+    //    // Stretching the ellipsoid to the hemisphere configuration
+    //    float3 Vh = hippt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
 
-    //return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator);
+    //    // Orthonormal basis construction
+    //    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+    //    float3 T1 = lensq > 0.0f ? float3{ -Vh.y, Vh.x, 0 } / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
+    //    float3 T2 = hippt::cross(Vh, T1);
+
+    //    // Parametrization of the projected area of the hemisphere
+    //    float r = sqrt(r1);
+    //    float phi = hippt::M_TWO_PI * r2;
+    //    float t1 = r * cos(phi);
+    //    float t2 = r * sin(phi);
+    //    float s = 0.5f * (1.0f + Vh.z);
+    //    t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
+
+    //    // Sampling the hemisphere
+    //    float3 Nh = t1 * T1 + t2 * T2 + sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
+
+    //    // Un-stretching back to our ellipsoid
+    //    Nh = hippt::normalize(float3{ alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z) });
+
+    //    return reflect_ray(local_view_direction, Nh);
+    //}
+
+    //{
+    //    float U1 = random_number_generator();
+    //    float U2 = random_number_generator();
+
+    //    float alpha_x, alpha_y;
+    //    MaterialUtils::get_alphas(regularized_roughness, anisotropy, alpha_x, alpha_y);
+
+    //    // Section 3.2: transforming the view direction to the hemisphere configuration
+    //    float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
+    //    // Section 4.1: orthonormal basis (with special case if cross product is zero)
+    //    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+    //    float3 T1 = lensq > 0 ? make_float3(-Vh.y, Vh.x, 0) * 1.0f / hippt::sqrt(lensq) : make_float3(1, 0, 0);
+    //    float3 T2 = hippt::cross(Vh, T1);
+    //    // Section 4.2: parameterization of the projected area
+    //    float r = sqrt(U1);
+    //    float phi = 2.0 * hippt::M_Pi * U2;
+    //    float t1 = r * cos(phi);
+    //    float t2 = r * sin(phi);
+    //    float s = 0.5 * (1.0 + Vh.z);
+    //    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+    //    // Section 4.3: reprojection onto hemisphere
+    //    float3 Nh = t1 * T1 + t2 * T2 + hippt::sqrt(hippt::max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+    //    // Section 3.4: transforming the normal back to the ellipsoid configuration
+    //    float3 Ne = hippt::normalize(make_float3(alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z)));
+
+    //    return -local_view_direction + 2.0f * Ne * hippt::dot(Ne, local_view_direction);
+    //}
+
+    //{
+    //    float alpha_x, alpha_y;
+    //    MaterialUtils::get_alphas(regularized_roughness, anisotropy, alpha_x, alpha_y);
+
+    //    float U1 = random_number_generator();
+    //    float U2 = random_number_generator();
+
+    //    const float phi = 2.0f * 3.14159f * U1;
+    //    const float r = alpha_x * sqrtf(U2 / (1.0f - U2));
+    //    const float3 N = hippt::normalize(float3(r * cosf(phi), r * sinf(phi), 1.0f));
+    //    const float3 L = -local_view_direction + 2.0f * N * hippt::dot(N, local_view_direction);
+    //    return L;
+    //}
+
+    return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator);
 }
 
 HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const DeviceUnpackedEffectiveMaterial& material,

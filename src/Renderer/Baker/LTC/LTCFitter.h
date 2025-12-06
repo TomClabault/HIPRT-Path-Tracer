@@ -133,10 +133,11 @@ struct LTCFit
 {
 	LTCFit(LTC& ltc_, 
 		const HIPRTRenderData& render_data_, const DeviceUnpackedEffectiveMaterial& material_, std::shared_ptr<BSDFContext> base_bsdf_context_, Xorshift32Generator& rng_,
-		bool isotropic_, const float3& V_, unsigned int error_samples_, float alpha_) :
+		bool isotropic_, const float3& V_, unsigned int error_samples_, float alpha_, int roughness_index, int theta_index, unsigned int fit_resolution) :
 		ltc(ltc_), 
 		render_data(render_data_), material(material_), base_bsdf_context(base_bsdf_context_), rng(rng_),
-		V(V_), error_samples(error_samples_), roughness(alpha_), isotropic(isotropic_) { }
+		V(V_), error_samples(error_samples_), roughness(alpha_), isotropic(isotropic_), 
+		m_roughness_index(roughness_index), m_theta_index(theta_index), m_fit_resolution(fit_resolution) {}
 
 	void update(const float* params);
 
@@ -159,6 +160,11 @@ struct LTCFit
 
 	float3 V;
 	float roughness;
+
+	// For BSDF sampling caching
+	int m_roughness_index;
+	int m_theta_index;
+	unsigned int m_fit_resolution;
 };
 
 class LTCFitter
@@ -185,7 +191,7 @@ private:
 
 	// fit brute force
 	// refine first guess by exploring parameter space
-	void fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V, const float roughness, const float epsilon = 0.05f, const bool isotropic = false);
+	void fit_internal(LTC& ltc, Xorshift32Generator& rng, const float3& V, const float roughness, const float epsilon = 0.05f, const bool isotropic = false, int roughness_index = -1, int theta_index = -1);
 	
 	DeviceUnpackedEffectiveMaterial material;
 

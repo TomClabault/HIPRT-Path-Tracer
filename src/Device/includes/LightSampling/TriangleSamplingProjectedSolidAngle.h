@@ -464,8 +464,6 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	 */
 	// Building a shading space where the shading point is the origin, the shading normal
 	// is the z axis, and the view direction lies in the x-z plane
-
-	// Removing the normal component from the view direction
 	float3 T, B;
 	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
 	float3 vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);

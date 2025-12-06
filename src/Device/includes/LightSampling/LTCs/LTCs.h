@@ -60,12 +60,6 @@ HIPRT_DEVICE float3 ltc_transform_shading_to_cosine(const HIPRTRenderData& rende
 	float3x3 ltc_matrix_inv = inverse(ltc_matrix);
 
 	return ltc_matrix_inv * direction_or_position;
-	// Transform with the LTC: LTCMatrix * direction_or_position
-	//return make_float3(
-	//	ltc_params.r * direction_or_position.x + ltc_params.g * direction_or_position.z,
-	//	ltc_params.b * direction_or_position.y,
-	//	// Assumes LTC[2][2]is 1.0f here
-	//	ltc_params.a * direction_or_position.x + 1.0f * direction_or_position.z);
 }
 
 HIPRT_DEVICE float ltc_jacobian(const HIPRTRenderData& render_data, float cos_theta_v, float roughness, float3 sampled_direction_shading_space)
