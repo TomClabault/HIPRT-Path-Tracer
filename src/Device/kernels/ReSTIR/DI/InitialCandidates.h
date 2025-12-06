@@ -12,6 +12,7 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/PDFTriangles.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
+#include "Device/includes/LightSampling/TriangleEmissiveSamplingReGIR.h"
 #include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/TriangleLoadUtils.h"
