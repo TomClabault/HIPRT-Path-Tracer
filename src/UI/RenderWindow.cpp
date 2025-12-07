@@ -1016,7 +1016,7 @@ void RenderWindow::clear_ImGui_status_text()
 	set_ImGui_status_text("Rendering...");
 }
 
-float RenderWindow::get_current_render_time()
+float& RenderWindow::get_current_render_time_ms()
 {
 	return m_application_state->current_render_time_ms;
 }

@@ -87,7 +87,7 @@ void ImGuiSettingsWindow::draw_header()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	if (render_settings.accumulate)
-		ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
+		ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time_ms() / 1000.0f);
 	else
 		ImGui::Text("Frame time (GPU): %.3fms", m_render_window_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);

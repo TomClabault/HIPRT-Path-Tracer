@@ -603,5 +603,169 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 void ImGuiToolsWindow::draw_graph_convergence_panel()
 {
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
+	if (ImGui::CollapsingHeader("Convergence graph"))
+	{
+		ImGui::TreePush("Convergence graph tree");
+
+		ImGui::Text("Step 1: Choose a reference image");
+		ImGui::TreePush("Convergence graph - step 1 tree");
+
+		static Image32Bit ref_image;
+		static std::string ref_image_text = "";
+		if (ImGui::Button("Select reference image"))
+		{
+			const char* filters[] = { "*.png", "*.jpg" };
+			std::string ref_image_path = Utils::open_file_dialog(filters, 2);
+			ref_image = Image32Bit::read_image(ref_image_path, 3, false);
+			ref_image_text = std::filesystem::path(ref_image_path).filename().string();
+		}
+		if (ref_image_text != "")
+		{
+			ImGui::TreePush("Reference image text tree");
+			ImGui::Text("%s", ref_image_text.c_str());
+			ImGui::TreePop();
+		}
+
+		ImGui::TreePop();
+
+
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+
+
+		ImGui::Text("Step 2: Data capture settings");
+		ImGui::TreePush("Convergence graph - step 2 tree");
+		static int capture_interval_type = 0;
+		ImGui::SeparatorText("Capture interval type");
+		ImGui::RadioButton("Every N seconds", &capture_interval_type, 0);
+		ImGui::RadioButton("Every N samples", &capture_interval_type, 1);
+
+		static float capture_interval_value = 1.0f;
+		ImGui::InputFloat("Capture interval value", &capture_interval_value);
+		if (capture_interval_type == 1)
+			// We want an integer number of samples
+			capture_interval_value = std::roundf(capture_interval_value);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Capture duration");
+		static int number_of_captures = 16;
+		ImGui::InputInt("Number of captures", &number_of_captures);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		static int error_metric_type = 0;
+		ImGui::SeparatorText("Error metric");
+		ImGui::RadioButton("MSE", &error_metric_type, 0);
+		ImGui::RadioButton("RMSE", &error_metric_type, 1);
+		ImGui::RadioButton("FLIP", &error_metric_type, 2);
+
+		ImGui::TreePop();
+
+
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+
+
+		ImGui::Text("Step 3: Configure your render settings...");
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		ImGui::Text("Step 4: Capture...");
+		ImGui::TreePush("Start capture tree");
+		static bool capture_started = false;
+		static int captures_taken = 0;
+		static float last_captured_ratio = 0.0f;
+		static std::vector<float> captured_errors;
+		if (capture_started)
+		{
+			if (ImGui::Button("Stop capture"))
+				capture_started = false;
+		}
+		else
+		{
+			ImGui::BeginDisabled(ref_image.width == 0);
+
+			if (ImGui::Button("Start capture"))
+			{
+				// Removing auto samples per frame for consistency and to avoid
+				// that multiple samples are rendered between two captures (especially when using sample-based captures)
+				render_settings.samples_per_frame = 1;
+				m_render_window->get_application_settings()->auto_sample_per_frame = false;
+				m_render_window->get_application_settings()->max_sample_count = 0;
+				m_render_window->get_application_settings()->max_render_time = 0;
+
+				capture_started = true;
+				captures_taken = 0;
+				last_captured_ratio = 0.0f;
+				captured_errors.clear();
+
+				m_render_window->reset_render();
+			}
+
+			ImGui::EndDisabled();
+		}
+
+		float current_ratio = 0.0f;
+		if (capture_interval_type == 0)
+			// Time-based capture
+			current_ratio = std::floor(m_render_window->get_current_render_time_ms() / 1000.0f / capture_interval_value);
+		else
+			// Sample-based capture
+			current_ratio = std::floor((float)render_settings.sample_number / capture_interval_value);
+
+		if (current_ratio > last_captured_ratio && capture_started && captures_taken < number_of_captures)
+		{
+			// Time to capture!
+			last_captured_ratio = current_ratio;
+			captures_taken++;
+
+			Image32Bit current_image(m_render_window->get_screenshoter()->get_image(), 3);
+
+			float error;
+			switch (error_metric_type)
+			{
+				case 0:
+					// MSE
+					error = Utils::compute_image_mse(ref_image, current_image);
+					break;
+
+				case 1:
+					// RMSE
+					error = Utils::compute_image_rmse(ref_image, current_image);
+					break;
+
+				case 2:
+				{
+					// FLIP
+					float* error_map = nullptr;
+					error = Utils::compute_image_weighted_median_FLIP(ref_image, current_image, &error_map);
+
+					free(error_map);
+
+					break;
+				}
+			default:
+				break;
+			}
+
+			captured_errors.push_back(error);
+
+			if (captures_taken == number_of_captures)
+				capture_started = false;
+		}
+
+		for (float err : captured_errors)
+			ImGui::Text("Captured error: %f", err);
+
+		ImGui::TreePop();
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Text("Step 5: Add capture data to graph");
+		ImGui::TreePush("Start capture tree");
+		ImGui::TreePop();
+
+		ImGui::TreePop();
+	}
 }

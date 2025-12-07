@@ -109,7 +109,7 @@ public:
 	void set_ImGui_status_text(const std::string& status_text);
 	void clear_ImGui_status_text();
 
-	float get_current_render_time();
+	float& get_current_render_time_ms();
 	float get_samples_per_second();
 	/**
 	 * Computes the number of samples per second as seen from the render window. "As seen by the render window"
