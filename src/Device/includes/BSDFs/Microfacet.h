@@ -100,7 +100,7 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRen
  * Equation 15
  */
 template <>
-HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F,
+HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F,
                                                                                 const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
                                                                                 float& out_pdf, SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                                 int current_bounce)
@@ -197,7 +197,7 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRT
  * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialConstants::ROUGHNESS_CLAMP
  */
 template <>
-HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
+HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
                                                                                 const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
                                                                                 float& out_pdf, SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
                                                                                 int current_bounce)
