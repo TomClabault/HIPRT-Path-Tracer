@@ -27,6 +27,8 @@ public:
 
 	void draw_image_difference_panel();
 
+	void draw_graph_convergence_panel();
+
 private:
 	RenderWindow* m_render_window = nullptr;
 

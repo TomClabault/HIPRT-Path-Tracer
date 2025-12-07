@@ -56,11 +56,21 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
                 shading_point, view_direction, shading_normal,
                 material);
 
-            float to_light_distance = hippt::length(to_light_direction);
-            float pdf_solid_angle = hippt::dot(shading_normal, to_light_direction / to_light_distance) / projected_solid_angle_triangle.projected_solid_angle;
-            float cosine_at_light_source = compute_cosine_term_at_light_source(triangle_normal, -to_light_direction / to_light_distance);
+            if (projected_solid_angle_triangle.vertex_count == 0)
+                // The whole polygon is below the hemisphere, clipping returned 0 vertices
+                return 0.0f;
 
-            return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, cosine_at_light_source);
+            float to_light_distance = hippt::length(to_light_direction);
+            to_light_direction /= to_light_distance;
+            float pdf_solid_angle = hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction)) / projected_solid_angle_triangle.projected_solid_angle;
+
+			// Jacobian of the LTC transform
+            float3 T, B;
+            build_ONB_XZ_plane(shading_normal, T, B, view_direction);
+			float3 sampled_dir_shading_space = world_to_local_frame(T, B, shading_normal, to_light_direction);
+            pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_dir_shading_space);
+
+            return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, compute_cosine_term_at_light_source(triangle_normal, -to_light_direction));
         }
         else
         {
@@ -73,9 +83,7 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
             return solid_angle_to_area_pdf(1.0f / solid_angle_triangle.solid_angle, to_light_distance, cosine_at_light_source);
         }
 
-        solid_angle_triangle_t solid_angle_triangle = prepare_solid_angle_triangle_sampling(3, vertex_A, vertex_B, vertex_C, shading_point);
-
-        return 1.0f / solid_angle_triangle.solid_angle;
+        return 0.0f;
     }
 }
 

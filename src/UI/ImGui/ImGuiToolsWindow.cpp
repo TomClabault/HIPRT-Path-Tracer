@@ -31,6 +31,7 @@ void ImGuiToolsWindow::draw()
 
 	draw_ggx_energy_compensation_panel();
 	draw_image_difference_panel();
+	draw_graph_convergence_panel();
 
 	ImGui::PopItemWidth();
 
@@ -598,4 +599,9 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 		ImGui::TreePop();
 	}
+}
+
+void ImGuiToolsWindow::draw_graph_convergence_panel()
+{
+
 }

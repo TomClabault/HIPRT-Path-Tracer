@@ -1130,7 +1130,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
 				"Samples one random light in the scene without MIS. Efficient as long as there are not too many lights in the scene and no glossy/specular surfaces.",
 				"Samples lights only using one BSDF sample.",
-				"Samples one random light in the scene with MIS(Multiple Importance Sampling) : light sample + BRDF sample.",
+				"Samples one random light in the scene with MIS (Multiple Importance Sampling) : light sample + BRDF sample.",
 				"Samples lights in the scene with RIS (Resampled Importance Sampling) with both BSDF and light candidates. The number of light or BSDF candidates can be controlled.",
 				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be changed in the ReSTIR DI settings."
 			};
