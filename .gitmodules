@@ -16,3 +16,6 @@
 [submodule "thirdparties/clip"]
 	path = thirdparties/clip
 	url = https://github.com/dacap/clip.git
+[submodule "thirdparties/implot"]
+	path = thirdparties/implot
+	url = https://github.com/epezent/implot.git

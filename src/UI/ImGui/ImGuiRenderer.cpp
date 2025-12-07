@@ -9,6 +9,7 @@
 #include "UI/RenderWindow.h"
 
 #include "imgui_internal.h"
+#include "implot.h"
 
 #include <chrono>
 #include <unordered_map>
@@ -26,6 +27,7 @@ void ImGuiRenderer::init_imgui(GLFWwindow* glfw_window)
 	// Setting ImGui up
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+	ImPlot::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;

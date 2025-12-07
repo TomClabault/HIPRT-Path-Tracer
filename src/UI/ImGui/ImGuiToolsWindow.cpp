@@ -14,6 +14,8 @@
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
 
+#include "implot.h"
+
 const char* ImGuiToolsWindow::TITLE = "Tools";
 
 void ImGuiToolsWindow::set_render_window(RenderWindow* render_window)
@@ -609,6 +611,13 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 	{
 		ImGui::TreePush("Convergence graph tree");
 
+		static std::vector<std::string> recorded_legends;
+		// The final list of points that will be used for graphing
+		static std::vector<std::vector<float>> recorded_xs_list;
+		static std::vector<std::vector<float>> recorded_ys_list;
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		ImGui::Text("Step 1: Choose a reference image");
 		ImGui::TreePush("Convergence graph - step 1 tree");
 
@@ -655,7 +664,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::InputInt("Number of captures", &number_of_captures);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		static int error_metric_type = 0;
+		static int error_metric_type = 2;
 		ImGui::SeparatorText("Error metric");
 		ImGui::RadioButton("MSE", &error_metric_type, 0);
 		ImGui::RadioButton("RMSE", &error_metric_type, 1);
@@ -677,11 +686,18 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		static bool capture_started = false;
 		static int captures_taken = 0;
 		static float last_captured_ratio = 0.0f;
-		static std::vector<float> captured_errors;
+		static std::vector<float> current_captured_errors;
+		static std::vector<float> current_recorded_xs;
+		static std::vector<float> current_recorded_ys;
+
 		if (capture_started)
 		{
-			if (ImGui::Button("Stop capture"))
-				capture_started = false;
+			ImGui::BeginDisabled(true);
+			ImGui::Button("Capturing... ");
+			ImGui::EndDisabled();
+
+			ImGui::SameLine();
+			ImGui::Text("%d / %d", captures_taken, number_of_captures);
 		}
 		else
 		{
@@ -699,10 +715,18 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				capture_started = true;
 				captures_taken = 0;
 				last_captured_ratio = 0.0f;
-				captured_errors.clear();
+				current_captured_errors.clear();
+				current_recorded_xs.clear();
+				current_recorded_ys.clear();
+
+				for (int i = 0; i < number_of_captures; i++)
+					current_recorded_xs.push_back((float)((i + 1) * capture_interval_value));
 
 				m_render_window->reset_render();
 			}
+
+			if (ref_image.width == 0)
+				ImGuiRenderer::add_warning("No reference image selected");
 
 			ImGui::EndDisabled();
 		}
@@ -742,6 +766,8 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 					float* error_map = nullptr;
 					error = Utils::compute_image_weighted_median_FLIP(ref_image, current_image, &error_map);
 
+					current_recorded_ys.push_back(error);
+
 					free(error_map);
 
 					break;
@@ -750,21 +776,108 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				break;
 			}
 
-			captured_errors.push_back(error);
+			current_captured_errors.push_back(error);
 
 			if (captures_taken == number_of_captures)
 				capture_started = false;
 		}
 
-		for (float err : captured_errors)
-			ImGui::Text("Captured error: %f", err);
+		if (!capture_started && captures_taken == number_of_captures)
+		{
+			ImGui::Text("Capture done! Add it to the graph with a legend name");
+
+			float min_error = 10000.0f;
+			float max_error = 0.0f;
+			for (int i = 0; i < number_of_captures; i++)
+			{
+				min_error = std::min(min_error, current_recorded_ys.at(i));
+				max_error = std::max(max_error, current_recorded_ys.at(i));
+			}
+
+			ImGui::Text("Min / max error: %f / %f", min_error, max_error);
+		}
+
+		ImGui::TreePop();
+
+
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Text("Step 5: Add capture data to graph");
+		ImGui::TreePush("Add capture data tree");
+
+		static std::string legend = "Data legend";
+		ImGui::InputText("Legend", &legend);
+		if (ImGui::Button("Add Step 4 captured data"))
+		{
+			recorded_legends.push_back(legend);
+			recorded_xs_list.push_back(current_recorded_xs);
+			recorded_ys_list.push_back(current_recorded_ys);
+		}
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		ImGui::SeparatorText("Recorded data");
+		ImGui::TreePush("Recorded data tree");
+		for (int i = 0; i < recorded_legends.size(); i++)
+		{
+			std::string& leg = recorded_legends.at(i);
+			ImGui::Text("- "); ImGui::SameLine();
+			ImGui::InputText(std::string("##" + std::to_string(i)).c_str(), &leg); ImGui::SameLine();
+			if (ImGui::Button(std::string("Delete##" + std::to_string(i)).c_str()))
+			{
+				recorded_legends.erase(recorded_legends.begin() + i);
+				recorded_xs_list.erase(recorded_xs_list.begin() + i);
+				recorded_ys_list.erase(recorded_ys_list.begin() + i);
+			}
+		}
+
+		for (int i = 0; i < recorded_legends.size(); i++)
+		{
+			float min_error = 100000.0f;
+			float max_error = 0.0f;
+
+			for (int j = 0; j < number_of_captures; j++)
+			{
+				min_error = std::min(min_error, recorded_ys_list.at(i).at(j));
+				max_error = std::max(max_error, recorded_ys_list.at(i).at(j));
+			}
+
+			ImGui::TreePush(std::string("Min max error tree ##" + std::to_string(i)).c_str());
+			ImGui::Text(" Min / max error: %f / %f", min_error, max_error);
+			ImGui::TreePop();
+		}
+		ImGui::TreePop();
 
 		ImGui::TreePop();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::Text("Step 5: Add capture data to graph");
-		ImGui::TreePush("Start capture tree");
-		ImGui::TreePop();
+		ImGui::SeparatorText("Current graph:");
+
+		static float line_weight = 3.0f;
+		ImGui::InputFloat("Line weight", &line_weight);
+
+		static int width = 400;
+		static int height = 300;
+		ImGui::SliderInt("Plot width", &width, 1, 1000);
+		ImGui::SliderInt("Plot Height", &height, 1, 1000);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		if (ImPlot::BeginPlot("Convergence graph", ImVec2(width, height)))
+		{
+			ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
+
+			std::string x_axis_name = (capture_interval_type == 0) ? "Time (s)" : "Samples";
+			std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "RMSE" : "Mean FLIP";
+			ImPlot::SetupAxes(x_axis_name.c_str(), y_axis_name.c_str(), ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+
+			for (size_t i = 0; i < recorded_legends.size(); i++)
+			{
+				ImPlot::SetNextLineStyle(IMPLOT_AUTO_COL, line_weight);
+				ImPlot::PlotLine(recorded_legends.at(i).c_str(), recorded_xs_list.at(i).data(), recorded_ys_list.at(i).data(), recorded_xs_list.at(0).size());
+			}
+
+			ImPlot::EndPlot();
+		}
 
 		ImGui::TreePop();
 	}

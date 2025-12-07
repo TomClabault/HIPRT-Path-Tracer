@@ -102,7 +102,7 @@
  * 
  * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
  */
-#define PrincipledBSDFDoEnergyCompensation KERNEL_OPTION_FALSE
+#define PrincipledBSDFDoEnergyCompensation KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to perform energy compensation for the glass layer of the Principled BSDF
