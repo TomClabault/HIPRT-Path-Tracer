@@ -51,7 +51,7 @@ class GGXAnisoBatch:
     def G1(self, alpha_x, alpha_y, V):
         value = 1.0 / (1.0 + self.Lambda(alpha_x, alpha_y, V))
 
-        zeros = torch.zeros(value.shape, dtype=torch.float, device='cpu')
+        zeros = torch.zeros(value.shape, dtype=torch.float, device='cuda:0')
         idx = torch.where(V[:, :, 2:3] < 0, True, False)
         value = torch.where(idx, zeros, value)
 
@@ -60,11 +60,11 @@ class GGXAnisoBatch:
     def G2(self, alpha_x, alpha_y, V, L):
         value = 1.0 / (1.0 + self.Lambda(alpha_x, alpha_y, V) + self.Lambda(alpha_x, alpha_y, L))
 
-        zeros = torch.zeros(value.shape, dtype=torch.float, device='cpu')
+        zeros = torch.zeros(value.shape, dtype=torch.float, device='cuda:0')
         idx = torch.where(V[:, :, 2:3] < 0, True, False)
         value = torch.where(idx, zeros, value)
 
-        zeros = torch.zeros(value.shape, dtype=torch.float, device='cpu')
+        zeros = torch.zeros(value.shape, dtype=torch.float, device='cuda:0')
         idx = torch.where(L[:, :, 2:3] < 0, True, False)
         value = torch.where(idx, zeros, value)
 
@@ -185,8 +185,8 @@ if __name__ == '__main__':
     wo = wo / torch.linalg.norm(wo)
     wo = torch.unsqueeze(wo, dim=0).cuda()
 
-    alphax = torch.tensor([1.0], dtype=torch.float, device='cpu')
-    alphay = torch.tensor([1.0], dtype=torch.float, device='cpu')
+    alphax = torch.tensor([1.0], dtype=torch.float, device='cuda:0')
+    alphay = torch.tensor([1.0], dtype=torch.float, device='cuda:0')
 
     nD, fD = ggx.calc_nD_fD(wo, alphax, alphay)
 

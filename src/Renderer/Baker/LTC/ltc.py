@@ -24,7 +24,7 @@ class LTCAnisotropic(torch.nn.Module):
         self.lut_size = lut_size
 
         # Generates 8^4 LUT filled with identity matrices, and marks as a parameter for optimization
-        self.LUT = torch.tile( torch.eye(3), (lut_size[0], lut_size[1], lut_size[2], lut_size[3], 1, 1) ).cpu()
+        self.LUT = torch.tile( torch.eye(3), (lut_size[0], lut_size[1], lut_size[2], lut_size[3], 1, 1) ).cuda()
         self.LUT = torch.nn.Parameter(self.LUT)
 
     def optimize_mat(self):
@@ -80,7 +80,7 @@ class LTCIsotropic(torch.nn.Module):
         self.mat_flag = False
         self.lut_size = lut_size
 
-        self.LUT = torch.tile( torch.eye(3), (lut_size[0], lut_size[1], 1, 1) ).cpu()
+        self.LUT = torch.tile( torch.eye(3), (lut_size[0], lut_size[1], 1, 1) ).cuda()
         self.LUT = torch.nn.Parameter(self.LUT)
 
     def optimize_mat(self):

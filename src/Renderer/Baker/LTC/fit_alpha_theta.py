@@ -9,7 +9,7 @@ import ltc
 import utils
 
 def optimize_loop(args, lut_size, model, target):
-    device = torch.device("cpu")
+    device = torch.device("cuda:0")
 
     alpha_list = torch.zeros(lut_size, dtype=torch.float, device=device)
     theta_list = torch.zeros(lut_size, dtype=torch.float, device=device)
@@ -36,7 +36,7 @@ def optimize_loop(args, lut_size, model, target):
         alpha_list = alpha_list.flatten()
         # (8*8, 1)
         theta_list = torch.unsqueeze( theta_list.flatten(), dim=1 )
-        zero_list = torch.zeros(theta_list.size(), device='cpu')
+        zero_list = torch.zeros(theta_list.size(), device='cuda:0')
 
         # View vector generated for each cell in LUT, since each cell has theta and phi fixed
         # (8*8, 3)
@@ -295,6 +295,6 @@ if __name__ == '__main__':
     target = anisotropic_ggx.GGXAnisoBatch()
 
     model = ltc.LTCIsotropic(lut_size=lut_size)
-    model.cpu()
+    model.cuda()
 
     optimize_loop(args, lut_size, model, target)
