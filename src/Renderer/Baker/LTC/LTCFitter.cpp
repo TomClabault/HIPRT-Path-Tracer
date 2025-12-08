@@ -41,9 +41,11 @@ std::vector<float> m_cached_sampled_BSDF_directions_eval;
 
 // compute the error between the BRDF and the LTC
 // using Multiple Importance Sampling
-float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughness)
+float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughness, double* out_min_error_factor, double* out_max_error_factor)
 {
 	double error = 0.0;
+	double min_error_factor = 1e20;
+	double max_error_factor = -1e20;
 
 	Xorshift32Generator local_rng(0xdeadbeef);
 
@@ -75,6 +77,13 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughne
 				double error_ = fabsf(eval_brdf - eval_ltc);
 				error_ = error_ * error_ * error_;
 				sample_error += error_ / (pdf_ltc + pdf_brdf);
+
+				double ratio = (double)hippt::max(eval_brdf, eval_ltc) / (double)hippt::min(eval_brdf, eval_ltc);
+				if (std::isfinite(ratio))
+				{
+					min_error_factor = hippt::min(min_error_factor, ratio);
+					max_error_factor = hippt::max(max_error_factor, ratio);
+				}
 			}
 
 			// importance sample BRDF
@@ -116,6 +125,13 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughne
 
 				error_ = error_ * error_ * error_;
 				sample_error += error_ / (pdf_ltc + pdf_brdf);
+
+				double ratio = (double)hippt::max(eval_brdf, eval_ltc) / (double)hippt::min(eval_brdf, eval_ltc);
+				if (std::isfinite(ratio))
+				{
+					min_error_factor = hippt::min(min_error_factor, ratio);
+					max_error_factor = hippt::max(max_error_factor, ratio);
+				}
 			}
 
 			error += sample_error;
@@ -123,6 +139,11 @@ float LTCFit::compute_error(const LTC& ltc, const float3& V, const float roughne
 			valid_sample_count++;
 		}
 	}
+
+	if (out_min_error_factor)
+		*out_min_error_factor = (float)min_error_factor;
+	if (out_max_error_factor)
+		*out_max_error_factor = (float)max_error_factor;
 
 	return (float)error / (float)(valid_sample_count);
 }
@@ -147,8 +168,8 @@ LTCFitter::LTCFitter(const DeviceUnpackedEffectiveMaterial& material_) : materia
 {
 	m_base_bsdf_context = std::make_shared<BSDFContext>(
 		make_float3(0, 0, 1), // view direction, will be overwritten at fitting time
-		make_float3(0, 0, 1), // shading normal, will be overwritten at fitting time
-		make_float3(0, 0, 1), // geometric normal, will be overwritten at fitting time
+		make_float3(0, 0, 1), // shading normal, canonical shading frame for LTC fitting
+		make_float3(0, 0, 1), // geometric normal, canonical shading frame for LTC fitting
 		make_float3(0, 0, 1), // to light direction, will be overwritten at fitting time
 		m_incident_light_info,
 		m_ray_volume_state,
@@ -451,6 +472,8 @@ void LTCFitter::export_fitted_data_float4_C(const std::string& filename, bool ex
 	file.close();
 }
 
+extern bool DEBUG_ON;
+
 void LTCFitter::compute_fitted_error()
 {
 	double error_sum = 0.0;
@@ -460,9 +483,28 @@ void LTCFitter::compute_fitted_error()
 		for (int theta = 0; theta < m_fit_resolution; theta++)
 		{
 			float r = std::max(MIN_ROUGHNESS, roughness / float(m_fit_resolution - 1));
-			float th = std::min<float>(1.57f, theta / float(m_fit_resolution - 1) * 1.57079f);
+			float th = std::min<float>(1.57f, theta / float(m_fit_resolution - 1) * hippt::M_PI_TWO);
 
-			const float3 V = float3(sinf(th), 0, cosf(th));
+			if (roughness == 22 && theta == 16)
+			{
+				r = 0.698039f;
+				th = acos(0.748451f);
+			}
+
+			float3 V = make_float3(sinf(th), 0, cosf(th));
+
+/**
+View dir shading space: make_float3(0.66319, 0, 0.748451)
+To vertex A: make_float3(-0.518554, 0.829912, -0.205787)
+To vertex B: make_float3(0.504647, -0.0877765, -0.858852)
+To vertex C: make_float3(0.890518, 0.363779, 0.273209)
+Bsdf at A: 0, B: 0, C: 0.0993495
+Roughness: 0.698039
+
+View dir: 0, 0.66319, 0.748451
+Light dir: -0.363779, 0.890518, 0.273209
+Half vec: -0.191992, 0.82, 0.539202
+ */
 
 			LTC ltc;
 			ltc.amplitude = m_tab_amplitude[roughness + theta * m_fit_resolution].x;
@@ -474,13 +516,44 @@ void LTCFitter::compute_fitted_error()
 			ltc.invM = glm::inverse(ltc.M);
 			ltc.detM = abs(glm::determinant(ltc.M));
 
+			if (roughness == 22 && theta == 16)
+			{
+				float3 T, B;
+				build_ONB_XZ_plane(make_float3(0, 0, 1), T, B, V);
+				float3 L = hippt::normalize(make_float3(0.890518, 0.363779, 0.273209));
+				std::cout << "View dir: " << V.x << ", " << V.y << ", " << V.z << std::endl;
+				std::cout << "Local to light dir: " << L.x << ", " << L.y << ", " << L.z << std::endl;
+				std::cout << "LTC Eval: " << ltc.eval(L) << std::endl;
+
+				BSDFContext bsdf_context = *m_base_bsdf_context;
+				bsdf_context.view_direction = V;
+				bsdf_context.to_light_direction = L;
+				bsdf_context.material.roughness = r;
+
+				// error with MIS weight
+				float pdf_brdf;
+
+				DEBUG_ON = true;
+				float eval_brdf = principled_bsdf_eval(m_render_data, bsdf_context, pdf_brdf).luminance() * L.z;
+
+				std::cout << "Eval BRDF: " << eval_brdf << std::endl;
+			}
+
 			Xorshift32Generator rng(roughness * m_fit_resolution + theta + 1);
+
+			double min_error, max_error;
 			double error = LTCFit(ltc,
 				m_render_data, material, m_base_bsdf_context,
 				rng,
-				false, V, m_error_samples, r, -1, -1, -1).compute_error(ltc, V, r);
+				false, V, m_error_samples, r, -1, -1, -1).compute_error(ltc, V, r, &min_error, &max_error);
 
-			std::cout << "Roughness: " << r << "\t Theta: " << th << "\t Error: " << error << std::endl;
+			if (roughness == 22 && theta == 16)
+			{
+				std::cout << "Min error: " << min_error << "\t Max error: " << max_error << std::endl;
+				std::cout << std::endl;
+			}
+
+			std::cout << roughness << "/" << theta << " - " << "Roughness: " << r << "\t Theta: " << th << "(" << (float)theta / m_fit_resolution << ")" "\t Error: " << error << std::endl;
 
 			error_sum += error;
 		}
@@ -530,7 +603,7 @@ glm::vec3 LTCFitter::compute_average_dir(const float3& V, const float roughness,
 
 			float pdf;
 			float3 sampled_direction;
-			float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).r;
+			float eval = principled_bsdf_sample(m_render_data, bsdf_context, sampled_direction, pdf, rng).luminance();
 			eval *= sampled_direction.z;
 
 			// accumulate

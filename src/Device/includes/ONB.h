@@ -54,6 +54,7 @@ HIPRT_DEVICE static void build_rotated_ONB(const float3& N, float3& T, float3& B
 HIPRT_DEVICE static void build_ONB_XZ_plane(const float3& N, float3& T, float3& B, const float3& vec_xz)
 {
     if (hippt::abs(hippt::dot(vec_xz, N)) > 0.99998796f)
+		// TODO this test looks wrong, need to check
         T = N.x > 0.99998796f ? make_float3(0.0f, 1.0f, 0.0f) : make_float3(1.0f, 0.0f, 0.0f);
     else
         T = hippt::normalize(vec_xz - hippt::dot(vec_xz, N) * N);

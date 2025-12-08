@@ -867,7 +867,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
 
 			std::string x_axis_name = (capture_interval_type == 0) ? "Time (s)" : "Samples";
-			std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "RMSE" : "Mean FLIP";
+			std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "RMSE" : "Mean FLIP Error";
 			ImPlot::SetupAxes(x_axis_name.c_str(), y_axis_name.c_str(), ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
 
 			for (size_t i = 0; i < recorded_legends.size(); i++)

@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
 {   
 	/*static CPUMaterial material_to_fit;
 	material_to_fit.metallic = 1.0f;
+	material_to_fit.specular = 0.0f;
 	LTCFitter fitter = LTCFitter(material_to_fit.pack_to_GPU().unpack());
 	fitter.fit(32, 32);
 	fitter.export_fitted_data_float4_C("fitted_ltc_float4.h", true);

@@ -143,7 +143,7 @@ struct LTCFit
 
 	// compute the error between the BRDF and the LTC
 	// using Multiple Importance Sampling
-	float compute_error(const LTC& ltc, const float3& V, const float roughness);
+	float compute_error(const LTC& ltc, const float3& V, const float roughness, double* out_min_error = nullptr, double* out_max_error = nullptr);
 
 	float operator()(const float* params);
 	float operator()(const std::vector<float>& params_vec);

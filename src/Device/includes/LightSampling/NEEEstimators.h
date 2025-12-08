@@ -34,7 +34,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
         closest_hit_info.primitive_index, ray_payload,
         random_number_generator);
     if (light_sample.area_measure_pdf <= 0.0f)
-        // Can happen for very small triangles
+        // Can happen for very small triangles or the light
+        // sampling technique couldn't sample a triangle
         return ColorRGB32F(0.0f);
 
     float3 shadow_ray_origin = closest_hit_info.inter_point;
