@@ -1214,6 +1214,26 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGui::TreePop();
 			}
 
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
+			{
+				ImGui::TreePush("Solid angle triangle sampling use LTC tree");
+
+				static bool use_ltc = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE_USE_LTC);
+				if (ImGui::Checkbox("Use LTC sampling", &use_ltc))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE_USE_LTC, use_ltc ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("If checked, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used "
+					"for sampling a point on emissive triangle.This has for effect of taking the BRDF into account "
+					"when sampling the point on the triangle, massively increasing the quality of the sampling on glossy surfaces.\n\n");
+
+				ImGui::TreePop();
+			}
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY))

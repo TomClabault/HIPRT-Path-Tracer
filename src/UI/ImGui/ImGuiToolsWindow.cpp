@@ -467,7 +467,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		static Image32Bit reference_image;
 		static Image32Bit subject_image;
 
-		ImGui::SeparatorText("Reference image");
+		ImGui::Text("Step 1 - Select a reference image");
 		if (ImGui::Button("Select reference image"))
 		{
 			reference_image_path = Utils::open_file_dialog(filters, 2);
@@ -487,7 +487,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::SeparatorText("Subject image");
+		ImGui::Text("Step 2 - Select a subject image");
 		static std::string subject_image_text = "";
 		if (ImGui::Button("Select subject image"))
 		{
@@ -518,7 +518,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		bool ready_to_compute = reference_image.width != 0 && subject_image.width != 0;
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::Separator();
+		ImGui::Text("Step 3 - Compute a difference metric");
 		ImGui::BeginDisabled(!ready_to_compute);
 		if (ImGui::Button("Compute MSE"))
 		{
@@ -596,6 +596,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 			ImGuiRenderer::show_help_marker("Copies the error value to the clipboard");
 			ImGui::SameLine();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		}
 		ImGui::Text("%s", status_text.c_str());
 
@@ -615,8 +616,6 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		// The final list of points that will be used for graphing
 		static std::vector<std::vector<float>> recorded_xs_list;
 		static std::vector<std::vector<float>> recorded_ys_list;
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		ImGui::Text("Step 1: Choose a reference image");
 		ImGui::TreePush("Convergence graph - step 1 tree");

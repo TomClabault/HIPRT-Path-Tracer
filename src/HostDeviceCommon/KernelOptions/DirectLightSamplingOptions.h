@@ -128,6 +128,16 @@
  */
 #define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
 
+/**
+ * If true, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used
+ * for sampling a point on emissive triangle. This has for effect of taking the BRDF into account
+ * when sampling the point on the triangle, massively increasing the quality of the sampling on glossy surfaces.
+ * 
+ * This only applies if the TrianglePointSamplingStrategy is set to
+ * TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE or TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE.
+ */
+#define TrianglePointSamplingStrategySolidAngleUseLTC KERNEL_OPTION_FALSE
+
  /**
   * How to randomly sample a point on a triangle
   *
