@@ -551,7 +551,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
 	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data,
-		shading_point, shading_normal, view_direction,
+		shading_point, view_direction, shading_normal,
 		ray_payload.material,
 		emissive_triangle_index, rng);
 	light_sample.area_measure_pdf *= cumulative_probability;
