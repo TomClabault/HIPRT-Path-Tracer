@@ -18,9 +18,9 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 #endif
 
 #ifdef __KERNELCC__
-	float2 uv = make_float2(roughness, acos(cos_theta_v) / hippt::M_PI_TWO);
+	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
 #else
-	float2 uv = make_float2(roughness, 1.0f - acos(cos_theta_v) / hippt::M_PI_TWO);
+	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
 #endif
 
 	// R, G, B and A components represent respectively:

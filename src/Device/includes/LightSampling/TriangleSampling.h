@@ -89,42 +89,10 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
 #if TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA
     out_sample_point = sample_point_on_triangle_uniform_area(vertex_A, AB, AC, out_triangle_area, rng, out_point_pdf);
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
+
     out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(vertex_A, vertex_B, vertex_C, normal, shading_point, out_point_pdf, rng);
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
     float solid_angle = triangle_solid_angle(vertex_A, vertex_B, vertex_C, shading_point);
-
-//    static bool DEBUGDONE = false;
-//    if( !DEBUGDONE)
-//    {
-//		DEBUGDONE = true;
-//
-//        /**
-//        * View dir: 0.66319, 0, 0.748451
-//Local to light dir: 0.890518, 0.363779, 0.273209
-//        */
-//
-//        float3 T, B;
-//        build_ONB_XZ_plane(shading_normal, T, B, view_direction);
-//
-//		float3 local_view_direction = world_to_local_frame(T, B, shading_normal, view_direction);
-//        float3 to_vertex_C = world_to_local_frame(T, B, shading_normal, hippt::normalize(vertex_C - shading_point));
-//
-//        float bsdf_pdf;
-//        RayVolumeState fake_volume_state;
-//        BSDFIncidentLightInfo incident_light_info;
-//        BSDFContext bsdf_context(local_view_direction, make_float3(0, 0, 1), make_float3(0, 0, 1), to_vertex_C, incident_light_info, fake_volume_state, false, const_cast<DeviceUnpackedEffectiveMaterial&>(material), 0, 0);
-//
-//        bsdf_context.to_light_direction = to_vertex_C;
-//        DEBUG_ON = true;
-//        float bsdf_color_C = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng).luminance() * to_vertex_C.z;
-//
-//		std::cout << "local_view_direction: make_float3(" << local_view_direction.x << ", " << local_view_direction.y << ", " << local_view_direction.z << ")" << std::endl;
-//		std::cout << "To vertex C: make_float3(" << to_vertex_C.x << ", " << to_vertex_C.y << ", " << to_vertex_C.z << ")" << std::endl;
-//		std::cout << "Bsdf at: " << bsdf_color_C << std::endl;
-//        std::cout << "Roughness: " << material.roughness << std::endl;
-//
-//        std::cout << std::endl;
-//    }
 
     bool do_projected_solid_angle_sampling = solid_angle > render_data.render_settings.projected_solid_angle_sampling_threshold;
     if (do_projected_solid_angle_sampling)

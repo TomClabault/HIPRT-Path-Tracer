@@ -80,6 +80,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO ReGIR
 // - Add some ui to graph rmse and other metrics over time / over spp and auto output a graph
+// - Can we count per regir grid cell how many shadow rays are occluded at shading time vs shot to get an idea of how bad we're sampling visibility here meaning that we would need more Shadow rays
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued
 // - 1SPP NEE++ seems imperfect? We need to reset for it to look good, just enabling NEE++ isn't enough
 // - Do we need the whole prepare sampling method to get the PDFs of solid angle 1nd projected solid angle ?
@@ -328,6 +329,8 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
+// - For caching incoming radiance in a radcache, we can use a SH representation or this more precise representation here: https://suikasibyl.github.io/gilo/#/
+// - Better adaptive sampling + denoiser: https://www.cg.tuwien.ac.at/research/publications/2025/sakai-2025-stater/sakai-2025-stater-paper.pdf
 // - Constant memory for Render data such that it is available everywhere and we don't have it to pass it around all the time.
 //		- Same for more variables?
 // - Can we use LTCs for sampling the BSDFs with energy compensation? Since energy compensation has high variance, LTCs may help a lot there?
