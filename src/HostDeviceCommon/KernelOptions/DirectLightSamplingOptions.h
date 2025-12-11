@@ -126,7 +126,7 @@
  *		variance. Takes the cosine term at the shading point into account 
  *		on top of the geometry term.
  */
-#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
+#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
 
 /**
  * If true, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used
@@ -135,8 +135,10 @@
  * 
  * This only applies if the TrianglePointSamplingStrategy is set to
  * TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE or TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE.
+ * 
+ * Warning: LTC-based sampling may be slightly biased due to the BRDF approximation error of LTCs.
  */
-#define TrianglePointSamplingStrategySolidAngleUseLTC KERNEL_OPTION_FALSE
+#define TrianglePointSamplingStrategySolidAngleUseLTC KERNEL_OPTION_TRUE
 
  /**
   * How to randomly sample a point on a triangle

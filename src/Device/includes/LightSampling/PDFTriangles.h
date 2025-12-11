@@ -30,7 +30,10 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
         float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
         float3 to_light_direction = point_on_triangle - shading_point;
 
-        solid_angle_triangle_t solid_angle_triangle = prepare_solid_angle_triangle_sampling(3, vertex_A, vertex_B, vertex_C, shading_point);
+        solid_angle_triangle_t solid_angle_triangle = prepare_solid_angle_triangle_sampling(render_data, 
+            vertex_A, vertex_B, vertex_C, 
+            shading_point, view_direction, shading_normal, 
+            material);
         float pdf_solid_angle = 1.0f / solid_angle_triangle.solid_angle;
         float to_light_distance = hippt::length(to_light_direction);
         float cosine_at_light_source = compute_cosine_term_at_light_source(triangle_normal, -to_light_direction / to_light_distance);
@@ -75,7 +78,10 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
         else
         {
             // Otherwise it's not worth it and we can use the cheap solid angle (not projected) sampling
-            solid_angle_triangle_t solid_angle_triangle = prepare_solid_angle_triangle_sampling(3, vertex_A, vertex_B, vertex_C, shading_point);
+            solid_angle_triangle_t solid_angle_triangle = prepare_solid_angle_triangle_sampling(render_data, 
+                vertex_A, vertex_B, vertex_C, 
+                shading_point, view_direction, shading_normal, 
+                material);
             float pdf_solid_angle = 1.0f / solid_angle_triangle.solid_angle;
             float to_light_distance = hippt::length(to_light_direction);
             float cosine_at_light_source = compute_cosine_term_at_light_source(triangle_normal, -to_light_direction / to_light_distance);

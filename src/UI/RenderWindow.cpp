@@ -326,9 +326,9 @@ extern ImGuiLogger g_imgui_logger;
 // - can we gain in performance by having the trace rays functions in completely separate passes so that we can have the maximum amount of L1 cache in the passes that now don't trace rays? (and use max amount of shared mem in the rays only passes)
 // ------------------- DO AFTER WAVEFRONT -------------------
 
-
-
 // TODO Features:
+// - We can use incoming radiance radiance cache to sample BSDF directions for MIS: we would cache the incoming radiance only from emissives and use that with RIS when sampling a BSDF direction for MIS maybe, somethiung lioke that
+// - With our radiance cache, we can fully use the paper that helps with cache placement
 // - For caching incoming radiance in a radcache, we can use a SH representation or this more precise representation here: https://suikasibyl.github.io/gilo/#/
 // - Better adaptive sampling + denoiser: https://www.cg.tuwien.ac.at/research/publications/2025/sakai-2025-stater/sakai-2025-stater-paper.pdf
 // - Constant memory for Render data such that it is available everywhere and we don't have it to pass it around all the time.

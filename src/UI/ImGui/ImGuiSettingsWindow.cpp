@@ -1229,7 +1229,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 				ImGuiRenderer::show_help_marker("If checked, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used "
 					"for sampling a point on emissive triangle.This has for effect of taking the BRDF into account "
-					"when sampling the point on the triangle, massively increasing the quality of the sampling on glossy surfaces.\n\n");
+					"when sampling the point on the triangle, massively increasing the quality of the sampling on glossy surfaces.\n\n"
+					"Warning: LTC-based sampling may be slightly biased due to the BRDF approximation error of LTCs.");
 
 				ImGui::TreePop();
 			}

@@ -77,6 +77,11 @@ HIPRT_DEVICE static float3 local_to_world_frame(const float3& T, const float3& B
     return hippt::normalize(V.x * T + V.y * B + V.z * N);
 }
 
+HIPRT_DEVICE static float3 local_to_world_frame_non_normalized(const float3& T, const float3& B, const float3& N, const float3& V)
+{
+    return V.x * T + V.y * B + V.z * N;
+}
+
 /*
  * Transforms V from its space to the local space around the normal
  * The given normal is the Z axis of the local frame around the normal

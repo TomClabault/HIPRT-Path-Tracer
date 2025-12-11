@@ -787,7 +787,6 @@ UNROLL_LOOP
 	float pdf_solid_angle = hippt::max(0.0f, hippt::dot(shading_normal, sampled_dir_world_space)) / polygon.projected_solid_angle;
 #endif
 
-
 	return map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);
 }
 

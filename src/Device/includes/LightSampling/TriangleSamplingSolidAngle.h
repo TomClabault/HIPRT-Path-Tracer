@@ -6,8 +6,10 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_SOLID_ANGLE_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_SOLID_ANGLE_H
 
+#include "Device/includes/LightSampling/LTCs/LTCs.h"
 #include "Device/includes/LightSampling/TriangleSamplingSolidAngleCommon.h"
 
+#include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 HIPRT_DEVICE float triangle_solid_angle(float3 vertex_A_worldspace, float3 vertex_B_worldspace, float3 vertex_C_worldspace, float3 shading_point)
@@ -58,15 +60,51 @@ struct solid_angle_triangle_t
 	\param vertices List of vertex locations.
 	\param shading_point The location of the shading point.
 	\return Input for sample_point_on_triangle_solid_angle_peters_2021().*/
-HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(unsigned int vertex_count, float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 shading_point)
+HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(const HIPRTRenderData& render_data,
+	float3 vertex_A, float3 vertex_B, float3 vertex_C,
+	float3 shading_point, float3 view_direction, float3 shading_normal,
+	const DeviceUnpackedEffectiveMaterial& material)
 {
 	solid_angle_triangle_t polygon;
-	polygon.vertex_count = vertex_count;
+	polygon.vertex_count = 3;
 
-	// Normalize vertex directions
+#if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+	/**
+	 * With the view direction in the x-z plane + LTC transform
+	 */
+	 // Building a shading space where the shading point is the origin, the shading normal
+	 // is the z axis, and the view direction lies in the x-z plane
+	float3 T, B;
+	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
+	float3 vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A - shading_point);
+	float3 vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B - shading_point);
+	float3 vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C - shading_point);
+
+	// Normalizing vertices helps a bit with float numerical precision
+	vertex_A_local = hippt::normalize(vertex_A_local);
+	vertex_B_local = hippt::normalize(vertex_B_local);
+	vertex_C_local = hippt::normalize(vertex_C_local);
+
+	// Shading space to cosine space such that we sample the
+	// solid angle of the triangle but transformed by the LTC
+	float NoV = hippt::dot(view_direction, shading_normal);
+	vertex_A_local = ltc_transform_shading_to_cosine(render_data, NoV, material.roughness, vertex_A_local);
+	vertex_B_local = ltc_transform_shading_to_cosine(render_data, NoV, material.roughness, vertex_B_local);
+	vertex_C_local = ltc_transform_shading_to_cosine(render_data, NoV, material.roughness, vertex_C_local);
+
+	vertex_A_local = hippt::normalize(vertex_A_local);
+	vertex_B_local = hippt::normalize(vertex_B_local);
+	vertex_C_local = hippt::normalize(vertex_C_local);
+
+	polygon.vertex_dirs[0] = vertex_A_local;
+	polygon.vertex_dirs[1] = vertex_B_local;
+	polygon.vertex_dirs[2] = vertex_C_local;
+#else
+	// Normalize vertex directions for better floating point precision during the sampling
 	polygon.vertex_dirs[0] = hippt::normalize(vertex_A - shading_point);
 	polygon.vertex_dirs[1] = hippt::normalize(vertex_B - shading_point);
 	polygon.vertex_dirs[2] = hippt::normalize(vertex_C - shading_point);
+#endif
 
 	// Prepare a Householder transform that maps vertex 0 onto (+/-1, 0, 0). We
 	// only store the yz-components of that Householder vector and a factor of
@@ -74,7 +112,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(unsign
 	// save on multiplications later. This approach is necessary to avoid
 	// numerical instabilities in determinant computation below.
 	float householder_sign = (polygon.vertex_dirs[0].x > 0.0f) ? -1.0f : 1.0f;
-	float2 householder_yz = make_float2(polygon.vertex_dirs[0].y, polygon.vertex_dirs[0].z) * (1.0f / (abs(polygon.vertex_dirs[0].x) + 1.0f));
+	float2 householder_yz = make_float2(polygon.vertex_dirs[0].y, polygon.vertex_dirs[0].z) * (1.0f / (hippt::abs(polygon.vertex_dirs[0].x) + 1.0f));
 	// Compute solid angles and prepare sampling
 	polygon.solid_angle = 0.0f;
 	float previous_dot_1_2 = hippt::dot(polygon.vertex_dirs[0], polygon.vertex_dirs[1]);
@@ -135,12 +173,17 @@ HIPRT_DEVICE float mix_fma(float x, float y, float a)
 	the original space (used for arguments of
 	prepare_solid_angle_triangle_sampling()). Samples are distributed in
 	proportion to solid angle assuming uniform inputs.*/
-HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal, 
-	float3 shading_point, 
+HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(const HIPRTRenderData& render_data,
+	float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal, 
+	float3 shading_point, float3 view_direction, float3 shading_normal,
+	const DeviceUnpackedEffectiveMaterial& material,
 	float& out_area_pdf,
 	Xorshift32Generator& rng)
 {
-	solid_angle_triangle_t polygon = prepare_solid_angle_triangle_sampling(3, vertex_A, vertex_B, vertex_C, shading_point);
+	solid_angle_triangle_t polygon = prepare_solid_angle_triangle_sampling(render_data, 
+		vertex_A, vertex_B, vertex_C, 
+		shading_point, view_direction, shading_normal, 
+		material);
 
 	// Decide which triangle needs to be sampled
 	float rand_1 = rng();
@@ -164,9 +207,34 @@ HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(float3 vert
 	// limit of t_normed for s2 -> 1.
 	t_normed = (denominator > 0.0f) ? t_normed : rand_2;
 
-	float3 direction = hippt::normalize(hippt::fma(-t_normed, s2, s) * vertices[1] + t_normed * new_vertex_2);
+	float3 sampled_direction = hippt::normalize(hippt::fma(-t_normed, s2, s) * vertices[1] + t_normed * new_vertex_2);
 
-	return map_direction_to_triangle_point(direction, vertex_A, triangle_normal, shading_point, 1.0f / polygon.solid_angle, out_area_pdf);
+#if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
+	 // From cosine space to shading space
+	float3 sampled_dir_shading_space = hippt::normalize(ltc_transform_cosine_to_shading(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_direction));
+
+	float3 T, B;
+	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
+	float3x3 rotation_matrix = float3x3::from_rows(T, B, shading_normal);
+
+	// Multiplying the vector from the left to effectively
+	// multiply by the transpose of the rotation matrix which is its inverse.
+	//
+	// This brings the direction from shading space to world space.
+	float3 sampled_dir_world_space = hippt::normalize(sampled_dir_shading_space * rotation_matrix);
+
+	float pdf_solid_angle = 0.0f;
+	if (sampled_dir_shading_space.z > 0.0f)
+	{
+		pdf_solid_angle = 1.0f / polygon.solid_angle;
+		pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_dir_shading_space);
+	}
+#else
+	float3 sampled_dir_world_space = sampled_dir_world_space = sampled_direction;
+	float pdf_solid_angle = 1.0f / polygon.solid_angle;
+#endif
+
+	return map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);
 }
 
 #endif

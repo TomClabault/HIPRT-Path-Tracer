@@ -230,8 +230,7 @@ struct HIPRTRenderSettings
 	// solid angle sampling alone (not projected) which is much cheaper
 	//
 	// The default value is arbitrary and observed to reduce variance in important places
-	// float projected_solid_angle_sampling_threshold = 0.06f;
-	float projected_solid_angle_sampling_threshold = 0.0f;
+	float projected_solid_angle_sampling_threshold = 0.06f;
 
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;
