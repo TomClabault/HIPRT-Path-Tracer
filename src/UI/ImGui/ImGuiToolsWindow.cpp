@@ -871,7 +871,23 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 			for (size_t i = 0; i < recorded_legends.size(); i++)
 			{
-				ImPlot::SetNextLineStyle(IMPLOT_AUTO_COL, line_weight);
+				ImVec4 colors[] = {
+					ImVec4(78 / 255.0f, 121 / 255.0f, 167 / 255.0f, 1.0f),
+					ImVec4(242 / 255.0f, 142 / 255.0f, 43 / 255.0f, 1.0f),
+					ImVec4(225 / 255.0f, 87 / 255.0f, 89 / 255.0f, 1.0f),
+					ImVec4(118 / 255.0f, 183 / 255.0f, 178 / 255.0f, 1.0f),
+					ImVec4(89 / 255.0f, 161 / 255.0f, 79 / 255.0f, 1.0f),
+					ImVec4(237 / 255.0f, 201 / 255.0f, 72 / 255.0f, 1.0f),
+					ImVec4(176 / 255.0f, 122 / 255.0f, 161 / 255.0f, 1.0f),
+					ImVec4(255 / 255.0f, 157 / 255.0f, 167 / 255.0f, 1.0f),
+					ImVec4(156 / 255.0f, 117 / 255.0f, 95 / 255.0f, 1.0f),
+					ImVec4(186 / 255.0f, 176 / 255.0f, 172 / 255.0f, 1.0f)
+				};
+
+				if (i > 10)
+					ImPlot::SetNextLineStyle(IMPLOT_AUTO_COL, line_weight);
+				else
+					ImPlot::SetNextLineStyle(colors[i], line_weight);
 				ImPlot::PlotLine(recorded_legends.at(i).c_str(), recorded_xs_list.at(i).data(), recorded_ys_list.at(i).data(), recorded_xs_list.at(0).size());
 			}
 
