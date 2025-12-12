@@ -122,11 +122,11 @@ void GPURenderer::load_sheen_ltc_texture()
 
 void GPURenderer::load_ltc_textures()
 {
-	Image32Bit GGX_specular_lambert_diffuse_ltc_params(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_fit_parameters.data()), GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, 4);
-	Image32Bit GGX_specular_lambert_diffuse_inverse_ltc_params(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_inverse_fit_parameters.data()), GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, GGX_SPECULAR_LAMBERT_DIFFUSE_LTC_FIT_SIZE, 4);
+	Image32Bit GGX_specular_lambert_diffuse_ltc_params(reinterpret_cast<const float*>(ggx_conductor_ltc_fit.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 4);
+	//Image32Bit GGX_specular_lambert_diffuse_inverse_ltc_params(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_inverse_fit_parameters.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 4);
 
 	m_GGX_specular_lambert_diffuse_ltc_params = OrochiTexture(GGX_specular_lambert_diffuse_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
-	m_GGX_specular_lambert_diffuse_inverse_ltc_params = OrochiTexture(GGX_specular_lambert_diffuse_inverse_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
+	//m_GGX_specular_lambert_diffuse_inverse_ltc_params = OrochiTexture(GGX_specular_lambert_diffuse_inverse_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
 }
 
 void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode)

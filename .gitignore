@@ -23,3 +23,5 @@ thirdparties/
 contrib/
 hiprt/
 
+# Python LTC fits
+*.npy
