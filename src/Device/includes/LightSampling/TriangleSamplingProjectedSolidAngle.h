@@ -531,6 +531,8 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float ltc_lobe_pdf = ltc_lobe_eval_pdf(material, ltc_lobe);
+	if (ltc_lobe_pdf == 0.0f)
+		return 0.0f;
 
 	float pdf_solid_angle;
 	if (NoL < 1.0e-8f)
@@ -543,7 +545,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 	}
 #else
 	// TODO does the dot product match here with sampled_dir_shading_space.z?
-	float pdf_solid_angle = hippt::max(0.0f, NoL) / projected_solid_angle_triangle.projected_solid_angle;
+	float pdf_solid_angle = hippt::max(0.0f, NoL) / triangle_projected_solid_angle;
 	// float pdf_solid_angle = hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction)) / projected_solid_angle_triangle.projected_solid_angle;
 #endif
 
@@ -588,12 +590,10 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 		view_direction, shading_normal, sampled_dir_shading_space,
 		material, ltc_lobe);
 #else
-	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(
-		render_data,
-		projected_solid_angle_triangle.projected_solid_angle,
-		hippt::dot(shading_normal, to_light_direction),
+	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+		projected_solid_angle_triangle.projected_solid_angle, hippt::dot(shading_normal, to_light_direction),
 		view_direction, shading_normal, make_float3(0.0f, 0.0f, 0.0f),
-		material, ltc_lobe, ltc_lobe_pdf);
+		material, ltc_lobe);
 #endif
 
 	return pdf_solid_angle;
