@@ -35,6 +35,28 @@ MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, const std::str
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 }
 
+bool MegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
+{
+	if (!is_render_pass_used())
+		return false;
+
+	bool updated = false;
+
+	if (!m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->has_been_compiled())
+	{
+		updated = true;
+		m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+	}
+
+	if (!m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->has_been_compiled() && m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+	{
+		updated = true;
+		m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+	}
+
+	return updated;
+}
+
 void MegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
 	m_render_resolution.x = new_width;
@@ -97,4 +119,14 @@ bool MegaKernelRenderPass::is_render_pass_used() const
 	// Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
 	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PSS_RESTIR_GI;
+}
+
+std::map<std::string, std::shared_ptr<GPUKernel>> MegaKernelRenderPass::get_all_kernels()
+{
+	std::map<std::string, std::shared_ptr<GPUKernel>> kernels = m_kernels;
+
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) != LSS_BASE_REGIR)
+		kernels.erase(MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION);
+
+	return kernels;
 }

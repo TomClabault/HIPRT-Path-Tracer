@@ -137,7 +137,7 @@
  * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed
  * ahead of time will be used to compute NEE
  */
-#define ReGIR_ShadingResamplingSampleOnlyLightDistributions KERNEL_OPTION_TRUE
+#define ReGIR_ShadingResamplingSampleOnlyLightDistributions KERNEL_OPTION_FALSE
 
 /**
  * How many canonical samples (simple power sampling) to draw and combine with cell-light-distribution
