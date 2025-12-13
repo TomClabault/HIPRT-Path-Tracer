@@ -17,6 +17,50 @@ enum LTCLobe
 };
 
 /**
+ * Some dumb fit (not really precise) to approximate the average Fresnel term over the hemisphere over
+ * a microfacet distribution of given roughness, for a given view direction (NoV) and relative_eta.
+ */
+HIPRT_DEVICE float average_fresnel_fit(float NoV, float roughness, float relative_eta)
+{
+	float F0 = ((relative_eta - 1.0f) / (relative_eta + 1.0f));
+	F0 *= F0;
+		
+	float k = 0.5f * roughness * roughness;
+	float cos_eff = NoV * (1.0f - k) + k;
+		
+	return hippt::pow_5(F0 + (1.0 - F0) * (1.0f - cos_eff));
+}
+
+HIPRT_DEVICE void ltc_lobe_probas(const DeviceUnpackedEffectiveMaterial& material,
+	float NoV,
+	float& out_coat_proba, float& out_metallic_proba, float& out_specular_proba, float& out_diffuse_proba)
+{
+	float coat_weight = material.coat;
+	float metallic_weight = material.metallic;
+	float avg_fresnel = average_fresnel_fit(NoV, material.roughness, material.ior);
+	float specular_weight = (1.0f - material.metallic) * material.specular * avg_fresnel;
+	float diffuse_weight = material.base_color.luminance() * (1.0f - avg_fresnel);
+	if (coat_weight + metallic_weight + specular_weight + diffuse_weight == 0.0f)
+		// All lobes have 0 weight, this is the perfect only-diffuse-lobe case
+		diffuse_weight = 1.0f;
+
+	/*float metallic = material.metallic;	
+	out_metal_1_weight = metallic * outside_object;
+	out_metal_2_weight = metallic * outside_object;
+
+	float second_roughness_weight = material.second_roughness_weight;
+	out_metal_1_weight = hippt::lerp(out_metal_1_weight, 0.0f, second_roughness_weight);
+	out_metal_2_weight = hippt::lerp(0.0f, out_metal_2_weight, second_roughness_weight);*/
+
+	float proba_normalize = 1.0f / (coat_weight + metallic_weight + specular_weight + diffuse_weight);
+
+	out_coat_proba = coat_weight * proba_normalize;
+	out_metallic_proba = metallic_weight * proba_normalize;
+	out_specular_proba = specular_weight * proba_normalize;
+	out_diffuse_proba = diffuse_weight * proba_normalize;
+}
+
+/**
  * Given a potentially multi-layered material, this function samples one of its lobe
  * and returns which lobe was sampled along with its PDF.
  * 
@@ -24,34 +68,15 @@ enum LTCLobe
  * point would require multiple shadow rays so instead we sample only one lobe
  * stochastically, essentially a one-sample-estimator.
  */
-HIPRT_DEVICE LTCLobe ltc_lobe_sample(const DeviceUnpackedEffectiveMaterial& material, Xorshift32Generator& rng, float& out_pdf)
+HIPRT_DEVICE LTCLobe ltc_lobe_sample(const DeviceUnpackedEffectiveMaterial& material, float NoV, Xorshift32Generator& rng, float& out_pdf)
 {
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	out_pdf = 1.0f;
 
 	return LTCLobe::DIFFUSE_LOBE;
 #endif
-
-	float coat_weight = material.coat;
-	float metallic_weight = material.metallic;
-	float specular_weight = (1.0f - material.metallic) * material.specular;
-	float diffuse_weight = specular_weight; // Same weight for diffuse and specular lobes for now, better weighting based on fresnel
-	if (coat_weight + metallic_weight + specular_weight + diffuse_weight == 0.0f)
-		// All lobes have 0 weight, this is the perfect only-diffuse-lobe case
-		diffuse_weight = 1.0f;
-
-	float proba_normalize = 1.0f / (coat_weight + metallic_weight + specular_weight + diffuse_weight);
-	float coat_proba = coat_weight * proba_normalize;
-	float metallic_proba = metallic_weight * proba_normalize;
-	float specular_proba = specular_weight * proba_normalize;
-	float diffuse_proba = diffuse_weight * proba_normalize;
-	/*float metallic = material.metallic;
-	out_metal_1_weight = metallic * outside_object;
-	out_metal_2_weight = metallic * outside_object;
-
-	float second_roughness_weight = material.second_roughness_weight;
-	out_metal_1_weight = hippt::lerp(out_metal_1_weight, 0.0f, second_roughness_weight);
-	out_metal_2_weight = hippt::lerp(0.0f, out_metal_2_weight, second_roughness_weight);*/
+	float coat_proba, metallic_proba, specular_proba, diffuse_proba;
+	ltc_lobe_probas(material, NoV, coat_proba, metallic_proba, specular_proba, diffuse_proba);
 
 	float cdf[3];
 	cdf[0] = coat_proba;
@@ -89,7 +114,7 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(const DeviceUnpackedEffectiveMaterial& mate
 	}
 }
 
-HIPRT_DEVICE float ltc_lobe_eval_pdf(const DeviceUnpackedEffectiveMaterial& material, LTCLobe lobe)
+HIPRT_DEVICE float ltc_lobe_eval_pdf(const DeviceUnpackedEffectiveMaterial& material, float NoV, LTCLobe lobe)
 {
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	if (lobe == LTCLobe::DIFFUSE_LOBE)
@@ -97,21 +122,8 @@ HIPRT_DEVICE float ltc_lobe_eval_pdf(const DeviceUnpackedEffectiveMaterial& mate
 	else
 		return 0.0f;
 #endif
-
-	float coat_weight = material.coat;
-	float metallic_weight = material.metallic;
-	float specular_weight = (1.0f - material.metallic) * material.specular;
-	float diffuse_weight = specular_weight; // Same weight for diffuse and specular lobes for now, better weighting based on fresnel
-	if (coat_weight + metallic_weight + specular_weight + diffuse_weight == 0.0f)
-		// All lobes have 0 weight, this is the perfect only-diffuse-lobe case
-		diffuse_weight = 1.0f;
-
-	float proba_normalize = 1.0f / (coat_weight + metallic_weight + specular_weight + diffuse_weight);
-
-	float coat_proba = coat_weight * proba_normalize;
-	float metallic_proba = metallic_weight * proba_normalize;
-	float specular_proba = specular_weight * proba_normalize;
-	float diffuse_proba = diffuse_weight * proba_normalize;
+	float coat_proba, metallic_proba, specular_proba, diffuse_proba;
+	ltc_lobe_probas(material, NoV, coat_proba, metallic_proba, specular_proba, diffuse_proba);
 
 	switch (lobe)
 	{

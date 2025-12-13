@@ -525,7 +525,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float ltc_lobe_pdf;
-	LTCLobe ltc_lobe = ltc_lobe_sample(material, rng, ltc_lobe_pdf);
+	LTCLobe ltc_lobe = ltc_lobe_sample(material, hippt::dot(view_direction, shading_normal), rng, ltc_lobe_pdf);
 
 	return prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
 		render_data,
@@ -549,7 +549,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
-	float ltc_lobe_pdf = ltc_lobe_eval_pdf(material, ltc_lobe);
+	float ltc_lobe_pdf = ltc_lobe_eval_pdf(material, hippt::dot(view_direction, shading_normal), ltc_lobe);
 	if (ltc_lobe_pdf == 0.0f)
 		return 0.0f;
 
@@ -577,7 +577,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 	float3 point_on_light,
 	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
-	float ltc_lobe_pdf = ltc_lobe_eval_pdf(material, ltc_lobe);
+	float ltc_lobe_pdf = ltc_lobe_eval_pdf(material, hippt::dot(view_direction, shading_normal), ltc_lobe);
 	if (ltc_lobe_pdf == 0.0f)
 		return 0.0f;
 
