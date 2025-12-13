@@ -26,6 +26,12 @@ enum LTCLobe
  */
 HIPRT_DEVICE LTCLobe ltc_lobe_sample(const DeviceUnpackedEffectiveMaterial& material, Xorshift32Generator& rng, float& out_pdf)
 {
+#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+	out_pdf = 1.0f;
+
+	return LTCLobe::DIFFUSE_LOBE;
+#endif
+
 	float coat_weight = material.coat;
 	float metallic_weight = material.metallic;
 	float specular_weight = (1.0f - material.metallic) * material.specular;
@@ -85,6 +91,13 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(const DeviceUnpackedEffectiveMaterial& mate
 
 HIPRT_DEVICE float ltc_lobe_eval_pdf(const DeviceUnpackedEffectiveMaterial& material, LTCLobe lobe)
 {
+#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+	if (lobe == LTCLobe::DIFFUSE_LOBE)
+		return 1.0f;
+	else
+		return 0.0f;
+#endif
+
 	float coat_weight = material.coat;
 	float metallic_weight = material.metallic;
 	float specular_weight = (1.0f - material.metallic) * material.specular;

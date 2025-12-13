@@ -61,6 +61,25 @@
 #ifndef __KERNELCC__
 
 /**
+ * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,
+ * the material retains its properties (color, roughness, ...) but only the parameters relevant
+ * to the overriden BSDF are used.
+ *
+ *	- BSDF_NONE
+ *		Materials will use their default BRDF/BSDF, no override
+ *
+ *	- BSDF_LAMBERTIAN
+ *		All materials will use a lambertian BRDF
+ *
+ *	- BSDF_OREN_NAYAR
+ *		All materials will use the Oren Nayar diffuse BRDF
+ *
+ *	- BSDF_PRINCIPLED
+ *		All materials will use the Principled BSDF
+ */
+#define BSDFOverride BSDF_LAMBERTIAN
+
+/**
  * What diffuse lobe to use in the principled BSDF.
  * 
  *	- PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
