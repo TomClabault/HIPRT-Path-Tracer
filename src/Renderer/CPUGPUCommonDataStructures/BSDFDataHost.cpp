@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Device/includes/BSDFs/LTCsData/GGXSpecularLambertDiffuseLTCFitData.h"
+#include "Device/includes/BSDFs/LTCsData/GGXConductorLTCFitData.h"
 #include "Device/includes/BSDFs/LTCsData/ZeltnerSheenLTCFitData.h"
 
 #include "Renderer/Baker/GPUBakerConstants.h"

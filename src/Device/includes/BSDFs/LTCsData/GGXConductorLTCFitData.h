@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_INCLUDES_BSDFS_DATA_LTCS_DATA_GGX_SPEC_LAMBERT_DIFFUSE_LTC_FIT_DATA_H
-#define DEVICE_INCLUDES_BSDFS_DATA_LTCS_DATA_GGX_SPEC_LAMBERT_DIFFUSE_LTC_FIT_DATA_H
+#ifndef DEVICE_INCLUDES_BSDFS_DATA_LTCS_DATA_GGX_CONDUCTOR_LTC_FIT_DATA_H
+#define DEVICE_INCLUDES_BSDFS_DATA_LTCS_DATA_GGX_CONDUCTOR_LTC_FIT_DATA_H
 
 #include "HostDeviceCommon/Maths/float3x3.h"
 
@@ -15,7 +15,7 @@
 static constexpr int GGX_CONDUCTOR_LTC_FIT_SIZE = 64;
 
 // Automatically generated LTC parameter table
-static const std::array<float4, 64 * 64> ggx_conductor_ltc_fit = {
+static const std::array<float4, GGX_CONDUCTOR_LTC_FIT_SIZE * GGX_CONDUCTOR_LTC_FIT_SIZE> ggx_conductor_ltc_fit = {
 
 /* ----------------------------------------------------
  *  alpha_idx = 0   (alpha = 0.0100)

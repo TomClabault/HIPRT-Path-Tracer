@@ -46,6 +46,7 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
         float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 1]];
         float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
         float3 to_light_direction = point_on_triangle - shading_point;
+        float to_light_distance = hippt::length(to_light_direction);
 
         float solid_angle = triangle_solid_angle(vertex_A, vertex_B, vertex_C, shading_point);
 
@@ -54,26 +55,12 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
         {
             // If the triangle is large enough in solid angle, it may be worth it to compute the heavy projected solid angle
             // stuff
-            projected_solid_angle_triangle_t projected_solid_angle_triangle = prepare_projected_solid_angle_triangle_sampling_from_world_space(render_data,
+            float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data,
                 vertex_A, vertex_B, vertex_C, 
-                shading_point, view_direction, shading_normal,
+				shading_point, view_direction, shading_normal, point_on_triangle,
                 material);
 
-            if (projected_solid_angle_triangle.vertex_count == 0)
-                // The whole polygon is below the hemisphere, clipping returned 0 vertices
-                return 0.0f;
-
-            float to_light_distance = hippt::length(to_light_direction);
-            to_light_direction /= to_light_distance;
-            float pdf_solid_angle = hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction)) / projected_solid_angle_triangle.projected_solid_angle;
-
-			// Jacobian of the LTC transform
-            float3 T, B;
-            build_ONB_XZ_plane(shading_normal, T, B, view_direction);
-			float3 sampled_dir_shading_space = world_to_local_frame(T, B, shading_normal, to_light_direction);
-            pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_dir_shading_space);
-
-            return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, compute_cosine_term_at_light_source(triangle_normal, -to_light_direction));
+            return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, compute_cosine_term_at_light_source(triangle_normal, -hippt::normalize(point_on_triangle - shading_point)));
         }
         else
         {
@@ -83,7 +70,6 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
                 shading_point, view_direction, shading_normal, 
                 material);
             float pdf_solid_angle = 1.0f / solid_angle_triangle.solid_angle;
-            float to_light_distance = hippt::length(to_light_direction);
             float cosine_at_light_source = compute_cosine_term_at_light_source(triangle_normal, -to_light_direction / to_light_distance);
 
             return solid_angle_to_area_pdf(1.0f / solid_angle_triangle.solid_angle, to_light_distance, cosine_at_light_source);

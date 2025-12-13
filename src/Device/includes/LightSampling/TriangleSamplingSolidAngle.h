@@ -88,9 +88,10 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(const 
 	// Shading space to cosine space such that we sample the
 	// solid angle of the triangle but transformed by the LTC
 	float NoV = hippt::dot(view_direction, shading_normal);
-	vertex_A_local = ltc_transform_shading_to_cosine(render_data, NoV, material.roughness, vertex_A_local);
+	// TODO UNCOMMENT THIS
+	/*vertex_A_local = ltc_transform_shading_to_cosine(render_data, NoV, material.roughness, vertex_A_local);
 	vertex_B_local = ltc_transform_shading_to_cosine(render_data, NoV, material.roughness, vertex_B_local);
-	vertex_C_local = ltc_transform_shading_to_cosine(render_data, NoV, material.roughness, vertex_C_local);
+	vertex_C_local = ltc_transform_shading_to_cosine(render_data, NoV, material.roughness, vertex_C_local);*/
 
 	vertex_A_local = hippt::normalize(vertex_A_local);
 	vertex_B_local = hippt::normalize(vertex_B_local);
@@ -211,7 +212,9 @@ HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(const HIPRT
 
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	 // From cosine space to shading space
-	float3 sampled_dir_shading_space = hippt::normalize(ltc_transform_cosine_to_shading(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_direction));
+	// TODO UNCOMMENT THIS
+	// float3 sampled_dir_shading_space = hippt::normalize(ltc_transform_cosine_to_shading(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_direction));
+	float3 sampled_dir_shading_space = hippt::normalize(sampled_direction);
 
 	float3 T, B;
 	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
@@ -227,7 +230,9 @@ HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(const HIPRT
 	if (sampled_dir_shading_space.z > 0.0f)
 	{
 		pdf_solid_angle = 1.0f / polygon.solid_angle;
-		pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_dir_shading_space);
+
+		// TODO UNCOMMENT THIS
+		// pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), material.roughness, sampled_dir_shading_space);
 	}
 #else
 	float3 sampled_dir_world_space = sampled_dir_world_space = sampled_direction;

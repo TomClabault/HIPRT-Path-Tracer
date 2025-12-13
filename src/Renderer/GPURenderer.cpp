@@ -4,7 +4,7 @@
  */
 
 #include "Compiler/GPUKernelCompilerOptions.h"
-#include "Device/includes/BSDFs/LTCsData/GGXSpecularLambertDiffuseLTCFitData.h"
+#include "Device/includes/BSDFs/LTCsData/GGXConductorLTCFitData.h"
 #include "Device/includes/BSDFs/LTCsData/ZeltnerSheenLTCFitData.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "Renderer/Baker/GPUBaker.h"
