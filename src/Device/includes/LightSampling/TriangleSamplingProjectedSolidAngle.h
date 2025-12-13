@@ -475,20 +475,25 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	float3 vertices_local_space[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING] = { vertex_A_local, vertex_C_local, vertex_B_local };
 	unsigned int clipped_vertex_count = clip_polygon(3, vertices_local_space);
 
-	// Normalizing the vertices for better fp32 precision
-	float min_len = hippt::Infinity(), max_len = 0.0f;
-	for (unsigned int i = 0; i < clipped_vertex_count; ++i)
-	{
-		float l = hippt::length(vertices_local_space[i]);
+	vertices_local_space[0] = hippt::normalize(vertices_local_space[0]);
+	vertices_local_space[1] = hippt::normalize(vertices_local_space[1]);
+	vertices_local_space[2] = hippt::normalize(vertices_local_space[2]);
+	vertices_local_space[3] = hippt::normalize(vertices_local_space[3]);
 
-		min_len = hippt::min(min_len, l);
-		max_len = hippt::max(max_len, l);
-	}
+	//// Normalizing the vertices for better fp32 precision
+	//float min_len = hippt::Infinity(), max_len = 0.0f;
+	//for (unsigned int i = 0; i < clipped_vertex_count; ++i)
+	//{
+	//	float l = hippt::length(vertices_local_space[i]);
 
-	if (min_len == 0.0f || max_len / hippt::max(min_len, 1e-30f) > 1e3f)
-		// Scale range too large or a zero-length vertex --> normalize
-		for (unsigned int i = 0; i < clipped_vertex_count; ++i)
-			vertices_local_space[i] = hippt::normalize(vertices_local_space[i]);
+	//	min_len = hippt::min(min_len, l);
+	//	max_len = hippt::max(max_len, l);
+	//}
+
+	//if (min_len == 0.0f || max_len / hippt::max(min_len, 1e-30f) > 1e3f)
+	//	// Scale range too large or a zero-length vertex --> normalize
+	//	for (unsigned int i = 0; i < clipped_vertex_count; ++i)
+	//		vertices_local_space[i] = hippt::normalize(vertices_local_space[i]);
 
 	projected_solid_angle_triangle_t prepared_triangle = prepare_projected_solid_angle_triangle_sampling(clipped_vertex_count, vertices_local_space);
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
