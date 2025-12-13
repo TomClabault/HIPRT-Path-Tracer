@@ -25,15 +25,6 @@ struct projected_solid_angle_triangle_t
 {
 	//! The number of vertices that form the polygon
 	unsigned int vertex_count = 0;
-	/*! The x- and y-coordinates of each polygon vertex in a coordinate system
-		where the normal is the z-axis. The vertices are sorted
-		counterclockwise.*/
-	float2 vertices[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING];
-	/*! For each vertex in vertices, this vector describes the ellipse for the
-		next edge in counterclockwise direction. The last entry is meaningless,
-		except in the central case. For vertex 0, it holds the outer ellipse.
-		\see ellipse_from_edge() */
-	float2 ellipses[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING];
 	//! The inner ellipse adjacent to vertex 0. If the x-component is positive,
 	//! the central case is present.
 	float2 inner_ellipse_0 = make_float2(0.0f, 0.0f);
@@ -50,6 +41,29 @@ struct projected_solid_angle_triangle_t
 	LTCLobe ltc_lobe;
 	float ltc_lobe_pdf;
 #endif
+
+	// Utilitary functions that I found to be faster than indexing in arrays
+	// of float2
+	HIPRT_DEVICE float2& get_vertex(int i) { return *(&vertex_0 + i);}
+	HIPRT_DEVICE float2& get_ellipse(int i) { return *(&ellipse_0 + i); }
+
+private:
+	/*! The x- and y-coordinates of each polygon vertex in a coordinate system
+		where the normal is the z-axis. The vertices are sorted
+		counterclockwise.*/
+	float2 vertex_0;
+	float2 vertex_1;
+	float2 vertex_2;
+	float2 vertex_3;
+
+	/*! For each vertex in vertices, this vector describes the ellipse for the
+		next edge in counterclockwise direction. The last entry is meaningless,
+		except in the central case. For vertex 0, it holds the outer ellipse.
+		\see ellipse_from_edge() */
+	float2 ellipse_0;
+	float2 ellipse_1;
+	float2 ellipse_2;
+	float2 ellipse_3;
 };
 
 
@@ -241,21 +255,21 @@ HIPRT_DEVICE float get_ellipse_area_in_sector(float2 ellipse, float2 dir_0, floa
 		constants.*/
 HIPRT_DEVICE void compare_and_swap(projected_solid_angle_triangle_t& polygon, unsigned int lhs, unsigned int rhs) 
 {
-	float2 lhs_copy = polygon.vertices[lhs];
+	float2 lhs_copy = polygon.get_vertex(lhs);
 	// This line is designed to agree with the implementation of cross_stable
 	// for the z-coordinate, which determines if ellipses are inner or outer
-	float normal_z = kahan(lhs_copy.x, -polygon.vertices[rhs].y, lhs_copy.y, -polygon.vertices[rhs].x);
+	float normal_z = kahan(lhs_copy.x, -polygon.get_vertex(rhs).y, lhs_copy.y, -polygon.get_vertex(rhs).x);
 	// Tie breaker: If both vertices are at the same angle (i.e. on a common
 	// great circle through the zenith), the one with the degenerate ellipse
 	// comes first
 
-	bool swap = (normal_z == 0.0f) ? (hippt::is_inf(polygon.ellipses[rhs].x)) : (normal_z > 0.0f);
+	bool swap = (normal_z == 0.0f) ? (hippt::is_inf(polygon.get_ellipse(rhs).x)) : (normal_z > 0.0f);
 
-	polygon.vertices[lhs] = swap ? polygon.vertices[rhs] : lhs_copy;
-	polygon.vertices[rhs] = swap ? lhs_copy : polygon.vertices[rhs];
-	lhs_copy = polygon.ellipses[lhs];
-	polygon.ellipses[lhs] = swap ? polygon.ellipses[rhs] : lhs_copy;
-	polygon.ellipses[rhs] = swap ? lhs_copy : polygon.ellipses[rhs];
+	polygon.get_vertex(lhs) = swap ? polygon.get_vertex(rhs) : lhs_copy;
+	polygon.get_vertex(rhs) = swap ? lhs_copy : polygon.get_vertex(rhs);
+	lhs_copy = polygon.get_ellipse(lhs);
+	polygon.get_ellipse(lhs) = swap ? polygon.get_ellipse(rhs) : lhs_copy;
+	polygon.get_ellipse(rhs) = swap ? lhs_copy : polygon.get_ellipse(rhs);
 }
 
 
@@ -351,30 +365,30 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		return polygon;
 
 	polygon.inner_ellipse_0 = make_float2(1.0f, 0.0f);
-	polygon.vertices[0] = make_float2(vertices_clockwise_order[0].x, vertices_clockwise_order[0].y); 
-	polygon.ellipses[0] = ellipse_from_edge(vertices_clockwise_order[0], vertices_clockwise_order[1]);
+	polygon.get_vertex(0) = make_float2(vertices_clockwise_order[0].x, vertices_clockwise_order[0].y); 
+	polygon.get_ellipse(0) = ellipse_from_edge(vertices_clockwise_order[0], vertices_clockwise_order[1]);
 
-	float2 previous_ellipse = polygon.ellipses[0];
+	float2 previous_ellipse = polygon.get_ellipse(0);
 
 UNROLL_LOOP
 	for (unsigned int i = 1; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 	{
-		polygon.vertices[i] = make_float2(vertices_clockwise_order[i].x, vertices_clockwise_order[i].y);
+		polygon.get_vertex(i) = make_float2(vertices_clockwise_order[i].x, vertices_clockwise_order[i].y);
 		if (i > 2 && i == polygon.vertex_count) break;
 		float2 ellipse = ellipse_from_edge(vertices_clockwise_order[i], vertices_clockwise_order[(i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
 		bool ellipse_inner = is_inner_ellipse(ellipse);
 		// If the edge is an inner edge, the order is going to flip
-		polygon.ellipses[i] = ellipse_inner ? previous_ellipse : ellipse;
+		polygon.get_ellipse(i) = ellipse_inner ? previous_ellipse : ellipse;
 		// In doing so, we drop one ellipse, unless we store it explicitly
 		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
 		previous_ellipse = ellipse;
 	}
 
 	// Same thing for the first vertex (i.e. here we close the loop)
-	float2 ellipse = polygon.ellipses[0];
+	float2 ellipse = polygon.get_ellipse(0);
 	bool ellipse_inner = is_inner_ellipse(ellipse);
 
-	polygon.ellipses[0] = ellipse_inner ? previous_ellipse : ellipse;	
+	polygon.get_ellipse(0) = ellipse_inner ? previous_ellipse : ellipse;	
 	polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
 	// Compute projected solid angles per sector and in total
 	polygon.projected_solid_angle = 0.0f;
@@ -387,7 +401,7 @@ UNROLL_LOOP
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i) 
 		{
 			if (i > 2 && i == polygon.vertex_count) break;
-			polygon.sector_projected_solid_angles[i] = get_ellipse_area_in_sector(polygon.ellipses[i], polygon.vertices[i], polygon.vertices[(i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
+			polygon.sector_projected_solid_angles[i] = get_ellipse_area_in_sector(polygon.get_ellipse(i), polygon.get_vertex(i), polygon.get_vertex((i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[i];
 		}
 	}
@@ -408,7 +422,7 @@ UNROLL_LOOP
 		{
 			if (i > 1 && i + 1 == polygon.vertex_count) break;
 
-			float2 vertex_ellipse = polygon.ellipses[i];
+			float2 vertex_ellipse = polygon.get_ellipse(i);
 			bool vertex_inner = is_inner_ellipse(vertex_ellipse);
 			float vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
 
@@ -426,7 +440,7 @@ UNROLL_LOOP
 			}
 
 			polygon.sector_projected_solid_angles[i] = get_area_between_ellipses_in_sector(
-				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.vertices[i], polygon.vertices[i + 1]);
+				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(i), polygon.get_vertex(i + 1));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[i];
 		}
 	}
@@ -877,8 +891,8 @@ UNROLL_LOOP
 			if (i > 0)
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
 
-			outer_ellipse = polygon.ellipses[i];
-			dir_0 = polygon.vertices[i];
+			outer_ellipse = polygon.get_ellipse(i);
+			dir_0 = polygon.get_vertex(i);
 			if ((i >= 2 && i + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[i])
 				break;
 		}
@@ -907,7 +921,7 @@ UNROLL_LOOP
 UNROLL_LOOP
 		for (unsigned int i = 0; i < MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; i++) 
 		{
-			float2 vertex_ellipse = polygon.ellipses[i];
+			float2 vertex_ellipse = polygon.get_ellipse(i);
 
 			if (i == 0)
 				outer_ellipse = vertex_ellipse;
@@ -919,8 +933,8 @@ UNROLL_LOOP
 				outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
 			}
 
-			dir_0 = polygon.vertices[i];
-			dir_1 = polygon.vertices[i + 1];
+			dir_0 = polygon.get_vertex(i);
+			dir_1 = polygon.get_vertex(i + 1);
 			sector_projected_solid_angle = polygon.sector_projected_solid_angles[i];
 
 			if ((i >= 1 && i + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
