@@ -159,6 +159,10 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 	case SPECULAR_LOBE:
 		roughness = material.roughness;
 		break;
+
+	case COAT_LOBE:
+		roughness = material.coat_roughness;
+		break;
 	}
 
 	const void* texture_ptr = nullptr;
