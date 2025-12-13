@@ -1116,15 +1116,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"[Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]"
 			};
 
-			if (ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy))
-			{
-				// Will recompute the alias table if necessary
-				m_renderer->recompute_emissives_sampling_data_structure();
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-
+			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
+			
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
 			const char* tooltips[] = {
 				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
@@ -1171,6 +1164,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						{
 							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, i);
 
+							m_renderer->recompute_emissives_sampling_data_structure();
 							m_renderer->recompile_kernels();
 							m_render_window->set_render_dirty(true);
 
@@ -1182,10 +1176,28 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, preferred_base_strategy);
 
+					m_renderer->recompute_emissives_sampling_data_structure();
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
+
 				}
 
+				// We just took care of recompiling the kernels and
+				// everything so we don't need to do it again below
+				base_sampling_strategy_changed = false;
+
+			}
+
+			if (base_sampling_strategy_changed)
+			{
+				// If the base light sampling strategy changed, we need to update the
+				// kernels
+
+				// Will recompute the alias table if necessary
+				m_renderer->recompute_emissives_sampling_data_structure();
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
 			}
 
 			const char* items_triangle_sampling[] = { "- Uniform area", "- Solid angle", "- Projected solid angle" };
