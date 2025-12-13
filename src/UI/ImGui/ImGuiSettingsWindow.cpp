@@ -5020,9 +5020,12 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 						// For debugging info and assembly-source code line correspondences
 						commandline_string += "-std=c++17 -gline-tables-only --save-temps ";
 						// For hardware ray tracing instructions
-						commandline_string += "--offload-arch=gfx1100";
+						commandline_string += "--offload-arch=gfx1100 ";
+						// To avoid some warnings caused by kernel compilation options causing constant
+						// compile-time operands like 1 || 1 or 0 && 1, stuff like that
+						commandline_string += "-Wno-constant-logical-operand -Wno-tautological-compare ";
 						// Source file that hipcc compiles
-						commandline_string += " ../src/llvm-compile-kernel.h";
+						commandline_string += "../src/llvm-compile-kernel.h";
 
 						// For outputting the disassembly + source line correspondances to a .txt and opening it with notepad++
 						commandline_string += " && llvm-objdump --no-show-raw-insn -S llvm-compile-kernel-hip-amdgcn-amd-amdhsa-gfx1100.out > assembly.txt && notepad++.exe assembly.txt &";
