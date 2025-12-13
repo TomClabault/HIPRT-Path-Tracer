@@ -428,8 +428,19 @@ void ReSTIRGIRenderPass::reset(bool reset_by_camera_movement)
 	MegaKernelRenderPass::reset(reset_by_camera_movement);
 }
 
+std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_all_kernels()
+{
+	if (!is_render_pass_used())
+		return std::map<std::string, std::shared_ptr<GPUKernel>>();
+
+	return get_all_kernels();
+}
+
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracing_kernels()
 {
+	if (!is_render_pass_used())
+		return std::map<std::string, std::shared_ptr<GPUKernel>>();
+
 	return get_all_kernels();
 }
 
