@@ -14,13 +14,22 @@
  */
 HIPRT_DEVICE float average_fresnel_fit(float NoV, float roughness, float relative_eta)
 {
-	float F0 = (relative_eta - 1.0f) / (relative_eta + 1.0f);
-	F0 *= F0;
+	constexpr float c0 = 6.24652f;
+	constexpr float p0 = 6.76440f;
+	constexpr float p1 = -10.07177f;
+	constexpr float p2 = -14.93870f;
+	constexpr float p3 = -0.26892f;
+		
+	float F0 = hippt::square((relative_eta - 1.0f) / (relative_eta + 1.0f));
 
-	float k = 0.5f * roughness * roughness;
+	float k = c0 * roughness * roughness;
 	float cos_eff = NoV * (1.0f - k) + k;
+	cos_eff = hippt::clamp(0.0f, 1.0f, cos_eff);
 
-	return hippt::pow_5(F0 + (1.0 - F0) * (1.0f - cos_eff));
+	float p = p0 + p1 * roughness + p2 * roughness * roughness + p3 * F0;
+	p = hippt::max(p, 1.0e-3f);
+
+	return F0 + (1 - F0) * hippt::intrin_pow((1 - cos_eff), p);
 }
 
 HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
