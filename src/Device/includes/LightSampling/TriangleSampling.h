@@ -65,7 +65,8 @@ bool DEBUG_ON = false;
 HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render_data, 
     float3 shading_point, float3 view_direction, float3 shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
-    int global_triangle_index, Xorshift32Generator& rng,
+    int global_triangle_index, ColorRGB32F triangle_emission,
+    Xorshift32Generator& rng,
     float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, 
     float& out_point_pdf)
 {
@@ -105,7 +106,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
         out_sample_point = sample_point_on_triangle_projected_solid_angle_peters_2021(render_data,
             vertex_A, vertex_B, vertex_C, normal,
             shading_point, view_direction, shading_normal,
-            material,
+            triangle_emission, material,
             out_point_pdf, rng);
     else
         // Otherwise it's not worth it and we can use the cheap solid angle (not projected) sampling
@@ -138,17 +139,18 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
     float3 sampled_triangle_normal;
     float3 random_point_on_triangle;
     unsigned int point_on_light_random_seed;
+    ColorRGB32F triangle_emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[global_triangle_index]);
     if (!sample_point_on_generic_triangle(render_data,
         shading_point, view_direction, shading_normal,
         material,
-        global_triangle_index, rng, 
+        global_triangle_index, triangle_emission, rng,
         random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
         return LightSampleInformation();
 
     light_sample.emissive_triangle_global_index = global_triangle_index;
     light_sample.light_source_normal = sampled_triangle_normal;
     light_sample.light_area = sampled_triangle_area;
-    light_sample.emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[global_triangle_index]);
+    light_sample.emission = triangle_emission;
     light_sample.point_on_light = random_point_on_triangle;
     light_sample.area_measure_pdf = sampled_point_pdf;
 

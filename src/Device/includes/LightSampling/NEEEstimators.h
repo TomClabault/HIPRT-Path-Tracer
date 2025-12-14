@@ -265,6 +265,39 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data
     return direct_light_contribution;
 }
 
+HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+{
+    if (!ray_payload.material.can_do_light_sampling())
+        return ColorRGB32F(0.0f);
+
+    LightSampleInformation light_sample = sample_one_emissive_triangle(render_data,
+        closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+        closest_hit_info.primitive_index, ray_payload,
+        random_number_generator);
+    if (light_sample.area_measure_pdf <= 0.0f)
+        // Can happen for very small triangles or the light
+        // sampling technique couldn't sample a triangle
+        return ColorRGB32F(0.0f);
+
+    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 0]];
+    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 1]];
+    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 2]];
+
+    float specular_lobe = evaluate_ltc(render_data,
+        vertex_A, vertex_B, vertex_C,
+        closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+        ray_payload.material,
+        LTCLobe::SPECULAR_LOBE);
+
+    float diffuse_lobe = evaluate_ltc(render_data,
+        vertex_A, vertex_B, vertex_C,
+        closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+        ray_payload.material,
+		LTCLobe::DIFFUSE_LOBE);
+
+    return ColorRGB32F(specular_lobe + diffuse_lobe) * light_sample.emission;
+}
+
 HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F direct_light_contribution;
@@ -290,6 +323,8 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
         direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
         direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_LTC_SHADING
+        direct_light_contribution += sample_one_light_LTC_shading(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
 
 #endif // #if ReGIR

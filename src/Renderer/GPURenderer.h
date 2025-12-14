@@ -493,8 +493,8 @@ private:
 	OrochiTexture m_sheen_ltc_params;
 
 	// Textures containing the precomputed parameters for the various BRDFs LTC fittings
-	OrochiTexture m_GGX_specular_lambert_diffuse_ltc_params;
-	OrochiTexture m_GGX_specular_lambert_diffuse_inverse_ltc_params;
+	OrochiTexture m_GGX_conductor_ltc_params;
+	OrochiTexture m_GGX_conductor_ltc_amplitude_data;
 
 	// Precomputed tables for GGX energy compensation
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]

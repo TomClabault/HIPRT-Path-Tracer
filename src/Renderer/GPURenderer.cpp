@@ -122,11 +122,11 @@ void GPURenderer::load_sheen_ltc_texture()
 
 void GPURenderer::load_ltc_textures()
 {
-	Image32Bit GGX_specular_lambert_diffuse_ltc_params(reinterpret_cast<const float*>(ggx_conductor_ltc_fit.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 4);
-	//Image32Bit GGX_specular_lambert_diffuse_inverse_ltc_params(reinterpret_cast<const float*>(ggx_specular_lambert_diffuse_ltc_inverse_fit_parameters.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 4);
+	Image32Bit GGX_conductor_ltc_params(reinterpret_cast<const float*>(ggx_conductor_ltc_fit.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 4);
+	Image32Bit GGX_conductor_amplitude_ltc_data(reinterpret_cast<const float*>(ggx_conductor_ltc_amplitude_data.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 1);
 
-	m_GGX_specular_lambert_diffuse_ltc_params = OrochiTexture(GGX_specular_lambert_diffuse_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
-	//m_GGX_specular_lambert_diffuse_inverse_ltc_params = OrochiTexture(GGX_specular_lambert_diffuse_inverse_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
+	m_GGX_conductor_ltc_params = OrochiTexture(GGX_conductor_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
+	m_GGX_conductor_ltc_amplitude_data = OrochiTexture(GGX_conductor_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
 }
 
 void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode)
@@ -699,8 +699,8 @@ void GPURenderer::update_render_data()
 			m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
 		m_render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params = m_sheen_ltc_params.get_device_texture();
-		m_render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_ltc_params = m_GGX_specular_lambert_diffuse_ltc_params.get_device_texture();
-		m_render_data.bsdfs_data.ltcs_data.GGX_specular_lambert_diffuse_inverse_ltc_params = m_GGX_specular_lambert_diffuse_inverse_ltc_params.get_device_texture();
+		m_render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params = m_GGX_conductor_ltc_params.get_device_texture();
+		m_render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_amplitude_data = m_GGX_conductor_ltc_amplitude_data.get_device_texture();
 
 		m_render_data.bsdfs_data.GGX_conductor_directional_albedo = m_GGX_conductor_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.glossy_dielectric_directional_albedo = m_glossy_dielectric_directional_albedo.get_device_texture();

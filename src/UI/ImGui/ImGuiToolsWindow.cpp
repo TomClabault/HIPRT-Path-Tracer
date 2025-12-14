@@ -6,7 +6,6 @@
 #include "Renderer/Baker/GGXConductorDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXGlassDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXThinGlassDirectionalAlbedoSettings.h"
-#include "Renderer/Baker/LTC/LTCFitter.h"
 
 #include "UI/ImGui/ImGuiToolsWindow.h"
 #include "UI/RenderWindow.h"
@@ -99,54 +98,6 @@ void ImGuiToolsWindow::draw_ggx_energy_compensation_panel()
 			}
 
 			ImGui::TreePop();
-		}
-
-		if (ImGui::CollapsingHeader("LTC"))
-		{
-			static CPUMaterial material_to_fit;
-
-			bool emission_changed;
-
-			ImGui::TreePush("LTC Fitting tree");
-			ImGuiObjectsWindow::draw_material_editor(material_to_fit, "Fit material", m_renderer->get_global_compiler_options(), emission_changed);
-			ImGui::TreePop();
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::Separator();
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			static int fit_resolution = 8;
-			static int error_samples = 48;
-			ImGui::SliderInt("Fit resolution", &fit_resolution, 32, 128);
-			ImGui::SliderInt("Error samples", &error_samples, 16, 256);
-			ImGuiRenderer::show_help_marker("The higher this number, the more precise the fitting process");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			static LTCFitter fitter;
-			if (ImGui::Button("Fit"))
-			{
-				fitter = LTCFitter(material_to_fit.pack_to_GPU().unpack());
-
-				fitter.fit(fit_resolution, error_samples);
-			}
-
-			if (fitter.is_fitting_done())
-			{
-				ImGui::TreePush("Fit tree");
-
-				static std::string output_filename = "fitted_ltc.h";
-
-				ImGui::InputText("Output Texture Filename", &output_filename);
-				ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-				if (ImGui::Button("Export as float3x3"))
-					fitter.export_fitted_data_float3x3_C(output_filename, true);
-				else if (ImGui::Button("Export as float4"))
-					fitter.export_fitted_data_float4_C(output_filename, true);
-
-				ImGui::TreePop();
-			}
 		}
 
 		ImGui::TreePop();
@@ -861,6 +812,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
+		// TODO save the data to a file such that we can keep plotting accross sessions?
 		if (ImPlot::BeginPlot("Convergence graph", ImVec2(width, height)))
 		{
 			ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);

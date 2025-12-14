@@ -6,7 +6,8 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_SOLID_ANGLE_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_SOLID_ANGLE_H
 
-#include "Device/includes/LightSampling/LTCs/LTCs.h"
+#include "Device/includes/LightSampling/LTCs/LTCTransform.h"
+#include "Device/includes/LightSampling/LTCs/LTCLobeUtils.h"
 #include "Device/includes/LightSampling/TriangleSamplingSolidAngleCommon.h"
 
 #include "HostDeviceCommon/RenderData.h"

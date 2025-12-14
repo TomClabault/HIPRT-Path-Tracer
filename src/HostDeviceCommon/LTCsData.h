@@ -15,8 +15,8 @@ struct LTCsData
 
 	// 64x64 texture containing the precomputed parameters of the LTC
 	// fitted to approximate the GGX specular + Lambertian diffuse BRDF
-	void* GGX_specular_lambert_diffuse_ltc_params = nullptr;
-	void* GGX_specular_lambert_diffuse_inverse_ltc_params = nullptr;
+	void* GGX_conductor_ltc_params = nullptr;
+	void* GGX_conductor_ltc_amplitude_data = nullptr;
 };
 
 #endif

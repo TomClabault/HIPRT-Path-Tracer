@@ -45,6 +45,8 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
         float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 0]];
         float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 1]];
         float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
+        ColorRGB32F triangle_emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[emissive_triangle_global_index]);
+        
         float3 to_light_direction = point_on_triangle - shading_point;
         float to_light_distance = hippt::length(to_light_direction);
 
@@ -58,7 +60,7 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
             float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data,
                 vertex_A, vertex_B, vertex_C, 
 				shading_point, view_direction, shading_normal, point_on_triangle,
-                material);
+                triangle_emission, material);
 
             return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, compute_cosine_term_at_light_source(triangle_normal, -hippt::normalize(point_on_triangle - shading_point)));
         }

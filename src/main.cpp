@@ -5,7 +5,6 @@
 
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
-#include "Renderer/Baker/LTC/LTCFitter.h"
 #include "Renderer/CPURenderer.h"
 #include "Renderer/GPURenderer.h"
 #include "Scene/Camera.h"

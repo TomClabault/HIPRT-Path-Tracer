@@ -21,13 +21,17 @@ from math import sqrt
 def main():
     parser = argparse.ArgumentParser(description='Generate annotated LTC C++ directly from .npy files')
     parser.add_argument('--ltc_npy', type=str, required=True, help='Path to LTC .npy (shape: A x T x 3 x 3)')
+    parser.add_argument('--amp_npy', type=str, required=True, help='Path to amp .npy (shape: A x T)')
     parser.add_argument('--output', type=str, required=True, help='Output .cpp file')
     args = parser.parse_args()
 
     ltc_mat = np.load(args.ltc_npy)
+    amp = np.load(args.amp_npy)
 
     if ltc_mat.ndim != 4 or ltc_mat.shape[2:] != (3, 3):
         raise ValueError(f"Expected ltc_mat shape (A, T, 3, 3), got {ltc_mat.shape}")
+    if amp.shape != ltc_mat.shape[:2]:
+        raise ValueError(f"Expected amp shape {ltc_mat.shape[:2]}, got {amp.shape}")
 
     A, T = ltc_mat.shape[0], ltc_mat.shape[1]
     texel_count = A * T
@@ -70,8 +74,6 @@ def main():
 
             if M22 == 0.0:
                 # fallback to 1.0 to avoid NaNs; warn the user once
-                if idx == 0:
-                    print("Warning: encountered M22 == 0. Using 1.0 to avoid division by zero.", file=sys.stderr)
                 M22 = 1.0
 
             F0[idx] = M00 / M22
@@ -82,7 +84,6 @@ def main():
 
     # Write annotated C++ directly
     with open(args.output, 'w') as out:
-        out.write("// Automatically generated LTC parameter table\n")
         out.write(f"static const std::array<float4, {int(sqrt(texel_count))} * {int(sqrt(texel_count))}> ltc_fit_parameters = {{\n\n")
 
         for a in range(lut_size):
@@ -97,6 +98,29 @@ def main():
                 if (t % 4 == 0):
                     out.write(f"    // theta_idx = {t}\n")
                 out.write(f"    make_float4({F0[idx]:.6f}f, {F1[idx]:.6f}f, {F2[idx]:.6f}f, {F3[idx]:.6f}f),\n")
+
+            out.write("\n")
+
+        out.write("};\n\n")
+
+        # ------------------------------------------------------------------
+        # Write amplitude LUT
+        # ------------------------------------------------------------------
+
+        out.write(f"static const std::array<float, {texel_count}> ggx_conductor_ltc_amplitude_data = {{\n\n")
+
+        for a in range(lut_size):
+            alpha_val = max(a / (lut_size - 1), 0.01) if lut_size > 1 else 0.01
+
+            out.write(f"/* ----------------------------------------------------\n")
+            out.write(f" *  alpha_idx = {a}   (alpha = {alpha_val:.4f})\n")
+            out.write(f" * ---------------------------------------------------- */\n")
+
+            for t in range(lut_size):
+                idx = a * lut_size + t
+                if (t % 4 == 0):
+                    out.write(f"    // theta_idx = {t}\n")
+                out.write(f"    {amp[a, t]:.6f}f,\n")
 
             out.write("\n")
 

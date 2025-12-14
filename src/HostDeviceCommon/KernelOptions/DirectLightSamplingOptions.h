@@ -14,6 +14,7 @@
 #define LSS_MIS_LIGHT_BSDF 3
 #define LSS_RIS_BSDF_AND_LIGHT 4
 #define LSS_RESTIR_DI 5
+#define LSS_LTC_SHADING 6
 
 #define LSS_BASE_UNIFORM 0
 #define LSS_BASE_POWER 1
@@ -81,6 +82,10 @@
 *	- LSS_RESTIR_DI
 *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
 *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
+* 
+*	- LSS_LTC_SHADING
+*		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
+*		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
 */
 #define DirectLightSamplingStrategy LSS_ONE_LIGHT
 
