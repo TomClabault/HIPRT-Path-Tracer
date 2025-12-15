@@ -778,6 +778,26 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				recorded_xs_list.erase(recorded_xs_list.begin() + i);
 				recorded_ys_list.erase(recorded_ys_list.begin() + i);
 			}
+
+			ImGui::BeginDisabled(i == 0);
+			ImGui::SameLine();
+			if (ImGui::ArrowButton(std::string("Up##" + std::to_string(i)).c_str(), ImGuiDir_Up))
+			{
+				std::swap(recorded_legends.at(i), recorded_legends.at(i - 1));
+				std::swap(recorded_xs_list.at(i), recorded_xs_list.at(i - 1));
+				std::swap(recorded_ys_list.at(i), recorded_ys_list.at(i - 1));
+			}
+			ImGui::EndDisabled();
+
+			ImGui::BeginDisabled(i == recorded_legends.size() - 1);
+			ImGui::SameLine();
+			if (ImGui::ArrowButton(std::string("Down##" + std::to_string(i)).c_str(), ImGuiDir_Down))
+			{
+				std::swap(recorded_legends.at(i), recorded_legends.at(i + 1));
+				std::swap(recorded_xs_list.at(i), recorded_xs_list.at(i + 1));
+				std::swap(recorded_ys_list.at(i), recorded_ys_list.at(i + 1));
+			}
+			ImGui::EndDisabled();
 		}
 
 		for (int i = 0; i < recorded_legends.size(); i++)
@@ -805,15 +825,17 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		static float line_weight = 3.0f;
 		ImGui::InputFloat("Line weight", &line_weight);
 
-		static int width = 400;
-		static int height = 300;
-		ImGui::SliderInt("Plot width", &width, 1, 1000);
-		ImGui::SliderInt("Plot Height", &height, 1, 1000);
+		static int plot_width = 575;
+		static int plot_height = 400;
+		static std::string plot_title = "Convergence graph";
+		ImGui::SliderInt("Plot width", &plot_width, 1, 1000);
+		ImGui::SliderInt("Plot height", &plot_height, 1, 1000);
+		ImGui::InputText("Plot title", &plot_title);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		// TODO save the data to a file such that we can keep plotting accross sessions?
-		if (ImPlot::BeginPlot("Convergence graph", ImVec2(width, height)))
+		if (ImPlot::BeginPlot(plot_title.c_str(), ImVec2(plot_width, plot_height)))
 		{
 			ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
 
