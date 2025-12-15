@@ -35,9 +35,13 @@ HIPRT_DEVICE float integrate_ltc_clipped_triangle(unsigned int vertex_count, flo
 
 	result += integrate_edge_vector(clipped_vertices[0], clipped_vertices[1]);
 	result += integrate_edge_vector(clipped_vertices[1], clipped_vertices[2]);
-	result += integrate_edge_vector(clipped_vertices[2], clipped_vertices[0]);
-	if (vertex_count == 4)
+	if (vertex_count == 3)
+		result += integrate_edge_vector(clipped_vertices[2], clipped_vertices[0]);
+	else if (vertex_count == 4)
+	{
+		result += integrate_edge_vector(clipped_vertices[2], clipped_vertices[3]);
 		result += integrate_edge_vector(clipped_vertices[3], clipped_vertices[0]);
+	}
 
 	return hippt::abs(result);
 }
