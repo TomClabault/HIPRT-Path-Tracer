@@ -495,6 +495,7 @@ private:
 	// Textures containing the precomputed parameters for the various BRDFs LTC fittings
 	OrochiTexture m_GGX_conductor_ltc_params;
 	OrochiTexture m_GGX_conductor_ltc_amplitude_data;
+	OrochiTexture m_GGX_conductor_ltc_fresnel_data;
 
 	// Precomputed tables for GGX energy compensation
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]

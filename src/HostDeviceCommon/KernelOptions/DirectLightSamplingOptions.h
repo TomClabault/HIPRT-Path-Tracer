@@ -13,8 +13,8 @@
 #define LSS_BSDF 2
 #define LSS_MIS_LIGHT_BSDF 3
 #define LSS_RIS_BSDF_AND_LIGHT 4
-#define LSS_RESTIR_DI 5
-#define LSS_LTC_SHADING 6
+#define LSS_LTC_SHADING 5
+#define LSS_RESTIR_DI 6
 
 #define LSS_BASE_UNIFORM 0
 #define LSS_BASE_POWER 1
@@ -112,7 +112,7 @@
 * 
 *       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_LIGHT_TREE_ATS
+#define DirectLightSamplingBaseStrategy LSS_BASE_POWER
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant

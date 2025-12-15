@@ -67,7 +67,7 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 	return ltc_params;
 }
 
-HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_buffer, float cos_theta_v,
+HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float cos_theta_v,
 	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
@@ -76,10 +76,12 @@ HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_buffer, float co
 	case DIFFUSE_LOBE:
 		return 1.0f; // Amplitude is 1 for the diffuse lobe
 		break;
+
 	case METALLIC_LOBE:
 	case SPECULAR_LOBE:
 		roughness = material.roughness;
 		break;
+
 	case COAT_LOBE:
 		roughness = material.coat_roughness;
 		break;
@@ -88,9 +90,46 @@ HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_buffer, float co
 	const void* texture_ptr = nullptr;
 
 #ifdef __KERNELCC__
-	texture_ptr = &ltcs_data_amplitude_buffer;
+	texture_ptr = &ltcs_data_amplitude_texture;
 #else
-	texture_ptr = ltcs_data_amplitude_buffer;
+	texture_ptr = ltcs_data_amplitude_texture;
+#endif
+
+#ifdef __KERNELCC__
+	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
+#else
+	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
+#endif
+
+	return sample_texture_rgba_32bits(texture_ptr, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
+}
+
+HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_theta_v,
+	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
+{
+	float roughness = 0.0f;
+	switch (ltc_lobe)
+	{
+	case DIFFUSE_LOBE:
+		roughness = 1.0f; // Amplitude is 1 for the diffuse lobe
+		break;
+
+	case METALLIC_LOBE:
+	case SPECULAR_LOBE:
+		roughness = material.roughness;
+		break;
+
+	case COAT_LOBE:
+		roughness = material.coat_roughness;
+		break;
+	}
+
+	const void* texture_ptr = nullptr;
+
+#ifdef __KERNELCC__
+	texture_ptr = &ltcs_data_fresnel_texture;
+#else
+	texture_ptr = ltcs_data_fresnel_texture;
 #endif
 
 #ifdef __KERNELCC__

@@ -29,7 +29,7 @@ HIPRT_DEVICE float average_fresnel_fit(float NoV, float roughness, float relativ
 	float p = p0 + p1 * roughness + p2 * roughness * roughness + p3 * F0;
 	p = hippt::max(p, 1.0e-3f);
 
-	return F0 + (1 - F0) * hippt::intrin_pow((1 - cos_eff), p);
+	return F0 + (1.0f - F0) * hippt::intrin_pow((1 - cos_eff), p);
 }
 
 HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
@@ -50,7 +50,7 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 		shading_point, view_direction, shading_normal,
 		material, LTCLobe::DIFFUSE_LOBE) * triangle_emission.luminance();
 	float avg_fresnel = average_fresnel_fit(hippt::dot(view_direction, shading_normal), material.roughness, material.ior);
-	float specular_weight = (1.0f - material.metallic) * material.specular * avg_fresnel * specular_radiance_triangle_ltc;
+	float specular_weight = (1.0f - material.metallic) * material.specular * specular_radiance_triangle_ltc;
 	float diffuse_weight = material.base_color.luminance() * (1.0f - avg_fresnel) * diffuse_radiance_triangle_ltc;
 	if (coat_weight + metallic_weight + specular_weight + diffuse_weight == 0.0f)
 		// All lobes have 0 weight, this is the perfect only-diffuse-lobe case

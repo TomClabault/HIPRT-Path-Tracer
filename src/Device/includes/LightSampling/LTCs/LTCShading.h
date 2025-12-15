@@ -78,12 +78,31 @@ HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 	if (clipped_vertex_count == 0)
 		return 0.0f;
 
-	float ltc_amplitude = read_ltc_amplitude(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_amplitude_data, hippt::dot(view_direction, shading_normal), material, ltc_lobe);
+	float ltc_amplitude;
+	if (ltc_lobe == LTCLobe::SPECULAR_LOBE || ltc_lobe == LTCLobe::COAT_LOBE)
+	{
+		// This here approximates the amplitude of the specular BRDF, fresnel term included,
+		// i.e. cook-torrance integral(F * D * G / (4 * NoV * NoL) * cos_theta) even though we
+		// only have fitted data for the BRDF without fresnel term: integral(D * G / (4 * NoV * NoL) * cos_theta)
+		//
+		// Reference: [LTC Fresnel Approximation, Stephen Hill, SIGGRAPH 2016]
+
+		// Assuming coming from air here for simplicity (the true solution is a bit annoying
+		// as we'd have to bring a bunch of RayPayload and RayVolumeState state variables in here)
+		float R0 = F0_from_eta(ltc_lobe == LTCLobe::SPECULAR_LOBE ? material.ior : material.coat_ior, 1.0f);
+		float amplitude = read_ltc_amplitude(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_amplitude_data, hippt::dot(view_direction, shading_normal), material, ltc_lobe);
+		float fD = read_ltc_fresnel(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_fresnel_data, hippt::dot(view_direction, shading_normal), material, ltc_lobe);
+
+		ltc_amplitude = R0 * amplitude + (1.0f - R0) * fD;
+	}
+	else
+		ltc_amplitude = read_ltc_amplitude(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_amplitude_data, hippt::dot(view_direction, shading_normal), material, ltc_lobe);
 
 	vertices_local_space[0] = hippt::normalize(vertices_local_space[0]);
 	vertices_local_space[1] = hippt::normalize(vertices_local_space[1]);
 	vertices_local_space[2] = hippt::normalize(vertices_local_space[2]);
 	vertices_local_space[3] = hippt::normalize(vertices_local_space[3]);
+
 	return ltc_amplitude * integrate_ltc_clipped_triangle(clipped_vertex_count, vertices_local_space);
 }
 

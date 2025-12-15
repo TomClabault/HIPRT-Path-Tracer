@@ -17,6 +17,9 @@ struct LTCsData
 	// fitted to approximate the GGX specular + Lambertian diffuse BRDF
 	void* GGX_conductor_ltc_params = nullptr;
 	void* GGX_conductor_ltc_amplitude_data = nullptr;
+	// This buffer contains a LUT (theta_NoV, roughness * roughness) for fD
+	// as presented in [LTC Fresnel Approximation, Stephen Hill, SIGGRAPH 2016]
+	void* GGX_conductor_ltc_fresnel_data = nullptr;
 };
 
 #endif

@@ -25,6 +25,7 @@ public:
 	Image32Bit m_sheen_zeltner_2022_ltc_params;
 	Image32Bit m_GGX_conductor_ltc_params;
 	Image32Bit m_GGX_conductor_ltc_amplitude_data;
+	Image32Bit m_GGX_conductor_ltc_fresnel_data;
 
 	Image32Bit m_GGX_conductor_directional_albedo;
 	Image32Bit3D m_GGX_glossy_dielectrics_directional_albedo;

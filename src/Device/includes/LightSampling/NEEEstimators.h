@@ -295,7 +295,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
         ray_payload.material,
 		LTCLobe::DIFFUSE_LOBE);
 
-    return ColorRGB32F(specular_lobe + diffuse_lobe) * light_sample.emission;
+    return (ColorRGB32F(specular_lobe) + diffuse_lobe * ray_payload.material.base_color) * light_sample.emission;
 }
 
 HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
