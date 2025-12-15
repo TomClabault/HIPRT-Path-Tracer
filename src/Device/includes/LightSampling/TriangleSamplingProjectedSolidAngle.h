@@ -473,6 +473,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	// Shading space to cosine space such that we sample the projected
 	// solid angle of the triangle but transformed by the LTC
 	float NoV = hippt::dot(view_direction, shading_normal);
+	// TODO params can be read only once
 	vertex_A_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_A_local, material, ltc_lobe);
 	vertex_B_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_B_local, material, ltc_lobe);
 	vertex_C_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_C_local, material, ltc_lobe);
@@ -627,8 +628,10 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 #else
 	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
 		projected_solid_angle_triangle.projected_solid_angle, hippt::dot(shading_normal, to_light_direction),
-		view_direction, shading_normal, make_float3(0.0f, 0.0f, 0.0f),
-		material, ltc_lobe);
+		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+		shading_point, view_direction, shading_normal, make_float3(0.0f, 0.0f, 0.0f),
+		triangle_emission, material, 
+		ltc_lobe);
 #endif
 
 	return pdf_solid_angle;
