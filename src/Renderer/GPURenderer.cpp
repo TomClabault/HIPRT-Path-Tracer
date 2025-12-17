@@ -127,8 +127,8 @@ void GPURenderer::load_ltc_textures()
 	Image32Bit GGX_conductor_fresnel_ltc_data(reinterpret_cast<const float*>(ggx_conductor_ltc_fresnel_data.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 1);
 
 	m_GGX_conductor_ltc_params = OrochiTexture(GGX_conductor_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
-	m_GGX_conductor_ltc_amplitude_data = OrochiTexture(GGX_conductor_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
-	m_GGX_conductor_ltc_fresnel_data = OrochiTexture(GGX_conductor_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
+	m_GGX_conductor_ltc_amplitude_data = OrochiTexture(GGX_conductor_amplitude_ltc_data, hipFilterModeLinear, hipAddressModeClamp);
+	m_GGX_conductor_ltc_fresnel_data = OrochiTexture(GGX_conductor_fresnel_ltc_data, hipFilterModeLinear, hipAddressModeClamp);
 }
 
 void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode)
