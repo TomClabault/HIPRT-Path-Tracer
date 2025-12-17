@@ -163,6 +163,23 @@ HIPRT_DEVICE static float3x3 operator*(const float x, const float3x3& a)
 	return a * x;
 }
 
+HIPRT_DEVICE static float3x3 operator/(const float3x3& m, const float x)
+{
+	float3x3 result;
+
+	result.m[0][0] = m.m[0][0] / x;
+	result.m[0][1] = m.m[0][1] / x;
+	result.m[0][2] = m.m[0][2] / x;
+	result.m[1][0] = m.m[1][0] / x;
+	result.m[1][1] = m.m[1][1] / x;
+	result.m[1][2] = m.m[1][2] / x;
+	result.m[2][0] = m.m[2][0] / x;
+	result.m[2][1] = m.m[2][1] / x;
+	result.m[2][2] = m.m[2][2] / x;
+
+	return result;
+}
+
 HIPRT_DEVICE static float determinant(const float3x3& m)
 {
 	return m.m[0][0] * (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1]) -

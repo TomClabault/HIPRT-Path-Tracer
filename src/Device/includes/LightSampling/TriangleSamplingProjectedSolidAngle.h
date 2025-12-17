@@ -426,7 +426,7 @@ UNROLL_LOOP
 			bool vertex_inner = is_inner_ellipse(vertex_ellipse);
 			float vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
 
-			if (i == 0) 
+			if (i == 0)
 			{
 				outer_ellipse = vertex_ellipse;
 				outer_rsqrt_det = vertex_rsqrt_det;
@@ -465,18 +465,18 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	float3 vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
 	float3 vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
 
+	// Shading space to cosine space such that we sample the projected
+	// solid angle of the triangle but transformed by the LTC
+	float NoV = hippt::dot(view_direction, shading_normal);
+	float3x3 ltc_matrix_inv = ltc_transform_shading_to_cosine_read_matrix(render_data, NoV, view_direction, material, ltc_lobe);
+	vertex_A_local = ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_A_local);
+	vertex_B_local = ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_B_local);
+	vertex_C_local = ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_C_local);
+
 	// Normalizing vertices helps a bit with float numerical precision
 	vertex_A_local = hippt::normalize(vertex_A_local);
 	vertex_B_local = hippt::normalize(vertex_B_local);
 	vertex_C_local = hippt::normalize(vertex_C_local);
-
-	// Shading space to cosine space such that we sample the projected
-	// solid angle of the triangle but transformed by the LTC
-	float NoV = hippt::dot(view_direction, shading_normal);
-	// TODO params can be read only once
-	vertex_A_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_A_local, material, ltc_lobe);
-	vertex_B_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_B_local, material, ltc_lobe);
-	vertex_C_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_C_local, material, ltc_lobe);
 #else
 	float3 T, B;
 	build_ONB(shading_normal, T, B);
@@ -495,21 +495,6 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	vertices_local_space[2] = hippt::normalize(vertices_local_space[2]);
 	vertices_local_space[3] = hippt::normalize(vertices_local_space[3]);
 
-	//// Normalizing the vertices for better fp32 precision
-	//float min_len = hippt::Infinity(), max_len = 0.0f;
-	//for (unsigned int i = 0; i < clipped_vertex_count; ++i)
-	//{
-	//	float l = hippt::length(vertices_local_space[i]);
-
-	//	min_len = hippt::min(min_len, l);
-	//	max_len = hippt::max(max_len, l);
-	//}
-
-	//if (min_len == 0.0f || max_len / hippt::max(min_len, 1e-30f) > 1e3f)
-	//	// Scale range too large or a zero-length vertex --> normalize
-	//	for (unsigned int i = 0; i < clipped_vertex_count; ++i)
-	//		vertices_local_space[i] = hippt::normalize(vertices_local_space[i]);
-
 	projected_solid_angle_triangle_t prepared_triangle = prepare_projected_solid_angle_triangle_sampling(clipped_vertex_count, vertices_local_space);
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	prepared_triangle.ltc_lobe = ltc_lobe;
@@ -522,16 +507,11 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling_from_world_space(const HIPRTRenderData& render_data,
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
 	float3 shading_point, float3 view_direction, float3 shading_normal,
-	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material, 
-	Xorshift32Generator& rng)
+	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material, Xorshift32Generator& rng)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float ltc_lobe_pdf;
-	LTCLobe ltc_lobe = ltc_lobe_sample(render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal,
-		triangle_emission, material,
-		rng, ltc_lobe_pdf);
+	LTCLobe ltc_lobe = ltc_lobe_sample(ltc_lobe_probabilities, rng, ltc_lobe_pdf);
 
 	return prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
 		render_data,
@@ -551,17 +531,12 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 
 HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRenderData& render_data,
 	float triangle_projected_solid_angle, float NoL,
-	float3 vertex_A_worldspace, float3 vertex_B_worldspace, float3 vertex_C_worldspace,
-	float3 shading_point, float3 view_direction, float3 shading_normal, float3 sampled_dir_shading_space,
-	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
+	float3 view_direction, float3 shading_normal, float3 sampled_dir_shading_space,
+	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material,
 	LTCLobe ltc_lobe)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
-	float ltc_lobe_pdf = ltc_lobe_eval_pdf(render_data,
-		vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
-		shading_point, view_direction, shading_normal,
-		triangle_emission, material,
-		ltc_lobe);
+	float ltc_lobe_pdf = ltc_lobe_eval_pdf(ltc_lobe_probabilities, ltc_lobe);
 	if (ltc_lobe_pdf == 0.0f)
 		return 0.0f;
 
@@ -587,24 +562,20 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
 	float3 shading_point, float3 view_direction, float3 shading_normal,
 	float3 point_on_light,
-	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
+	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material,
 	LTCLobe ltc_lobe)
 {
-	float ltc_lobe_pdf = ltc_lobe_eval_pdf(render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal,
-		triangle_emission, material, 
-		ltc_lobe);
+	float ltc_lobe_pdf = ltc_lobe_eval_pdf(ltc_lobe_probabilities, ltc_lobe);
 	if (ltc_lobe_pdf == 0.0f)
 		return 0.0f;
 
-	projected_solid_angle_triangle_t projected_solid_angle_triangle = prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
+	float projected_solid_angle = prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal,
-		material, ltc_lobe, ltc_lobe_pdf);
-
-	if (projected_solid_angle_triangle.vertex_count == 0 || projected_solid_angle_triangle.projected_solid_angle == 0.0f)
+		material, ltc_lobe, ltc_lobe_pdf).projected_solid_angle;
+	
+	if (projected_solid_angle == 0.0f)
 		// The whole polygon is below the hemisphere, clipping returned 0 vertices
 		return 0.0f;
 
@@ -620,18 +591,14 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 	sampled_dir_cosine_space = hippt::normalize(ltc_transform_shading_to_cosine(render_data, hippt::dot(view_direction, shading_normal), sampled_dir_shading_space, material, ltc_lobe));
 
 	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-		projected_solid_angle_triangle.projected_solid_angle, sampled_dir_cosine_space.z,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, sampled_dir_shading_space,
-		triangle_emission, material, 
-		ltc_lobe);
+		projected_solid_angle, sampled_dir_cosine_space.z,
+		view_direction, shading_normal, sampled_dir_shading_space,
+		ltc_lobe_probabilities, material, ltc_lobe);
 #else
 	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-		projected_solid_angle_triangle.projected_solid_angle, hippt::dot(shading_normal, to_light_direction),
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, make_float3(0.0f, 0.0f, 0.0f),
-		triangle_emission, material, 
-		ltc_lobe);
+		projected_solid_angle, hippt::dot(shading_normal, to_light_direction),
+		view_direction, shading_normal, make_float3(0.0f, 0.0f, 0.0f),
+		ltc_lobe_probabilities, material, ltc_lobe);
 #endif
 
 	return pdf_solid_angle;
@@ -641,36 +608,32 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 	float triangle_projected_solid_angle, float NoL,
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 sampled_dir_shading_space,
-	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material)
+	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material)
 {
 	float out_pdf = 0.0f;
 
 	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
 		triangle_projected_solid_angle, NoL,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, sampled_dir_shading_space,
-		triangle_emission, material,
+		view_direction, shading_normal, sampled_dir_shading_space,
+		ltc_lobe_probabilities, material,
 		LTCLobe::COAT_LOBE);
 
 	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
 		triangle_projected_solid_angle, NoL,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, sampled_dir_shading_space,
-		triangle_emission, material,
+		view_direction, shading_normal, sampled_dir_shading_space,
+		ltc_lobe_probabilities, material,
 		LTCLobe::METALLIC_LOBE);
 
 	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
 		triangle_projected_solid_angle, NoL,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, sampled_dir_shading_space,
-		triangle_emission, material,
+		view_direction, shading_normal, sampled_dir_shading_space,
+		ltc_lobe_probabilities, material,
 		LTCLobe::SPECULAR_LOBE);
 
 	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
 		triangle_projected_solid_angle, NoL,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, sampled_dir_shading_space,
-		triangle_emission, material, 
+		view_direction, shading_normal, sampled_dir_shading_space,
+		ltc_lobe_probabilities, material,
 		LTCLobe::DIFFUSE_LOBE);
 
 	return out_pdf;
@@ -679,7 +642,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& render_data, 
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 point_on_light,
-	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material)
+	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material)
 {
 	float out_pdf = 0.0f;
 
@@ -687,28 +650,28 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal, point_on_light,
-		triangle_emission, material, 
+		ltc_lobe_probabilities, material,
 		LTCLobe::COAT_LOBE);
 
 	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal, point_on_light,
-		triangle_emission, material, 
+		ltc_lobe_probabilities, material,
 		LTCLobe::METALLIC_LOBE);
 
 	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal, point_on_light,
-		triangle_emission, material, 
+		ltc_lobe_probabilities, material,
 		LTCLobe::SPECULAR_LOBE);
 
 	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal, point_on_light,
-		triangle_emission, material, 
+		ltc_lobe_probabilities, material,
 		LTCLobe::DIFFUSE_LOBE);
 
 	return out_pdf;
@@ -893,10 +856,15 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 	float& out_area_pdf,
 	Xorshift32Generator& rng)
 {
+	LTCLobeSampleProbabilities ltc_lobe_probabilities = ltc_lobe_probas(render_data,
+		vertex_A, vertex_B, vertex_C,
+		shading_point, view_direction, shading_normal,
+		triangle_emission, material);
+
 	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(render_data,
 		vertex_A, vertex_B, vertex_C, 
 		shading_point, view_direction, shading_normal,
-		triangle_emission, material, 
+		ltc_lobe_probabilities, material,
 		rng);
 
 	if (polygon.vertex_count == 0 || polygon.projected_solid_angle == 0.0f)
@@ -1005,15 +973,11 @@ UNROLL_LOOP
 	// This brings the direction from shading space to world space.
 	float3 sampled_dir_world_space = hippt::normalize(sampled_dir_shading_space * rotation_matrix);
 
-	float pdf_solid_angle = hippt::max(0.0f, sampled_dir.z) / polygon.projected_solid_angle;
-	pdf_solid_angle *= ltc_jacobian(render_data, hippt::dot(view_direction, shading_normal), sampled_dir_shading_space, material, polygon.ltc_lobe);
-	pdf_solid_angle *= polygon.ltc_lobe_pdf;
-
-	pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data,
+	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data,
 		polygon.projected_solid_angle, sampled_dir.z,
 		vertex_A, vertex_B, vertex_C,
 		shading_point, view_direction, shading_normal, sampled_dir_shading_space,
-		triangle_emission, material);
+		ltc_lobe_probabilities, material);
 #else
 	/**
 	 * Simply sampling projected solid angle.

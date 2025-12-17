@@ -36,7 +36,7 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 	float3 vertex_A_worldspace, float3 vertex_B_worldspace, float3 vertex_C_worldspace,
 	float3 shading_point, float3 view_direction, float3 shading_normal,
 	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
-	float& out_coat_proba, float& out_metallic_proba, float& out_specular_proba, float& out_diffuse_proba)
+	float& out_coat_proba, float& out_metallic_proba, float& out_specular_proba)
 {
 	float coat_weight = material.coat;
 	float metallic_weight = material.metallic;
@@ -69,7 +69,22 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 	out_coat_proba = coat_weight * proba_normalize;
 	out_metallic_proba = metallic_weight * proba_normalize;
 	out_specular_proba = specular_weight * proba_normalize;
-	out_diffuse_proba = diffuse_weight * proba_normalize;
+}
+
+HIPRT_DEVICE LTCLobeSampleProbabilities ltc_lobe_probas(const HIPRTRenderData& render_data,
+	float3 vertex_A_worldspace, float3 vertex_B_worldspace, float3 vertex_C_worldspace,
+	float3 shading_point, float3 view_direction, float3 shading_normal,
+	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material)
+{
+	LTCLobeSampleProbabilities lobe_probabilities;
+
+	ltc_lobe_probas(render_data,
+		vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
+		shading_point, view_direction, shading_normal,
+		triangle_emission, material,
+		lobe_probabilities.coat_proba, lobe_probabilities.metallic_proba, lobe_probabilities.specular_proba);
+
+	return lobe_probabilities;
 }
 
 /**
@@ -80,49 +95,39 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
  * point would require multiple shadow rays so instead we sample only one lobe
  * stochastically, essentially a one-sample-estimator.
  */
-HIPRT_DEVICE LTCLobe ltc_lobe_sample(const HIPRTRenderData& render_data,
-	float3 vertex_A_worldspace, float3 vertex_B_worldspace, float3 vertex_C_worldspace,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
-	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
-	Xorshift32Generator& rng, float& out_pdf)
+HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabilities, Xorshift32Generator& rng, float& out_pdf)
 {
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	out_pdf = 1.0f;
 
 	return LTCLobe::DIFFUSE_LOBE;
 #endif
-	float coat_proba, metallic_proba, specular_proba, diffuse_proba;
-	ltc_lobe_probas(render_data,
-		vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
-		shading_point, view_direction, shading_normal,
-		triangle_emission, material,
-		coat_proba, metallic_proba, specular_proba, diffuse_proba);
 
 	float cdf[3];
-	cdf[0] = coat_proba;
-	cdf[1] = cdf[0] + metallic_proba;
-	cdf[2] = cdf[1] + specular_proba;
+	cdf[0] = lobe_probabilities.coat_proba;
+	cdf[1] = cdf[0] + lobe_probabilities.metallic_proba;
+	cdf[2] = cdf[1] + lobe_probabilities.specular_proba;
 
 	float random_number = rng();
 
 	if (random_number < cdf[0])
 	{
 		// Coat lobe
-		out_pdf = coat_proba;
+		out_pdf = lobe_probabilities.coat_proba;
 
 		return LTCLobe::COAT_LOBE;
 	}
 	else if (random_number < cdf[1])
 	{
 		// Metallic lobe
-		out_pdf = metallic_proba;
+		out_pdf = lobe_probabilities.metallic_proba;
 
 		return LTCLobe::METALLIC_LOBE;
 	}
 	else if (random_number < cdf[2])
 	{
 		// Specular lobe
-		out_pdf = specular_proba;
+		out_pdf = lobe_probabilities.specular_proba;
 		return LTCLobe::SPECULAR_LOBE;
 	}
 	else
@@ -134,11 +139,7 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(const HIPRTRenderData& render_data,
 	}
 }
 
-HIPRT_DEVICE float ltc_lobe_eval_pdf(const HIPRTRenderData& render_data,
-	float3 vertex_A_worldspace, float3 vertex_B_worldspace, float3 vertex_C_worldspace,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
-	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
-	LTCLobe lobe)
+HIPRT_DEVICE float ltc_lobe_eval_pdf(LTCLobeSampleProbabilities lobe_probabilities, LTCLobe lobe)
 {
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	if (lobe == LTCLobe::DIFFUSE_LOBE)
@@ -146,26 +147,19 @@ HIPRT_DEVICE float ltc_lobe_eval_pdf(const HIPRTRenderData& render_data,
 	else
 		return 0.0f;
 #endif
-	float coat_proba, metallic_proba, specular_proba, diffuse_proba;
-	ltc_lobe_probas(render_data,
-		vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
-		shading_point, view_direction, shading_normal,
-		triangle_emission, material,
-		coat_proba, metallic_proba, specular_proba, diffuse_proba);
-
 	switch (lobe)
 	{
 	case COAT_LOBE:
-		return coat_proba;
+		return lobe_probabilities.coat_proba;
 
 	case METALLIC_LOBE:
-		return metallic_proba;
-
-	case DIFFUSE_LOBE:
-		return diffuse_proba;
+		return lobe_probabilities.metallic_proba;
 
 	case SPECULAR_LOBE:
-		return specular_proba;
+		return lobe_probabilities.specular_proba;
+
+	case DIFFUSE_LOBE:
+		return 1.0f - (lobe_probabilities.coat_proba + lobe_probabilities.metallic_proba + lobe_probabilities.specular_proba);
 
 	default:
 		return 0.0f;

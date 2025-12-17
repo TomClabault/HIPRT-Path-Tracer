@@ -14,4 +14,13 @@ enum LTCLobe
 	DIFFUSE_LOBE = 3,
 };
 
+struct LTCLobeSampleProbabilities
+{
+	float coat_proba;
+	float metallic_proba;
+	float specular_proba;
+	// Diffuse proba is implicit as 1.0 - (sum other probabilities)
+	// float diffuse_proba;
+};
+
 #endif

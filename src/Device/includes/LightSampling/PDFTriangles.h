@@ -60,7 +60,8 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
             float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data,
                 vertex_A, vertex_B, vertex_C, 
 				shading_point, view_direction, shading_normal, point_on_triangle,
-                triangle_emission, material);
+				ltc_lobe_probas(render_data, vertex_A, vertex_A, vertex_C, shading_point, view_direction, shading_normal, triangle_emission, material),
+				material);
 
             return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, compute_cosine_term_at_light_source(triangle_normal, -hippt::normalize(point_on_triangle - shading_point)));
         }

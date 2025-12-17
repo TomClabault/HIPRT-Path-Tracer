@@ -70,6 +70,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
     float3& out_sample_point, float3& out_sampled_triangle_normal, float& out_triangle_area, 
     float& out_point_pdf)
 {
+	// TODO can we pack light triangles data to avoid loading vertices positions again? Have a buffer of packed, contiguous vertices just for light triangles to get better memory coherence?
     float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[global_triangle_index * 3 + 0]];
     float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[global_triangle_index * 3 + 1]];
     float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[global_triangle_index * 3 + 2]];
