@@ -433,7 +433,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_all_ke
 	if (!is_render_pass_used())
 		return std::map<std::string, std::shared_ptr<GPUKernel>>();
 
-	return get_all_kernels();
+	return MegaKernelRenderPass::get_all_kernels();
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracing_kernels()
@@ -441,7 +441,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRGIRenderPass::get_tracin
 	if (!is_render_pass_used())
 		return std::map<std::string, std::shared_ptr<GPUKernel>>();
 
-	return get_all_kernels();
+	return MegaKernelRenderPass::get_all_kernels();
 }
 
 bool ReSTIRGIRenderPass::is_render_pass_used() const
