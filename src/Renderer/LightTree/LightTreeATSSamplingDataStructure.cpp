@@ -92,6 +92,11 @@ bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count)
 	return (directly_using_light_tree || using_regir_light_tree) && emissive_count > 0;
 }
 
+size_t LightTreeATSSamplingDataStructure::get_VRAM_usage_bytes() const
+{
+	return m_light_tree_ats_device_data.get_VRAM_usage_bytes();
+}
+
 LightTreeATSBuilderOptions& LightTreeATSSamplingDataStructure::get_builder_options()
 {
 	return m_light_tree_builder.get_build_options();

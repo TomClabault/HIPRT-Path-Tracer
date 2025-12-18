@@ -30,6 +30,13 @@ struct LightTreeSGBuilderDeviceData
 		}
 	}
 
+	size_t get_VRAM_usage_bytes() const
+	{
+		return m_device_nodes_buffer.get_byte_size()
+			+ m_device_indices_array_buffer.get_byte_size()
+			+ m_bit_trails_buffer.get_byte_size();
+	}
+
 	std::vector<LightTreeSGNodeDevice> nodes_device;
 
 	DataContainer<LightTreeSGNodeDevice> m_device_nodes_buffer;

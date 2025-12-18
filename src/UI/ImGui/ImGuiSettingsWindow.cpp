@@ -2745,6 +2745,11 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 	{
 		ImGui::TreePush("Light tree ATS settings tree");
 
+		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_light_tree_ats_sampling_data_structure().get_VRAM_usage_bytes() / 1000000.0f);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		ImGui::SeparatorText("Build");
+
 		std::vector<const char*> build_mode_items = { "- Midpoint", "- Binned + cost function" };
 		if (ImGui::Combo("Build split function", &build_options.build_split_method, build_mode_items.data(), build_mode_items.size()))
 		{
@@ -2752,8 +2757,8 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 
 			m_render_window->set_render_dirty(true);
 		}
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		ImGui::SeparatorText("Build");
 		switch (build_options.build_split_method)
 		{
 		case LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED:
@@ -2787,7 +2792,7 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 
 				m_render_window->set_render_dirty(true);
 			}
-
+			
 			ImGui::TreePop();
 
 			break;
@@ -2797,6 +2802,8 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 		static int previous_triangles_per_leaf = build_options.max_triangles_per_leaf;
 		ImGui::SliderInt("Max triangles per leaf", &previous_triangles_per_leaf, 1, 32);
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Sampling");
 		if (previous_triangles_per_leaf != build_options.max_triangles_per_leaf)
 		{
 			ImGui::TreePush("Apply button triangles per leaf light tree");
@@ -2929,6 +2936,9 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 	if (ImGui::CollapsingHeader("Light tree SG settings"))
 	{
 		ImGui::TreePush("Light tree SG settings tree");
+
+		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_light_tree_sg_sampling_data_structure().get_VRAM_usage_bytes() / 1000000.0f);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		ImGui::SeparatorText("Build");
 		switch (build_options.build_split_method)

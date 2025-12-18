@@ -31,6 +31,8 @@ public:
 
 	bool is_needed(unsigned int emissive_count);
 
+	size_t get_VRAM_usage_bytes() const;
+
 	LightTreeATSBuilderOptions& get_builder_options();
 
 private:
