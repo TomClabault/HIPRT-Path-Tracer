@@ -71,4 +71,14 @@ HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_d
 	return point;
 }
 
+HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_direction, float3 vertex_A, float3 triangle_normal, float3 shading_point, bool& out_valid_point)
+{
+	float trash_area_pdf;
+	float3 point = map_direction_to_triangle_point(sampled_solid_angle_direction, vertex_A, triangle_normal, shading_point, 1.0f, trash_area_pdf);
+
+	out_valid_point = (trash_area_pdf > 0.0f);
+
+	return point;
+}
+
 #endif

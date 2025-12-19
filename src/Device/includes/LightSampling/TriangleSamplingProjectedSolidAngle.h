@@ -605,36 +605,67 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 }
 
 HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& render_data,
-	float triangle_projected_solid_angle, float NoL,
+	float triangle_projected_solid_angle, float NoL, LTCLobe ltc_lobe,
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
-	float3 shading_point, float3 view_direction, float3 shading_normal, float3 sampled_dir_shading_space,
+	float3 shading_point, float3 view_direction, float3 shading_normal, float3 sampled_dir_shading_space, float3 point_on_light,
 	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material)
 {
 	float out_pdf = 0.0f;
 
-	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-		triangle_projected_solid_angle, NoL,
-		view_direction, shading_normal, sampled_dir_shading_space,
-		ltc_lobe_probabilities, material,
-		LTCLobe::COAT_LOBE);
+	// For each lobe, if we already have the projected solid angle in cosine space,
+	// then we don't have to recompute it (if branch).
+	// Otherwise, we compute it from world space (else branch)
+	if (ltc_lobe == LTCLobe::COAT_LOBE)
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+			triangle_projected_solid_angle, NoL,
+			view_direction, shading_normal, sampled_dir_shading_space,
+			ltc_lobe_probabilities, material,
+			LTCLobe::COAT_LOBE);
+	else
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+			vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+			shading_point, view_direction, shading_normal, point_on_light,
+			ltc_lobe_probabilities, material,
+			LTCLobe::COAT_LOBE);
 
-	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-		triangle_projected_solid_angle, NoL,
-		view_direction, shading_normal, sampled_dir_shading_space,
-		ltc_lobe_probabilities, material,
-		LTCLobe::METALLIC_LOBE);
+	if (ltc_lobe == LTCLobe::METALLIC_LOBE)
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+			triangle_projected_solid_angle, NoL,
+			view_direction, shading_normal, sampled_dir_shading_space,
+			ltc_lobe_probabilities, material,
+			LTCLobe::METALLIC_LOBE);
+	else
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+			vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+			shading_point, view_direction, shading_normal, point_on_light,
+			ltc_lobe_probabilities, material,
+			LTCLobe::METALLIC_LOBE);
 
-	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-		triangle_projected_solid_angle, NoL,
-		view_direction, shading_normal, sampled_dir_shading_space,
-		ltc_lobe_probabilities, material,
-		LTCLobe::SPECULAR_LOBE);
+	if (ltc_lobe == LTCLobe::SPECULAR_LOBE)
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+			triangle_projected_solid_angle, NoL,
+			view_direction, shading_normal, sampled_dir_shading_space,
+			ltc_lobe_probabilities, material,
+			LTCLobe::SPECULAR_LOBE);
+	else
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+			vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+			shading_point, view_direction, shading_normal, point_on_light,
+			ltc_lobe_probabilities, material,
+			LTCLobe::SPECULAR_LOBE);
 
-	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-		triangle_projected_solid_angle, NoL,
-		view_direction, shading_normal, sampled_dir_shading_space,
-		ltc_lobe_probabilities, material,
-		LTCLobe::DIFFUSE_LOBE);
+	if (ltc_lobe == LTCLobe::DIFFUSE_LOBE)
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+			triangle_projected_solid_angle, NoL,
+			view_direction, shading_normal, sampled_dir_shading_space,
+			ltc_lobe_probabilities, material,
+			LTCLobe::DIFFUSE_LOBE);
+	else
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
+			vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+			shading_point, view_direction, shading_normal, point_on_light,
+			ltc_lobe_probabilities, material,
+			LTCLobe::DIFFUSE_LOBE);
 
 	return out_pdf;
 }
@@ -973,20 +1004,36 @@ UNROLL_LOOP
 	// This brings the direction from shading space to world space.
 	float3 sampled_dir_world_space = hippt::normalize(sampled_dir_shading_space * rotation_matrix);
 
+	bool valid = false;
+	// Computing the point on light without the PDF since we compute it later
+	float3 point_on_light = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, valid);
+	if (!valid)
+	{
+		out_area_pdf = 0.0f;
+
+		return make_float3(0.0f, 0.0f, 0.0f);
+	}
+
+	// Computing the PDF in solid angle measure
 	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data,
-		polygon.projected_solid_angle, sampled_dir.z,
+		polygon.projected_solid_angle, sampled_dir.z, polygon.ltc_lobe,
 		vertex_A, vertex_B, vertex_C,
-		shading_point, view_direction, shading_normal, sampled_dir_shading_space,
+		shading_point, view_direction, shading_normal, sampled_dir_shading_space, point_on_light,
 		ltc_lobe_probabilities, material);
+
+	// Converting the PDF from solid angle to area measure
+	out_area_pdf = solid_angle_to_area_pdf(pdf_solid_angle, hippt::length(shading_point - point_on_light), compute_cosine_term_at_light_source(triangle_normal, -sampled_dir_world_space));
 #else
 	/**
 	 * Simply sampling projected solid angle.
 	 */
 	float3 sampled_dir_world_space = hippt::normalize(local_to_world_frame(shading_normal, sampled_dir));
 	float pdf_solid_angle = hippt::max(0.0f, hippt::dot(shading_normal, sampled_dir_world_space)) / polygon.projected_solid_angle;
+
+	float3 point_on_light = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);
 #endif
 
-	return map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);
+	return point_on_light;
 }
 
 #endif

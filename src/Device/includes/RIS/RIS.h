@@ -110,24 +110,15 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 
         if (light_sample_info.area_measure_pdf > 0.0f)
         {
-            // It can happen that the light PDF returned by the emissive triangle
-            // sampling function is 0 because of emissive triangles that are so
-            // small that we cannot compute their normal and their area (the cross
-            // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
-
             float3 to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
             float distance_to_light = hippt::length(to_light_direction);
             to_light_direction = to_light_direction / distance_to_light; // Normalization
+
             float cosine_at_light_source = compute_cosine_term_at_light_source(light_sample_info.light_source_normal, -to_light_direction);
-            // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
-            // for the dot product to be "properly" oriented.
             float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));
             if (cosine_at_evaluated_point > 0.0f && cosine_at_light_source > 1.0e-6f)
             {
                 float bsdf_pdf = 0.0f;
-                // Early check for minimum light contribution: if the light itself doesn't contribute enough,
-                // adding the BSDF attenuation on top of it will only make it worse so we can already
-                // skip the light and saves ourselves the evaluation of the BSDF
 
                 BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
                 BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
@@ -153,7 +144,6 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 
                 // Converting the PDF from area measure to solid angle measure
                 float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
-
                 float mis_weight = balance_heuristic(solid_angle_light_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / solid_angle_light_pdf;
             }
