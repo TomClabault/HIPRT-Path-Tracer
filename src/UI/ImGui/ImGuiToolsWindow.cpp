@@ -611,7 +611,34 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Capture duration");
 		static int number_of_captures = 16;
-		ImGui::InputInt("Number of captures", &number_of_captures);
+		if (ImGui::InputInt("Number of captures", &number_of_captures))
+		{
+			if (recorded_xs_list.size() > 0)
+			{
+				if (number_of_captures > recorded_xs_list.at(0).size())
+				{
+					// Extending all recorded xs and ys
+					for (int i = 0; i < recorded_xs_list.size(); i++)
+					{
+						for (int j = recorded_xs_list.at(i).size(); j < number_of_captures; j++)
+						{
+							recorded_xs_list.at(i).push_back((float)((j + 1) * capture_interval_value));
+							recorded_ys_list.at(i).push_back(0.0f);
+						}
+					}
+				}
+				else if (number_of_captures < recorded_xs_list.at(0).size())
+				{
+					// Reducing all recorded xs and ys
+					for (int i = 0; i < recorded_xs_list.size(); i++)
+					{
+						recorded_xs_list.at(i).resize(number_of_captures);
+						recorded_ys_list.at(i).resize(number_of_captures);
+					}
+				}
+			}
+		}
+
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		static int error_metric_type = 2;
@@ -633,6 +660,8 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		ImGui::Text("Step 4: Capture...");
 		ImGui::TreePush("Start capture tree");
+		// Only used in "real-time" non accumulated mode for sampled-based captures
+		static int total_samples_rendered = 0;
 		static bool capture_started = false;
 		static int captures_taken = 0;
 		static float last_captured_ratio = 0.0f;
@@ -665,6 +694,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				capture_started = true;
 				captures_taken = 0;
 				last_captured_ratio = 0.0f;
+				total_samples_rendered = 0;
 				current_captured_errors.clear();
 				current_recorded_xs.clear();
 				current_recorded_ys.clear();
@@ -686,8 +716,14 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			// Time-based capture
 			current_ratio = std::floor(m_render_window->get_current_render_time_ms() / 1000.0f / capture_interval_value);
 		else
+		{
 			// Sample-based capture
-			current_ratio = std::floor((float)render_settings.sample_number / capture_interval_value);
+
+			if (render_settings.accumulate)
+				current_ratio = std::floor((float)render_settings.sample_number / capture_interval_value);
+			else
+				current_ratio = std::floor((float)total_samples_rendered++ / capture_interval_value);
+		}
 
 		if (current_ratio > last_captured_ratio && capture_started && captures_taken < number_of_captures)
 		{
@@ -716,8 +752,6 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 					float* error_map = nullptr;
 					error = Utils::compute_image_weighted_median_FLIP(ref_image, current_image, &error_map);
 
-					current_recorded_ys.push_back(error);
-
 					free(error_map);
 
 					break;
@@ -727,6 +761,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			}
 
 			current_captured_errors.push_back(error);
+			current_recorded_ys.push_back(error);
 
 			if (captures_taken == number_of_captures)
 				capture_started = false;
