@@ -31,7 +31,7 @@ HIPRT_DEVICE float integrate_edge_vector(float3 vertex_1, float3 vertex_2)
  */
 HIPRT_DEVICE float integrate_ltc_clipped_triangle(unsigned int vertex_count, float3 clipped_vertices[4])
 {
-	float result = 0.0;
+	float result = 0.0f;
 
 	result += integrate_edge_vector(clipped_vertices[0], clipped_vertices[1]);
 	result += integrate_edge_vector(clipped_vertices[1], clipped_vertices[2]);

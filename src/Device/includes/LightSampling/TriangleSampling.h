@@ -155,20 +155,12 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
         random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
         return LightSampleInformation();
 
-    // No LTC:
-    // 0.00652452465
-    // {x=-0.741899908 y=3.34238505 z=-4.73415279 }
     light_sample.emissive_triangle_global_index = global_triangle_index;
     light_sample.light_source_normal = sampled_triangle_normal;
     light_sample.light_area = sampled_triangle_area;
     light_sample.emission = triangle_emission;
     light_sample.point_on_light = random_point_on_triangle;
     light_sample.area_measure_pdf = sampled_point_pdf;
-
-    float pdf = pdf_of_point_on_triangle_area_measure(render_data,
-		shading_point, view_direction, shading_normal,
-        material, random_point_on_triangle, sampled_triangle_normal,
-		global_triangle_index, sampled_triangle_area);
 
     return light_sample;
 }

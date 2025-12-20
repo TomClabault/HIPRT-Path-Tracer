@@ -34,10 +34,10 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
         float3 to_light_direction = point_on_triangle - shading_point;
         float to_light_distance = hippt::length(to_light_direction);
 
-        float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf(render_data,
+        float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf_from_sampled_point(render_data,
             vertex_A, vertex_B, vertex_C,
 			shading_point, view_direction, shading_normal, point_on_triangle,
-            ltc_lobe_probas(render_data, vertex_A, vertex_A, vertex_C, shading_point, view_direction, shading_normal, triangle_emission, material),
+            ltc_lobe_probas(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, triangle_emission, material),
 			material);
 
         return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, compute_cosine_term_at_light_source(triangle_normal, -to_light_direction / to_light_distance));
@@ -62,7 +62,7 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
             float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data,
                 vertex_A, vertex_B, vertex_C, 
 				shading_point, view_direction, shading_normal, point_on_triangle,
-				ltc_lobe_probas(render_data, vertex_A, vertex_A, vertex_C, shading_point, view_direction, shading_normal, triangle_emission, material),
+				ltc_lobe_probas(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, triangle_emission, material),
 				material);
 
             return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, compute_cosine_term_at_light_source(triangle_normal, -hippt::normalize(point_on_triangle - shading_point)));
@@ -70,10 +70,10 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
         else
         {
             // Otherwise it's not worth it and we can use the cheap solid angle (not projected) sampling
-            float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf(render_data,
+            float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf_from_sampled_point(render_data,
                 vertex_A, vertex_B, vertex_C,
                 shading_point, view_direction, shading_normal, point_on_triangle,
-                ltc_lobe_probas(render_data, vertex_A, vertex_A, vertex_C, shading_point, view_direction, shading_normal, triangle_emission, material),
+                ltc_lobe_probas(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, triangle_emission, material),
                 material);
 
             return solid_angle_to_area_pdf(pdf_solid_angle, to_light_distance, compute_cosine_term_at_light_source(triangle_normal, -to_light_direction / to_light_distance));

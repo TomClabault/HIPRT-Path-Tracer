@@ -220,7 +220,7 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRend
 	return pdf_solid_angle;
 }
 
-HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& render_data,
+HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_from_sampled_dir(const HIPRTRenderData& render_data,
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 sampled_dir_shading_space,
 	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material)
@@ -254,7 +254,7 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& r
 	return out_pdf;
 }
 
-HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_2(const HIPRTRenderData& render_data,
+HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_from_sampled_point(const HIPRTRenderData& render_data,
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 point_on_light,
 	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material)
@@ -364,7 +364,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(const HIPRT
 	// This brings the direction from shading space to world space.
 	float3 sampled_dir_world_space = hippt::normalize(sampled_dir_shading_space * rotation_matrix);
 
-	float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf(render_data,
+	float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf_from_sampled_dir(render_data,
 		vertex_A, vertex_B, vertex_C,
 		shading_point, view_direction, shading_normal, sampled_dir_shading_space,
 		ltc_lobe_probabilities, material);
