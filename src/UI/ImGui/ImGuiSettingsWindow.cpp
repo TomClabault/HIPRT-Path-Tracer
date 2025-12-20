@@ -1250,6 +1250,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE_USE_LTC) == KERNEL_OPTION_TRUE)
+				draw_ltc_settings_panel();
+
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY))
 			{
 			case LSS_BASE_REGIR:	
@@ -1886,6 +1889,31 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			ImGui::TreePop();
 		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_ltc_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("LTC Settings"))
+	{
+		ImGui::TreePush("LTC settings tree");
+
+		if (ImGui::SliderFloat("Maximum roughness", &render_data.bsdfs_data.ltcs_data.specular_ltc_maximum_roughness, 0.0f, 1.0f))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("If the material lobe has a roughness higher than this value, then this lobe "
+			"won't be included in the LTC sampling.\n\n"
+			""
+			"For example, for a diffuse / specular material with a specular roughness of 1.0f "
+			"and a max roughness of 0.5f, the specular lobe will never be sampled by LTCs, only "
+			"the diffuse lobe. This is to help with LTC sampling overhead on rough lobes that wouldn't really "
+			"benefit from it.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

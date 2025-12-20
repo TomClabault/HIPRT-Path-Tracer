@@ -44,6 +44,7 @@ private:
 	void draw_environment_panel();
 
 	void draw_sampling_panel();
+	void draw_ltc_settings_panel();
 	void draw_ReGIR_settings_panel();
 	void draw_light_tree_ATS_settings_panel();
 	void draw_light_tree_SG_settings_panel();

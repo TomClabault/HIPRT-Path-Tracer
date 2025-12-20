@@ -40,17 +40,23 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 {
 	float coat_weight = material.coat;
 	float metallic_weight = material.metallic;
+	float specular_weight = 0.0f;
 
-	float specular_radiance_triangle_ltc = evaluate_ltc(render_data,
-		vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
-		shading_point, view_direction, shading_normal,
-		material, LTCLobe::SPECULAR_LOBE) * triangle_emission.luminance();
+	if (material.roughness <= render_data.bsdfs_data.ltcs_data.specular_ltc_maximum_roughness)
+	{
+		float specular_radiance_triangle_ltc = evaluate_ltc(render_data,
+			vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
+			shading_point, view_direction, shading_normal,
+			material, LTCLobe::SPECULAR_LOBE) * triangle_emission.luminance();
+		
+		specular_weight = (1.0f - material.metallic) * material.specular * specular_radiance_triangle_ltc;
+	}
+
 	float diffuse_radiance_triangle_ltc = evaluate_ltc(render_data,
 		vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
 		shading_point, view_direction, shading_normal,
 		material, LTCLobe::DIFFUSE_LOBE) * triangle_emission.luminance();
 	
-	float specular_weight = (1.0f - material.metallic) * material.specular * specular_radiance_triangle_ltc;
 	float diffuse_weight = material.base_color.luminance() * (1.0f - average_fresnel_fit(hippt::dot(view_direction, shading_normal), material.roughness, material.ior)) * diffuse_radiance_triangle_ltc;
 
 	if (coat_weight + metallic_weight + specular_weight + diffuse_weight == 0.0f)
