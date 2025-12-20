@@ -99,8 +99,6 @@ HIPRT_DEVICE LTCLobeSampleProbabilities ltc_lobe_probas(const HIPRTRenderData& r
 HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabilities, Xorshift32Generator& rng)
 {
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
-	out_pdf = 1.0f;
-
 	return LTCLobe::DIFFUSE_LOBE;
 #endif
 
