@@ -7,6 +7,7 @@
 #define IMGUI_TOOLS_WINDOW_H
 
 #include "Renderer/GPURenderer.h"
+#include "UI/ImGui/ImGuiConvergenceGraphWidget.h"
 
 class RenderWindow;
 
@@ -29,8 +30,11 @@ public:
 
 	void draw_graph_convergence_panel();
 
+	ImGuiConvergenceGraphWidget& get_convergence_graph_widget();
+
 private:
 	RenderWindow* m_render_window = nullptr;
+	ImGuiConvergenceGraphWidget m_convergence_graph_widget;
 
 	std::shared_ptr<GPURenderer> m_renderer;
 };

@@ -253,3 +253,8 @@ ImGuiRenderWindow& ImGuiRenderer::get_imgui_render_window()
 {
 	return m_imgui_render_window;
 }
+
+ImGuiToolsWindow& ImGuiRenderer::get_imgui_tools_window()
+{
+	return m_imgui_tools_window;
+}

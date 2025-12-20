@@ -1128,6 +1128,7 @@ void RenderWindow::run()
 		render();
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
+		m_imgui_renderer->get_imgui_tools_window().get_convergence_graph_widget().process_screenshots();
 
 		// Measuring the CPU overhead before 'glfwSwapBuffers' because we do not want
 		// to count the VSync as CPU overhead

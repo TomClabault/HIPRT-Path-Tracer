@@ -563,11 +563,6 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 	{
 		ImGui::TreePush("Convergence graph tree");
 
-		static std::vector<std::string> recorded_legends;
-		// The final list of points that will be used for graphing
-		static std::vector<std::vector<float>> recorded_xs_list;
-		static std::vector<std::vector<float>> recorded_ys_list;
-
 		ImGui::Text("Step 1: Choose a reference image");
 		ImGui::TreePush("Convergence graph - step 1 tree");
 
@@ -610,7 +605,11 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Capture duration");
+
 		static int number_of_captures = 16;
+		std::vector<std::string>& recorded_legends = m_convergence_graph_widget.get_recorded_legends();
+		std::vector<std::vector<float>>& recorded_xs_list = m_convergence_graph_widget.get_recorded_xs_list();
+		std::vector<std::vector<float>>& recorded_ys_list = m_convergence_graph_widget.get_recorded_ys_list();
 		if (ImGui::InputInt("Number of captures", &number_of_captures))
 		{
 			if (recorded_xs_list.size() > 0)
@@ -857,52 +856,31 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Current graph:");
 
-		static float line_weight = 3.0f;
-		ImGui::InputFloat("Line weight", &line_weight);
-
-		static int plot_width = 575;
-		static int plot_height = 400;
-		static std::string plot_title = "Convergence graph";
-		ImGui::SliderInt("Plot width", &plot_width, 1, 1000);
-		ImGui::SliderInt("Plot height", &plot_height, 1, 1000);
-		ImGui::InputText("Plot title", &plot_title);
+		ImGui::InputFloat("Line weight", &m_convergence_graph_widget.get_line_weight());
+		ImGui::SliderInt("Plot width", &m_convergence_graph_widget.get_plot_width(), 1, 1000);
+		ImGui::SliderInt("Plot height", &m_convergence_graph_widget.get_plot_height(), 1, 1000);
+		ImGui::InputText("Plot title", &m_convergence_graph_widget.get_plot_title());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		// TODO save the data to a file such that we can keep plotting accross sessions?
-		if (ImPlot::BeginPlot(plot_title.c_str(), ImVec2(plot_width, plot_height)))
-		{
-			ImPlot::SetupLegend(ImPlotLocation_East | ImPlotLocation_North, 0);
+		if (ImGui::Button("Screenshot graph"))
+			m_convergence_graph_widget.request_screenshot(true, true);
+		ImGui::SameLine();
+		if (ImGui::Button("Copy graph to clipboard"))
+			m_convergence_graph_widget.request_screenshot(true, false);
 
-			std::string x_axis_name = (capture_interval_type == 0) ? "Time (s)" : "Samples";
-			std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "RMSE" : "Mean FLIP Error";
-			ImPlot::SetupAxes(x_axis_name.c_str(), y_axis_name.c_str(), ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+		std::string x_axis_name = (capture_interval_type == 0) ? "Time (s)" : "Samples";
+		std::string y_axis_name = (error_metric_type == 0) ? "MSE" : (error_metric_type == 1) ? "RMSE" : "Mean FLIP Error";
 
-			for (size_t i = 0; i < recorded_legends.size(); i++)
-			{
-				ImVec4 colors[] = {
-					ImVec4(78 / 255.0f, 121 / 255.0f, 167 / 255.0f, 1.0f),
-					ImVec4(242 / 255.0f, 142 / 255.0f, 43 / 255.0f, 1.0f),
-					ImVec4(225 / 255.0f, 87 / 255.0f, 89 / 255.0f, 1.0f),
-					ImVec4(118 / 255.0f, 183 / 255.0f, 178 / 255.0f, 1.0f),
-					ImVec4(89 / 255.0f, 161 / 255.0f, 79 / 255.0f, 1.0f),
-					ImVec4(237 / 255.0f, 201 / 255.0f, 72 / 255.0f, 1.0f),
-					ImVec4(176 / 255.0f, 122 / 255.0f, 161 / 255.0f, 1.0f),
-					ImVec4(255 / 255.0f, 157 / 255.0f, 167 / 255.0f, 1.0f),
-					ImVec4(156 / 255.0f, 117 / 255.0f, 95 / 255.0f, 1.0f),
-					ImVec4(186 / 255.0f, 176 / 255.0f, 172 / 255.0f, 1.0f)
-				};
-
-				if (i > 10)
-					ImPlot::SetNextLineStyle(IMPLOT_AUTO_COL, line_weight);
-				else
-					ImPlot::SetNextLineStyle(colors[i], line_weight);
-				ImPlot::PlotLine(recorded_legends.at(i).c_str(), recorded_xs_list.at(i).data(), recorded_ys_list.at(i).data(), recorded_xs_list.at(0).size());
-			}
-
-			ImPlot::EndPlot();
-		}
+		m_convergence_graph_widget.set_x_axis_name(x_axis_name);
+		m_convergence_graph_widget.set_y_axis_name(y_axis_name);
+		m_convergence_graph_widget.draw();
 
 		ImGui::TreePop();
 	}
+}
+
+ImGuiConvergenceGraphWidget& ImGuiToolsWindow::get_convergence_graph_widget()
+{
+	return m_convergence_graph_widget;
 }

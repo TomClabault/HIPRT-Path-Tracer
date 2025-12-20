@@ -295,27 +295,33 @@ void Utils::copy_u8_image_data_to_clipboard(const std::vector<unsigned char>& da
         g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Failed to copy image to clipboard.");
 }
 
-void Utils::copy_image_to_clipboard(const Image8Bit& image)
+void Utils::copy_image_to_clipboard(const Image8Bit& image, bool flip_y)
 {
     std::vector<unsigned char> flipped_data(image.width * image.height * 4);
-    for (int y = 0; y < image.height; y++)
-    {
-        for (int x = 0; x < image.width; x++)
-        {
-            int input_index = (x + y * image.width) * image.channels;
-            int output_index = (x + (image.height - 1 - y) * image.width) * 4;
 
-            flipped_data[output_index + 0] = image.data().data()[input_index + 0];
-            flipped_data[output_index + 1] = image.data().data()[input_index + 1];
-            flipped_data[output_index + 2] = image.data().data()[input_index + 2];
-            flipped_data[output_index + 3] = 255;
+    if (flip_y)
+    {
+        for (int y = 0; y < image.height; y++)
+        {
+            for (int x = 0; x < image.width; x++)
+            {
+                int input_index = (x + y * image.width) * image.channels;
+                int output_index = (x + (image.height - 1 - y) * image.width) * 4;
+
+                flipped_data[output_index + 0] = image.data().data()[input_index + 0];
+                flipped_data[output_index + 1] = image.data().data()[input_index + 1];
+                flipped_data[output_index + 2] = image.data().data()[input_index + 2];
+                flipped_data[output_index + 3] = 255;
+            }
         }
     }
+    else
+        flipped_data = image.data();
 
     copy_u8_image_data_to_clipboard(flipped_data, image.width, image.height);
 }
 
-void Utils::copy_image_to_clipboard(const Image32Bit& image)
+void Utils::copy_image_to_clipboard(const Image32Bit& image, bool flip_y)
 {
     std::vector<unsigned char> image_data_8u(image.width * image.height * 4);
     for (int y = 0; y < image.height; y++)

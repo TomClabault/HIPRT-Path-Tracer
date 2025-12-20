@@ -57,6 +57,7 @@ public:
 	void draw_log_window();
 
 	ImGuiRenderWindow& get_imgui_render_window();
+	ImGuiToolsWindow& get_imgui_tools_window();
 
 private:
 	ImGuiID m_dock_id_left;
