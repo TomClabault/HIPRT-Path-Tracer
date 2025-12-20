@@ -38,11 +38,21 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
 	float& out_coat_proba, float& out_metallic_proba, float& out_specular_proba)
 {
-	float coat_weight = material.coat;
+	float coat_weight = 0.0f;
+	if (material.coat_roughness <= render_data.bsdfs_data.ltcs_data.specular_ltc_maximum_roughness && material.coat > 0.0f)
+	{
+		float coat_reflected_radiance_triangle_ltc = evaluate_ltc(render_data,
+			vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
+			shading_point, view_direction, shading_normal,
+			material, LTCLobe::COAT_LOBE) * triangle_emission.luminance();
+
+		coat_weight = material.coat * coat_reflected_radiance_triangle_ltc;
+	}
+
 	float metallic_weight = material.metallic;
 	float specular_weight = 0.0f;
 
-	if (material.roughness <= render_data.bsdfs_data.ltcs_data.specular_ltc_maximum_roughness)
+	if (material.roughness <= render_data.bsdfs_data.ltcs_data.specular_ltc_maximum_roughness && material.specular > 0.0f)
 	{
 		float specular_radiance_triangle_ltc = evaluate_ltc(render_data,
 			vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
