@@ -39,7 +39,6 @@ struct projected_solid_angle_triangle_t
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	// LTC lobe sampled during the preparation of the projected solid angle triangle
 	LTCLobe ltc_lobe;
-	float ltc_lobe_pdf;
 #endif
 
 	// Utilitary functions that I found to be faster than indexing in arrays
@@ -451,7 +450,7 @@ UNROLL_LOOP
 HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(const HIPRTRenderData& render_data,
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
 	float3 shading_point, float3 view_direction, float3 shading_normal,
-	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe, float ltc_lobe_pdf)
+	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	/**
@@ -498,7 +497,6 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	projected_solid_angle_triangle_t prepared_triangle = prepare_projected_solid_angle_triangle_sampling(clipped_vertex_count, vertices_local_space);
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	prepared_triangle.ltc_lobe = ltc_lobe;
-	prepared_triangle.ltc_lobe_pdf = ltc_lobe_pdf;
 #endif
 
 	return prepared_triangle;
@@ -510,22 +508,21 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material, Xorshift32Generator& rng)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
-	float ltc_lobe_pdf;
-	LTCLobe ltc_lobe = ltc_lobe_sample(ltc_lobe_probabilities, rng, ltc_lobe_pdf);
+	LTCLobe ltc_lobe = ltc_lobe_sample(ltc_lobe_probabilities, rng);
 
 	return prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal,
-		material, ltc_lobe, ltc_lobe_pdf);
+		material, ltc_lobe);
 #else
 	return prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal,
 		material, 
-		// Not using LTCs, we don't care about these 2 parameters, just setting some defaults
-		LTCLobe::DIFFUSE_LOBE, 1.0f);
+		// Not using LTCs, we don't care about the lobe parameter, just using diffuse as default
+		LTCLobe::DIFFUSE_LOBE);
 #endif
 }
 
@@ -573,7 +570,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal,
-		material, ltc_lobe, ltc_lobe_pdf).projected_solid_angle;
+		material, ltc_lobe).projected_solid_angle;
 	
 	if (projected_solid_angle == 0.0f)
 		// The whole polygon is below the hemisphere, clipping returned 0 vertices
@@ -614,7 +611,10 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 
 	// For each lobe, if we already have the projected solid angle in cosine space,
 	// then we don't have to recompute it (if branch).
+	// 
 	// Otherwise, we compute it from world space (else branch)
+	//
+	// This avoids recomputing the projected solid angle when we already have it and it's a bit faster
 	if (ltc_lobe == LTCLobe::COAT_LOBE)
 		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
 			triangle_projected_solid_angle, NoL,

@@ -49,9 +49,10 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 		vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
 		shading_point, view_direction, shading_normal,
 		material, LTCLobe::DIFFUSE_LOBE) * triangle_emission.luminance();
-	float avg_fresnel = average_fresnel_fit(hippt::dot(view_direction, shading_normal), material.roughness, material.ior);
+	
 	float specular_weight = (1.0f - material.metallic) * material.specular * specular_radiance_triangle_ltc;
-	float diffuse_weight = material.base_color.luminance() * (1.0f - avg_fresnel) * diffuse_radiance_triangle_ltc;
+	float diffuse_weight = material.base_color.luminance() * (1.0f - average_fresnel_fit(hippt::dot(view_direction, shading_normal), material.roughness, material.ior)) * diffuse_radiance_triangle_ltc;
+
 	if (coat_weight + metallic_weight + specular_weight + diffuse_weight == 0.0f)
 		// All lobes have 0 weight, this is the perfect only-diffuse-lobe case
 		diffuse_weight = 1.0f;
@@ -95,7 +96,7 @@ HIPRT_DEVICE LTCLobeSampleProbabilities ltc_lobe_probas(const HIPRTRenderData& r
  * point would require multiple shadow rays so instead we sample only one lobe
  * stochastically, essentially a one-sample-estimator.
  */
-HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabilities, Xorshift32Generator& rng, float& out_pdf)
+HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabilities, Xorshift32Generator& rng)
 {
 #if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
 	out_pdf = 1.0f;
@@ -111,32 +112,13 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabiliti
 	float random_number = rng();
 
 	if (random_number < cdf[0])
-	{
-		// Coat lobe
-		out_pdf = lobe_probabilities.coat_proba;
-
 		return LTCLobe::COAT_LOBE;
-	}
 	else if (random_number < cdf[1])
-	{
-		// Metallic lobe
-		out_pdf = lobe_probabilities.metallic_proba;
-
 		return LTCLobe::METALLIC_LOBE;
-	}
 	else if (random_number < cdf[2])
-	{
-		// Specular lobe
-		out_pdf = lobe_probabilities.specular_proba;
 		return LTCLobe::SPECULAR_LOBE;
-	}
 	else
-	{
-		// Diffuse lobe
-		out_pdf = 1.0f - cdf[2];
-
 		return LTCLobe::DIFFUSE_LOBE;
-	}
 }
 
 HIPRT_DEVICE float ltc_lobe_eval_pdf(LTCLobeSampleProbabilities lobe_probabilities, LTCLobe lobe)

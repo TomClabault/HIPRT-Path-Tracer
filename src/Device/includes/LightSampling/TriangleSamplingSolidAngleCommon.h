@@ -49,6 +49,12 @@ HIPRT_DEVICE float positive_atan(float tangent)
 HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_direction, float3 vertex_A, float3 triangle_normal, float3 shading_point,
 	float pdf_solid_angle, float& out_pdf_area)
 {
+	if (pdf_solid_angle == 0.0f)
+	{
+		out_pdf_area = 0.0f;
+
+		return make_float3(0.0f, 0.0f, 0.0f);
+	}
 	float3 v0_rel = vertex_A - shading_point;
 	float denom = hippt::dot(sampled_solid_angle_direction, triangle_normal);
 

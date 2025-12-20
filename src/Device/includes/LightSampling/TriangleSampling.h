@@ -95,7 +95,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
     out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(render_data,
         vertex_A, vertex_B, vertex_C, normal, 
         shading_point, view_direction, shading_normal,
-        material,
+        triangle_emission, material,
         out_point_pdf, rng);
 #elif TrianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
     float solid_angle = triangle_solid_angle(vertex_A, vertex_B, vertex_C, shading_point);
@@ -114,12 +114,19 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
         out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(render_data,
 			vertex_A, vertex_B, vertex_C, normal,
             shading_point, view_direction, shading_normal, 
-            material,
+            triangle_emission, material,
             out_point_pdf, rng);
 #endif
 
     return out_point_pdf != 0.0f;
 }
+
+template <int trianglePointSamplingStrategy = TrianglePointSamplingStrategy>
+HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& render_data,
+    float3 shading_point, float3 view_direction, float3 shading_normal,
+    const DeviceUnpackedEffectiveMaterial& material,
+    float3 point_on_triangle, float3 triangle_normal,
+    int emissive_triangle_global_index, float light_area);
 
 /**
  * From a triangle index, samples uniformly a point on the triangle and fills a LightSampleInformation
@@ -148,12 +155,20 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
         random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
         return LightSampleInformation();
 
+    // No LTC:
+    // 0.00652452465
+    // {x=-0.741899908 y=3.34238505 z=-4.73415279 }
     light_sample.emissive_triangle_global_index = global_triangle_index;
     light_sample.light_source_normal = sampled_triangle_normal;
     light_sample.light_area = sampled_triangle_area;
     light_sample.emission = triangle_emission;
     light_sample.point_on_light = random_point_on_triangle;
     light_sample.area_measure_pdf = sampled_point_pdf;
+
+    float pdf = pdf_of_point_on_triangle_area_measure(render_data,
+		shading_point, view_direction, shading_normal,
+        material, random_point_on_triangle, sampled_triangle_normal,
+		global_triangle_index, sampled_triangle_area);
 
     return light_sample;
 }

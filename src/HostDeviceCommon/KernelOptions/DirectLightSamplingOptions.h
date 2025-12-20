@@ -143,7 +143,7 @@
  * 
  * Warning: LTC-based sampling may be slightly biased due to the BRDF approximation error of LTCs.
  */
-#define TrianglePointSamplingStrategySolidAngleUseLTC KERNEL_OPTION_TRUE
+#define TrianglePointSamplingStrategySolidAngleUseLTC KERNEL_OPTION_FALSE
 
  /**
   * How to randomly sample a point on a triangle
