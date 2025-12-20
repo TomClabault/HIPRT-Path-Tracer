@@ -184,6 +184,11 @@
 #define PrincipledBSDFSampleCoatBasedOnFresnel KERNEL_OPTION_TRUE
 
 /**
+ * If true, the diffuse lobe sampling probability will be additionally weighted by its luminance
+ */
+#define PrincipledBSDFSampleDiffuseLuminance KERNEL_OPTION_TRUE
+
+/**
  * Implementation of [Microfacet Model Regularization for Robust Light Transport, Jendersie et al. 2019]
  * for regularizing (roughening) microfacet materials and help with caustics rendering
  */

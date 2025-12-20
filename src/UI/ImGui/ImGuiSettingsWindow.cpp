@@ -1812,6 +1812,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
+				bool luminance_sampling = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_DIFFUSE_LUMINANCE);
+				if (ImGui::Checkbox("Luminance sampling", &luminance_sampling))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_DIFFUSE_LUMINANCE, luminance_sampling? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("If true, the diffuse lobe sampling probability will be additionally weighted by its luminance.");
+
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::TreePop();
 			}

@@ -1566,6 +1566,10 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
     float& out_specular_sampling_proba, float& out_diffuse_sampling_proba,
     float& out_glass_sampling_proba, float& out_diffuse_transmission_sampling_proba)
 {
+#if PrincipledBSDFSampleDiffuseLuminance == KERNEL_OPTION_TRUE
+    diffuse_weight *= material.base_color.luminance();
+#endif
+
 #if PrincipledBSDFSampleGlossyBasedOnFresnel == KERNEL_OPTION_TRUE
     // Adjusting the probability of sampling the diffuse or specular lobe based on the
     // fresnel of the specular lobe
