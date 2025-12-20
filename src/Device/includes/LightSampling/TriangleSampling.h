@@ -110,12 +110,7 @@ HIPRT_DEVICE bool sample_point_on_generic_triangle(const HIPRTRenderData& render
             triangle_emission, material,
             out_point_pdf, rng);
     else
-        // Otherwise it's not worth it and we can use the cheap solid angle (not projected) sampling
-        out_sample_point = sample_point_on_triangle_solid_angle_peters_2021(render_data,
-			vertex_A, vertex_B, vertex_C, normal,
-            shading_point, view_direction, shading_normal, 
-            triangle_emission, material,
-            out_point_pdf, rng);
+        out_sample_point = sample_point_on_triangle_uniform_area(vertex_A, AB, AC, out_triangle_area, rng, out_point_pdf);
 #endif
 
     return out_point_pdf != 0.0f;
