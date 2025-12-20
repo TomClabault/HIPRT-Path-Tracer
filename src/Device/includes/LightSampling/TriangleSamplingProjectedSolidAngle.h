@@ -18,6 +18,8 @@
  * [BRDF Importance Sampling for Polygonal Lights, 2021]
  */
 
+#define MANUAL_UNROLL_LOOPS KERNEL_OPTION_FALSE
+
  /*! This structure carries intermediate results that only need to be computed
 	once per polygon and shading point to take samples proportional to
 	projected solid angle.*/
@@ -369,7 +371,45 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 
 	float2 previous_ellipse = polygon.get_ellipse(0);
 
-UNROLL_LOOP
+#if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
+	do
+	{
+		float2 ellipse;
+		bool ellipse_inner;
+
+		// i == 1
+		polygon.get_vertex(1) = make_float2(vertices_clockwise_order[1].x, vertices_clockwise_order[1].y);
+		ellipse = ellipse_from_edge(vertices_clockwise_order[1], vertices_clockwise_order[(1 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
+		ellipse_inner = is_inner_ellipse(ellipse);
+		// If the edge is an inner edge, the order is going to flip
+		polygon.get_ellipse(1) = ellipse_inner ? previous_ellipse : ellipse;
+		// In doing so, we drop one ellipse, unless we store it explicitly
+		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
+		previous_ellipse = ellipse;
+
+		// i == 2
+		polygon.get_vertex(2) = make_float2(vertices_clockwise_order[2].x, vertices_clockwise_order[2].y);
+		ellipse = ellipse_from_edge(vertices_clockwise_order[2], vertices_clockwise_order[(2 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
+		ellipse_inner = is_inner_ellipse(ellipse);
+		// If the edge is an inner edge, the order is going to flip
+		polygon.get_ellipse(2) = ellipse_inner ? previous_ellipse : ellipse;
+		// In doing so, we drop one ellipse, unless we store it explicitly
+		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
+		previous_ellipse = ellipse;
+
+		// i == 3
+		polygon.get_vertex(3) = make_float2(vertices_clockwise_order[3].x, vertices_clockwise_order[3].y);
+		if (3 == polygon.vertex_count) 
+			break;
+		ellipse = ellipse_from_edge(vertices_clockwise_order[3], vertices_clockwise_order[(3 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
+		ellipse_inner = is_inner_ellipse(ellipse);
+		// If the edge is an inner edge, the order is going to flip
+		polygon.get_ellipse(3) = ellipse_inner ? previous_ellipse : ellipse;
+		// In doing so, we drop one ellipse, unless we store it explicitly
+		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
+		previous_ellipse = ellipse;
+	} while (false);
+#else
 	for (unsigned int i = 1; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 	{
 		polygon.get_vertex(i) = make_float2(vertices_clockwise_order[i].x, vertices_clockwise_order[i].y);
@@ -382,6 +422,7 @@ UNROLL_LOOP
 		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
 		previous_ellipse = ellipse;
 	}
+#endif
 
 	// Same thing for the first vertex (i.e. here we close the loop)
 	float2 ellipse = polygon.get_ellipse(0);
@@ -396,13 +437,39 @@ UNROLL_LOOP
 	{
 		// In the central case, we have polygon.vertex_count sectors, each
 		// bounded by a single ellipse
-UNROLL_LOOP
+
+#if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
+		do
+		{
+			// i == 0
+			if (0 > 2 && 0 == polygon.vertex_count) break;
+			polygon.sector_projected_solid_angles[0] = get_ellipse_area_in_sector(polygon.get_ellipse(0), polygon.get_vertex(0), polygon.get_vertex((0 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[0];
+
+			// i == 1
+			if (1 > 2 && 1 == polygon.vertex_count) break;
+			polygon.sector_projected_solid_angles[1] = get_ellipse_area_in_sector(polygon.get_ellipse(1), polygon.get_vertex(1), polygon.get_vertex((1 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[1];
+
+			// i == 2
+			if (2 > 2 && 2 == polygon.vertex_count) break;
+			polygon.sector_projected_solid_angles[2] = get_ellipse_area_in_sector(polygon.get_ellipse(2), polygon.get_vertex(2), polygon.get_vertex((2 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[2];
+
+			// i == 3
+			if (3 > 2 && 3 == polygon.vertex_count) break;
+			polygon.sector_projected_solid_angles[3] = get_ellipse_area_in_sector(polygon.get_ellipse(3), polygon.get_vertex(3), polygon.get_vertex((3 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[3];
+
+		} while (false);
+#else
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i) 
 		{
 			if (i > 2 && i == polygon.vertex_count) break;
 			polygon.sector_projected_solid_angles[i] = get_ellipse_area_in_sector(polygon.get_ellipse(i), polygon.get_vertex(i), polygon.get_vertex((i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[i];
 		}
+#endif
 	}
 	else 
 	{
@@ -416,7 +483,57 @@ UNROLL_LOOP
 		float2 outer_ellipse = make_float2(0.0f, 0.0f);
 		float outer_rsqrt_det = 0.0f;
 
-UNROLL_LOOP
+#if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
+		do
+		{
+			float2 vertex_ellipse;
+			bool vertex_inner;
+			float vertex_rsqrt_det;
+
+			//i == 0
+			if (0 > 1 && 0 + 1 == polygon.vertex_count) break;
+
+			vertex_ellipse = polygon.get_ellipse(0);
+			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
+			outer_ellipse = vertex_ellipse;
+			outer_rsqrt_det = vertex_rsqrt_det;
+
+			polygon.sector_projected_solid_angles[0] = get_area_between_ellipses_in_sector(
+				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(0), polygon.get_vertex(0 + 1));
+			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[0];
+
+			// i == 1
+			if (1 > 1 && 1 + 1 == polygon.vertex_count) break;
+
+			vertex_ellipse = polygon.get_ellipse(1);
+			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
+			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
+			inner_rsqrt_det = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
+			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
+			outer_rsqrt_det = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
+
+			polygon.sector_projected_solid_angles[1] = get_area_between_ellipses_in_sector(
+				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(1), polygon.get_vertex(1 + 1));
+			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[1];
+
+			// i == 2
+			if (2 > 1 && 2 + 1 == polygon.vertex_count) break;
+
+			vertex_ellipse = polygon.get_ellipse(2);
+			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
+			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
+			inner_rsqrt_det = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
+			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
+			outer_rsqrt_det = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
+
+			polygon.sector_projected_solid_angles[2] = get_area_between_ellipses_in_sector(
+				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(2), polygon.get_vertex(2 + 1));
+			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[2];
+		} while (false);
+#else
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; ++i)
 		{
 			if (i > 1 && i + 1 == polygon.vertex_count) break;
@@ -442,6 +559,7 @@ UNROLL_LOOP
 				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(i), polygon.get_vertex(i + 1));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[i];
 		}
+#endif
 	}
 
 	return polygon;
@@ -838,7 +956,6 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	float inner_rsqrt_det = get_ellipse_rsqrt_det(inner_ellipse);
 	float outer_rsqrt_det = get_ellipse_rsqrt_det(outer_ellipse);
 
-UNROLL_LOOP
 	for (unsigned int i = 0; i < iteration_count; i++)
 	{
 		// Avoid under- or overflow and flip the sign so that the clamping to
@@ -917,7 +1034,38 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 	if (is_central_case(polygon)) 
 	{
 		// Select a sector and copy the relevant attributes
-UNROLL_LOOP
+#if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
+		do
+		{
+			// i == 0
+			outer_ellipse = polygon.get_ellipse(0);
+			dir_0 = polygon.get_vertex(0);
+			if (target_projected_solid_angle < polygon.sector_projected_solid_angles[0])
+				break;
+
+			// i == 1
+			target_projected_solid_angle -= polygon.sector_projected_solid_angles[1 - 1];
+
+			outer_ellipse = polygon.get_ellipse(1);
+			dir_0 = polygon.get_vertex(1);
+			if ((1 >= 2 && 1 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[1])
+				break;
+
+			// i == 2
+			target_projected_solid_angle -= polygon.sector_projected_solid_angles[2 - 1];
+			outer_ellipse = polygon.get_ellipse(2);
+			dir_0 = polygon.get_vertex(2);
+			if ((2 >= 2 && 2 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[2])
+				break;
+
+			// i == 3
+			target_projected_solid_angle -= polygon.sector_projected_solid_angles[3 - 1];
+			outer_ellipse = polygon.get_ellipse(3);
+			dir_0 = polygon.get_vertex(3);
+			if ((3 >= 2 && 3 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[3])
+				break;
+		} while (false);
+#else
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i) 
 		{
 			if (i > 0)
@@ -928,6 +1076,7 @@ UNROLL_LOOP
 			if ((i >= 2 && i + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[i])
 				break;
 		}
+#endif
 
 		// Sample a direction within the sector
 		float sqrt_det = hippt::sqrt(get_ellipse_det(outer_ellipse));
@@ -950,7 +1099,52 @@ UNROLL_LOOP
 		float2 inner_ellipse = polygon.inner_ellipse_0;
 		float2 dir_1 = make_float2(0.0f, 0.0f);
 
-UNROLL_LOOP
+#if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
+		do
+		{
+			float2 vertex_ellipse;
+			bool vertex_inner;
+
+			// i == 0
+			vertex_ellipse = polygon.get_ellipse(0);
+			outer_ellipse = vertex_ellipse;
+
+			dir_0 = polygon.get_vertex(0);
+			dir_1 = polygon.get_vertex(0 + 1);
+			sector_projected_solid_angle = polygon.sector_projected_solid_angles[0];
+
+			if ((0 >= 1 && 0 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
+				break;
+
+			// i == 1
+			vertex_ellipse = polygon.get_ellipse(1);
+			target_projected_solid_angle -= polygon.sector_projected_solid_angles[1 - 1];
+			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
+			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
+
+			dir_0 = polygon.get_vertex(1);
+			dir_1 = polygon.get_vertex(1 + 1);
+			sector_projected_solid_angle = polygon.sector_projected_solid_angles[1];
+
+			if ((1 >= 1 && 1 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
+				break;
+
+			// i == 2
+			vertex_ellipse = polygon.get_ellipse(2);
+			target_projected_solid_angle -= polygon.sector_projected_solid_angles[2 - 1];
+			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
+			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
+
+			dir_0 = polygon.get_vertex(2);
+			dir_1 = polygon.get_vertex(2 + 1);
+			sector_projected_solid_angle = polygon.sector_projected_solid_angles[2];
+
+			if ((2 >= 1 && 2 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
+				break;
+		} while (false);
+#else
 		for (unsigned int i = 0; i < MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; i++) 
 		{
 			float2 vertex_ellipse = polygon.get_ellipse(i);
@@ -972,6 +1166,7 @@ UNROLL_LOOP
 			if ((i >= 1 && i + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
 				break;
 		}
+#endif
 
 		// Sample it
 		rand_1 = target_projected_solid_angle / sector_projected_solid_angle;

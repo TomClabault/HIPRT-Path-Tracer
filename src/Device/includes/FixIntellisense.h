@@ -32,7 +32,6 @@
 #define UNROLL_STR(x) UNROLL_STR2(x)
 #define UNROLL_PRAGMA(x) _Pragma(UNROLL_STR(x))
 #define UNROLL_LOOP         UNROLL_PRAGMA(unroll)
-#define UNROLL_LOOP_N(n)    UNROLL_PRAGMA(unroll n)
 #else
 
 struct dummyVec3
@@ -48,7 +47,6 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define __restrict__
 
 #define UNROLL_LOOP
-#define UNROLL_LOOP_N(n)
 
 // TODO move all of this in Math.h
 inline void __syncthreads() {}

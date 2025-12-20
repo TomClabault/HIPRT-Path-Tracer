@@ -87,7 +87,7 @@
 *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
 *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
 */
-#define DirectLightSamplingStrategy LSS_ONE_LIGHT
+#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
 * How to sample lights in the scene.
@@ -131,7 +131,7 @@
  *		variance. Takes the cosine term at the shading point into account 
  *		on top of the geometry term.
  */
-#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE
+#define TrianglePointSamplingStrategy TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE
 
 /**
  * If true, the LTC-based method from [BRDF Importance Sampling for Polygonal Lights, Peters 2021] will be used
