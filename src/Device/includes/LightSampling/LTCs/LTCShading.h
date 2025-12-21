@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LTCS_LTCSHADING_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_LTCS_LTCSHADING_H
 
+#include "Device/includes/BSDFs/Fresnel.h"
 #include "Device/includes/LightSampling/LTCs/LTCReadParams.h"
 #include "Device/includes/LightSampling/LTCs/LTCTransform.h"
 #include "Device/includes/LightSampling/TriangleSamplingPolygonClipping.h"
