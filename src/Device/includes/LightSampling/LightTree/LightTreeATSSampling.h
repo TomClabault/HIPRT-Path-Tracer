@@ -198,7 +198,7 @@ HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& no
 
 struct LightTreeATSWRSReservoir
 {
-	HIPRT_DEVICE float compute_light_sample_weight(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, 
+	HIPRT_DEVICE float compute_light_sample_weight(const HIPRTRenderData& render_data, const LightSamplePointInformation& light_sample, 
 		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
 		int last_hit_primitive_index, RayPayload& ray_payload,
 		Xorshift32Generator& rng)
@@ -264,7 +264,7 @@ struct LightTreeATSWRSReservoir
 		return 0.0f;
 	}
 
-	HIPRT_DEVICE bool stream_sample(const HIPRTRenderData& render_data, const LightSampleInformation& light_sample, 
+	HIPRT_DEVICE bool stream_sample(const HIPRTRenderData& render_data, const LightSamplePointInformation& light_sample, 
 		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
 		int last_hit_primitive_index, RayPayload& ray_payload, 
 		Xorshift32Generator& rng)
@@ -278,7 +278,7 @@ struct LightTreeATSWRSReservoir
 		if (rng() < light_sample_weight / weight_sum)
 		{
 			selected_sample_weight = light_sample_weight;
-			selected_light_sample = light_sample;
+			selected_light_index = light_sample.emissive_triangle_global_index;
 
 			return true;
 		}
@@ -289,11 +289,12 @@ struct LightTreeATSWRSReservoir
 	float weight_sum = 0.0f;
 
 	float selected_sample_weight = 0.0f;
-	LightSampleInformation selected_light_sample;
+	float selected_light_pdf = 0.0f;
+	int selected_light_index = -1;
 };
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal, 
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
@@ -366,13 +367,10 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 			}
 			else
 			{
+				// Variance threshold cool, picking a light from this sub tree
 				light_samples_counter++;
 
 				node_indices_to_be_traversed[node_indices_to_be_traversed_sp++] = node_index;
-				// Variance threshold cool, picking a light from this sub tree
-
-				// Keep the node in the stack or something
-				// ......
 			}
 		}
 	}
@@ -423,16 +421,17 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 			int triangle_index = render_data.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, 
+			LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(render_data, 
 				shading_point, view_direction, shading_normal,
 				ray_payload.material,
 				emissive_triangle_index, rng);
 			light_sample.area_measure_pdf *= cumulative_probability;
 			light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
 
-			wrs.stream_sample(render_data, light_sample,
+			if (wrs.stream_sample(render_data, light_sample,
 				shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload,
-				rng);
+				rng))
+				wrs.selected_light_pdf = cumulative_probability / current_node.triangle_count;
 		}
 
 		// We have found a good node in this tree
@@ -478,31 +477,33 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 
 		if (cumulative_probability != -1.0f)
 		{
+			// We have found a good node in this tree
+
 			int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
 			int triangle_index = render_data.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-			LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, 
+			LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(render_data, 
 				shading_point, view_direction, shading_normal,
 				ray_payload.material,
 				emissive_triangle_index, rng);
 			light_sample.area_measure_pdf *= cumulative_probability;
 			light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
 
-			wrs.stream_sample(render_data, light_sample,
+			if (wrs.stream_sample(render_data, light_sample,
 				shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload,
-				rng);
+				rng))
+				wrs.selected_light_pdf = cumulative_probability / current_node.triangle_count;
 		}
-
-		// We have found a good node in this tree
 	}
 
-	LightSampleInformation& final_light_sample = wrs.selected_light_sample;
-	if (final_light_sample.emissive_triangle_global_index == -1)
+	if (wrs.selected_light_index == -1)
 		return LightSampleInformation();
 
-	float light_sample_wrs_PDF = wrs.selected_sample_weight / wrs.weight_sum;
-	final_light_sample.area_measure_pdf *= light_sample_wrs_PDF;
+	LightSampleInformation final_light_sample;
+	final_light_sample.emissive_triangle_global_index = wrs.selected_light_index;
+	final_light_sample.pdf = wrs.selected_sample_weight / wrs.weight_sum;
+	final_light_sample.pdf *= wrs.selected_light_pdf;
 
 	return final_light_sample;
 }
@@ -550,12 +551,9 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 	int triangle_index = render_data.light_tree_ats.indices_array[index];
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data,
-		shading_point, view_direction, shading_normal,
-		ray_payload.material,
-		emissive_triangle_index, rng);
-	light_sample.area_measure_pdf *= cumulative_probability;
-	light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
+	LightSampleInformation light_sample;
+	light_sample.emissive_triangle_global_index = emissive_triangle_index;
+	light_sample.pdf = cumulative_probability * (1.0f / current_node.triangle_count); // Sampling that triangle in that node
 
 	return light_sample;
 }

@@ -9,7 +9,7 @@
 #include "Device/includes/ReSTIR/ReGIR/ShadingLightDistributions.h"
 #include "Device/includes/ReSTIR/ReGIR/ShadingPairwiseMIS.h"
 
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_selected_sample_radiance(
+HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with_selected_sample_radiance(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
@@ -29,7 +29,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_sele
     {
         out_need_fallback_sampling = true;
 
-        return LightSampleInformation();
+        return LightSamplePointInformation();
     }
     else
         out_need_fallback_sampling = false;
@@ -42,13 +42,13 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_sele
     reservoir.finalize_resampling(1.0f, 1.0f);
 
     if (reservoir.sample.emissive_triangle_global_index == -1)
-        return LightSampleInformation();
+        return LightSamplePointInformation();
 
     float3 normal = triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index);
     float area = hippt::length(normal) * 0.5f;
     normal = hippt::normalize(normal);
 
-    LightSampleInformation out_sample2;
+    LightSamplePointInformation out_sample2;
     out_sample2.area_measure_pdf = 1.0f / reservoir.UCW;
     out_sample2.emission = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
     out_sample2.emissive_triangle_global_index = reservoir.sample.emissive_triangle_global_index;
@@ -190,7 +190,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_sele
             }
 
 #if ReGIR_ShadingResamplingCanonicalCandidatesLightTreeATS == KERNEL_OPTION_TRUE
-            LightSampleInformation canonical_sample = sample_one_emissive_triangle_light_tree_ats(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
+            LightSamplePointInformation canonical_sample = sample_one_emissive_triangle_light_tree_ats(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, random_number_generator);
             if (canonical_sample.emissive_triangle_global_index != -1)
             {
                 UCW_2 = 1.0f / canonical_sample.area_measure_pdf;
@@ -285,7 +285,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_sele
         // The center grid cell is invalid (must be because of hash grid collisions that couldn't be resolved)
         out_need_fallback_sampling = true;
 
-        return LightSampleInformation();
+        return LightSamplePointInformation();
     }
 
     for (int neighbor = 0; neighbor < regir_settings.shading_settings.number_of_neighbors; neighbor++)
@@ -494,11 +494,11 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_sele
 
 
     if (out_reservoir.weight_sum == 0.0f || out_need_fallback_sampling)
-        return LightSampleInformation();
+        return LightSamplePointInformation();
 
     out_reservoir.finalize_resampling(1.0f, 1.0f);
 
-    LightSampleInformation out_sample;
+    LightSamplePointInformation out_sample;
 
     // The UCW is the inverse of the PDF but we expect the PDF to be in 'area_measure_pdf', not the inverse PDF (UCW), so we invert it
     out_sample.area_measure_pdf = 1.0f / out_reservoir.UCW;
@@ -516,7 +516,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir_with_sele
 #endif
 }
 
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_regir(
+HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(
     const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,

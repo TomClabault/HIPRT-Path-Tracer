@@ -58,7 +58,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
             if (invalid_sample || non_canonical_reservoir.UCW <= 0.0f)
                 continue;
 
-            LightSampleInformation light_sample;
+            LightSamplePointInformation light_sample;
             light_sample.area_measure_pdf = 1.0f / non_canonical_reservoir.UCW;
             light_sample.emission = triangle_load_emission(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
             light_sample.emissive_triangle_global_index = non_canonical_reservoir.sample.emissive_triangle_global_index;
@@ -91,7 +91,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
             if (invalid_sample || canonical_reservoir.UCW <= 0.0f)
                 continue;
 
-            LightSampleInformation light_sample;
+            LightSamplePointInformation light_sample;
             light_sample.area_measure_pdf = 1.0f / canonical_reservoir.UCW;
             light_sample.emission = triangle_load_emission(render_data, canonical_reservoir.sample.emissive_triangle_global_index);
             light_sample.emissive_triangle_global_index = canonical_reservoir.sample.emissive_triangle_global_index;

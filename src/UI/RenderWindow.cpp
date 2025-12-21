@@ -278,7 +278,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODOs  performance improvements branch:
-// - Pack stuff in LightSampleInformation
+// - Pack stuff in LightSamplePointInformation
 // - Pass is_srgb as template parameter to texture sample function to avoid the register cost of the pow() call enclosed in a simple if()
 // - Remove all raw cos() and sin() calls (we've got some in microfacet.h)
 // - Cache we maybe have some kind of adaptive sampling for the lighting at the priamry hit? So like run ReSTIR DI or something until some variance is reached for DI and then stop sampling DI and only sample DI

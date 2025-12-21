@@ -124,18 +124,21 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
     int emissive_triangle_global_index, float light_area);
 
 /**
- * From a triangle index, samples uniformly a point on the triangle and fills a LightSampleInformation
+ * From a triangle index, samples uniformly a point on the triangle and fills a LightSamplePointInformation
  * structure with the information (normal, area, emission, ...) of the triangle
  *
- * The PDF field of the LightSampleInformation is only field with the probability of sampling the
+ * The PDF field of the LightSamplePointInformation is only field with the probability of sampling the
  * point on the triangle. The rest of the PDF must be computed by the caller
  */
-HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_light_sample_information(const HIPRTRenderData& render_data, 
-    float3 shading_point, float3 view_direction, float3 shading_normal, 
+HIPRT_DEVICE LightSamplePointInformation sample_point_on_light_and_fill_light_sample_information(const HIPRTRenderData& render_data,
+    float3 shading_point, float3 view_direction, float3 shading_normal,
     const DeviceUnpackedEffectiveMaterial& material,
     int global_triangle_index, Xorshift32Generator& rng)
 {
-    LightSampleInformation light_sample;
+    if (global_triangle_index == -1)
+        return LightSamplePointInformation();
+
+    LightSamplePointInformation light_sample;
 
     float sampled_point_pdf;
     float sampled_triangle_area;
@@ -148,7 +151,7 @@ HIPRT_DEVICE LightSampleInformation sample_point_on_generic_triangle_and_fill_li
         material,
         global_triangle_index, triangle_emission, rng,
         random_point_on_triangle, sampled_triangle_normal, sampled_triangle_area, sampled_point_pdf))
-        return LightSampleInformation();
+        return LightSamplePointInformation();
 
     light_sample.emissive_triangle_global_index = global_triangle_index;
     light_sample.light_source_normal = sampled_triangle_normal;

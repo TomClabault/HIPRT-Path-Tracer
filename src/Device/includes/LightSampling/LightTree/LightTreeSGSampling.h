@@ -189,12 +189,9 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	int triangle_index = render_data.light_tree_sg.indices_array[index];
 	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-	LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, 
-		shading_point, view_direction, shading_normal,
-		material,
-		emissive_triangle_index, rng);
-	light_sample.area_measure_pdf *= cumulative_probability;
-	light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
+	LightSampleInformation light_sample;
+	light_sample.emissive_triangle_global_index = emissive_triangle_index;
+	light_sample.pdf = cumulative_probability * (1.0f / current_node.triangle_count); // Sampling that triangle in that node
 
 	return light_sample;
 }

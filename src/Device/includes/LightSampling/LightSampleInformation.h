@@ -12,7 +12,10 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
-struct LightSampleInformation
+/**
+ * Information about a light sample taken from an emissive triangle
+ */ 
+struct LightSamplePointInformation
 {
     float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
 
@@ -30,6 +33,16 @@ struct LightSampleInformation
 	// information about the lobe that was sampled.
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 #endif
+};
+
+/**
+ * Information about a sampled emissive triangle
+ */
+struct LightSampleInformation
+{
+    int emissive_triangle_global_index = -1;
+
+    float pdf = 0.0f;
 };
 
 #endif

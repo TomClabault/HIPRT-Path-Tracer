@@ -17,7 +17,7 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE LightSampleInformation grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, Xorshift32Generator& rng)
+HIPRT_DEVICE LightSamplePointInformation grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, Xorshift32Generator& rng)
 {
     RayPayload dummy_ray_payload;
     dummy_ray_payload.material.roughness = surface.cell_roughness;
@@ -29,7 +29,7 @@ HIPRT_DEVICE LightSampleInformation grid_fill_sample_canonical_candidate(const H
         surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal,
         surface.cell_primitive_index, dummy_ray_payload, rng);
 #else
-    return sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+    return sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
 #endif
 }
 
@@ -45,7 +45,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
     // Sampling some samples with per-cell light distributions
     for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
     {
-        LightSampleInformation light_sample;
+        LightSamplePointInformation light_sample;
 
         if (reservoir_is_canonical)
 			light_sample = grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
@@ -115,7 +115,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillCellDistributionsCanonicalSampleCount; light_sample_index++)
         {
             unsigned int sampled_mesh_index;
-            LightSampleInformation light_sample = grid_fill_cell_light_distributions_canonical_sample(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), sampled_mesh_index, rng);
+            LightSamplePointInformation light_sample = grid_fill_cell_light_distributions_canonical_sample(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), sampled_mesh_index, rng);
             if (light_sample.emissive_triangle_global_index == -1)
                 // Can happen if the triangle sampled is degenerate (for example) and thus rejected
                 // during sampling
@@ -147,7 +147,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
 
     for (int light_sample_index = 0; light_sample_index < regir_settings.get_grid_fill_settings(primary_hit).light_sample_count_per_cell_reservoir; light_sample_index++)
     {
-        LightSampleInformation light_sample;
+        LightSamplePointInformation light_sample;
 
         if (reservoir_is_canonical)
             light_sample = grid_fill_sample_canonical_candidate(render_data, surface, hippt::normalize(render_data.current_camera.position - surface.cell_point), rng);
@@ -158,7 +158,7 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
             dummy_ray_payload.material.metallic = surface.cell_metallic;
             dummy_ray_payload.material.specular = surface.cell_specular;
 
-            light_sample = sample_one_emissive_triangle<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(
+            light_sample = sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(
                 render_data,
                 surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
         }

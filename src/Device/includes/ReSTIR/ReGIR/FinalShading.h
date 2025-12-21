@@ -19,7 +19,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
     bool point_outside_grid = false;
 
     ColorRGB32F selected_sample_radiance;
-    LightSampleInformation light_sample = sample_one_emissive_triangle_regir_with_selected_sample_radiance(render_data,
+    LightSamplePointInformation light_sample = sample_one_emissive_triangle_regir_with_selected_sample_radiance(render_data,
         closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
         closest_hit_info.primitive_index, ray_payload,
         point_outside_grid, selected_sample_radiance, random_number_generator);
@@ -71,7 +71,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
 #endif
         
         // Fallback method as the point was outside of the ReGIR grid
-        light_sample = sample_one_emissive_triangle<ReGIR_FallbackLightSamplingStrategy>(render_data,
+        light_sample = sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);

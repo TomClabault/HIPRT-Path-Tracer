@@ -35,7 +35,7 @@ HIPRT_DEVICE ReSTIRDISample sample_fresh_light_candidate(const HIPRTRenderData& 
     {
         // Light sample
 
-        LightSampleInformation light_sample_info = sample_one_emissive_triangle(render_data, 
+        LightSamplePointInformation light_sample_info = sample_one_point_on_light(render_data, 
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);

@@ -14,7 +14,7 @@
 #include "Device/includes/ReSTIR/ReGIR/TargetFunction.h"
 #include "Device/includes/TriangleLoadUtils.h"
 
-HIPRT_DEVICE LightSampleInformation grid_fill_cell_light_distributions_canonical_sample(
+HIPRT_DEVICE LightSamplePointInformation grid_fill_cell_light_distributions_canonical_sample(
     const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, unsigned int& out_sampled_mesh_index, Xorshift32Generator& rng)
 {
     RayPayload dummy_ray_payload;
@@ -22,7 +22,7 @@ HIPRT_DEVICE LightSampleInformation grid_fill_cell_light_distributions_canonical
     dummy_ray_payload.material.metallic = surface.cell_metallic;
     dummy_ray_payload.material.specular = surface.cell_specular;
 
-    LightSampleInformation light_sample = sample_one_emissive_triangle<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, 
+    LightSamplePointInformation light_sample = sample_one_point_on_light<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, 
         surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, 
         surface.cell_primitive_index, dummy_ray_payload, rng);
     if (light_sample.emissive_triangle_global_index == -1)
@@ -33,7 +33,7 @@ HIPRT_DEVICE LightSampleInformation grid_fill_cell_light_distributions_canonical
     return light_sample;
 }
 
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light_distribution(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_with_cell_light_distribution(const HIPRTRenderData& render_data, 
     float3 shading_point, float3 view_direction, float3 shading_normal, 
     const DeviceUnpackedEffectiveMaterial& material,
     unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
@@ -46,7 +46,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light
         // No light distribution available for that cell. This can happen if new cells have been discovered
         // by rays bouncing around but we haven't recomputed light distributions yet
 
-        LightSampleInformation fallback_needed;
+        LightSamplePointInformation fallback_needed;
         fallback_needed.emissive_triangle_global_index = REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK;
 
         return fallback_needed;
@@ -58,7 +58,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light
     if (mesh_PDF == 0.0f)
         // No valid mesh for this cell, early exit by returning
         // an empty sample
-        return LightSampleInformation();
+        return LightSamplePointInformation();
 
     EmissiveMeshAliasTableDevice mesh_alias_table = render_data.buffers.emissive_meshes_data.get_emissive_mesh_alias_table(emissive_mesh_index);
 
@@ -67,13 +67,13 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_with_cell_light
     float triangle_PDF;
     int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, triangle_PDF);
 
-    LightSampleInformation light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, 
+    LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(render_data, 
         shading_point, view_direction, shading_normal,
         material,
         emissive_triangle_global_index, rng);
     if (light_sample.emissive_triangle_global_index == -1)
         // Probably a degenerate triangle
-        return LightSampleInformation();
+        return LightSamplePointInformation();
 
     // Area measure PDF already contains the PDF for sampling the point *on the triangle*.
     // We need to add (multiply) the PDF of sampling the triangle itself within the sampled mesh
@@ -109,7 +109,7 @@ HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderDa
     return mesh_sampling_PDF * triangle_within_mesh_sampling_PDF * point_on_triangle_PDF;
 }
 
-HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, const LightSampleInformation& light_sample, unsigned int mesh_index)
+HIPRT_DEVICE float get_cell_distribution_PDF_of_light_sample(const HIPRTRenderData& render_data, unsigned int hash_grid_cell_index, bool primary_hit, const LightSamplePointInformation& light_sample, unsigned int mesh_index)
 {
     return get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, hippt::length(triangle_load_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index) * 0.5f), light_sample.emission, mesh_index);
 }

@@ -26,7 +26,7 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
     {
         float sample_PDF;
         int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
-        LightSampleInformation mesh_light_sample = sample_point_on_generic_triangle_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+        LightSamplePointInformation mesh_light_sample = sample_point_on_light_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
         if (mesh_light_sample.emissive_triangle_global_index == -1)
             continue;
 

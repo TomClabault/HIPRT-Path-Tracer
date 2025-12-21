@@ -103,7 +103,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
     {
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
-        LightSampleInformation light_sample_info = sample_one_emissive_triangle(render_data,
+        LightSamplePointInformation light_sample_info = sample_one_point_on_light(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);

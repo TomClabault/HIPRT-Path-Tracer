@@ -43,7 +43,7 @@ struct ReGIRReservoir
 		return false;
 	}
 
-	HIPRT_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, const LightSampleInformation& light_sample, Xorshift32Generator& rng)
+	HIPRT_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, const LightSamplePointInformation& light_sample, Xorshift32Generator& rng)
 	{
 		return stream_sample_raw(mis_weight, target_function, source_pdf, light_sample.emissive_triangle_global_index, light_sample.point_on_light, rng);
 	}

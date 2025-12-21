@@ -29,7 +29,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
     if (!ray_payload.material.can_do_light_sampling())
         return ColorRGB32F(0.0f);
 
-    LightSampleInformation light_sample = sample_one_emissive_triangle(render_data, 
+    LightSamplePointInformation light_sample = sample_one_point_on_light(render_data, 
         closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
         closest_hit_info.primitive_index, ray_payload,
         random_number_generator);
@@ -129,7 +129,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
 
     if (ray_payload.material.can_do_light_sampling())
     {
-        LightSampleInformation light_sample = sample_one_emissive_triangle(render_data,
+        LightSamplePointInformation light_sample = sample_one_point_on_light(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
@@ -270,11 +270,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
     if (!ray_payload.material.can_do_light_sampling())
         return ColorRGB32F(0.0f);
 
-    LightSampleInformation light_sample = sample_one_emissive_triangle(render_data,
+    LightSampleInformation light_sample = sample_one_light(render_data,
         closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
         closest_hit_info.primitive_index, ray_payload,
         random_number_generator);
-    if (light_sample.area_measure_pdf <= 0.0f)
+    if (light_sample.pdf <= 0.0f)
         // Can happen for very small triangles or the light
         // sampling technique couldn't sample a triangle
         return ColorRGB32F(0.0f);
@@ -295,7 +295,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
         ray_payload.material,
 		LTCLobe::DIFFUSE_LOBE);
 
-    return (ColorRGB32F(specular_lobe) + diffuse_lobe * ray_payload.material.base_color) * light_sample.emission;
+	ColorRGB32F light_sample_emission = triangle_load_emission(render_data, light_sample.emissive_triangle_global_index);
+    return (ColorRGB32F(specular_lobe) + diffuse_lobe * ray_payload.material.base_color) * light_sample_emission;
 }
 
 HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
