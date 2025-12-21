@@ -37,7 +37,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 ![LayeredBSDF](README_data/img/glass-energy.png)
 ![LayeredBSDF](README_data/img/specular-diffuse-energy.png)
 ### Sampling
-- Base light sampling techniques:
+- Light sampling techniques:
 	- Uniform light sampling for direct lighting estimation + MIS
 	- Power-proportional light sampling
 	- Light hierarchies:
@@ -47,13 +47,14 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting \[[Tokuyoshi et al., 2024](https://gpuopen.com/download/Hierarchical_Light_Sampling_with_Accurate_Spherical_Gaussian_Lighting.pdf)\]
 	- ReGIR
 	- Disney's cache points Disney's Cache Points [\[Li et al., 2024\]](https://www.yiningkarlli.com/projects/cachepoints.html) (partial implementation for ReGIR)
-	- Area light sampling strategies:
+- Area light sampling strategies:
 		- Uniform area sampling
 		- Solid angle sampling [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
 		- Projected solid angle [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
 		- BSDF * (projected) solid angle product sampling with LTCs \[[Heitz et al., 2016](https://eheitzresearch.wordpress.com/415-2/)\], [\[Peters, 2021\]](https://momentsingraphics.de/Siggraph2021.html)
 	
-- Next-event estimation strategies (built on-top of base techniques):
+- NEE estimators (built on-top of base techniques):
+	- Naive NEE
 	- MIS with BSDF sampling
 	- ReGIR [\[Boksansky et al., 2021\]](https://cwyman.org/papers/rtg2-manyLightReGIR.pdf) for many-lights sampling augmented with:
 		- Representative cell surface-data + integration with NEE++ for resampling according to the product **BRDF \* L_i \* G \* V**
@@ -62,8 +63,9 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Per-cell RIS integral normalization factor pre-integration for multiple importance sampling support
 		- Hash grid
 		- The implementation is detailed in my [ReGIR blog post](https://tomclabault.github.io/blog/2025/regir/).
-	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
+	- Resampled Importance Sampling (RIS) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)with Weighted Reservoir Sampling (WRS) [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 	- ReSTIR DI
+- Other light sampling features
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.14138) + Custom envmap support
 	- NEE for HDR environment maps using:
 		- CDF-inversion & binary search
