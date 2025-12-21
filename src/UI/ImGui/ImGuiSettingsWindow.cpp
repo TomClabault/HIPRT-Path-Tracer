@@ -2900,51 +2900,6 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 				ImGui::TreePop();
 			}
 
-			static bool include_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY);
-			if (ImGui::Checkbox("Include visibility", &include_visibility))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY, include_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If true, the various light samples produced by splitting will all be \"shaded\" with visibility, which "
-				"may be very costly and inefficient on scenes where visibility isn't an issue.\n\n"
-				""
-				"If false, visibility noise won't be improved but efficiency may improve drastically depending on the scene.\n\n"
-				""
-				"Not using visibility does not introduce bias because the light tree splitting samples aren't really "
-				"shaded for real, rather, one light sample of all the split samples is chosen proportional to its "
-				"contribution. It is that contribution which includes visibility or not.");
-
-			if (include_visibility)
-			{
-				ImGui::TreePush("Visibility NEE++ ATS Splitting imgui tree");
-
-				static bool do_nee_plus_plus_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_DO_NEE_PLUS_PLUS_VISIBILITY);
-				if (ImGui::Checkbox("Use NEE++", &do_nee_plus_plus_visibility))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_DO_NEE_PLUS_PLUS_VISIBILITY, do_nee_plus_plus_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("If true, NEE++ will be used to estimate the visibility of a light sample during splitting.\n\n"
-					""
-					"If false, a full shadow ray will be used instead.");
-				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE && do_nee_plus_plus_visibility)
-				{
-					ImGuiRenderer::add_warning("NEE++ needs to be enabled to use it in ReGIR");
-
-					ImGui::TreePush("Use NEE++ ATS Tree");
-					use_nee_plus_plus_checkbox("Enable NEE++");
-					ImGuiRenderer::show_help_marker("Shortcut for enabling for enabling NEE++");
-					ImGui::TreePop();
-				}
-
-				ImGui::TreePop();
-			}
-
 			ImGui::TreePop();
 		}
 

@@ -22,65 +22,56 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 
-HIPRT_DEVICE ReSTIRDISample sample_fresh_light_candidate(const HIPRTRenderData& render_data, float envmap_candidate_probability, 
+HIPRT_DEVICE ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> sample_light_candidate_array(const HIPRTRenderData& render_data, float envmap_candidate_probability,
     const float3& view_direction, const HitInfo& closest_hit_info,
-    RayPayload& ray_payload,
-    ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, Xorshift32Generator& random_number_generator)
+    RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
 {
-    ReSTIRDISample light_sample;
+    ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> di_samples;
 
     float3 evaluated_point = closest_hit_info.inter_point;
 
     if (random_number_generator() > envmap_candidate_probability)
     {
-        // Light sample
-
-        LightSamplePointInformation light_sample_info = sample_one_point_on_light(render_data, 
+        LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> light_samples = sample_one_point_on_light(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
-        light_sample.emissive_triangle_global_index = light_sample_info.emissive_triangle_global_index;
-        light_sample.point_on_light_source = light_sample_info.point_on_light;
-        out_sample_pdf = light_sample_info.area_measure_pdf;
-
-        if (out_sample_pdf > 0.0f)
+        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
         {
-            // It can happen that the light PDF returned by the emissive triangle
-            // sampling function is 0 because of emissive triangles that are so
-            // small that we cannot compute their normal and their area (the cross
-            // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
+            LightSamplePointInformation& light_sample_info = light_samples[i];
 
-            float distance_to_light;
-            float3 to_light_direction = light_sample.point_on_light_source - evaluated_point;
-            to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
+            di_samples[i].emissive_triangle_global_index = light_sample_info.emissive_triangle_global_index;
+            di_samples[i].point_on_light_source = light_sample_info.point_on_light;
+            di_samples[i].pdf = light_sample_info.area_measure_pdf;
 
-            out_sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, to_light_direction));
             // Accounting for the probability of sampling a light, not the envmap
             // (which has probability 'envmap_candidate_probability')
-            out_sample_pdf *= (1.0f - envmap_candidate_probability);
-            out_sample_radiance = light_sample_info.emission;
+            di_samples[i].pdf *= (1.0f - envmap_candidate_probability);
+            di_samples[i].emission = light_sample_info.emission;
         }
     }
     else
     {
-        // Envmap sample
+        // Envmap samples
 
-        float3 envmap_sampled_direction;
-        out_sample_radiance = envmap_sample(render_data.world_settings, envmap_sampled_direction, out_sample_pdf, random_number_generator);
-        out_sample_cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
-
-        // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
-        // the envmap
-        out_sample_pdf *= envmap_candidate_probability;
-
-        light_sample.emissive_triangle_global_index = -1;
-        // Storing in envmap space
-        light_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, envmap_sampled_direction);
-        light_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
+        // For simplicity of implementation in the MIS weights, we're sampling the envmap as many
+		// times as we would sample lights
+        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
+        {
+            float3 envmap_sampled_direction;
+            di_samples[i].emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, di_samples[i].pdf, random_number_generator);
+            // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
+            // the envmap
+            di_samples[i].pdf *= envmap_candidate_probability;
+            di_samples[i].emissive_triangle_global_index = -1;
+            // Storing in envmap space
+            di_samples[i].point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, envmap_sampled_direction);
+            di_samples[i].flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
+        }
     }
 
-    return light_sample;
+    return di_samples;
 }
 
 HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, 
@@ -89,102 +80,106 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, co
 {
     for (int i = 0; i < nb_light_candidates; i++)
     {
-        ColorRGB32F sample_radiance;
-        float sample_cosine_term = 0.0f;
-        float light_pdf_area_measure = 0.0f;
-
-        float distance_to_light = 0.0f;
-        float3 to_light_direction{ 0.0f, 0.0f, 0.0f };
-        ReSTIRDISample light_sample = sample_fresh_light_candidate(render_data, envmap_candidate_probability, 
+        ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> di_samples = sample_light_candidate_array(render_data, envmap_candidate_probability,
             view_direction, closest_hit_info, ray_payload,
-            sample_radiance, sample_cosine_term, light_pdf_area_measure, random_number_generator);
+            random_number_generator);
 
-        if (light_sample.is_envmap_sample())
+        for (int sample_index = 0; sample_index < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); sample_index++)
         {
-            to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_sample.point_on_light_source);
-            distance_to_light = 1.0e35f;
-        }
-        else
-        {
-            to_light_direction = light_sample.point_on_light_source - closest_hit_info.inter_point;
-            to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
-        }
+            ReSTIRDIInitialSample& light_sample = di_samples[sample_index];
+            if (light_sample.emissive_triangle_global_index == -1 && !light_sample.is_envmap_sample())
+                continue; // Invalid sample
 
-        float candidate_weight = 0.0f;
-        if (sample_cosine_term > 0.0f && light_pdf_area_measure > 0.0f)
-        {
-            float bsdf_pdf_solid_angle;
-            BSDFIncidentLightInfo incident_light_info;
-            BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf_solid_angle, random_number_generator);
-
-            // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
-            ReSTIRSurface surface;
-            surface.geometric_normal = closest_hit_info.geometric_normal;
-            surface.primitive_index = closest_hit_info.primitive_index;
-            surface.material = ray_payload.material;
-            surface.ray_volume_state = ray_payload.volume_state;
-            surface.shading_normal = closest_hit_info.shading_normal;
-            surface.shading_point = closest_hit_info.inter_point;
-            surface.view_direction = view_direction;
-
-            float target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, light_sample, surface, random_number_generator);
-            float light_pdf_solid_angle;
-            if (light_sample.is_envmap_sample()) 
-                // For envmap sample, the PDF is already in solid angle
-                light_pdf_solid_angle = light_pdf_area_measure;
+            float distance_to_light;
+            float3 to_light_direction;
+            if (light_sample.is_envmap_sample())
+            {
+                to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_sample.point_on_light_source);
+                distance_to_light = 1.0e35f;
+            }
             else
             {
-                float3 light_normal = triangle_load_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
-                float normal_length = hippt::length(light_normal);
-                float light_area = normal_length * 0.5f;
-                light_normal /= normal_length;
-
-                // Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
-                // (same measure for the BSDF PDF and the light PDF)
-                //
-                // Removing the envmap proba to avoid double counting it below in
-                light_pdf_solid_angle = area_to_solid_angle_pdf(light_pdf_area_measure / (1.0f - envmap_candidate_probability), distance_to_light, compute_cosine_term_at_light_source(light_normal, -to_light_direction));
-                light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
+                to_light_direction = light_sample.point_on_light_source - closest_hit_info.inter_point;
+                to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
             }
 
-            float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
-            candidate_weight = mis_weight * target_function / light_pdf_area_measure;
-            sanity_check<true>(render_data, ColorRGB32F(candidate_weight), 0, 0);
+            float candidate_weight = 0.0f;
+			float cosine_term_at_evaluated_point = hippt::dot(closest_hit_info.shading_normal, to_light_direction);
+            if (cosine_term_at_evaluated_point > 0.0f && light_sample.pdf > 0.0f)
+            {
+                float bsdf_pdf_solid_angle;
+                BSDFIncidentLightInfo incident_light_info;
+                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness);
+                ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf_solid_angle, random_number_generator);
 
-            light_sample.target_function = target_function;
-        }
+                // Filling a surface to give to 'ReSTIR_DI_evaluate_target_function'
+                ReSTIRSurface surface;
+                surface.geometric_normal = closest_hit_info.geometric_normal;
+                surface.primitive_index = closest_hit_info.primitive_index;
+                surface.material = ray_payload.material;
+                surface.ray_volume_state = ray_payload.volume_state;
+                surface.shading_normal = closest_hit_info.shading_normal;
+                surface.shading_point = closest_hit_info.inter_point;
+                surface.view_direction = view_direction;
+
+                float target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, light_sample.to_reservoir_sample(), surface, random_number_generator);
+                float light_pdf_solid_angle;
+                if (light_sample.is_envmap_sample())
+                    // For envmap sample, the PDF is already in solid angle
+                    light_pdf_solid_angle = light_sample.pdf;
+                else
+                {
+                    float3 light_normal = triangle_load_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
+                    float normal_length = hippt::length(light_normal);
+                    float light_area = normal_length * 0.5f;
+                    light_normal /= normal_length;
+
+                    // Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
+                    // (same measure for the BSDF PDF and the light PDF)
+                    //
+                    // Removing the envmap proba to avoid double counting it below in
+                    light_pdf_solid_angle = area_to_solid_angle_pdf(light_sample.pdf / (1.0f - envmap_candidate_probability), distance_to_light, compute_cosine_term_at_light_source(light_normal, -to_light_direction));
+                    light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
+                }
+
+                float mis_weight = balance_heuristic(light_pdf_solid_angle, DirectLightSampleCount<DirectLightSamplingBaseStrategy>() * nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
+                candidate_weight = mis_weight * target_function / light_sample.pdf;
+                sanity_check<true>(render_data, ColorRGB32F(candidate_weight), 0, 0);
+
+                light_sample.target_function = target_function;
+            }
 
 #if ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE
-        if (!render_data.render_settings.do_render_low_resolution() && light_sample.target_function > 0.0f)
-        {
-            // Only doing visiblity if we're render at low resolution
-            // (meaning we're moving the camera) for better movement framerates
-            // Also, only testing visibility if we got a valid sample
-
-            hiprtRay shadow_ray;
-            shadow_ray.origin = closest_hit_info.inter_point;
-            shadow_ray.direction = to_light_direction;
-
-            bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
-            if (!visible)
+            if (!render_data.render_settings.do_render_low_resolution() && light_sample.target_function > 0.0f)
             {
-                // Sample occluded, it is not going to be resampled anyways because it is
-                // going to have a 0 contribution so we just take it into account in the
-                // reservoir (because even if it has zero-contribution, this is still a resampled sample)
-                reservoir.M++;
+                // Only doing visiblity if we're render at low resolution
+                // (meaning we're moving the camera) for better movement framerates
+                // Also, only testing visibility if we got a valid sample
 
-                // And we go onto the next sample
-                continue;
+                hiprtRay shadow_ray;
+                shadow_ray.origin = closest_hit_info.inter_point;
+                shadow_ray.direction = to_light_direction;
+
+                bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
+                if (!visible)
+                {
+                    // Sample occluded, it is not going to be resampled anyways because it is
+                    // going to have a 0 contribution so we just take it into account in the
+                    // reservoir (because even if it has zero-contribution, this is still a resampled sample)
+                    reservoir.M++;
+
+                    // And we go onto the next sample
+                    continue;
+                }
+
+                // We are now sure that if the sample survived, it is unoccluded
+                light_sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
             }
-
-            // We are now sure that if the sample survived, it is unoccluded
-            light_sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
-        }
 #endif
 
-        reservoir.add_one_candidate(light_sample, candidate_weight, random_number_generator);
-        reservoir.sanity_check(make_int2(-1, -1));
+            reservoir.add_one_candidate(light_sample, candidate_weight, random_number_generator);
+            reservoir.sanity_check(make_int2(-1, -1));
+        }
     }
 }
 
@@ -223,12 +218,12 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
                 surface.shading_point = closest_hit_info.inter_point;
                 surface.view_direction = view_direction;
 
-                ReSTIRDISample bsdf_RIS_sample;
+                ReSTIRDIInitialSample bsdf_RIS_sample;
                 bsdf_RIS_sample.emissive_triangle_global_index = shadow_light_ray_hit_info.hit_prim_index;
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-                bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
-                bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample, surface, random_number_generator);
+                bsdf_RIS_sample.flags |= ReSTIRDIInitialSample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
+                bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample.to_reservoir_sample(), surface, random_number_generator);
 
                 float light_pdf_solid_angle = 0.0f;
                 bool refraction_sampled = hippt::dot(bsdf_sampled_direction, closest_hit_info.shading_normal) < 0.0f;
@@ -260,7 +255,7 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
                 // so we multiply that here to take that into account
                 light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
 
-                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, nb_light_candidates);
+                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, DirectLightSampleCount<DirectLightSamplingBaseStrategy>() * nb_light_candidates);
 
                 float bsdf_sample_pdf_area_measure = bsdf_sample_pdf_solid_angle;
                 bsdf_sample_pdf_area_measure /= (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance);
@@ -292,14 +287,14 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
                     surface.shading_point = closest_hit_info.inter_point;
                     surface.view_direction = view_direction;
 
-                    ReSTIRDISample bsdf_RIS_sample;
+                    ReSTIRDIInitialSample bsdf_RIS_sample;
                     bsdf_RIS_sample.emissive_triangle_global_index = -1;
                     // Storing in envmap space
                     bsdf_RIS_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, bsdf_sampled_direction);
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
-                    bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
-                    bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample, surface, random_number_generator);
+                    bsdf_RIS_sample.flags |= ReSTIRDIInitialSample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
+                    bsdf_RIS_sample.target_function = ReSTIR_DI_evaluate_target_function<false>(render_data, bsdf_RIS_sample.to_reservoir_sample(), surface, random_number_generator);
 
                     // Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
                     // (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF

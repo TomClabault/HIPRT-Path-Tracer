@@ -27,33 +27,36 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data, const h
     {
         constexpr int SAMPLING_STRATEGY = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategyNonCanonical : DirectLightSamplingBaseStrategy;
 
-        LightSamplePointInformation light_sample = sample_one_point_on_light<SAMPLING_STRATEGY>(render_data,
+        LightSamplePointArray light_samples = sample_one_point_on_light<SAMPLING_STRATEGY>(render_data,
             closest_hit_info.inter_point, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
-            random_number_generator);
+			random_number_generator);
 
-        if (light_sample.area_measure_pdf <= 0.0f)
-            // Can happen for very small triangles
-            continue;
-
-        float3 shadow_ray_origin = closest_hit_info.inter_point;
-        float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
-        float distance_to_light = hippt::length(shadow_ray_direction);
-        float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
-        hiprtRay shadow_ray;
-        shadow_ray.origin = shadow_ray_origin;
-        shadow_ray.direction = shadow_ray_direction_normalized;
-
-        ColorRGB32F light_source_radiance;
-        // abs() here to allow backfacing light sources
-        float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
-        if (dot_light_source > 0.0f)
+        for (int i = 0; i < DirectLightSampleCount<SAMPLING_STRATEGY>(); i++)
         {
-            NEEPlusPlusContext nee_plus_plus_context;
-            nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-            nee_plus_plus_context.shaded_point = shadow_ray_origin;
-            bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+            LightSamplePointInformation& light_sample = light_samples[i];
+
+            if (light_sample.area_measure_pdf <= 0.0f)
+                // Can happen for very small triangles
+                continue;
+
+            float3 shadow_ray_origin = closest_hit_info.inter_point;
+            float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
+            float distance_to_light = hippt::length(shadow_ray_direction);
+            float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+            hiprtRay shadow_ray;
+            shadow_ray.origin = shadow_ray_origin;
+            shadow_ray.direction = shadow_ray_direction_normalized;
+
+            float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
+            if (dot_light_source > 0.0f)
+            {
+                NEEPlusPlusContext nee_plus_plus_context;
+                nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+                nee_plus_plus_context.shaded_point = shadow_ray_origin;
+                bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+            }
         }
     }
 }

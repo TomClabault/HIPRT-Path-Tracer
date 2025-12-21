@@ -105,42 +105,41 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_power(const H
 }
 
 template <int samplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE LightSampleInformation sample_one_light(const HIPRTRenderData& render_data,
+HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample_one_light(const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
     Xorshift32Generator& random_number_generator)
 {
+    LightSampleArray<DirectLightSampleCount<samplingStrategy>()> light_samples;
+
     if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
     {
-        return sample_one_light_uniform(render_data,
+        light_samples[0] = sample_one_light_uniform(render_data,
             shading_point, view_direction, shading_normal,
             ray_payload.material,
             random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_POWER)
     {
-        return sample_one_light_power(render_data,
+        light_samples[0] = sample_one_light_power(render_data,
             shading_point, view_direction, shading_normal,
             ray_payload.material,
             random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
     {
-        return sample_one_emissive_triangle_light_tree_ats(render_data,
+        light_samples = sample_one_emissive_triangle_light_tree_ats(render_data,
             shading_point, view_direction, shading_normal, geometric_normal,
             last_hit_primitive_index, ray_payload, random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
     {
-        return sample_one_emissive_triangle_light_tree_sg(render_data,
+        light_samples[0] = sample_one_emissive_triangle_light_tree_sg(render_data,
             shading_point, view_direction, shading_normal, geometric_normal,
             ray_payload.material, last_hit_primitive_index, random_number_generator);
     }
-    else
-    {
-        // Invalid strategy
-		return LightSampleInformation();
-    }
+
+	return light_samples;
 }
 
 HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(const HIPRTRenderData& render_data,
@@ -150,39 +149,46 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(const H
     Xorshift32Generator& random_number_generator);
 
 template <int samplingStrategy = DirectLightSamplingBaseStrategy>
-HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light(const HIPRTRenderData& render_data,
+HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
     Xorshift32Generator& random_number_generator)
 {
-    LightSamplePointInformation light_point_sample;
+    LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> light_point_samples;
 
     if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
     {
-        return sample_one_point_on_light_uniform(render_data,
+        light_point_samples[0] = sample_one_point_on_light_uniform(render_data,
             shading_point, view_direction, shading_normal,
             ray_payload.material,
             random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_POWER)
     {
-        return sample_one_point_on_light_power(render_data,
+        light_point_samples[0] = sample_one_point_on_light_power(render_data,
             shading_point, view_direction, shading_normal,
             ray_payload.material,
-			random_number_generator);
+            random_number_generator);
+
+        light_point_samples[1] = sample_one_point_on_light_power(render_data,
+            shading_point, view_direction, shading_normal,
+            ray_payload.material,
+            random_number_generator);
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
     {
-        LightSampleInformation light_sample = sample_one_emissive_triangle_light_tree_ats(render_data, 
+        LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> light_samples = sample_one_emissive_triangle_light_tree_ats(render_data,
             shading_point, view_direction, shading_normal, geometric_normal, 
             last_hit_primitive_index, ray_payload, random_number_generator);
 
-        light_point_sample = sample_point_on_light_and_fill_light_sample_information(render_data,
-            shading_point, view_direction, shading_normal,
-            ray_payload.material,
-            light_sample.emissive_triangle_global_index, random_number_generator);
-
-        light_point_sample.area_measure_pdf *= light_sample.pdf;
+		for (int i = 0; i < DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>(); i++)
+        {
+            light_point_samples[i] = sample_point_on_light_and_fill_light_sample_information(render_data,
+                shading_point, view_direction, shading_normal,
+                ray_payload.material,
+                light_samples[i].emissive_triangle_global_index, random_number_generator);
+            light_point_samples[i].area_measure_pdf *= light_samples[i].pdf;
+        }
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_SG)
     {
@@ -190,25 +196,25 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light(const HIPRTRe
             shading_point, view_direction, shading_normal, geometric_normal, 
             ray_payload.material, last_hit_primitive_index, random_number_generator);
 
-        light_point_sample = sample_point_on_light_and_fill_light_sample_information(render_data,
+        light_point_samples[0] = sample_point_on_light_and_fill_light_sample_information(render_data,
             shading_point, view_direction, shading_normal,
             ray_payload.material,
             light_sample.emissive_triangle_global_index, random_number_generator);
 
-        light_point_sample.area_measure_pdf *= light_sample.pdf;
+        light_point_samples[0].area_measure_pdf *= light_sample.pdf;
     }
     else if constexpr (samplingStrategy == LSS_BASE_REGIR)
     {
         bool point_outside_grid = false;
 
-        light_point_sample = sample_one_point_on_light_regir(render_data,
+        light_point_samples[0] = sample_one_point_on_light_regir(render_data,
             shading_point, view_direction, shading_normal, geometric_normal,
             last_hit_primitive_index, ray_payload,
             point_outside_grid,
             random_number_generator);
 
         if (!point_outside_grid)
-            return light_point_sample;
+            return light_point_samples[0];
         else
         {
 #if ReGIR_FallbackLightSamplingStrategy == LSS_BASE_REGIR
@@ -217,14 +223,14 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light(const HIPRTRe
 #endif
 
             // Fallback method as the point was outside of the ReGIR grid
-            light_point_sample = sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data,
+            light_point_samples = sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data,
                 shading_point, view_direction, shading_normal, geometric_normal,
                 last_hit_primitive_index, ray_payload,
                 random_number_generator);
         }
     }
 
-    return light_point_sample;
+    return light_point_samples;
 }
 
 #endif

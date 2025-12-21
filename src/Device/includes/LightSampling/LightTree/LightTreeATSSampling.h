@@ -196,105 +196,105 @@ HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& no
 	return hippt::sqrt(hippt::sqrt(1.0f / (1.0f + hippt::sqrt(variance))));
 }
 
-struct LightTreeATSWRSReservoir
-{
-	HIPRT_DEVICE float compute_light_sample_weight(const HIPRTRenderData& render_data, const LightSamplePointInformation& light_sample, 
-		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
-		int last_hit_primitive_index, RayPayload& ray_payload,
-		Xorshift32Generator& rng)
-	{
-		float3 shadow_ray_origin = shading_point;
-		float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
-		float distance_to_light = hippt::length(shadow_ray_direction);
-		float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
-		hiprtRay shadow_ray;
-		shadow_ray.origin = shadow_ray_origin;
-		shadow_ray.direction = shadow_ray_direction_normalized;
-
-		// abs() here to allow backfacing light sources
-		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
-		if (dot_light_source > 0.0f)
-		{
-			NEEPlusPlusContext nee_plus_plus_context;
-			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-			nee_plus_plus_context.shaded_point = shadow_ray_origin;
-
-#if LightTreeATSSplittingIncludeVisibility == KERNEL_OPTION_TRUE
-#if LightTreeATSSplittingDoNEEPlusPlusVisibility == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
-			bool in_shadow = false;
-#else
-			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(const_cast<HIPRTRenderData&>(render_data), shadow_ray, distance_to_light, last_hit_primitive_index, nee_plus_plus_context, rng, ray_payload.bounce);
-#endif
-#else
-			bool in_shadow = false;
-#endif
-
-			if (!in_shadow)
-			{
-				float bsdf_pdf;
-
-				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-				BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-#else
-				BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-#endif
-				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng);
-
-				if (bsdf_pdf != 0.0f)
-				{
-					// Conversion to solid angle from surface area measure
-					float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-					if (light_sample_solid_angle_pdf > 0.0f)
-					{
-						float cosine_term = hippt::abs(hippt::dot(shading_normal, shadow_ray.direction));
-						float weight = (light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability).luminance();
-
-#if LightTreeATSSplittingIncludeVisibility == KERNEL_OPTION_TRUE && LightTreeATSSplittingDoNEEPlusPlusVisibility == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
-						weight *= hippt::max(0.025f, render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, render_data.current_camera));
-#endif
-
-						return weight;
-					}
-				}
-			}
-		}
-
-		return 0.0f;
-	}
-
-	HIPRT_DEVICE bool stream_sample(const HIPRTRenderData& render_data, const LightSamplePointInformation& light_sample, 
-		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
-		int last_hit_primitive_index, RayPayload& ray_payload, 
-		Xorshift32Generator& rng)
-	{
-		float light_sample_weight = compute_light_sample_weight(render_data, light_sample,
-			shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload,
-			rng);
-
-		weight_sum += light_sample_weight;
-
-		if (rng() < light_sample_weight / weight_sum)
-		{
-			selected_sample_weight = light_sample_weight;
-			selected_light_index = light_sample.emissive_triangle_global_index;
-
-			return true;
-		}
-
-		return false;
-	}
-
-	float weight_sum = 0.0f;
-
-	float selected_sample_weight = 0.0f;
-	float selected_light_pdf = 0.0f;
-	int selected_light_index = -1;
-};
+//struct LightTreeATSWRSReservoir
+//{
+//	HIPRT_DEVICE float compute_light_sample_weight(const HIPRTRenderData& render_data, const LightSamplePointInformation& light_sample, 
+//		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
+//		int last_hit_primitive_index, RayPayload& ray_payload,
+//		Xorshift32Generator& rng)
+//	{
+//		float3 shadow_ray_origin = shading_point;
+//		float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
+//		float distance_to_light = hippt::length(shadow_ray_direction);
+//		float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+//
+//		hiprtRay shadow_ray;
+//		shadow_ray.origin = shadow_ray_origin;
+//		shadow_ray.direction = shadow_ray_direction_normalized;
+//
+//		// abs() here to allow backfacing light sources
+//		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
+//		if (dot_light_source > 0.0f)
+//		{
+//			NEEPlusPlusContext nee_plus_plus_context;
+//			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
+//			nee_plus_plus_context.shaded_point = shadow_ray_origin;
+//
+//#if LightTreeATSSplittingIncludeVisibility == KERNEL_OPTION_TRUE
+//#if LightTreeATSSplittingDoNEEPlusPlusVisibility == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+//			bool in_shadow = false;
+//#else
+//			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(const_cast<HIPRTRenderData&>(render_data), shadow_ray, distance_to_light, last_hit_primitive_index, nee_plus_plus_context, rng, ray_payload.bounce);
+//#endif
+//#else
+//			bool in_shadow = false;
+//#endif
+//
+//			if (!in_shadow)
+//			{
+//				float bsdf_pdf;
+//
+//				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+//#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+//				BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+//#else
+//				BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+//#endif
+//				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng);
+//
+//				if (bsdf_pdf != 0.0f)
+//				{
+//					// Conversion to solid angle from surface area measure
+//					float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+//					if (light_sample_solid_angle_pdf > 0.0f)
+//					{
+//						float cosine_term = hippt::abs(hippt::dot(shading_normal, shadow_ray.direction));
+//						float weight = (light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability).luminance();
+//
+//#if LightTreeATSSplittingIncludeVisibility == KERNEL_OPTION_TRUE && LightTreeATSSplittingDoNEEPlusPlusVisibility == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+//						weight *= hippt::max(0.025f, render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, render_data.current_camera));
+//#endif
+//
+//						return weight;
+//					}
+//				}
+//			}
+//		}
+//
+//		return 0.0f;
+//	}
+//
+//	HIPRT_DEVICE bool stream_sample(const HIPRTRenderData& render_data, const LightSamplePointInformation& light_sample, 
+//		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
+//		int last_hit_primitive_index, RayPayload& ray_payload, 
+//		Xorshift32Generator& rng)
+//	{
+//		float light_sample_weight = compute_light_sample_weight(render_data, light_sample,
+//			shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload,
+//			rng);
+//
+//		weight_sum += light_sample_weight;
+//
+//		if (rng() < light_sample_weight / weight_sum)
+//		{
+//			selected_sample_weight = light_sample_weight;
+//			selected_light_index = light_sample.emissive_triangle_global_index;
+//
+//			return true;
+//		}
+//
+//		return false;
+//	}
+//
+//	float weight_sum = 0.0f;
+//
+//	float selected_sample_weight = 0.0f;
+//	float selected_light_pdf = 0.0f;
+//	int selected_light_index = -1;
+//};
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
+HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal, 
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
@@ -375,9 +375,10 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 		}
 	}
 
-	LightTreeATSWRSReservoir wrs;
+	//LightTreeATSWRSReservoir wrs;
 
-	// Stream candidates that were left in the stack for splitting
+	LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> light_samples_out;
+
 	while (stack_pointer >= 0)
 	{
 		unsigned int node_index = node_index_stack[stack_pointer--];
@@ -421,17 +422,9 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 			int triangle_index = render_data.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-			LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(render_data, 
-				shading_point, view_direction, shading_normal,
-				ray_payload.material,
-				emissive_triangle_index, rng);
-			light_sample.area_measure_pdf *= cumulative_probability;
-			light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
-
-			if (wrs.stream_sample(render_data, light_sample,
-				shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload,
-				rng))
-				wrs.selected_light_pdf = cumulative_probability / current_node.triangle_count;
+			light_samples_out[light_samples_counter - 1].emissive_triangle_global_index = emissive_triangle_index;
+			light_samples_out[light_samples_counter - 1].pdf = cumulative_probability / current_node.triangle_count;
+			light_samples_counter--;
 		}
 
 		// We have found a good node in this tree
@@ -483,35 +476,19 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(
 			int triangle_index = render_data.light_tree_ats.indices_array[index];
 			int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-			LightSamplePointInformation light_sample = sample_point_on_light_and_fill_light_sample_information(render_data, 
-				shading_point, view_direction, shading_normal,
-				ray_payload.material,
-				emissive_triangle_index, rng);
-			light_sample.area_measure_pdf *= cumulative_probability;
-			light_sample.area_measure_pdf *= 1.0f / current_node.triangle_count; // Sampling that triangle in that node
-
-			if (wrs.stream_sample(render_data, light_sample,
-				shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload,
-				rng))
-				wrs.selected_light_pdf = cumulative_probability / current_node.triangle_count;
+			light_samples_out[light_samples_counter - 1].emissive_triangle_global_index = emissive_triangle_index;
+			light_samples_out[light_samples_counter - 1].pdf = cumulative_probability / current_node.triangle_count;
+			light_samples_counter--;
 		}
 	}
 
-	if (wrs.selected_light_index == -1)
-		return LightSampleInformation();
-
-	LightSampleInformation final_light_sample;
-	final_light_sample.emissive_triangle_global_index = wrs.selected_light_index;
-	final_light_sample.pdf = wrs.selected_sample_weight / wrs.weight_sum;
-	final_light_sample.pdf *= wrs.selected_light_pdf;
-
-	return final_light_sample;
+	return light_samples_out;
 }
 
 #else
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
-HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
+HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)

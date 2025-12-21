@@ -10,7 +10,7 @@
 #include "Device/includes/ReSTIR/ReGIR/LightDistributionsGridFill.h"
 
 template <int samplingStrategy>
-HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light(const HIPRTRenderData& render_data,
+HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
     Xorshift32Generator& random_number_generator);
@@ -38,7 +38,9 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
             hash_grid_cell_index, primary_hit, rng);
         if (light_point_sample.emissive_triangle_global_index == REGIR_NEEDS_LIGHT_SAMPLE_FALLBACK)
             // Falling back on the base strategy
-            light_point_sample = sample_one_point_on_light<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, rng);
+            // TODO MULTI LIGHT SAMPLE
+            light_point_sample = LightSamplePointInformation();
+            //light_point_sample = sample_one_point_on_light<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload, rng);
 
         if (light_point_sample.emissive_triangle_global_index == -1)
             continue;

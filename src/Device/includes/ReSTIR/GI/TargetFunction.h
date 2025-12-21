@@ -13,7 +13,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool withVisiblity, bool resamplingNeighbor = true>
-HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRGIReservoirSample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
 {
 	float distance_to_sample_point;
 	float3 incident_light_direction;

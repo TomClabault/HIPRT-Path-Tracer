@@ -9,8 +9,8 @@
 /**
  * Forward declarations
  */
-struct ReSTIRDISample;
-struct ReSTIRGISample;
+struct ReSTIRDIReservoirSample;
+struct ReSTIRGIReservoirSample;
 struct ReSTIRDIReservoir;
 struct ReSTIRGIReservoir;
 
@@ -18,7 +18,7 @@ struct ReSTIRGIReservoir;
  * The ReSTIRTypeStruct is used to automatically determine what SampleType to use
  * based on the 'IsReSTIRGI' template parameter
  *
- * This allows us to use the ReSTIRDISample type of ReSTIRGISample type automatically
+ * This allows us to use the ReSTIRDISample type of ReSTIRGIReservoirSample type automatically
  * based on whether or not we're instantiating the structures for ReSTIR DI or ReSTIR GI
  *
  * This sample type is then used in some of the specialization to pass to the target functions
@@ -29,14 +29,14 @@ struct ReSTIRTypeStruct {};
 template <>
 struct ReSTIRTypeStruct<false>
 {
-	using SampleType = ReSTIRDISample;
+	using SampleType = ReSTIRDIReservoirSample;
 	using ReservoirType = ReSTIRDIReservoir;
 };
 
 template <>
 struct ReSTIRTypeStruct<true>
 {
-	using SampleType = ReSTIRGISample;
+	using SampleType = ReSTIRGIReservoirSample;
 	using ReservoirType = ReSTIRGIReservoir;
 };
 

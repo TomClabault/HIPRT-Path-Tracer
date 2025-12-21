@@ -41,25 +41,6 @@
  */
 #define LightTreeATSSplittingMaxLightSamples 4
 
-/**
- * If true, the various light samples produced by splitting will all be "shaded" with visibility, which
- * may be very costly and inefficient on scenes where visibility isn't an issue.
- * 
- * If false, visibility noise won't be improved but efficiency may improve drastically depending on the scene.
- * 
- * Not using visibility does not introduce bias because the light tree splitting samples aren't really
- * shaded for real, rather, one light sample of all the split samples is chosen proportional to its
- * contribution. It is that contribution which includes visibility or not.
- */
-#define LightTreeATSSplittingIncludeVisibility KERNEL_OPTION_TRUE
-
-/**
- * If true, NEE++ will be used to estimate the visibility of a light sample during splitting.
- * 
- * If false, a full shadow ray will be used instead
- */
-#define LightTreeATSSplittingDoNEEPlusPlusVisibility KERNEL_OPTION_FALSE
-
 #endif // #ifndef __KERNELCC__
 
 #endif

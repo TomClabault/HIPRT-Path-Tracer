@@ -19,7 +19,7 @@
 static std::mutex restir_di_log_mutex;
 #endif
 
-struct ReSTIRDISample
+struct ReSTIRDIReservoirSample
 {
     // For envmap samples, this 'point_on_light_source' is the envmap direction in *envmap space*
     // A sample is an envmap sample if 'flags' contains 'RESTIR_DI_FLAGS_ENVMAP_SAMPLE'
@@ -38,28 +38,74 @@ struct ReSTIRDISample
         return flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
     }
 
-    HIPRT_DEVICE static int flags_from_BSDF_incident_light_info(BSDFIncidentLightInfo sampled_lobe_info)
-    {
-        return static_cast<int>(sampled_lobe_info);
-    }
-
     HIPRT_DEVICE BSDFIncidentLightInfo flags_to_BSDF_incident_light_info() const
     {
         return static_cast<BSDFIncidentLightInfo>(flags & (0b111111 << (BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE - 1)));
     }
 };
 
+struct ReSTIRDIInitialSample
+{
+    // For envmap samples, this 'point_on_light_source' is the envmap direction in *envmap space*
+    // A sample is an envmap sample if 'flags' contains 'RESTIR_DI_FLAGS_ENVMAP_SAMPLE'
+    float3 point_on_light_source = { 0, 0, 0 };
+
+    // Global primitive index corresponding to the emissive triangle sampled
+    int emissive_triangle_global_index = -1;
+
+    ColorRGB32F emission;
+    float target_function = 0.0f;
+
+    float pdf = 0.0f;
+
+    // Some flags about the sample
+    unsigned char flags = RESTIR_DI_FLAGS_NONE;
+
+    HIPRT_DEVICE bool is_envmap_sample() const
+    {
+        return flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
+    }
+
+    HIPRT_DEVICE static int flags_from_BSDF_incident_light_info(BSDFIncidentLightInfo sampled_lobe_info)
+    {
+        return static_cast<int>(sampled_lobe_info);
+    }
+
+    HIPRT_DEVICE ReSTIRDIReservoirSample to_reservoir_sample()
+    {
+        ReSTIRDIReservoirSample reservoir_sample;
+
+        reservoir_sample.point_on_light_source = point_on_light_source;
+        reservoir_sample.emissive_triangle_global_index = emissive_triangle_global_index;
+        reservoir_sample.target_function = target_function;
+        reservoir_sample.flags = flags;
+
+		return reservoir_sample;
+    }
+};
+
+template <int size>
+struct ReSTIRDISampleArray
+{
+    ReSTIRDIInitialSample samples[size];
+
+    HIPRT_DEVICE ReSTIRDIInitialSample& operator[](int index)
+    {
+        return samples[index];
+	}
+};
+
 struct ReSTIRDIReservoir
 {
     static constexpr float VISIBILITY_REUSE_KILLED_UCW = -42.0f;
 
-    HIPRT_DEVICE void add_one_candidate(ReSTIRDISample new_sample, float weight, Xorshift32Generator& random_number_generator)
+    HIPRT_DEVICE void add_one_candidate(ReSTIRDIInitialSample new_sample, float weight, Xorshift32Generator& random_number_generator)
     {
         M++;
         weight_sum += weight;
 
         if (random_number_generator() < weight / weight_sum)
-            sample = new_sample;
+            sample = new_sample.to_reservoir_sample();
     }
 
     /**
@@ -177,7 +223,7 @@ struct ReSTIRDIReservoir
     // If the UCW is set to -1, this is because the reservoir was killed by visibility reuse
     float UCW = 0.0f;
 
-    ReSTIRDISample sample;
+    ReSTIRDIReservoirSample sample;
 };
 
 #endif

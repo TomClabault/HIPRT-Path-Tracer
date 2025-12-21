@@ -86,6 +86,9 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
     int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
+    // We're going to sample the base strategy 'nb_light_candidates' times so in total that's
+    // 'nb_light_candidates' * <however many samples that light sampling strategy produces>
+    int nb_light_candidates_total = nb_light_candidates * DirectLightSampleCount<DirectLightSamplingBaseStrategy>();
 
 #if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
     // BSDF MIS isn't allowed with the light tree & splitting, we don't have the PDF for the light tree
@@ -99,64 +102,70 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 
     // Sampling candidates with weighted reservoir sampling
     RISReservoir reservoir;
+    // Dividing by DirectLightSampleCount<DirectLightSamplingBaseStrategy>() here because 
     for (int i = 0; i < nb_light_candidates; i++)
     {
-        float target_function = 0.0f;
-        float candidate_weight = 0.0f;
-        LightSamplePointInformation light_sample_info = sample_one_point_on_light(render_data,
-            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
+        LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> light_samples = sample_one_point_on_light(render_data,
+            closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
-        if (light_sample_info.area_measure_pdf > 0.0f)
+        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
         {
-            float3 to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
-            float distance_to_light = hippt::length(to_light_direction);
-            to_light_direction = to_light_direction / distance_to_light; // Normalization
+            LightSamplePointInformation& light_sample_info = light_samples[i];
 
-            float cosine_at_light_source = compute_cosine_term_at_light_source(light_sample_info.light_source_normal, -to_light_direction);
-            float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));
-            if (cosine_at_evaluated_point > 0.0f && cosine_at_light_source > 1.0e-6f)
+            float target_function = 0.0f;
+            float candidate_weight = 0.0f;
+            if (light_sample_info.area_measure_pdf > 0.0f)
             {
-                float bsdf_pdf = 0.0f;
+                float3 to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
+                float distance_to_light = hippt::length(to_light_direction);
+                to_light_direction = to_light_direction / distance_to_light; // Normalization
 
-                BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-                ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+                float cosine_at_light_source = compute_cosine_term_at_light_source(light_sample_info.light_source_normal, -to_light_direction);
+                float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));
+                if (cosine_at_evaluated_point > 0.0f && cosine_at_light_source > 1.0e-6f)
+                {
+                    float bsdf_pdf = 0.0f;
 
-                target_function = (bsdf_color * light_sample_info.emission * cosine_at_evaluated_point).luminance();
+                    BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+                    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+                    ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
+                    target_function = (bsdf_color * light_sample_info.emission * cosine_at_evaluated_point).luminance();
 
 #if RISUseVisiblityTargetFunction == KERNEL_OPTION_TRUE
-                if (!render_data.render_settings.do_render_low_resolution() && target_function > 0.0f)
-                {
-                    // Only doing visiblity if we're not rendering at low resolution
-                    // (meaning we're moving the camera) for better interaction framerates
+                    if (!render_data.render_settings.do_render_low_resolution() && target_function > 0.0f)
+                    {
+                        // Only doing visiblity if we're not rendering at low resolution
+                        // (meaning we're moving the camera) for better interaction framerates
 
-                    hiprtRay shadow_ray;
-                    shadow_ray.origin = closest_hit_info.inter_point;
-                    shadow_ray.direction = to_light_direction;
+                        hiprtRay shadow_ray;
+                        shadow_ray.origin = closest_hit_info.inter_point;
+                        shadow_ray.direction = to_light_direction;
 
-                    bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+                        bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 
-                    target_function *= visible;
-                }
+                        target_function *= visible;
+                    }
 #endif
 
-                // Converting the PDF from area measure to solid angle measure
-                float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
-                float mis_weight = balance_heuristic(solid_angle_light_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
-                candidate_weight = mis_weight * target_function / solid_angle_light_pdf;
+                    // Converting the PDF from area measure to solid angle measure
+                    float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
+                    float mis_weight = balance_heuristic(solid_angle_light_pdf, nb_light_candidates_total, bsdf_pdf, nb_bsdf_candidates);
+                    candidate_weight = mis_weight * target_function / solid_angle_light_pdf;
+                }
             }
+
+            RISSample light_RIS_sample;
+            light_RIS_sample.is_bsdf_sample = false;
+            light_RIS_sample.point_on_light_source = light_sample_info.point_on_light;
+            light_RIS_sample.target_function = target_function;
+            light_RIS_sample.emission = light_sample_info.emission;
+
+            reservoir.add_one_candidate(light_RIS_sample, candidate_weight, random_number_generator);
+            reservoir.sanity_check();
         }
-
-        RISSample light_RIS_sample;
-        light_RIS_sample.is_bsdf_sample = false;
-        light_RIS_sample.point_on_light_source = light_sample_info.point_on_light;
-        light_RIS_sample.target_function = target_function;
-        light_RIS_sample.emission = light_sample_info.emission;
-
-        reservoir.add_one_candidate(light_RIS_sample, candidate_weight, random_number_generator);
-        reservoir.sanity_check();
     }
 
     // Whether or not a BSDF sample has been retained by the reservoir
@@ -206,7 +215,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
                 float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, 
                     ray_payload.material,
                     shadow_light_ray_hit_info, sampled_bsdf_direction);
-                float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
+                float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_light_candidates_total, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
                 bsdf_RIS_sample.emission = shadow_light_ray_hit_info.hit_emission;

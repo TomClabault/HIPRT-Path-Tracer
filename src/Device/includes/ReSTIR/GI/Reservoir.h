@@ -20,7 +20,7 @@
 static std::mutex restir_gi_log_mutex;
 #endif
 
-struct ReSTIRGISample
+struct ReSTIRGIReservoirSample
 {
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
 
@@ -55,7 +55,7 @@ struct ReSTIRGISample
 
 struct ReSTIRGIReservoir
 {
-    HIPRT_DEVICE void add_one_candidate(ReSTIRGISample new_sample, float weight, Xorshift32Generator& random_number_generator)
+    HIPRT_DEVICE void add_one_candidate(ReSTIRGIReservoirSample new_sample, float weight, Xorshift32Generator& random_number_generator)
     {
         M++;
         weight_sum += weight;
@@ -173,7 +173,7 @@ struct ReSTIRGIReservoir
 #endif
     }
 
-    ReSTIRGISample sample;
+    ReSTIRGIReservoirSample sample;
 
     int M = 0;
     // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space

@@ -35,6 +35,17 @@ struct LightSamplePointInformation
 #endif
 };
 
+template <int size>
+struct LightSamplePointArray
+{
+    LightSamplePointInformation samples[size];
+
+    HIPRT_DEVICE LightSamplePointInformation& operator[](int index)
+    {
+        return samples[index];
+    }
+};
+
 /**
  * Information about a sampled emissive triangle
  */
@@ -43,6 +54,17 @@ struct LightSampleInformation
     int emissive_triangle_global_index = -1;
 
     float pdf = 0.0f;
+};
+
+template <int size>
+struct LightSampleArray
+{
+    LightSampleInformation samples[size];
+
+    HIPRT_DEVICE LightSampleInformation& operator[](int index)
+    {
+        return samples[index];
+	}
 };
 
 #endif

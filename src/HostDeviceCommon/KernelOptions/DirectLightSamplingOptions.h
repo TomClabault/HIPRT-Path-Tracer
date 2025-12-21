@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_DIRECT_LIGHT_SAMPLING_OPTIONS_H
 
 #include "HostDeviceCommon/KernelOptions/Common.h"
+#include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_ONE_LIGHT 1
@@ -87,7 +88,7 @@
 *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
 *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
 */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
 
 /**
 * How to sample lights in the scene.
@@ -199,5 +200,26 @@
 #define DirectLightSamplingAllowBackfacingLights KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__
+
+#ifdef LightTreeATSDoSplitting
+// Some kernels are not meant to be compiled with kernel compiler options
+// so this function below will not compile for those kernels because they don't
+// have LightTreeATSDoSplitting defined for example. So we're guarding that function
+// if #ifdef to avoid compilation issues.
+
+template <int lightSamplingStrategy>
+constexpr int DirectLightSampleCount()
+{
+	if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE)
+		// ATS Light tree with splitting is the only strategy that supports multiple light samples per path vertex
+		return LightTreeATSSplittingMaxLightSamples;
+	else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
+		return 2;
+	else
+		// Other strategies just return 1 light sample per path vertex
+		return 1;
+}
+
+#endif
 
 #endif

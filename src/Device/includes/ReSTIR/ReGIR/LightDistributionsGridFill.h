@@ -22,9 +22,11 @@ HIPRT_DEVICE LightSamplePointInformation grid_fill_cell_light_distributions_cano
     dummy_ray_payload.material.metallic = surface.cell_metallic;
     dummy_ray_payload.material.specular = surface.cell_specular;
 
-    LightSamplePointInformation light_sample = sample_one_point_on_light<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, 
+    // TODO MULTI LIGHT SAMPLE
+    LightSamplePointInformation light_sample;
+    /*LightSamplePointInformation light_sample = sample_one_point_on_light<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, 
         surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, 
-        surface.cell_primitive_index, dummy_ray_payload, rng);
+        surface.cell_primitive_index, dummy_ray_payload, rng);*/
     if (light_sample.emissive_triangle_global_index == -1)
         return light_sample;
 

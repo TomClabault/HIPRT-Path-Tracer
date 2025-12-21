@@ -29,7 +29,9 @@ HIPRT_DEVICE LightSamplePointInformation grid_fill_sample_canonical_candidate(co
         surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal,
         surface.cell_primitive_index, dummy_ray_payload, rng);
 #else
-    return sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
+    // TODO MULTI LIGHT SAMPLE
+    return LightSamplePointInformation();
+    //return sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyCanonical>(render_data, surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, surface.cell_primitive_index, dummy_ray_payload, rng);
 #endif
 }
 

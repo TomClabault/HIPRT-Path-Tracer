@@ -24,7 +24,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& ren
         // No valid sample means no light contribution
         return ColorRGB32F(0.0f);
 
-    ReSTIRDISample sample = reservoir.sample;
+    ReSTIRDIReservoirSample sample = reservoir.sample;
 
     float distance_to_light;
 

@@ -101,8 +101,6 @@ public:
 	static const std::string LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION;
 	static const std::string LIGHT_TREE_ATS_DO_SPLITTING;
 	static const std::string LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES;
-	static const std::string LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY;
-	static const std::string LIGHT_TREE_ATS_SPLITTING_DO_NEE_PLUS_PLUS_VISIBILITY;
 
 	static const std::string LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE;
 

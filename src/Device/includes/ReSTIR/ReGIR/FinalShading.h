@@ -71,10 +71,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
 #endif
         
         // Fallback method as the point was outside of the ReGIR grid
-        light_sample = sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data,
+            // TODO MULTI LIGHT SAMPLE
+            light_sample = LightSamplePointInformation();
+        /*light_sample = sample_one_point_on_light<ReGIR_FallbackLightSamplingStrategy>(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
-            random_number_generator);
+            random_number_generator);*/
          
         float3 shadow_ray_origin = closest_hit_info.inter_point;
         float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;

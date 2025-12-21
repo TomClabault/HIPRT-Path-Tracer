@@ -85,7 +85,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     initial_surface.view_direction = -ray.direction;
 
     float bsdf_sample_pdf = 0.0f;
-    ReSTIRGISample restir_gi_initial_sample;
+    ReSTIRGIReservoirSample restir_gi_initial_sample;
 
     ColorRGB32F incoming_radiance_to_visible_point;
     ColorRGB32F incoming_radiance_to_sample_point;

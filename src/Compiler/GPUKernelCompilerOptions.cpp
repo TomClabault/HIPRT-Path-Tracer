@@ -100,8 +100,6 @@ const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION =
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION = "LightTreeATSImportanceFunctionUseOrientation";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING = "LightTreeATSDoSplitting";
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES = "LightTreeATSSplittingMaxLightSamples";
-const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY = "LightTreeATSSplittingIncludeVisibility";
-const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_DO_NEE_PLUS_PLUS_VISIBILITY = "LightTreeATSSplittingDoNEEPlusPlusVisibility";
 
 const std::string GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE = "LightTreeSGDoSpecularImportance";
 
@@ -213,8 +211,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION,
 	GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING,
 	GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES,
-	GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY,
-	GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_DO_NEE_PLUS_PLUS_VISIBILITY,
 
 	GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE,
 
@@ -330,8 +326,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_IMPORTANCE_FUNCTION_USE_ORIENTATION] = std::make_shared<int>(LightTreeATSImportanceFunctionUseOrientation);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING] = std::make_shared<int>(LightTreeATSDoSplitting);
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_MAX_LIGHT_SAMPLES] = std::make_shared<int>(LightTreeATSSplittingMaxLightSamples);
-	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_INCLUDE_VISIBILITY] = std::make_shared<int>(LightTreeATSSplittingIncludeVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_SPLITTING_DO_NEE_PLUS_PLUS_VISIBILITY] = std::make_shared<int>(LightTreeATSSplittingDoNEEPlusPlusVisibility);
 
 	m_options_macro_map[GPUKernelCompilerOptions::LIGHT_TREE_ATS_SG_DO_SPECULAR_IMPORTANCE] = std::make_shared<int>(LightTreeSGDoSpecularImportance);
 
