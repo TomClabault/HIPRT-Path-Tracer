@@ -1133,9 +1133,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool uniform_one_light_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
 			const bool bsdf_sampling_disabled = false;
 
-			const bool light_tree_ats_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE;
 			const bool regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
-			const bool mis_disabled = regir || light_tree_ats_splitting;
+			const bool mis_disabled = regir;
 
 			const bool ris_disabled = false;
 			const bool restir_di_disabled = false;

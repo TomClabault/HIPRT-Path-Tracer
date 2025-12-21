@@ -375,8 +375,6 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 		}
 	}
 
-	//LightTreeATSWRSReservoir wrs;
-
 	LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> light_samples_out;
 
 	while (stack_pointer >= 0)
@@ -506,7 +504,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(con
 		float left_importance = light_tree_ats_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
 		float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 		if (left_importance == 0.0f && right_importance == 0.0f)
-			return LightSampleInformation();
+			return LightSampleArray<1>{ LightSampleInformation() };
 
 		float p_left = left_importance / (left_importance + right_importance);
 
@@ -532,7 +530,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(con
 	light_sample.emissive_triangle_global_index = emissive_triangle_index;
 	light_sample.pdf = cumulative_probability * (1.0f / current_node.triangle_count); // Sampling that triangle in that node
 
-	return light_sample;
+	return LightSampleArray<1>{ light_sample };
 }
 #endif
 
