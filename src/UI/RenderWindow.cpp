@@ -79,6 +79,10 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Can we accumulate the extent of each grid cell by the point that fall into it and do something useful with the extent?
+// - Use the splitting of the light tree in the initial grid fill should be OP
+// - SG light tree splitting how? Using the same heuristic as K&C 2018 or the heuristic of 2024 RIS tree?
+// - Use cell light distributions not on emissive meshes but light tree nodes?
 // - Add some ui to graph rmse and other metrics over time / over spp and auto output a graph
 // - Can we count per regir grid cell how many shadow rays are occluded at shading time vs shot to get an idea of how bad we're sampling visibility here meaning that we would need more Shadow rays
 // - Disabling light distributions at compile time and enabling them only at runtime is buggued

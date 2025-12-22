@@ -174,7 +174,7 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 
 #if LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
 
-#define ATS_LIGHT_TREE_SPLITTING_STACK_SIZE 64
+#define ATS_LIGHT_TREE_SPLITTING_STACK_SIZE 2
 
 HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& node, float3 shading_point)
 {
@@ -196,103 +196,6 @@ HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& no
 	return hippt::sqrt(hippt::sqrt(1.0f / (1.0f + hippt::sqrt(variance))));
 }
 
-//struct LightTreeATSWRSReservoir
-//{
-//	HIPRT_DEVICE float compute_light_sample_weight(const HIPRTRenderData& render_data, const LightSamplePointInformation& light_sample, 
-//		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
-//		int last_hit_primitive_index, RayPayload& ray_payload,
-//		Xorshift32Generator& rng)
-//	{
-//		float3 shadow_ray_origin = shading_point;
-//		float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
-//		float distance_to_light = hippt::length(shadow_ray_direction);
-//		float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-//
-//		hiprtRay shadow_ray;
-//		shadow_ray.origin = shadow_ray_origin;
-//		shadow_ray.direction = shadow_ray_direction_normalized;
-//
-//		// abs() here to allow backfacing light sources
-//		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
-//		if (dot_light_source > 0.0f)
-//		{
-//			NEEPlusPlusContext nee_plus_plus_context;
-//			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-//			nee_plus_plus_context.shaded_point = shadow_ray_origin;
-//
-//#if LightTreeATSSplittingIncludeVisibility == KERNEL_OPTION_TRUE
-//#if LightTreeATSSplittingDoNEEPlusPlusVisibility == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
-//			bool in_shadow = false;
-//#else
-//			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(const_cast<HIPRTRenderData&>(render_data), shadow_ray, distance_to_light, last_hit_primitive_index, nee_plus_plus_context, rng, ray_payload.bounce);
-//#endif
-//#else
-//			bool in_shadow = false;
-//#endif
-//
-//			if (!in_shadow)
-//			{
-//				float bsdf_pdf;
-//
-//				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-//#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
-//				BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-//#else
-//				BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-//#endif
-//				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, rng);
-//
-//				if (bsdf_pdf != 0.0f)
-//				{
-//					// Conversion to solid angle from surface area measure
-//					float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
-//					if (light_sample_solid_angle_pdf > 0.0f)
-//					{
-//						float cosine_term = hippt::abs(hippt::dot(shading_normal, shadow_ray.direction));
-//						float weight = (light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability).luminance();
-//
-//#if LightTreeATSSplittingIncludeVisibility == KERNEL_OPTION_TRUE && LightTreeATSSplittingDoNEEPlusPlusVisibility == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
-//						weight *= hippt::max(0.025f, render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, render_data.current_camera));
-//#endif
-//
-//						return weight;
-//					}
-//				}
-//			}
-//		}
-//
-//		return 0.0f;
-//	}
-//
-//	HIPRT_DEVICE bool stream_sample(const HIPRTRenderData& render_data, const LightSamplePointInformation& light_sample, 
-//		float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
-//		int last_hit_primitive_index, RayPayload& ray_payload, 
-//		Xorshift32Generator& rng)
-//	{
-//		float light_sample_weight = compute_light_sample_weight(render_data, light_sample,
-//			shading_point, view_direction, shading_normal, geometric_normal, last_hit_primitive_index, ray_payload,
-//			rng);
-//
-//		weight_sum += light_sample_weight;
-//
-//		if (rng() < light_sample_weight / weight_sum)
-//		{
-//			selected_sample_weight = light_sample_weight;
-//			selected_light_index = light_sample.emissive_triangle_global_index;
-//
-//			return true;
-//		}
-//
-//		return false;
-//	}
-//
-//	float weight_sum = 0.0f;
-//
-//	float selected_sample_weight = 0.0f;
-//	float selected_light_pdf = 0.0f;
-//	int selected_light_index = -1;
-//};
-
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal, 
@@ -302,7 +205,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
 
 	int stack_pointer = 0;
-	unsigned int node_index_stack[ATS_LIGHT_TREE_SPLITTING_STACK_SIZE] = { 0 };
+	unsigned int node_index_stack[LightTreeATSSplittingMaxLightSamples] = { 0 };
 	unsigned int light_samples_counter = 1;
 
 	int node_indices_to_be_traversed_sp = 0;
@@ -315,6 +218,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 
 		light_samples_counter--;
 
+		// TODO is this node importance check needed
 		float node_importance = light_tree_ats_node_importance<UseOrientation>(current_node, shading_point, shading_normal);
 		if (node_importance > 0.0f)
 		{
@@ -331,7 +235,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 					// We're going to want to explore the left child first
 
 					// So inserting the right child first
-					if (stack_pointer < ATS_LIGHT_TREE_SPLITTING_STACK_SIZE - 1 && node_importance_right > 0.0f)
+					if (node_importance_right > 0.0f)
 					{
 						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index + 1;
 						light_samples_counter++;
@@ -339,7 +243,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 
 					// And then the left child such that the left child is popped first
 					// and explored first
-					if (stack_pointer < ATS_LIGHT_TREE_SPLITTING_STACK_SIZE - 1 && node_importance_left > 0.0f)
+					if (stack_pointer < LightTreeATSSplittingMaxLightSamples - 1 && node_importance_left > 0.0f)
 					{
 						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index;
 						light_samples_counter++;
@@ -350,7 +254,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 					// We're going to want to explore the right child first
 
 					// So inserting the left child first
-					if (stack_pointer < ATS_LIGHT_TREE_SPLITTING_STACK_SIZE - 1 && node_importance_left > 0.0f)
+					if (node_importance_left > 0.0f)
 					{
 						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index;
 						light_samples_counter++;
@@ -358,7 +262,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 
 					// And then the right child such that the right child is popped first
 					// and explored first
-					if (stack_pointer < ATS_LIGHT_TREE_SPLITTING_STACK_SIZE - 1 && node_importance_right > 0.0f)
+					if (stack_pointer < LightTreeATSSplittingMaxLightSamples - 1 && node_importance_right > 0.0f)
 					{
 						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index + 1;
 						light_samples_counter++;
@@ -429,9 +333,10 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 	}
 
 	// Also stream candidates that we're deemed as not needing splitting
-	while (node_indices_to_be_traversed_sp > 0)
+	int to_be_traversed_index = 0;
+	while (to_be_traversed_index < node_indices_to_be_traversed_sp)
 	{
-		unsigned int node_index = node_indices_to_be_traversed[--node_indices_to_be_traversed_sp];
+		unsigned int node_index = node_indices_to_be_traversed[to_be_traversed_index++];
 		LightTreeATSNodeDevice current_node = nodes[node_index];
 
 		float cumulative_probability = 1.0f;
@@ -483,6 +388,203 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 	return light_samples_out;
 }
 
+template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
+HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data, const LightTreeATSNodeDevice* nodes, unsigned int node_index, unsigned int& collected_split_samples,
+	float3 shading_point, float3 shading_normal)
+{
+	int stack_pointer = 0;
+	unsigned int node_index_stack[LightTreeATSSplittingMaxLightSamples] = { node_index };
+
+	while (collected_split_samples < LightTreeATSSplittingMaxLightSamples && stack_pointer >= 0)
+	{
+		unsigned int node_index = node_index_stack[stack_pointer--];
+		LightTreeATSNodeDevice current_node = nodes[node_index];
+
+		collected_split_samples--;
+
+		// TODO is this node importance check needed
+		float node_importance = light_tree_ats_node_importance<UseOrientation>(current_node, shading_point, shading_normal);
+		if (node_importance > 0.0f)
+		{
+			float node_variance = light_tree_ats_node_variance(current_node, shading_point);
+			if (node_variance < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0)
+			{
+				// Variance threshold exceeded, exploring both branches of the tree
+
+				float node_importance_left = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index], shading_point, shading_normal);
+				float node_importance_right = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index + 1], shading_point, shading_normal);
+
+				if (node_importance_left > node_importance_right)
+				{
+					// We're going to want to explore the left child first
+
+					// So inserting the right child first
+					if (node_importance_right > 0.0f)
+					{
+						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index + 1;
+						collected_split_samples++;
+					}
+
+					// And then the left child such that the left child is popped first
+					// and explored first
+					if (stack_pointer < LightTreeATSSplittingMaxLightSamples - 1 && node_importance_left > 0.0f)
+					{
+						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index;
+						collected_split_samples++;
+					}
+				}
+				else
+				{
+					// We're going to want to explore the right child first
+
+					// So inserting the left child first
+					if (node_importance_left > 0.0f)
+					{
+						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index;
+						collected_split_samples++;
+					}
+
+					// And then the right child such that the right child is popped first
+					// and explored first
+					if (stack_pointer < LightTreeATSSplittingMaxLightSamples - 1 && node_importance_right > 0.0f)
+					{
+						node_index_stack[++stack_pointer] = current_node.left_child_index_or_first_triangle_index + 1;
+						collected_split_samples++;
+					}
+				}
+			}
+			else
+				collected_split_samples++;
+		}
+	}
+}
+
+template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_emissive_triangle_index)
+{
+	if (global_emissive_triangle_index == -1)
+		return 0.0f;
+
+	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
+	LightTreeATSNodeDevice current_node = nodes[0];
+
+	float root_node_importance = light_tree_ats_node_importance<UseOrientation>(current_node, shading_point, shading_normal);
+	if (root_node_importance <= 0.0f)
+		return 0.0f;
+
+	unsigned int bit_trail = render_data.light_tree_ats.bit_trails[global_emissive_triangle_index];
+	unsigned char current_depth = 0;
+	unsigned int collected_split_samples = 1;
+	int split_replay_stack_pointer = -1;
+	unsigned int split_replay_stack[LightTreeATSSplittingMaxLightSamples] = { 0 };
+	// We're going to disable splitting after encountering
+	// the first node that isn't split
+	bool can_split = true;
+
+	float cumulative_probability = 1.0f;
+	while (current_node.triangle_count == 0)
+	{
+		LightTreeATSNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
+		LightTreeATSNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
+
+		float left_importance = light_tree_ats_node_importance<UseOrientation>(left_child, shading_point, shading_normal);
+		float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
+		if (left_importance == 0.0f && right_importance == 0.0f)
+			return 0.0f;
+
+		bool node_split = false;
+		if (collected_split_samples < LightTreeATSSplittingMaxLightSamples && can_split)
+		{
+			float node_variance = light_tree_ats_node_variance(current_node, shading_point);
+			node_split = node_variance < render_data.light_tree_ats.settings.light_tree_ats_splitting_variance && current_node.triangle_count == 0;
+		}
+
+		if (node_split)
+		{
+			collected_split_samples--;
+
+			if (left_importance > right_importance)
+			{
+				// We're going to want to explore the left child first
+				// So inserting the right child first
+				if (right_importance > 0.0f)
+				{
+					split_replay_stack[++split_replay_stack_pointer] = current_node.left_child_index_or_first_triangle_index + 1;
+					collected_split_samples++;
+				}
+
+				if (split_replay_stack_pointer < LightTreeATSSplittingMaxLightSamples - 1)
+				{
+					split_replay_stack[++split_replay_stack_pointer] = current_node.left_child_index_or_first_triangle_index;
+					collected_split_samples++;
+				}
+			}
+			else
+			{
+				if (left_importance > 0.0f)
+				{
+					split_replay_stack[++split_replay_stack_pointer] = current_node.left_child_index_or_first_triangle_index;
+					collected_split_samples++;
+				}
+
+				if (split_replay_stack_pointer < LightTreeATSSplittingMaxLightSamples - 1)
+				{
+					split_replay_stack[++split_replay_stack_pointer] = current_node.left_child_index_or_first_triangle_index + 1;
+					collected_split_samples++;
+				}
+			}
+
+			bool exploring_left_child_first = left_importance > right_importance;
+			bool needs_to_go_right_child = (bit_trail & (1 << current_depth)) != 0;
+
+			// In any of the two cases below, the splitting code that samples would have
+			// explored the left or right child first but the bittrail replay wants to go
+			// down the other node.
+			// 
+			// Because of that, it is possible that splitting during sampling produced the
+			// maximum number of samples from that child explored first, which means that we wouldn't
+			// get any more splitting from the other child since the maximum number of samples was reached.
+			// And this influences the computation of the PDF. So we need to replay the splitting in the
+			// child that splitting would have chosen first, to be sure that we get the same number of splits
+			// and that the PDF computation is correct.
+
+			if ((exploring_left_child_first && needs_to_go_right_child) || (!exploring_left_child_first && !needs_to_go_right_child))
+				replay_splitting<UseOrientation>(render_data, nodes, split_replay_stack[split_replay_stack_pointer--], collected_split_samples,
+					shading_point, shading_normal);
+
+			// We pushed 2 nodes to the splitting replay stack but
+			// just our PDF computation code here is going to go down one
+			// of the 2 nodes (the last node we pushed, the one with the largest importance)
+			// so we can remove that node from the replay stack
+			split_replay_stack_pointer--;
+		}
+		else
+			can_split = false;
+
+		float p_left = left_importance / (left_importance + right_importance);
+		if (!(bit_trail & (1 << current_depth)))
+		{
+			// If the bit is not set we're going to the left
+			current_node = left_child;
+
+			if (!node_split)
+				cumulative_probability *= p_left;
+		}
+		else
+		{
+			current_node = right_child;
+
+			if (!node_split)
+				cumulative_probability *= 1.0f - p_left;
+		}
+
+		current_depth++;
+	}
+
+	// Probability of going down the tree + probability of sampling that triangle in the node
+	return cumulative_probability / current_node.triangle_count;
+}
+
 #else
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
@@ -532,11 +634,13 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(con
 
 	return LightSampleArray<1>{ light_sample };
 }
-#endif
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_emissive_triangle_index)
 {
+	if (global_emissive_triangle_index == -1)
+		return 0.0f;
+
 	const LightTreeATSNodeDevice* nodes = render_data.light_tree_ats.nodes;
 
 	LightTreeATSNodeDevice current_node = nodes[0];
@@ -580,5 +684,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 	// Probability of going down the tree + probability of sampling that triangle in the node
 	return cumulative_probability / current_node.triangle_count;
 }
+
+#endif
 
 #endif

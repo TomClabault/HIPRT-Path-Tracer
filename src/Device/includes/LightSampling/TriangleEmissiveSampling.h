@@ -177,6 +177,9 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
     {
+        unsigned int seed_before = random_number_generator.m_state.seed;
+        random_number_generator.m_state.seed = seed_before;
+
         LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> light_samples = sample_one_emissive_triangle_light_tree_ats(render_data,
             shading_point, view_direction, shading_normal, geometric_normal, 
             last_hit_primitive_index, ray_payload, random_number_generator);
