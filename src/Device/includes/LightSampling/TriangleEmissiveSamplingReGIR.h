@@ -185,7 +185,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
                 triangle_index_canonical_technique_1 = canonical_technique_1_reservoir.sample.emissive_triangle_global_index;
 
                 point_on_light_1 = canonical_technique_1_reservoir.sample.point_on_light;
-                light_source_normal_1 = hippt::normalize(triangle_load_normal_not_normalized(render_data, triangle_index_canonical_technique_1));
+                light_source_normal_1 = hippt::normalize(triangle_load_normal_not_normalized(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_global_index));
                 emission_1 = triangle_load_emission(render_data, canonical_technique_1_reservoir.sample.emissive_triangle_global_index);
             }
 
@@ -207,7 +207,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
                 triangle_index_canonical_technique_2 = canonical_technique_2_reservoir.sample.emissive_triangle_global_index;
 
                 point_on_light_2 = canonical_technique_2_reservoir.sample.point_on_light;
-                light_source_normal_2 = hippt::normalize(triangle_load_normal_not_normalized(render_data, triangle_index_canonical_technique_2));
+                light_source_normal_2 = hippt::normalize(triangle_load_normal_not_normalized(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_global_index));
                 emission_2 = triangle_load_emission(render_data, canonical_technique_2_reservoir.sample.emissive_triangle_global_index);
             }
 #endif
@@ -333,7 +333,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 
         float3 light_source_normal = triangle_load_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
         float light_source_area = hippt::length(light_source_normal) * 0.5f;
-        light_source_normal /= hippt::length(light_source_normal) * 2.0f;
+        light_source_normal /= hippt::length(light_source_normal);
         float3 point_on_light = non_canonical_reservoir.sample.point_on_light;
         ColorRGB32F emission = triangle_load_emission(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
 

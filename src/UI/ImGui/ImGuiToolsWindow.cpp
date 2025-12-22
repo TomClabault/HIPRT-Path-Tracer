@@ -701,7 +701,14 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				for (int i = 0; i < number_of_captures; i++)
 					current_recorded_xs.push_back((float)((i + 1) * capture_interval_value));
 
-				m_render_window->reset_render();
+				m_render_window->set_render_dirty(true);
+				// Force setting the current render time to 0.0f such that the 'current ratio' checks below
+				// don't trigger immediately since the render time is only reset lazily by the render
+				// window once set_render_dirty takes effect but this may take a few frames
+				// so in the meantime, current_render_time_ms isn't reset to 0 and the convergence
+				// tool is going to start capturing thinking that the render time has already progressed whereas
+				// it's just that's it hasn't been reset in the first place yet
+				m_render_window->get_current_render_time_ms() = 0.0f;
 			}
 
 			if (ref_image.width == 0)
@@ -724,7 +731,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				current_ratio = std::floor((float)total_samples_rendered++ / capture_interval_value);
 		}
 
-		if (current_ratio > last_captured_ratio && capture_started && captures_taken < number_of_captures)
+		if (capture_started && current_ratio > last_captured_ratio && captures_taken < number_of_captures)
 		{
 			// Time to capture!
 			last_captured_ratio = current_ratio;

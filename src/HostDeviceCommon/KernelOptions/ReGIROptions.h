@@ -65,7 +65,7 @@
 *	- LSS_BASE_LIGHT_TREE_ATS
 *		Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]
 */
-#define ReGIR_GridFillLightSamplingBaseStrategyNonCanonical LSS_BASE_LIGHT_TREE_ATS
+#define ReGIR_GridFillLightSamplingBaseStrategyNonCanonical LSS_BASE_POWER
 
 /**
  * The light sampling strategy used for sampling canonical samples during grid fill
@@ -131,7 +131,7 @@
  * Those per-cell sampling distribution will then be used during the grid fill to provide higher
  * quality initial light samples
  */
-#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_TRUE
+#define ReGIR_GridFillUsePerCellLightDistributions KERNEL_OPTION_FALSE
 
 /**
  * If true, ReGIR will not be used to shade points at path tracing time. Only the light distributions precomputed
@@ -151,7 +151,7 @@
 /**
  * What defensive sampling technique to use to cover the bias of the light distributions
  */
-#define ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique LSS_BASE_LIGHT_TREE_ATS
+#define ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique LSS_BASE_POWER
 
 /**
  * Whether or not to use a repsentative normal when computing the contribution of an emissive
