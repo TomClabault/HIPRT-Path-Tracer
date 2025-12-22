@@ -86,9 +86,6 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
     int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
-    // We're going to sample the base strategy 'nb_light_candidates' times so in total that's
-    // 'nb_light_candidates' * <however many samples that light sampling strategy produces>
-    int nb_light_candidates_total = nb_light_candidates * DirectLightSampleCount<DirectLightSamplingBaseStrategy>();
 
 #if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
     // BSDF MIS isn't allowed with the light tree & splitting, we don't have the PDF for the light tree
@@ -152,7 +149,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 
                     // Converting the PDF from area measure to solid angle measure
                     float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
-                    float mis_weight = balance_heuristic(solid_angle_light_pdf, nb_light_candidates_total, bsdf_pdf, nb_bsdf_candidates);
+                    float mis_weight = balance_heuristic(solid_angle_light_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
                     candidate_weight = mis_weight * target_function / solid_angle_light_pdf;
                 }
             }
@@ -215,7 +212,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
                 float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, 
                     ray_payload.material,
                     shadow_light_ray_hit_info, sampled_bsdf_direction);
-                float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_light_candidates_total, light_pdf, nb_light_candidates);
+                float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_light_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
                 bsdf_RIS_sample.emission = shadow_light_ray_hit_info.hit_emission;
