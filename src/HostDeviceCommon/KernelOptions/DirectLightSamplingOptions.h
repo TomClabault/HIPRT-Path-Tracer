@@ -14,8 +14,9 @@
 #define LSS_BSDF 2
 #define LSS_MIS_LIGHT_BSDF 3
 #define LSS_RIS_BSDF_AND_LIGHT 4
-#define LSS_LTC_SHADING 5
-#define LSS_RESTIR_DI 6
+#define LSS_RISLTC 5
+#define LSS_LTC_SHADING 6
+#define LSS_RESTIR_DI 7
 
 #define LSS_BASE_UNIFORM 0
 #define LSS_BASE_POWER 1
@@ -79,6 +80,10 @@
 *
 *	- LSS_RIS_BSDF_AND_LIGHT
 *		Samples lights in the scene with Resampled Importance Sampling
+* 
+* 	- LSS_RISLTC
+*		Samples lights in the scene with RISLTC (from [Combining Resampled Importance and Projected Solid Angle
+*		Samplings for Many Area Light Rendering, Shash et. al 2023])
 *
 *	- LSS_RESTIR_DI
 *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
@@ -88,7 +93,7 @@
 *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
 *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
 */
-#define DirectLightSamplingStrategy LSS_ONE_LIGHT
+#define DirectLightSamplingStrategy LSS_RISLTC
 
 /**
 * How to sample lights in the scene.
@@ -113,7 +118,7 @@
 * 
 *       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
 */
-#define DirectLightSamplingBaseStrategy LSS_BASE_REGIR
+#define DirectLightSamplingBaseStrategy LSS_BASE_POWER
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant

@@ -22,7 +22,7 @@
  * [3] [Blender's Cycles Implementation] https://github.com/blender/cycles/blob/main/src/kernel/closure/bsdf_sheen.h
  */
 
-HIPRT_DEVICE static float eval_ltc(const float3& to_light_direction_standard, const ColorRGB32F& AiBiRi)
+HIPRT_DEVICE static float sheen_eval_ltc(const float3& to_light_direction_standard, const ColorRGB32F& AiBiRi)
 {
 	// AiBiRi are the parameters of the LTC such that
 	//        { Ai 0  Bi }
@@ -102,7 +102,7 @@ HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_dat
 	float3 to_light_standard_frame = rotate_vector(local_to_light_direction, make_float3(0.0f, 0.0f, 1.0f), -phi);
 
 	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
-	float Do = eval_ltc(to_light_standard_frame, AiBiRi);
+	float Do = sheen_eval_ltc(to_light_standard_frame, AiBiRi);
 
 	out_pdf = Do;
 	out_sheen_reflectance = AiBiRi.b;
@@ -128,7 +128,7 @@ HIPRT_DEVICE static float sheen_ltc_pdf(const HIPRTRenderData& render_data, cons
 	float3 to_light_standard_frame = rotate_vector(local_to_light_direction, make_float3(0.0f, 0.0f, 1.0f), -phi);
 
 	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
-	float Do = eval_ltc(to_light_standard_frame, AiBiRi);
+	float Do = sheen_eval_ltc(to_light_standard_frame, AiBiRi);
 
 	return Do;
 }

@@ -12,11 +12,12 @@
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightSampling/LightClamping.h"
+#include "Device/includes/LightSampling/RIS/RIS.h"
+#include "Device/includes/LightSampling/RISLTC/RISLTC.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/DI/FinalShading.h"
 #include "Device/includes/ReSTIR/ReGIR/FinalShading.h"
-#include "Device/includes/RIS/RIS.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
 
@@ -355,6 +356,8 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
         direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
         direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_RISLTC
+        direct_light_contribution += sample_lights_RISLTC(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_LTC_SHADING
         direct_light_contribution += sample_one_light_LTC_shading(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
@@ -414,7 +417,6 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data, 
     // meaning that we can sample more than 1 light per
     // path vertex
     direct_light_contribution = sample_multiple_emissive_geometry(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-
 #elif DirectLightSamplingStrategy == LSS_RESTIR_DI
     direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
 #endif

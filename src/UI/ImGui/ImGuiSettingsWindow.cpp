@@ -1118,13 +1118,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
 			
-			const char* items[] = { "- No direct light sampling", "- Light sampling", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- LTC Shading", "- ReSTIR DI (Primary hit only)"};
+			const char* items[] = { "- No direct light sampling", "- Light sampling", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- RISLTC BSDF + Light candidates", "- LTC Shading", "- ReSTIR DI (Primary hit only)"};
 			const char* tooltips[] = {
 				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
 				"Samples one random light in the scene without MIS. Efficient as long as there are not too many lights in the scene and no glossy/specular surfaces.",
 				"Samples lights only using one BSDF sample.",
 				"Samples one random light in the scene with MIS (Multiple Importance Sampling) : light sample + BRDF sample.",
 				"Samples lights in the scene with RIS (Resampled Importance Sampling) with both BSDF and light candidates. The number of light or BSDF candidates can be controlled.",
+				"Samples lights in the scene with RISLTC (Shah et. al, 2023) with both BSDF and light candidates. The number of light or BSDF candidates can be controlled.",
 				"Uses Linearly Transformed Cosines to analytically shade lights. This is biased as shadowing is not taken into account. Not all BSDF lobe configurations are supported.",
 				"Uses ReSTIR DI to sample direct lighting at the first bounce in the scene. Later bounces use another of the above strategies which can be changed in the ReSTIR DI settings.",
 			};
@@ -1249,7 +1250,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE_USE_LTC) == KERNEL_OPTION_TRUE)
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE_USE_LTC) == KERNEL_OPTION_TRUE &&
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE ||
+				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
 				draw_ltc_settings_panel();
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY))
@@ -1285,329 +1288,23 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
-				if (ImGui::CollapsingHeader("RIS Settings"))
-				{
-					ImGui::TreePush("RIS Settings tree");
-
-					if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
-					{
-						ImGui::Text("The mix of BSDF/light samples is controlled\n"
-							"by the ReGIR settings.");
-					}
-					else
-					{
-						bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
-						if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
-						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-							m_renderer->recompile_kernels();
-
-							m_render_window->set_render_dirty(true);
-						}
-
-						const bool light_tree_ats_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE;
-						const bool ris_bsdf_candidates_disabled = light_tree_ats_splitting;
-						if (ris_bsdf_candidates_disabled)
-							ImGuiRenderer::add_warning("We don't have the PDF for the light tree splitting implementation so BSDF MIS isn't allowed, it's biased.");
-						ImGui::BeginDisabled(ris_bsdf_candidates_disabled);
-						if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
-						{
-							// Clamping to 0
-							render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGui::EndDisabled();
-
-						if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
-						{
-							// Clamping to 0
-							render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
-
-							m_render_window->set_render_dirty(true);
-						}
-
-					}
-
-					ImGui::TreePop();
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				}
+				draw_ris_settings_panel();
 					
+				break;
+			}
+
+			case LSS_RISLTC:
+			{
+				draw_risltc_settings_panel();
+
 				break;
 			}
 
 			case LSS_RESTIR_DI:
 			{
-				if (ImGui::CollapsingHeader("ReSTIR DI Settings"))
-				{
-					ImGui::TreePush("ReSTIR DI Settings tree");
+				draw_restir_di_settings_panel();
 
-					ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_DI_render_pass()->get_VRAM_usage());
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					display_ReSTIR_DI_bias_status(global_kernel_options);
-
-					if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
-						m_render_window->set_render_dirty(true);
-
-					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 64, "%d", ImGuiSliderFlags_AlwaysClamp))
-					{
-						render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
-						if (render_settings.accumulate)
-							m_render_window->set_render_dirty(true);
-					}
-					ImGuiRenderer::show_help_marker("0 disables the M-cap");
-
-					if (ImGui::CollapsingHeader("Rejection Heuristics"))
-					{
-						ImGui::TreePush("ReSTIR DI - Rejection Heuristics Tree");
-
-						draw_ReSTIR_neighbor_heuristics_panel<false>();
-
-						ImGui::TreePop();
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-
-
-
-
-
-					if (ImGui::CollapsingHeader("Initial Candidates Pass"))
-					{
-						ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
-
-						{
-							bool use_initial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY);
-							if (ImGui::Checkbox("Use visibility in target function", &use_initial_target_function_visibility))
-							{
-								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, use_initial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-								m_renderer->recompile_kernels();
-
-								m_render_window->set_render_dirty(true);
-							}
-							ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
-								"resampling initial candidates");
-
-							const bool bsdf_samples_disabled_regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
-							const bool bsdf_samples_disabled_light_tree_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE;
-							const bool bsdf_samples_disabled = bsdf_samples_disabled_regir || bsdf_samples_disabled_light_tree_splitting;
-							if (bsdf_samples_disabled_regir)
-								ImGuiRenderer::add_warning("BSDF samples are disabled in ReSTIR DI because they are controlled by "
-									"the ReGIR settings (use BSDF MIS in ReGIR for BSDF samples).");
-							else if (bsdf_samples_disabled_light_tree_splitting)
-								ImGuiRenderer::add_warning("We don't have the PDF for the light tree splitting implementation so BSDF MIS isn't allowed, it's biased.");
-							ImGui::BeginDisabled(bsdf_samples_disabled);
-							if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
-							{
-								// Clamping to 0
-								render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates);
-
-								m_render_window->set_render_dirty(true);
-							}
-							ImGui::EndDisabled();
-
-							if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates, 0, 32))
-							{
-								// Clamping to 0
-								render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates);
-
-								m_render_window->set_render_dirty(true);
-							}
-
-							ImGui::BeginDisabled(!m_renderer->has_envmap());
-							if (ImGui::SliderFloat("Envmap candidate probability", &render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability, 0.0f, 1.0f))
-							{
-								render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability = hippt::clamp(0.0f, 1.0f, render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability);
-
-								m_render_window->set_render_dirty(true);
-							}
-							ImGuiRenderer::show_help_marker("The probability to sample the envmap per each \"initial light candidates\"");
-							ImGui::EndDisabled();
-						}
-
-						ImGui::TreePop();
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-
-
-
-
-
-					if (ImGui::CollapsingHeader("Visibility Reuse Pass"))
-					{
-						ImGui::TreePush("ReSTIR DI - Visibility Reuse Pass Tree");
-
-						{
-							bool do_visibility_reuse = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE);
-							if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
-							{
-								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-								m_renderer->recompile_kernels();
-
-								m_render_window->set_render_dirty(true);
-							}
-						}
-
-						ImGui::TreePop();
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-
-
-
-
-
-					draw_ReSTIR_temporal_reuse_panel<false>([this, &render_settings]() 
-					{
-						if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-						{
-							if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
-							{
-								m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
-
-								m_render_window->set_render_dirty(true);
-							}
-							ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-								"This avoids a synchronization barrier between the temporal pass and the spatial pass "
-								"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
-								"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
-								"(which is the output of the temporal pass). This is usually imperceptible.");
-						}
-
-						if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
-						{
-							m_render_window->set_render_dirty(true);
-
-							if (!render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-								// Disabling fused spatiotemporal if we just disabled the temporal reuse
-								render_settings.restir_di_settings.do_fused_spatiotemporal = false;
-						}
-					});
-
-					ImGui::PushItemWidth(12 * ImGui::GetFontSize());
-					draw_ReSTIR_spatial_reuse_panel<false>([&render_settings, this] () {
-						if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-						{
-							if (ImGui::Checkbox("Do fused spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
-							{
-								m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
-
-								m_render_window->set_render_dirty(true);
-							}
-							ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-								"This avois a synchronization barrier between the temporal pass and the spatial pass "
-								"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
-								"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
-								"(which is the output of the temporal pass). This is usually imperceptible.");
-						}
-
-						if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
-						{
-							m_render_window->set_render_dirty(true);
-
-							if (!render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-								// Disabling fused spatiotemporal if we just disabled the spatial reuse
-								render_settings.restir_di_settings.do_fused_spatiotemporal = false;
-						}
-					});
-					ImGui::PopItemWidth();
-
-
-
-
-					draw_ReSTIR_bias_correction_panel<false>();
-					if (ImGui::CollapsingHeader("Debug"))
-					{
-						ImGui::TreePush("ReSTIR DI debug options tree");
-
-						if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
-							"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
-						if (render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location)
-						{
-							ImGui::TreePush("Debug neighbor location vertical tree");
-
-							ImGui::Text("Debug reuse direction");
-							bool reuse_direction_changed = false;
-							reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 0); ImGui::SameLine();
-							reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 1); ImGui::SameLine();
-							reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
-
-							if (reuse_direction_changed)
-								m_render_window->set_render_dirty(true);
-
-							ImGui::TreePop();
-						}
-
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-						ImGui::TreePop();
-					}
-
-
-
-
-					if (ImGui::CollapsingHeader("Later Bounces Sampling Strategy"))
-					{
-						ImGui::TreePush("Later Bounces tree");
-
-						{
-							const char* second_bounce_items[] = { "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
-							if (ImGui::Combo("Direct Lighting Strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY), second_bounce_items, IM_ARRAYSIZE(second_bounce_items)))
-							{
-								m_renderer->recompile_kernels();
-								m_render_window->set_render_dirty(true);
-							}
-							ImGuiRenderer::show_help_marker("What direct lighting strategy to use for bounces that come after the first one (camera ray hit) since ReSTIR DI only applies on the first bounce.");
-							ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-							switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY))
-							{
-							case RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT:
-								break;
-
-							case RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF:
-								break;
-
-							case RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT:
-							{
-								bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
-								if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
-								{
-									global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-									m_renderer->recompile_kernels();
-
-									m_render_window->set_render_dirty(true);
-								}
-
-								if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
-								{
-									// Clamping to 0
-									render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
-
-									m_render_window->set_render_dirty(true);
-								}
-
-								if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
-								{
-									// Clamping to 0
-									render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
-
-									m_render_window->set_render_dirty(true);
-								}
-
-								break;
-							}
-
-							default:
-								break;
-							}
-						}
-
-						ImGui::TreePop();
-					}
-
-					ImGui::TreePop(); // ReSTIR DI Settings tree
-				}
+				break;
 			}
 
 			break;
@@ -1901,6 +1598,372 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_ris_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("RIS Settings"))
+	{
+		ImGui::TreePush("RIS Settings tree");
+
+		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+		{
+			ImGui::Text("The mix of BSDF/light samples is controlled\n"
+				"by the ReGIR settings.");
+		}
+		else
+		{
+			bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
+			if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+
+				m_render_window->set_render_dirty(true);
+			}
+
+			if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+			{
+				// Clamping to 0
+				render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+
+				m_render_window->set_render_dirty(true);
+			}
+
+			if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
+			{
+				// Clamping to 0
+				render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
+
+				m_render_window->set_render_dirty(true);
+			}
+
+		}
+
+		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	}
+}
+
+void ImGuiSettingsWindow::draw_risltc_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("RISLTC Settings"))
+	{
+		ImGui::TreePush("RISLTC Settings tree");
+
+		/*if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+		{
+			ImGui::Text("The mix of BSDF/light samples is controlled\n"
+				"by the ReGIR settings.");
+		}
+		else
+		{*/
+			//if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+			//{
+			//	// Clamping to 0
+			//	render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+
+			//	m_render_window->set_render_dirty(true);
+			//}
+
+			if (ImGui::SliderInt("RIS # of light candidates", &render_settings.risltc_settings.number_of_light_candidates, 0, 32))
+			{
+				// Clamping to 0
+				render_settings.risltc_settings.number_of_light_candidates = std::max(0, render_settings.risltc_settings.number_of_light_candidates);
+
+				m_render_window->set_render_dirty(true);
+			}
+		//}
+
+		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	}
+}
+
+void ImGuiSettingsWindow::draw_restir_di_settings_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	
+	if (ImGui::CollapsingHeader("ReSTIR DI Settings"))
+	{
+		ImGui::TreePush("ReSTIR DI Settings tree");
+
+		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_DI_render_pass()->get_VRAM_usage());
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		display_ReSTIR_DI_bias_status(global_kernel_options);
+
+		if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
+			m_render_window->set_render_dirty(true);
+
+		if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 64, "%d", ImGuiSliderFlags_AlwaysClamp))
+		{
+			render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+			if (render_settings.accumulate)
+				m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("0 disables the M-cap");
+
+		if (ImGui::CollapsingHeader("Rejection Heuristics"))
+		{
+			ImGui::TreePush("ReSTIR DI - Rejection Heuristics Tree");
+
+			draw_ReSTIR_neighbor_heuristics_panel<false>();
+
+			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
+
+
+
+
+		if (ImGui::CollapsingHeader("Initial Candidates Pass"))
+		{
+			ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
+
+			{
+				bool use_initial_target_function_visibility = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY);
+				if (ImGui::Checkbox("Use visibility in target function", &use_initial_target_function_visibility))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, use_initial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
+					"resampling initial candidates");
+
+				const bool bsdf_samples_disabled_regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+				const bool bsdf_samples_disabled_light_tree_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE;
+				const bool bsdf_samples_disabled = bsdf_samples_disabled_regir || bsdf_samples_disabled_light_tree_splitting;
+				if (bsdf_samples_disabled_regir)
+					ImGuiRenderer::add_warning("BSDF samples are disabled in ReSTIR DI because they are controlled by "
+						"the ReGIR settings (use BSDF MIS in ReGIR for BSDF samples).");
+				else if (bsdf_samples_disabled_light_tree_splitting)
+					ImGuiRenderer::add_warning("We don't have the PDF for the light tree splitting implementation so BSDF MIS isn't allowed, it's biased.");
+				ImGui::BeginDisabled(bsdf_samples_disabled);
+				if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
+				{
+					// Clamping to 0
+					render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates);
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGui::EndDisabled();
+
+				if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates, 0, 32))
+				{
+					// Clamping to 0
+					render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::BeginDisabled(!m_renderer->has_envmap());
+				if (ImGui::SliderFloat("Envmap candidate probability", &render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability, 0.0f, 1.0f))
+				{
+					render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability = hippt::clamp(0.0f, 1.0f, render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability);
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("The probability to sample the envmap per each \"initial light candidates\"");
+				ImGui::EndDisabled();
+			}
+
+			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
+
+
+
+
+		if (ImGui::CollapsingHeader("Visibility Reuse Pass"))
+		{
+			ImGui::TreePush("ReSTIR DI - Visibility Reuse Pass Tree");
+
+			{
+				bool do_visibility_reuse = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE);
+				if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+
+					m_render_window->set_render_dirty(true);
+				}
+			}
+
+			ImGui::TreePop();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
+
+
+
+
+		draw_ReSTIR_temporal_reuse_panel<false>([this, &render_settings]()
+			{
+				if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+				{
+					if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+					{
+						m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
+
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+						"This avoids a synchronization barrier between the temporal pass and the spatial pass "
+						"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
+						"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
+						"(which is the output of the temporal pass). This is usually imperceptible.");
+				}
+
+				if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
+				{
+					m_render_window->set_render_dirty(true);
+
+					if (!render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+						// Disabling fused spatiotemporal if we just disabled the temporal reuse
+						render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+				}
+			});
+
+		ImGui::PushItemWidth(12 * ImGui::GetFontSize());
+		draw_ReSTIR_spatial_reuse_panel<false>([&render_settings, this]() {
+			if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+			{
+				if (ImGui::Checkbox("Do fused spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+				{
+					m_renderer->get_ReSTIR_DI_render_pass()->request_temporal_bufffers_clear();
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+					"This avois a synchronization barrier between the temporal pass and the spatial pass "
+					"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
+					"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
+					"(which is the output of the temporal pass). This is usually imperceptible.");
+			}
+
+			if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
+			{
+				m_render_window->set_render_dirty(true);
+
+				if (!render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
+					// Disabling fused spatiotemporal if we just disabled the spatial reuse
+					render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+			}
+			});
+		ImGui::PopItemWidth();
+
+
+
+
+		draw_ReSTIR_bias_correction_panel<false>();
+		if (ImGui::CollapsingHeader("Debug"))
+		{
+			ImGui::TreePush("ReSTIR DI debug options tree");
+
+			if (ImGui::Checkbox("Debug neighbor reuse positions", &render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
+				"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+			if (render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location)
+			{
+				ImGui::TreePush("Debug neighbor location vertical tree");
+
+				ImGui::Text("Debug reuse direction");
+				bool reuse_direction_changed = false;
+				reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 0); ImGui::SameLine();
+				reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 1); ImGui::SameLine();
+				reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location_direction), 2);
+
+				if (reuse_direction_changed)
+					m_render_window->set_render_dirty(true);
+
+				ImGui::TreePop();
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+
+
+
+		if (ImGui::CollapsingHeader("Later Bounces Sampling Strategy"))
+		{
+			ImGui::TreePush("Later Bounces tree");
+
+			{
+				const char* second_bounce_items[] = { "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
+				if (ImGui::Combo("Direct Lighting Strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY), second_bounce_items, IM_ARRAYSIZE(second_bounce_items)))
+				{
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("What direct lighting strategy to use for bounces that come after the first one (camera ray hit) since ReSTIR DI only applies on the first bounce.");
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+				switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY))
+				{
+				case RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT:
+					break;
+
+				case RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF:
+					break;
+
+				case RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT:
+				{
+					bool use_visibility_ris_target_function = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION);
+					if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						m_renderer->recompile_kernels();
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+					{
+						// Clamping to 0
+						render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
+					{
+						// Clamping to 0
+						render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					break;
+				}
+
+				default:
+					break;
+				}
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::TreePop(); // ReSTIR DI Settings tree
 	}
 }
 

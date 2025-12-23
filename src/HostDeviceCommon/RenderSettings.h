@@ -13,6 +13,7 @@
 #include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RIS/RISSettings.h"
+#include "HostDeviceCommon/RISLTC/RISLTCSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRDISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
@@ -234,6 +235,7 @@ struct HIPRTRenderSettings
 
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;
+	RISLTCSettings risltc_settings;
 
 	// Settings for ReSTIR DI
 	ReSTIRDISettings restir_di_settings;

@@ -3,20 +3,20 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RIS_H
-#define DEVICE_RIS_H
+#ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_RIS_RIS_H
+#define DEVICE_INCLUDES_LIGHT_SAMPLING_RIS_RIS_H
 
 #include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/Intersect.h"
-#include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/LightSampling/PDFTriangles.h"
-#include "Device/includes/RIS/RIS_Reservoir.h"
+#include "Device/includes/LightSampling/RIS/RISReservoir.h"
+#include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
 
 #include "HostDeviceCommon/Color.h"
 #include "Device/includes/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE ColorRGB32F evaluate_reservoir_sample(HIPRTRenderData& render_data, RayPayload& ray_payload, 
+HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_data, RayPayload& ray_payload, 
     const HitInfo& closest_hit_info, const float3& view_direction,
     const RISReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
@@ -100,7 +100,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
     // Sampling candidates with weighted reservoir sampling
     RISReservoir reservoir;
     // Dividing by DirectLightSampleCount<DirectLightSamplingBaseStrategy>() here because 
-    for (int i = 0; i < nb_light_candidates; i++)
+    for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
     {
         LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> light_samples = sample_one_point_on_light(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
@@ -239,7 +239,7 @@ HIPRT_DEVICE ColorRGB32F sample_lights_RIS(HIPRTRenderData& render_data, RayPayl
 
     RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
-    return evaluate_reservoir_sample(render_data, ray_payload, 
+    return evaluate_RIS_reservoir_sample(render_data, ray_payload, 
         closest_hit_info, view_direction, 
         reservoir, random_number_generator);
 }
