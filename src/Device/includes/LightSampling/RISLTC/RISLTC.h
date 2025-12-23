@@ -130,6 +130,13 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
             float ltc_metallic = 0.0f;
             float ltc_diffuse = 0.0f;
 
+#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+            ltc_diffuse = evaluate_ltc(render_data,
+                vertex_A, vertex_B, vertex_C,
+                closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+                ray_payload.material,
+                LTCLobe::DIFFUSE_LOBE);
+#else
             if (ray_payload.material.coat > 0.0f)
                 ltc_coat = evaluate_ltc(render_data,
     				vertex_A, vertex_B, vertex_C,
@@ -156,6 +163,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
                 closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 				ray_payload.material,
 				LTCLobe::DIFFUSE_LOBE);
+#endif
 
 			float target_function = 
                 ltc_coat * ray_payload.material.coat + 
