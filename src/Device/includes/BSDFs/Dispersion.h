@@ -436,20 +436,20 @@ HIPRT_HOST_DEVICE static ColorRGB32F wavelength_to_RGB_fit(float wavelength)
 
     if( wavelength < 463.0f)
     {
-        RGB.r = -1.2776028240727566e-01f / (1.0f + exp((wavelength - 4.2680623367293401e+02f) / 8.2197460736637176e+00f)) + -1.3925673552505122e-11f * exp((wavelength - 45.0f) / 1.8175459086411596e+01f);
+        RGB.r = -1.2776028240727566e-01f / (1.0f + hippt::intrin_expf((wavelength - 4.2680623367293401e+02f) / 8.2197460736637176e+00f)) + -1.3925673552505122e-11f * hippt::intrin_expf((wavelength - 45.0f) / 1.8175459086411596e+01f);
         RGB.r += 1.2898689750552100e-01f;
     }
     else if (wavelength > 553.0f)
     {
-        RGB.r = 1.7963649137825513e+01f * ( 1.0f / 2.6577826611702449e+01f) * exp(-0.5f * hippt::square((wavelength - 6.0625724092824566e+02f) * (1.0f / 2.6577826611702449e+01f)));
+        RGB.r = 1.7963649137825513e+01f * ( 1.0f / 2.6577826611702449e+01f) * hippt::intrin_expf(-0.5f * hippt::square((wavelength - 6.0625724092824566e+02f) * (1.0f / 2.6577826611702449e+01f)));
         RGB.r += 2.5574660155104657e-03f;
     }
     else
         RGB.r = 0.0f;
 
-    RGB.g = 3.4962267376163049e+02f * expf(-0.5f * hippt::square((wavelength-5.4209217455705152e+02f) / -2.9598170255834638e+01f));
+    RGB.g = 3.4962267376163049e+02f * hippt::intrin_expf(-0.5f * hippt::square((wavelength-5.4209217455705152e+02f) / -2.9598170255834638e+01f));
     RGB.g /= wavelength;
-    RGB.b = exp(3.2987659944421112e+03f + (-2.0975839709372405e+05f / wavelength) -4.6368268395094020e+02f * logf(wavelength));
+    RGB.b = hippt::intrin_expf(3.2987659944421112e+03f + (-2.0975839709372405e+05f / wavelength) -4.6368268395094020e+02f * hippt::intrin_logf(wavelength));
 
     // The fitting process was done with scaled data so the data is actually
     // fitted such that the average RGB colors of all wavelength is 0.1. But we want 1.

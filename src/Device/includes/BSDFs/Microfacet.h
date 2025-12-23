@@ -405,16 +405,16 @@ HIPRT_DEVICE static float3 GGX_VNDF_sample(const float3 local_view_direction, fl
 
     // Orthonormal basis construction
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-    float3 T1 = lensq > 0.0f ? float3{ -Vh.y, Vh.x, 0 } / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
+    float3 T1 = lensq > 0.0f ? float3{ -Vh.y, Vh.x, 0 } / hippt::sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
     float3 T2 = hippt::cross(Vh, T1);
 
     // Parametrization of the projected area of the hemisphere
-    float r = sqrt(r1);
+    float r = hippt::sqrt(r1);
     float phi = hippt::M_TWO_PI * r2;
-    float t1 = r * cos(phi);
-    float t2 = r * sin(phi);
+    float t1 = r * hippt::intrin_cosf(phi);
+    float t2 = r * hippt::intrin_sinf(phi);
     float s = 0.5f * (1.0f + Vh.z);
-    t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
+    t2 = (1.0f - s) * hippt::sqrt(1.0f - t1 * t1) + s * t2;
 
     // Sampling the hemisphere
     float3 Nh = t1 * T1 + t2 * T2 + sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;

@@ -157,7 +157,7 @@ struct MicrofacetRegularization
 #endif
 
 		// Eq. 16 of the paper
-		float consistent_tau = 1.0f / (2.0f * hippt::M_Pi * (1.0f - hippt::intrin_cosf(atanf(powf(sample_number + 1, -1.0f / 6.0f) * sqrt(hippt::M_FOUR_PI * tau_0 - 1.0f) / (hippt::M_TWO_PI * tau_0 - 1.0f)))));
+		float consistent_tau = 1.0f / (2.0f * hippt::M_Pi * (1.0f - hippt::intrin_cosf(atanf(hippt::intrin_pow(sample_number + 1, -1.0f / 6.0f) * sqrt(hippt::M_FOUR_PI * tau_0 - 1.0f) / (hippt::M_TWO_PI * tau_0 - 1.0f)))));
 
 		return consistent_tau;
 	}

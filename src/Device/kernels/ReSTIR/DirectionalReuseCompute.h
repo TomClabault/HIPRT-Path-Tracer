@@ -100,8 +100,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
                     continue;
 
             float theta = sample_index / (float)NB_SAMPLES_PER_RADIUS * hippt::M_TWO_PI;
-            float x_circle = current_radius * cosf(theta);
-            float y_circle = current_radius * sinf(theta);
+            float x_circle = current_radius * hippt::intrin_cosf(theta);
+            float y_circle = current_radius * hippt::intrin_sinf(theta);
 
             int2 neighbor_offset_in_disk = make_int2(static_cast<int>(roundf(x_circle)), static_cast<int>(roundf(y_circle)));
             int2 neighbor_pixel_coords = make_int2(x, y) + neighbor_offset_in_disk;

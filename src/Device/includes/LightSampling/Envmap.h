@@ -106,11 +106,11 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings, floa
     float theta = hippt::max(1.0e-5f, v * hippt::M_Pi);
 
     // Convert to cartesian coordinates
-    float cos_theta = cos(theta);
-    float sin_theta = sin(theta);
+    float cos_theta = hippt::intrin_cosf(theta);
+    float sin_theta = hippt::intrin_sinf(theta);
     // Using this formula here instead of the usual (sin_theta * cos(phi), sin_theta * sin(phi), cos_theta)
     // because we want our envmap to be Y-up
-    sampled_direction = make_float3(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
+    sampled_direction = make_float3(-sin_theta * hippt::intrin_cosf(phi), -cos_theta, -sin_theta * hippt::intrin_sinf(phi));
 
     // Taking envmap rotation into account to bring the direction in world space
     sampled_direction = matrix_X_vec(world_settings.envmap_to_world_matrix, sampled_direction);
@@ -150,8 +150,8 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 
     float envmap_total_sum = world_settings.envmap_total_sum;
 
-    float theta_bsdf_dir = acos(-direction.y);
-    float sin_theta = sin(theta_bsdf_dir);
+    float theta_bsdf_dir = acosf(-direction.y);
+    float sin_theta = hippt::intrin_sinf(theta_bsdf_dir);
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE 
     // The texel was sampled according to its luminance

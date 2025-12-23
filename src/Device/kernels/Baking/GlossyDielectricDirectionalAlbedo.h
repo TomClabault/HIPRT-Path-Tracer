@@ -47,8 +47,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 
     float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1.0f) * x;
     cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
-    cos_theta_o = powf(cos_theta_o, 2.5f);
-    float sin_theta_o = sin(acos(cos_theta_o));
+    cos_theta_o = hippt::intrin_pow(cos_theta_o, 2.5f);
+    float sin_theta_o = hippt::intrin_sinf(acos(cos_theta_o));
 
     float roughness = 1.0f / (bake_settings.texture_size_roughness - 1.0f) * y;
     roughness = hippt::max(roughness, 1.0e-4f);
@@ -62,7 +62,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
     float sqrt_F0 = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
     float relative_ior = (1.0f + sqrt_F0) / (1.0f - sqrt_F0);
 
-    float3 local_view_direction = hippt::normalize(make_float3(cos(0.0f) * sin_theta_o, sin(0.0f) * sin_theta_o, cos_theta_o));
+    float3 local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
     int iterations_per_kernel = floor(hippt::max(1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
     int nb_kernel_launch = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));

@@ -349,8 +349,8 @@ HIPRT_DEVICE static ColorRGB32F principled_beer_absorption(const HIPRTRenderData
         // Remapping the absorption coefficient so that it is more intuitive to manipulate
         // according to Burley, 2015 [5].
         // This effectively gives us a "at distance" absorption coefficient.
-        ColorRGB32F absorption_coefficient = log(absorption_color) / render_data.buffers.materials_buffer_soa.get_absorption_at_distance(ray_volume_state.incident_mat_index);
-        return exp(absorption_coefficient * ray_volume_state.distance_in_volume);
+        ColorRGB32F absorption_coefficient = intrin_logf(absorption_color) / render_data.buffers.materials_buffer_soa.get_absorption_at_distance(ray_volume_state.incident_mat_index);
+        return intrin_expf(absorption_coefficient * ray_volume_state.distance_in_volume);
     }
 
     return ColorRGB32F(1.0f);
@@ -1037,7 +1037,7 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& 
 
             // Reference: [11], [13]
             float traveled_distance_angle = 1.0f / incident_refracted_angle + 1.0f / outgoing_refracted_angle;
-            ColorRGB32F coat_absorption = exp(-(ColorRGB32F(1.0f) - pow(sqrt(bsdf_context.material.coat_medium_absorption), traveled_distance_angle)) * bsdf_context.material.coat_medium_thickness);
+            ColorRGB32F coat_absorption = intrin_expf(-(ColorRGB32F(1.0f) - intrin_pow(sqrt(bsdf_context.material.coat_medium_absorption), traveled_distance_angle)) * bsdf_context.material.coat_medium_thickness);
             layer_below_attenuation *= coat_absorption;
         }
 

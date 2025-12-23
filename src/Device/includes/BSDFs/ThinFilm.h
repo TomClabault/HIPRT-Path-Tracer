@@ -36,9 +36,9 @@ HIPRT_DEVICE static void fresnel_phase(float cos_theta_i,
 {
     float sinThetaSqr = 1.0f - hippt::square(cos_theta_i);
     float A = hippt::square(eta2) * (1.0f - hippt::square(kappa2)) - hippt::square(eta1) * sinThetaSqr;
-    float B = sqrt(hippt::square(A) + hippt::square(2 * hippt::square(eta2) * kappa2));
-    float U = sqrt((A + B) * 0.5f);
-    float V = sqrt((B - A) * 0.5f);
+    float B = hippt::sqrt(hippt::square(A) + hippt::square(2 * hippt::square(eta2) * kappa2));
+    float U = hippt::sqrt((A + B) * 0.5f);
+    float V = hippt::sqrt((B - A) * 0.5f);
 
     float phi_perp_y = 2.0f * eta1 * V * cos_theta_i;
     float phi_perp_x = hippt::square(U) + hippt::square(V) - hippt::square(eta1 * cos_theta_i);
@@ -57,8 +57,8 @@ HIPRT_DEVICE static void fresnel_conductor(float cos_theta_i,
     float sin_theta_i_2 = 1.0f - cos_theta_i_2;
 
     float temp1 = eta * eta - k * k - sin_theta_i_2;
-    float a2pb2 = sqrt(temp1 * temp1 + 4.0f * k * k * eta * eta);
-    float a = sqrt(0.5f * (a2pb2 + temp1));
+    float a2pb2 = hippt::sqrt(temp1 * temp1 + 4.0f * k * k * eta * eta);
+    float a = hippt::sqrt(0.5f * (a2pb2 + temp1));
 
     float term1 = a2pb2 + cos_theta_i_2;
     float term2 = 2.0f * a * cos_theta_i;
@@ -81,8 +81,8 @@ HIPRT_DEVICE static ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hu
     if (hue_shift_degrees == 0.0f)
         return color;
 
-    float cosA = cos(hue_shift_degrees / 180.0f * hippt::M_Pi);
-    float sinA = sin(hue_shift_degrees / 180.0f * hippt::M_Pi);
+    float cosA = hippt::intrin_cosf(hue_shift_degrees / 180.0f * hippt::M_Pi);
+    float sinA = hippt::intrin_sinf(hue_shift_degrees / 180.0f * hippt::M_Pi);
 
     float3x3 matrix;
     constexpr float sqrt_1_3 = 0.57735026918962576451f; // sqrtf(1.0f / 3.0f)

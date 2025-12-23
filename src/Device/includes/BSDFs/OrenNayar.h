@@ -18,8 +18,8 @@
 HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
     // sin(theta)^2 = 1.0 - cos(theta)^2
-    float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
-    float sin_theta_o = sqrt(1.0f - local_view_direction.z * local_view_direction.z);
+    float sin_theta_i = hippt::sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
+    float sin_theta_o = hippt::sqrt(1.0f - local_view_direction.z * local_view_direction.z);
 
     // max_cos here is going to be cos(phi_to_light - phi_view_direction)
     // but computed as cos(phi_light) * cos(phi_view) + sin(phi_light) * sin(phi_view)

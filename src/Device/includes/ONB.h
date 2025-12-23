@@ -31,7 +31,7 @@ HIPRT_DEVICE static void build_ONB(const float3& N, float3& T, float3& B)
 
 HIPRT_DEVICE static float3 rotate_vector(float3 vector, float3 rotate_around, float theta)
 {
-    return vector * cos(theta) + hippt::cross(rotate_around, vector) * sin(theta) + rotate_around * hippt::dot(rotate_around, vector) * (1.0f - cos(theta));
+    return vector * hippt::intrin_cosf(theta) + hippt::cross(rotate_around, vector) * hippt::intrin_sinf(theta) + rotate_around * hippt::dot(rotate_around, vector) * (1.0f - hippt::intrin_cosf(theta));
 }
 
 /*

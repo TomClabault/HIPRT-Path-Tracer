@@ -138,6 +138,8 @@ HIPRT_DEVICE static ColorRGB32F exp(const ColorRGB32F& col) { return ColorRGB32F
 HIPRT_DEVICE static ColorRGB32F exp2(const ColorRGB32F& col) { return ColorRGB32F(exp2f(col.r), exp2f(col.g), exp2f(col.b)); }
 HIPRT_DEVICE static ColorRGB32F log(const ColorRGB32F& col) { return ColorRGB32F(logf(col.r), logf(col.g), logf(col.b)); }
 HIPRT_DEVICE static ColorRGB32F pow(const ColorRGB32F& col, float k) { return ColorRGB32F(powf(col.r, k), powf(col.g, k), powf(col.b, k)); }
+HIPRT_DEVICE static ColorRGB32F intrin_expf(ColorRGB32F x) { return ColorRGB32F(hippt::intrin_expf(x.r), hippt::intrin_expf(x.g), hippt::intrin_expf(x.b)); }
+HIPRT_DEVICE static ColorRGB32F intrin_logf(const ColorRGB32F& col) { return ColorRGB32F(hippt::intrin_logf(col.r), hippt::intrin_logf(col.g), hippt::intrin_logf(col.b)); }
 HIPRT_DEVICE static ColorRGB32F intrin_pow(ColorRGB32F x, float y) { return ColorRGB32F(hippt::intrin_pow(x.r, y), hippt::intrin_pow(x.g, y), hippt::intrin_pow(x.b, y)); }
 HIPRT_DEVICE static ColorRGB32F pow_2_2_fit(ColorRGB32F x) { return ColorRGB32F(hippt::pow_2_2_fit(x.r), hippt::pow_2_2_fit(x.g), hippt::pow_2_2_fit(x.b)); }
 

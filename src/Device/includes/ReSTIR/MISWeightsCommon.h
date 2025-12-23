@@ -60,7 +60,7 @@ HIPRT_DEVICE float symmetric_ratio_MIS_weights_difference_function(float target_
 	else if (exponent == 4.0f)
 		return hippt::pow_4(ratio);
 	else
-		return powf(ratio, exponent);
+		return hippt::intrin_pow(ratio, exponent);
 }
 
 #endif

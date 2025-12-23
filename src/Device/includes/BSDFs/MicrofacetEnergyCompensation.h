@@ -659,11 +659,11 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 		// to float precision issues: storing in the LUT with cos_theta^2.5 but fetching with pow(1.0f / 2.6f)
 		// for example (instead of fetching with pow(1.0f / 2.5f)) darkens the overall appearance and helps remove
 		// energy gains
-		float view_direction_tex_fetch = powf(hippt::max(1.0e-3f, NoV), 1.0f / exponent_correction);
+		float view_direction_tex_fetch = hippt::intrin_pow(hippt::max(1.0e-3f, NoV), 1.0f / exponent_correction);
 
 		float F0 = F0_from_eta(eta_t, eta_i);
 		// sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
-		float F0_remapped = sqrt(sqrt(F0));
+		float F0_remapped = hippt::sqrt(hippt::sqrt(F0));
 
 		float3 uvw = make_float3(view_direction_tex_fetch, custom_roughness, F0_remapped);
 		if (material.thin_walled)

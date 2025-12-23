@@ -165,8 +165,8 @@ HIPRT_DEVICE void glass_directional_albedo_integration(int kernel_iterations, in
 
     float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1.0f) * x;
     cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
-    cos_theta_o = powf(cos_theta_o, 2.5f);
-    float sin_theta_o = sin(acos(cos_theta_o));
+    cos_theta_o = hippt::intrin_pow(cos_theta_o, 2.5f);
+    float sin_theta_o = hippt::intrin_sinf(acos(cos_theta_o));
 
     float roughness = 1.0f / (bake_settings.texture_size_roughness - 1.0f) * y;
     roughness = hippt::max(roughness, 1.0e-4f);
@@ -180,7 +180,7 @@ HIPRT_DEVICE void glass_directional_albedo_integration(int kernel_iterations, in
     float sqrt_F0 = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
     float relative_ior = (1.0f + sqrt_F0) / (1.0f - sqrt_F0);
 
-    float3 local_view_direction = hippt::normalize(make_float3(cos(0.0f) * sin_theta_o, sin(0.0f) * sin_theta_o, cos_theta_o));
+    float3 local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
     if (exiting_surface)
         // Inverting the relative IOR in case we're inside the surface

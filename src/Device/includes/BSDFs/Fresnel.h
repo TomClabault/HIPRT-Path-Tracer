@@ -137,7 +137,7 @@ HIPRT_DEVICE static ColorRGB32F gulbrandsen_metallic_complex_fresnel(const Color
  */
 HIPRT_DEVICE static ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, const ColorRGB32F& F82, const ColorRGB32F& F90, float F90_falloff_exponent, float cos_theta)
 {
-    ColorRGB32F base_term = F0 + (F90 - F0) * pow(1.0f - cos_theta, F90_falloff_exponent);
+    ColorRGB32F base_term = F0 + (F90 - F0) * hippt::intrin_pow(1.0f - cos_theta, F90_falloff_exponent);
     if (base_term.max_component() < 1.0e-8f)
         // Quick exit if the base term is super low to avoid numerical issues with super low
         // float numbers
@@ -149,7 +149,7 @@ HIPRT_DEVICE static ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, co
     constexpr float cos_theta_max = 1.0f / 7.0f;
     constexpr float denom_a = cos_theta_max * hippt::pow_6(1.0f - cos_theta_max);
 
-    ColorRGB32F nume_a = (F0 + (F90 - F0) * pow(1.0f - cos_theta_max, F90_falloff_exponent)) * (ColorRGB32F(1.0f) - F82);
+    ColorRGB32F nume_a = (F0 + (F90 - F0) * hippt::intrin_pow(1.0f - cos_theta_max, F90_falloff_exponent)) * (ColorRGB32F(1.0f) - F82);
     ColorRGB32F a = nume_a / denom_a;
 
     ColorRGB32F F = base_term - a * lazanyi_correction;
@@ -168,7 +168,7 @@ HIPRT_DEVICE static ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, co
  */
 HIPRT_DEVICE static float fresnel_hemispherical_albedo_fit(float relative_eta)
 {
-    return logf((10893.0f * relative_eta - 1438.2f) / (-774.4f * hippt::square(relative_eta) + 10212.0f * relative_eta + 1.0f));
+    return hippt::intrin_logf((10893.0f * relative_eta - 1438.2f) / (-774.4f * hippt::square(relative_eta) + 10212.0f * relative_eta + 1.0f));
 }
 
 #endif

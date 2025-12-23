@@ -39,7 +39,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 
     // We're storing cos_theta_o^2.5 in the LUT so we're retrieving with
     // root 2.5
-    float view_dir_remapped = pow(NoV, 1.0f / 2.5f);
+    float view_dir_remapped = hippt::intrin_pow(NoV, 1.0f / 2.5f);
     // sqrt(sqrt(F0)) here because we're storing F0^4 in the LUT
     float F0_remapped = sqrt(sqrt(F0_from_eta_t_and_relative_ior(ior, relative_ior)));
 
@@ -100,7 +100,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_clearcoat_lobe(cons
 
     // We're storing cos_theta_o^2.5 in the LUT so we're retrieving with
     // root 2.5
-    float view_dir_remapped = pow(NoV, 1.0f / 2.5f);
+    float view_dir_remapped = hippt::intrin_pow(NoV, 1.0f / 2.5f);
     // sqrt(sqrt(F0)) here because we're storing F0^4 in the LUT
     float F0_remapped = sqrt(sqrt(F0_from_eta(material.coat_ior, incident_medium_ior)));
 
