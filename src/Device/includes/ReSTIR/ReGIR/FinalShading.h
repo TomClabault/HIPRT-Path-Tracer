@@ -137,13 +137,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
             }
         }
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
-        // No averaging with splitting because splitting samples lights disjointly so we just need to sum them,
-        // this is not MC estimator anymore, just plain summation of multiple lights
-        return light_source_radiance;
-#else
-        return light_source_radiance / DirectLightSampleCount<DirectLightSamplingBaseStrategy>();
-#endif
+        return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>();
     }
 
     return ColorRGB32F(0.0f);

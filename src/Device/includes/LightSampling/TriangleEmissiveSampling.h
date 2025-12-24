@@ -125,6 +125,14 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample
             shading_point, view_direction, shading_normal,
             ray_payload.material,
             random_number_generator);
+
+        if (DirectLightSampleCount<LSS_BASE_POWER>() > 1)
+        {
+            light_samples[1] = sample_one_light_power(render_data,
+                shading_point, view_direction, shading_normal,
+                ray_payload.material,
+                random_number_generator);
+        }
     }
     else if constexpr (samplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
     {
@@ -171,7 +179,7 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
             random_number_generator);
 
         // TODO THIS IS DEBUG REMOVE THIS
-        if (DirectLightSampleCount<samplingStrategy>() > 0)
+        if (DirectLightSampleCount<LSS_BASE_POWER>() > 1)
         {
             light_point_samples[1] = sample_one_point_on_light_power(render_data,
                 shading_point, view_direction, shading_normal,

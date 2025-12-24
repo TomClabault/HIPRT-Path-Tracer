@@ -142,7 +142,7 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, co
                     light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
                 }
 
-                float mis_weight = balance_heuristic(light_pdf_solid_angle, DirectLightSampleCount<DirectLightSamplingBaseStrategy>() * nb_light_candidates, bsdf_pdf_solid_angle, nb_bsdf_candidates);
+                float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>(), bsdf_pdf_solid_angle, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_sample.pdf;
                 sanity_check<true>(render_data, ColorRGB32F(candidate_weight), 0, 0);
 
@@ -255,7 +255,7 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
                 // so we multiply that here to take that into account
                 light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
 
-                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, DirectLightSampleCount<DirectLightSamplingBaseStrategy>() * nb_light_candidates);
+                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>());
 
                 float bsdf_sample_pdf_area_measure = bsdf_sample_pdf_solid_angle;
                 bsdf_sample_pdf_area_measure /= (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance);
@@ -323,14 +323,9 @@ HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& 
     // for better interactive framerates
     int initial_nb_light_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
     int initial_nb_bsdf_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
-#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR || \
-    DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
-
+#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
     // With ReGIR, initial BSDF candidates are controlled by the ReGIR sampling, not by
     // ReSTIR DI
-    //
-    // Also with a light tree + splitting, we don't have the PDF so we can't do MIS without it
-    // being biased
     initial_nb_bsdf_cand = 0;
 #endif
 

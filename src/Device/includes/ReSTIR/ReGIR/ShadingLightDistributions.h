@@ -23,8 +23,6 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 
     Xorshift32Generator& rng)
 {
-    constexpr int CanonicalLightSampleCountValue = DirectLightSampleCount<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>();
-
     ReGIRReservoir reservoir;
 
     const ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
@@ -71,7 +69,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
             ray_payload.material, 
 			light_point_sample.point_on_light, light_point_sample.light_source_normal,
             light_point_sample.emissive_triangle_global_index, light_point_sample.emission);
-        float mis_weight = balance_heuristic(light_point_sample.area_measure_pdf, regir_settings.shading_settings.number_of_neighbors, canonical_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount * CanonicalLightSampleCountValue, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
+        float mis_weight = balance_heuristic(light_point_sample.area_measure_pdf, regir_settings.shading_settings.number_of_neighbors, canonical_strategy_PDF, ReGIR_GridFillCellDistributionsCanonicalSampleCount * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>(), bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
 
         if (reservoir.stream_sample(mis_weight, target_function, light_point_sample.area_measure_pdf, light_point_sample, rng))
             selected_sample_radiance = sample_radiance;
@@ -90,8 +88,8 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
         surface.cell_point = shading_point;
         surface.cell_primitive_index = last_hit_primitive_index;
 
-        LightSamplePointArray<CanonicalLightSampleCountValue> light_samples = grid_fill_cell_light_distributions_canonical_sample(render_data, surface, view_direction, rng);
-        for (int i = 0; i < CanonicalLightSampleCountValue; i++)
+        LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>()> light_samples = grid_fill_cell_light_distributions_canonical_sample(render_data, surface, view_direction, rng);
+        for (int i = 0; i < DirectLightSampleCount<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(); i++)
         {
             LightSamplePointInformation& light_point_sample = light_samples[i];
 
@@ -120,7 +118,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
             unsigned int sampled_mesh_index = render_data.buffers.emissive_meshes_data.global_triangle_index_to_emissive_mesh_index[light_point_sample.emissive_triangle_global_index];
             float cell_light_distributions_pdf = get_cell_distribution_PDF_of_light_sample(render_data, hash_grid_cell_index, primary_hit, light_point_sample, sampled_mesh_index);
             // 3-way balance heuristic for simplicity (pairwise MIS would probably be more performant)
-            float mis_weight = balance_heuristic(light_point_sample.area_measure_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount * CanonicalLightSampleCountValue, cell_light_distributions_pdf, regir_settings.shading_settings.number_of_neighbors, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
+            float mis_weight = balance_heuristic(light_point_sample.area_measure_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>(), cell_light_distributions_pdf, regir_settings.shading_settings.number_of_neighbors, bsdf_pdf_area_measure, ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE);
 
             if (reservoir.stream_sample(mis_weight, target_function, light_point_sample.area_measure_pdf, light_point_sample, rng))
                 selected_sample_radiance = sample_radiance;
@@ -174,7 +172,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
                     shading_point, view_direction, shading_normal, 
                     ray_payload.material, shading_point + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance,
                     shadow_light_ray_hit_info);
-                mis_weight = balance_heuristic(bsdf_sample_pdf_area_measure, 1, PDF_light_distributions, regir_settings.shading_settings.number_of_neighbors, canonical_technique_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount * CanonicalLightSampleCountValue);
+                mis_weight = balance_heuristic(bsdf_sample_pdf_area_measure, 1, PDF_light_distributions, regir_settings.shading_settings.number_of_neighbors, canonical_technique_pdf, ReGIR_GridFillCellDistributionsCanonicalSampleCount * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>());
             }
             else
                 // If we couldn't find the emissive mesh index of the emissive triangle that we just hit,

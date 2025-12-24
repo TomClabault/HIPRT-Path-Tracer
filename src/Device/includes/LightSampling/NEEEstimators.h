@@ -94,13 +94,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
         }
     }
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
-	// No averaging with splitting because splitting samples lights disjointly so we just need to sum them,
-	// this is not MC estimator anymore, just plain summation of multiple lights
-    return light_source_radiance;
-#else
-    return light_source_radiance / DirectLightSampleCount<DirectLightSamplingBaseStrategy>();
-#endif
+    return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>();
 }
 
 HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
@@ -183,7 +177,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
                         if (cos_theta_at_light_source > 1.0e-5f)
                         {
                             float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, cos_theta_at_light_source);
-                            float mis_weight = balance_heuristic(light_sample_solid_angle_pdf, 1, bsdf_pdf, 1);
+                            float mis_weight = balance_heuristic(light_sample_solid_angle_pdf, DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>(), bsdf_pdf, 1);
 
                             float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
                             light_source_radiance_mis += bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
@@ -227,7 +221,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
             float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, 
                 ray_payload.material,
                 shadow_light_ray_hit_info, sampled_bsdf_direction);
-            float mis_weight = balance_heuristic(bsdf_sample_pdf, 1, light_pdf_solid_angle, 1);
+            float mis_weight = balance_heuristic(bsdf_sample_pdf, 1, light_pdf_solid_angle, DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>());
 
             // Using abs here because we want the dot product to be positive.
             // You may be thinking that if we're doing this, then we're not going to discard BSDF

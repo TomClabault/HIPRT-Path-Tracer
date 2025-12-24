@@ -1746,13 +1746,10 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 					"resampling initial candidates");
 
 				const bool bsdf_samples_disabled_regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
-				const bool bsdf_samples_disabled_light_tree_splitting = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE;
-				const bool bsdf_samples_disabled = bsdf_samples_disabled_regir || bsdf_samples_disabled_light_tree_splitting;
+				const bool bsdf_samples_disabled = bsdf_samples_disabled_regir;
 				if (bsdf_samples_disabled_regir)
 					ImGuiRenderer::add_warning("BSDF samples are disabled in ReSTIR DI because they are controlled by "
 						"the ReGIR settings (use BSDF MIS in ReGIR for BSDF samples).");
-				else if (bsdf_samples_disabled_light_tree_splitting)
-					ImGuiRenderer::add_warning("We don't have the PDF for the light tree splitting implementation so BSDF MIS isn't allowed, it's biased.");
 				ImGui::BeginDisabled(bsdf_samples_disabled);
 				if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
 				{

@@ -96,20 +96,13 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
     int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.risltc_settings.number_of_light_candidates;
-
-#if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE
-    // BSDF MIS isn't allowed with the light tree & splitting, we don't have the PDF for the light tree
-    // splitting implementation so it's biased
-    int nb_bsdf_candidates = 0;
-#else
     int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.risltc_settings.number_of_bsdf_candidates;
-#endif
+
     if (!ray_payload.material.can_do_light_sampling())
         nb_light_candidates = 0;
 
     // Sampling candidates with weighted reservoir sampling
     RISLTCReservoir reservoir;
-    // Dividing by DirectLightSampleCount<DirectLightSamplingBaseStrategy>() here because 
     for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
     {
         LightSampleArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> light_samples = sample_one_light(render_data,
@@ -120,6 +113,8 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
         for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
         {
             LightSampleInformation& light_sample_info = light_samples[i];
+            if (light_sample_info.emissive_triangle_global_index == -1)
+                continue;
 
             float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample_info.emissive_triangle_global_index * 3 + 0]];
             float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample_info.emissive_triangle_global_index * 3 + 1]];
@@ -171,7 +166,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
                 ltc_metallic * ray_payload.material.metallic + 
                 ltc_diffuse * ray_payload.material.base_color.luminance();
 
-            float mis_weight = 1.0f / nb_light_candidates;
+            float mis_weight = 1.0f / (nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>());
             float candidate_weight = mis_weight * target_function / light_sample_info.pdf;
 
             RISLTCSample light_RIS_sample;

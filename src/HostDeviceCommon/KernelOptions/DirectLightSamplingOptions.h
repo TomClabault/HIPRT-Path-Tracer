@@ -60,6 +60,31 @@
 #ifndef __KERNELCC__
 
 /**
+ * How to sample lights in the scene.
+ * This directly affects the 'DirectLightSamplingStrategy' strategies that sample lights
+ *
+ *	- LSS_BASE_UNIFORM
+ *		Lights are sampled uniformly
+ *
+ *	- LSS_BASE_POWER
+ *		Lights are sampled proportionally to their power
+ *
+ *	- LSS_BASE_LIGHT_TREE_ATS
+ *		Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]
+ *
+ *	- LSS_BASE_LIGHT_TREE_SG
+ *		Implementation of [Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting, Tokuyoshi et al., 2024]
+ *
+ *	- LSS_BASE_REGIR
+ *		Uses ReGIR to sample lights
+ *		Very custom and advanced implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021] +
+ *		Disney's cache points: [Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]
+ *
+ *       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
+ */
+#define DirectLightSamplingBaseStrategy LSS_BASE_REGIR
+
+/**
 * What direct lighting sampling strategy to use.
 *
 * Possible values (the prefix LSS stands for "Light Sampling strategy"):
@@ -93,32 +118,7 @@
 *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
 *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
 */
-#define DirectLightSamplingStrategy LSS_RISLTC
-
-/**
-* How to sample lights in the scene.
-* This directly affects the 'DirectLightSamplingStrategy' strategies that sample lights
-*
-*	- LSS_BASE_UNIFORM
-*		Lights are sampled uniformly
-*
-*	- LSS_BASE_POWER
-*		Lights are sampled proportionally to their power
-*
-*	- LSS_BASE_LIGHT_TREE_ATS
-*		Implementation of [Importance Sampling of Many Lights with Adaptive Tree Splitting, Conty & Kulla, 2018]
-* 
-*	- LSS_BASE_LIGHT_TREE_SG
-*		Implementation of [Hierarchical Light Sampling with Accurate Spherical Gaussian Lighting, Tokuyoshi et al., 2024]
-*
-*	- LSS_BASE_REGIR
-*		Uses ReGIR to sample lights
-*		Very custom and advanced implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021] +
-*		Disney's cache points: [Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]
-* 
-*       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
-*/
-#define DirectLightSamplingBaseStrategy LSS_BASE_POWER
+#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant
@@ -219,10 +219,25 @@ constexpr int DirectLightSampleCount()
 		// ATS Light tree with splitting is the only strategy that supports multiple light samples per path vertex
 		return LightTreeATSSplittingMaxLightSamples;
 	else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
-		return 1;
+		return 2;
 	else
 		// Other strategies just return 1 light sample per path vertex
 		return 1;
+}
+
+template <int lightSamplingStrategy>
+constexpr int DirectLightIntegrationFactor()
+{
+	if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE)
+		// ATS Light tree with splitting is essentially not a MC integrator since the returned
+		// light samples are disjoint thanks to the splitting.
+		//
+		// So need not average the 4 (if splitting max light samples is 4) NEE samples together for example
+		// but just sum them up. So we're returning 1 here such that the division by the integration factor
+		// does not average the 4 samples.
+		return 1;
+	else
+		return DirectLightSampleCount<lightSamplingStrategy>();
 }
 
 #endif
