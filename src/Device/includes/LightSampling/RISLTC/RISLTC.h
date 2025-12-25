@@ -159,13 +159,17 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 				ray_payload.material,
 				LTCLobe::DIFFUSE_LOBE);
 #endif
+            ColorRGB32F triangle_emission = triangle_load_emission(render_data, light_sample_info.emissive_triangle_global_index);
 
 			float target_function = 
                 ltc_coat * ray_payload.material.coat + 
                 ltc_specular * ray_payload.material.specular + 
                 ltc_metallic * ray_payload.material.metallic + 
                 ltc_diffuse * ray_payload.material.base_color.luminance();
+            target_function *= triangle_emission.luminance();
 
+
+            //float bsdf_pdf_approximate = target_function;
             float mis_weight = 1.0f / (nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>());
             float candidate_weight = mis_weight * target_function / light_sample_info.pdf;
 
@@ -173,7 +177,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
             light_RIS_sample.light_index = light_sample_info.emissive_triangle_global_index;
             light_RIS_sample.is_bsdf_sample = false;
             light_RIS_sample.target_function = target_function;
-			light_RIS_sample.emission = triangle_load_emission(render_data, light_sample_info.emissive_triangle_global_index);
+            light_RIS_sample.emission = triangle_emission;
 
             reservoir.add_one_candidate(light_RIS_sample, candidate_weight, random_number_generator);
             reservoir.sanity_check();
@@ -192,7 +196,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
     //    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
     //    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
-    //    RISSample bsdf_RIS_sample;
+    //    RISLTCSample bsdf_RIS_sample;
     //    if (bsdf_sample_pdf > 0.0f)
     //    {
     //        hiprtRay bsdf_ray;
