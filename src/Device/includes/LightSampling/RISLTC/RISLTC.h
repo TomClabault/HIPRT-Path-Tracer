@@ -147,12 +147,12 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
     RISLTCReservoir reservoir;
     for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
     {
-        LightSampleArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> light_samples = sample_one_light(render_data,
+        LightSampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_light(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
-        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
+        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
         {
             LightSampleInformation& light_sample_info = light_samples[i];
             if (light_sample_info.emissive_triangle_global_index == -1)
@@ -168,7 +168,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 
 
             float bsdf_pdf_approximate = target_function_no_emission;
-            float mis_weight = balance_heuristic(light_sample_info.pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>(), bsdf_pdf_approximate, 1);
+            float mis_weight = balance_heuristic(light_sample_info.pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>(), bsdf_pdf_approximate, 1);
             float candidate_weight = mis_weight * target_function / light_sample_info.pdf;
 
             RISLTCSample light_RIS_sample;
@@ -231,7 +231,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
                     closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
                     ray_payload.material,
                     shadow_light_ray_hit_info.hit_prim_index);
-                float mis_weight = balance_heuristic(bsdf_pdf_for_MIS, 1, light_pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>());
+                float mis_weight = balance_heuristic(bsdf_pdf_for_MIS, 1, light_pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 
                 target_function = bsdf_pdf_for_MIS * shadow_light_ray_hit_info.hit_emission.luminance();
                 float candidate_weight = mis_weight * target_function / bsdf_pdf_for_MIS;// bsdf_sample_pdf;

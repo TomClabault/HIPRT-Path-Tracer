@@ -187,6 +187,6 @@
  */
 #define ViewportColorOverriden (																												\
 	(NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG || DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE) ||	\
-	(DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG))
+	(DirectLightSamplingStrategy == LSS_BASE_REGIR && ReGIR_DebugMode != REGIR_DEBUG_MODE_NO_DEBUG))
 
 #endif

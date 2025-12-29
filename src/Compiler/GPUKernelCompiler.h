@@ -76,8 +76,8 @@ public:
 	/**
 	 * Returns a list of the option macro names used by the given kernel.
 	 * 
-	 * For example, this function will return {"DirectLightSamplingStrategy", "EnvmapSamplingStrategy"}
-	 * if the given kernel uses this two macros (if the kernel has some "#if == DirectLightSamplingStrategy", "#ifdef DirectLightSamplingStrategy"
+	 * For example, this function will return {"DirectLightNEEEstimator", "EnvmapSamplingStrategy"}
+	 * if the given kernel uses this two macros (if the kernel has some "#if == DirectLightNEEEstimator", "#ifdef DirectLightNEEEstimator"
 	 * directives or similar in its code)
 	 */
 	std::unordered_set<std::string> get_option_macros_used_by_kernel(const GPUKernel& kernel);

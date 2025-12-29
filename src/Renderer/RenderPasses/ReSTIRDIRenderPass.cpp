@@ -561,7 +561,7 @@ void ReSTIRDIRenderPass::compute_render_times()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_RESTIR_DI)
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) != LSS_RESTIR_DI)
 		return;
 
 	std::unordered_map<std::string, float>& ms_time_per_pass = m_renderer->get_render_pass_times();
@@ -614,7 +614,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_ke
 
 bool ReSTIRDIRenderPass::is_render_pass_used() const
 {
-	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI;
+	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI;
 }
 
 void ReSTIRDIRenderPass::request_temporal_bufffers_clear()

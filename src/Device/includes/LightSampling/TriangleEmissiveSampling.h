@@ -104,7 +104,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_power(const H
     return light_sample;
 }
 
-template <int samplingStrategy = DirectLightSamplingBaseStrategy>
+template <int samplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample_one_light(const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,
@@ -156,7 +156,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(const H
     bool& out_need_fallback_sampling,
     Xorshift32Generator& random_number_generator);
 
-template <int samplingStrategy = DirectLightSamplingBaseStrategy>
+template <int samplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
     const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
     int last_hit_primitive_index, RayPayload& ray_payload,

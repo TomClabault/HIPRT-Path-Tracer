@@ -52,10 +52,10 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	// Adding hardware acceleration by default if supported
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
 	// Just "fixing" the ReGIR options to be in sync with the UI
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR &&
-		(m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_ONE_LIGHT || 
-		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_MIS_LIGHT_BSDF))
-		m_global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
+		(m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_ONE_LIGHT || 
+		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
+		m_global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 
 	m_power_sampling_data_structure = PowerSamplingDataStructure(this);
 	m_light_tree_ats_sampling_data_structure = LightTreeATSSamplingDataStructure(this);

@@ -22,22 +22,22 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRDIOptions.h"
 
-HIPRT_DEVICE ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> sample_light_candidate_array(const HIPRTRenderData& render_data, float envmap_candidate_probability,
+HIPRT_DEVICE ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> sample_light_candidate_array(const HIPRTRenderData& render_data, float envmap_candidate_probability,
     const float3& view_direction, const HitInfo& closest_hit_info,
     RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
 {
-    ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> di_samples;
+    ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> di_samples;
 
     float3 evaluated_point = closest_hit_info.inter_point;
 
     if (random_number_generator() > envmap_candidate_probability)
     {
-        LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> light_samples = sample_one_point_on_light(render_data,
+        LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, 
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
-        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
+        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
         {
             LightSamplePointInformation& light_sample_info = light_samples[i];
 
@@ -57,7 +57,7 @@ HIPRT_DEVICE ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingBaseS
 
         // For simplicity of implementation in the MIS weights, we're sampling the envmap as many
 		// times as we would sample lights
-        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
+        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
         {
             float3 envmap_sampled_direction;
             di_samples[i].emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, di_samples[i].pdf, random_number_generator);
@@ -80,11 +80,11 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, co
 {
     for (int i = 0; i < nb_light_candidates; i++)
     {
-        ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> di_samples = sample_light_candidate_array(render_data, envmap_candidate_probability,
+        ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> di_samples = sample_light_candidate_array(render_data, envmap_candidate_probability,
             view_direction, closest_hit_info, ray_payload,
             random_number_generator);
 
-        for (int sample_index = 0; sample_index < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); sample_index++)
+        for (int sample_index = 0; sample_index < DirectLightSampleCount<DirectLightSamplingStrategy>(); sample_index++)
         {
             ReSTIRDIInitialSample& light_sample = di_samples[sample_index];
             if (light_sample.emissive_triangle_global_index == -1 && !light_sample.is_envmap_sample())
@@ -142,7 +142,7 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data, co
                     light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
                 }
 
-                float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>(), bsdf_pdf_solid_angle, nb_bsdf_candidates);
+                float mis_weight = balance_heuristic(light_pdf_solid_angle, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>(), bsdf_pdf_solid_angle, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_sample.pdf;
                 sanity_check<true>(render_data, ColorRGB32F(candidate_weight), 0, 0);
 
@@ -255,7 +255,7 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data, con
                 // so we multiply that here to take that into account
                 light_pdf_solid_angle *= (1.0f - envmap_candidate_probability);
 
-                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>());
+                float mis_weight = balance_heuristic(bsdf_sample_pdf_solid_angle, nb_bsdf_candidates, light_pdf_solid_angle, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 
                 float bsdf_sample_pdf_area_measure = bsdf_sample_pdf_solid_angle;
                 bsdf_sample_pdf_area_measure /= (shadow_light_ray_hit_info.hit_distance * shadow_light_ray_hit_info.hit_distance);
@@ -323,7 +323,7 @@ HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& 
     // for better interactive framerates
     int initial_nb_light_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
     int initial_nb_bsdf_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
-#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+#if DirectLightSamplingStrategy == LSS_BASE_REGIR
     // With ReGIR, initial BSDF candidates are controlled by the ReGIR sampling, not by
     // ReSTIR DI
     initial_nb_bsdf_cand = 0;

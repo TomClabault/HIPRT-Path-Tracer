@@ -73,12 +73,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
         // Fallback method as the point was outside of the ReGIR grid
         ColorRGB32F light_source_radiance;
 
-        LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> light_samples = sample_one_point_on_light(render_data,
+        LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
-        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
+        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
         {
             LightSamplePointInformation& light_sample = light_samples[i];
 
@@ -113,7 +113,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
                     float bsdf_pdf;
 
                     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+#if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
                     BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 #else
                     BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
@@ -137,7 +137,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data, Ra
             }
         }
 
-        return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>();
+        return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
     }
 
     return ColorRGB32F(0.0f);

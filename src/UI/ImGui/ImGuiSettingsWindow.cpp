@@ -656,7 +656,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.indirect_contribution_clamp = 0.0f;
 		render_settings.envmap_contribution_clamp = 0.0f;
 
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_NO_DIRECT_LIGHT_SAMPLING);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_NO_DIRECT_LIGHT_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_NO_SAMPLING);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION, KERNEL_OPTION_FALSE);
@@ -667,7 +667,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		break;
 
 	case SETTINGS_PRESET_MIS_NEE_PATH_TRACER:
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_MIS_LIGHT_BSDF);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_MIS_LIGHT_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
@@ -681,7 +681,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.ris_settings.number_of_bsdf_candidates = 1;
 		render_settings.ris_settings.number_of_light_candidates = 4;
 
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, ESS_ALIAS_TABLE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION, KERNEL_OPTION_TRUE);
@@ -708,7 +708,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 		render_settings.restir_di_settings.m_cap = 5;
 
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RESTIR_DI);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
@@ -740,7 +740,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
 		render_settings.restir_di_settings.m_cap = 3;
 
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RESTIR_DI);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
@@ -790,7 +790,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic = true;
 		render_settings.restir_gi_settings.m_cap = 3;
 
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RESTIR_DI);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_TYPE, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, KERNEL_OPTION_TRUE);
@@ -830,7 +830,7 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererSettingsPreset p
 		render_settings.restir_gi_settings.use_neighbor_sample_point_roughness_heuristic = true;
 		render_settings.restir_gi_settings.m_cap = 3;
 
-		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS, RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY, KERNEL_OPTION_TRUE);
 		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY, KERNEL_OPTION_FALSE);
@@ -1032,7 +1032,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			if (!render_settings.accumulate)
 				ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI ||
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI ||
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
 			{
 				ImGuiRenderer::add_warning("Adaptive sampling may not be efficient when used with ReSTIR. This is because "
@@ -1070,7 +1070,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
-			bool disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI;
+			bool disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI;
 			ImGui::BeginDisabled(disabled);
 			static int nee_sample_count = DirectLightSamplingNEESampleCount;
 			ImGui::SliderInt("NEE Sample count", &nee_sample_count, 1, 8);
@@ -1116,7 +1116,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				"[Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]"
 			};
 
-			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips("Base light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
+			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips("Light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
 			
 			const char* items[] = { "- No direct light sampling", "- Light sampling", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- RISLTC BSDF + Light candidates", "- LTC Shading", "- ReSTIR DI (Primary hit only)"};
 			const char* tooltips[] = {
@@ -1131,32 +1131,33 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			};
 
 			const bool no_direct_light_sampling_disabled = false;
-			const bool uniform_one_light_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+			const bool uniform_one_light_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 			const bool bsdf_sampling_disabled = false;
 
-			const bool regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+			const bool regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 			const bool mis_disabled = regir;
 
 			const bool ris_disabled = false;
 			const bool risltc_disabled = regir;
+			const bool ltc_shading_disabled = regir;
 			const bool restir_di_disabled = false;
 
-			bool disabled_items[] = { no_direct_light_sampling_disabled, uniform_one_light_disabled, bsdf_sampling_disabled, mis_disabled, ris_disabled, restir_di_disabled };
+			bool disabled_items[] = { no_direct_light_sampling_disabled, uniform_one_light_disabled, bsdf_sampling_disabled, mis_disabled, ris_disabled, risltc_disabled, ltc_shading_disabled, restir_di_disabled };
 			// If the user chooses a combination of base sampling strategy + sampling technique that is forbidden,
 			// we're going to fallback automatically to something that is allowed and this array gives the default
 			// fallback for the techniques in the same order that they are in the 'items_base_strategy' array.
 			int preferred_fallback_technique[] = { LSS_ONE_LIGHT , LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_ONE_LIGHT, LSS_RIS_BSDF_AND_LIGHT };
 			static_assert(IM_ARRAYSIZE(preferred_fallback_technique) == IM_ARRAYSIZE(items_base_strategy));
 
-			if (ImGuiRenderer::ComboWithTooltips("NEE strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items), tooltips, disabled_items))
+			if (ImGuiRenderer::ComboWithTooltips("NEE Estimator", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR), items, IM_ARRAYSIZE(items), tooltips, disabled_items))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (disabled_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY)])
+			if (disabled_items[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR)])
 			{
-				int preferred_base_strategy = preferred_fallback_technique[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY)];
+				int preferred_base_strategy = preferred_fallback_technique[global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY)];
 				if (disabled_items[preferred_base_strategy])
 				{
 					// If also the preferred technique is disabled, choosing the first enabled one
@@ -1164,7 +1165,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					{
 						if (!disabled_items[i])
 						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, i);
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, i);
 
 							m_renderer->recompute_emissives_sampling_data_structure();
 							m_renderer->recompile_kernels();
@@ -1176,7 +1177,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				}
 				else 
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, preferred_base_strategy);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, preferred_base_strategy);
 
 					m_renderer->recompute_emissives_sampling_data_structure();
 					m_renderer->recompile_kernels();
@@ -1256,7 +1257,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				global_kernel_options->get_macro_value(GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY) == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
 				draw_ltc_settings_panel();
 
-			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY))
+			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
 			case LSS_BASE_REGIR:	
 				draw_ReGIR_settings_panel();
@@ -1276,7 +1277,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)
-			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
+			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR))
 			{
 			case LSS_NO_DIRECT_LIGHT_SAMPLING:
 				break;
@@ -1314,7 +1315,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				break;
 			}
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_BSDF && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_NO_DIRECT_LIGHT_SAMPLING)
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) != LSS_BSDF && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) != LSS_NO_DIRECT_LIGHT_SAMPLING)
 				draw_next_event_estimation_plus_plus_panel();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1612,7 +1613,7 @@ void ImGuiSettingsWindow::draw_ris_settings_panel()
 	{
 		ImGui::TreePush("RIS Settings tree");
 
-		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR)
 		{
 			ImGui::Text("The mix of BSDF/light samples is controlled\n"
 				"by the ReGIR settings.");
@@ -1661,7 +1662,7 @@ void ImGuiSettingsWindow::draw_risltc_settings_panel()
 	{
 		ImGui::TreePush("RISLTC Settings tree");
 
-		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR)
 		{
 			ImGui::Text("The mix of BSDF/light samples is controlled\n"
 				"by the ReGIR settings.");
@@ -1746,7 +1747,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 				ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
 					"resampling initial candidates");
 
-				const bool bsdf_samples_disabled_regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+				const bool bsdf_samples_disabled_regir = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 				const bool bsdf_samples_disabled = bsdf_samples_disabled_regir;
 				if (bsdf_samples_disabled_regir)
 					ImGuiRenderer::add_warning("BSDF samples are disabled in ReSTIR DI because they are controlled by "
@@ -2471,6 +2472,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGuiRenderer::show_help_marker("Whether or not to use a shadow ray in the target function when "
 				"shading a point at path tracing time. This reduces visibility noise.");
 
+			ImGui::BeginDisabled(use_vis_shading_resampling);
 			static bool use_nee_plus_plus_vis_shading_resampling = ReGIR_ShadingResamplingTargetFunctionNeePlusPlusVisibility;
 			if (ImGui::Checkbox("Use NEE++ visibility estimation in target function", &use_nee_plus_plus_vis_shading_resampling))
 			{
@@ -2490,6 +2492,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				ImGuiRenderer::show_help_marker("Shortcut for enabling for enabling NEE++");
 				ImGui::TreePop();
 			}
+			ImGui::EndDisabled();
 
 			static bool include_canonical = ReGIR_ShadingResamplingIncludeCanonicalCandidates;
 			if (ImGui::Checkbox("Do canonical candidates", &include_canonical))

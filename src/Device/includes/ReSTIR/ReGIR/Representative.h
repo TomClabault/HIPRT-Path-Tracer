@@ -16,7 +16,7 @@
  */
 HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 surface_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material)
 {
-	if (DirectLightSamplingBaseStrategy != LSS_BASE_REGIR)
+	if (DirectLightSamplingStrategy != LSS_BASE_REGIR)
 		return;
 	else if (primitive_index == -1)
 		return;

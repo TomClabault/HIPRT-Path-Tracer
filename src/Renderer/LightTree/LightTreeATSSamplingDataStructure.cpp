@@ -86,8 +86,8 @@ void LightTreeATSSamplingDataStructure::free()
 bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count)
 {
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
-	bool directly_using_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS;
-	bool using_regir_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+	bool directly_using_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_ATS;
+	bool using_regir_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 
 	return (directly_using_light_tree || using_regir_light_tree) && emissive_count > 0;
 }

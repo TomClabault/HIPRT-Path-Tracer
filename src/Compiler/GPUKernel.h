@@ -68,7 +68,7 @@ public:
 	void parse_option_macros_used();
 
 	/**
-	 * Given an option macro name ("InteriorStackStrategy", "DirectLightSamplingStrategy", "EnvmapSamplingStrategy", ...
+	 * Given an option macro name ("InteriorStackStrategy", "DirectLightNEEEstimator", "EnvmapSamplingStrategy", ...
 	 * for examples. They are all defined in KernelOptions.h), returns true if the kernel uses that option macro.
 	 * False otherwise.
 	 * 
@@ -76,7 +76,7 @@ public:
 	 * changes the output of the compiler. For example, the camera ray kernel doesn't care about
 	 * which direct lighting sampling strategy we're using. It also doesn't care about our envmap
 	 * sampling strategy. So we way that the camera ray kernel doesn't use the
-	 * "DirectLightSamplingStrategy" and "EnvmapSamplingStrategy" options macro
+	 * "DirectLightNEEEstimator" and "EnvmapSamplingStrategy" options macro
 	 */
 	bool uses_macro(const std::string& macro_name) const;
 

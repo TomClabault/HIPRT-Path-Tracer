@@ -262,7 +262,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, Ra
         // No need to sample the envmap if the user has set the intensity to 0
         return ColorRGB32F(0.0f);
 
-    if (ray_payload.bounce == 0 && DirectLightSamplingStrategy == LSS_RESTIR_DI)
+    if (ray_payload.bounce == 0 && DirectLightNEEEstimator == LSS_RESTIR_DI)
         // The envmap lighting is handled by ReSTIR DI on the first bounce
         return ColorRGB32F(0.0f);
 

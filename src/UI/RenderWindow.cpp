@@ -79,8 +79,10 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - After NEE++ has accumulated a few samples, can we compress it into a perfect hash table?
+// - Maybe we can return 4 samples from ReGIR and shade them all outside of the resampling loop instead of inside, maybe this will lower register pressure?
+// - Should we keep the average surface normal in each ReGIR cell to help with sampling precision instead of one single surface normal?
 // - Can we accumulate the extent of each grid cell by the point that fall into it and do something useful with the extent?
-// - Use the splitting of the light tree in the initial grid fill should be OP
 // - SG light tree splitting how? Using the same heuristic as K&C 2018 or the heuristic of 2024 RIS tree?
 // - Use cell light distributions not on emissive meshes but light tree nodes?
 // - Add some ui to graph rmse and other metrics over time / over spp and auto output a graph

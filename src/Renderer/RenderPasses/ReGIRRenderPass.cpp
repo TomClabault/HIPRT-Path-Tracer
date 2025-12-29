@@ -1218,7 +1218,7 @@ void ReGIRRenderPass::reset(bool reset_by_camera_movement)
 
 bool ReGIRRenderPass::is_render_pass_used() const
 {
-	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR;
+	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 }
 
 float ReGIRRenderPass::get_VRAM_usage_bytes() const

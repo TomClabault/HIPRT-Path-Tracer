@@ -286,10 +286,10 @@ struct HIPRTRenderSettings
 	 * This is because to determine whether or not we need the g-buffer of last
 	 * frame, we need to check if ReSTIR DI is being used or not. On the CPP side, this
 	 * can be done with the GPURenderer instance by checking the path tracer
-	 * options and check if the DirectLightSamplingStrategy is equal to
+	 * options and check if the DirectLightNEEEstimator is equal to
 	 * LSS_RESTIR_DI. On the device however, we don't have access to the
 	 * GPURenderer instance but instead, we can check directly using the 
-	 * DirectLightSamplingStrategy macro (and we don't want the GPURenderer parameter 
+	 * DirectLightNEEEstimator macro (and we don't want the GPURenderer parameter 
 	 * because that doesn't exist on the device).
 	 */
 	HIPRT_DEVICE bool use_prev_frame_g_buffer() const
@@ -297,7 +297,7 @@ struct HIPRTRenderSettings
 		// If ReSTIR DI isn't used, we don't need the last frame's g-buffer
 		// (as far as the codebase goes at the time of writing this function anyways)
 		bool need_g_buffer = false;
-		need_g_buffer |= DirectLightSamplingStrategy == LSS_RESTIR_DI && restir_di_settings.common_temporal_pass.do_temporal_reuse_pass;
+		need_g_buffer |= DirectLightNEEEstimator == LSS_RESTIR_DI && restir_di_settings.common_temporal_pass.do_temporal_reuse_pass;
 		need_g_buffer |= PathSamplingStrategy == PSS_RESTIR_GI && restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass;
 
 		return need_g_buffer;

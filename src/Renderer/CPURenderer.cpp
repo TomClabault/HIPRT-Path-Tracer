@@ -228,7 +228,7 @@ void CPURenderer::gmon_check_for_sets_accumulation()
 
 void CPURenderer::ReGIR_post_render_update()
 {
-#if DirectLightSamplingBaseStrategy != LSS_BASE_REGIR
+#if DirectLightSamplingStrategy != LSS_BASE_REGIR
     return;
 #endif
 
@@ -297,8 +297,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
     m_light_bvh = std::make_shared<BVH>(&m_emissive_triangles_buffer);
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_POWER ||                        \
-    (DirectLightSamplingBaseStrategy == LSS_BASE_REGIR && (                     \
+#if DirectLightSamplingStrategy == LSS_BASE_POWER ||                        \
+    (DirectLightSamplingStrategy == LSS_BASE_REGIR && (                     \
         ReGIR_GridFillLightSamplingBaseStrategyNonCanonical == LSS_BASE_POWER ||            \
         ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_POWER ||   \
         (ReGIR_GridFillUsePerCellLightDistributions == KERNEL_OPTION_TRUE && ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique == LSS_BASE_POWER)))
@@ -306,7 +306,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     compute_emissives_power_alias_table(parsed_scene);
 #endif
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_ATS || DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+#if DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS || DirectLightSamplingStrategy == LSS_BASE_REGIR
     m_light_tree_builder_ats.build_light_tree(
         parsed_scene.emissive_triangles_primitive_indices,
         parsed_scene.triangles_vertex_indices,
@@ -316,7 +316,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_light_tree_ats_device_data = m_light_tree_builder_ats.compute_device_data<std::vector>();
     m_light_tree_builder_ats.to_device(m_render_data, parsed_scene.emissive_triangles_primitive_indices, parsed_scene.triangles_vertex_indices.size() / 3, m_light_tree_ats_device_data);
     m_light_tree_builder_ats.cleanup();
-#elif DirectLightSamplingBaseStrategy == LSS_BASE_LIGHT_TREE_SG
+#elif DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
     m_light_tree_builder_sg.build_light_tree(
         parsed_scene.emissive_triangles_primitive_indices,
         parsed_scene.triangles_vertex_indices,
@@ -544,11 +544,11 @@ void CPURenderer::render()
 
         camera_rays_pass();
 
-#if DirectLightSamplingBaseStrategy == LSS_BASE_REGIR
+#if DirectLightSamplingStrategy == LSS_BASE_REGIR
         ReGIR_pass();
 #endif
 
-#if DirectLightSamplingStrategy == LSS_RESTIR_DI
+#if DirectLightNEEEstimator == LSS_RESTIR_DI
         // Only doing ReSTIR DI is ReSTIR DI is enabled 
         ReSTIR_DI_pass();
 #endif

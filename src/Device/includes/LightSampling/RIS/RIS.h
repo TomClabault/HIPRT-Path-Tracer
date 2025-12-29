@@ -95,12 +95,12 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
     RISReservoir reservoir;
     for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
     {
-        LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingBaseStrategy>()> light_samples = sample_one_point_on_light(render_data,
+        LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(render_data,
             closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
             random_number_generator);
 
-        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingBaseStrategy>(); i++)
+        for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
         {
             LightSamplePointInformation& light_sample_info = light_samples[i];
 
@@ -142,7 +142,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 
                     // Converting the PDF from area measure to solid angle measure
                     float solid_angle_light_pdf = area_to_solid_angle_pdf(light_sample_info.area_measure_pdf, distance_to_light, cosine_at_light_source);
-                    float mis_weight = balance_heuristic(solid_angle_light_pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>(), bsdf_pdf, nb_bsdf_candidates);
+                    float mis_weight = balance_heuristic(solid_angle_light_pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>(), bsdf_pdf, nb_bsdf_candidates);
                     candidate_weight = mis_weight * target_function / solid_angle_light_pdf;
                 }
             }
@@ -205,7 +205,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
                 float light_pdf = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, 
                     ray_payload.material,
                     shadow_light_ray_hit_info, sampled_bsdf_direction);
-                float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingBaseStrategy>());
+                float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates * DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
                 bsdf_RIS_sample.emission = shadow_light_ray_hit_info.hit_emission;
