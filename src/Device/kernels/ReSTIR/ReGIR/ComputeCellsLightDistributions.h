@@ -24,9 +24,17 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
     float total_contribution_to_cell = 0.0f;
     for (int i = 0; i < ReGIR_GridFillCellDistributionsIntegrateMeshSampleCount; i++)
     {
+        DeviceUnpackedEffectiveMaterial approximate_material;
+        approximate_material.roughness = cell_surface.cell_roughness;
+        approximate_material.metallic = cell_surface.cell_metallic;
+        approximate_material.specular = cell_surface.cell_specular;
+
         float sample_PDF;
         int emissive_triangle_global_index = mesh_alias_table.sample_one_triangle_power(rng, sample_PDF);
-        LightSamplePointInformation mesh_light_sample = sample_point_on_light_and_fill_light_sample_information(render_data, emissive_triangle_global_index, rng);
+        LightSamplePointInformation mesh_light_sample = sample_point_on_light_and_fill_light_sample_information(render_data,
+			cell_surface.cell_point, hippt::normalize(render_data.current_camera.position - cell_surface.cell_point), cell_surface.cell_normal,
+            approximate_material, 
+            emissive_triangle_global_index, rng);
         if (mesh_light_sample.emissive_triangle_global_index == -1)
             continue;
 
