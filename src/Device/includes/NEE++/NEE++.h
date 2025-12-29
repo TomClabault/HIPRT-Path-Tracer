@@ -73,6 +73,8 @@ struct NEEPlusPlusDevice
 	// (because it's probably converged enough)
 	int m_stop_update_samples = 2048;
 
+	int grid_prepopulate_sample_count = 16;
+
 	enum BufferNames : unsigned int
 	{
 		VISIBILITY_MAP_UNOCCLUDED_COUNT = 0,

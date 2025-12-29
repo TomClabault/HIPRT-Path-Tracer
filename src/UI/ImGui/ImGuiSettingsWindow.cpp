@@ -3766,6 +3766,37 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
 
+			if (ImGui::CollapsingHeader("Grid prepopulation"))
+			{
+				ImGui::TreePush("NEE++ Grid prepopulation tree");
+
+				const char* items_lss[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)", "- SG light tree (Tokuyoshi et al. 2024)" };
+				const char* tooltips_lss[] = {
+					"All lights are sampled uniformly",
+
+					"Lights are sampled proportionally to their power",
+
+					"Lights are sampled using a light hierarchy with orientation bounds as proposed in the paper of Conty & Kulla, 2018.",
+
+					"Lights are sampled using a light hierarchy of spherical gaussian lights as proposed in the paper of Tokuyoshi et al., 2024.",
+				};
+
+				if (ImGuiRenderer::ComboWithTooltips("Light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY), items_lss, IM_ARRAYSIZE(items_lss), tooltips_lss))
+				{
+					// Will recompute the alias table if necessary
+					m_renderer->recompute_emissives_sampling_data_structure();
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::SliderInt("Light sample count", &render_data.nee_plus_plus.grid_prepopulate_sample_count, 1, 128))
+					m_render_window->set_render_dirty(true);
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::TreePop();
+			}
+
 			if (ImGui::CollapsingHeader("Debug"))
 			{
 				ImGui::TreePush("NEE++ debug tree");

@@ -23,16 +23,14 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data, const h
     // Just making sure that this is not set to false
     render_data.nee_plus_plus.m_update_visibility_map = true;
 
-    for (int sample = 0; sample < 100; sample++)
+    for (int sample = 0; sample < render_data.nee_plus_plus.grid_prepopulate_sample_count; sample++)
     {
-        constexpr int SAMPLING_STRATEGY = DirectLightSamplingBaseStrategy == LSS_BASE_REGIR ? ReGIR_GridFillLightSamplingBaseStrategyNonCanonical : DirectLightSamplingBaseStrategy;
-
-        LightSamplePointArray light_samples = sample_one_point_on_light<SAMPLING_STRATEGY>(render_data,
+        LightSamplePointArray light_samples = sample_one_point_on_light<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(render_data,
             closest_hit_info.inter_point, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
             closest_hit_info.primitive_index, ray_payload,
 			random_number_generator);
 
-        for (int i = 0; i < DirectLightSampleCount<SAMPLING_STRATEGY>(); i++)
+        for (int i = 0; i < DirectLightSampleCount<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(); i++)
         {
             LightSamplePointInformation& light_sample = light_samples[i];
 

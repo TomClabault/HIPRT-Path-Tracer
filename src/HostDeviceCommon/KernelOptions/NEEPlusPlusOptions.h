@@ -43,6 +43,13 @@
 #define DirectLightUseNEEPlusPlus KERNEL_OPTION_FALSE
 
 /**
+ * What light sampling strategy is going to be used to sample light
+ * candidates during the NEE++ grid prepopulate pass to fill the visibility
+ * cache a bit
+ */
+#define NEEPlusPlusGridPrepopulateLightSamplingStrategy LSS_BASE_LIGHT_TREE_ATS
+
+/**
 * Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility
 * information of NEE++
 */
