@@ -84,12 +84,39 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
     }
 }
 
+template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
+HIPRT_DEVICE float pdf_of_emissive_triangle(const HIPRTRenderData& render_data,
+    float3 shading_point, float3 view_direction, float3 shading_normal,
+    const DeviceUnpackedEffectiveMaterial& material,
+    int emissive_triangle_global_index, float light_area, ColorRGB32F light_emission)
+{
+    if constexpr (lightSamplingStrategy == LSS_BASE_UNIFORM)
+    {
+		return 1.0f / render_data.buffers.emissive_triangles_count;
+    }
+    else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
+    {
+        return (light_emission.luminance() * light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
+    }
+    else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
+    {
+        return pdf_of_emissive_triangle_light_tree_ats(render_data, shading_point, shading_normal, emissive_triangle_global_index);
+    }
+    else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
+    {
+        return pdf_of_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, material, emissive_triangle_global_index);
+    }
+    else if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
+        // We should never ask that question, we can't get the PDF of ReGIR
+        return 1.0e15f;
+}
+
 /**
  * Returns the PDF (area measure) of the light sampler for the given triangle_hit_info
  *
  * 'primitive_index' is the index of the emissive triangle hit
  * 'shading_normal' is the shading normal at the intersection point of the emissive triangle hit
- * 'hit_distance' is the distance to the intersection point on the hit triangle
+
  * 'ray_direction' is the direction of the ray that hit the triangle. The direction points towards the triangle.
  */
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>
@@ -99,8 +126,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
     float3 point_on_triangle, float3 triangle_normal,
     int emissive_triangle_global_index, float light_area, ColorRGB32F light_emission)
 {
-    float hit_distance = 1.0f;
-    float area_measure_pdf;
+    float point_on_light_pdf;
 
     // Note that for ReGIR, we cannot have the exact light PDF since ReGIR is based on RIS so we're
     // faking it with whatever base strategy ReGIR is using
@@ -108,49 +134,50 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
     if constexpr (lightSamplingStrategy == LSS_BASE_UNIFORM)
     {
         // Surface area PDF of hitting that point on that triangle in the scene
-        area_measure_pdf = pdf_of_point_on_triangle_area_measure(render_data, 
+        point_on_light_pdf = pdf_of_point_on_triangle_area_measure(render_data,
             shading_point, view_direction, shading_normal,
             material,
             point_on_triangle, triangle_normal,
             emissive_triangle_global_index, light_area);
-        area_measure_pdf /= render_data.buffers.emissive_triangles_count;
     }
     else if constexpr (lightSamplingStrategy == LSS_BASE_POWER)
     {
-        area_measure_pdf = pdf_of_point_on_triangle_area_measure(render_data, 
+        point_on_light_pdf = pdf_of_point_on_triangle_area_measure(render_data,
             shading_point, view_direction, shading_normal,
             material,
             point_on_triangle, triangle_normal,
             emissive_triangle_global_index, light_area);
-        area_measure_pdf *= (light_emission.luminance() * light_area) / render_data.buffers.emissive_triangles_power_alias_table.sum_elements;
     }
     else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS)
     {
-        area_measure_pdf = pdf_of_point_on_triangle_area_measure(render_data, 
+        point_on_light_pdf = pdf_of_point_on_triangle_area_measure(render_data,
             shading_point, view_direction, shading_normal,
             material,
             point_on_triangle, triangle_normal,
             emissive_triangle_global_index, light_area);
-        area_measure_pdf *= pdf_of_emissive_triangle_light_tree_ats(render_data, shading_point, shading_normal, emissive_triangle_global_index);
     }
     else if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG)
     {
-        area_measure_pdf = pdf_of_point_on_triangle_area_measure(render_data, 
+        point_on_light_pdf = pdf_of_point_on_triangle_area_measure(render_data,
             shading_point, view_direction, shading_normal,
             material,
             point_on_triangle, triangle_normal,
             emissive_triangle_global_index, light_area);
-        area_measure_pdf *= pdf_of_emissive_triangle_light_tree_sg(render_data, shading_point, view_direction, shading_normal, material, emissive_triangle_global_index);
     }
     else if constexpr (lightSamplingStrategy == LSS_BASE_REGIR)
         // We should never ask that question, we can't get the PDF of ReGIR
-        area_measure_pdf = 1.0e15f;
+        point_on_light_pdf = 1.0e15f;
     else
         // Invalid strategy
-        area_measure_pdf = 1.0e15f;
+        point_on_light_pdf = 1.0e15f;
 
+    float light_pdf = pdf_of_emissive_triangle<lightSamplingStrategy>(render_data,
+        shading_point, view_direction, shading_normal,
+        material,
+        emissive_triangle_global_index, light_area, light_emission);;
+    float full_pdf = point_on_light_pdf * light_pdf;
 
-    return area_measure_pdf;
+    return full_pdf;
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingBaseStrategy>

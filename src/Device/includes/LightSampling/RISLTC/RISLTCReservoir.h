@@ -22,7 +22,6 @@ struct RISLTCSample
     ColorRGB32F emission;
     int light_index = -1;
 
-    ColorRGB32F bsdf_sample_contribution;
     bool is_bsdf_sample = false;
 
     float target_function;

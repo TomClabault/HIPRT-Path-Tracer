@@ -1138,6 +1138,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			const bool mis_disabled = regir;
 
 			const bool ris_disabled = false;
+			const bool risltc_disabled = regir;
 			const bool restir_di_disabled = false;
 
 			bool disabled_items[] = { no_direct_light_sampling_disabled, uniform_one_light_disabled, bsdf_sampling_disabled, mis_disabled, ris_disabled, restir_di_disabled };
@@ -1660,13 +1661,13 @@ void ImGuiSettingsWindow::draw_risltc_settings_panel()
 	{
 		ImGui::TreePush("RISLTC Settings tree");
 
-		/*if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
+		if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_BASE_STRATEGY) == LSS_BASE_REGIR)
 		{
 			ImGui::Text("The mix of BSDF/light samples is controlled\n"
 				"by the ReGIR settings.");
 		}
 		else
-		{*/
+		{
 			//if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
 			//{
 			//	// Clamping to 0
@@ -1682,7 +1683,7 @@ void ImGuiSettingsWindow::draw_risltc_settings_panel()
 
 				m_render_window->set_render_dirty(true);
 			}
-		//}
+		}
 
 		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
