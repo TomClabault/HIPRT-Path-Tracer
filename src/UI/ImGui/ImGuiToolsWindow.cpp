@@ -661,6 +661,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::TreePush("Start capture tree");
 		// Only used in "real-time" non accumulated mode for sampled-based captures
 		static int total_samples_rendered = 0;
+		static bool capture_requested = false;
 		static bool capture_started = false;
 		static int captures_taken = 0;
 		static float last_captured_ratio = 0.0f;
@@ -673,6 +674,13 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			ImGui::BeginDisabled(true);
 			ImGui::Button("Capturing... ");
 			ImGui::EndDisabled();
+
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 1.0f));        // Red
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.2f, 0.2f, 1.0f)); // Lighter red when hovered
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));  // Darker red when clicked
+			if (ImGui::Button("Stop capturing"))
+				capture_started = false;
+			ImGui::PopStyleColor(3);
 
 			ImGui::SameLine();
 			ImGui::Text("%d / %d", captures_taken, number_of_captures);
@@ -690,7 +698,6 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				m_render_window->get_application_settings()->max_sample_count = 0;
 				m_render_window->get_application_settings()->max_render_time = 0;
 
-				capture_started = true;
 				captures_taken = 0;
 				last_captured_ratio = 0.0f;
 				total_samples_rendered = 0;
@@ -702,19 +709,23 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 					current_recorded_xs.push_back((float)((i + 1) * capture_interval_value));
 
 				m_render_window->set_render_dirty(true);
-				// Force setting the current render time to 0.0f such that the 'current ratio' checks below
-				// don't trigger immediately since the render time is only reset lazily by the render
-				// window once set_render_dirty takes effect but this may take a few frames
-				// so in the meantime, current_render_time_ms isn't reset to 0 and the convergence
-				// tool is going to start capturing thinking that the render time has already progressed whereas
-				// it's just that's it hasn't been reset in the first place yet
-				m_render_window->get_current_render_time_ms() = 0.0f;
+				// Requesting the capture and the capture will start as soon as the render is effectively reset
+				// (because set_render_dirty doesn't immediately reset the render, it merely asks for a reset
+				// but the render window will only really reset once the current frame has finished rendering)
+				capture_requested = true;
 			}
 
 			if (ref_image.width == 0)
 				ImGuiRenderer::add_warning("No reference image selected");
 
 			ImGui::EndDisabled();
+		}
+
+		if (capture_requested && render_settings.sample_number == 0)
+		{
+			// Starting the capture only once the render has effectively restarted
+			capture_started = true;
+			capture_requested = false;
 		}
 
 		float current_ratio = 0.0f;
