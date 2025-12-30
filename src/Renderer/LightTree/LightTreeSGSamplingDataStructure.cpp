@@ -89,8 +89,9 @@ bool LightTreeSGSamplingDataStructure::is_needed(unsigned int emissive_count)
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 	bool directly_using_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG;
 	bool using_regir_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
+	bool nee_plus_plus_using_light_tree = global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_GRID_PREPOPULATE_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_LIGHT_TREE_SG && global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
 
-	return (directly_using_light_tree || using_regir_light_tree) && emissive_count > 0;
+	return (directly_using_light_tree || using_regir_light_tree || nee_plus_plus_using_light_tree) && emissive_count > 0;
 }
 
 size_t LightTreeSGSamplingDataStructure::get_VRAM_usage_bytes() const
