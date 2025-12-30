@@ -33,8 +33,6 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
         RIS_integral = render_data.render_settings.regir_settings.get_non_canonical_pre_integration_factor(grid_cell_index, primary_hit);
     if (RIS_integral == 0.0f)
         RIS_integral = 1.0f;
-    if (!render_data.render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
-        RIS_integral = 1.0f;
 
     return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, surface, primary_hit, RIS_integral, point_on_light, light_source_normal, emission, random_number_generator);
 }

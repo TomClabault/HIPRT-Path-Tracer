@@ -556,9 +556,6 @@ struct ReGIRSettings
 	// Async compute is only supported with spatial reuse enabled though.
 	bool do_asynchronous_compute = false;
 
-	bool DEBUG_CORRELATE_rEGIR = true;
-	bool DEBUG_DO_RIS_INTEGRAL_NORMALIZATION = true;
-
 	// How many frames to skip before running the grid fill and spatial reuse passes again
 	// 
 	// A value of 1 for example means that the grid fill and spatial reuse will be ran at frame 0

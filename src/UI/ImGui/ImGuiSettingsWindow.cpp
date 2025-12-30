@@ -5169,13 +5169,9 @@ void ImGuiSettingsWindow::draw_debug_panel()
 			m_render_window->set_render_dirty(true);
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 
-		if (ImGui::Checkbox("Correlate ReGIR", &render_settings.regir_settings.DEBUG_CORRELATE_rEGIR))
-			m_render_window->set_render_dirty(true);
 		if (ImGui::SliderInt("ReGIR Pre integration iterations", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS, 1, 64))
 			m_render_window->set_render_dirty(true);
 		if (ImGui::SliderInt("ReGIR Pre integration sample per res", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR, 1, 64	))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::Checkbox("Normalize RIS integral", &render_settings.regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION))
 			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

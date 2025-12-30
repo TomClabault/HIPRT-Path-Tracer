@@ -268,13 +268,9 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
             non_canonical_RIS_integral_center_grid_cell = regir_settings.get_non_canonical_pre_integration_factor(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
             if (non_canonical_RIS_integral_center_grid_cell == 0.0f)
                 non_canonical_RIS_integral_center_grid_cell = 1.0f;
-            if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
-                non_canonical_RIS_integral_center_grid_cell = 1.0f;
 
             canonical_RIS_integral_center_grid_cell = regir_settings.get_canonical_pre_integration_factor(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
             if (canonical_RIS_integral_center_grid_cell == 0.0f)
-                canonical_RIS_integral_center_grid_cell = 1.0f;
-            if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                 canonical_RIS_integral_center_grid_cell = 1.0f;
         }
 
@@ -304,8 +300,6 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 
         float neighbor_RIS_integral = regir_settings.get_non_canonical_pre_integration_factor(neighbor_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
         if (neighbor_RIS_integral == 0.0f)
-            neighbor_RIS_integral = 1.0f;
-        if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
             neighbor_RIS_integral = 1.0f;
 
 
@@ -400,8 +394,6 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 
             float RIS_integral = regir_settings.get_non_canonical_pre_integration_factor(canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload));
             if (RIS_integral == 0.0f)
-                RIS_integral = 1.0f;
-            if (!regir_settings.DEBUG_DO_RIS_INTEGRAL_NORMALIZATION)
                 RIS_integral = 1.0f;
             float non_canonical_sample_PDF_unnormalized = ReGIR_grid_fill_evaluate_non_canonical_target_function(render_data, canonical_grid_cell_index, regir_settings.compute_is_primary_hit(ray_payload),
                 emission_1, light_source_normal_1, point_on_light_1, random_number_generator);
