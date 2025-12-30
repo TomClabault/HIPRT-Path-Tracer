@@ -20,9 +20,9 @@
 HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyCanonical>()> grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, Xorshift32Generator& rng)
 {
     RayPayload dummy_ray_payload;
-    dummy_ray_payload.material.roughness = surface.cell_roughness;
+    /*dummy_ray_payload.material.roughness = surface.cell_roughness;
     dummy_ray_payload.material.metallic = surface.cell_metallic;
-    dummy_ray_payload.material.specular = surface.cell_specular;
+    dummy_ray_payload.material.specular = surface.cell_specular;*/
 
 #if ReGIR_GridFillLightSamplingBaseStrategyCanonical == LSS_BASE_LIGHT_TREE_ATS
     return sample_one_emissive_triangle_light_tree_ats<false>(render_data,
@@ -69,9 +69,9 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_with_per_cell_light_distributions(const HI
         else
         {
 			DeviceUnpackedEffectiveMaterial material;
-			material.roughness = surface.cell_roughness;
+			/*material.roughness = surface.cell_roughness;
 			material.metallic = surface.cell_metallic;
-			material.specular = surface.cell_specular;
+			material.specular = surface.cell_specular;*/
 
             LightSamplePointInformation light_sample = sample_one_emissive_triangle_with_cell_light_distribution(render_data, 
                 surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal,
@@ -176,9 +176,9 @@ HIPRT_DEVICE ReGIRReservoir grid_fill_classic(const HIPRTRenderData& render_data
         else
         {
             RayPayload dummy_ray_payload;
-            dummy_ray_payload.material.roughness = surface.cell_roughness;
+            /*dummy_ray_payload.material.roughness = surface.cell_roughness;
             dummy_ray_payload.material.metallic = surface.cell_metallic;
-            dummy_ray_payload.material.specular = surface.cell_specular;
+            dummy_ray_payload.material.specular = surface.cell_specular;*/
             
             LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>()> light_point_samples = sample_one_point_on_light<ReGIR_GridFillLightSamplingBaseStrategyNonCanonical>(render_data,
                 surface.cell_point, hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal, 

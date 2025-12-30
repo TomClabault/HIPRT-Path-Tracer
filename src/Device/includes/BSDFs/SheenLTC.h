@@ -74,7 +74,7 @@ HIPRT_DEVICE static float get_phi(const float3& direction)
 
 HIPRT_DEVICE static float get_sheen_ltc_reflectance(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction)
 {
-	return read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z).b;
+	return read_LTC_parameters(render_data, 1.0f, local_view_direction.z).b;
 }
 
 HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction, float& out_pdf, float& out_sheen_reflectance)
@@ -101,14 +101,14 @@ HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_dat
 	// with phi=0 (because we computed the rotation angle, phi, from the view direction)
 	float3 to_light_standard_frame = rotate_vector(local_to_light_direction, make_float3(0.0f, 0.0f, 1.0f), -phi);
 
-	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
+	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, 1.0f, local_view_direction.z);
 	float Do = sheen_eval_ltc(to_light_standard_frame, AiBiRi);
 
 	out_pdf = Do;
 	out_sheen_reflectance = AiBiRi.b;
 	// The cosine term is included in the LTC distribution but the renderer expects that
 	// the cosine term isn't included in the BSDFs so we cancel it here.
-	return material.sheen_color * AiBiRi.b * Do / local_to_light_direction.z;
+	return ColorRGB32F() * AiBiRi.b * Do / local_to_light_direction.z;
 }
 
 HIPRT_DEVICE static float sheen_ltc_pdf(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction)
@@ -127,7 +127,7 @@ HIPRT_DEVICE static float sheen_ltc_pdf(const HIPRTRenderData& render_data, cons
 	// with phi=0 (because we computed the rotation angle, phi, from the view direction)
 	float3 to_light_standard_frame = rotate_vector(local_to_light_direction, make_float3(0.0f, 0.0f, 1.0f), -phi);
 
-	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
+	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, 1.0f, local_view_direction.z);
 	float Do = sheen_eval_ltc(to_light_standard_frame, AiBiRi);
 
 	return Do;
@@ -138,7 +138,7 @@ HIPRT_DEVICE static float3 sheen_ltc_sample(const HIPRTRenderData& render_data, 
 	// Sampling a direction in the original space of the LTC
 	float3 cosine_sample = cosine_weighted_sample_z_up_frame(random_number_generator);
 
-	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
+	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, 1.0f, local_view_direction.z);
 
 	// And then from the transformation matrix of the LTC, we're going to bring that
 	// sampled direction back to the local space of the BSDF (shading/tangent space)

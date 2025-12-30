@@ -493,9 +493,9 @@ struct ReGIRSettings
 		{
 			hash_cell_data_to_update.world_points[hash_grid_cell_index] = world_position;
 			hash_cell_data_to_update.world_normals[hash_grid_cell_index].pack(shading_normal);
-			hash_cell_data_to_update.roughness[hash_grid_cell_index] = material.roughness * 255.0f;
-			hash_cell_data_to_update.metallic[hash_grid_cell_index] = material.metallic * 255.0f;
-			hash_cell_data_to_update.specular[hash_grid_cell_index] = material.specular * 255.0f;
+			hash_cell_data_to_update.roughness[hash_grid_cell_index] = 255;
+			hash_cell_data_to_update.metallic[hash_grid_cell_index] = 0;
+			hash_cell_data_to_update.specular[hash_grid_cell_index] = 0;
 		}
 		else
 			// Already something in that cell
@@ -516,7 +516,7 @@ struct ReGIRSettings
 		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material)
 	{
 		unsigned int checksum;
-		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, primary_hit, hash_grid_to_update.m_total_number_of_cells, checksum);
+		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, 1.0f, primary_hit, hash_grid_to_update.m_total_number_of_cells, checksum);
 
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
 		

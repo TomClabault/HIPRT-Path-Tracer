@@ -81,9 +81,9 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
     for (int light_sample_index = 0; light_sample_index < ReGIR_GridFillCellDistributionsCanonicalSampleCount; light_sample_index++)
     {
         ReGIRGridFillSurface surface;
-        surface.cell_roughness = ray_payload.material.roughness;
+        /*surface.cell_roughness = ray_payload.material.roughness;
         surface.cell_metallic = ray_payload.material.metallic;
-        surface.cell_specular = ray_payload.material.specular;
+        surface.cell_specular = ray_payload.material.specular;*/
         surface.cell_normal = shading_normal;
         surface.cell_point = shading_point;
         surface.cell_primitive_index = last_hit_primitive_index;

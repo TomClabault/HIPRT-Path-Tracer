@@ -45,17 +45,17 @@ struct RayVolumeState
 			outgoing_mat_index,
 			inside_material,
 			mat_index,
-			material.get_dielectric_priority());
+			5);
 
-		if (material.dispersion_scale > 0.0f && material.specular_transmission > 0.0f && sampled_wavelength == 0.0f)
-			// If we hit a dispersive material, we sample the wavelength that will be used
-			// for computing the wavelength dependent IORs used for dispersion
-			//
-			// We're also not re-doing the sampling if a wavelength has already been sampled for that path
-			//
-			// Negating the wavelength to indicate that the throughput filter of the wavelength
-			// hasn't been applied yet (applied in principled_glass_eval())
-			sampled_wavelength = -sample_wavelength_uniformly(random_number_generator);
+		//if (material.dispersion_scale > 0.0f && material.specular_transmission > 0.0f && sampled_wavelength == 0.0f)
+		//	// If we hit a dispersive material, we sample the wavelength that will be used
+		//	// for computing the wavelength dependent IORs used for dispersion
+		//	//
+		//	// We're also not re-doing the sampling if a wavelength has already been sampled for that path
+		//	//
+		//	// Negating the wavelength to indicate that the throughput filter of the wavelength
+		//	// hasn't been applied yet (applied in principled_glass_eval())
+		//	sampled_wavelength = -sample_wavelength_uniformly(random_number_generator);
 	}
 
 	// How far has the ray traveled in the current volume.

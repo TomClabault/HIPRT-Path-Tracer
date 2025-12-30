@@ -94,7 +94,7 @@ struct DevicePackedEffectiveMaterial
 
         packed.set_base_color(unpacked.base_color);
 
-        packed.set_roughness(unpacked.roughness);
+        /*packed.set_roughness(unpacked.roughness);
         packed.set_oren_nayar_sigma(unpacked.oren_nayar_sigma);
 
         packed.set_metallic(unpacked.metallic);
@@ -150,7 +150,7 @@ struct DevicePackedEffectiveMaterial
         packed.set_alpha_opacity(unpacked.alpha_opacity);
         packed.set_dielectric_priority(unpacked.get_dielectric_priority());
         packed.set_energy_preservation_monte_carlo_samples(unpacked.energy_preservation_monte_carlo_samples);
-        packed.set_enforce_strong_energy_conservation(unpacked.enforce_strong_energy_conservation);
+        packed.set_enforce_strong_energy_conservation(unpacked.enforce_strong_energy_conservation);*/
 
         return packed;
     }
@@ -164,7 +164,7 @@ struct DevicePackedEffectiveMaterial
 
         unpacked.base_color = this->get_base_color();
 
-        unpacked.roughness = this->get_roughness();
+        /*unpacked.roughness = this->get_roughness();
         unpacked.oren_nayar_sigma = this->get_oren_nayar_sigma();
 
         unpacked.metallic = this->get_metallic();
@@ -220,7 +220,7 @@ struct DevicePackedEffectiveMaterial
         unpacked.alpha_opacity = this->get_alpha_opacity();
         unpacked.set_dielectric_priority(this->get_dielectric_priority());
         unpacked.energy_preservation_monte_carlo_samples = this->get_energy_preservation_monte_carlo_samples();
-        unpacked.enforce_strong_energy_conservation = this->get_enforce_strong_energy_conservation();
+        unpacked.enforce_strong_energy_conservation = this->get_enforce_strong_energy_conservation();*/
 
         return unpacked;
     }
@@ -569,144 +569,144 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         if (MaterialUtils::use_base_color_texture(out.base_color_texture_index))
             out.base_color = this->get_base_color();
 
-        out.roughness = this->get_roughness();
-        out.oren_nayar_sigma = this->get_oren_nayar_sigma();
-
-        // Parameters for Adobe 2023 F82-tint model
-        out.metallic = this->get_metallic();
-        if (out.metallic > 0.0f || !MaterialUtils::use_metallic_texture(out.metallic_texture_index, out.roughness_metallic_texture_index))
-        {
-            // We only need to unpack all of this if we actually have a metallic lobe
-
-            out.metallic_F90_falloff_exponent = this->get_metallic_F90_falloff_exponent();
-            // F0 is not here as it uses the 'base_color' of the material
-            out.metallic_F82 = this->get_metallic_F82();
-            out.metallic_F90 = this->get_metallic_F90();
-
-            out.second_roughness_weight = this->get_second_roughness_weight();
-            out.second_roughness = this->get_second_roughness();
-
-#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
-            out.do_metallic_energy_compensation = this->get_do_metallic_energy_compensation();
-#endif
-        }
-
-        out.anisotropy = this->get_anisotropy();
-        out.anisotropy_rotation = this->get_anisotropy_rotation();
-
-        // Specular intensity
-        out.specular = this->get_specular();
-        if (out.specular > 0.0f || !MaterialUtils::use_specular_texture(out.specular_texture_index))
-        {
-            // Specular tint intensity. 
-            // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
-            out.specular_tint = this->get_specular_tint();
-            out.specular_color = this->get_specular_color();
-            // Same as coat darkening but for total internal reflection inside the specular layer
-            // that sits on top of the diffuse base
-            //
-            // Disabled by default for artistic "expectations"
-            out.specular_darkening = this->get_specular_darkening();
-
-#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
-            out.do_specular_energy_compensation = this->get_do_specular_energy_compensation();
-#endif
-        }
-
-        out.coat = this->get_coat();
-        if (out.coat > 0.0f || !MaterialUtils::use_coat_texture(out.coat_texture_index))
-        {
-            out.coat_medium_absorption = this->get_coat_medium_absorption();
-            // The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
-            // that will happen inside the coat
-            out.coat_medium_thickness = this->get_coat_medium_thickness();
-            out.coat_roughness = this->get_coat_roughness();
-            // Physical accuracy requires that a rough clearcoat also roughens what's underneath it
-            // i.e. the specular/metallic/transmission layers.
-            // 
-            // The option is however given here to artistically disable
-            // that behavior by using coat roughening = 0.0f.
-            out.coat_roughening = this->get_coat_roughening();
-            // Because of the total internal reflection that can happen inside the coat layer (i.e.
-            // light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the
-            // clearcoat will appear will increased saturation.
-            out.coat_darkening = this->get_coat_darkening();
-            out.coat_anisotropy = this->get_coat_anisotropy();
-            out.coat_anisotropy_rotation = this->get_coat_anisotropy_rotation();
-            out.coat_ior = this->get_coat_ior();
-
-#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
-            out.do_coat_energy_compensation = this->get_do_coat_energy_compensation();
-#endif
-        }
-
-        out.sheen = this->get_sheen(); // Sheen strength
-        if (out.sheen > 0.0f || !MaterialUtils::use_sheen_texture(out.sheen_texture_index))
-        {
-            out.sheen_roughness = this->get_sheen_roughness();
-            out.sheen_color = this->get_sheen_color();
-        }
-
-        out.ior = this->get_ior();
-        out.diffuse_transmission = this->get_diffuse_transmission();
-        out.specular_transmission = this->get_specular_transmission();
-
-        if (out.specular_transmission > 0.0f || !MaterialUtils::use_specular_transmission_texture(out.specular_transmission_texture_index))
-        {
-            // Specular transmission specific 
-            out.dispersion_scale = this->get_dispersion_scale();
-            out.dispersion_abbe_number = this->get_dispersion_abbe_number();
-            out.thin_walled = this->get_thin_walled();
-
-#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
-            out.do_glass_energy_compensation = this->get_do_glass_energy_compensation();
-#endif
-        }
-        if (out.specular_transmission > 0.0f || out.diffuse_transmission > 0.0f || !MaterialUtils::use_specular_transmission_texture(out.specular_transmission_texture_index))
-        {
-            // Also enabled by diffuse transmission as well as specular transmission
-            
-            // At what distance is the light absorbed to the given absorption_color
-            out.absorption_at_distance = this->get_absorption_at_distance();
-            // Color of the light absorption when traveling through the medium
-            out.absorption_color = this->get_absorption_color();
-        }
-
-        out.thin_film = this->get_thin_film();
-        if (out.thin_film > 0.0f)
-        {
-            out.thin_film_ior = this->get_thin_film_ior();
-            out.thin_film_thickness = this->get_thin_film_thickness();
-            out.thin_film_kappa_3 = this->get_thin_film_kappa_3();
-            // Sending the hue film in [0, 1] to the GPU
-            out.thin_film_hue_shift_degrees = this->get_thin_film_hue_shift_degrees();
-            out.thin_film_base_ior_override = this->get_thin_film_base_ior_override();
-            out.thin_film_do_ior_override = this->get_thin_film_do_ior_override();
-        }
-
-        // 1.0f makes the material completely opaque
-        // 0.0f completely transparent (becomes invisible)
-        out.alpha_opacity = this->get_alpha_opacity();
-
-        // Nested dielectric parameter
-        out.set_dielectric_priority(this->get_dielectric_priority());
-
-        // If true, 'energy_preservation_monte_carlo_samples' will be used
-        // to compute the directional albedo of this material.
-        // This computed directional albedo is then used to ensure perfect energy conservation
-        // and preservation. 
-        // 
-        // This is however very expensive.
-        // This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
-        // the clearcoat layer and the BSDF below may be acceptable).
-        // 
-        // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
-        // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
-        // 
-        // See PrincipledBSDFDoEnergyCompensation in this codebase.
-        out.enforce_strong_energy_conservation = this->get_enforce_strong_energy_conservation();
-        if (out.enforce_strong_energy_conservation)
-            out.energy_preservation_monte_carlo_samples = this->get_energy_preservation_monte_carlo_samples();
+//        out.roughness = this->get_roughness();
+//        out.oren_nayar_sigma = this->get_oren_nayar_sigma();
+//
+//        // Parameters for Adobe 2023 F82-tint model
+//        out.metallic = this->get_metallic();
+//        if (out.metallic > 0.0f || !MaterialUtils::use_metallic_texture(out.metallic_texture_index, out.roughness_metallic_texture_index))
+//        {
+//            // We only need to unpack all of this if we actually have a metallic lobe
+//
+//            out.metallic_F90_falloff_exponent = this->get_metallic_F90_falloff_exponent();
+//            // F0 is not here as it uses the 'base_color' of the material
+//            out.metallic_F82 = this->get_metallic_F82();
+//            out.metallic_F90 = this->get_metallic_F90();
+//
+//            out.second_roughness_weight = this->get_second_roughness_weight();
+//            out.second_roughness = this->get_second_roughness();
+//
+//#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
+//            out.do_metallic_energy_compensation = this->get_do_metallic_energy_compensation();
+//#endif
+//        }
+//
+//        out.anisotropy = this->get_anisotropy();
+//        out.anisotropy_rotation = this->get_anisotropy_rotation();
+//
+//        // Specular intensity
+//        out.specular = this->get_specular();
+//        if (out.specular > 0.0f || !MaterialUtils::use_specular_texture(out.specular_texture_index))
+//        {
+//            // Specular tint intensity. 
+//            // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
+//            out.specular_tint = this->get_specular_tint();
+//            out.specular_color = this->get_specular_color();
+//            // Same as coat darkening but for total internal reflection inside the specular layer
+//            // that sits on top of the diffuse base
+//            //
+//            // Disabled by default for artistic "expectations"
+//            out.specular_darkening = this->get_specular_darkening();
+//
+//#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
+//            out.do_specular_energy_compensation = this->get_do_specular_energy_compensation();
+//#endif
+//        }
+//
+//        out.coat = this->get_coat();
+//        if (out.coat > 0.0f || !MaterialUtils::use_coat_texture(out.coat_texture_index))
+//        {
+//            out.coat_medium_absorption = this->get_coat_medium_absorption();
+//            // The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
+//            // that will happen inside the coat
+//            out.coat_medium_thickness = this->get_coat_medium_thickness();
+//            out.coat_roughness = this->get_coat_roughness();
+//            // Physical accuracy requires that a rough clearcoat also roughens what's underneath it
+//            // i.e. the specular/metallic/transmission layers.
+//            // 
+//            // The option is however given here to artistically disable
+//            // that behavior by using coat roughening = 0.0f.
+//            out.coat_roughening = this->get_coat_roughening();
+//            // Because of the total internal reflection that can happen inside the coat layer (i.e.
+//            // light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the
+//            // clearcoat will appear will increased saturation.
+//            out.coat_darkening = this->get_coat_darkening();
+//            out.coat_anisotropy = this->get_coat_anisotropy();
+//            out.coat_anisotropy_rotation = this->get_coat_anisotropy_rotation();
+//            out.coat_ior = this->get_coat_ior();
+//
+//#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
+//            out.do_coat_energy_compensation = this->get_do_coat_energy_compensation();
+//#endif
+//        }
+//
+//        out.sheen = this->get_sheen(); // Sheen strength
+//        if (out.sheen > 0.0f || !MaterialUtils::use_sheen_texture(out.sheen_texture_index))
+//        {
+//            out.sheen_roughness = this->get_sheen_roughness();
+//            out.sheen_color = this->get_sheen_color();
+//        }
+//
+//        out.ior = this->get_ior();
+//        out.diffuse_transmission = this->get_diffuse_transmission();
+//        out.specular_transmission = this->get_specular_transmission();
+//
+//        if (out.specular_transmission > 0.0f || !MaterialUtils::use_specular_transmission_texture(out.specular_transmission_texture_index))
+//        {
+//            // Specular transmission specific 
+//            out.dispersion_scale = this->get_dispersion_scale();
+//            out.dispersion_abbe_number = this->get_dispersion_abbe_number();
+//            out.thin_walled = this->get_thin_walled();
+//
+//#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
+//            out.do_glass_energy_compensation = this->get_do_glass_energy_compensation();
+//#endif
+//        }
+//        if (out.specular_transmission > 0.0f || out.diffuse_transmission > 0.0f || !MaterialUtils::use_specular_transmission_texture(out.specular_transmission_texture_index))
+//        {
+//            // Also enabled by diffuse transmission as well as specular transmission
+//            
+//            // At what distance is the light absorbed to the given absorption_color
+//            out.absorption_at_distance = this->get_absorption_at_distance();
+//            // Color of the light absorption when traveling through the medium
+//            out.absorption_color = this->get_absorption_color();
+//        }
+//
+//        out.thin_film = this->get_thin_film();
+//        if (out.thin_film > 0.0f)
+//        {
+//            out.thin_film_ior = this->get_thin_film_ior();
+//            out.thin_film_thickness = this->get_thin_film_thickness();
+//            out.thin_film_kappa_3 = this->get_thin_film_kappa_3();
+//            // Sending the hue film in [0, 1] to the GPU
+//            out.thin_film_hue_shift_degrees = this->get_thin_film_hue_shift_degrees();
+//            out.thin_film_base_ior_override = this->get_thin_film_base_ior_override();
+//            out.thin_film_do_ior_override = this->get_thin_film_do_ior_override();
+//        }
+//
+//        // 1.0f makes the material completely opaque
+//        // 0.0f completely transparent (becomes invisible)
+//        out.alpha_opacity = this->get_alpha_opacity();
+//
+//        // Nested dielectric parameter
+//        out.set_dielectric_priority(this->get_dielectric_priority());
+//
+//        // If true, 'energy_preservation_monte_carlo_samples' will be used
+//        // to compute the directional albedo of this material.
+//        // This computed directional albedo is then used to ensure perfect energy conservation
+//        // and preservation. 
+//        // 
+//        // This is however very expensive.
+//        // This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
+//        // the clearcoat layer and the BSDF below may be acceptable).
+//        // 
+//        // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
+//        // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
+//        // 
+//        // See PrincipledBSDFDoEnergyCompensation in this codebase.
+//        out.enforce_strong_energy_conservation = this->get_enforce_strong_energy_conservation();
+//        if (out.enforce_strong_energy_conservation)
+//            out.energy_preservation_monte_carlo_samples = this->get_energy_preservation_monte_carlo_samples();
 
         return out;
     }

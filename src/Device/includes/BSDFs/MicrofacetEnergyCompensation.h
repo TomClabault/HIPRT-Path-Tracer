@@ -634,7 +634,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 {
 	bool smooth_enough = custom_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glass_energy_compensation_max_bounce && render_data.bsdfs_data.glass_energy_compensation_max_bounce > -1;
-	if (!material.do_glass_energy_compensation || smooth_enough || max_bounce_reached)
+	if (smooth_enough || max_bounce_reached)
 		return 1.0f;
 
 	float compensation_term = 1.0f;
@@ -645,11 +645,11 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 	//
 	// Also not doing compensation if we already have full compensation on the material
 	// because the energy compensation of the glass lobe here is then redundant
-	if (material.thin_film < 1.0f)
+	if (0.0f < 1.0f)
 	{
 		float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
 		float exponent_correction = 2.5f;
-		if (!material.thin_walled)
+		if (!false)
 			exponent_correction = GGX_glass_energy_compensation_get_correction_exponent(custom_roughness, relative_eta_for_correction);
 
 		// We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
@@ -666,7 +666,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 		float F0_remapped = hippt::sqrt(hippt::sqrt(F0));
 
 		float3 uvw = make_float3(view_direction_tex_fetch, custom_roughness, F0_remapped);
-		if (material.thin_walled)
+		if (false)
 		{
 			void* texture = render_data.bsdfs_data.GGX_thin_glass_directional_albedo;
 			int3 dims = make_int3(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
@@ -695,7 +695,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 		//
 		// Because the error is stronger at high roughnesses than at low roughnesses, we can include the roughness
 		// in the lerp such that we use less and less the energy compensation term as the roughness increases
-		compensation_term = hippt::lerp(compensation_term, 1.0f, material.thin_film * custom_roughness);
+		compensation_term = hippt::lerp(compensation_term, 1.0f, 0.0f * custom_roughness);
 	}
 #endif
 
@@ -704,7 +704,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 
 HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
 {
-	return get_GGX_energy_compensation_dielectrics(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV, current_bounce);
+	return get_GGX_energy_compensation_dielectrics(render_data, material, 1.0f, inside_object, eta_t, eta_i, relative_eta, NoV, current_bounce);
 }
 
 #endif

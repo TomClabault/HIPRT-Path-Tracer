@@ -42,9 +42,9 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderDat
 		BSDFIncidentLightInfo out_incident_light_info;
 
 		DeviceUnpackedEffectiveMaterial approximate_material;
-		approximate_material.roughness = surface.cell_roughness;
+		/*approximate_material.roughness = surface.cell_roughness;
 		approximate_material.metallic = surface.cell_metallic;
-		approximate_material.specular = surface.cell_specular;
+		approximate_material.specular = surface.cell_specular;*/
 
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
 		BSDFContext bsdf_context = BSDFContext(hippt::normalize(render_data.current_camera.position - surface.cell_point), surface.cell_normal, surface.cell_normal, to_light_direction, out_incident_light_info, empty_volume_state, false, approximate_material, 0, 0, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
