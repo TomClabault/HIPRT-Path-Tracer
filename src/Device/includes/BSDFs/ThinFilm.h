@@ -149,7 +149,7 @@ HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveM
     }
     else
     {
-        cos_theta_2 = sqrt(cos_theta_transmission_2);
+        cos_theta_2 = hippt::sqrt(cos_theta_transmission_2);
         fresnel_conductor(HoL, eta2 / eta1, 0.0f, R12p, R12s);
 
         // Reflected part by the base
@@ -161,7 +161,6 @@ HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveM
     }
 
     /* Optical Path Difference */
-    // float D = 2.0f * eta2 * film_thickness / 1000.0f * cos_theta_2;
     float D = material.thin_film_thickness / 1000.0f * cos_theta_2;
 
     /* Variables */
@@ -176,8 +175,8 @@ HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveM
     phi21p = hippt::M_Pi - phi21p;
     phi21s = hippt::M_Pi - phi21s;
 
-    float r123p = sqrt(R12p * R23p);
-    float r123s = sqrt(R12s * R23s);
+    float r123p = hippt::sqrt(R12p * R23p);
+    float r123s = hippt::sqrt(R12s * R23s);
 
     /* Iridescence term using spectral antialiasing for Parallel polarization */
     // Reflectance term for m=0 (DC term amplitude)
