@@ -115,114 +115,113 @@ HIPRT_DEVICE static ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hu
 HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveMaterial& material,
     float ambient_IOR, float HoL)
 {
-    return ColorRGB32F(0.0f);
-    //if (material.thin_film == 0.0f)
-    //    // Quick exit
-    //    return ColorRGB32F(0.0f);
+    if (material.thin_film == 0.0f)
+        // Quick exit
+        return ColorRGB32F(0.0f);
 
-    //float eta1 = ambient_IOR;
-    //float eta2 = material.thin_film_ior;
-    //float eta3 = material.thin_film_do_ior_override ? material.thin_film_base_ior_override : material.ior;
-    //// If override is not used, just default to 0.0f because the principled BSDF doesn't have 
-    //// complex IORs support anyways
-    //float kappa3 = material.thin_film_do_ior_override ? material.thin_film_kappa_3 : 0.0f;
+    float eta1 = ambient_IOR;
+    float eta2 = material.thin_film_ior;
+    float eta3 = material.thin_film_do_ior_override ? material.thin_film_base_ior_override : material.ior;
+    // If override is not used, just default to 0.0f because the principled BSDF doesn't have 
+    // complex IORs support anyways
+    float kappa3 = material.thin_film_do_ior_override ? material.thin_film_kappa_3 : 0.0f;
 
-    ///* Compute the Spectral versions of the Fresnel reflectance and
-    // * transmitance for each interface. */
-    //float R12p = 0.0f;
-    //float R12s = 0.0f;
-    //float T121p = 0.0f;
-    //float T121s = 0.0f;
-    //float R23p = 0.0f;
-    //float R23s = 0.0f;
-    //float cos_theta_2 = 0.0f;
+    /* Compute the Spectral versions of the Fresnel reflectance and
+     * transmitance for each interface. */
+    float R12p = 0.0f;
+    float R12s = 0.0f;
+    float T121p = 0.0f;
+    float T121s = 0.0f;
+    float R23p = 0.0f;
+    float R23s = 0.0f;
+    float cos_theta_2 = 0.0f;
 
-    //float cos_theta_transmission_2 = 1.0f - (1.0f - hippt::square(HoL)) * hippt::square(eta1 / eta2);
-    //if (cos_theta_transmission_2 <= 0.0f)
-    //{
-    //    // Total internal reflection
-    //    R12s = 1.0f;
-    //    R12p = 1.0f;
+    float cos_theta_transmission_2 = 1.0f - (1.0f - hippt::square(HoL)) * hippt::square(eta1 / eta2);
+    if (cos_theta_transmission_2 <= 0.0f)
+    {
+        // Total internal reflection
+        R12s = 1.0f;
+        R12p = 1.0f;
 
-    //    // 0 transmission for total internal reflection
-    //    T121p = 0.0f;
-    //    T121s = 0.0f;
-    //}
-    //else
-    //{
-    //    cos_theta_2 = hippt::sqrt(cos_theta_transmission_2);
-    //    fresnel_conductor(HoL, eta2 / eta1, 0.0f, R12p, R12s);
+        // 0 transmission for total internal reflection
+        T121p = 0.0f;
+        T121s = 0.0f;
+    }
+    else
+    {
+        cos_theta_2 = hippt::sqrt(cos_theta_transmission_2);
+        fresnel_conductor(HoL, eta2 / eta1, 0.0f, R12p, R12s);
 
-    //    // Reflected part by the base
-    //    fresnel_conductor(cos_theta_2, eta3 / eta2, kappa3, R23p, R23s);
+        // Reflected part by the base
+        fresnel_conductor(cos_theta_2, eta3 / eta2, kappa3, R23p, R23s);
 
-    //    // Compute the transmission coefficients
-    //    T121p = 1.0f - R12p;
-    //    T121s = 1.0f - R12s;
-    //}
+        // Compute the transmission coefficients
+        T121p = 1.0f - R12p;
+        T121s = 1.0f - R12s;
+    }
 
-    ///* Optical Path Difference */
-    //float D = material.thin_film_thickness / 1000.0f * cos_theta_2;
+    /* Optical Path Difference */
+    float D = material.thin_film_thickness / 1000.0f * cos_theta_2;
 
-    ///* Variables */
-    //float phi21p;
-    //float phi21s;
-    //float phi23p;
-    //float phi23s;
+    /* Variables */
+    float phi21p;
+    float phi21s;
+    float phi23p;
+    float phi23s;
 
-    ///* Evaluate the phase shift */
-    //fresnel_phase(HoL, eta1, eta2, 0.0f, phi21p, phi21s);
-    //fresnel_phase(cos_theta_2, eta2, eta3, kappa3, phi23p, phi23s);
-    //phi21p = hippt::M_Pi - phi21p;
-    //phi21s = hippt::M_Pi - phi21s;
+    /* Evaluate the phase shift */
+    fresnel_phase(HoL, eta1, eta2, 0.0f, phi21p, phi21s);
+    fresnel_phase(cos_theta_2, eta2, eta3, kappa3, phi23p, phi23s);
+    phi21p = hippt::M_Pi - phi21p;
+    phi21s = hippt::M_Pi - phi21s;
 
-    //float r123p = hippt::sqrt(R12p * R23p);
-    //float r123s = hippt::sqrt(R12s * R23s);
+    float r123p = hippt::sqrt(R12p * R23p);
+    float r123s = hippt::sqrt(R12s * R23s);
 
-    ///* Iridescence term using spectral antialiasing for Parallel polarization */
-    //// Reflectance term for m=0 (DC term amplitude)
-    //float Rs = (hippt::square(T121p) * R23p) / (1.0f - R12p * R23p);
-    //float C0 = R12p + Rs;
-    //
-    //ColorRGB32F I = ColorRGB32F(C0);
-    //ColorRGB32F Sm;
+    /* Iridescence term using spectral antialiasing for Parallel polarization */
+    // Reflectance term for m=0 (DC term amplitude)
+    float Rs = (hippt::square(T121p) * R23p) / (1.0f - R12p * R23p);
+    float C0 = R12p + Rs;
+    
+    ColorRGB32F I = ColorRGB32F(C0);
+    ColorRGB32F Sm;
 
-    //// Reflectance term for m>0 (pairs of diracs)
-    //float Cm = Rs - T121p;
-    //for (int m = 1; m <= 2; ++m)
-    //{
-    //    Cm *= r123p;
-    //    Sm = 2.0f * eval_sensitivity(m * D, m * (phi23p + phi21p));
-    //    I += Cm * Sm;
-    //}
+    // Reflectance term for m>0 (pairs of diracs)
+    float Cm = Rs - T121p;
+    for (int m = 1; m <= 2; ++m)
+    {
+        Cm *= r123p;
+        Sm = 2.0f * eval_sensitivity(m * D, m * (phi23p + phi21p));
+        I += Cm * Sm;
+    }
 
-    ///* Iridescence term using spectral antialiasing for Perpendicular polarization */
-    //// Reflectance term for m=0 (DC term amplitude)
-    //Rs = (hippt::square(T121s) * R23s) / (1.0f - R12s * R23s);
-    //C0 = R12s + Rs;
-    //I += ColorRGB32F(C0);
+    /* Iridescence term using spectral antialiasing for Perpendicular polarization */
+    // Reflectance term for m=0 (DC term amplitude)
+    Rs = (hippt::square(T121s) * R23s) / (1.0f - R12s * R23s);
+    C0 = R12s + Rs;
+    I += ColorRGB32F(C0);
 
-    //// Reflectance term for m>0 (pairs of diracs)
-    //Cm = Rs - T121s;
-    //for (int m = 1; m <= 2; ++m)
-    //{
-    //    Cm *= r123s;
-    //    Sm = 2.0f * eval_sensitivity(m * D, m * (phi23s + phi21s));
-    //    I += Cm * Sm;
-    //}
+    // Reflectance term for m>0 (pairs of diracs)
+    Cm = Rs - T121s;
+    for (int m = 1; m <= 2; ++m)
+    {
+        Cm *= r123s;
+        Sm = 2.0f * eval_sensitivity(m * D, m * (phi23s + phi21s));
+        I += Cm * Sm;
+    }
 
-    //I *= 0.5f;
+    I *= 0.5f;
 
-    //// CIE RGB and CIE XYZ 1931 conversion:
-    //// source: https://en.wikipedia.org/wiki/CIE_1931_color_space
-    //float r = 2.3646381f * I[0] - 0.8965361f * I[1] - 0.4680737f * I[2];
-    //float g = -0.5151664f * I[0] + 1.4264000f * I[1] + 0.0887608f * I[2];
-    //float b = 0.0052037f * I[0] - 0.0144081f * I[1] + 1.0092106f * I[2];
+    // CIE RGB and CIE XYZ 1931 conversion:
+    // source: https://en.wikipedia.org/wiki/CIE_1931_color_space
+    float r = 2.3646381f * I[0] - 0.8965361f * I[1] - 0.4680737f * I[2];
+    float g = -0.5151664f * I[0] + 1.4264000f * I[1] + 0.0887608f * I[2];
+    float b = 0.0052037f * I[0] - 0.0144081f * I[1] + 1.0092106f * I[2];
 
-    //I = ColorRGB32F(r, g, b);
-    //I.clamp(0.0f, 1.0f);
+    I = ColorRGB32F(r, g, b);
+    I.clamp(0.0f, 1.0f);
 
-    //return RGB_hue_shift(I, material.thin_film_hue_shift_degrees * 360.0f);
+    return RGB_hue_shift(I, material.thin_film_hue_shift_degrees * 360.0f);
 }
 
 #endif

@@ -44,7 +44,7 @@ HIPRT_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData& ren
         return ColorRGB32F(0.0f);
 
     // Dispersion ray throughput filter
-    //current_throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
+    current_throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
     current_throughput *= throughput_attenuation;
     // Clamp every component to a minimum of 1.0e-5f to avoid numerical instabilities that can
     // happen: with some material, the throughput can get so low that it becomes denormalized and

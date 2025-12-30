@@ -144,116 +144,114 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	int last_hit_primitive_index,
 	Xorshift32Generator& rng)
 {
-	return LightSampleInformation();
-	//const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
+	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 
-	//LightTreeSGNodeDevice current_node = nodes[0];
+	LightTreeSGNodeDevice current_node = nodes[0];
 
-	//float material_specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
+	float material_specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
 
-	//float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
-	//float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	//float sg_roughness = material.coat * material.coat_roughness + material.metallic * material.roughness + material_specular_weight * material.roughness / specular_lobes_sum;
-	//float sg_anisotropy = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy / specular_lobes_sum;
+	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
+	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
+	float sg_roughness = material.coat * material.coat_roughness + material.metallic * material.roughness + material_specular_weight * material.roughness / specular_lobes_sum;
+	float sg_anisotropy = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy / specular_lobes_sum;
 
-	//float alpha_x, alpha_y;
-	//MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
+	float alpha_x, alpha_y;
+	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
 
-	//float cumulative_probability = 1.0f;
-	//while (current_node.triangle_count == 0)
-	//{
-	//	LightTreeSGNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
-	//	LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
+	float cumulative_probability = 1.0f;
+	while (current_node.triangle_count == 0)
+	{
+		LightTreeSGNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
+		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-	//	float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-	//	float right_importance = light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-	//	if (left_importance == 0.0f && right_importance == 0.0f)
-	//		return LightSampleInformation();
+		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance = light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		if (left_importance == 0.0f && right_importance == 0.0f)
+			return LightSampleInformation();
 
-	//	float p_left = left_importance / (left_importance + right_importance);
+		float p_left = left_importance / (left_importance + right_importance);
 
-	//	if (rng() < p_left)
-	//	{
-	//		current_node = left_child;
+		if (rng() < p_left)
+		{
+			current_node = left_child;
 
-	//		cumulative_probability *= p_left;
-	//	}
-	//	else
-	//	{
-	//		current_node = right_child;
+			cumulative_probability *= p_left;
+		}
+		else
+		{
+			current_node = right_child;
 
-	//		cumulative_probability *= 1.0f - p_left;
-	//	}
-	//}
+			cumulative_probability *= 1.0f - p_left;
+		}
+	}
 
-	//int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
-	//int triangle_index = render_data.light_tree_sg.indices_array[index];
-	//int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
+	int index = current_node.left_child_index_or_first_triangle_index + rng.random_index(current_node.triangle_count);
+	int triangle_index = render_data.light_tree_sg.indices_array[index];
+	int emissive_triangle_index = render_data.buffers.emissive_triangles_primitive_indices[triangle_index];
 
-	//LightSampleInformation light_sample;
-	//light_sample.emissive_triangle_global_index = emissive_triangle_index;
-	//light_sample.pdf = cumulative_probability * (1.0f / current_node.triangle_count); // Sampling that triangle in that node
+	LightSampleInformation light_sample;
+	light_sample.emissive_triangle_global_index = emissive_triangle_index;
+	light_sample.pdf = cumulative_probability * (1.0f / current_node.triangle_count); // Sampling that triangle in that node
 
-	//return light_sample;
+	return light_sample;
 }
 
 HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 shading_normal, 
 	const DeviceUnpackedEffectiveMaterial& material,
 	int global_emissive_triangle_index)
 {
-	return 0.0f;
-	//const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
+	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 
-	//LightTreeSGNodeDevice current_node = nodes[0];
+	LightTreeSGNodeDevice current_node = nodes[0];
 
-	//float material_specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
+	float material_specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission * (1.0f - material.diffuse_transmission)) * material.specular;
 
-	//float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
-	//float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
-	//float sg_roughness = material.coat * material.coat_roughness + material.metallic * material.roughness + material_specular_weight * material.roughness / specular_lobes_sum;
-	//float sg_anisotropy = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy / specular_lobes_sum;
+	float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
+	float sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
+	float sg_roughness = material.coat * material.coat_roughness + material.metallic * material.roughness + material_specular_weight * material.roughness / specular_lobes_sum;
+	float sg_anisotropy = material.coat * material.coat_anisotropy + material.metallic * material.anisotropy + material_specular_weight * material.anisotropy / specular_lobes_sum;
 
-	//float alpha_x, alpha_y;
-	//MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
+	float alpha_x, alpha_y;
+	MaterialUtils::get_alphas(sg_roughness, sg_anisotropy, alpha_x, alpha_y);
 
-	//float root_node_importance = light_tree_sg_node_importance(current_node, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-	//if (root_node_importance <= 0.0f)
-	//	return 0.0f;
+	float root_node_importance = light_tree_sg_node_importance(current_node, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+	if (root_node_importance <= 0.0f)
+		return 0.0f;
 
-	//unsigned int bit_trail = render_data.light_tree_sg.bit_trails[global_emissive_triangle_index];
-	//unsigned char current_depth = 0;
+	unsigned int bit_trail = render_data.light_tree_sg.bit_trails[global_emissive_triangle_index];
+	unsigned char current_depth = 0;
 
-	//float cumulative_probability = 1.0f;
-	//while (current_node.triangle_count == 0)
-	//{
-	//	LightTreeSGNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
-	//	LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
+	float cumulative_probability = 1.0f;
+	while (current_node.triangle_count == 0)
+	{
+		LightTreeSGNodeDevice left_child = nodes[current_node.left_child_index_or_first_triangle_index];
+		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-	//	float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-	//	float right_importance = light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-	//	if (left_importance == 0.0f && right_importance == 0.0f)
-	//		return 0.0f;
+		float left_importance = light_tree_sg_node_importance(left_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance = light_tree_sg_node_importance(right_child, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		if (left_importance == 0.0f && right_importance == 0.0f)
+			return 0.0f;
 
-	//	float p_left = left_importance / (left_importance + right_importance);
-	//	if (!(bit_trail & (1 << current_depth)))
-	//	{
-	//		// If the bit is not set we're going to the left
-	//		current_node = left_child;
+		float p_left = left_importance / (left_importance + right_importance);
+		if (!(bit_trail & (1 << current_depth)))
+		{
+			// If the bit is not set we're going to the left
+			current_node = left_child;
 
-	//		cumulative_probability *= p_left;
-	//	}
-	//	else
-	//	{
-	//		current_node = right_child;
+			cumulative_probability *= p_left;
+		}
+		else
+		{
+			current_node = right_child;
 
-	//		cumulative_probability *= 1.0f - p_left;
-	//	}
+			cumulative_probability *= 1.0f - p_left;
+		}
 
-	//	current_depth++;
-	//}
+		current_depth++;
+	}
 
-	//// Probability of going down the tree + probability of sampling that triangle in the node
-	//return cumulative_probability * 1.0f / (current_node.triangle_count);
+	// Probability of going down the tree + probability of sampling that triangle in the node
+	return cumulative_probability * 1.0f / (current_node.triangle_count);
 }
 
 #endif

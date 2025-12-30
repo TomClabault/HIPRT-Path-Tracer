@@ -24,23 +24,23 @@
 HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float cos_theta_v,
 	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
-	float roughness = 1.0f;
+	float roughness = 0.0f;
 
-	//switch (ltc_lobe)
-	//{
-	//case DIFFUSE_LOBE:
-	//	return ColorRGBA32F(1.0f, 0.0f, 1.0f, 0.0f); // Identity matrix for the diffuse lobe
-	//	break;
+	switch (ltc_lobe)
+	{
+	case DIFFUSE_LOBE:
+		return ColorRGBA32F(1.0f, 0.0f, 1.0f, 0.0f); // Identity matrix for the diffuse lobe
+		break;
 
-	//case METALLIC_LOBE:
-	//case SPECULAR_LOBE:
-	//	roughness = material.roughness;
-	//	break;
+	case METALLIC_LOBE:
+	case SPECULAR_LOBE:
+		roughness = material.roughness;
+		break;
 
-	//case COAT_LOBE:
-	//	roughness = material.coat_roughness;
-	//	break;
-	//}
+	case COAT_LOBE:
+		roughness = material.coat_roughness;
+		break;
+	}
 
 	const void* texture_ptr = nullptr;
 #ifdef __KERNELCC__
@@ -70,22 +70,22 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float cos_theta_v,
 	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
-	float roughness = 1.0f;
-	//switch (ltc_lobe)
-	//{
-	//case DIFFUSE_LOBE:
-	//	return 1.0f; // Amplitude is 1 for the diffuse lobe
-	//	break;
+	float roughness = 0.0f;
+	switch (ltc_lobe)
+	{
+	case DIFFUSE_LOBE:
+		return 1.0f; // Amplitude is 1 for the diffuse lobe
+		break;
 
-	//case METALLIC_LOBE:
-	//case SPECULAR_LOBE:
-	//	roughness = material.roughness;
-	//	break;
+	case METALLIC_LOBE:
+	case SPECULAR_LOBE:
+		roughness = material.roughness;
+		break;
 
-	//case COAT_LOBE:
-	//	roughness = material.coat_roughness;
-	//	break;
-	//}
+	case COAT_LOBE:
+		roughness = material.coat_roughness;
+		break;
+	}
 
 	const void* texture_ptr = nullptr;
 
@@ -107,22 +107,22 @@ HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float c
 HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_theta_v,
 	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
-	float roughness = 1.0f;
-	//switch (ltc_lobe)
-	//{
-	//case DIFFUSE_LOBE:
-	//	roughness = 1.0f; // Amplitude is 1 for the diffuse lobe
-	//	break;
+	float roughness = 0.0f;
+	switch (ltc_lobe)
+	{
+	case DIFFUSE_LOBE:
+		roughness = 1.0f; // Amplitude is 1 for the diffuse lobe
+		break;
 
-	//case METALLIC_LOBE:
-	//case SPECULAR_LOBE:
-	//	roughness = material.roughness;
-	//	break;
+	case METALLIC_LOBE:
+	case SPECULAR_LOBE:
+		roughness = material.roughness;
+		break;
 
-	//case COAT_LOBE:
-	//	roughness = material.coat_roughness;
-	//	break;
-	//}
+	case COAT_LOBE:
+		roughness = material.coat_roughness;
+		break;
+	}
 
 	const void* texture_ptr = nullptr;
 

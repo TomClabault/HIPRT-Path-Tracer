@@ -52,7 +52,7 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffecti
 
     float oren_nayar_A;
     float oren_nayar_B;
-    MaterialUtils::get_oren_nayar_AB(0.3f, oren_nayar_A, oren_nayar_B);
+    MaterialUtils::get_oren_nayar_AB(material.oren_nayar_sigma, oren_nayar_A, oren_nayar_B);
 
     pdf = local_to_light_direction.z * hippt::M_INV_PI;
     return material.base_color * hippt::M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);

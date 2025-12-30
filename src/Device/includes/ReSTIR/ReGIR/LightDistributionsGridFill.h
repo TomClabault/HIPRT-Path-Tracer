@@ -18,9 +18,9 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillCellDist
     const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, Xorshift32Generator& rng)
 {
     RayPayload dummy_ray_payload;
-    /*dummy_ray_payload.material.roughness = surface.cell_roughness;
+    dummy_ray_payload.material.roughness = surface.cell_roughness;
     dummy_ray_payload.material.metallic = surface.cell_metallic;
-    dummy_ray_payload.material.specular = surface.cell_specular;*/
+    dummy_ray_payload.material.specular = surface.cell_specular;
 
     return sample_one_point_on_light<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>(render_data, 
         surface.cell_point, view_direction, surface.cell_normal, surface.cell_normal, 

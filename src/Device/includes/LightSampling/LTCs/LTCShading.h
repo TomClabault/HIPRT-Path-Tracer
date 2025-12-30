@@ -90,7 +90,7 @@ HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 
 		// Assuming coming from air here for simplicity (the true solution is a bit annoying
 		// as we'd have to bring a bunch of RayPayload and RayVolumeState state variables in here)
-		float R0 = F0_from_eta(ltc_lobe == LTCLobe::SPECULAR_LOBE ? 1.4f : 1.4f , 1.0f);
+		float R0 = F0_from_eta(ltc_lobe == LTCLobe::SPECULAR_LOBE ? material.ior : material.coat_ior, 1.0f);
 		float amplitude = read_ltc_amplitude(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_amplitude_data, hippt::dot(view_direction, shading_normal), material, ltc_lobe);
 		float fD = read_ltc_fresnel(render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_fresnel_data, hippt::dot(view_direction, shading_normal), material, ltc_lobe);
 

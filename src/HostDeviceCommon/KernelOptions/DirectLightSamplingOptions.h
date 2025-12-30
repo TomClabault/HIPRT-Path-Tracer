@@ -82,7 +82,7 @@
  *
  *       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_REGIR
+#define DirectLightSamplingStrategy LSS_BASE_POWER
 
 /**
 * What direct lighting sampling strategy to use.
@@ -118,7 +118,7 @@
 *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
 *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
 */
-#define DirectLightNEEEstimator LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightNEEEstimator LSS_ONE_LIGHT
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant

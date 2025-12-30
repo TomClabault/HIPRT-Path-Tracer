@@ -237,7 +237,7 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtR
         in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
         skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
-            in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, 5);
+            in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
 
         if (in_out_ray_payload.volume_state.inside_material)
             // If we're traveling inside a volume, accumulating the distance for Beer's law
@@ -257,7 +257,7 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtR
 
     } while ((skipping_volume_boundary && hit.hasHit()));
 
-    if (0.0f > 0.0f && 0.0f > 0.0f && in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
+    if (in_out_ray_payload.material.dispersion_scale > 0.0f && in_out_ray_payload.material.specular_transmission > 0.0f && in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
         // If we hit a dispersive material, we sample the wavelength that will be used
         // for computing the wavelength dependent IORs used for dispersion
         //

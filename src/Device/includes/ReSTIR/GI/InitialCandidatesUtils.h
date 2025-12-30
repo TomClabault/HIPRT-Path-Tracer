@@ -14,7 +14,7 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
     Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
-    ColorRGB32F dispersion_throughput = ColorRGB32F(1.0f); // get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
+    ColorRGB32F dispersion_throughput = get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
 
     if (ray_payload.bounce > 0)
     {

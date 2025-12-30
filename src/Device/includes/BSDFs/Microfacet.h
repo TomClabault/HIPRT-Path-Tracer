@@ -325,7 +325,7 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_refract(const DeviceUn
 
         float alpha_x;
         float alpha_y;
-        MaterialUtils::get_alphas(roughness, 0.0f, alpha_x, alpha_y);
+        MaterialUtils::get_alphas(roughness, material.anisotropy, alpha_x, alpha_y);
 
         float D = GGX_anisotropic(alpha_x, alpha_y, local_halfway_vector);
         float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
@@ -378,7 +378,7 @@ HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_refract(const DeviceUnpackedE
 
         float alpha_x;
         float alpha_y;
-        MaterialUtils::get_alphas(roughness, 0.0f, alpha_x, alpha_y);
+        MaterialUtils::get_alphas(roughness, material.anisotropy, alpha_x, alpha_y);
 
         float D = GGX_anisotropic(alpha_x, alpha_y, local_halfway_vector);
         float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);

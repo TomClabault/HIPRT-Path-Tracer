@@ -83,7 +83,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
     for (int neighbor = 0; neighbor < regir_settings.shading_settings.number_of_neighbors; neighbor++)
     {
         unsigned int neighbor_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-            shading_point, geometric_normal, render_data.current_camera, 1.0f, regir_settings.compute_is_primary_hit(ray_payload),
+            shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
             regir_settings.shading_settings.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
             regir_settings.shading_settings.jittering_radius, non_canonical_neighbor_rng);
         if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -98,7 +98,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
     ReGIRPairwiseMIS pairwise;
 
     unsigned int canonical_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<true>(
-        shading_point, geometric_normal, render_data.current_camera, 1.0f, regir_settings.compute_is_primary_hit(ray_payload),
+        shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
         ReGIR_ShadingResamplingJitterCanonicalCandidates && regir_settings.shading_settings.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
         regir_settings.shading_settings.jittering_radius_canonical_candidates, neighbor_rng);
 
@@ -287,7 +287,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
     for (int neighbor = 0; neighbor < regir_settings.shading_settings.number_of_neighbors; neighbor++)
     {
         unsigned int neighbor_grid_cell_index = regir_settings.find_valid_jittered_neighbor_cell_index<false>(
-            shading_point, geometric_normal, render_data.current_camera, 1.0f, regir_settings.compute_is_primary_hit(ray_payload),
+            shading_point, geometric_normal, render_data.current_camera, ray_payload.material.roughness, regir_settings.compute_is_primary_hit(ray_payload),
             regir_settings.shading_settings.get_do_cell_jittering(regir_settings.compute_is_primary_hit(ray_payload)),
             regir_settings.shading_settings.jittering_radius, non_canonical_neighbor_rng);
         if (neighbor_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)

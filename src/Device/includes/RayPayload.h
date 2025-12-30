@@ -51,48 +51,47 @@ struct RayPayload
 	
 	HIPRT_HOST_DEVICE void accumulate_roughness(BSDFIncidentLightInfo sampled_lobe)
 	{
-		accumulated_roughness = 1.0f;
-		//switch (sampled_lobe)
-		//{
-		//case LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE:
-		//case LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE:
-		//	accumulated_roughness = 1.0f;
-		//	break;
+		switch (sampled_lobe)
+		{
+		case LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE:
+		case LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE:
+			accumulated_roughness = 1.0f;
+			break;
 
-		//case LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE:
-		//	accumulated_roughness = hippt::max(material.coat_roughness, accumulated_roughness);
-		//	break;
+		case LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE:
+			accumulated_roughness = hippt::max(material.coat_roughness, accumulated_roughness);
+			break;
 
-		//case LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE:
-		//	accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
-		//	break;
+		case LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE:
+			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
+			break;
 
-		//case LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE:
-		//	accumulated_roughness = hippt::max(material.second_roughness, accumulated_roughness);
-		//	break;
+		case LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE:
+			accumulated_roughness = hippt::max(material.second_roughness, accumulated_roughness);
+			break;
 
-		//case LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE:
-		//	// The specular roughness is just material.roughness
-		//	accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
-		//	break;
+		case LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE:
+			// The specular roughness is just material.roughness
+			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
+			break;
 
-		//case LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE:
-		//	// The glass roughness is just material.roughness
-		//	accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
-		//	break;
+		case LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE:
+			// The glass roughness is just material.roughness
+			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
+			break;
 
-		//case LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE:
-		//	// The glass roughness is just material.roughness
-		//	accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
-		//	break;
+		case LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE:
+			// The glass roughness is just material.roughness
+			accumulated_roughness = hippt::max(material.roughness, accumulated_roughness);
+			break;
 
-		//case NO_INFO:
-		//case LIGHT_DIRECTION_NOT_SAMPLED_FROM_BSDF:
-		//	break;
+		case NO_INFO:
+		case LIGHT_DIRECTION_NOT_SAMPLED_FROM_BSDF:
+			break;
 
-		//default: 
-		//	break;
-		//}
+		default: 
+			break;
+		}
 	}
 };
 
