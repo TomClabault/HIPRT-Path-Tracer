@@ -9,6 +9,7 @@
 #include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
+#include "Renderer/Compute/ParallelPrefixScan.h"
 
 #include <memory>
 
@@ -18,11 +19,14 @@ public:
 	RadixSort();
 	RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
+	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+
 	template <typename T>
 	void upload_data(const std::vector<T>& keys, const std::vector<T>& values);
 	void sort();
-	
-	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+
+	OrochiBuffer<unsigned int>& get_sorted_keys_buffer();
+	OrochiBuffer<unsigned int>& get_sorted_values_buffer();
 
 private:
 	void initialize_kernels();
@@ -31,19 +35,16 @@ private:
 	OrochiBuffer<unsigned int> m_values_buffer;
 	OrochiBuffer<unsigned int> m_temp_keys_buffer;
 	OrochiBuffer<unsigned int> m_temp_values_buffer;
-	OrochiBuffer<unsigned int> m_count_table_buffer;
+	OrochiBuffer<unsigned int> m_count_tables_buffer;
 
+	ParallelPrefixScan m_prefix_scan;
 	GPUKernel m_count_kernel;
-	GPUKernel m_scan_kernel;
 	GPUKernel m_reorder_kernel;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_ctx;
 	oroStream_t m_stream;
 	
 	size_t m_size;
-	static constexpr int RADIX_BITS = 8;
-	static constexpr int RADIX_SIZE = 1 << RADIX_BITS; // 256
-	static constexpr int NUM_PASSES = 32 / RADIX_BITS; // 4 passes for 32-bit keys
 };
 
 template <typename T>

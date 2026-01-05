@@ -79,6 +79,9 @@ extern ImGuiLogger g_imgui_logger;
 // - If it is the canonical sample that was resampled in ReSTIR GI, recomputing direct lighting at the sample point isn't needed and could be stored in the reservoir?
 
 // TODO ReGIR
+// - Cell light distributions don't have to be recomputed every time, they are not invalidated every time.
+// - How to reduce the 2x overhead of light distributions compaction?
+// - Lower resampling shading at later bounces because GI is the main source of variance so let's gain some efficiency there
 // - After NEE++ has accumulated a few samples, can we compress it into a perfect hash table?
 // - Maybe we can return 4 samples from ReGIR and shade them all outside of the resampling loop instead of inside, maybe this will lower register pressure?
 // - Should we keep the average surface normal in each ReGIR cell to help with sampling precision instead of one single surface normal?

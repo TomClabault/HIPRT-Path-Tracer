@@ -37,17 +37,27 @@ public:
 	 * @param res_x The total number of elements to launch on the X axis. Should not be pre-divided by tile_size_x or anything
 	 * Same for res_y
 	 */
-	void launch_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out = nullptr);
+	void launch_synchronous(int block_size_x, int block_size_y, int nb_threads_x, int nb_threads_y, void** launch_args, float* execution_time_out = nullptr);
+
 	/**
-	 * @param res_x The total number of elements to launch on the X axis. Should not be pre-divided by tile_size_x or anything
-	 * Same for res_y
+	 * @param block_size_x The number of threads per block on the X axis
+	 * @param block_size_y The number of threads per block on the Y axis
+	 * 
+	 * @param nb_threads_x The total number of elements to launch on the X axis. Should not be pre-divided by block_size_x or anything
+	 * @param nb_threads_y The total number of elements to launch on the Y axis. Should not be pre-divided by block_size_y or anything
 	 */
-	void launch_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
+	void launch_asynchronous(int block_size_x, int block_size_y, int nb_threads_x, int nb_threads_y, void** launch_args, oroStream_t stream);
+
 	/**
-	 * @param res_x The total number of elements to launch on the X axis. Should not be pre-divided by tile_size_x or anything
-	 * Same for res_y / res_z
+	 * @param block_size_x The number of threads per block on the X axis
+	 * @param block_size_y The number of threads per block on the Y axis
+	 * @param block_size_z The number of threads per block on the Z axis
+	 *
+	 * @param nb_threads_x The total number of elements to launch on the X axis. Should not be pre-divided by block_size_x or anything
+	 * @param nb_threads_y The total number of elements to launch on the Y axis. Should not be pre-divided by block_size_y or anything
+	 * @param nb_threads_z The total number of elements to launch on the Z axis. Should not be pre-divided by block_size_z or anything
 	 */
-	void launch_asynchronous_3D(int tile_size_x, int tile_size_y, int tile_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
+	void launch_asynchronous_3D(int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream);
 
 	/**
 	 * Sets an additional macro that will be passed to the GPU compiler when compiling this kernel
@@ -142,7 +152,8 @@ public:
 
 private:
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
-	void launch_3D(int tile_size_x, int tile_size_y, int tile_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
+	void launch_3D_block_size(int block_size_x, int block_size_y, int block_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
+	void launch_3D_block_count(int block_count_x, int block_count_y, int block_count_z, int block_size_x, int block_size_y, int block_size_z, void** launch_args, oroStream_t stream);
 
 	std::string m_kernel_file_path = "";
 	std::string m_kernel_function_name = "";
