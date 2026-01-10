@@ -11,8 +11,7 @@
 
 #define NUMBER_OF_BANKS 32
 #define LOG2_NUMBER_OF_BANKS 5
-// #define CONFLICT_FREE_OFFSET(index) ((index) / NUMBER_OF_BANKS)//((index) >> NUMBER_OF_BANKS + (index) >> (2 * LOG2_NUMBER_OF_BANKS))
-#define CONFLICT_FREE_OFFSET(index) 0
+#define CONFLICT_FREE_OFFSET(index) ((index) >> LOG2_NUMBER_OF_BANKS + ((index) >> (2 * LOG2_NUMBER_OF_BANKS)))
 
  /**
   * Prefix scans the input in chunks of PARALLEL_PREFIX_SCAN_CHUNK_SIZE and outputs the block scans to output_blocks.
@@ -27,23 +26,18 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScan_BlockScan(
 	unsigned int* __restrict__ block_sums,
 	unsigned int size)
 {
-	__shared__ unsigned int temp_smem[PARALLEL_PREFIX_SCAN_CHUNK_SIZE * 2 + PARALLEL_PREFIX_SCAN_CHUNK_SIZE];
+	__shared__ unsigned int temp_smem[PARALLEL_PREFIX_SCAN_CHUNK_SIZE + PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2];
 
 	unsigned int tid = threadIdx.x;
 	if (tid >= PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2)
 		return;
 
-	/*int ai = 2 * tid + 0;
-	int bi = 2 * tid + 1;*/
 
 	int input_1_index = tid;
 	int input_2_index = tid + (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2);
 
 	temp_smem[input_1_index + CONFLICT_FREE_OFFSET(input_1_index)] = input[blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + input_1_index];
 	temp_smem[input_2_index + CONFLICT_FREE_OFFSET(input_2_index)] = input[blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + input_2_index];
-
-	/*temp_smem[2 * tid + 0] = (blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid + 0 < size) ? input[blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid + 0] : 0;
-	temp_smem[2 * tid + 1] = (blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid + 1 < size) ? input[blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid + 1] : 0;*/
 
 	int offset = 1;
 	for (int d = size >> 1; d > 0; d >>= 1)

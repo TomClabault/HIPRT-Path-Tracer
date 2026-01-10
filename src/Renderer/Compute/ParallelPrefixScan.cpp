@@ -93,7 +93,7 @@ void ParallelPrefixScan::upload_data(const std::vector<unsigned int>& data)
 	m_output_buffer.resize(data.size());
 }
 
-#define DEBUG 1
+#define DEBUG 0
 
 void ParallelPrefixScan::scan()
 {
@@ -513,15 +513,16 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 
 	for (int i = 0; i < 100; i++)
 	{
-		rng.seed(42);
+		rng.seed(i);
 
 		unsigned int test_size = rng() % (65536 * 256 * 32) + 1;
 
-		std::vector<unsigned int> input(test_size);
-		std::transform(input.begin(), input.end(), input.begin(), [&rng](unsigned int) { return rng() % 3; });
-
 		unsigned int running_sum = 0;
 		std::vector<unsigned int> expected_output(test_size);
+		std::vector<unsigned int> input(test_size);
+
+		std::transform(input.begin(), input.end(), input.begin(), [&rng](unsigned int) { return rng() % 3; });
+
 		auto start = std::chrono::high_resolution_clock::now();
 		for (size_t j = 0; j < test_size; j++)
 		{
@@ -534,14 +535,18 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		scanner.upload_data(input);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
-		scanner.scan();
+		unsigned int repeats = 3;
+		for (int i = 0; i < repeats; i++)
+		{
+			scanner.scan();
+		}
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_end, stream));
 
 		float elapsed_time_ms = 0.0f;
 		OROCHI_CHECK_ERROR(oroEventSynchronize(scan_end));
 		OROCHI_CHECK_ERROR(oroEventElapsedTime(&elapsed_time_ms, scan_start, scan_end));
 
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "\tParallelPrefixScan unit test %d: scanned %u elements in %.3f ms", i, test_size, elapsed_time_ms);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "\tParallelPrefixScan unit test %d: scanned %u elements in %.3f ms", i, test_size, elapsed_time_ms / repeats);
 
 		std::vector<unsigned int> output = scanner.get_output_buffer().download_data();
 
@@ -550,7 +555,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		{
 			if (output[j] != expected_output[j])
 			{
-				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for test %d at index %d (size=%zu): got %u, expected %u", i, j, test_size, output[j], expected_output[j]);
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for test %d at index %d (size=%u): got %u, expected %u", i, j, test_size, output[j], expected_output[j]);
 				break;
 			}
 		}
