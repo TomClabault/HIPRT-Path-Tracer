@@ -6,6 +6,8 @@
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "Renderer/Compute/ParallelPrefixScan.h"
 
+#include <random>
+
 ParallelPrefixScan::ParallelPrefixScan() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size_padded(0) {}
 
 ParallelPrefixScan::ParallelPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream) 
@@ -93,8 +95,6 @@ void ParallelPrefixScan::upload_data(const std::vector<unsigned int>& data)
 	m_output_buffer.resize(data.size());
 }
 
-#define DEBUG 0
-
 void ParallelPrefixScan::scan()
 {
 	if (m_size_padded == 0 || !m_hiprt_ctx || !m_stream)
@@ -117,8 +117,6 @@ void ParallelPrefixScan::scan()
 	}
 	else
 	{
-		/*if (m_hierarchy_levels_used == 1)
-		{*/
 		// More than 1 level
 
 		/**
@@ -131,48 +129,6 @@ void ParallelPrefixScan::scan()
 
 			void* scan_args[] = { &input_data, &output_data, &level_0_block_sums, &m_size_padded };
 			m_block_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2, 1, (m_size_padded + 1) / 2, 1, scan_args, m_stream);
-
-			if (DEBUG)
-			{
-				std::vector<unsigned int> debug_input = m_input_buffer.download_data();
-				std::vector<unsigned int> debug_output = m_output_buffer.download_data();
-				std::vector<unsigned int> level_0_block_sums_host = m_level_0_block_sums.download_data();
-				std::vector<unsigned int> expected_level_0_block_sums(level_0_block_sums_host.size());
-				std::vector<unsigned int> expected_output(debug_output.size());
-
-				for (size_t i = 0; i < m_input_buffer.size() / PARALLEL_PREFIX_SCAN_CHUNK_SIZE; i++)
-				{
-					for (int j = 0; j < PARALLEL_PREFIX_SCAN_CHUNK_SIZE; j++)
-						expected_level_0_block_sums.at(i) += debug_input[i * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + j];
-				}
-
-				unsigned int running_sum = 0;
-				for (size_t i = 0; i < debug_output.size(); i++)
-				{
-					if (i % PARALLEL_PREFIX_SCAN_CHUNK_SIZE == 0)
-						running_sum = 0;
-					expected_output.at(i) = running_sum;
-					running_sum += debug_input.at(i);
-				}
-
-				for (size_t i = 0; i < m_size_padded / 256; i++)
-				{
-					if (level_0_block_sums_host.at(i) != expected_level_0_block_sums.at(i))
-					{
-						g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Level 0 block sums mismatch at index %zu: got %u, expected %u", i, level_0_block_sums_host.at(i), expected_level_0_block_sums.at(i));
-						return;
-					}
-				}
-
-				for (size_t i = 0; i < debug_output.size(); i++)
-				{
-					if (debug_output.at(i) != expected_output.at(i))
-					{
-						g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Output chunk scan mismatch at index %zu: got %u, expected %u", i, debug_output.at(i), expected_output.at(i));
-						return;
-					}
-				}
-			}
 		}
 
 		/**
@@ -187,52 +143,6 @@ void ParallelPrefixScan::scan()
 
 			void* scan_block_sums_args[] = { &level_0_block_sums, &scanned_level_0_block_sums, &level_1_block_sums, &level_0_block_sums_size };
 			m_block_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2, 1, (level_0_block_sums_size + 1) / 2, 1, scan_block_sums_args, m_stream);
-
-			if (DEBUG)
-			{
-				if (level_1_block_sums != nullptr)
-				{
-					std::vector<unsigned int> input_host = m_level_0_block_sums.download_data();
-					std::vector<unsigned int> output_host = m_scanned_level_0_blocks_sums.download_data();
-					std::vector<unsigned int> m_level_1_block_sums_host = m_level_1_block_sums.download_data();
-					std::vector<unsigned int> expected_level_1_block_sums(m_level_1_block_sums.size());
-					std::vector<unsigned int> expected_output_host(output_host.size());
-
-					for (size_t i = 0; i < m_level_0_block_sums.size() / PARALLEL_PREFIX_SCAN_CHUNK_SIZE; i++)
-					{
-						for (int j = 0; j < PARALLEL_PREFIX_SCAN_CHUNK_SIZE; j++)
-							expected_level_1_block_sums.at(i) += input_host[i * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + j];
-					}
-
-					unsigned int running_sum = 0;
-					for (size_t i = 0; i < output_host.size(); i++)
-					{
-						if (i % PARALLEL_PREFIX_SCAN_CHUNK_SIZE == 0)
-							running_sum = 0;
-
-						expected_output_host.at(i) = running_sum;
-						running_sum += input_host.at(i);
-					}
-
-					for (size_t i = 0; i < m_level_0_block_sums.size() / PARALLEL_PREFIX_SCAN_CHUNK_SIZE; i++)
-					{
-						if (m_level_1_block_sums_host.at(i) != expected_level_1_block_sums.at(i))
-						{
-							g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Level 1 block sums mismatch at index %zu: got %u, expected %u", i, m_level_1_block_sums_host.at(i), expected_level_1_block_sums.at(i));
-							return;
-						}
-					}
-
-					for (size_t i = 0; i < output_host.size(); i++)
-					{
-						if (output_host.at(i) != expected_output_host.at(i))
-						{
-							g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Level 0 block sums scan mismatch at index %zu: got %u, expected %u", i, output_host.at(i), expected_output_host.at(i));
-							return;
-						}
-					}
-				}
-			}
 		}
 
 		if (m_hierarchy_levels_used > 1)
@@ -246,31 +156,6 @@ void ParallelPrefixScan::scan()
 
 				void* scan_block_sums_args[] = { &level_1_block_sums, &scanned_level_1_block_sums, &level_2_block_sums, &level_1_block_sums_size };
 				m_block_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2, 1, (level_1_block_sums_size + 1) / 2, 1, scan_block_sums_args, m_stream);
-
-				if (DEBUG)
-				{
-					if (m_hierarchy_levels_used > 2)
-					{
-						std::vector<unsigned int> debug_level_1_block_sums = m_level_1_block_sums.download_data();
-						std::vector<unsigned int> expected_level_2_block_sums(m_level_2_block_sums.size());
-						for (size_t i = 0; i < m_level_1_block_sums.size() / PARALLEL_PREFIX_SCAN_CHUNK_SIZE; i++)
-						{
-							for (int j = 0; j < PARALLEL_PREFIX_SCAN_CHUNK_SIZE; j++)
-								expected_level_2_block_sums.at(i) += debug_level_1_block_sums[i * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + j];
-						}
-
-						std::vector<unsigned int> level_2_block_sums_downloaded = m_level_2_block_sums.download_data();
-						for (size_t i = 0; i < debug_level_1_block_sums.size() / PARALLEL_PREFIX_SCAN_CHUNK_SIZE; i++)
-						{
-							if (level_2_block_sums_downloaded.at(i) != expected_level_2_block_sums.at(i))
-							{
-								g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Level 1 block sums scan mismatch at index %zu: got %u, expected %u", i, debug_level_1_block_sums.at(i), expected_level_2_block_sums.at(i));
-
-								return;
-							}
-						}
-					}
-				}
 			}
 
 			if (m_hierarchy_levels_used > 2)
@@ -285,28 +170,6 @@ void ParallelPrefixScan::scan()
 
 					void* scan_block_sums_args[] = { &level_2_block_sums, &scanned_level_2_block_sums, &level_3_block_sums, &level_2_block_sums_size };
 					m_block_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2, 1, PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2, 1, scan_block_sums_args, m_stream);
-
-					if (DEBUG)
-					{
-						std::vector<unsigned int> input_host = m_level_2_block_sums.download_data();
-						std::vector<unsigned int> expected_output_host(input_host.size());
-						unsigned int running_sum = 0;
-						for (size_t i = 0; i < m_level_1_block_sums.size() / PARALLEL_PREFIX_SCAN_CHUNK_SIZE; i++)
-						{
-							expected_output_host.at(i) = running_sum;
-							running_sum += input_host.at(i);
-						}
-
-						std::vector<unsigned int> output_host = m_scanned_level_2_blocks_sums.download_data();
-						for (size_t i = 0; i < m_level_1_block_sums.size() / PARALLEL_PREFIX_SCAN_CHUNK_SIZE; i++)
-						{
-							if (output_host.at(i) != expected_output_host.at(i))
-							{
-								g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Level 2 block sums scan mismatch at index %zu: got %u, expected %u", i, output_host.at(i), expected_output_host.at(i));
-								return;
-							}
-						}
-					}
 				}
 
 				{
@@ -317,32 +180,7 @@ void ParallelPrefixScan::scan()
 					unsigned int scanned_level_1_blocks_sums_size = m_scanned_level_1_blocks_sums.size();
 
 					void* increment_args[] = { &scanned_level_1_block_sums, &scanned_level_2_block_sums, &scanned_level_1_blocks_sums_size };
-					std::vector<unsigned int> input_host;
-					if (DEBUG)
-						input_host = m_scanned_level_1_blocks_sums.download_data();
 					m_block_increment_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, scanned_level_1_blocks_sums_size, 1, increment_args, m_stream);
-
-					if (DEBUG)
-					{
-						std::vector<unsigned int> increments_host = m_scanned_level_2_blocks_sums.download_data();
-						std::vector<unsigned int> expected_output_host(input_host.size());
-						for (size_t i = 0; i < input_host.size(); i++)
-						{
-							unsigned int increment = increments_host[i / PARALLEL_PREFIX_SCAN_CHUNK_SIZE];
-							expected_output_host.at(i) = input_host.at(i) + increment;
-						}
-
-						std::vector<unsigned int> output_host = m_scanned_level_1_blocks_sums.download_data();
-
-						for (size_t i = 0; i < input_host.size(); i++)
-						{
-							if (output_host.at(i) != expected_output_host.at(i))
-							{
-								g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Level 1 block sums increment mismatch at index %zu: got %u, expected %u", i, output_host.at(i), expected_output_host.at(i));
-								return;
-							}
-						}
-					}
 				}
 			}
 
@@ -354,32 +192,7 @@ void ParallelPrefixScan::scan()
 				unsigned int scanned_level_0_blocks_sums_size = m_scanned_level_0_blocks_sums.size();
 
 				void* increment_args[] = { &scanned_level_0_block_sums, &scanned_level_1_block_sums, &scanned_level_0_blocks_sums_size };
-				std::vector<unsigned int> input_host;
-				if (DEBUG)
-					input_host = m_scanned_level_0_blocks_sums.download_data();
 				m_block_increment_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, scanned_level_0_blocks_sums_size, 1, increment_args, m_stream);
-
-				if (DEBUG)
-				{
-					std::vector<unsigned int> increments_host = m_scanned_level_1_blocks_sums.download_data();
-					std::vector<unsigned int> expected_output_host(scanned_level_0_blocks_sums_size);
-					std::vector<unsigned int> output_host = m_scanned_level_0_blocks_sums.download_data();
-
-					for (size_t i = 0; i < scanned_level_0_blocks_sums_size; i++)
-					{
-						unsigned int increment = increments_host[i / PARALLEL_PREFIX_SCAN_CHUNK_SIZE];
-						expected_output_host.at(i) = input_host.at(i) + increment;
-					}
-
-					for (size_t i = 0; i < scanned_level_0_blocks_sums_size; i++)
-					{
-						if (output_host.at(i) != expected_output_host.at(i))
-						{
-							g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Level 1 block sums increment mismatch at index %zu: got %u, expected %u", i, output_host.at(i), expected_output_host.at(i));
-							return;
-						}
-					}
-				}
 			}
 		}
 
@@ -389,53 +202,7 @@ void ParallelPrefixScan::scan()
 		unsigned int* scanned_level_0_block_sums = m_scanned_level_0_blocks_sums.get_device_pointer();
 
 		void* increment_args[] = { &output_data, &scanned_level_0_block_sums, &m_size_non_padded };
-		std::vector<unsigned int> debug_output_before_increment;
-		if (DEBUG)
-			debug_output_before_increment = m_output_buffer.download_data();
 		m_block_increment_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size_non_padded, 1, increment_args, m_stream);
-
-		if (DEBUG)
-		{
-			std::vector<unsigned int> increments = m_scanned_level_0_blocks_sums.download_data();
-			std::vector<unsigned int> expected_output_host(m_output_buffer.size());
-			for (size_t i = 0; i < m_size_non_padded; i++)
-			{
-				unsigned int increment = increments[i / PARALLEL_PREFIX_SCAN_CHUNK_SIZE];
-				expected_output_host.at(i) = debug_output_before_increment.at(i) + increment;
-			}
-
-			std::vector<unsigned int> output_host = m_output_buffer.download_data();
-			for (size_t i = 0; i < m_size_non_padded; i++)
-			{
-				if (output_host.at(i) != expected_output_host.at(i))
-				{
-					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Final output mismatch at index %zu: got %u, expected %u", i, output_host.at(i), expected_output_host.at(i));
-					return;
-				}
-			}
-		}
-
-		if (DEBUG)
-		{
-			std::vector<unsigned int> input_host = m_input_buffer.download_data();
-			std::vector<unsigned int> expected_output_host(input_host.size());
-			unsigned int running_sum = 0;
-			for (size_t i = 0; i < m_size_non_padded; i++)
-			{
-				expected_output_host.at(i) = running_sum;
-				running_sum += input_host.at(i);
-			}
-
-			std::vector<unsigned int> output_host = m_output_buffer.download_data();
-			for (size_t i = 0; i < m_size_non_padded; i++)
-			{
-				if (output_host.at(i) != expected_output_host.at(i))
-				{
-					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan: Final output mismatch at index %zu: got %u, expected %u", i, output_host.at(i), expected_output_host.at(i));
-					return;
-				}
-			}
-		}
 	}
 }
 
@@ -443,8 +210,6 @@ OrochiBuffer<unsigned int>& ParallelPrefixScan::get_output_buffer()
 {
 	return m_output_buffer;
 }
-
-#include <random>
 
 void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
