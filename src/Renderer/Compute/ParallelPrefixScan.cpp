@@ -311,7 +311,8 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		OROCHI_CHECK_ERROR(oroEventSynchronize(scan_end));
 		OROCHI_CHECK_ERROR(oroEventElapsedTime(&elapsed_time_ms, scan_start, scan_end));
 
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "\tParallelPrefixScan unit test %d: scanned %u elements in %.3f ms", i, test_size, elapsed_time_ms / repeats);
+		// 21GItems to beat
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "\tParallelPrefixScan unit test %d: scanned %u elements in %.3f ms. %.3f GItems/s", i, test_size, elapsed_time_ms / repeats, (float)test_size / (elapsed_time_ms * 1e6f / repeats));
 
 		std::vector<unsigned int> output = scanner.get_output_buffer().download_data();
 

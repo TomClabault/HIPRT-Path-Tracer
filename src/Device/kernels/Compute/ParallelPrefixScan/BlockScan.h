@@ -9,10 +9,6 @@
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "Device/includes/FixIntellisense.h"
 
-#define NUMBER_OF_BANKS 32
-#define LOG2_NUMBER_OF_BANKS 5
-#define CONFLICT_FREE_OFFSET(index) ((index) >> LOG2_NUMBER_OF_BANKS + ((index) >> (2 * LOG2_NUMBER_OF_BANKS)))
-
  /**
   * Prefix scans the input in chunks of PARALLEL_PREFIX_SCAN_CHUNK_SIZE and outputs the block scans to output_blocks.
   * The input buffer must be padded to be multiple of PARALLEL_PREFIX_SCAN_CHUNK_SIZE elements.
@@ -32,7 +28,6 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScan_BlockScan(
 	if (tid >= PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2)
 		return;
 
-
 	int input_1_index = tid;
 	int input_2_index = tid + (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2);
 
@@ -49,8 +44,6 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScan_BlockScan(
 			int ai = offset * (2 * tid + 1) - 1;
 			int bi = offset * (2 * tid + 2) - 1;
 
-			// Offsets to avoid bank conflicts
-			// Divides by 32 (assumes 32 shared memory banks)
 			ai += CONFLICT_FREE_OFFSET(ai);
 			bi += CONFLICT_FREE_OFFSET(bi);
 

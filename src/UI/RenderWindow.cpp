@@ -82,6 +82,8 @@ extern ImGuiLogger g_imgui_logger;
 // - Cell light distributions don't have to be recomputed every time, they are not invalidated every time.
 // - How to reduce the 2x overhead of light distributions compaction?
 // - Lower resampling shading at later bounces because GI is the main source of variance so let's gain some efficiency there
+// - Can we somehow move the visibility in target function outside of the inner loop of ReGIR because of register pressure?
+// - Is it a big deal for variance / bias if we remove NEE++ from the PDFs of pairwise MIS at shading time?
 // - After NEE++ has accumulated a few samples, can we compress it into a perfect hash table?
 // - Maybe we can return 4 samples from ReGIR and shade them all outside of the resampling loop instead of inside, maybe this will lower register pressure?
 // - Should we keep the average surface normal in each ReGIR cell to help with sampling precision instead of one single surface normal?

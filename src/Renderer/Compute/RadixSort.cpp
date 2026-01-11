@@ -5,6 +5,7 @@
 
 #include "Device/includes/Compute/RadixSortCommon.h"
 #include "Renderer/Compute/RadixSort.h"
+#include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 
 #include <numeric>
@@ -39,7 +40,7 @@ void RadixSort::initialize_kernels()
 
 void RadixSort::sort()
 {
-	ParallelPrefixScan::unit_test(m_hiprt_ctx, m_stream);
+	ParallelPrefixScanDecoupledLookback::unit_test(m_hiprt_ctx, m_stream);
 	return;
 
 	if (m_size == 0 || !m_hiprt_ctx || !m_stream)

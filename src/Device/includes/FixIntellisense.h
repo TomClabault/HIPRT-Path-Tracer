@@ -45,11 +45,17 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define DEVICE_KERNEL_SIGNATURE(returnType) returnType
 #define __shared__
 #define __restrict__
+#define __host__
+#define __device__
+
+#define HIPRT_DEVICE __device__
+#define HIPRT_HOST __host__
 
 #define UNROLL_LOOP
 
 // TODO move all of this in Math.h
 inline void __syncthreads() {}
+inline void __threadfence() {}
 inline void __syncwarp() {}
 inline unsigned int __activemask() { return 1;  }
 inline unsigned int __ballot() { return 1; }
