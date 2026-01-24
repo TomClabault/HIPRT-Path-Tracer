@@ -64,54 +64,54 @@ int main(int argc, char* argv[])
     // Joining everyone before starting the render except the precompilation threads
     ThreadManager::join_all_threads();
 
-    {
-        const int size = 128;
-        std::vector<unsigned int> random_keys(128);
-        std::vector <unsigned int> random_values(128);
+	{
+	    const int size = 128;
+	    std::vector<unsigned int> random_keys(128);
+	    std::vector <unsigned int> random_values(128);
 
-        std::iota(random_keys.begin(), random_keys.end(), 0);
-        std::iota(random_values.begin(), random_values.end(), 0);
+	    std::iota(random_keys.begin(), random_keys.end(), 0);
+	    std::iota(random_values.begin(), random_values.end(), 0);
 
-        // Randomly shuffle the keys and values
-        std::shuffle(random_keys.begin(), random_keys.end(), std::mt19937(42));
-        std::shuffle(random_values.begin(), random_values.end(), std::mt19937(42));
+	    // Randomly shuffle the keys and values
+	    std::shuffle(random_keys.begin(), random_keys.end(), std::mt19937(42));
+	    std::shuffle(random_values.begin(), random_values.end(), std::mt19937(42));
 
-        for (int i = 0; i < size; i++)
-        {
-            std::cout << random_keys[i] << ", ";
-        }
+	    for (int i = 0; i < size; i++)
+	    {
+	        std::cout << random_keys[i] << ", ";
+	    }
 
-        std::cout << std::endl;
-        std::cout << std::endl;
-        std::cout << std::endl;
+	    std::cout << std::endl;
+	    std::cout << std::endl;
+	    std::cout << std::endl;
 
-        RadixSort radix;
-        radix.set_context(hiprt_orochi_ctx, renderer->get_main_stream());
-        radix.upload_data(random_keys, random_values);
-        radix.sort();
+	    RadixSort radix;
+	    radix.set_context(hiprt_orochi_ctx, renderer->get_main_stream());
+	    radix.upload_data(random_keys, random_values);
+	    radix.sort();
 
-        std::vector<unsigned int> sorted_keys = radix.get_sorted_keys_buffer().download_data();
-        std::vector<unsigned int> sorted_values = radix.get_sorted_values_buffer().download_data();
+	    std::vector<unsigned int> sorted_keys = radix.get_sorted_keys_buffer().download_data();
+	    std::vector<unsigned int> sorted_values = radix.get_sorted_values_buffer().download_data();
 
-        for (int i = 0; i < size; i++)
-        {
-            std::cout << sorted_keys[i] << ", ";
-        }
-        std::cout << std::endl;
-        std::cout << std::endl;
-        std::cout << std::endl;
+	    for (int i = 0; i < size; i++)
+	    {
+	        std::cout << sorted_keys[i] << ", ";
+	    }
+	    std::cout << std::endl;
+	    std::cout << std::endl;
+	    std::cout << std::endl;
 
-        for (int i = 0; i < sorted_keys.size(); i++)
-        {
-            if (sorted_keys[i] != i)
-            {
-                g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Radix sort failed at index %d: expected key %d, got %d", i, i, sorted_keys[i]);
-                break;
-            }
-        }
+	    for (int i = 0; i < sorted_keys.size(); i++)
+	    {
+	        if (sorted_keys[i] != i)
+	        {
+	            g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Radix sort failed at index %d: expected key %d, got %d", i, i, sorted_keys[i]);
+	            break;
+	        }
+	    }
 
-        return 0;
-    }
+	    return 0;
+	}
 
     parsed_scene.print_statistics(std::cout);
 

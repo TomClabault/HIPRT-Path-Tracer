@@ -386,6 +386,7 @@ namespace hippt
 
 	// TODO these functions require __sync on modern NVIDIA GPUs. We should check that with __CUDACC__
 	__device__ static bool warp_any(unsigned int thread_mask, bool predicate) { return __any(predicate); }
+
 	/**
 	 * Returns a bit mask whose bits are set to 1 for threads that evaluated the predicate to true.
 	 */
@@ -413,6 +414,26 @@ namespace hippt
 		return __shfl_sync(0xFFFFFFFF, var, src_lane, width); 
 #else
 		return __shfl(var, src_lane, width);
+#endif
+	}
+
+	template <typename T>
+	__device__ T warp_reduce_max(unsigned long long int thread_mask, T variable) 
+	{ 
+#ifdef __CUDACC__
+		return __reduce_max_sync(static_cast<unsigned int>(thread_mask & 0xFFFFFFFF), variable);
+#else
+		for (int offset = warpSize / 2; offset > 0; offset >>= 1)
+			variable = max(variable, __shfl_down(variable, offset));
+
+		return variable;
+#endif
+	}
+
+	__device__ void syncwarp(unsigned int mask)
+	{
+#ifdef __CUDACC__
+		__syncwarp(mask);
 #endif
 	}
 
@@ -754,6 +775,7 @@ namespace hippt
 	}
 
 	static bool warp_any(unsigned int thread_mask, bool predicate) { return predicate; }
+
 	/**
 	 * Returns a bit mask whose bits are set to 1 for threads that evaluated the predicate to true.
 	 */
@@ -776,6 +798,11 @@ namespace hippt
 	 */
 	template <typename T>
 	static T warp_shfl(T var, int srcLane, int width = 1) { return var; }
+
+	template <typename T>
+	static T warp_reduce_max(unsigned long long int mask, T variable) { return variable; }
+
+	static void syncwarp(unsigned int mask) {}
 
 	/**
 	 * Returns the index within its warp (not group) of the calling thread

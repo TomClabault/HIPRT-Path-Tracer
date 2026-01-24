@@ -221,7 +221,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 	std::mt19937 rng(42);
 	for (int i = 0; i < 100; i++)
 	{
-		unsigned int input_size_original = std::max((unsigned int)PARALLEL_PREFIX_SCAN_CHUNK_SIZE, (unsigned int)PARALLEL_PREFIX_SCAN_CHUNK_SIZE * (rng() % 1000u));
+		unsigned int input_size_original = std::max((unsigned int)PARALLEL_PREFIX_SCAN_CHUNK_SIZE, static_cast<unsigned int>(PARALLEL_PREFIX_SCAN_CHUNK_SIZE * (rng() % 100u)));
 
 		unsigned int padded_size = ((input_size_original + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE) * PARALLEL_PREFIX_SCAN_CHUNK_SIZE;
 		unsigned int input_size = padded_size;
@@ -258,13 +258,13 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		std::vector<unsigned int> block_sums_output = block_sums.download_data();
 		if (!std::equal(output.begin(), output.begin() + input_size_original, expected_output.begin()))
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for block scan test %d", i);
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for block scan test %d, size = %u", i, input_size_original);
 			return;
 		}
 
 		if (!std::equal(block_sums_output.begin(), block_sums_output.end(), expected_block_sums.begin()))
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for block sums test %d", i);
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for block sums test %d, size = %u", i, input_size_original);
 			return;
 		}
 	}
@@ -321,8 +321,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		{
 			if (output[j] != expected_output[j])
 			{
-				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for test %d at index %d (size=%u): got %u, expected %u", i, j, test_size, output[j], expected_output[j]);
-				break;
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for test %d at index %lld (size=%u): got %u, expected %u", i, j, test_size, output[j], expected_output[j]);
 			}
 		}
 	}

@@ -52,7 +52,7 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 	unsigned int* __restrict__ g_global_block_index_counter,
 	unsigned int input_size)
 {
-	unsigned int tid = threadIdx.x;
+	int tid = threadIdx.x;
 
 	__shared__ unsigned int block_index;
 	if (tid == 0)
@@ -94,41 +94,90 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 	smem_inclusive_block_sum[tid] -= thread_input_value;
 
 	__shared__ unsigned int block_prefix;
-	if (tid == 0) 
-		block_prefix = 0;
-
-	__syncthreads();
-
-	if (tid == 0 && bid > 0)
+	__shared__ int base_lookback_block_index;
+	if (tid == 0)
 	{
-		for (int previous_block_index = bid - 1; previous_block_index >= 0; --previous_block_index)
-		{
-			ParallelPrefixScanDecoupledLookbackBlockDescriptor previous_block_descriptor;
-			// Wait until the prefix is available
-			do
-			{
-				// Volatile read is needed here such that the compiler doesn't optimize the
-				// 64b read below, which could lead to tearing or incoherent reads for example
-				unsigned long long int volatile_read_value = *reinterpret_cast<volatile unsigned long long int*>(&block_descs[previous_block_index]);
-
-				previous_block_descriptor = *reinterpret_cast<ParallelPrefixScanDecoupledLookbackBlockDescriptor*>(&volatile_read_value);
-				/* Busy wait */
-			} while (previous_block_descriptor.get_status() == DecoupledLookbackStatus::X);
-
-			block_prefix += previous_block_descriptor.get_inclusive_sum();
-
-			if (previous_block_descriptor.get_status() == DecoupledLookbackStatus::P)
-				break;
-		}
-
-		ParallelPrefixScanDecoupledLookbackBlockDescriptor block_descriptor = block_descs[bid];
-		block_descriptor.set_inclusive_sum(block_descriptor.get_inclusive_sum() + block_prefix);
-		block_descriptor.set_status(DecoupledLookbackStatus::P);
-
-		ParallelPrefixScanDecoupledLookbackBlockDescriptor::atomic_write(block_descs, bid, block_descriptor);
+		block_prefix = 0;
+		base_lookback_block_index = bid - 1;
 	}
 
 	__syncthreads();
+
+	if (tid < bid && tid <= hippt::warp_size() - 1)
+	{
+		while (base_lookback_block_index >= 0)
+		{
+			ParallelPrefixScanDecoupledLookbackBlockDescriptor previous_block_descriptor;
+			previous_block_descriptor.set_status(DecoupledLookbackStatus::X);
+
+			// Wait until the prefix is available
+			while (previous_block_descriptor.get_status() == DecoupledLookbackStatus::X && base_lookback_block_index - tid >= 0)
+			{
+				// Volatile read is needed here such that the compiler doesn't optimize the
+				// 64b read below, which could lead to tearing or incoherent reads for example
+				unsigned long long int volatile_read_value = *reinterpret_cast<volatile unsigned long long int*>(&block_descs[base_lookback_block_index - tid]);
+
+				previous_block_descriptor = *reinterpret_cast<ParallelPrefixScanDecoupledLookbackBlockDescriptor*>(&volatile_read_value);
+			};
+
+			hippt::syncwarp(0xFFFFFFFF);
+
+			unsigned int active_mask = hippt::warp_activemask();
+			int active_lanes_count = hippt::popc(active_mask);
+
+			// Substracting the number of threads that participated in the lookback
+			printf("Base lookback before: %d | active lane count: %d | tid: %d | bid: %d\n", base_lookback_block_index, active_lanes_count, tid, bid);
+			base_lookback_block_index -= active_lanes_count;
+			printf("Base lookback after: %d\n", base_lookback_block_index);
+
+			unsigned int ballot_status_P = hippt::warp_ballot(0xFFFFFFFF, previous_block_descriptor.get_status() == DecoupledLookbackStatus::P);
+			unsigned int ballot_status_A = hippt::warp_ballot(0xFFFFFFFF, previous_block_descriptor.get_status() == DecoupledLookbackStatus::A);
+
+			printf("Ballot P: %u | Ballot A: %u | looking at bid: %d\n", ballot_status_P, ballot_status_A, base_lookback_block_index - tid);
+
+			// The thread 0 analyzes the ballots to determine what to add to the block prefix
+			if (tid == 0)
+			{
+				for (int i = active_lanes_count - 1; i >= 0; i--)
+				{
+					if (ballot_status_A & (1 << i))
+						block_prefix += hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i);
+					else if (ballot_status_P & (1 << i))
+					{
+						block_prefix += hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i);
+
+						// We've found a 'P' status, we can stop looking back
+						base_lookback_block_index = -1;
+
+						break;
+					}
+					else
+						printf("------------------- WHAT\n");
+				}
+			}
+
+			hippt::syncwarp(0xFFFFFFFF);
+		}
+
+		if (tid == 0)
+		{
+			ParallelPrefixScanDecoupledLookbackBlockDescriptor block_descriptor = block_descs[bid];
+			block_descriptor.set_inclusive_sum(block_descriptor.get_inclusive_sum() + block_prefix);
+			block_descriptor.set_status(DecoupledLookbackStatus::P);
+
+			ParallelPrefixScanDecoupledLookbackBlockDescriptor::atomic_write(block_descs, bid, block_descriptor);
+		}
+	}
+
+	__syncthreads();
+
+	if (input_size == 699 && tid == 0)
+	{
+		for (int i = 0; i < 32; i++)
+			printf("%u; input: %u\n", smem_inclusive_block_sum[i], input[i]);
+
+		printf("\n");
+	}
 
 	if (global_tid < input_size)
 		output[global_tid] = smem_inclusive_block_sum[tid] + block_prefix;

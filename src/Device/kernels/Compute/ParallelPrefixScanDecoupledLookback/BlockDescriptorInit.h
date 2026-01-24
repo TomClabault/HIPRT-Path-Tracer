@@ -12,6 +12,8 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_BlockDescripto
 	unsigned int* g_global_block_index_counter)
 {
 	int global_tid = blockIdx.x * blockDim.x + threadIdx.x;
+	if (global_tid >= descriptor_count)
+		return;
 
 	ParallelPrefixScanDecoupledLookbackBlockDescriptor empty_block_desc;
 	empty_block_desc.set_inclusive_sum(0);

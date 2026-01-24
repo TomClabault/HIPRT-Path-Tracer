@@ -32,6 +32,10 @@
 #define UNROLL_STR(x) UNROLL_STR2(x)
 #define UNROLL_PRAGMA(x) _Pragma(UNROLL_STR(x))
 #define UNROLL_LOOP         UNROLL_PRAGMA(unroll)
+
+#ifndef __CUDACC__
+inline void __syncwarp(unsigned int mask) {}
+#endif
 #else
 
 struct dummyVec3
@@ -56,7 +60,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 // TODO move all of this in Math.h
 inline void __syncthreads() {}
 inline void __threadfence() {}
-inline void __syncwarp() {}
+inline void __syncwarp(unsigned int mask) {}
 inline unsigned int __activemask() { return 1;  }
 inline unsigned int __ballot() { return 1; }
 

@@ -1070,6 +1070,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
+			if (ImGui::Checkbox("Enable DI", &render_settings.enable_direct))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(std::string("Whether or not to integrate direct lighting (NEE) at the primary hit (G-buffer surface)."));
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 			bool disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI;
 			ImGui::BeginDisabled(disabled);
 			static int nee_sample_count = DirectLightSamplingNEESampleCount;
@@ -5165,8 +5170,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 	{
 		ImGui::TreePush("Debug options tree");
 
-		if (ImGui::Checkbox("Enable direct", &render_settings.enable_direct))
-			m_render_window->set_render_dirty(true);
 		ImGui::PushItemWidth(24 * ImGui::GetFontSize());
 
 		if (ImGui::SliderInt("ReGIR Pre integration iterations", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS, 1, 64))
