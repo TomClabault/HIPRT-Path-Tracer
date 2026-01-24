@@ -433,6 +433,19 @@ namespace hippt
 #endif
 	}
 
+	/**
+	 * Copy from a lane with lower ID relative to caller
+	 */
+	template <typename T>
+	__device__ T warp_shfl_up(T var, int src_lane, int width = warpSize)
+	{
+#ifdef __CUDACC__
+		return __shfl_up_sync(0xFFFFFFFF, var, src_lane, width);
+#else
+		return __shfl_up(var, src_lane, width);
+#endif
+	}
+
 	template <typename T>
 	__device__ T warp_reduce_max(unsigned long long int thread_mask, T variable) 
 	{ 
@@ -826,6 +839,12 @@ namespace hippt
 	 */
 	template <typename T>
 	static T warp_shfl_down(T var, int srcLane, int width = 1) { return var; }
+
+	/**
+	 * Copy from a lane with higher ID relative to caller
+	 */
+	template <typename T>
+	static T warp_shfl_up(T var, int srcLane, int width = 1) { return var; }
 
 	template <typename T>
 	static T warp_reduce_max(unsigned long long int mask, T variable) { return variable; }

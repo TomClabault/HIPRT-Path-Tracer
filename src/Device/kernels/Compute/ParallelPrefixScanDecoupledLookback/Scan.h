@@ -8,105 +8,136 @@
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-//#define PRINT(...) printf(__VA_ARGS__)
-#define PRINT(...)
-
-__shared__ unsigned int smem_inclusive_block_sum[PARALLEL_PREFIX_SCAN_CHUNK_SIZE];
-
-__device__ void inclusive_prefix_block_sum(
-	unsigned int block_index,
-	unsigned int thread_input_value,
-	const unsigned int* __restrict__ input,
-	unsigned int input_size,
-	unsigned int local_thread_count)
+// Register-based warp inclusive scan
+HIPRT_DEVICE unsigned int warp_scan_inclusive(unsigned int val) 
 {
-	// Hillis-Steele inclusive prefix block scan
-	// 
-	// Reference: https://gpu-primitives-course.github.io/
+    unsigned int lane = threadIdx.x % 32;
 
-	int tid = threadIdx.x;
-	int global_tid = block_index * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + threadIdx.x;
+    unsigned int temp = hippt::warp_shfl_up(val, 1);
+    if (lane >= 1) val += temp;
+    temp = hippt::warp_shfl_up(val, 2);
+    if (lane >= 2) val += temp;
+    temp = hippt::warp_shfl_up(val, 4);
+    if (lane >= 4) val += temp;
+    temp = hippt::warp_shfl_up(val, 8);
+    if (lane >= 8) val += temp;
+    temp = hippt::warp_shfl_up(val, 16);
+    if (lane >= 16) val += temp;
 
-	if ((unsigned int)tid < local_thread_count)
-		smem_inclusive_block_sum[tid] = thread_input_value;
-	else
-		smem_inclusive_block_sum[tid] = 0u;
+    return val;
+}
 
-	__syncthreads();
+// Optimized Block Scan with Early Publication
+HIPRT_DEVICE unsigned int block_scan_early_publish(
+    unsigned int thread_input_value,
+    unsigned int bid,
+    int tid,
+    ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs) 
+{
+    // Per-warp scan
+    unsigned int warp_prefix = warp_scan_inclusive(thread_input_value);
 
-	for (int offset = 1; offset < PARALLEL_PREFIX_SCAN_CHUNK_SIZE; offset *= 2)
-	{
-		unsigned int val = 0;
-		if (tid - offset >= 0)
-			val = smem_inclusive_block_sum[tid - offset];
+    // The last lane of each warp holds the sum for that warp
+    unsigned int lane = tid % 32;
+    unsigned int warp_id = tid / 32;
 
-		__syncthreads();
+    // Shared memory to hold the sum of each warp
+    // (Size = Max Threads / 32). Assuming max 1024 threads -> 32 warps.
+    __shared__ unsigned int smem_warp_sums[PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32];
 
-		smem_inclusive_block_sum[tid] += val;
+    if (lane == 31)
+		// Storing the total sum of each warp in shared memory
+        smem_warp_sums[warp_id] = warp_prefix;
 
-		__syncthreads();
-	}
+    __syncthreads();
+
+    // Scan the warp sums (only warp 0 does this)
+    // This calculates the base value to add to each warp
+    unsigned int warp_base = 0;
+    if (warp_id == 0) 
+    {
+        unsigned int my_warp_sum = 0;
+
+        if (tid < (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32))
+            // Only load if the warp actually exists in this block
+            my_warp_sum = smem_warp_sums[tid];
+
+        unsigned int inclusive_warp_sum_scan = warp_scan_inclusive(my_warp_sum);
+
+        // Write the inclusive scan back to smem so other warps can read their "base"
+        // Note: We shift by 1 index effectively, because Warp N needs the sum of Warps 0..N-1
+        // We can store it directly and handle the shift on read.
+        smem_warp_sums[tid] = inclusive_warp_sum_scan;
+
+        // The last active thread in Warp 0 holds the sum of ALL warps (the total block sum).
+        // 
+		// We can publish this immediately without having to wait for other warps of the block to finish,
+        unsigned int num_warps = PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32;
+        if (tid == num_warps - 1) 
+        {
+            ParallelPrefixScanDecoupledLookbackBlockDescriptor new_desc;
+            new_desc.set_inclusive_sum(inclusive_warp_sum_scan);
+
+            if (bid == 0)
+                new_desc.set_status(DecoupledLookbackStatus::P);
+            else 
+                new_desc.set_status(DecoupledLookbackStatus::A);
+
+            ParallelPrefixScanDecoupledLookbackBlockDescriptor::atomic_write(block_descs, bid, new_desc);
+        }
+    }
+
+    __syncthreads();
+
+    // Add the base from previous warps to the local warp prefix
+    if (warp_id > 0) {
+        warp_base = smem_warp_sums[warp_id - 1];
+    }
+
+	// This thread's inclusive sum over the whole block
+    return warp_prefix + warp_base;
 }
 
 GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
-	const unsigned int* __restrict__ input,
-	unsigned int* __restrict__ output,
-	ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs,
-	unsigned int* __restrict__ g_global_block_index_counter,
-	unsigned int input_size)
+    const unsigned int* __restrict__ input,
+    unsigned int* __restrict__ output,
+    ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs,
+    unsigned int* __restrict__ g_global_block_index_counter,
+    unsigned int input_size)
 {
-	int tid = threadIdx.x;
+    int tid = threadIdx.x;
 
-	__shared__ unsigned int block_index;
-	if (tid == 0)
-		block_index = hippt::atomic_fetch_add(g_global_block_index_counter, 1u);
-	__syncthreads();
+    __shared__ unsigned int block_index;
+    if (tid == 0) block_index = hippt::atomic_fetch_add(g_global_block_index_counter, 1u);
+    __syncthreads();
 
-	unsigned int num_blocks = (input_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE;
-	if (block_index >= num_blocks)
-		return;
+    unsigned int bid = block_index;
+    unsigned int num_blocks = (input_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE;
+    if (bid >= num_blocks) return;
 
-	unsigned int global_tid = block_index * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + threadIdx.x;
-	unsigned int bid = block_index;
+    // Input load
+    unsigned int global_tid = bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
+    unsigned int thread_input_value = (global_tid < input_size) ? input[global_tid] : 0;
 
-	unsigned int thread_input_value = 0;
-	if (global_tid < input_size)
-		thread_input_value = input[global_tid];
+    // Inclusive block scan for this thread.
+    // 
+    // It also internally publishes the 'A' status for the block as soon as possible.
+    unsigned int inclusive_sum = block_scan_early_publish(thread_input_value, bid, tid, block_descs);
 
-	unsigned int local_thread_count = hippt::min(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, input_size - PARALLEL_PREFIX_SCAN_CHUNK_SIZE * block_index);
-	inclusive_prefix_block_sum(block_index, thread_input_value, input, input_size, local_thread_count);
+    __syncthreads();
 
-	if (tid == 0)
-	{
-		ParallelPrefixScanDecoupledLookbackBlockDescriptor new_desc;
+    __shared__ unsigned int block_prefix;
+    __shared__ int base_lookback_block_index;
+    if (tid == 0) 
+    {
+        block_prefix = 0;
+        base_lookback_block_index = bid - 1;
+    }
 
-		new_desc.set_inclusive_sum(smem_inclusive_block_sum[local_thread_count - 1]); // Will be set later
-		if (bid == 0)
-			// First block, no prefix to add
-			new_desc.set_status(DecoupledLookbackStatus::P);
-		else
-			new_desc.set_status(DecoupledLookbackStatus::A);
+    __syncthreads();
 
-		ParallelPrefixScanDecoupledLookbackBlockDescriptor::atomic_write(block_descs, bid, new_desc);
-	}
-
-	__syncthreads();
-
-	// temp_sems has been filled with the inclusive prefix scan but this kernel is for exclusive prefix scan
-	// so we need to substract the input value to go from inclusive to exclusive
-	smem_inclusive_block_sum[tid] -= thread_input_value;
-
-	__shared__ unsigned int block_prefix;
-	__shared__ int base_lookback_block_index;
-	if (tid == 0)
-	{
-		block_prefix = 0;
-		base_lookback_block_index = bid - 1;
-	}
-
-	__syncthreads();
-
-	if (tid < bid && tid <= hippt::warp_size() - 1)
+	// Decoupled lookback to get the block prefix. Warp-wide lookback.
+    if (tid < bid && tid <= hippt::warp_size() - 1)
 	{
 		while (base_lookback_block_index >= 0)
 		{
@@ -126,8 +157,6 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 
 				previous_block_descriptor = *reinterpret_cast<ParallelPrefixScanDecoupledLookbackBlockDescriptor*>(&volatile_read_value);
 			};
-
-			hippt::syncwarp(0xFFFFFFFF);
 
 			// Identify where 'P' (Prefix) status occurred
 			// This tells us we don't need to look further back than this lane.
@@ -174,12 +203,6 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 			else
 				// All were 'A', move window back by the number of lanes processed
 				base_lookback_block_index -= active_lanes_count;
-
-			// -------------------------------------------------------------------------
-			// OPTIMIZATION END
-			// -------------------------------------------------------------------------
-
-			hippt::syncwarp(0xFFFFFFFF);
 		}
 
 		if (tid == 0)
@@ -192,8 +215,9 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 		}
 	}
 
-	__syncthreads();
+    __syncthreads();
 
-	if (global_tid < input_size)
-		output[global_tid] = smem_inclusive_block_sum[tid] + block_prefix;
+    if (global_tid < input_size)
+        // - thread_input_value here to get an exclusive scan output. Removing that yields an inclusive scan output
+        output[global_tid] = inclusive_sum- thread_input_value + block_prefix;
 }
