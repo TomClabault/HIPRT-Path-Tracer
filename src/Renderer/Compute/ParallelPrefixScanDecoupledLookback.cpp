@@ -99,13 +99,12 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 	{
 		rng.seed(i);
 
-		unsigned int test_size = rng() % 2049;
+		unsigned int test_size = 500000000;// rng() % 1000000;
 
 		unsigned int running_sum = 0;
 		std::vector<unsigned int> expected_output(test_size);
 		std::vector<unsigned int> input(test_size);
 
-		rng.seed(i);
 		std::transform(input.begin(), input.end(), input.begin(), [&rng](unsigned int) { return rng() % 3; });
 
 		auto start = std::chrono::high_resolution_clock::now();
@@ -120,7 +119,7 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 		scanner.upload_data(input);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
-		unsigned int repeats = 1;
+		unsigned int repeats = 5;
 		for (int j = 0; j < repeats; j++)
 		{
 			scanner.scan();

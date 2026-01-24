@@ -8,6 +8,9 @@
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
+//#define PRINT(...) printf(__VA_ARGS__)
+#define PRINT(...)
+
 __shared__ unsigned int smem_inclusive_block_sum[PARALLEL_PREFIX_SCAN_CHUNK_SIZE];
 
 __device__ void inclusive_prefix_block_sum(
@@ -110,49 +113,66 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 			ParallelPrefixScanDecoupledLookbackBlockDescriptor previous_block_descriptor;
 			previous_block_descriptor.set_status(DecoupledLookbackStatus::X);
 
+			unsigned int active_mask = hippt::warp_activemask();
+			int active_lanes_count = hippt::popc(active_mask);
+
 			// Wait until the prefix is available
-			while (previous_block_descriptor.get_status() == DecoupledLookbackStatus::X && base_lookback_block_index - tid >= 0)
+			int lookback_block_index = base_lookback_block_index - (active_lanes_count - 1 - tid);
+			while (previous_block_descriptor.get_status() == DecoupledLookbackStatus::X && lookback_block_index >= 0)
 			{
 				// Volatile read is needed here such that the compiler doesn't optimize the
 				// 64b read below, which could lead to tearing or incoherent reads for example
-				unsigned long long int volatile_read_value = *reinterpret_cast<volatile unsigned long long int*>(&block_descs[base_lookback_block_index - tid]);
+				unsigned long long int volatile_read_value = *reinterpret_cast<volatile unsigned long long int*>(&block_descs[lookback_block_index]);
 
 				previous_block_descriptor = *reinterpret_cast<ParallelPrefixScanDecoupledLookbackBlockDescriptor*>(&volatile_read_value);
 			};
 
 			hippt::syncwarp(0xFFFFFFFF);
 
-			unsigned int active_mask = hippt::warp_activemask();
-			int active_lanes_count = hippt::popc(active_mask);
-
 			// Substracting the number of threads that participated in the lookback
-			printf("Base lookback before: %d | active lane count: %d | tid: %d | bid: %d\n", base_lookback_block_index, active_lanes_count, tid, bid);
 			base_lookback_block_index -= active_lanes_count;
-			printf("Base lookback after: %d\n", base_lookback_block_index);
+				if (bid == 2 && tid == 0)
+					PRINT("TID %d analyze block %d found status %s ; sum: %u\n", tid, lookback_block_index, (previous_block_descriptor.get_status() == DecoupledLookbackStatus::P) ? "P" : ((previous_block_descriptor.get_status() == DecoupledLookbackStatus::A) ? "A" : "X"), previous_block_descriptor.get_inclusive_sum());
 
 			unsigned int ballot_status_P = hippt::warp_ballot(0xFFFFFFFF, previous_block_descriptor.get_status() == DecoupledLookbackStatus::P);
 			unsigned int ballot_status_A = hippt::warp_ballot(0xFFFFFFFF, previous_block_descriptor.get_status() == DecoupledLookbackStatus::A);
 
-			printf("Ballot P: %u | Ballot A: %u | looking at bid: %d\n", ballot_status_P, ballot_status_A, base_lookback_block_index - tid);
+			if (bid == 2 && tid == 0)
+				PRINT("Ballot P: %u | Ballot A: %u | looking at bid: %d\n", ballot_status_P, ballot_status_A, lookback_block_index);
 
 			// The thread 0 analyzes the ballots to determine what to add to the block prefix
-			if (tid == 0)
+			//if (tid == 0)
 			{
 				for (int i = active_lanes_count - 1; i >= 0; i--)
 				{
 					if (ballot_status_A & (1 << i))
-						block_prefix += hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i);
+					{
+						if (bid == 2 && tid == 0)
+							PRINT("Found A at TID %d. Adding %u\n", i, hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i));
+
+						unsigned int other_block_inclusive_sum = hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i);
+						if (tid == 0)
+							block_prefix += other_block_inclusive_sum;
+					}
 					else if (ballot_status_P & (1 << i))
 					{
-						block_prefix += hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i);
+						if (bid == 2 && tid == 0)
+							PRINT("Found P at TID %d. Adding %u\n", i, hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i));
+						unsigned int other_block_inclusive_sum = hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i);
+						if (tid == 0)
+							block_prefix += other_block_inclusive_sum;
 
 						// We've found a 'P' status, we can stop looking back
 						base_lookback_block_index = -1;
 
+						if (bid == 2 && tid == 0)
+							PRINT("Breaking\n");
+
 						break;
 					}
 					else
-						printf("------------------- WHAT\n");
+						if (bid == 2 && tid == 0)
+							PRINT("------------------- WHAT\n");
 				}
 			}
 
@@ -171,13 +191,13 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 
 	__syncthreads();
 
-	if (input_size == 699 && tid == 0)
+	/*if (input_size == 699 && tid == 0)
 	{
 		for (int i = 0; i < 32; i++)
-			printf("%u; input: %u\n", smem_inclusive_block_sum[i], input[i]);
+			PRINT("%u; input: %u\n", smem_inclusive_block_sum[i], input[i]);
 
-		printf("\n");
-	}
+		PRINT("\n");
+	}*/
 
 	if (global_tid < input_size)
 		output[global_tid] = smem_inclusive_block_sum[tid] + block_prefix;
