@@ -129,52 +129,55 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 
 			hippt::syncwarp(0xFFFFFFFF);
 
-			// Substracting the number of threads that participated in the lookback
-			base_lookback_block_index -= active_lanes_count;
-				if (bid == 2 && tid == 0)
-					PRINT("TID %d analyze block %d found status %s ; sum: %u\n", tid, lookback_block_index, (previous_block_descriptor.get_status() == DecoupledLookbackStatus::P) ? "P" : ((previous_block_descriptor.get_status() == DecoupledLookbackStatus::A) ? "A" : "X"), previous_block_descriptor.get_inclusive_sum());
+			// Identify where 'P' (Prefix) status occurred
+			// This tells us we don't need to look further back than this lane.
+			unsigned int ballot_P = hippt::warp_ballot(active_mask, previous_block_descriptor.get_status() == DecoupledLookbackStatus::P);
 
-			unsigned int ballot_status_P = hippt::warp_ballot(0xFFFFFFFF, previous_block_descriptor.get_status() == DecoupledLookbackStatus::P);
-			unsigned int ballot_status_A = hippt::warp_ballot(0xFFFFFFFF, previous_block_descriptor.get_status() == DecoupledLookbackStatus::A);
+			unsigned int val_to_add = previous_block_descriptor.get_inclusive_sum();
 
-			if (bid == 2 && tid == 0)
-				PRINT("Ballot P: %u | Ballot A: %u | looking at bid: %d\n", ballot_status_P, ballot_status_A, lookback_block_index);
-
-			// The thread 0 analyzes the ballots to determine what to add to the block prefix
-			//if (tid == 0)
+			// Filter out values we don't need
+			// We want to sum values from the "closest" block (highest TID) 
+			// down to the first block that reported status 'P'.
+			if (ballot_P != 0)
 			{
-				for (int i = active_lanes_count - 1; i >= 0; i--)
-				{
-					if (ballot_status_A & (1 << i))
-					{
-						if (bid == 2 && tid == 0)
-							PRINT("Found A at TID %d. Adding %u\n", i, hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i));
+				// clz() counts leading zeros.
+				// 
+				// Since we map higher TIDs to "closer" blocks (bid-1 is TID 31 or active_lanes-1),
+				// we want the P with the highest TID.
+				// 
+				// Example: P at bit 31 -> clz=0 -> highest_p_lane=31.
+				int highest_p_lane = 31 - hippt::clz(ballot_P);
 
-						unsigned int other_block_inclusive_sum = hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i);
-						if (tid == 0)
-							block_prefix += other_block_inclusive_sum;
-					}
-					else if (ballot_status_P & (1 << i))
-					{
-						if (bid == 2 && tid == 0)
-							PRINT("Found P at TID %d. Adding %u\n", i, hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i));
-						unsigned int other_block_inclusive_sum = hippt::warp_shfl(previous_block_descriptor.get_inclusive_sum(), i);
-						if (tid == 0)
-							block_prefix += other_block_inclusive_sum;
+				// We create a mask that keeps all lanes >= highest_p_lane
+				unsigned int keep_mask = 0xFFFFFFFF << highest_p_lane;
 
-						// We've found a 'P' status, we can stop looking back
-						base_lookback_block_index = -1;
-
-						if (bid == 2 && tid == 0)
-							PRINT("Breaking\n");
-
-						break;
-					}
-					else
-						if (bid == 2 && tid == 0)
-							PRINT("------------------- WHAT\n");
-				}
+				// Zero out values from blocks "older" than the found P such that they are not
+				// counted in the sum reduction that follows
+				if ((keep_mask & (1u << tid)) == 0)
+					val_to_add = 0;
 			}
+
+			// Instead of a serial loop, we sum all 32 lanes in log2 steps.
+			// 
+			// We use shfl_down because we want to accumulate everything into lower TIDs,
+			// eventually landing the total sum in TID 0.
+			for (int offset = 16; offset > 0; offset /= 2)
+				val_to_add += hippt::warp_shfl_down(val_to_add, offset);
+
+			// Update the block prefix
+			if (tid == 0)
+				block_prefix += val_to_add;
+
+			if (ballot_P != 0)
+				// We found a P, so we have the complete prefix. Stop looking back.
+				base_lookback_block_index = -1;
+			else
+				// All were 'A', move window back by the number of lanes processed
+				base_lookback_block_index -= active_lanes_count;
+
+			// -------------------------------------------------------------------------
+			// OPTIMIZATION END
+			// -------------------------------------------------------------------------
 
 			hippt::syncwarp(0xFFFFFFFF);
 		}
@@ -190,14 +193,6 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_Scan(
 	}
 
 	__syncthreads();
-
-	/*if (input_size == 699 && tid == 0)
-	{
-		for (int i = 0; i < 32; i++)
-			PRINT("%u; input: %u\n", smem_inclusive_block_sum[i], input[i]);
-
-		PRINT("\n");
-	}*/
 
 	if (global_tid < input_size)
 		output[global_tid] = smem_inclusive_block_sum[tid] + block_prefix;

@@ -99,7 +99,7 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 	{
 		rng.seed(i);
 
-		unsigned int test_size = 500000000;// rng() % 1000000;
+		unsigned int test_size = rng() % 500000000;
 
 		unsigned int running_sum = 0;
 		std::vector<unsigned int> expected_output(test_size);

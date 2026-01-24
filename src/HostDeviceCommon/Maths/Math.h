@@ -384,6 +384,9 @@ namespace hippt
 	 */
 	__device__ static int ffs(unsigned int bitmask) { return __ffs(bitmask); }
 
+	template <typename T>
+	__device__ static T clz(T bitmask) { return __clz(bitmask); }
+
 	// TODO these functions require __sync on modern NVIDIA GPUs. We should check that with __CUDACC__
 	__device__ static bool warp_any(unsigned int thread_mask, bool predicate) { return __any(predicate); }
 
@@ -414,6 +417,19 @@ namespace hippt
 		return __shfl_sync(0xFFFFFFFF, var, src_lane, width); 
 #else
 		return __shfl(var, src_lane, width);
+#endif
+	}
+
+	/**
+	 * Copy from a lane with higher ID relative to caller
+	 */
+	template <typename T>
+	__device__ T warp_shfl_down(T var, int src_lane, int width = warpSize)
+	{
+#ifdef __CUDACC__
+		return __shfl_down_sync(0xFFFFFFFF, var, src_lane, width);
+#else
+		return __shfl_down(var, src_lane, width);
 #endif
 	}
 
@@ -774,6 +790,12 @@ namespace hippt
 		return 0;
 	}
 
+	template <typename T>
+	static T clz(T bitfield)
+	{
+		std::countl_zero(bitfield);
+	}
+
 	static bool warp_any(unsigned int thread_mask, bool predicate) { return predicate; }
 
 	/**
@@ -798,6 +820,12 @@ namespace hippt
 	 */
 	template <typename T>
 	static T warp_shfl(T var, int srcLane, int width = 1) { return var; }
+
+	/**
+	 * Copy from a lane with higher ID relative to caller
+	 */
+	template <typename T>
+	static T warp_shfl_down(T var, int srcLane, int width = 1) { return var; }
 
 	template <typename T>
 	static T warp_reduce_max(unsigned long long int mask, T variable) { return variable; }
