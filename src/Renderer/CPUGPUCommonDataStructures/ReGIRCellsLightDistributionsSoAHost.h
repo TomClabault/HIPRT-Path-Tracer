@@ -78,10 +78,10 @@ template <template <typename> typename DataContainer>
 using ReGIRCellsLightDistributionsSoAHostInternal = GenericSoA<DataContainer,
 	unsigned short int,		// CDF as normalized unsigned short int (0-65535)
 	ReGIRCellsLightDistributionsMeshIndicesPackingType,	// Indices of the emissive meshes associated with each entries of the CDF
-														// Only the right number of bits are used (so if we have 1000 emissive meshes,
-														// only 10 bits are used). These bits are tightly packed in 64 bit integer
-														// (so we may have some mesh index striding two differents 64 bit integers
-														// sometimes)
+	// Only the right number of bits are used (so if we have 1000 emissive meshes,
+	// only 10 bits are used). These bits are tightly packed in 64 bit integer
+	// (so we may have some mesh index striding two differents 64 bit integers
+	// sometimes)
 	unsigned int, // Emissive mesh indices offsets
 	unsigned short int, // Light distribution sizes
 	unsigned int // Light distribution offsets
@@ -113,7 +113,7 @@ struct ReGIRCellsLightDistributionsSoAHost
 			// computation on the GPU
 			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(new_number_of_cells);
 			soa.template memset_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_SIZES>(0);
-			
+
 			soa.template resize_one_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(new_number_of_cells);
 			soa.template memset_buffer<REGIR_CELLS_LIGHT_DISTRIBUTIONS_OFFSETS>(ReGIRCellsLightDistributionsSoADevice::NO_AVAILABLE_LIGHT_DISTRIBUTION);
 		}

@@ -89,7 +89,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	{
 		// No temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
-		
+
 		return;
 	}
 
@@ -176,9 +176,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface,
 		temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
-	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 		temporal_neighbor_reservoir, initial_candidates_reservoir,
-		center_pixel_surface, temporal_neighbor_surface, 
+		center_pixel_surface, temporal_neighbor_surface,
 
 		/* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_GI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO

@@ -21,33 +21,33 @@ void LightTreeSGSamplingDataStructure::compute_from_scene(const Scene& scene)
 void LightTreeSGSamplingDataStructure::compute(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG, 
+	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_SG,
 		[this,
 		&emissive_triangles_primitive_indices,
 		&triangles_vertex_indices,
 		&vertices_positions,
 		&material_indices,
-		&materials] () 
-	{
-		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
-
-		if (!is_needed(emissive_triangles_primitive_indices.size()))
+		&materials] ()
 		{
-			free();
+			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
 
-			return;
-		}
+			if (!is_needed(emissive_triangles_primitive_indices.size()))
+			{
+				free();
 
-		m_light_tree_builder_sg.build_light_tree(
-			emissive_triangles_primitive_indices,
-			triangles_vertex_indices,
-			vertices_positions,
-			material_indices,
-			materials);
-		m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<OrochiBuffer>();
-		m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices, triangles_vertex_indices.size() / 3, m_light_tree_sg_device_data);
-		m_light_tree_builder_sg.cleanup();
-	});
+				return;
+			}
+
+			m_light_tree_builder_sg.build_light_tree(
+				emissive_triangles_primitive_indices,
+				triangles_vertex_indices,
+				vertices_positions,
+				material_indices,
+				materials);
+			m_light_tree_sg_device_data = m_light_tree_builder_sg.compute_device_data<OrochiBuffer>();
+			m_light_tree_builder_sg.to_device(m_renderer->get_render_data(), emissive_triangles_primitive_indices, triangles_vertex_indices.size() / 3, m_light_tree_sg_device_data);
+			m_light_tree_builder_sg.cleanup();
+		});
 }
 
 void LightTreeSGSamplingDataStructure::recompute_if_needed(bool skip_if_already_computed)

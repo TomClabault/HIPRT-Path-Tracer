@@ -66,7 +66,7 @@ void ParallelPrefixScanDecoupledLookback::scan()
 
 	unsigned int block_descriptor_count = m_block_descriptors_buffer.size();
 	unsigned int* global_block_index_counter_pointer = m_global_block_index_counter_buffer.get_device_pointer();
-	void* block_descriptor_init_args[]  = {&block_descriptors_buffer_pointer, &block_descriptor_count, &global_block_index_counter_pointer };
+	void* block_descriptor_init_args[] = { &block_descriptors_buffer_pointer, &block_descriptor_count, &global_block_index_counter_pointer };
 	m_block_descriptor_init_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, block_descriptor_count, 1, block_descriptor_init_args, m_stream);
 
 	unsigned int* input_buffer_pointer = m_input_buffer.get_device_pointer();

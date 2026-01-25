@@ -139,7 +139,7 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 		}
 
 		render_data_invalidated |= ReSTIRRenderPassCommon::free_directional_reuse_buffers<false>(
-			m_per_pixel_spatial_reuse_radius, 
+			m_per_pixel_spatial_reuse_radius,
 			m_per_pixel_spatial_reuse_direction_mask_u,
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
@@ -160,9 +160,9 @@ void ReSTIRDIRenderPass::update_render_data()
 	// Setting the pointers for use in reset_render() in the camera rays kernel
 	if (is_render_pass_used())
 	{
-		ReSTIRRenderPassCommon::update_render_data_common_buffers<false>(render_data, 
+		ReSTIRRenderPassCommon::update_render_data_common_buffers<false>(render_data,
 			m_per_pixel_spatial_reuse_radius,
-			m_per_pixel_spatial_reuse_direction_mask_u, 
+			m_per_pixel_spatial_reuse_direction_mask_u,
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
 			m_spatial_reuse_statistics_hit_total);
@@ -184,9 +184,9 @@ void ReSTIRDIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_spatial_output_reservoirs_2.resize(new_width * new_height);
 	m_spatial_output_reservoirs_1.resize(new_width * new_height);
 
-	ReSTIRRenderPassCommon::resize_directional_reuse_buffers<false>(m_renderer, new_width, new_height, 
-		m_per_pixel_spatial_reuse_radius, 
-		m_per_pixel_spatial_reuse_direction_mask_u, 
+	ReSTIRRenderPassCommon::resize_directional_reuse_buffers<false>(m_renderer, new_width, new_height,
+		m_per_pixel_spatial_reuse_radius,
+		m_per_pixel_spatial_reuse_direction_mask_u,
 		m_per_pixel_spatial_reuse_direction_mask_ull);
 }
 
@@ -230,7 +230,7 @@ void ReSTIRDIRenderPass::reset(bool reset_by_camera_movement)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if(!is_render_pass_used())
+	if (!is_render_pass_used())
 		return;
 
 	if (render_data.render_settings.need_to_reset)
@@ -624,7 +624,7 @@ void ReSTIRDIRenderPass::request_temporal_bufffers_clear()
 
 float ReSTIRDIRenderPass::get_VRAM_usage() const
 {
-	return (m_initial_candidates_reservoirs.get_byte_size() + 
+	return (m_initial_candidates_reservoirs.get_byte_size() +
 		m_spatial_output_reservoirs_1.get_byte_size() +
 		m_spatial_output_reservoirs_2.get_byte_size() +
 		m_per_pixel_spatial_reuse_direction_mask_u.get_byte_size() +

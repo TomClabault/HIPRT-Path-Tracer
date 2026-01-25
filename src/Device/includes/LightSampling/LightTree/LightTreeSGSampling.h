@@ -12,7 +12,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_H
 #define DEVICE_INCLUDES_LIGHT_TREE_SG_SAMPLING_H
 
-HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node, float3 shading_point, float3 view_direction, float3 shading_normal, 
+HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node, float3 shading_point, float3 view_direction, float3 shading_normal,
 	float specular, float alpha_x, float alpha_y)
 {
 	if (node.total_power == 0.0f)
@@ -26,7 +26,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	if (hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f)
 		return 0.0f;*/
 
-	// Load an SG light.
+		// Load an SG light.
 	const float3 lightVec = node.gaussian_spatial_mean - shading_point;
 	const float squaredDistance = hippt::dot(lightVec, lightVec);
 	const float3 to_light_direction = lightVec / hippt::sqrt(squaredDistance);
@@ -196,7 +196,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_emissive_triangle_light_tree_sg(c
 	return light_sample;
 }
 
-HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 shading_normal, 
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
 	int global_emissive_triangle_index)
 {

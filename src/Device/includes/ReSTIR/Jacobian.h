@@ -30,7 +30,7 @@ HIPRT_DEVICE float get_jacobian_determinant_reconnection_shift(const float3& rec
 	if (jacobian_determinant > jacobian_threshold || jacobian_determinant < 1.0f / jacobian_threshold || hippt::is_nan(jacobian_determinant) || hippt::is_inf(jacobian_determinant))
 		// Samples are too dissimilar, returning 0 to indicate that we must reject the sample
 		return 0.0f;
-	else	
+	else
 		return jacobian_determinant;
 }
 

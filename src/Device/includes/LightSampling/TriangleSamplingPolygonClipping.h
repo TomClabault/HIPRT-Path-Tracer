@@ -22,12 +22,12 @@
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_PROJECTED_SOLID_ANGLE_CLIPPING_H
 
 #define MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING 3
-// +1 vertex because clipping can produce one additional vertex
+ // +1 vertex because clipping can produce one additional vertex
 #define MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING (MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING + 1)
 
 /*! Returns the intersection of the line connecting the given two points with
 	the plane z == 0.0f.*/
-HIPRT_DEVICE float3 iz0(float3 lhs, float3 rhs) 
+HIPRT_DEVICE float3 iz0(float3 lhs, float3 rhs)
 {
 	float lerp_factor = lhs.z / (lhs.z - rhs.z);
 	// Equivalent to the following but I have trust issues regarding the

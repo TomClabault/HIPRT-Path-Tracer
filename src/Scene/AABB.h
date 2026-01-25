@@ -34,12 +34,12 @@ struct AABB
 	 */
 	float get_max_extent() const
 	{
-		return hippt::max(hippt::abs(mini.x - maxi.x), hippt::max(hippt::abs(mini.y -maxi.y), hippt::abs(mini.z - maxi.z)));
+		return hippt::max(hippt::abs(mini.x - maxi.x), hippt::max(hippt::abs(mini.y - maxi.y), hippt::abs(mini.z - maxi.z)));
 	}
 
 	/**
 	 * Returns the length of the extent in the coordinate 'coord'
-	 * 
+	 *
 	 * X = 0, Y = 1, Z = 2
 	 */
 	float get_extent(int coord) const

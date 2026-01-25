@@ -9,7 +9,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "Image/Image.h"
 
-//template <bool forGPU>
+ //template <bool forGPU>
 class BSDFDataHost
 {
 public:
@@ -20,8 +20,8 @@ public:
 
 	void to_device(HIPRTRenderData& render_data);
 
-//private:
-	//Image32BitType<forGPU> m_sheen_zeltner_2022_ltc_params;
+	//private:
+		//Image32BitType<forGPU> m_sheen_zeltner_2022_ltc_params;
 	Image32Bit m_sheen_zeltner_2022_ltc_params;
 	Image32Bit m_GGX_conductor_ltc_params;
 	Image32Bit m_GGX_conductor_ltc_amplitude_data;

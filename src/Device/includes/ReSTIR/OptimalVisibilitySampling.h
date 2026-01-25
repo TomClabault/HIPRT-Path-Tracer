@@ -14,10 +14,10 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool IsReSTIRGI>
-HIPRT_DEVICE bool ReSTIR_optimal_visibility_sampling(HIPRTRenderData& render_data, 
-	ReSTIRReservoirType<IsReSTIRGI>& spatial_reuse_output_reservoir, 
-	const ReSTIRReservoirType<IsReSTIRGI>& center_pixel_reservoir, ReSTIRSurface& center_pixel_surface, 
-	int neighbor_index, int reused_neighbors_count, 
+HIPRT_DEVICE bool ReSTIR_optimal_visibility_sampling(HIPRTRenderData& render_data,
+	ReSTIRReservoirType<IsReSTIRGI>& spatial_reuse_output_reservoir,
+	const ReSTIRReservoirType<IsReSTIRGI>& center_pixel_reservoir, ReSTIRSurface& center_pixel_surface,
+	int neighbor_index, int reused_neighbors_count,
 	Xorshift32Generator& random_number_generator)
 {
 #if ReSTIR_DI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE || ReSTIR_GI_DoOptimalVisibilitySampling == KERNEL_OPTION_TRUE

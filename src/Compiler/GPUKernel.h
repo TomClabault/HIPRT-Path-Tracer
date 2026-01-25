@@ -42,7 +42,7 @@ public:
 	/**
 	 * @param block_size_x The number of threads per block on the X axis
 	 * @param block_size_y The number of threads per block on the Y axis
-	 * 
+	 *
 	 * @param nb_threads_x The total number of elements to launch on the X axis. Should not be pre-divided by block_size_x or anything
 	 * @param nb_threads_y The total number of elements to launch on the Y axis. Should not be pre-divided by block_size_y or anything
 	 */
@@ -72,7 +72,7 @@ public:
 
 	/**
 	 * Reads the kernel file and all of its includes to find what option macros this kernel uses.
-	 * 
+	 *
 	 * Calling this function update the m_used_option_macros member attribute.
 	 */
 	void parse_option_macros_used();
@@ -81,7 +81,7 @@ public:
 	 * Given an option macro name ("InteriorStackStrategy", "DirectLightNEEEstimator", "EnvmapSamplingStrategy", ...
 	 * for examples. They are all defined in KernelOptions.h), returns true if the kernel uses that option macro.
 	 * False otherwise.
-	 * 
+	 *
 	 * The kernel "uses" that macro if changing the value of that macro and recompiling the kernel
 	 * changes the output of the compiler. For example, the camera ray kernel doesn't care about
 	 * which direct lighting sampling strategy we're using. It also doesn't care about our envmap
@@ -92,7 +92,7 @@ public:
 
 	/**
 	 * Returns the number of GPU register that this kernel is using. This function
-	 * must be called after the kernel has been compiled. 
+	 * must be called after the kernel has been compiled.
 	 * This function may also return 0 if the device doesn't support querrying
 	 * the number of registers
 	 */
@@ -109,14 +109,14 @@ public:
 	 * Synchronizes the value of the options of this kernel with the values of the macros of 'other_options'.
 	 * This means that if the value of the macro "MY_MACRO" is modified in 'other_options', the value of 'MY_MACRO'
 	 * will also be modified in this kernel options.
-	 * 
+	 *
 	 * Macros that are in the 'options_excluded" set will not be synchronized.
-	 * 
+	 *
 	 * Macros that are present in 'other_options' but that are not present in this kernel's option
 	 * will be added to this kernel and their vlaue will be synchronized with 'other_options'
-	 * 
-	 * This function can be useful if you want to have a global set of macros shared by multiple kernels. 
-	 * You can thus synchronize all your kernel with that global set of macros and when it is modified, 
+	 *
+	 * This function can be useful if you want to have a global set of macros shared by multiple kernels.
+	 * You can thus synchronize all your kernel with that global set of macros and when it is modified,
 	 * all the kernels will use the new values.
 	 */
 	void synchronize_options_with(std::shared_ptr<GPUKernelCompilerOptions> other_options, const std::unordered_set<std::string>& options_excluded = {});

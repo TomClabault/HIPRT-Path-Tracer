@@ -107,7 +107,7 @@ void GPURendererThread::request_frame(HIPRTRenderData& render_data_for_frame, GP
 void GPURendererThread::request_exit()
 {
 	std::lock_guard<std::mutex> lock(m_render_mutex);
-	
+
 	m_exit_requested = true;
 	m_render_condition_variable.notify_one();
 }
@@ -292,15 +292,15 @@ void GPURendererThread::render_path_tracing()
 	payload->frame_rendered = &m_frame_rendered;
 	payload->render_completed_condition_variable = &m_render_completed_condition_variable;
 
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), [](void* payload) 
-	{
-		CallbackPayload* payload_struct = reinterpret_cast<CallbackPayload*>(payload);
-		*payload_struct->frame_rendered = true;
-		*payload_struct->currently_rendering = false;
-		payload_struct->render_completed_condition_variable->notify_all();
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), [](void* payload)
+		{
+			CallbackPayload* payload_struct = reinterpret_cast<CallbackPayload*>(payload);
+			*payload_struct->frame_rendered = true;
+			*payload_struct->currently_rendering = false;
+			payload_struct->render_completed_condition_variable->notify_all();
 
-		delete payload_struct;
-	}, payload));
+			delete payload_struct;
+		}, payload));
 
 	m_renderer->m_was_last_frame_low_resolution = m_renderer->get_render_data().render_settings.do_render_low_resolution();
 	// We just rendered a new frame so we're setting this flag to true

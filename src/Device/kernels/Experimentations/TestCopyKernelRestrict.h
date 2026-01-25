@@ -20,12 +20,12 @@ GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelRestrict(float* __restrict__ buffer_
 #endif
 {
 #ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-    if (x >= buffer_size)
-        return;
+	if (x >= buffer_size)
+		return;
 
-    buffer_a[x] = buffer_a[x] + buffer_b[x];
-    buffer_d[x] = buffer_a[x] * buffer_b[x];
-    buffer_d[x] *= buffer_c[x];
+	buffer_a[x] = buffer_a[x] + buffer_b[x];
+	buffer_d[x] = buffer_a[x] * buffer_b[x];
+	buffer_d[x] *= buffer_c[x];
 }

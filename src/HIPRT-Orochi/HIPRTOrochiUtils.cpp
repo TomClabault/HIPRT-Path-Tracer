@@ -121,7 +121,7 @@ namespace HIPPTOrochiUtils
 		hiprtApiFunction& kernel_function_out,
 		const std::vector<std::string>& additional_include_directories,
 		const std::vector<std::string>& compiler_options,
-		unsigned int num_geom_types, unsigned int num_ray_types, 
+		unsigned int num_geom_types, unsigned int num_ray_types,
 		bool use_compiler_cache,
 		hiprtFuncNameSet* func_name_set,
 		const std::string& additional_cache_key)
@@ -130,7 +130,7 @@ namespace HIPPTOrochiUtils
 		read_source_code(kernel_file_path, kernel_source_code);
 
 		std::vector<const char*> compiler_options_cstr;
-		
+
 		for (const std::string& option : compiler_options)
 			compiler_options_cstr.push_back(option.c_str());
 
@@ -159,7 +159,7 @@ namespace HIPPTOrochiUtils
 			func_name_set,
 			&kernel_function_out,
 			nullptr,
-			use_compiler_cache, 
+			use_compiler_cache,
 			additional_cache_key);
 	}
 }

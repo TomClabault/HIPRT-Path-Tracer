@@ -14,13 +14,13 @@
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/RenderData.h"
 
-/**
- * Reference:
- * 
- * [1] [Practical Multiple-Scattering Sheen Using Linearly Transformed Cosines] https://tizianzeltner.com/projects/Zeltner2022Practical/
- * [2] [Real-Time Polygonal-Light Shading with Linearly Transformed Cosines] https://eheitzresearch.wordpress.com/415-2/
- * [3] [Blender's Cycles Implementation] https://github.com/blender/cycles/blob/main/src/kernel/closure/bsdf_sheen.h
- */
+ /**
+  * Reference:
+  *
+  * [1] [Practical Multiple-Scattering Sheen Using Linearly Transformed Cosines] https://tizianzeltner.com/projects/Zeltner2022Practical/
+  * [2] [Real-Time Polygonal-Light Shading with Linearly Transformed Cosines] https://eheitzresearch.wordpress.com/415-2/
+  * [3] [Blender's Cycles Implementation] https://github.com/blender/cycles/blob/main/src/kernel/closure/bsdf_sheen.h
+  */
 
 HIPRT_DEVICE static float sheen_eval_ltc(const float3& to_light_direction_standard, const ColorRGB32F& AiBiRi)
 {
@@ -63,7 +63,7 @@ HIPRT_DEVICE static ColorRGB32F read_LTC_parameters(const HIPRTRenderData& rende
 /**
  * Returns the phi angle of a direction given in a canonical frame with Z up
  */
-HIPRT_DEVICE static float get_phi(const float3& direction) 
+HIPRT_DEVICE static float get_phi(const float3& direction)
 {
 	float p = atan2(direction.y, direction.x);
 	if (p < 0.0f)

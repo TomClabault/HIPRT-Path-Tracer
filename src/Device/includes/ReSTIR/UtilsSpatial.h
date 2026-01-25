@@ -54,13 +54,13 @@ HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& rende
 	// for the pairwise MIS PDFs.
 	// If we have visibility in the MIS weight, we want visibility in the PDF so we need visibility in
 	// the target function
-	constexpr bool bias_correction_use_visibility = IsReSTIRGI ? ReSTIR_GI_MISWeightsUseVisibility  : ReSTIR_DI_MISWeightsUseVisibility;
+	constexpr bool bias_correction_use_visibility = IsReSTIRGI ? ReSTIR_GI_MISWeightsUseVisibility : ReSTIR_DI_MISWeightsUseVisibility;
 	constexpr int mis_weights_type = IsReSTIRGI ? ReSTIR_GI_MISWeightsType : ReSTIR_DI_MISWeightsType;
 	include_target_function_visibility |= bias_correction_use_visibility &&
 		(mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS ||
-		mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||
-		mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
-		mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO);
+			mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||
+			mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
+			mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO);
 
 	return include_target_function_visibility;
 }
@@ -68,10 +68,10 @@ HIPRT_DEVICE bool do_include_visibility_term_or_not(const HIPRTRenderData& rende
 /**
  * Returns a pair of random numbers that should be used to sample the spatial neighbor disk of the current pixel
  * (i.e. pass the returned float2 to 'sample_in_disk_uv').
- * 
+ *
  * This function samples UVs for sampling in a disk such that the point sampled is only sampled in the allowed
  * directions of a pixel (according to its direction reuse masks).
- * 
+ *
  * Note that this function will sample the first sector if there are no sectors available around the given pixel
  */
 HIPRT_DEVICE float2 sample_spatial_neighbor_from_allowed_directions(const HIPRTRenderData& render_data, const ReSTIRCommonSpatialPassSettings& spatial_pass_settings, int2 center_pixel_coords, Xorshift32Generator& rng)
@@ -172,8 +172,8 @@ HIPRT_DEVICE float2 sample_spatial_neighbor_from_allowed_directions(const HIPRTR
  * 'res' is the resolution of the viewport. This is used to check whether the generated
  *		neighbor location is outside of the viewport or not
  * 'rng' is a random generator used for generating spatial neighbor positions if not using a Hammersley
- *		point set. 
- * 
+ *		point set.
+ *
  *		Only used if render_data.render_settings.restir_settings.common_spatial_pass.use_hammersley == false
  */
 template <bool IsReSTIRGI>

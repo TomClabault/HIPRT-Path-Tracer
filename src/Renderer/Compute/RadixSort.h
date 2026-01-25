@@ -7,8 +7,8 @@
 #define RENDERER_COMPUTE_RADIX_SORT_H
 
 #include "Compiler/GPUKernel.h"
-#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
 
 #include <memory>
@@ -43,7 +43,7 @@ private:
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_ctx;
 	oroStream_t m_stream;
-	
+
 	size_t m_size;
 };
 

@@ -190,7 +190,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	ImGui::TreePush("Render settings tree");
 
 	static int preset_selected = 0;
-	std::vector<const char*> preset_items = { 
+	std::vector<const char*> preset_items = {
 		"Default",
 		"Reference path-tracer",
 		"MIS NEE Path Tracer",
@@ -200,7 +200,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		"ReSTIR GI",
 		"ReSTIR DI + GI"
 	};
-	std::vector<const char*> tooltips = { 
+	std::vector<const char*> tooltips = {
 		"No preset",
 		"Reference, no NEE, brute-force path-tracer",
 		"NEE with MIS (BSDF + Light sampling) at each vertex of the path",
@@ -255,7 +255,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		}
 	}
 	ImGuiRenderer::show_help_marker("Keeps approximately the same render resolution when "
-									"resizing the application's window.");
+		"resizing the application's window.");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("General settings");
@@ -464,19 +464,19 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 		min_depth_modified = true;
 	}
 	ImGuiRenderer::show_help_marker("After how many bounces can russian roulette kick in? "
-									"For example, 0 means that the camera ray hits, and then the next bounce "
-									"is already susceptible to russian roulette kill. 1 would mean that the first "
-									"bounce is never going to be cutoff by the russian roulette.");
+		"For example, 0 means that the camera ray hits, and then the next bounce "
+		"is already susceptible to russian roulette kill. 1 would mean that the first "
+		"bounce is never going to be cutoff by the russian roulette.");
 	if (ImGui::SliderFloat("RR throughput clamp", &render_settings.russian_roulette_throughput_clamp, 1.0f, 20.0f))
 		m_render_window->set_render_dirty(true);
 	ImGuiRenderer::show_help_marker("After applying russian roulette (dividing by the continuation probability) "
-									"the energy added to the ray throughput is clamped to this maximum value.\n"
-									"\n"
-									"This is biased and darkens the image the lower the threshold but it helps "
-									"reduce variance and fireflies introduced by the russian roulette --> faster "
-									"convergence.\n"
-									"\n"
-									"0 for no clamping.");
+		"the energy added to the ray throughput is clamped to this maximum value.\n"
+		"\n"
+		"This is biased and darkens the image the lower the threshold but it helps "
+		"reduce variance and fireflies introduced by the russian roulette --> faster "
+		"convergence.\n"
+		"\n"
+		"0 for no clamping.");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 1.0f));        // Red
@@ -546,23 +546,23 @@ void ImGuiSettingsWindow::display_view_selector()
 	// Adding some more UI elements for certain display views
 	switch (display_view_type_selected)
 	{
-		case DisplayViewType::WHITE_FURNACE_THRESHOLD:
-			bool viewport_update_needed = false;
+	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
+		bool viewport_update_needed = false;
 
-			viewport_update_needed  |= ImGui::Checkbox("Use low threshold", &display_settings.white_furnace_display_use_low_threshold);
-			ImGuiRenderer::show_help_marker("If checked, the white furnace threshold shader will display "
-											"pixel that lose energy as green. Pixels will not be highlighted "
-											"if unchecked");
-			viewport_update_needed |= ImGui::Checkbox("Use high threshold", &display_settings.white_furnace_display_use_high_threshold);
-			ImGuiRenderer::show_help_marker("If checked, the white furnace threshold shader will display "
-											"pixel that gain energy as red. Pixels will not be highlighted "
-											"if unchecked");
+		viewport_update_needed |= ImGui::Checkbox("Use low threshold", &display_settings.white_furnace_display_use_low_threshold);
+		ImGuiRenderer::show_help_marker("If checked, the white furnace threshold shader will display "
+			"pixel that lose energy as green. Pixels will not be highlighted "
+			"if unchecked");
+		viewport_update_needed |= ImGui::Checkbox("Use high threshold", &display_settings.white_furnace_display_use_high_threshold);
+		ImGuiRenderer::show_help_marker("If checked, the white furnace threshold shader will display "
+			"pixel that gain energy as red. Pixels will not be highlighted "
+			"if unchecked");
 
-			if (viewport_update_needed)
-				m_render_window->set_force_viewport_refresh(true);
+		if (viewport_update_needed)
+			m_render_window->set_force_viewport_refresh(true);
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			break;
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		break;
 	}
 }
 
@@ -620,7 +620,7 @@ void ImGuiSettingsWindow::display_view_disabled_action(DisplayViewType display_v
 	case DisplayViewType::PIXEL_CONVERGED_MAP:
 	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
 		render_settings.enable_adaptive_sampling = true;
-			
+
 		m_render_window->set_render_dirty(true);
 
 		return;
@@ -1045,7 +1045,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 			if (ImGui::InputInt("Minimum samples", &render_settings.adaptive_sampling_min_samples))
-					m_render_window->set_render_dirty(true);
+				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("How many samples to wait before adaptive sampling activates.\n\n"
 				""
 				"The general rule is to keep this value as low as possible without getting conspicuous black/unconverged pixels.");
@@ -1106,7 +1106,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 			ImGui::EndDisabled();
 
-			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)", "- SG light tree (Tokuyoshi et al. 2024)", "- ReGIR + Cache cells (Experimental)"};
+			const char* items_base_strategy[] = { "- Uniform sampling", "- Power sampling", "- Light tree ATS (Conty & Kulla 2018)", "- SG light tree (Tokuyoshi et al. 2024)", "- ReGIR + Cache cells (Experimental)" };
 			const char* tooltips_base_strategy[] = {
 				"All lights are sampled uniformly.",
 
@@ -1122,8 +1122,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			};
 
 			bool base_sampling_strategy_changed = ImGuiRenderer::ComboWithTooltips("Light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items_base_strategy, IM_ARRAYSIZE(items_base_strategy), tooltips_base_strategy);
-			
-			const char* items[] = { "- No direct light sampling", "- Light sampling", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- RISLTC BSDF + Light candidates", "- LTC Shading", "- ReSTIR DI (Primary hit only)"};
+
+			const char* items[] = { "- No direct light sampling", "- Light sampling", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- RISLTC BSDF + Light candidates", "- LTC Shading", "- ReSTIR DI (Primary hit only)" };
 			const char* tooltips[] = {
 				"No direct light sampling. Emission is only gathered if rays happen to bounce into the lights.",
 				"Samples one random light in the scene without MIS. Efficient as long as there are not too many lights in the scene and no glossy/specular surfaces.",
@@ -1180,7 +1180,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						}
 					}
 				}
-				else 
+				else
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, preferred_base_strategy);
 
@@ -1264,7 +1264,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
-			case LSS_BASE_REGIR:	
+			case LSS_BASE_REGIR:
 				draw_ReGIR_settings_panel();
 
 				break;
@@ -1296,7 +1296,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
 				draw_ris_settings_panel();
-					
+
 				break;
 			}
 
@@ -1446,11 +1446,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				draw_ReSTIR_temporal_reuse_panel<true>([&render_settings, this]() {
 					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
 						m_render_window->set_render_dirty(true);
-				});
+					});
 				draw_ReSTIR_spatial_reuse_panel<true>([&render_settings, this]() {
 					if (ImGui::Checkbox("Do spatial reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
-				});
+					});
 				ImGui::PopItemWidth();
 
 				draw_ReSTIR_bias_correction_panel<true>();
@@ -1480,7 +1480,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					const char* debug_view_items[] = { "No debug view", "- Final reservoir UCW", "- Final reservoir target function", "- Final reservoir weight sum" , "- Final reservoir M", "- Per pixel reuse radius", "- Valid directions percentage"};
+					const char* debug_view_items[] = { "No debug view", "- Final reservoir UCW", "- Final reservoir target function", "- Final reservoir weight sum" , "- Final reservoir M", "- Per pixel reuse radius", "- Valid directions percentage" };
 					if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 						m_render_window->set_render_dirty(true);
 					if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 1.0f))
@@ -1518,7 +1518,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				bool luminance_sampling = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_DIFFUSE_LUMINANCE);
 				if (ImGui::Checkbox("Luminance sampling", &luminance_sampling))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_DIFFUSE_LUMINANCE, luminance_sampling? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_DIFFUSE_LUMINANCE, luminance_sampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
@@ -1701,7 +1701,7 @@ void ImGuiSettingsWindow::draw_restir_di_settings_panel()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
-	
+
 	if (ImGui::CollapsingHeader("ReSTIR DI Settings"))
 	{
 		ImGui::TreePush("ReSTIR DI Settings tree");
@@ -2055,7 +2055,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		ReGIRSettings& regir_settings = m_renderer->get_render_settings().regir_settings;
-		
+
 		if (ImGui::CollapsingHeader("Cell light distributions"))
 		{
 			ImGui::TreePush("Use per cell llight distributions");
@@ -2434,7 +2434,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::SliderInt("Neighbor reuse count", &regir_settings.spatial_reuse.spatial_neighbor_count, 0, 32))
-				m_render_window	->set_render_dirty(true);
+				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("How many cells around the center cell to reuse from.");
 
 			if (ImGui::SliderInt("Reuse per neighbor count", &regir_settings.spatial_reuse.reuse_per_neighbor_count, 1, 16))
@@ -2450,7 +2450,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 				"neighbor to reuse from --> more reuse --> less variance.");
 
 			if (ImGui::SliderInt("Reuse radius", &regir_settings.spatial_reuse.spatial_reuse_radius, 1, 3))
-				m_render_window	->set_render_dirty(true);
+				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("Radius in cell in which to reuse around the center cell.\n"
 				"A radius of 1 means that we're going to reuse in the 3x3 cube around the center cell, givins us 26 neighbors");
 
@@ -2604,7 +2604,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			static bool jitter_in_tangent_plane = ReGIR_JitterInTangentPlane;
 			if (ImGui::Checkbox("Jitter in tangent plane", &jitter_in_tangent_plane))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE, jitter_in_tangent_plane? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::REGIR_JITTER_IN_TANGENT_PLANE, jitter_in_tangent_plane ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -2812,7 +2812,7 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 			ImGui::TreePush("ReGIR Settings debug tree");
 
 			int regir_debug_mode = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE);
-			const char* items[] = { "- No debug", "- Grid cells", "- Cell representative points", "- Cell representative normals", "- Sampling fallback"};
+			const char* items[] = { "- No debug", "- Grid cells", "- Cell representative points", "- Cell representative normals", "- Sampling fallback" };
 			if (ImGui::Combo("Debug mode", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::REGIR_DEBUG_MODE), items, IM_ARRAYSIZE(items)))
 			{
 				if (regir_debug_mode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS)
@@ -2898,7 +2898,7 @@ void ImGuiSettingsWindow::draw_light_tree_ATS_settings_panel()
 
 				m_render_window->set_render_dirty(true);
 			}
-			
+
 			ImGui::TreePop();
 
 			break;
@@ -3073,9 +3073,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel()
 	ReSTIRCommonSettings& common_settings = [&render_settings] {
 		if constexpr (IsReSTIRGI)
 			return std::ref(render_settings.restir_gi_settings);
-		else 
+		else
 			return std::ref(render_settings.restir_di_settings);
-	}();
+		}();
 
 	static bool use_heuristics_at_all = true;
 	static bool use_normal_heuristic_backup = common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
@@ -3329,7 +3329,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 				static bool do_optimal_vis_sampling = IsReSTIRGI ? ReSTIR_GI_DoOptimalVisibilitySampling : ReSTIR_DI_DoOptimalVisibilitySampling;
 				if (ImGui::Checkbox("Do optimal visibility sampling", &do_optimal_vis_sampling))
 				{
-					global_kernel_options->set_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING : GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING, do_optimal_vis_sampling? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					global_kernel_options->set_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING : GPUKernelCompilerOptions::RESTIR_DI_DO_OPTIMAL_VISIBILITY_SAMPLING, do_optimal_vis_sampling ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
@@ -3405,7 +3405,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 						""
 						"Has no effect if not accumulating.");
 
-					if (restir_settings.use_adaptive_directional_spatial_reuse)	
+					if (restir_settings.use_adaptive_directional_spatial_reuse)
 					{
 						if (ImGui::SliderInt("Minimum reuse radius (px)", &restir_settings.minimum_per_pixel_reuse_radius, 0, restir_settings.reuse_radius))
 							m_render_window->set_render_dirty(true);
@@ -3614,7 +3614,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
 			ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
 
 			bool disable_confidence_weights = *mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M)
-										   || *mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z);
+				|| *mis_weights_type_option_pointer == (IsReSTIRGI ? RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z : RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z);
 
 			if (*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO ||
 				*mis_weights_type_option_pointer == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO ||
@@ -3689,7 +3689,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			}
 			else
 				ImGui::Text("Load factor: ---");
-			ImGui::SameLine(); 
+			ImGui::SameLine();
 			ImGui::Checkbox("Display load factor", &display_load_factor);
 
 			if (ImGui::InputFloat("Max VRAM usage (MB)", &m_renderer->get_NEE_plus_plus_render_pass()->get_max_vram_usage()))
@@ -4434,7 +4434,7 @@ void ImGuiSettingsWindow::draw_quality_panel()
 		if (render_settings.alpha_testing_indirect_bounce == 0)
 			ImGui::Text("Alpha tests always disabled.");
 
-		ImGui::Dummy(ImVec2(0.0f, 20.0f)); 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
 
@@ -4634,8 +4634,8 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
 			m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
 		ImGuiRenderer::show_help_marker("How much percent of the time the GPU will be forced to be idle (not rendering anything)."
-										" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
-										" time to spare.");
+			" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
+			" time to spare.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		draw_russian_roulette_options();
@@ -4719,7 +4719,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 		bool bvh_needs_rebuild = false;
 		static int build_type_chosen = 0;
-		std::vector<const char*> bvh_items = { "- SBVH", "- HPLOC", "- LBVH"};
+		std::vector<const char*> bvh_items = { "- SBVH", "- HPLOC", "- LBVH" };
 		bvh_needs_rebuild |= ImGui::Combo("BVH Build", &build_type_chosen, bvh_items.data(), bvh_items.size());
 
 		static bool do_triangle_splits = true;
@@ -4817,8 +4817,8 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("If checked, shared memory + a globally allocated buffer will be used for the BVH "
-											"traversal of rays.\n"
-											"This incurs an additional cost in VRAM but improves traversal performance.");
+				"traversal of rays.\n"
+				"This incurs an additional cost in VRAM but improves traversal performance.");
 
 
 
@@ -4837,14 +4837,14 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 				ImGui::PopItemWidth();
 
 				ImGuiRenderer::show_help_marker("Fast shared memory stack used for the BVH traversal of \"global\" rays (rays that search for a closest hit with no maximum distance)\n\n"
-												"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
-												"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
-												"If this shared memory stack isn't large enough for traversing the BVH, then "
-												"it is complemented by using the global stack buffer. If both combined aren't enough "
-												"for the traversal, then artifacts start showing up in renders.\n\n"
-												"Note that setting this value to 0 disables the shared stack usage but still uses the global buffer "
-												"for traversal. This approach is still better that not using any of these two memories at all (this "
-												"becomes the case when the checkboxes above are not checked.)");
+					"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
+					"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
+					"If this shared memory stack isn't large enough for traversing the BVH, then "
+					"it is complemented by using the global stack buffer. If both combined aren't enough "
+					"for the traversal, then artifacts start showing up in renders.\n\n"
+					"Note that setting this value to 0 disables the shared stack usage but still uses the global buffer "
+					"for traversal. This approach is still better that not using any of these two memories at all (this "
+					"becomes the case when the checkboxes above are not checked.)");
 
 				if (pending_stack_size != selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE))
 				{
@@ -4876,12 +4876,12 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGui::PopItemWidth();
 
 		ImGuiRenderer::show_help_marker("Size of the global stack buffer for each thread. Used for complementing the shared memory stack allocated in the kernels."
-										"A good value for this parameter is scene-complexity dependent.\n\n"
-										"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
-										"to insufficient stack size for the BVH traversal.\n\n"
-										"16 seems to be a good value to start with. If lowering this value improves performance, then that "
-										"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
-										"and rendering artifacts will start to show up.");
+			"A good value for this parameter is scene-complexity dependent.\n\n"
+			"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
+			"to insufficient stack size for the BVH traversal.\n\n"
+			"16 seems to be a good value to start with. If lowering this value improves performance, then that "
+			"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
+			"and rendering artifacts will start to show up.");
 
 		std::string size_string = "Global Stack Buffer VRAM Usage: ";
 		size_string += std::to_string(m_renderer->get_render_data().global_traversal_stack_buffer_size * std::ceil(m_renderer->m_render_resolution.x / 8.0f) * 8.0f * std::ceil(m_renderer->m_render_resolution.y / 8.0f) * 8.0f * sizeof(int) / 1000000.0f);
@@ -5109,7 +5109,7 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 					if (ImGui::Button("C"))
 					{
 						std::string commandline_string;
-						
+
 						commandline_string = "hipcc -x hip ";
 
 						std::vector<std::string> options = kernel->get_kernel_options().get_all_macros_as_std_vector_string();
@@ -5174,7 +5174,7 @@ void ImGuiSettingsWindow::draw_debug_panel()
 
 		if (ImGui::SliderInt("ReGIR Pre integration iterations", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS, 1, 64))
 			m_render_window->set_render_dirty(true);
-		if (ImGui::SliderInt("ReGIR Pre integration sample per res", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR, 1, 64	))
+		if (ImGui::SliderInt("ReGIR Pre integration sample per res", &render_settings.DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR, 1, 64))
 			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

@@ -19,96 +19,96 @@ static std::mutex risltc_log_mutex;
 
 struct RISLTCSample
 {
-    ColorRGB32F emission;
-    int light_index = -1;
+	ColorRGB32F emission;
+	int light_index = -1;
 
-    bool is_bsdf_sample = false;
+	bool is_bsdf_sample = false;
 
-    float target_function;
+	float target_function;
 };
 
 struct RISLTCReservoir
 {
-    HIPRT_DEVICE void add_one_candidate(RISLTCSample new_sample, float weight, Xorshift32Generator& random_number_generator)
-    {
-        M++;
-        weight_sum += weight;
+	HIPRT_DEVICE void add_one_candidate(RISLTCSample new_sample, float weight, Xorshift32Generator& random_number_generator)
+	{
+		M++;
+		weight_sum += weight;
 
-        if (random_number_generator() < weight / weight_sum)
-            sample = new_sample;
-    }
+		if (random_number_generator() < weight / weight_sum)
+			sample = new_sample;
+	}
 
-    HIPRT_DEVICE void end()
-    {
-        if (weight_sum == 0.0f)
-            UCW = 0.0f;
-        else
-            UCW = 1.0f / sample.target_function * weight_sum;
-    }
+	HIPRT_DEVICE void end()
+	{
+		if (weight_sum == 0.0f)
+			UCW = 0.0f;
+		else
+			UCW = 1.0f / sample.target_function * weight_sum;
+	}
 
-    HIPRT_DEVICE void sanity_check(int2 pixel_coords = make_int2(-1, -1))
-    {
+	HIPRT_DEVICE void sanity_check(int2 pixel_coords = make_int2(-1, -1))
+	{
 #ifndef __KERNELCC__
-        if (M < 0)
-        {
-            std::lock_guard<std::mutex> lock(risltc_log_mutex);
-            std::cerr << "Negative reservoir M value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << M << std::endl;
-            Debug::debugbreak();
-        }
-        else if (std::isnan(weight_sum) || std::isinf(weight_sum))
-        {
-            std::lock_guard<std::mutex> lock(risltc_log_mutex);
-            std::cerr << "NaN or inf reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
-            Debug::debugbreak();
-        }
-        else if (weight_sum < 0)
-        {
-            std::lock_guard<std::mutex> lock(risltc_log_mutex);
-            std::cerr << "Negative reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
-            Debug::debugbreak();
-        }
-        else if (std::abs(weight_sum) < std::numeric_limits<float>::min() && weight_sum != 0.0f)
-        {
-            std::lock_guard<std::mutex> lock(risltc_log_mutex);
-            std::cerr << "Denormalized weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
-            Debug::debugbreak();
-        }
-        else if (std::isnan(UCW) || std::isinf(UCW))
-        {
-            std::lock_guard<std::mutex> lock(risltc_log_mutex);
-            std::cerr << "NaN or inf reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
-            Debug::debugbreak();
-        }
-        else if (UCW < 0)
-        {
-            std::lock_guard<std::mutex> lock(risltc_log_mutex);
-            std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;
-            Debug::debugbreak();
-        }
-        else if (std::isnan(sample.target_function) || std::isinf(sample.target_function))
-        {
-            std::lock_guard<std::mutex> lock(risltc_log_mutex);
-            std::cerr << "NaN or inf reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
-            Debug::debugbreak();
-        }
-        else if (sample.target_function < 0)
-        {
-            std::lock_guard<std::mutex> lock(risltc_log_mutex);
-            std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
-            Debug::debugbreak();
-        }
+		if (M < 0)
+		{
+			std::lock_guard<std::mutex> lock(risltc_log_mutex);
+			std::cerr << "Negative reservoir M value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << M << std::endl;
+			Debug::debugbreak();
+		}
+		else if (std::isnan(weight_sum) || std::isinf(weight_sum))
+		{
+			std::lock_guard<std::mutex> lock(risltc_log_mutex);
+			std::cerr << "NaN or inf reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
+			Debug::debugbreak();
+		}
+		else if (weight_sum < 0)
+		{
+			std::lock_guard<std::mutex> lock(risltc_log_mutex);
+			std::cerr << "Negative reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
+			Debug::debugbreak();
+		}
+		else if (std::abs(weight_sum) < std::numeric_limits<float>::min() && weight_sum != 0.0f)
+		{
+			std::lock_guard<std::mutex> lock(risltc_log_mutex);
+			std::cerr << "Denormalized weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
+			Debug::debugbreak();
+		}
+		else if (std::isnan(UCW) || std::isinf(UCW))
+		{
+			std::lock_guard<std::mutex> lock(risltc_log_mutex);
+			std::cerr << "NaN or inf reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
+			Debug::debugbreak();
+		}
+		else if (UCW < 0)
+		{
+			std::lock_guard<std::mutex> lock(risltc_log_mutex);
+			std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;
+			Debug::debugbreak();
+		}
+		else if (std::isnan(sample.target_function) || std::isinf(sample.target_function))
+		{
+			std::lock_guard<std::mutex> lock(risltc_log_mutex);
+			std::cerr << "NaN or inf reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
+			Debug::debugbreak();
+		}
+		else if (sample.target_function < 0)
+		{
+			std::lock_guard<std::mutex> lock(risltc_log_mutex);
+			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
+			Debug::debugbreak();
+		}
 #else
-        (void)pixel_coords;
+		(void)pixel_coords;
 #endif
-    }
+	}
 
 	// Additional data for RISLTC
-    unsigned int M = 0;
-    // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
-    float weight_sum = 0.0f;
-    float UCW = 0.0f;
+	unsigned int M = 0;
+	// TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
+	float weight_sum = 0.0f;
+	float UCW = 0.0f;
 
-    RISLTCSample sample;
+	RISLTCSample sample;
 };
 
 #endif

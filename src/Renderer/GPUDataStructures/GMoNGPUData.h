@@ -14,12 +14,12 @@
 #include <memory>
 #include <vector>
 
-/**
- * CPU-side data structure for the implementation of GMoN on the GPU
- *
- * Reference:
- * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
- */
+ /**
+  * CPU-side data structure for the implementation of GMoN on the GPU
+  *
+  * Reference:
+  * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
+  */
 struct GMoNGPUData : public GMoNCPUGPUCommonData
 {
 	GMoNGPUData()

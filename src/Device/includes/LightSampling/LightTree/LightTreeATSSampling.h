@@ -198,7 +198,7 @@ HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& no
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal, 
+	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
 {

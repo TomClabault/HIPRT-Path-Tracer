@@ -10,14 +10,14 @@
 
 #include "HostDeviceCommon/Color.h"
 
-/**
- * Packs 88 bools into a uchar
- */
+ /**
+  * Packs 88 bools into a uchar
+  */
 struct UChar8BoolsPacked
 {
 	/**
 	 * Returns the bool packed at bit 'index'. 0 is LSB.
-	 * 
+	 *
 	 * 'index' is in [0, 7]
 	 */
 	template <unsigned char index>
@@ -28,7 +28,7 @@ struct UChar8BoolsPacked
 
 	/**
 	 * Sets the bool at bit 'index' in the packed data. 0 is LSB.
-	 * 
+	 *
 	 * 'index' is in [0, 7]
 	 */
 	template <unsigned char index>
@@ -46,16 +46,16 @@ private:
 };
 
 /**
- * Packs a ColorRGB32F into 3x8 bit = 24 bits (this isn't a loss of precision 
+ * Packs a ColorRGB32F into 3x8 bit = 24 bits (this isn't a loss of precision
  * for colors that already were in SDR [0, 255]).
- * 
- * A float in range [0, 1] can be packed in the remaining 8 bits. 
- * This leaves us with a precision of 0.004 between values in [0, 1]. Which is probably 
+ *
+ * A float in range [0, 1] can be packed in the remaining 8 bits.
+ * This leaves us with a precision of 0.004 between values in [0, 1]. Which is probably
  * more than enough. Who picks up the difference between a roughness of 0.5 and 0.504 anyways?
  */
 struct ColorRGB24bFloat0_1Packed
 {
-	static constexpr float inv_255		 = (1.0f / (255 << 0));
+	static constexpr float inv_255 = (1.0f / (255 << 0));
 	static constexpr float inv_255_shl_8 = (1.0f / (255 << 8));
 
 	HIPRT_DEVICE ColorRGB32F get_color() const
@@ -98,7 +98,7 @@ private:
 
 /**
  * 4 floats in [0, 1] all packed into a 32 bit unsigned int.
- * 
+ *
  * This gives 8 bits for each float in [0, 1] --> precision of 0.004
  */
 struct Float4xPacked
@@ -107,18 +107,18 @@ struct Float4xPacked
 
 	/**
 	 * Returns the float at index 'index'
-	 * 
+	 *
 	 * 'index' must be in [0, 3]
 	 */
 	template <unsigned char index>
 	HIPRT_DEVICE float get_float() const
-	{ 
+	{
 		return static_cast<float>((m_packed & (0xFFu << (index * 8))) >> (index * 8)) * inv_255;
 	}
 
 	/**
 	 * Sets the float number 'index' of this 4x packed float
-	 * 
+	 *
 	 * 'index' must be in [0, 3]
 	 */
 	template <unsigned char index>
@@ -146,7 +146,7 @@ struct Float2xUChar2xPacked
 
 	/**
 	 * Returns one of the float packed in this structure
-	 * 
+	 *
 	 * 'index' must be in [0, 1]
 	 */
 	template <unsigned char index>
@@ -165,7 +165,7 @@ struct Float2xUChar2xPacked
 	{
 		return (m_packed & (0x00FF0000u << (index * 8))) >> (index * 8 + 16);
 	}
-	
+
 	/**
 	 * 'index' must be in [0, 1]
 	 */
@@ -231,7 +231,7 @@ private:
 
 /**
  * Reference:
- * 
+ *
  * [1] [Survey of Efficient Representations for Independent Unit Vectors, Cigolle et al., 2014]
  */
 struct GPU_CPU_ALIGN(4) Octahedral24BitNormalPadded32b
@@ -258,7 +258,7 @@ public:
 
 	/**
 	 * Returns the normal that was packed in there
-	 * 
+	 *
 	 * The returned normal is normalized
 	 */
 	HIPRT_DEVICE float3 unpack() const
@@ -316,7 +316,7 @@ private:
 	HIPRT_DEVICE float3 final_decode(float x, float y) const
 	{
 		float3 v = make_float3(x, y, 1.0f - abs(x) - abs(y));
-		if (v.z < 0.0f) 
+		if (v.z < 0.0f)
 		{
 			float2 temp = make_float2(v.x, v.y);
 			v.x = (1.0f - hippt::abs(temp.y)) * sign_not_zero(temp.x);
@@ -362,7 +362,7 @@ private:
 
 /**
  * Packs a float3 into 8 bytes (saves 4 bytes) with very good precision
- * 
+ *
  * This stores the length of the float3 and then normalizes it and then stores
  * a 10 bit quantized version of each normalized component of the float3
  */

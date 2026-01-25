@@ -46,10 +46,10 @@ enum ReSTIRGIDebugView
 
 struct ReSTIRGISettings : public ReSTIRCommonSettings
 {
-	HIPRT_HOST_DEVICE ReSTIRGISettings() 
+	HIPRT_HOST_DEVICE ReSTIRGISettings()
 	{
 		common_temporal_pass.do_temporal_reuse_pass = true;
-		
+
 		common_temporal_pass.use_permutation_sampling = false;
 		common_temporal_pass.permutation_sampling_random_bits = 42;
 
@@ -116,7 +116,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;
 	ReSTIRGITemporalPassSettings temporal_pass;
 	ReSTIRGISpatialPassSettings spatial_pass;
-	
+
 	ReSTIRGIReservoir* restir_output_reservoirs = nullptr;
 
 	ReSTIRGIDebugView debug_view;

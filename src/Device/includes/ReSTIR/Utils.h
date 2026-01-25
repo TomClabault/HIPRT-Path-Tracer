@@ -16,12 +16,12 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
-/**
- * 'last_primitive_hit_index' is the index of the triangle we're currently sitting 
- * on and that we're shooting a ray from. This is used to avoid self intersections.
- * 
- * Returns true if the reservoir was killed, false otherwise
- */
+ /**
+  * 'last_primitive_hit_index' is the index of the triangle we're currently sitting
+  * on and that we're shooting a ray from. This is used to avoid self intersections.
+  *
+  * Returns true if the reservoir was killed, false otherwise
+  */
 HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point, int last_primitive_hit_index, Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
@@ -68,7 +68,7 @@ HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData
 /**
  * Tests the visibility of the sample containde in 'reservoir' from the given shading point and kills the reservoir
  * if the visibility is occluded
- * 
+ *
  * Returns true if the reservoir was killed, false otherwise
  */
 HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3 shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
@@ -105,7 +105,7 @@ HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_
 	shadow_ray.origin = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index, 
+	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index,
 		/* bounce. Always 1 for ReSTIR GI from visible point to sample point */ 1, random_number_generator);
 
 	if (!visible)

@@ -13,17 +13,17 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-/**
- * Adapted from the implementation given with the paper from Cristoph Peters,
- * [BRDF Importance Sampling for Polygonal Lights, 2021]
- */
+ /**
+  * Adapted from the implementation given with the paper from Cristoph Peters,
+  * [BRDF Importance Sampling for Polygonal Lights, 2021]
+  */
 
 #define MANUAL_UNROLL_LOOPS KERNEL_OPTION_FALSE
 
- /*! This structure carries intermediate results that only need to be computed
-	once per polygon and shading point to take samples proportional to
-	projected solid angle.*/
-struct projected_solid_angle_triangle_t 
+  /*! This structure carries intermediate results that only need to be computed
+	 once per polygon and shading point to take samples proportional to
+	 projected solid angle.*/
+struct projected_solid_angle_triangle_t
 {
 	//! The number of vertices that form the polygon
 	unsigned int vertex_count = 0;
@@ -45,7 +45,7 @@ struct projected_solid_angle_triangle_t
 
 	// Utilitary functions that I found to be faster than indexing in arrays
 	// of float2
-	HIPRT_DEVICE float2& get_vertex(int i) { return *(&vertex_0 + i);}
+	HIPRT_DEVICE float2& get_vertex(int i) { return *(&vertex_0 + i); }
 	HIPRT_DEVICE float2& get_ellipse(int i) { return *(&ellipse_0 + i); }
 
 private:
@@ -74,7 +74,7 @@ private:
 //! Further analysis of Kahan's algorithm for the accurate computation of 2x2
 //! determinants, AMS Mathematics of Computation 82:284,
 //! https://doi.org/10.1090/S0025-5718-2013-02679-8
-HIPRT_DEVICE float kahan(float a, float b, float c, float d) 
+HIPRT_DEVICE float kahan(float a, float b, float c, float d)
 {
 	// Uncomment the line below to improve efficiency but reduce accuracy
 	// return a * b - c * d;
@@ -87,7 +87,7 @@ HIPRT_DEVICE float kahan(float a, float b, float c, float d)
 
 //! Implements a cross product using Kahan's algorithm for every single entry,
 //! i.e. the error in each output entry is at most 1.5 ulps
-HIPRT_DEVICE float3 cross_stable(float3 lhs, float3 rhs) 
+HIPRT_DEVICE float3 cross_stable(float3 lhs, float3 rhs)
 {
 	return make_float3(
 		kahan(lhs.y, rhs.z, lhs.z, rhs.y),
@@ -122,7 +122,7 @@ HIPRT_DEVICE bool is_inner_ellipse(float2 ellipse)
 
 //! \return true iff the given polygon contains the zenith (also known as
 //!		normal vector).
-HIPRT_DEVICE bool is_central_case(projected_solid_angle_triangle_t polygon) 
+HIPRT_DEVICE bool is_central_case(projected_solid_angle_triangle_t polygon)
 {
 	return polygon.inner_ellipse_0.x > 0.0f;
 }
@@ -136,7 +136,7 @@ HIPRT_DEVICE bool is_central_case(projected_solid_angle_triangle_t polygon)
 		vector space. The sign bit of x encodes whether the edge runs clockwise
 		from vertex_0 to vertex_1 (inner ellipse) or not.
 	\see is_inner_ellipse() */
-HIPRT_DEVICE float2 ellipse_from_edge(float3 vertex_0, float3 vertex_1, bool DEBUG = false) 
+HIPRT_DEVICE float2 ellipse_from_edge(float3 vertex_0, float3 vertex_1, bool DEBUG = false)
 {
 	float3 normal = cross_stable(vertex_0, vertex_1);
 	float scaling = 1.0f / normal.z;
@@ -155,7 +155,7 @@ HIPRT_DEVICE float2 ellipse_from_edge(float3 vertex_0, float3 vertex_1, bool DEB
 //! Transforms the given point using the matrix that characterizes the given
 //! ellipse (as produced by ellipse_from_edge()). To be precise, this matrix is
 //! identity + outer_product(ellipse, ellipse).
-HIPRT_DEVICE float2 ellipse_transform(float2 ellipse, float2 point) 
+HIPRT_DEVICE float2 ellipse_transform(float2 ellipse, float2 point)
 {
 	return hippt::fma(make_float2(hippt::dot(ellipse, point)), ellipse, point);
 }
@@ -171,13 +171,13 @@ HIPRT_DEVICE float get_ellipse_det(float2 ellipse)
 
 //! Returns the reciprocal square root of the ellipse determinant produced by
 //! get_ellipse_det().
-HIPRT_DEVICE float get_ellipse_rsqrt_det(float2 ellipse) 
+HIPRT_DEVICE float get_ellipse_rsqrt_det(float2 ellipse)
 {
 	return hippt::rsqrt(get_ellipse_det(ellipse));
 }
 
 //! \return Reciprocal square of get_ellipse_direction_factor(ellipse, dir)
-HIPRT_DEVICE float get_ellipse_direction_factor_rsq(float2 ellipse, float2 dir) 
+HIPRT_DEVICE float get_ellipse_direction_factor_rsq(float2 ellipse, float2 dir)
 {
 	float ellipse_dot_dir = hippt::dot(ellipse, dir);
 	float dir_dot_dir = hippt::dot(dir, dir);
@@ -190,14 +190,14 @@ HIPRT_DEVICE float get_ellipse_direction_factor_rsq(float2 ellipse, float2 dir)
 	\param dir The direction vector to be scaled onto the ellipse.
 	\return get_ellipse_direction_factor(ellipse, dir) * dir is a point on
 		the ellipse.*/
-HIPRT_DEVICE float get_ellipse_direction_factor(float2 ellipse, float2 dir) 
+HIPRT_DEVICE float get_ellipse_direction_factor(float2 ellipse, float2 dir)
 {
 	return hippt::rsqrt(get_ellipse_direction_factor_rsq(ellipse, dir));
 }
 
 //! Like get_ellipse_direction_factor() but assumes that the given direction is
 //! normalized. Faster.
-HIPRT_DEVICE float get_ellipse_normalized_direction_factor(float2 ellipse, float2 normalized_dir) 
+HIPRT_DEVICE float get_ellipse_normalized_direction_factor(float2 ellipse, float2 normalized_dir)
 {
 	float ellipse_dot_dir = hippt::dot(ellipse, normalized_dir);
 	return hippt::rsqrt(hippt::fma(ellipse_dot_dir, ellipse_dot_dir, 1.0f));
@@ -205,7 +205,7 @@ HIPRT_DEVICE float get_ellipse_normalized_direction_factor(float2 ellipse, float
 
 //! Helper for get_area_between_ellipses_in_sector() and
 //! sample_sector_between_ellipses()
-HIPRT_DEVICE float get_area_between_ellipses_in_sector_from_tangents(float inner_rsqrt_det, float inner_tangent, float outer_rsqrt_det, float outer_tangent) 
+HIPRT_DEVICE float get_area_between_ellipses_in_sector_from_tangents(float inner_rsqrt_det, float inner_tangent, float outer_rsqrt_det, float outer_tangent)
 {
 	float inner_area = inner_rsqrt_det * positive_atan(inner_tangent);
 	float result = hippt::fma(outer_rsqrt_det, positive_atan(outer_tangent), -inner_area);
@@ -219,7 +219,7 @@ HIPRT_DEVICE float get_area_between_ellipses_in_sector_from_tangents(float inner
 	ellipse_from_edge(), you also have to pass output of
 	get_ellipse_rsqrt_det(). Faster than calling get_ellipse_area_in_sector()
 	twice.*/
-HIPRT_DEVICE float get_area_between_ellipses_in_sector(float2 inner_ellipse, float inner_rsqrt_det, float2 outer_ellipse, float outer_rsqrt_det, float2 dir_0, float2 dir_1) 
+HIPRT_DEVICE float get_area_between_ellipses_in_sector(float2 inner_ellipse, float inner_rsqrt_det, float2 outer_ellipse, float outer_rsqrt_det, float2 dir_0, float2 dir_1)
 {
 	float det_dirs = hippt::max(+0.0f, hippt::dot(dir_1, rotate_90(dir_0)));
 
@@ -236,7 +236,7 @@ HIPRT_DEVICE float get_area_between_ellipses_in_sector(float2 inner_ellipse, flo
 	dir_1 for at most 180 degrees). The scaling of the directions is
 	irrelevant.
 	\see ellipse_from_edge() */
-HIPRT_DEVICE float get_ellipse_area_in_sector(float2 ellipse, float2 dir_0, float2 dir_1) 
+HIPRT_DEVICE float get_ellipse_area_in_sector(float2 ellipse, float2 dir_0, float2 dir_1)
 {
 	float ellipse_rsqrt_det = get_ellipse_rsqrt_det(ellipse);
 	float det_dirs = hippt::max(+0.0f, hippt::dot(dir_1, rotate_90(dir_0)));
@@ -254,7 +254,7 @@ HIPRT_DEVICE float get_ellipse_area_in_sector(float2 ellipse, float2 dir_0, floa
 	ellipses come first.
 	\note To avoid costly register spilling, lhs and rhs must be compile time
 		constants.*/
-HIPRT_DEVICE void compare_and_swap(projected_solid_angle_triangle_t& polygon, unsigned int lhs, unsigned int rhs) 
+HIPRT_DEVICE void compare_and_swap(projected_solid_angle_triangle_t& polygon, unsigned int lhs, unsigned int rhs)
 {
 	float2 lhs_copy = polygon.get_vertex(lhs);
 	// This line is designed to agree with the implementation of cross_stable
@@ -276,7 +276,7 @@ HIPRT_DEVICE void compare_and_swap(projected_solid_angle_triangle_t& polygon, un
 
 //! Sorts the vertices of the given convex polygon counterclockwise using a
 //! special sorting network. For non-convex polygons, the method may fail.
-HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t& polygon) 
+HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t& polygon)
 {
 	if (polygon.vertex_count == 3) {
 		compare_and_swap(polygon, 1, 2);
@@ -366,7 +366,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		return polygon;
 
 	polygon.inner_ellipse_0 = make_float2(1.0f, 0.0f);
-	polygon.get_vertex(0) = make_float2(vertices_clockwise_order[0].x, vertices_clockwise_order[0].y); 
+	polygon.get_vertex(0) = make_float2(vertices_clockwise_order[0].x, vertices_clockwise_order[0].y);
 	polygon.get_ellipse(0) = ellipse_from_edge(vertices_clockwise_order[0], vertices_clockwise_order[1]);
 
 	float2 previous_ellipse = polygon.get_ellipse(0);
@@ -399,7 +399,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 
 		// i == 3
 		polygon.get_vertex(3) = make_float2(vertices_clockwise_order[3].x, vertices_clockwise_order[3].y);
-		if (3 == polygon.vertex_count) 
+		if (3 == polygon.vertex_count)
 			break;
 		ellipse = ellipse_from_edge(vertices_clockwise_order[3], vertices_clockwise_order[(3 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
 		ellipse_inner = is_inner_ellipse(ellipse);
@@ -428,12 +428,12 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	float2 ellipse = polygon.get_ellipse(0);
 	bool ellipse_inner = is_inner_ellipse(ellipse);
 
-	polygon.get_ellipse(0) = ellipse_inner ? previous_ellipse : ellipse;	
+	polygon.get_ellipse(0) = ellipse_inner ? previous_ellipse : ellipse;
 	polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
 	// Compute projected solid angles per sector and in total
 	polygon.projected_solid_angle = 0.0f;
 
-	if (is_central_case(polygon)) 
+	if (is_central_case(polygon))
 	{
 		// In the central case, we have polygon.vertex_count sectors, each
 		// bounded by a single ellipse
@@ -463,7 +463,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 
 		} while (false);
 #else
-		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i) 
+		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 		{
 			if (i > 2 && i == polygon.vertex_count) break;
 			polygon.sector_projected_solid_angles[i] = get_ellipse_area_in_sector(polygon.get_ellipse(i), polygon.get_vertex(i), polygon.get_vertex((i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
@@ -471,7 +471,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		}
 #endif
 	}
-	else 
+	else
 	{
 		// Sort vertices counter clockwise
 		sort_convex_polygon_vertices(polygon);
@@ -547,7 +547,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 				outer_ellipse = vertex_ellipse;
 				outer_rsqrt_det = vertex_rsqrt_det;
 			}
-			else 
+			else
 			{
 				inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
 				inner_rsqrt_det = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
@@ -638,7 +638,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		render_data,
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal,
-		material, 
+		material,
 		// Not using LTCs, we don't care about the lobe parameter, just using diffuse as default
 		LTCLobe::DIFFUSE_LOBE);
 #endif
@@ -689,7 +689,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 		shading_point, view_direction, shading_normal,
 		material, ltc_lobe).projected_solid_angle;
-	
+
 	if (projected_solid_angle == 0.0f)
 		// The whole polygon is below the hemisphere, clipping returned 0 vertices
 		return 0.0f;
@@ -788,7 +788,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 	return out_pdf;
 }
 
-HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& render_data,
 	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
 	float3 shading_point, float3 view_direction, float3 shading_normal, float3 point_on_light,
 	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material)
@@ -833,7 +833,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 	\note Introduces less latency than normalize() and does not use special
 		functions. Useful to avoid under- and overflow when working with
 		homogeneous coordinates. The result is undefined if rhs is zero.*/
-HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle) 
+HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle)
 {
 	float scaling = hippt::abs(rhs.x) + hippt::abs(rhs.y);
 	// By flipping each bit on the exponent E, we turn it into 1 - E, which is
@@ -860,7 +860,7 @@ HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle)
 	James F. Blinn 2006, How to Solve a Quadratic Equation, Part 2, IEEE
 	Computer Graphics and Applications 26:2 https://doi.org/10.1109/MCG.2006.35
 */
-HIPRT_DEVICE float2 solve_homogeneous_quadratic(float2x2 quadratic) 
+HIPRT_DEVICE float2 solve_homogeneous_quadratic(float2x2 quadratic)
 {
 	float coeff_xy = 0.5f * (quadratic.m[0][1] + quadratic.m[1][0]);
 	float sqrt_discriminant = hippt::sqrt(hippt::max(0.0f, coeff_xy * coeff_xy - quadratic.m[0][0] * quadratic.m[1][1]));
@@ -880,7 +880,7 @@ HIPRT_DEVICE float2 solve_homogeneous_quadratic(float2x2 quadratic)
 	\param iteration_count The number of iterations to perform. Lower values
 		trade speed for bias. Two iterations give practically no bias.
 	\return The sample in Cartesian coordinates.*/
-HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float target_area, float2 inner_ellipse, float2 outer_ellipse, float2 dir_0, float2 dir_1, unsigned int iteration_count) 
+HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float target_area, float2 inner_ellipse, float2 outer_ellipse, float2 dir_0, float2 dir_1, unsigned int iteration_count)
 {
 	// For the initialization, split the sector in half
 	float2 quad_dirs[3];
@@ -889,7 +889,7 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	quad_dirs[1] = quad_dirs[0] + quad_dirs[2];
 	// Compute where these lines intersect the ellipses. The six intersection
 	// points define two adjacent quads.
-	float normalization_factor[2][3] = 
+	float normalization_factor[2][3] =
 	{
 		{
 			get_ellipse_normalized_direction_factor(inner_ellipse, quad_dirs[0]),
@@ -904,7 +904,7 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	};
 
 	// Compute the relative size of the areas inside these quads
-	float sector_areas[2] = 
+	float sector_areas[2] =
 	{
 		normalization_factor[1][0] * normalization_factor[1][1] - normalization_factor[0][0] * normalization_factor[0][1],
 		normalization_factor[1][1] * normalization_factor[1][2] - normalization_factor[0][1] * normalization_factor[0][2]
@@ -925,7 +925,7 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	// quad. We construct the normal like a half vector (i.e. by addition)
 	// because it is less prone to cancellation than an approach using the edge
 	// direction (i.e. subtraction of sometimes nearly identical vectors)
-	float2 quad_normals[2] = 
+	float2 quad_normals[2] =
 	{
 		quad_dirs[1] * normalization_factor[0][1] + quad_dirs[2] * normalization_factor[0][2],
 		quad_dirs[1] * normalization_factor[1][1] + quad_dirs[2] * normalization_factor[1][2]
@@ -934,7 +934,7 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	quad_normals[0] = ellipse_transform(inner_ellipse, quad_normals[0]);
 	quad_normals[1] = ellipse_transform(outer_ellipse, quad_normals[1]);
 	// Construct complete line equations
-	float quad_offsets[2] = 
+	float quad_offsets[2] =
 	{
 		hippt::dot(quad_normals[0], quad_dirs[1]) * normalization_factor[0][1],
 		hippt::dot(quad_normals[1], quad_dirs[1]) * normalization_factor[1][1]
@@ -998,7 +998,7 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	\return A sample on the upper hemisphere (i.e. z>=0) in Cartesian
 		coordinates.*/
 HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(const HIPRTRenderData& render_data,
-	float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal, 
+	float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal,
 	float3 shading_point, float3 view_direction, float3 shading_normal,
 	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
 	float& out_area_pdf,
@@ -1010,7 +1010,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 		triangle_emission, material);
 
 	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(render_data,
-		vertex_A, vertex_B, vertex_C, 
+		vertex_A, vertex_B, vertex_C,
 		shading_point, view_direction, shading_normal,
 		ltc_lobe_probabilities, material,
 		rng);
@@ -1031,7 +1031,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 	float2 outer_ellipse = make_float2(0.0f, 0.0f);
 	float2 dir_0 = make_float2(0.0f, 0.0f);
 
-	if (is_central_case(polygon)) 
+	if (is_central_case(polygon))
 	{
 		// Select a sector and copy the relevant attributes
 #if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
@@ -1066,7 +1066,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 				break;
 		} while (false);
 #else
-		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i) 
+		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 		{
 			if (i > 0)
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
@@ -1092,7 +1092,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 		sampled_dir.y *= sampled;
 	}
 	// And the decentral case
-	else 
+	else
 	{
 		// Select a sector and copy the relevant attributes
 		float sector_projected_solid_angle = 0.0f;
@@ -1145,13 +1145,13 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 				break;
 		} while (false);
 #else
-		for (unsigned int i = 0; i < MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; i++) 
+		for (unsigned int i = 0; i < MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; i++)
 		{
 			float2 vertex_ellipse = polygon.get_ellipse(i);
 
 			if (i == 0)
 				outer_ellipse = vertex_ellipse;
-			else 
+			else
 			{
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
 				bool vertex_inner = is_inner_ellipse(vertex_ellipse);
@@ -1180,13 +1180,13 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 	sampled_dir.z = hippt::sqrt(hippt::max(0.0f, hippt::fma(-sampled_dir.x, sampled_dir.x, hippt::fma(-sampled_dir.y, sampled_dir.y, 1.0f))));
 
 	// Transform the sample back to world space
-	
+
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	/**
 	 * View direction lies in the x-z plane + LTC.
 	 */
 
-	// From cosine space to shading space
+	 // From cosine space to shading space
 	float ltc_lobe_pdf;
 	float3 sampled_dir_shading_space = hippt::normalize(ltc_transform_cosine_to_shading(render_data, hippt::dot(view_direction, shading_normal), sampled_dir, material, polygon.ltc_lobe));
 

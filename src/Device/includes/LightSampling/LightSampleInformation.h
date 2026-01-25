@@ -12,24 +12,24 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
-/**
- * Information about a light sample taken from an emissive triangle
- */ 
+ /**
+  * Information about a light sample taken from an emissive triangle
+  */
 struct LightSamplePointInformation
 {
-    float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
+	float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
 
-    // Index of the triangle in the whole scene (not just in the emissive triangles buffer)
-    int emissive_triangle_global_index = -1;
+	// Index of the triangle in the whole scene (not just in the emissive triangles buffer)
+	int emissive_triangle_global_index = -1;
 
-    ColorRGB32F emission;
-    float light_area = 1.0f;
+	ColorRGB32F emission;
+	float light_area = 1.0f;
 
-    float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
-    float area_measure_pdf = 0.0f;
+	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
+	float area_measure_pdf = 0.0f;
 
 #if DirectLightSamplingStrategy == LSS_BASE_REGIR
-    // The light sample may come from BSDF sampling with ReGIR and so we may have
+	// The light sample may come from BSDF sampling with ReGIR and so we may have
 	// information about the lobe that was sampled.
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 #endif
@@ -38,12 +38,12 @@ struct LightSamplePointInformation
 template <int size>
 struct LightSamplePointArray
 {
-    LightSamplePointInformation samples[size];
+	LightSamplePointInformation samples[size];
 
-    HIPRT_DEVICE LightSamplePointInformation& operator[](int index)
-    {
-        return samples[index];
-    }
+	HIPRT_DEVICE LightSamplePointInformation& operator[](int index)
+	{
+		return samples[index];
+	}
 };
 
 /**
@@ -51,19 +51,19 @@ struct LightSamplePointArray
  */
 struct LightSampleInformation
 {
-    int emissive_triangle_global_index = -1;
+	int emissive_triangle_global_index = -1;
 
-    float pdf = 0.0f;
+	float pdf = 0.0f;
 };
 
 template <int size>
 struct LightSampleArray
 {
-    LightSampleInformation samples[size];
+	LightSampleInformation samples[size];
 
-    HIPRT_DEVICE LightSampleInformation& operator[](int index)
-    {
-        return samples[index];
+	HIPRT_DEVICE LightSampleInformation& operator[](int index)
+	{
+		return samples[index];
 	}
 };
 

@@ -14,7 +14,7 @@ class GPUBakerKernel
 {
 public:
 	GPUBakerKernel() {}
-	GPUBakerKernel(std::shared_ptr<GPURenderer> renderer, oroStream_t bake_stream, std::shared_ptr<std::mutex> compiler_priority_mutex, 
+	GPUBakerKernel(std::shared_ptr<GPURenderer> renderer, oroStream_t bake_stream, std::shared_ptr<std::mutex> compiler_priority_mutex,
 		const std::string& kernel_filepath, const std::string& kernel_function, const std::string& kernel_title);
 
 	/**

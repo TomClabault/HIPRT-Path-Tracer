@@ -11,24 +11,24 @@
 #include <hiprt/hiprt_common.h>
 
 #ifdef __KERNELCC__
-// On the GPU, the nested dielectrics stack is allocated in shared memory.
-// This means that all the entries of the nested dielectrics stacks are in shared memory.
-//
-// For example, for thread blocks of 64 and a NestedDielectricStackSize of 3, this gives us
-// a shared memory array of 3*64 = 192 entries.
-// 
-// We then need a mapping that "redirects" each thread to its proper entry in that 192-long array.
-// 
-// That's what this macro does, it takes an index in the stack as parameter (so 0, 1 or 2 for a NestedDielectricStackSize of 3)
-// and maps it to the index to use in the shared memory array by using the threadIdx.
-// 
-// Note that the mapping is written to minimize shared memory bank conflicts
+ // On the GPU, the nested dielectrics stack is allocated in shared memory.
+ // This means that all the entries of the nested dielectrics stacks are in shared memory.
+ //
+ // For example, for thread blocks of 64 and a NestedDielectricStackSize of 3, this gives us
+ // a shared memory array of 3*64 = 192 entries.
+ // 
+ // We then need a mapping that "redirects" each thread to its proper entry in that 192-long array.
+ // 
+ // That's what this macro does, it takes an index in the stack as parameter (so 0, 1 or 2 for a NestedDielectricStackSize of 3)
+ // and maps it to the index to use in the shared memory array by using the threadIdx.
+ // 
+ // Note that the mapping is written to minimize shared memory bank conflicts
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
 
 #else
-// This macro is used to offset the index used to index the priority stack.
-// On the CPU, there is nothing to do, just use the given index, there is really nothing
-// special. The special case is for the GPU, explained above the GPU macro definition
+ // This macro is used to offset the index used to index the priority stack.
+ // On the CPU, there is nothing to do, just use the given index, there is really nothing
+ // special. The special case is for the GPU, explained above the GPU macro definition
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
 #endif
 
@@ -120,10 +120,10 @@ struct NestedDielectricsInteriorStack
 {
 	/**
 	 * Pushes a new material index onto the stack
-	 * 
-	 * Returns true if that intersection should be skipped (because we are currently in a material with 
+	 *
+	 * Returns true if that intersection should be skipped (because we are currently in a material with
 	 * higher priority than the material we just intersected)
-	 * 
+	 *
 	 * Returns false if that intersection should not be skipped
 	 */
 	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int material_priority)
@@ -131,7 +131,7 @@ struct NestedDielectricsInteriorStack
 		if (stack_position == NestedDielectricsStackSize - 1)
 			// The stack is already at the maximum
 			return false;
-			
+
 		// Index of the material we last entered before intersecting the
 		// material we're currently inserting in the stack
 		int last_entered_mat_index = 0;
@@ -142,9 +142,9 @@ struct NestedDielectricsInteriorStack
 			//	- The entry of that material in the stack is odd_parity = we've entered that material but haven't left it yet
 			//
 			//	= the last entered material
-			if (stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_material_index() != material_index 
-			 && stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_topmost()
-			 && stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_odd_parity())
+			if (stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_material_index() != material_index
+				&& stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_topmost()
+				&& stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_odd_parity())
 				break;
 
 		// Parity of the material we're inserting in the stack
@@ -165,7 +165,7 @@ struct NestedDielectricsInteriorStack
 				break;
 			}
 		}
-		
+
 		out_inside_material = !odd_parity;
 
 		// Inserting the material in the stack

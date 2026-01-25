@@ -14,13 +14,13 @@
 
 #define TEMPORAL_NEIGHBOR_ID 0
 
-/**
- * There are going to be many specialization of this structure, one for each mis weight type
- * (RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ...)
- *
- * IsReSTIRGI is used to indicate whether the structure should be used to compute
- * for ReSTIR GI or for ReSTIR DI
- */
+ /**
+  * There are going to be many specialization of this structure, one for each mis weight type
+  * (RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ...)
+  *
+  * IsReSTIRGI is used to indicate whether the structure should be used to compute
+  * for ReSTIR GI or for ReSTIR DI
+  */
 template <int BiasCorrectionMode, bool IsReSTIRGI = false>
 struct ReSTIRSpatiotemporalResamplingMISWeight {};
 
@@ -49,7 +49,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE,
 	{
 		return ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights ? reservoir_being_resampled_M : 1;
 	}
-}; 
+};
 
 template <bool IsReSTIRGI>
 struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, IsReSTIRGI>
@@ -85,7 +85,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, 
 					continue;
 
 				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-					neighbor_index_j, center_pixel_index, 
+					neighbor_index_j, center_pixel_index,
 					center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface), render_data.render_settings.use_prev_frame_g_buffer()))
 					// Neighbor too dissimilar according to heuristics, skipping
 					continue;
@@ -234,7 +234,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_
 		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
 
 		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resample_canonical, 
+		bool update_mc, bool resample_canonical,
 		Xorshift32Generator& random_number_generator)
 	{
 		if (!resample_canonical)

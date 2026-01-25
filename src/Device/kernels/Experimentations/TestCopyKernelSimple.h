@@ -15,13 +15,13 @@ using TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE = DeviceUnpackedEffectiveMaterial;
 
 struct TestCopyKernelSimpleInputData
 {
-    TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE* buffer_a;
-    TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE* buffer_b;
+	TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE* buffer_a;
+	TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE* buffer_b;
 };
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void copy_function(const TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE* __restrict__ input_buffer, TEST_COPY_KERNEL_SIMPLE_BUFFER_TYPE* __restrict__ output_buffer, uint32_t tIdx)
 {
-    output_buffer[tIdx] = input_buffer[tIdx];
+	output_buffer[tIdx] = input_buffer[tIdx];
 }
 
 #ifdef __KERNELCC__
@@ -31,13 +31,13 @@ GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelSimple(TestCopyKernelSimpleInputData
 #endif
 {
 #ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-    uint32_t offset = 13;
-    uint32_t index = x + offset;
+	uint32_t offset = 13;
+	uint32_t index = x + offset;
 
-    if (index >= buffer_size)
-        return;
+	if (index >= buffer_size)
+		return;
 
-    copy_function(input.buffer_b, input.buffer_a, index);
+	copy_function(input.buffer_b, input.buffer_a, index);
 }

@@ -7,7 +7,7 @@
 #define DEVICE_RAY_VOLUME_STATE_H
 
 #include "Device/includes/NestedDielectrics.h"
-// Including dispersion for sampling a wavelength in the reconstruction of the first hit of RayVolumeState
+ // Including dispersion for sampling a wavelength in the reconstruction of the first hit of RayVolumeState
 #include "Device/includes/BSDFs/Dispersion.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
@@ -15,8 +15,8 @@ struct RayVolumeState
 {
 	/**
 	 * On the GPU, it is necessary that the RayVolumeState is initialized manually as opposed to in a default constructor for example.
-	 * That's because the nested dielectrics stack is in shared memory and is thus a "global variable". 
-	 * 
+	 * That's because the nested dielectrics stack is in shared memory and is thus a "global variable".
+	 *
 	 * If it were to be initialized in the RayVolumeState constructor, every declaration of a RayVolumeState variable
 	 * would call the constructor and reinitialize the whole nested dielectrics stack.
 	 */

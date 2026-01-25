@@ -60,10 +60,10 @@ HIPRT_DEVICE bool do_include_spatial_visibility_term_or_not(const HIPRTRenderDat
  * Returns -1 if there is no valid temporal neighbor.
  * The linear buffer index of the temporal neighbor otherwise
  */
-HIPRT_DEVICE int3 load_spatiotemporal_neighbor_data(const HIPRTRenderData& render_data, 
-																	  const ReSTIRSurface& center_pixel_surface, int center_pixel_index, 
-																	  ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRSurface& out_temporal_neighbor_surface, 
-																	  Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE int3 load_spatiotemporal_neighbor_data(const HIPRTRenderData& render_data,
+	const ReSTIRSurface& center_pixel_surface, int center_pixel_index,
+	ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRSurface& out_temporal_neighbor_surface,
+	Xorshift32Generator& random_number_generator)
 {
 	int3 temporal_neighbor_pixel_index_and_pos = find_temporal_neighbor_index<false>(render_data,
 		render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, center_pixel_index, random_number_generator);
@@ -107,10 +107,10 @@ HIPRT_DEVICE int3 load_spatiotemporal_neighbor_data(const HIPRTRenderData& rende
  * the corresponding neighbor was valid or not (can be reused later to avoid having to
  * re-evauate the heuristics). Neighbor 0 is LSB.
  */
-HIPRT_DEVICE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data, 
-																		 const ReSTIRSurface& center_pixel_surface, 
-																		 int center_pixel_index, int2 temporal_neighbor_position, 
-																		 int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
+HIPRT_DEVICE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data,
+	const ReSTIRSurface& center_pixel_surface,
+	int center_pixel_index, int2 temporal_neighbor_position,
+	int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
 	int reused_neighbors_count = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<false>(render_data).reuse_neighbor_count;
 
@@ -127,7 +127,7 @@ HIPRT_DEVICE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& re
 			continue;
 
 		if (!check_neighbor_similarity_heuristics<false>(render_data,
-			neighbor_pixel_index, center_pixel_index, 
+			neighbor_pixel_index, center_pixel_index,
 			center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<false>(render_data, center_pixel_surface),
 			render_data.render_settings.use_prev_frame_g_buffer()))
 			continue;
@@ -234,21 +234,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 				temporal_neighbor_reservoir.UCW,
 				temporal_neighbor_reservoir.sample,
-				
+
 				center_pixel_surface, temporal_neighbor_surface,
-				TEMPORAL_NEIGHBOR_ID, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, 
+				TEMPORAL_NEIGHBOR_ID, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
 				center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 				random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
-			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
-				
+			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
+
 				temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
 				initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
 				initial_candidates_reservoir.sample,
 
-				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
+				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, /* resample canonical */ false, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
@@ -342,7 +342,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			neighbor_pixel_index = center_pixel_index;
 		else
 			// Resampling around the temporal neighbor location
-			neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data,  spatial_neighbor_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), spatial_neighbors_rng);
+			neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, spatial_neighbor_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), spatial_neighbors_rng);
 
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
@@ -395,25 +395,25 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 		// Using 'spatial_neighbor_index + 1' in this function call because the index
 		// 0 is for the temporal neighbor so we start at 1 by using '+ 1'
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 			neighbor_reservoir.UCW,
 			neighbor_reservoir.sample,
-			
+
 			center_pixel_surface, temporal_neighbor_surface,
-			spatial_neighbor_index + 1, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, 
+			spatial_neighbor_index + 1, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
 			center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 			random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
-				
-				neighbor_reservoir.M, neighbor_reservoir.sample.target_function, 
-				initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
-				initial_candidates_reservoir.sample,
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
-				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
+			initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
+			initial_candidates_reservoir.sample,
+
+			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
@@ -461,24 +461,24 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	ReSTIRSpatiotemporalNormalizationWeight<ReSTIR_DI_MISWeightsType, /* Is ReSTIR GI */ false> normalization_function;
 #if ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M
-	normalization_function.get_normalization(render_data, 
-		spatiotemporal_output_reservoir.weight_sum, initial_candidates_reservoir.M, 
-		center_pixel_surface, 
+	normalization_function.get_normalization(render_data,
+		spatiotemporal_output_reservoir.weight_sum, initial_candidates_reservoir.M,
+		center_pixel_surface,
 		temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 		normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
-	normalization_function.get_normalization(render_data, 
-		spatiotemporal_output_reservoir.sample, spatiotemporal_output_reservoir.weight_sum, 
+	normalization_function.get_normalization(render_data,
+		spatiotemporal_output_reservoir.sample, spatiotemporal_output_reservoir.weight_sum,
 		center_pixel_surface, temporal_neighbor_surface,
-		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, 
-		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), 
+		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index,
+		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 		normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
-	normalization_function.get_normalization(render_data, 
+	normalization_function.get_normalization(render_data,
 		spatiotemporal_output_reservoir.sample, spatiotemporal_output_reservoir.weight_sum,
-		center_pixel_surface, temporal_neighbor_surface, 
+		center_pixel_surface, temporal_neighbor_surface,
 		selected_neighbor, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
-		normalization_numerator, normalization_denominator, 
+		normalization_numerator, normalization_denominator,
 		random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);

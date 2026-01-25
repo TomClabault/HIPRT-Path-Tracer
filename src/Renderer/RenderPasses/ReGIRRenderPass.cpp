@@ -784,7 +784,7 @@ bool ReGIRRenderPass::launch_cell_light_distributions_precomputation(HIPRTRender
 	// is a race condition with the UI but this modifies mostly pointers to buffers
 	// which the UI doesn't use so this should be fine...
 	m_hash_grid_storage.to_device(m_renderer->get_render_data());
-	
+
 	auto stop = std::chrono::high_resolution_clock::now();
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Light distribution precomputation time: %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 
@@ -1234,7 +1234,7 @@ size_t ReGIRRenderPass::get_correlation_reduction_VRAM_usage_bytes(bool primary_
 size_t ReGIRRenderPass::get_reservoirs_VRAM_usage_bytes(bool primary_hit) const
 {
 	size_t correlation_reduction_size = get_correlation_reduction_VRAM_usage_bytes(primary_hit);
-	return m_hash_grid_storage.get_initial_grid_buffers(primary_hit).get_byte_size() 
+	return m_hash_grid_storage.get_initial_grid_buffers(primary_hit).get_byte_size()
 		+ m_hash_grid_storage.get_spatial_grid_buffers(primary_hit).get_byte_size()
 		+ m_hash_grid_storage.get_hash_cell_data_soa(primary_hit).get_byte_size()
 		+ m_hash_grid_storage.get_async_compute_staging_buffer(primary_hit).get_byte_size()

@@ -15,19 +15,19 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-/**
- * Returns the radical inverse base 2 of a given number.
- * Used for generating 2D points following the Hammersley point set
- * 
- * Reference: [Holger Dammertz, Hammersley Points on the Hemisphere] http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
- */
+ /**
+  * Returns the radical inverse base 2 of a given number.
+  * Used for generating 2D points following the Hammersley point set
+  *
+  * Reference: [Holger Dammertz, Hammersley Points on the Hemisphere] http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+  */
 HIPRT_DEVICE static float radical_inverse_base_2(unsigned int index) {
-    index = (index << 16u) | (index >> 16u);
-    index = ((index & 0x55555555u) << 1u) | ((index & 0xAAAAAAAAu) >> 1u);
-    index = ((index & 0x33333333u) << 2u) | ((index & 0xCCCCCCCCu) >> 2u);
-    index = ((index & 0x0F0F0F0Fu) << 4u) | ((index & 0xF0F0F0F0u) >> 4u);
-    index = ((index & 0x00FF00FFu) << 8u) | ((index & 0xFF00FF00u) >> 8u);
-    return float(index) * 2.3283064365386963e-10f; // / 0x100000000
+	index = (index << 16u) | (index >> 16u);
+	index = ((index & 0x55555555u) << 1u) | ((index & 0xAAAAAAAAu) >> 1u);
+	index = ((index & 0x33333333u) << 2u) | ((index & 0xCCCCCCCCu) >> 2u);
+	index = ((index & 0x0F0F0F0Fu) << 4u) | ((index & 0xF0F0F0F0u) >> 4u);
+	index = ((index & 0x00FF00FFu) << 8u) | ((index & 0xFF00FF00u) >> 8u);
+	return float(index) * 2.3283064365386963e-10f; // / 0x100000000
 }
 
 /**
@@ -37,23 +37,23 @@ HIPRT_DEVICE static float radical_inverse_base_2(unsigned int index) {
  */
 HIPRT_DEVICE static float2 sample_hammersley_2D(unsigned int number_of_points, unsigned int point_index)
 {
-    return make_float2(static_cast<float>(point_index) / static_cast<float>(number_of_points), radical_inverse_base_2(point_index));
+	return make_float2(static_cast<float>(point_index) / static_cast<float>(number_of_points), radical_inverse_base_2(point_index));
 }
 
 /**
  * Returns float pixel coordinates offset from the center of the disk
  * given the radius of the disk and two random numbers in [0, 1] u and v
- * 
+ *
  * uv.x is used as theta for sampling the disk
  * uv.y is used for sampling the distance from the center of the disk
  */
 HIPRT_DEVICE static float2 sample_in_disk_uv(float radius, float2 uv)
 {
-    float r_sqrt_v = radius * hippt::sqrt(uv.y);
-    float x = r_sqrt_v * hippt::intrin_cosf(hippt::M_TWO_PI * uv.x);
-    float y = r_sqrt_v * hippt::intrin_sinf(hippt::M_TWO_PI * uv.x);
+	float r_sqrt_v = radius * hippt::sqrt(uv.y);
+	float x = r_sqrt_v * hippt::intrin_cosf(hippt::M_TWO_PI * uv.x);
+	float y = r_sqrt_v * hippt::intrin_sinf(hippt::M_TWO_PI * uv.x);
 
-    return make_float2(x, y);
+	return make_float2(x, y);
 }
 
 /**
@@ -61,10 +61,10 @@ HIPRT_DEVICE static float2 sample_in_disk_uv(float radius, float2 uv)
  */
 HIPRT_DEVICE static float2 sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
 {
-    float u1 = random_number_generator();
-    float u2 = random_number_generator();
+	float u1 = random_number_generator();
+	float u2 = random_number_generator();
 
-    return sample_in_disk_uv(radius, make_float2(u1, u2));
+	return sample_in_disk_uv(radius, make_float2(u1, u2));
 }
 
 /**
@@ -76,15 +76,15 @@ HIPRT_DEVICE static float2 sample_in_disk(float radius, Xorshift32Generator& ran
  */
 HIPRT_DEVICE static float power_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
 {
-    float p_a_sqr = (nb_pdf_a * pdf_a) * (nb_pdf_a * pdf_a);
-    float p_b_sqr = (nb_pdf_b * pdf_b) * (nb_pdf_b * pdf_b);
+	float p_a_sqr = (nb_pdf_a * pdf_a) * (nb_pdf_a * pdf_a);
+	float p_b_sqr = (nb_pdf_b * pdf_b) * (nb_pdf_b * pdf_b);
 
-    return nb_pdf_a * pdf_a * pdf_a / (p_a_sqr + p_b_sqr);
+	return nb_pdf_a * pdf_a * pdf_a / (p_a_sqr + p_b_sqr);
 }
 
 HIPRT_DEVICE static float power_heuristic(float pdf_a, float pdf_b)
 {
-    return power_heuristic(pdf_a, 1, pdf_b, 1);
+	return power_heuristic(pdf_a, 1, pdf_b, 1);
 }
 
 /**
@@ -92,10 +92,10 @@ HIPRT_DEVICE static float power_heuristic(float pdf_a, float pdf_b)
  */
 HIPRT_DEVICE static float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
 {
-    if (pdf_a == 0.0f)
-        return 0.0f;
+	if (pdf_a == 0.0f)
+		return 0.0f;
 
-    return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b);
+	return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b);
 }
 
 /**
@@ -103,17 +103,17 @@ HIPRT_DEVICE static float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf
  */
 HIPRT_DEVICE static float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b, float pdf_c, int nb_pdf_c)
 {
-    return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b + nb_pdf_c * pdf_c);
+	return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b + nb_pdf_c * pdf_c);
 }
 
 HIPRT_DEVICE static float balance_heuristic(float pdf_a, float pdf_b)
 {
-    return balance_heuristic(pdf_a, 1, pdf_b, 1);
+	return balance_heuristic(pdf_a, 1, pdf_b, 1);
 }
 
 HIPRT_DEVICE static float balance_heuristic(float pdf_a, float pdf_b, float pdf_c)
 {
-    return balance_heuristic(pdf_a, 1, pdf_b, 1, pdf_c, 1);
+	return balance_heuristic(pdf_a, 1, pdf_b, 1, pdf_c, 1);
 }
 
 /**
@@ -122,58 +122,58 @@ HIPRT_DEVICE static float balance_heuristic(float pdf_a, float pdf_b, float pdf_
  */
 HIPRT_DEVICE static float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
 {
-    return 2.0f * hippt::dot(ray_direction, surface_normal) * surface_normal - ray_direction;
+	return 2.0f * hippt::dot(ray_direction, surface_normal) * surface_normal - ray_direction;
 }
 
 /**
  * Refracts a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
- * 
+ *
  * relative_eta here must be eta_t / eta_i
- * 
+ *
  * No total internal reflection is assumed
  */
 HIPRT_DEVICE static float3 refract_ray(const float3& ray_direction, const float3& surface_normal, float relative_eta)
 {
-    float NoI = hippt::dot(ray_direction, surface_normal);
+	float NoI = hippt::dot(ray_direction, surface_normal);
 
-    float sin_theta_i_2 = 1.0f - NoI * NoI;
-    float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
+	float sin_theta_i_2 = 1.0f - NoI * NoI;
+	float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
 
-    float cos_theta_t = sqrt(root_term);
-    float3 refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
+	float cos_theta_t = sqrt(root_term);
+	float3 refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
 
-    return refract_direction;
+	return refract_direction;
 }
 
-/** 
+/**
  * Reference:
- * 
+ *
  * [1] [Lambertian Reflection Without Tangents], Edd Biddulph https://fizzer.neocities.org/lambertnotangent
- * 
+ *
  * The sampled direction is returned in world space
  */
 HIPRT_DEVICE static float3 cosine_weighted_sample_around_normal_world_space(const float3& normal, Xorshift32Generator& random_number_generator)
 {
-    float rand_1 = random_number_generator();
-    float rand_2 = 2.0f * random_number_generator() - 1.0f;
-    if (rand_1 < 1.0e-8f && rand_2 < -0.999999f && normal.z > 0.999999f)
-    {
-        // Slight perturbation when this would result in a singularity:
-        // When rand_1 is 0.0f and rand_2 is -1.0f, this results in a theta
-        // of 0.0f which then gives sphere_point = {0.0f, 0.0f, -1.0f}. In
-        // conjunction with a normal of {0.0f, 0.0f, 1.0f}, we get a null vector
-        // at the return statement that is then normalized --> NaN
-        rand_1 += 1.0e-7f;
-        rand_2 += 1.0e-7f;
-    }
+	float rand_1 = random_number_generator();
+	float rand_2 = 2.0f * random_number_generator() - 1.0f;
+	if (rand_1 < 1.0e-8f && rand_2 < -0.999999f && normal.z > 0.999999f)
+	{
+		// Slight perturbation when this would result in a singularity:
+		// When rand_1 is 0.0f and rand_2 is -1.0f, this results in a theta
+		// of 0.0f which then gives sphere_point = {0.0f, 0.0f, -1.0f}. In
+		// conjunction with a normal of {0.0f, 0.0f, 1.0f}, we get a null vector
+		// at the return statement that is then normalized --> NaN
+		rand_1 += 1.0e-7f;
+		rand_2 += 1.0e-7f;
+	}
 
-    float theta = hippt::M_TWO_PI * rand_1;
+	float theta = hippt::M_TWO_PI * rand_1;
 
-    float2 xy = hippt::sqrt(1.0f - rand_2 * rand_2) * make_float2(hippt::intrin_cosf(theta), hippt::intrin_sinf(theta));
-    float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
+	float2 xy = hippt::sqrt(1.0f - rand_2 * rand_2) * make_float2(hippt::intrin_cosf(theta), hippt::intrin_sinf(theta));
+	float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
 
-    return hippt::normalize(normal + sphere_point);
+	return hippt::normalize(normal + sphere_point);
 }
 
 /**
@@ -185,14 +185,14 @@ HIPRT_DEVICE static float3 cosine_weighted_sample_around_normal_world_space(cons
  */
 HIPRT_DEVICE static float3 cosine_weighted_sample_z_up_frame(Xorshift32Generator& random_number_generator)
 {
-    float r1 = random_number_generator();
-    float r2 = random_number_generator();
+	float r1 = random_number_generator();
+	float r2 = random_number_generator();
 
-    float phi = hippt::M_TWO_PI * r1;
-    float cos_theta = hippt::sqrt(r2);
-    float sin_theta = hippt::sqrt(1 - cos_theta * cos_theta);
+	float phi = hippt::M_TWO_PI * r1;
+	float cos_theta = hippt::sqrt(r2);
+	float sin_theta = hippt::sqrt(1 - cos_theta * cos_theta);
 
-    return hippt::normalize(make_float3(hippt::intrin_cosf(phi) * sin_theta, hippt::intrin_sinf(phi) * sin_theta, cos_theta));
+	return hippt::normalize(make_float3(hippt::intrin_cosf(phi) * sin_theta, hippt::intrin_sinf(phi) * sin_theta, cos_theta));
 }
 
 #endif

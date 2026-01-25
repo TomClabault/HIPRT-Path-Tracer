@@ -38,7 +38,7 @@ private:
 	void resize_values_vectors(int new_size);
 
 	/**
-	 * This function is called when resizing the window. 
+	 * This function is called when resizing the window.
 	 * Because we have thrown away elements that were at the end of the vectors,
 	 * we're going to have to recompute the average, sums, ... not to take into account
 	 * the elements that were removed

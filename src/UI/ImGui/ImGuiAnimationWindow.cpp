@@ -58,10 +58,10 @@ void ImGuiAnimationWindow::draw_header()
 		ImGui::TreePush("Animations warning tree");
 
 		ImGuiRenderer::add_warning("Animations are not playing right now because "
-					"accumulation is on. Nothing can move while accumulation "
-					"is on unless you're rendering a frame sequence, in "
-					"which case animations will step forward after a frame "
-					"is rendered (converged according to the renderer settings).");
+			"accumulation is on. Nothing can move while accumulation "
+			"is on unless you're rendering a frame sequence, in "
+			"which case animations will step forward after a frame "
+			"is rendered (converged according to the renderer settings).");
 
 		ImGui::TreePop();
 	}
@@ -82,7 +82,7 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		static int move_n_frames_forward = 0;
-		ImGui::InputInt("Move N frames forward", &move_n_frames_forward); 
+		ImGui::InputInt("Move N frames forward", &move_n_frames_forward);
 		ImGuiRenderer::show_help_marker("Advances all the animations N frames forward.");
 		ImGui::BeginDisabled(animation_state.do_animations == false);
 		ImGui::TreePush("Go button tree");
@@ -120,10 +120,10 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 			ImGuiRenderer::show_help_marker("Feature disabled because accumulation is not enabled.");
 		else
 			ImGuiRenderer::show_help_marker("Starts rendering a sequence of frame. After each frame has "
-											"converged (according to the various stopping conditions set in "
-											"\"Settings -> Render Settings\"), a screenshot is dumped to "
-											"the disk, the animations are step and the next frame starts "
-											"rendering.");
+				"converged (according to the various stopping conditions set in "
+				"\"Settings -> Render Settings\"), a screenshot is dumped to "
+				"the disk, the animations are step and the next frame starts "
+				"rendering.");
 		ImGui::EndDisabled();
 
 		if (!m_renderer->get_render_settings().accumulate)
@@ -214,8 +214,8 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			if (ImGui::SliderFloat("Rotation duration (seconds per 360 degrees)", &rotation_value, 2.0f, 10.0f))
 				rotation_value = std::max(0.001f, rotation_value);
 			ImGuiRenderer::show_help_marker("The camera will take that much time to rotate "
-											"by 360 degrees. This is probably what you want "
-											"for real time (no accumulation) camera animation.");
+				"by 360 degrees. This is probably what you want "
+				"for real time (no accumulation) camera animation.");
 			ImGui::EndDisabled();
 
 			if (ImGui::RadioButton("##degrees_per_frame", (int*)&rotation_type, 1))
@@ -224,8 +224,8 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			ImGui::BeginDisabled(rotation_type != 1);
 			ImGui::SliderFloat("Rotation speed (degrees per frame)", &rotation_value, 0.0f, 90.0f);
 			ImGuiRenderer::show_help_marker("The camera will rotate by the given degrees "
-											"at each frame. This is probably what you want "
-											"for frame sequence rendering.");
+				"at each frame. This is probably what you want "
+				"for frame sequence rendering.");
 			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

@@ -36,9 +36,9 @@ struct RendererAnimationState
 
 	void ensure_output_folder_exists()
 	{
-		if (!std::filesystem::exists(frames_output_folder)) 
+		if (!std::filesystem::exists(frames_output_folder))
 			// Creates the folder and any necessary parent directories if it doesn't exist yet
-        	std::filesystem::create_directories(frames_output_folder); 
+			std::filesystem::create_directories(frames_output_folder);
 	}
 
 	void reset()

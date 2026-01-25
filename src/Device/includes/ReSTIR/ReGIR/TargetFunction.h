@@ -16,7 +16,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool includeVisibility, bool withCosineTerm, bool withCosineTermLightSource, bool includeBSDFPrimaryHit, bool includeBSDFSecondaryHit, bool withNeePlusPlusVisibilityEstimation>
-HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderData& render_data,
 	ReGIRGridFillSurface surface, bool primary_hit,
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
 {
@@ -74,29 +74,29 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderDat
 	return target_function;
 }
 
-HIPRT_DEVICE float ReGIR_grid_fill_evaluate_non_canonical_target_function(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE float ReGIR_grid_fill_evaluate_non_canonical_target_function(const HIPRTRenderData& render_data,
 	unsigned int hash_grid_cell_index, bool primary_hit,
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
 {
 	ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 
 	return ReGIR_grid_fill_evaluate_target_function<
-		ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource, 
+		ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
 		ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
 			render_data, surface, primary_hit, sample_emission, sample_normal, sample_position, rng);
 }
 
-HIPRT_DEVICE float ReGIR_grid_fill_evaluate_non_canonical_target_function(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE float ReGIR_grid_fill_evaluate_non_canonical_target_function(const HIPRTRenderData& render_data,
 	const ReGIRGridFillSurface& surface, bool primary_hit,
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
 {
 	return ReGIR_grid_fill_evaluate_target_function<
-		ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource, 
+		ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm, ReGIR_GridFillTargetFunctionCosineTermLightSource,
 		ReGIR_GridFillPrimaryHitsTargetFunctionBSDF, ReGIR_GridFillSecondaryHitsTargetFunctionBSDF, ReGIR_GridFillTargetFunctionNeePlusPlusVisibilityEstimation>(
 			render_data, surface, primary_hit, sample_emission, sample_normal, sample_position, rng);
 }
 
-HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPRTRenderData& render_data,
 	unsigned int hash_grid_cell_index, bool primary_hit,
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
 {
@@ -106,7 +106,7 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPR
 		render_data, surface, primary_hit, sample_emission, sample_normal, sample_position, rng);
 }
 
-HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPRTRenderData& render_data, 
+HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPRTRenderData& render_data,
 	const ReGIRGridFillSurface& surface, bool primary_hit,
 	ColorRGB32F sample_emission, float3 sample_normal, float3 sample_position, Xorshift32Generator& rng)
 {
@@ -124,12 +124,12 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO)
 {
 	ColorRGB32F trash_radiance;
-	return ReGIR_shading_evaluate_target_function<withVisibility, withNeePlusPlusVisibilityEstimation>(render_data, 
+	return ReGIR_shading_evaluate_target_function<withVisibility, withNeePlusPlusVisibilityEstimation>(render_data,
 		shading_point, view_direction, shading_normal, geometric_normal,
-		last_hit_primitive_index, ray_payload, 
-		point_on_light, light_source_normal, 
-		light_emission, 
-		rng, trash_radiance, 
+		last_hit_primitive_index, ray_payload,
+		point_on_light, light_source_normal,
+		light_emission,
+		rng, trash_radiance,
 		incident_light_info);
 }
 
@@ -174,7 +174,7 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 			nee_plus_plus_context.shaded_point = shading_point;
 
 			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(const_cast<HIPRTRenderData&>(render_data), shadow_ray, distance_to_light, last_hit_primitive_index, nee_plus_plus_context, rng, ray_payload.bounce);
-		
+
 			target_function *= !in_shadow;
 			sample_radiance *= !in_shadow;
 		}
@@ -190,10 +190,10 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 		if (visibility_proba > 0.005f)
 			visibility_proba = 1.0f;
 		visibility_proba = hippt::max(0.1f, visibility_proba);
-			
+
 		target_function *= visibility_proba;
 	}
-	
+
 	return target_function;
 }
 

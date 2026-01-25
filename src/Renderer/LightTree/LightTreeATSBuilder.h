@@ -109,7 +109,7 @@ LightTreeATSBuilderDeviceData<DataContainer> LightTreeATSBuilder::compute_device
 	{
 		if (hippt::is_nan(m_nodes[i].orientation_data.theta_o) || hippt::is_inf(m_nodes[i].orientation_data.theta_o) ||
 			hippt::is_nan(m_nodes[i].orientation_data.axis.x) || hippt::is_nan(m_nodes[i].orientation_data.axis.y) || hippt::is_nan(m_nodes[i].orientation_data.axis.z) ||
-			hippt::is_inf(m_nodes[i].orientation_data.axis.x) || hippt::is_inf(m_nodes[i].orientation_data.axis.y) || hippt::is_inf(m_nodes[i].orientation_data.axis.z) )
+			hippt::is_inf(m_nodes[i].orientation_data.axis.x) || hippt::is_inf(m_nodes[i].orientation_data.axis.y) || hippt::is_inf(m_nodes[i].orientation_data.axis.z))
 			Debug::debugbreak();
 
 		device_data_out.nodes_device[i].axis = m_nodes[i].orientation_data.axis;

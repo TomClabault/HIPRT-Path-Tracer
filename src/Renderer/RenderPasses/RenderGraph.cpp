@@ -72,7 +72,7 @@ bool RenderGraph::pre_render_update(float delta_time)
 
 bool RenderGraph::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-		// Resetting the state of whether or not the render passes have been launched this frame or not
+	// Resetting the state of whether or not the render passes have been launched this frame or not
 	for (auto& name_to_render_pass : m_render_passes)
 	{
 		m_render_pass_launched_this_frame_yet[name_to_render_pass.second.get()] = false;
@@ -161,7 +161,7 @@ float RenderGraph::get_full_frame_time()
 	return frame_time_sum;
 }
 
-std::map<std::string, std::shared_ptr<GPUKernel>> RenderGraph::get_all_kernels() 
+std::map<std::string, std::shared_ptr<GPUKernel>> RenderGraph::get_all_kernels()
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> out;
 

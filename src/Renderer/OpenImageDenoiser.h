@@ -40,18 +40,18 @@ public:
 	/**
 	 * Denoises 'data_to_denoise' and uses the AOVs to improve denoising quality if provided
 	 * and if normals/albedo denoising is enabled on the denoiser.
-	 * 
+	 *
 	 * See set_use_albedo(bool use_albedo), set_denoise_albedo(bool denoise_normals_or_not), set_use_normals(bool use_normal), ...
 	 */
-	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, 
-				 std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov = nullptr, 
-				 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov = nullptr);
+	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
+		std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov = nullptr,
+		std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov = nullptr);
 	/**
 	 * Overload to denoise from non OpenGL Interop AOV buffers
 	 */
 	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
-				 std::shared_ptr<OrochiBuffer<float3>> normals_aov,
-				 std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov);
+		std::shared_ptr<OrochiBuffer<float3>> normals_aov,
+		std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov);
 	/**
 	 * Function used to copy the denoiser result after a call to denoise() to a given buffer
 	 */

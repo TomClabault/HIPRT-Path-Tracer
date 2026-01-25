@@ -3,28 +3,28 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-/**
- * This kernel is a playground for understanding what kind of optimizations the GPU compiler is able to do on variable usage ---> register pressure.
- * 
- * This allows the validation of simple intuitions such as: "The compiler optimizes away unused variables". 
- * 
- * But what if the variable is passed in a function that itself doesn't use it? Try it out: the compiler optimizes it away too.
- * Fun fact: the variable is also optimized if used but not initialized.
- * 
- * You get the idea.
- */
+ /**
+  * This kernel is a playground for understanding what kind of optimizations the GPU compiler is able to do on variable usage ---> register pressure.
+  *
+  * This allows the validation of simple intuitions such as: "The compiler optimizes away unused variables".
+  *
+  * But what if the variable is passed in a function that itself doesn't use it? Try it out: the compiler optimizes it away too.
+  * Fun fact: the variable is also optimized if used but not initialized.
+  *
+  * You get the idea.
+  */
 
-/**
- * Here's a rundown of all that I tested already:
- * 
- * - Unused variable: optimized away, no register cost.
- * - Variable passed to a function that doesn't use it: optimized away, no register cost.
- * - Precomputing a result in a temporary variable to avoid recomputing many times: no register cost. 
- *      This must be because using a temporary variable or not, the result of the calculation must be in
- *      a register anyway so it's only 1 register in both cases
- * - Two different variables equal to the same value: only using one register
- * - Variable declared in a structure. That structure is passed to a function that doesn't use the variable ---> variable optimized away.
- */
+  /**
+   * Here's a rundown of all that I tested already:
+   *
+   * - Unused variable: optimized away, no register cost.
+   * - Variable passed to a function that doesn't use it: optimized away, no register cost.
+   * - Precomputing a result in a temporary variable to avoid recomputing many times: no register cost.
+   *      This must be because using a temporary variable or not, the result of the calculation must be in
+   *      a register anyway so it's only 1 register in both cases
+   * - Two different variables equal to the same value: only using one register
+   * - Variable declared in a structure. That structure is passed to a function that doesn't use the variable ---> variable optimized away.
+   */
 
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Color.h"
@@ -34,12 +34,12 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 {
-    seed = (seed ^ 61) ^ (seed >> 16);
-    seed *= 9;
-    seed = seed ^ (seed >> 4);
-    seed *= 0x27d4eb2d;
-    seed = seed ^ (seed >> 15);
-    return seed;
+	seed = (seed ^ 61) ^ (seed >> 16);
+	seed *= 9;
+	seed = seed ^ (seed >> 4);
+	seed *= 0x27d4eb2d;
+	seed = seed ^ (seed >> 15);
+	return seed;
 }
 
 //struct DataStruct

@@ -33,7 +33,7 @@ public:
 	static void init_imgui(GLFWwindow* glfw_window);
 
 	/**
-  	 * Adds a tooltip to the last widget that auto wraps after 80 characters
+	 * Adds a tooltip to the last widget that auto wraps after 80 characters
 	 */
 	static void wrapping_tooltip(const std::string& text);
 	static void show_help_marker(const std::string& text, ImVec4 color = ImVec4(-1.0f, -1.0f, -1.0f, -1.0f));

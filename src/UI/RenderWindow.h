@@ -59,18 +59,18 @@ public:
 
 	/**
 	 * Translates the camera along its X and Y axis by translation_x and translation_y respectively.
-	 * 
+	 *
 	 * If scale_translation is true, translation_x and translation_y are scaled by the delta time of
 	 * the application and the camera speed before the translation is applied to the camera. You may
 	 * want to set scale_translation to false when translation the camera with a mouse pan and scale it
 	 * manually by a predefined arbitrary factor
- 	 */
+	 */
 	void update_renderer_view_translation(float translation_x, float translation_y, bool scale_translation);
 	void update_renderer_view_zoom(float offset, bool scale_delta_time);
 	void update_renderer_view_rotation(float offset_x, float offset_y);
 
 	/**
-	 * Returns true if the renderer is not sampling the image anymore. 
+	 * Returns true if the renderer is not sampling the image anymore.
 	 * This can be the case if all pixels have converged according to
 	 * adaptive sampling or if the maximum number of samples specified by
 	 * the user has been reached or if the maximum render time has been reached, etc...
@@ -80,26 +80,26 @@ public:
 	/**
 	 * Computes how long to wait between each viewport
 	 * refresh given the current render time
-	 * 
-	 * For a total current render time less than 1s, this returns 0.0f for example, 
+	 *
+	 * For a total current render time less than 1s, this returns 0.0f for example,
 	 * meaning that the viewport should always immediately be refreshed.
-	 * 
+	 *
 	 * ...
-	 * 
+	 *
 	 * See the function for the rest of the delays
 	 */
 	float get_viewport_refresh_delay_ms();
 	/**
 	 * Returns the time in milliseconds before the next viewport refresh when rendering offline.
-	 * 
+	 *
 	 * Returns 0.0f if not rendering offline (i.e. rendering realtime)
 	 */
 	float get_time_ms_before_viewport_refresh();
 	void reset_render();
 	void set_render_dirty(bool render_dirty);
 	/**
-	 * When offline rendering, the viewport isn't always refreshed at each frame because 
-	 * refreshing consumes resources 
+	 * When offline rendering, the viewport isn't always refreshed at each frame because
+	 * refreshing consumes resources
 	 */
 	void set_force_viewport_refresh(bool force_viewport_refresh);
 
@@ -131,10 +131,10 @@ public:
 	/**
 	 * Denoises the color framebuffer if necessary (according to ImGui
 	 * parameters such as denoiser sample skip, only denoise when rendering done, ...)
-	 * 
+	 *
 	 * Returns true if denoising occured and if the application needs to display the denoised data.
 	 * False otherwise.
-	 * 
+	 *
 	 * That return value can be usedf to decide whether or not we need to upload to denoised data
 	 * to OpenGL or not (we need to upload it if something new was denoised AND the application
 	 * wants to display the denoised data. This condition corresponds exactly to the returned value)
@@ -161,24 +161,24 @@ private:
 	 * Using the OpenGL interop buffers greatly improves the performance of the
 	 * denoiser but they seem to be a bit slower to manipulate from the path
 	 * tracing shaders --> a bit slower path tracing performance.
-	 * 
+	 *
 	 * This may only be true on AMD GPUs though where the OpenGL interop driver implementation
 	 * seems to be pretty bad
-	 * 
+	 *
 	 * This function should not be called directly. ::denoise() should be called
-	 * and it will take care of calling the right function depending on the value 
+	 * and it will take care of calling the right function depending on the value
 	 * of ApplicationSettings::denoiser_use_interop_buffers
 	 */
 	float denoise_interop_buffers();
 
 	/**
 	 * Denoises the renderer framebuffer not using the OpenGL interop buffers.
-	 * 
+	 *
 	 * This makes the denoising more expensive but increases path tracing performance
 	 * a bit (on AMD GPUs at least)
-	 * 
+	 *
 	 * This function should not be called directly. ::denoise() should be called
-	 * and it will take care of calling the right function depending on the value 
+	 * and it will take care of calling the right function depending on the value
 	 * of ApplicationSettings::denoiser_use_interop_buffers
 	 */
 	float denoise_no_interop_buffers();

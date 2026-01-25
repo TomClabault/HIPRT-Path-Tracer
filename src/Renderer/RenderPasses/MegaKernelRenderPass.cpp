@@ -15,7 +15,7 @@ const std::string MegaKernelRenderPass::MEGAKERNEL_KERNEL_REGIR_INTERACTION = "M
 
 MegaKernelRenderPass::MegaKernelRenderPass() : MegaKernelRenderPass(nullptr) {}
 MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer) : MegaKernelRenderPass(renderer, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME) {}
-MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, const std::string& name) : RenderPass(renderer, name) 
+MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, const std::string& name) : RenderPass(renderer, name)
 {
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Megakernel.h");
@@ -83,9 +83,9 @@ bool MegaKernelRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelC
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
-		
+
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
-	
+
 	void* launch_args[] = { &render_data };
 
 	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR && m_render_window->is_interacting())

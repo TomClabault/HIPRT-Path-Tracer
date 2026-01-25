@@ -8,7 +8,7 @@
 
 GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScanDecoupledLookback_BlockDescriptorInit(
 	ParallelPrefixScanDecoupledLookbackBlockDescriptor* block_descs,
-	unsigned int descriptor_count, 
+	unsigned int descriptor_count,
 	unsigned int* g_global_block_index_counter)
 {
 	int global_tid = blockIdx.x * blockDim.x + threadIdx.x;

@@ -8,8 +8,8 @@
 
 enum PathRussianRoulette
 {
-    MAX_THROUGHPUT,
-    ARNOLD_2014
+	MAX_THROUGHPUT,
+	ARNOLD_2014
 };
 
 #endif

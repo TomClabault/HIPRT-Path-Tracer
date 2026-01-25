@@ -3,20 +3,20 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
- #ifndef DEVICE_INCLUDES_HASH_GRID_H
- #define DEVICE_INCLUDES_HASH_GRID_H
+#ifndef DEVICE_INCLUDES_HASH_GRID_H
+#define DEVICE_INCLUDES_HASH_GRID_H
 
- #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
+#include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
 struct HashGrid
 {
 	static constexpr unsigned int UNDEFINED_CHECKSUM_OR_GRID_INDEX = 0xFFFFFFFF;
 
-    /**
+	/**
 	 * Returns true if the collision was resolved with success and the new hash
 	 * (or unchanged if there was no collision) is set in 'in_out_base_hash'
-	 * 
+	 *
 	 * Returns false if the given 'in_out_hash_cell_index' refers to a hash cell that hasn't been
 	 * allocated yet or if there was a collision but it couldn't be resolved and the collision resolution was
 	 * aborted because too many iterations
@@ -150,11 +150,11 @@ struct HashGrid
 		{
 			return (current_cell_index_collision_resolution + 1) % total_number_of_cells;
 		}
-		else if constexpr(collisionResolutionMode == REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING)
+		else if constexpr (collisionResolutionMode == REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING)
 		{
 			return wang_hash(current_cell_index_collision_resolution) % total_number_of_cells;
 		}
 	}
 };
 
- #endif
+#endif

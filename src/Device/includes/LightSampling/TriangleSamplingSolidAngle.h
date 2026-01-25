@@ -28,16 +28,16 @@ HIPRT_DEVICE float triangle_solid_angle(float3 vertex_A_worldspace, float3 verte
 }
 
 /**
- * Adapted from the implementation given with the paper from Cristoph Peters, 
+ * Adapted from the implementation given with the paper from Cristoph Peters,
  * [BRDF Importance Sampling for Polygonal Lights, 2021]
  */
 
-/*! This structure carries intermediate results that only need to be computed
-	once per polygon and shading point to take samples proportional to solid
-	angle. Sampling is performed by subdividing the convex polygon into
-	triangles as triangle fan around vertex 0 and then using our variant of
-	Arvo's method.*/
-struct solid_angle_triangle_t 
+ /*! This structure carries intermediate results that only need to be computed
+	 once per polygon and shading point to take samples proportional to solid
+	 angle. Sampling is performed by subdividing the convex polygon into
+	 triangles as triangle fan around vertex 0 and then using our variant of
+	 Arvo's method.*/
+struct solid_angle_triangle_t
 {
 	//! The number of vertices that form the polygon
 	unsigned int vertex_count;
@@ -167,7 +167,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling_intern
 HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(const HIPRTRenderData& render_data,
 	float3 vertex_A, float3 vertex_B, float3 vertex_C,
 	float3 shading_point, float3 view_direction, float3 shading_normal,
-	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material, 
+	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material,
 	Xorshift32Generator& rng)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
@@ -183,7 +183,7 @@ HIPRT_DEVICE solid_angle_triangle_t prepare_solid_angle_triangle_sampling(const 
 		render_data,
 		vertex_A, vertex_B, vertex_C,
 		shading_point, view_direction, shading_normal,
-		material, 
+		material,
 		// Not using LTCs, we don't care about the lobe parameter, just using diffuse as default
 		LTCLobe::DIFFUSE_LOBE);
 #endif
@@ -309,7 +309,7 @@ HIPRT_DEVICE float mix_fma(float x, float y, float a)
 	prepare_solid_angle_triangle_sampling()). Samples are distributed in
 	proportion to solid angle assuming uniform inputs.*/
 HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(const HIPRTRenderData& render_data,
-	float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal, 
+	float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal,
 	float3 shading_point, float3 view_direction, float3 shading_normal,
 	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
 	float& out_area_pdf,
@@ -320,9 +320,9 @@ HIPRT_DEVICE float3 sample_point_on_triangle_solid_angle_peters_2021(const HIPRT
 		shading_point, view_direction, shading_normal,
 		triangle_emission, material);
 
-	solid_angle_triangle_t polygon = prepare_solid_angle_triangle_sampling(render_data, 
-		vertex_A, vertex_B, vertex_C, 
-		shading_point, view_direction, shading_normal, 
+	solid_angle_triangle_t polygon = prepare_solid_angle_triangle_sampling(render_data,
+		vertex_A, vertex_B, vertex_C,
+		shading_point, view_direction, shading_normal,
 		ltc_lobe_probabilities, material,
 		rng);
 

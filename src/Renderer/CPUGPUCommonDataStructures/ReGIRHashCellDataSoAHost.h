@@ -14,7 +14,7 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRGridBufferSoAHost.h"
 
 template <template <typename> typename DataContainer>
-using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer, 
+using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
 	GenericAtomicType<int, DataContainer>,  // primitive index
 	float3, // world points
 	Octahedral24BitNormalPadded32b,  // world normals

@@ -40,7 +40,7 @@ struct GPUBakerConstants
 #ifndef __KERNELCC__
 	// Not using these on the GPU since they are std::string types: unavailable on the GPU
 	// and besides, we don't these paths on the GPU, only the texture sizes
-	static std::string get_GGX_conductor_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term, 
+	static std::string get_GGX_conductor_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term,
 		int texture_size_cos_theta = GPUBakerConstants::GGX_CONDUCTOR_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
 		int texture_size_roughness = GPUBakerConstants::GGX_CONDUCTOR_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS)
 	{
@@ -49,7 +49,7 @@ struct GPUBakerConstants
 		return "GGX_Conductor_" + flavor_string + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + ".hdr";
 	}
 
-	static std::string get_GGX_fresnel_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term, 
+	static std::string get_GGX_fresnel_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term,
 		int texture_size_cos_theta = GPUBakerConstants::GGX_FRESNEL_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
 		int texture_size_roughness = GPUBakerConstants::GGX_FRESNEL_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS,
 		int texture_size_ior = GPUBakerConstants::GGX_FRESNEL_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR)
@@ -59,7 +59,7 @@ struct GPUBakerConstants
 		return "GGX_Fresnel_" + flavor_string + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}
 
-	static std::string get_glossy_dielectric_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term, 
+	static std::string get_glossy_dielectric_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term,
 		int texture_size_cos_theta = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O,
 		int texture_size_roughness = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS,
 		int texture_size_ior = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR)
@@ -69,7 +69,7 @@ struct GPUBakerConstants
 		return "Glossy_Ess_" + flavor_string + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}
 
-	static std::string get_GGX_glass_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term, 
+	static std::string get_GGX_glass_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term,
 		int texture_size_cos_theta = GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
 		int texture_size_roughness = GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS,
 		int texture_size_ior = GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR)
@@ -79,7 +79,7 @@ struct GPUBakerConstants
 		return "GGX_Glass_Ess_" + flavor_string + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}
 
-	static std::string get_GGX_thin_glass_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term, 
+	static std::string get_GGX_thin_glass_directional_albedo_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term,
 		int texture_size_cos_theta = GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
 		int texture_size_roughness = GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS,
 		int texture_size_ior = GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR)
@@ -89,13 +89,13 @@ struct GPUBakerConstants
 		return "GGX_Thin_Glass_Ess_" + flavor_string + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}
 
-	static std::string get_GGX_glass_directional_albedo_inv_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term, 
-		int texture_size_cos_theta = GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O, 
-		int texture_size_roughness = GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS, 
+	static std::string get_GGX_glass_directional_albedo_inv_texture_filename(GGXMaskingShadowingFlavor masking_shadowing_term,
+		int texture_size_cos_theta = GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
+		int texture_size_roughness = GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS,
 		int texture_size_ior = GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR)
 	{
 		std::string flavor_string = masking_shadowing_term == GGXMaskingShadowingFlavor::HeightCorrelated ? "Correlated_" : "Uncorrelated_";
-		
+
 		return "inv_GGX_Glass_Ess_" + flavor_string + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}
 #endif

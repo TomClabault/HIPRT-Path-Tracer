@@ -43,12 +43,12 @@ struct RayPayload
 	// The accumulated roughness is computed as the maximum between the current accumulated roughness
 	// and the roughness of the lobe that was sampled to get the next bounce direction
 	float accumulated_roughness = 0.0f;
-	
+
 	// Material of the current hit
 	DeviceUnpackedEffectiveMaterial material;
 
 	RayVolumeState volume_state;
-	
+
 	HIPRT_HOST_DEVICE void accumulate_roughness(BSDFIncidentLightInfo sampled_lobe)
 	{
 		switch (sampled_lobe)
@@ -89,7 +89,7 @@ struct RayPayload
 		case LIGHT_DIRECTION_NOT_SAMPLED_FROM_BSDF:
 			break;
 
-		default: 
+		default:
 			break;
 		}
 	}

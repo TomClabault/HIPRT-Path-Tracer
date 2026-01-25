@@ -18,8 +18,8 @@ public:
 		INT
 	};
 
-	constexpr DisplayTextureType() : m_value(Value::FLOAT3) { }
-	constexpr DisplayTextureType(Value val) : m_value(val) { }
+	constexpr DisplayTextureType() : m_value(Value::FLOAT3) {}
+	constexpr DisplayTextureType(Value val) : m_value(val) {}
 
 	GLint get_gl_internal_format()
 	{

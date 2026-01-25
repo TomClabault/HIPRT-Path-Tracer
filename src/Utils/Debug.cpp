@@ -10,10 +10,10 @@
 void Debug::debugbreak()
 {
 #if defined( _WIN32 )
-    __debugbreak();
+	__debugbreak();
 #elif defined( __GNUC__ )
-    raise(SIGTRAP);
+	raise(SIGTRAP);
 #else
-    ;
+	;
 #endif
 }

@@ -9,7 +9,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-GPUBaker::GPUBaker(std::shared_ptr<GPURenderer> renderer) : m_renderer(renderer) 
+GPUBaker::GPUBaker(std::shared_ptr<GPURenderer> renderer) : m_renderer(renderer)
 {
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_bake_stream));
 	m_compiler_priority_mutex = std::make_shared<std::mutex>();

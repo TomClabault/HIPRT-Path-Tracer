@@ -5,7 +5,7 @@
 
 #ifndef DEVICE_KERNELS_REGIR_REPRESENTATIVE_H
 #define DEVICE_KERNELS_REGIR_REPRESENTATIVE_H
- 
+
 #include "Device/includes/ReSTIR/ReGIR/GridFillSurface.h"
 #include "Device/includes/ReSTIR/ReGIR/HashGridCellData.h"
 

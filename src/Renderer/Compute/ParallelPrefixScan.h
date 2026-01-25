@@ -9,10 +9,10 @@
 #include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 
-/**
- * Reference: [GPU Gems 3, Chapter 39. Parallel Prefix Sum (Scan) with CUDA]
- * https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
- */
+ /**
+  * Reference: [GPU Gems 3, Chapter 39. Parallel Prefix Sum (Scan) with CUDA]
+  * https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
+  */
 class ParallelPrefixScan
 {
 public:
@@ -32,15 +32,15 @@ public:
 
 private:
 	OrochiBuffer<unsigned int> m_input_buffer;
-	
+
 	/**
 	 * If the input data is larger than a block size, we need to store the sums of each
 	 * chunk of the input and these sums are going to be used to reconstruct the full output
-	 * 
+	 *
 	 * The m_level_0_block_sums buffer stores the sums of each chunk of size PARALLEL_PREFIX_SCAN_CHUNK_SIZE
 	 * and is itself going to be scanned. If this buffer is larger than a block size as well,
 	 * then we're going to need to store its sums as well, in m_level_1_block_sums, and so on...
-	 * 
+	 *
 	 * 3 levels are supported at most which is enough for 2^32 elements input (about 4 billion elements)
 	 */
 	OrochiBuffer<unsigned int> m_level_0_block_sums;

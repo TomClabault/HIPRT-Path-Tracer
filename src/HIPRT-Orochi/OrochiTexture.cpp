@@ -100,11 +100,11 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w,
 		oroChannelFormatKindUnsigned);
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
-	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), 
-		image.width * channels * sizeof(unsigned char), 
-		image.width * sizeof(unsigned char) * channels, 
+	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(),
+		image.width * channels * sizeof(unsigned char),
+		image.width * sizeof(unsigned char) * channels,
 		image.height, oroMemcpyHostToDevice));
-	
+
 	create_texture_from_array(filtering_mode, address_mode, true);
 }
 
@@ -114,7 +114,7 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 	if (channels == 3 || channels > 4)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
-		
+
 		return;
 	}
 
@@ -133,12 +133,12 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 	int bits_channel_z = (channels >= 3) ? 32 : 0; // Third channel (e.g., Blue)
 	int bits_channel_w = (channels == 4) ? 32 : 0; // Fourth channel (e.g., Alpha)
 	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w,
-																   oroChannelFormatKindFloat);
+		oroChannelFormatKindFloat);
 
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
-	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), 
+	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(),
 		image.width * channels * sizeof(float),
-		image.width * sizeof(float) * channels, 
+		image.width * sizeof(float) * channels,
 		image.height, oroMemcpyHostToDevice));
 
 	create_texture_from_array(filtering_mode, address_mode, false);

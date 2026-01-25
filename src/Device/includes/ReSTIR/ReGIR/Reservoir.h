@@ -23,7 +23,7 @@ struct ReGIRReservoir
 {
 	static constexpr float VISIBILITY_REUSE_KILLED_UCW = -42.0f;
 	static constexpr float UNDEFINED_UCW = -4242.0f;
-	
+
 	HIPRT_DEVICE bool stream_sample_raw(float mis_weight, float target_function, float source_pdf, int emissive_triangle_global_index, float3 point_on_light, Xorshift32Generator& rng)
 	{
 		float resampling_weight = mis_weight * target_function / source_pdf;

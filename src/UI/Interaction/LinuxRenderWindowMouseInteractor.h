@@ -13,13 +13,13 @@ struct GLFWwindow;
 class LinuxRenderWindowMouseInteractor : public RenderWindowMouseInteractor
 {
 public:
-    void set_callbacks(GLFWwindow* window);
+	void set_callbacks(GLFWwindow* window);
 
 private:
-    static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-    static void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos);
+	static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+	static void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos);
 
-    bool render_window_hovered_on_click = false;
+	bool render_window_hovered_on_click = false;
 };
 
 #endif

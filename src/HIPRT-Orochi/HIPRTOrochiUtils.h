@@ -16,9 +16,9 @@
 #define OROCHI_RTC_CHECK_ERROR( error ) ( orochi_rtc_check_error( error, __FILE__, __LINE__ ) )
 #define HIPRT_CHECK_ERROR( error ) ( hiprt_check_error( error, __FILE__, __LINE__ ) )
 
-// This flag isn't defined in Orochi for some reasons ?
-// It allows sampling textures with normalized coordinates in [0, 1[ instead of 
-// [0, width[
+ // This flag isn't defined in Orochi for some reasons ?
+ // It allows sampling textures with normalized coordinates in [0, 1[ instead of 
+ // [0, width[
 #define ORO_TRSF_NORMALIZED_COORDINATES 0x02
 
 namespace HIPPTOrochiUtils
@@ -26,7 +26,7 @@ namespace HIPPTOrochiUtils
 	/*
 	 * Reads a given file, outputs its code in 'sourceCode' and a list of the names
 	 * of the files included in the source file by #include directives in 'includes'
-	 * 
+	 *
 	 * If 'includes' is nullptr, then no include names will be returned
 	 */
 	bool read_source_code(const std::string& path, std::string& sourceCode, std::vector<std::string>* includes = nullptr);

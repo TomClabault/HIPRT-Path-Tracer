@@ -11,9 +11,9 @@
 
 #include "HostDeviceCommon/Maths/Math.h"
 
-/**
- * Context passed when tracing shadow rays 
- */
+ /**
+  * Context passed when tracing shadow rays
+  */
 struct NEEPlusPlusContext
 {
 	float3 shaded_point = make_float3(0.0f, 0.0f, 0.0f);
@@ -47,7 +47,7 @@ struct NEEPlusPlusEntry
 
 /**
  * Structure that contains the data for the implementation of NEE++.
- * 
+ *
  * Reference:
  * [1] [Next Event Estimation++: Visibility Mapping for Efficient Light Transport Simulation]
  */
@@ -147,7 +147,7 @@ struct NEEPlusPlusDevice
 		if (hash_grid_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// One of the two points was outside the scene, cannot cache this
 			return;
-		
+
 		if (read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index) >= 200)
 			return;
 
@@ -169,9 +169,9 @@ struct NEEPlusPlusDevice
 	}
 
 	/**
-	 * Returns the estimated probability that a ray between the two given world points 
+	 * Returns the estimated probability that a ray between the two given world points
 	 * is going to be unoccluded (i.e. the two points are mutually visible)
-	 * 
+	 *
 	 * Returns the index in the visibility matrix of the voxel-to-voxel correspondance of the
 	 * two given points. This value can then be passed as argument to 'accumulate_visibility'
 	 * to save a little bit of computations (otherwise, 'accumulate_visibility' would have recomputed
@@ -184,7 +184,7 @@ struct NEEPlusPlusDevice
 		if (out_hash_grid_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// One of the two points was outside the scene, cannot read the cache for this
 			// 
-	 		// Returning 1.0f indicating that the two points are not occluded such that the caller
+			// Returning 1.0f indicating that the two points are not occluded such that the caller
 			// tests for a shadow ray
 			return 1.0f;
 
@@ -198,7 +198,7 @@ struct NEEPlusPlusDevice
 		else
 		{
 			unsigned int unoccluded_count = read_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(out_hash_grid_index);
-			
+
 			float unoccluded_proba = unoccluded_count / static_cast<float>(out_cell_total_accumulation_count);
 			if (unoccluded_proba >= m_confidence_threshold)
 				return 1.0f;
@@ -259,7 +259,7 @@ private:
 
 	/**
 	 * Increments the packed value in the packed buffer 'bufferName' at the given matrix index
-	 * 
+	 *
 	 * There is no protection against overflows in this function
 	 */
 	template <unsigned int bufferName>

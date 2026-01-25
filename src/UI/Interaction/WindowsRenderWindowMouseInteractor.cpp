@@ -106,7 +106,7 @@ void WindowsRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* 
 
 void WindowsRenderWindowMouseInteractor::set_callbacks(GLFWwindow* window)
 {
-    glfwSetCursorPosCallback(window, WindowsRenderWindowMouseInteractor::glfw_mouse_cursor_callback);
-    glfwSetMouseButtonCallback(window, WindowsRenderWindowMouseInteractor::glfw_mouse_button_callback);
+	glfwSetCursorPosCallback(window, WindowsRenderWindowMouseInteractor::glfw_mouse_cursor_callback);
+	glfwSetMouseButtonCallback(window, WindowsRenderWindowMouseInteractor::glfw_mouse_button_callback);
 	glfwSetScrollCallback(window, RenderWindowMouseInteractor::glfw_mouse_scroll_callback);
 }

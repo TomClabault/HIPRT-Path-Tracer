@@ -12,13 +12,13 @@
 
 #include "Scene/SceneParser.h"
 
-/**
- * Contains an alias table for sampling emissive *meshes* in the scene according 
- * to their emissive power. Textured emitter are not considered
- * 
- * This also contains the alias tables of all meshes in a single linear buffer which can
- * be used to sample an emissive triangle within a mesh according to its power.
- */
+ /**
+  * Contains an alias table for sampling emissive *meshes* in the scene according
+  * to their emissive power. Textured emitter are not considered
+  *
+  * This also contains the alias tables of all meshes in a single linear buffer which can
+  * be used to sample an emissive triangle within a mesh according to its power.
+  */
 template <template <typename> typename DataContainer>
 struct EmissiveMeshesAliasTablesHost
 {
@@ -78,7 +78,7 @@ struct EmissiveMeshesAliasTablesHost
 		{
 			std::copy(emissive_meshes[i].alias_probas.begin(), emissive_meshes[i].alias_probas.begin() + emissive_meshes[i].emissive_triangle_count, all_alias_tables_probas_staging.begin() + cumulative_start_index);
 			std::copy(emissive_meshes[i].alias_aliases.begin(), emissive_meshes[i].alias_aliases.begin() + emissive_meshes[i].emissive_triangle_count, all_alias_tables_aliases_staging.begin() + cumulative_start_index);
-			
+
 			cumulative_start_index += emissive_meshes[i].emissive_triangle_count;
 		}
 

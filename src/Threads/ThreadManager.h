@@ -26,7 +26,7 @@ extern ImGuiLogger g_imgui_logger;
 /**
  * Singleton class so that threads are accessible everywhere to be .join()
  * whenever we want without having to pass them around in function calls etc...
- * 
+ *
  * This class works by creating threads and storing them in std::vectors.
  * Which std::vector is the thread going to be stored in depends on the key that is given.
  * Keys are basically used to give some kind of "name" to threads. The main use for that
@@ -236,13 +236,13 @@ private:
 		else
 		{
 			// Starting a thread that will wait for the dependencies before calling the given function
-			m_threads_map[thread_key_to_start].push_back(std::thread([thread_key_to_start, dependencies, function, args...]() 
-			{
-				wait_for_dependencies(dependencies);
+			m_threads_map[thread_key_to_start].push_back(std::thread([thread_key_to_start, dependencies, function, args...]()
+				{
+					wait_for_dependencies(dependencies);
 
-				std::thread function_thread(function, args...);
-				function_thread.join();
-			}));
+					std::thread function_thread(function, args...);
+					function_thread.join();
+				}));
 		}
 	}
 

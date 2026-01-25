@@ -15,14 +15,14 @@ struct SGLobe
 	float  logAmplitude;
 };
 
- /**
- * Adapted from: https://github.com/yusuketokuyoshi/VSGL
- */
+/**
+* Adapted from: https://github.com/yusuketokuyoshi/VSGL
+*/
 
 #define SG_LIGHT_SHARPNESS_MAX 2199023255552.0f
 
- // A dominant visible microfacet normal for the GGX NDF.
- // This normal vector is given by sampling the center of the spherical-cap VNDF [Dupuy and Benyoub 2023 "Sampling Visible GGX Normals with Spherical Caps"].
+// A dominant visible microfacet normal for the GGX NDF.
+// This normal vector is given by sampling the center of the spherical-cap VNDF [Dupuy and Benyoub 2023 "Sampling Visible GGX Normals with Spherical Caps"].
 HIPRT_DEVICE static float3 GGX_dominant_visible_normal(const float3 wi, const float2 roughness)
 {
 	// Numerically stable implementation for wi.x < 0

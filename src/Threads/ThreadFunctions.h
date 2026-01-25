@@ -20,7 +20,7 @@ public:
 	/**
 	 * Scans through the emissive meshes of the scene and adds the triangle of those emissive meshes
 	 * to the parsed_scene.emissive_triangles_indices field of the scene
-	 * 
+	 *
 	 * This function all precomputes the AB and AC edges of the triangles of the scenes for light sampling
 	 */
 	static void load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene);
@@ -31,7 +31,7 @@ public:
 
 	/**
 	 * Reads 'wanted_channel_count' channels of a 32 bit HDR image from 'filepath' and stores it in 'hdr_image_out'.
-	 * 
+	 *
 	 * If flip_y is true, the image will be postprocessed such that its origin is in the bottom left corner
 	 * (as used by OpenGL or CUDA for example)
 	 */

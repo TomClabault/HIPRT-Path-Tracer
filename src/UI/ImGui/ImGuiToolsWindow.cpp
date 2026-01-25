@@ -133,7 +133,7 @@ void ImGuiToolsWindow::draw_GGX_conductors()
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
 			output_filename = GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(ggx_dir_albedo_settings.masking_shadowing_term,
-				ggx_dir_albedo_settings.texture_size_cos_theta, 
+				ggx_dir_albedo_settings.texture_size_cos_theta,
 				ggx_dir_albedo_settings.texture_size_roughness);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
@@ -192,8 +192,8 @@ void ImGuiToolsWindow::draw_GGX_fresnel()
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
 			output_filename = GPUBakerConstants::get_GGX_fresnel_directional_albedo_texture_filename(ggx_fresnel_dir_albedo_settings.masking_shadowing_term,
-				ggx_fresnel_dir_albedo_settings.texture_size_cos_theta, 
-				ggx_fresnel_dir_albedo_settings.texture_size_roughness, 
+				ggx_fresnel_dir_albedo_settings.texture_size_cos_theta,
+				ggx_fresnel_dir_albedo_settings.texture_size_roughness,
 				ggx_fresnel_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
@@ -408,7 +408,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 	{
 		ImGui::TreePush("Image difference tree");
 
-		const char* filters[] = {"*.png", "*.jpg"};
+		const char* filters[] = { "*.png", "*.jpg" };
 
 		static float error_value = 1.0f;
 		static std::string status_text = "";
@@ -427,7 +427,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		if (reference_image_path != "")
 		{
 			ImGui::TreePush("Reference image text tree");
-			
+
 			if (ImGui::Button("C"))
 				Utils::copy_image_to_clipboard(reference_image);
 			ImGuiRenderer::add_tooltip("Copies the image to the clipboard");
@@ -753,26 +753,26 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			float error;
 			switch (error_metric_type)
 			{
-				case 0:
-					// MSE
-					error = Utils::compute_image_mse(ref_image, current_image);
-					break;
+			case 0:
+				// MSE
+				error = Utils::compute_image_mse(ref_image, current_image);
+				break;
 
-				case 1:
-					// RMSE
-					error = Utils::compute_image_rmse(ref_image, current_image);
-					break;
+			case 1:
+				// RMSE
+				error = Utils::compute_image_rmse(ref_image, current_image);
+				break;
 
-				case 2:
-				{
-					// FLIP
-					float* error_map = nullptr;
-					error = Utils::compute_image_weighted_median_FLIP(ref_image, current_image, &error_map);
+			case 2:
+			{
+				// FLIP
+				float* error_map = nullptr;
+				error = Utils::compute_image_weighted_median_FLIP(ref_image, current_image, &error_map);
 
-					free(error_map);
+				free(error_map);
 
-					break;
-				}
+				break;
+			}
 			default:
 				break;
 			}

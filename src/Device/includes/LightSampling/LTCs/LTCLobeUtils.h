@@ -2,7 +2,7 @@
  * Copyright 2025 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
- 
+
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LTCS_LTC_LOBE_UTILS_H 
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_LTCS_LTC_LOBE_UTILS_H
 
@@ -19,7 +19,7 @@ HIPRT_DEVICE float average_fresnel_fit(float NoV, float roughness, float relativ
 	constexpr float p1 = -10.07177f;
 	constexpr float p2 = -14.93870f;
 	constexpr float p3 = -0.26892f;
-		
+
 	float F0 = hippt::square((relative_eta - 1.0f) / (relative_eta + 1.0f));
 
 	float k = c0 * roughness * roughness;
@@ -58,7 +58,7 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 			vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
 			shading_point, view_direction, shading_normal,
 			material, LTCLobe::SPECULAR_LOBE) * triangle_emission.luminance();
-		
+
 		specular_weight = (1.0f - material.metallic) * material.specular * specular_radiance_triangle_ltc;
 	}
 
@@ -66,7 +66,7 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 		vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace,
 		shading_point, view_direction, shading_normal,
 		material, LTCLobe::DIFFUSE_LOBE) * triangle_emission.luminance();
-	
+
 	float diffuse_weight = material.base_color.luminance() * (1.0f - average_fresnel_fit(hippt::dot(view_direction, shading_normal), material.roughness, material.ior)) * diffuse_radiance_triangle_ltc;
 
 	if (coat_weight + metallic_weight + specular_weight + diffuse_weight == 0.0f)

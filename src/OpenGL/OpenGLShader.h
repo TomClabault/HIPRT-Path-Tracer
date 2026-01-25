@@ -24,7 +24,7 @@ public:
 
 	OpenGLShader() : m_compiled_shader(-1), m_shader_type(ShaderType::UNDEFINED) {}
 	/**
-	 * If given, macros should be entire strings (with the '#') like "#define MY_MACRO", #if X, #endif, ... 
+	 * If given, macros should be entire strings (with the '#') like "#define MY_MACRO", #if X, #endif, ...
 	 */
 	OpenGLShader(const std::string& source_code, ShaderType type, const std::vector<std::string>& macros = std::vector<std::string>());
 	OpenGLShader(const char* filepath, ShaderType type, const std::vector<std::string>& macros = std::vector<std::string>());

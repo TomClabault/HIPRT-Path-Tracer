@@ -37,9 +37,9 @@ public:
 	std::string find_in_include_directories(const std::string& include_name, const std::vector<std::string>& include_directories);
 
 	/**
-	 * Reads the given file (include_file_path) and fills the 'output_includes' parameters with the includes (#include "XXX" pr #include <XXX>) 
+	 * Reads the given file (include_file_path) and fills the 'output_includes' parameters with the includes (#include "XXX" pr #include <XXX>)
 	 * used by that file.
-	 * 
+	 *
 	 * Only includes that can be found in the given 'include_directories' will be added to the output parameter, others will be
 	 * ignored.
 	 */
@@ -75,7 +75,7 @@ public:
 
 	/**
 	 * Returns a list of the option macro names used by the given kernel.
-	 * 
+	 *
 	 * For example, this function will return {"DirectLightNEEEstimator", "EnvmapSamplingStrategy"}
 	 * if the given kernel uses this two macros (if the kernel has some "#if == DirectLightNEEEstimator", "#ifdef DirectLightNEEEstimator"
 	 * directives or similar in its code)
@@ -85,24 +85,24 @@ public:
 	/**
 	 * For background kernel precompilation, threads compiling kernels actually open the kernel
 	 * files on the disk to read the macros used by the kernels.
-	 * 
+	 *
 	 * If the application is closed while these files are being opened, this can SEGFAULT.
-	 * 
+	 *
 	 * This function blocks the calling thread until all threads have parsed the kernel files and
 	 * thus avoids a crash.
-	 * 
+	 *
 	 * This function is mostly called when exiting the Renderwindow
 	 */
 	void wait_compiler_file_operations();
 
 	/**
 	 * Possible values for `override_usage`:
-	 * 
-	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_OFF			
+	 *
+	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_OFF
 	 *		--> The shader compiler will be forced *not* to use the shader cache
-	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_ON      
+	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_ON
 	 *		--> The shader compiler will be forced to use the shader cache
-	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_DEFAULT 
+	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_DEFAULT
 	 *		--> The shader compiler will use whatever 'use_cache' parameter is passed to 'GPUKernelCompiler::compile_kernel()'
 	 */
 	void set_shader_cache_usage_override(ShaderCacheUsageOverride override_usage);
@@ -128,7 +128,7 @@ private:
 	// read kernel files at the same time: this can cause a "Too many files open" error
 	// 
 	// Limiting to a number of maximum threads at a time
-	std::counting_semaphore<> m_read_macros_semaphore { 1 };
+	std::counting_semaphore<> m_read_macros_semaphore{ 1 };
 	std::condition_variable m_read_macros_cv;
 
 	// Counters for logging the progress of background kernel precompilation

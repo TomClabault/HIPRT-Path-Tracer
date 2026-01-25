@@ -29,9 +29,9 @@ public:
 	/**
 	 * A filename with a time stamp, the render resolution and the
 	 * number of samples is automatically generated:
-	 * 
+	 *
 	 * 03.17.2024 1024sp @ 1280x720.png
-	 * 
+	 *
 	 * for example
 	 */
 	void write_to_png();

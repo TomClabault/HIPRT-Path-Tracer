@@ -80,12 +80,12 @@ public:
 	void load_ltc_textures();
 
 	/**
- 	 * Initializes the precomputed texture used for GGX energy conservation
+	 * Initializes the precomputed texture used for GGX energy conservation
 	 */
 	void load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode = hipFilterModeLinear);
 
 	/**
-	 * Initializes the precomputed texture used for glossy dielectrics 
+	 * Initializes the precomputed texture used for glossy dielectrics
 	 * energy conservation
 	 */
 	void load_glossy_dielectric_energy_compensation_textures(hipTextureFilterMode filtering_mode = hipFilterModePoint);
@@ -119,7 +119,7 @@ public:
 
 	/**
 	 * Steps all the animations of the renderer one step forward
-	 * 
+	 *
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
 	 * call to step_animations()
 	 */
@@ -186,7 +186,7 @@ public:
 
 	/**
 	 * Switches to using OpenGL interop buffers or classical non-interop CUDA/HIP buffers for the denoiser AOVs.
-	 * 
+	 *
 	 * OpenGL Interop buffers seems to be slower and slow down the path tracing kernel on AMD for some reasons.
 	 * Using non-interop buffers thus increases rendering performance but tanks denoising performance
 	 */
@@ -194,7 +194,7 @@ public:
 
 	/**
 	 * Returns the framebuffer that should be used for displaying to the viewport
-	 * 
+	 *
 	 * At the time of writing this comment, this is either the default framebuffer where the
 	 * ray colors are accumulated or the GMoN result framebuffer where the median of means are
 	 * computed for fireflies reduction
@@ -254,7 +254,7 @@ public:
 	 */
 	void update_all_materials(std::vector<CPUMaterial>& materials);
 	/**
-	 * Updates only the material with index 'material_index' and uploads it to the GPU 
+	 * Updates only the material with index 'material_index' and uploads it to the GPU
 	 */
 	void update_one_material(CPUMaterial& material, int material_index);
 
@@ -289,14 +289,14 @@ public:
 
 	/**
 	 * Returns a map of all the kernels of the renderer
-	 * 
+	 *
 	 * The map keys are the kernel name
 	 * The map values are the kernel themselves
 	 */
 	std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels();
 	/**
 	 * Returns a map of all the kernels of the renderer that trace rays (shadow rays, bounce rays, ...)
-	 * 
+	 *
 	 * This is used in ImGui in the performance settings panel where we can adjust the
 	 * amount of shared memory used for the BVH traversal. Because this is only useful for
 	 * kernels that trace rays, we want a function that returns only the kernels that trace rays

@@ -11,44 +11,44 @@
 
 struct ColorRGBA32F
 {
-    HIPRT_DEVICE ColorRGBA32F() { r = 0.0f; g = 0.0f; b = 0.0f; a = 1.0f; }
-    HIPRT_DEVICE explicit ColorRGBA32F(float value) { r = value; g = value; b = value; a = 1.0f; }
-    HIPRT_DEVICE ColorRGBA32F(float _r, float _g, float _b, float _a) { r = _r; g = _g; b = _b; a = _a; }
-    HIPRT_DEVICE explicit ColorRGBA32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; a = vec.w; }
+	HIPRT_DEVICE ColorRGBA32F() { r = 0.0f; g = 0.0f; b = 0.0f; a = 1.0f; }
+	HIPRT_DEVICE explicit ColorRGBA32F(float value) { r = value; g = value; b = value; a = 1.0f; }
+	HIPRT_DEVICE ColorRGBA32F(float _r, float _g, float _b, float _a) { r = _r; g = _g; b = _b; a = _a; }
+	HIPRT_DEVICE explicit ColorRGBA32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; a = vec.w; }
 
-    HIPRT_DEVICE void operator+=(const ColorRGBA32F& other) { r += other.r; g += other.g; b += other.b; a += other.a; }
-    HIPRT_DEVICE void operator-=(const ColorRGBA32F& other) { r -= other.r; g -= other.g; b -= other.b; a -= other.a; }
-    HIPRT_DEVICE void operator*=(const ColorRGBA32F& other) { r *= other.r; g *= other.g; b *= other.b; a *= other.a; }
-    HIPRT_DEVICE void operator*=(float k) { r *= k; g *= k; b *= k; a *= k; }
-    HIPRT_DEVICE void operator/=(const ColorRGBA32F& other) { r /= other.r; g /= other.g; b /= other.b; a /= other.a; }
-    HIPRT_DEVICE void operator/=(float k) { r /= k; g /= k; b /= k; a /= k; }
-    HIPRT_DEVICE bool operator!=(const ColorRGBA32F& other) { return r != other.r || g != other.g || b != other.g || a != other.a; }
+	HIPRT_DEVICE void operator+=(const ColorRGBA32F& other) { r += other.r; g += other.g; b += other.b; a += other.a; }
+	HIPRT_DEVICE void operator-=(const ColorRGBA32F& other) { r -= other.r; g -= other.g; b -= other.b; a -= other.a; }
+	HIPRT_DEVICE void operator*=(const ColorRGBA32F& other) { r *= other.r; g *= other.g; b *= other.b; a *= other.a; }
+	HIPRT_DEVICE void operator*=(float k) { r *= k; g *= k; b *= k; a *= k; }
+	HIPRT_DEVICE void operator/=(const ColorRGBA32F& other) { r /= other.r; g /= other.g; b /= other.b; a /= other.a; }
+	HIPRT_DEVICE void operator/=(float k) { r /= k; g /= k; b /= k; a /= k; }
+	HIPRT_DEVICE bool operator!=(const ColorRGBA32F& other) { return r != other.r || g != other.g || b != other.g || a != other.a; }
 
-    HIPRT_DEVICE float length() const { return hippt::sqrt(this->length2()); }
-    HIPRT_DEVICE float length2() const { return r * r + g * g + b * b + a * a; }
-    HIPRT_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
-    HIPRT_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); a = hippt::clamp(min, max, a); }
-    HIPRT_DEVICE ColorRGBA32F clamped(float min, float max) { return ColorRGBA32F(hippt::clamp(min, max, r), g = hippt::clamp(min, max, g), b = hippt::clamp(min, max, b), a = hippt::clamp(min, max, a)); }
-    HIPRT_DEVICE bool has_nan() const { return hippt::is_nan(r) || hippt::is_nan(g) || hippt::is_nan(b) || hippt::is_nan(a); }
-    HIPRT_DEVICE bool has_inf() const { return hippt::is_inf(r) || hippt::is_inf(g) || hippt::is_inf(b) || hippt::is_inf(a); }
-    HIPRT_DEVICE bool is_black() const { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
-    HIPRT_DEVICE bool is_white() const { return r == 1.0f && g == 1.0f && b == 1.0f; }
+	HIPRT_DEVICE float length() const { return hippt::sqrt(this->length2()); }
+	HIPRT_DEVICE float length2() const { return r * r + g * g + b * b + a * a; }
+	HIPRT_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
+	HIPRT_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); a = hippt::clamp(min, max, a); }
+	HIPRT_DEVICE ColorRGBA32F clamped(float min, float max) { return ColorRGBA32F(hippt::clamp(min, max, r), g = hippt::clamp(min, max, g), b = hippt::clamp(min, max, b), a = hippt::clamp(min, max, a)); }
+	HIPRT_DEVICE bool has_nan() const { return hippt::is_nan(r) || hippt::is_nan(g) || hippt::is_nan(b) || hippt::is_nan(a); }
+	HIPRT_DEVICE bool has_inf() const { return hippt::is_inf(r) || hippt::is_inf(g) || hippt::is_inf(b) || hippt::is_inf(a); }
+	HIPRT_DEVICE bool is_black() const { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
+	HIPRT_DEVICE bool is_white() const { return r == 1.0f && g == 1.0f && b == 1.0f; }
 
 
-    HIPRT_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, hippt::max(b, a))); }
-    HIPRT_DEVICE float min_component() const { return hippt::min(r, hippt::min(g, hippt::min(b, a))); }
-    HIPRT_DEVICE ColorRGBA32F normalized() const { float length = hippt::sqrt(r * r + g * g + b * b); return ColorRGBA32F(r / length, g / length, b / length, /* not normalizing alpha */ a); }
+	HIPRT_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, hippt::max(b, a))); }
+	HIPRT_DEVICE float min_component() const { return hippt::min(r, hippt::min(g, hippt::min(b, a))); }
+	HIPRT_DEVICE ColorRGBA32F normalized() const { float length = hippt::sqrt(r * r + g * g + b * b); return ColorRGBA32F(r / length, g / length, b / length, /* not normalizing alpha */ a); }
 
-    HIPRT_DEVICE ColorRGBA32F abs() { return ColorRGBA32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b), hippt::abs(this->a)); }
-    HIPRT_DEVICE void max(const ColorRGBA32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); this->a = hippt::max(this->a, maxer.a); }
-    HIPRT_DEVICE ColorRGBA32F maxed(const ColorRGBA32F& maxer) { return ColorRGBA32F(hippt::max(this->r, maxer.r), hippt::max(this->g, maxer.g), hippt::max(this->b, maxer.b), hippt::max(this->a, maxer.a)); }
-    HIPRT_DEVICE static ColorRGBA32F max(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b), hippt::max(a.a, b.a)); }
-    HIPRT_DEVICE static ColorRGBA32F min(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b), hippt::min(a.a, b.a)); }
+	HIPRT_DEVICE ColorRGBA32F abs() { return ColorRGBA32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b), hippt::abs(this->a)); }
+	HIPRT_DEVICE void max(const ColorRGBA32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); this->a = hippt::max(this->a, maxer.a); }
+	HIPRT_DEVICE ColorRGBA32F maxed(const ColorRGBA32F& maxer) { return ColorRGBA32F(hippt::max(this->r, maxer.r), hippt::max(this->g, maxer.g), hippt::max(this->b, maxer.b), hippt::max(this->a, maxer.a)); }
+	HIPRT_DEVICE static ColorRGBA32F max(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b), hippt::max(a.a, b.a)); }
+	HIPRT_DEVICE static ColorRGBA32F min(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b), hippt::min(a.a, b.a)); }
 
-    HIPRT_DEVICE float& operator[](int index) { return *(&r + index); }
-    HIPRT_DEVICE float operator[](int index) const { return *(&r + index); }
+	HIPRT_DEVICE float& operator[](int index) { return *(&r + index); }
+	HIPRT_DEVICE float operator[](int index) const { return *(&r + index); }
 
-    float r, g, b, a;
+	float r, g, b, a;
 };
 
 HIPRT_DEVICE static ColorRGBA32F operator+ (const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a); }
@@ -70,58 +70,58 @@ HIPRT_DEVICE static ColorRGBA32F pow_2_2_fit(ColorRGBA32F x) { return ColorRGBA3
 
 struct ColorRGB32F
 {
-    HIPRT_DEVICE ColorRGB32F() { r = 0.0f; g = 0.0f; b = 0.0f; }
-    HIPRT_DEVICE explicit ColorRGB32F(float value) { r = value; g = value; b = value; }
-    HIPRT_DEVICE ColorRGB32F(float _r, float _g, float _b) { r = _r; g = _g; b = _b; }
-    HIPRT_DEVICE explicit ColorRGB32F(float3 vec) { r = vec.x; g = vec.y; b = vec.z; }
-    // W component of float4 is dropped
-    HIPRT_DEVICE explicit ColorRGB32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; }
-    // This constructor drops the alpha channel
-    HIPRT_DEVICE explicit ColorRGB32F(const ColorRGBA32F& rgba) { r = rgba.r; g = rgba.g; b = rgba.b; }
+	HIPRT_DEVICE ColorRGB32F() { r = 0.0f; g = 0.0f; b = 0.0f; }
+	HIPRT_DEVICE explicit ColorRGB32F(float value) { r = value; g = value; b = value; }
+	HIPRT_DEVICE ColorRGB32F(float _r, float _g, float _b) { r = _r; g = _g; b = _b; }
+	HIPRT_DEVICE explicit ColorRGB32F(float3 vec) { r = vec.x; g = vec.y; b = vec.z; }
+	// W component of float4 is dropped
+	HIPRT_DEVICE explicit ColorRGB32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; }
+	// This constructor drops the alpha channel
+	HIPRT_DEVICE explicit ColorRGB32F(const ColorRGBA32F& rgba) { r = rgba.r; g = rgba.g; b = rgba.b; }
 
-    HIPRT_DEVICE void operator+=(const ColorRGB32F& other) { r += other.r; g += other.g; b += other.b; }
-    HIPRT_DEVICE void operator-=(const ColorRGB32F& other) { r -= other.r; g -= other.g; b -= other.b; }
-    HIPRT_DEVICE void operator*=(const ColorRGB32F& other) { r *= other.r; g *= other.g; b *= other.b; }
-    HIPRT_DEVICE void operator*=(float k) { r *= k; g *= k; b *= k; }
-    HIPRT_DEVICE void operator/=(const ColorRGB32F& other) { r /= other.r; g /= other.g; b /= other.b; }
-    HIPRT_DEVICE void operator/=(float k) { r /= k; g /= k; b /= k; }
-    HIPRT_DEVICE bool operator!=(const ColorRGB32F& other) { return r != other.r || g != other.g || b != other.g; }
+	HIPRT_DEVICE void operator+=(const ColorRGB32F& other) { r += other.r; g += other.g; b += other.b; }
+	HIPRT_DEVICE void operator-=(const ColorRGB32F& other) { r -= other.r; g -= other.g; b -= other.b; }
+	HIPRT_DEVICE void operator*=(const ColorRGB32F& other) { r *= other.r; g *= other.g; b *= other.b; }
+	HIPRT_DEVICE void operator*=(float k) { r *= k; g *= k; b *= k; }
+	HIPRT_DEVICE void operator/=(const ColorRGB32F& other) { r /= other.r; g /= other.g; b /= other.b; }
+	HIPRT_DEVICE void operator/=(float k) { r /= k; g /= k; b /= k; }
+	HIPRT_DEVICE bool operator!=(const ColorRGB32F& other) { return r != other.r || g != other.g || b != other.g; }
 
-    HIPRT_DEVICE float length() const { return hippt::sqrt(this->length2()); }
-    HIPRT_DEVICE float length2() const { return r * r + g * g + b * b; }
-    HIPRT_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
-    HIPRT_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); }
-    HIPRT_DEVICE ColorRGB32F clamped(float min, float max) { return ColorRGB32F(hippt::clamp(min, max, r), g = hippt::clamp(min, max, g), b = hippt::clamp(min, max, b)); }
-    HIPRT_DEVICE bool has_nan() const { return hippt::is_nan(r) || hippt::is_nan(g) || hippt::is_nan(b); }
-    HIPRT_DEVICE bool has_inf() const { return hippt::is_inf(r) || hippt::is_inf(g) || hippt::is_inf(b); }
-    HIPRT_DEVICE bool is_black() const { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
-    HIPRT_DEVICE bool is_white() const { return r == 1.0f && g == 1.0f && b == 1.0f; }
+	HIPRT_DEVICE float length() const { return hippt::sqrt(this->length2()); }
+	HIPRT_DEVICE float length2() const { return r * r + g * g + b * b; }
+	HIPRT_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
+	HIPRT_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); }
+	HIPRT_DEVICE ColorRGB32F clamped(float min, float max) { return ColorRGB32F(hippt::clamp(min, max, r), g = hippt::clamp(min, max, g), b = hippt::clamp(min, max, b)); }
+	HIPRT_DEVICE bool has_nan() const { return hippt::is_nan(r) || hippt::is_nan(g) || hippt::is_nan(b); }
+	HIPRT_DEVICE bool has_inf() const { return hippt::is_inf(r) || hippt::is_inf(g) || hippt::is_inf(b); }
+	HIPRT_DEVICE bool is_black() const { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
+	HIPRT_DEVICE bool is_white() const { return r == 1.0f && g == 1.0f && b == 1.0f; }
 
-    HIPRT_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, b)); }
-    HIPRT_DEVICE float min_component() const { return hippt::min(r, hippt::min(g, b)); }
-    HIPRT_DEVICE ColorRGB32F normalized() const { float length = hippt::sqrt(r * r + g * g + b * b); return ColorRGB32F(r / length, g / length, b / length); }
+	HIPRT_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, b)); }
+	HIPRT_DEVICE float min_component() const { return hippt::min(r, hippt::min(g, b)); }
+	HIPRT_DEVICE ColorRGB32F normalized() const { float length = hippt::sqrt(r * r + g * g + b * b); return ColorRGB32F(r / length, g / length, b / length); }
 
-    HIPRT_DEVICE ColorRGB32F abs() { return ColorRGB32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b)); }
-    HIPRT_DEVICE void max(const ColorRGB32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); }
-    HIPRT_DEVICE ColorRGB32F maxed(const ColorRGB32F& maxer) { return ColorRGB32F(hippt::max(this->r, maxer.r), hippt::max(this->g, maxer.g), hippt::max(this->b, maxer.b)); }
-    HIPRT_DEVICE static ColorRGB32F max(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b)); }
-    HIPRT_DEVICE static ColorRGB32F min(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b)); }
+	HIPRT_DEVICE ColorRGB32F abs() { return ColorRGB32F(hippt::abs(this->r), hippt::abs(this->g), hippt::abs(this->b)); }
+	HIPRT_DEVICE void max(const ColorRGB32F& maxer) { this->r = hippt::max(this->r, maxer.r); this->g = hippt::max(this->g, maxer.g); this->b = hippt::max(this->b, maxer.b); }
+	HIPRT_DEVICE ColorRGB32F maxed(const ColorRGB32F& maxer) { return ColorRGB32F(hippt::max(this->r, maxer.r), hippt::max(this->g, maxer.g), hippt::max(this->b, maxer.b)); }
+	HIPRT_DEVICE static ColorRGB32F max(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b)); }
+	HIPRT_DEVICE static ColorRGB32F min(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b)); }
 
-    HIPRT_DEVICE float& operator[](int index) { return *(&r + index); }
-    HIPRT_DEVICE float operator[](int index) const { return *(&r + index); }
+	HIPRT_DEVICE float& operator[](int index) { return *(&r + index); }
+	HIPRT_DEVICE float operator[](int index) const { return *(&r + index); }
 
-    HIPRT_DEVICE static ColorRGB32F random_color(unsigned int seed) 
-    {
-        constexpr unsigned int UNSIGNED_INT_MAX = 0xffffffff;
+	HIPRT_DEVICE static ColorRGB32F random_color(unsigned int seed)
+	{
+		constexpr unsigned int UNSIGNED_INT_MAX = 0xffffffff;
 
-        unsigned int seed1 = wang_hash(seed);
-        unsigned int seed2 = wang_hash(seed1);
-        unsigned int seed3 = wang_hash(seed2);
+		unsigned int seed1 = wang_hash(seed);
+		unsigned int seed2 = wang_hash(seed1);
+		unsigned int seed3 = wang_hash(seed2);
 
-        return ColorRGB32F(seed1 / static_cast<float>(UNSIGNED_INT_MAX), seed2 / static_cast<float>(UNSIGNED_INT_MAX), seed3 / static_cast<float>(UNSIGNED_INT_MAX));
-    }
+		return ColorRGB32F(seed1 / static_cast<float>(UNSIGNED_INT_MAX), seed2 / static_cast<float>(UNSIGNED_INT_MAX), seed3 / static_cast<float>(UNSIGNED_INT_MAX));
+	}
 
-    float r, g, b;
+	float r, g, b;
 };
 
 HIPRT_DEVICE static ColorRGB32F operator+ (const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(a.r + b.r, a.g + b.g, a.b + b.b); }
@@ -146,16 +146,16 @@ HIPRT_DEVICE static ColorRGB32F pow_2_2_fit(ColorRGB32F x) { return ColorRGB32F(
 #ifndef __KERNELCC__
 inline std::ostream& operator <<(std::ostream& os, const ColorRGB32F& color)
 {
-    os << color.r << ", " << color.g << ", " << color.b;
+	os << color.r << ", " << color.g << ", " << color.b;
 
-    return os;
+	return os;
 }
 
 inline std::ostream& operator <<(std::ostream& os, const ColorRGBA32F& color)
 {
-    os << color.r << ", " << color.g << ", " << color.b << ", " << color.a;
+	os << color.r << ", " << color.g << ", " << color.b << ", " << color.a;
 
-    return os;
+	return os;
 }
 #endif
 

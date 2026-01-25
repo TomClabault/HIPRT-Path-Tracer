@@ -209,7 +209,7 @@ void OpenGLInteropBuffer<T>::free()
 
 		return;
 	}
-	
+
 	m_element_count = 0;
 	m_initialized = false;
 }

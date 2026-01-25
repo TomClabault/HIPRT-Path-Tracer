@@ -132,7 +132,7 @@ struct ReGIRReservoirSoADevice
 
 	/**
 	 * The template parameter can be used to indicate whether or not to read the UCW.
-	 * 
+	 *
 	 * This makes sense to pass this parameter as false if you've already read the UCW
 	 * of the reservoir by some other means
 	 */

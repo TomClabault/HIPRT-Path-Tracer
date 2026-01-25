@@ -21,13 +21,13 @@ GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelAlignment(ColorRGB32F* __restrict__ 
 #endif
 {
 #ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
-    uint32_t offset = 13;
-    uint32_t index = x + offset;
+	uint32_t offset = 13;
+	uint32_t index = x + offset;
 
-    if (index >= buffer_size)
-        return;
+	if (index >= buffer_size)
+		return;
 
-    buffer_a[index] = buffer_b[index];
+	buffer_a[index] = buffer_b[index];
 }

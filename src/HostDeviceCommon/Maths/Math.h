@@ -11,7 +11,7 @@
 #else
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
-// For hippt::debugbreak()
+ // For hippt::debugbreak()
 #include "Utils/Debug.h"
 #endif
 
@@ -44,14 +44,14 @@
 namespace hippt
 {
 #ifdef __KERNELCC__
-	constexpr float M_INV_TWO_PI		= 0.15915494309189533577f;	// 1.0f / (2.0f * M_PI)
-	constexpr float M_INV_PI			= 0.31830988618379067154f;	// 1.0f / M_PI
-	constexpr float M_PI_TWO			= 1.57079632679489661923f;	// pi/2
-	constexpr float M_Pi				= 3.14159265358979323846f;	// pi
-	constexpr float M_TWO_PI			= 6.28318530717958647693f;	// 2.0f * M_PI
-	constexpr float M_FOUR_PI			= 12.5663706143591729539f;	// 4.0f * M_PI
-	constexpr float M_TWO_PI_SQUARED	= 19.73920880217871723767f;	// 2.0f * M_PI ^ 2
-	constexpr float NEAR_ZERO			= 1.0e-10f;
+	constexpr float M_INV_TWO_PI = 0.15915494309189533577f;	// 1.0f / (2.0f * M_PI)
+	constexpr float M_INV_PI = 0.31830988618379067154f;	// 1.0f / M_PI
+	constexpr float M_PI_TWO = 1.57079632679489661923f;	// pi/2
+	constexpr float M_Pi = 3.14159265358979323846f;	// pi
+	constexpr float M_TWO_PI = 6.28318530717958647693f;	// 2.0f * M_PI
+	constexpr float M_FOUR_PI = 12.5663706143591729539f;	// 4.0f * M_PI
+	constexpr float M_TWO_PI_SQUARED = 19.73920880217871723767f;	// 2.0f * M_PI ^ 2
+	constexpr float NEAR_ZERO = 1.0e-10f;
 
 	constexpr float FLOAT_MAX = 3.402823466e+38f;
 	constexpr float FLOAT_MIN = 1.175494351e-38f;
@@ -249,10 +249,10 @@ namespace hippt
 	__device__ static float uint_as_float(unsigned int uint_num) { return __uint_as_float(uint_num); }
 
 	/**
-	 * Reads the 32-bit or 64-bit word old located at the address 'address' 
-	 * in global or shared memory and stores 'value' to memory at the same address. 
-	 * 
-	 * These two operations are performed in one atomic transaction. 
+	 * Reads the 32-bit or 64-bit word old located at the address 'address'
+	 * in global or shared memory and stores 'value' to memory at the same address.
+	 *
+	 * These two operations are performed in one atomic transaction.
 	 * The function returns old.
 	 */
 	template <typename T>
@@ -262,7 +262,7 @@ namespace hippt
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the maximum of 'old' and 'value', and stores the result back to memory at the
 	 * same address.
-	 * 
+	 *
 	 * The function returns 'old'
 	 */
 	template <typename T>
@@ -272,10 +272,10 @@ namespace hippt
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
 	 * same address.
-	 * 
+	 *
 	 * The function returns 'old'
 	 */
-	template <typename T> 
+	template <typename T>
 	__device__ static T atomic_min(T* address, T value) { return atomicMin(address, value); }
 
 	/**
@@ -302,7 +302,7 @@ namespace hippt
 
 		long_old = *base_address;
 
-		do 
+		do
 		{
 			long_assumed = long_old;
 			// replace bits in long_old that pertain to the char address with those from val
@@ -317,10 +317,10 @@ namespace hippt
 	template <typename T>
 	__device__ static T atomic_load(T* address) { return *address; }
 	/**
-	 * Reads the 16/32/64 bit word at the 'address' in global or shared memory, 
+	 * Reads the 16/32/64 bit word at the 'address' in global or shared memory,
 	 * computes(*address == expected ? new_value : *address), and stores the result
-	 * back to memory at the same address. 
-	 * 
+	 * back to memory at the same address.
+	 *
 	 * These three operations are performed in one atomic transaction.
 	 * The function returns old (Compare And Swap).
 	 */
@@ -339,7 +339,7 @@ namespace hippt
 	/**
 	 * For a 'value' between 'a' and 'b', returns 't' such that
 	 * (1.0f - t) * a + t * b = value
-	 * 
+	 *
 	 * For 'value' == 'a', returns 0.0f
 	 * For 'value' == 'b', returns 1.0f
 	 */
@@ -398,23 +398,23 @@ namespace hippt
 
 	/**
 	 * T can be a 32-bit integer type, 64-bit integer type or a single precision or double precision floating point type.
-	 * 
+	 *
 	 * The warp shuffle functions exchange values between threads within a warp.
-	 * 
-	 * The optional width argument specifies subgroups, in which the warp can be 
-	 * divided to share the variables. It has to be a power of two smaller than 
-	 * or equal to warpSize. If it is smaller than warpSize, the warp is grouped 
-	 * into separate groups, that are each indexed from 0 to width as if it was 
-	 * its own entity, and only the lanes within that subgroup participate in the shuffle. 
+	 *
+	 * The optional width argument specifies subgroups, in which the warp can be
+	 * divided to share the variables. It has to be a power of two smaller than
+	 * or equal to warpSize. If it is smaller than warpSize, the warp is grouped
+	 * into separate groups, that are each indexed from 0 to width as if it was
+	 * its own entity, and only the lanes within that subgroup participate in the shuffle.
 	 * The lane indices in the subgroup are given by laneIdx % width.
-	 * 
+	 *
 	 * 'warp_shfl': The thread reads the value from the lane specified in srcLane
 	 */
 	template <typename T>
-	__device__ static T warp_shfl(T var, int src_lane, int width = warpSize) 
-	{ 
+	__device__ static T warp_shfl(T var, int src_lane, int width = warpSize)
+	{
 #ifdef __CUDACC__
-		return __shfl_sync(0xFFFFFFFF, var, src_lane, width); 
+		return __shfl_sync(0xFFFFFFFF, var, src_lane, width);
 #else
 		return __shfl(var, src_lane, width);
 #endif
@@ -447,8 +447,8 @@ namespace hippt
 	}
 
 	template <typename T>
-	__device__ T warp_reduce_max(unsigned long long int thread_mask, T variable) 
-	{ 
+	__device__ T warp_reduce_max(unsigned long long int thread_mask, T variable)
+	{
 #ifdef __CUDACC__
 		return __reduce_max_sync(static_cast<unsigned int>(thread_mask & 0xFFFFFFFF), variable);
 #else
@@ -476,8 +476,8 @@ namespace hippt
 		return (threadIdx.x + threadIdx.y * blockDim.x) & warpSize;
 	}
 
-	__device__ static void debugbreak() { }
-	
+	__device__ static void debugbreak() {}
+
 	__device__ static float idx(float3 v, int index) { return *(&v.x + index); }
 
 #else
@@ -570,8 +570,8 @@ namespace hippt
 	/**
 	 * Minimum of each component of the mat 2x2 against x
 	 */
-	static float2x2 min(float x, float2x2 a)  { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
-	static float2x2 min(float2x2 a, float x)  { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
+	static float2x2 min(float x, float2x2 a) { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
+	static float2x2 min(float2x2 a, float x) { return float2x2(hippt::min(a.m[0][0], x), hippt::min(a.m[0][1], x), hippt::min(a.m[1][0], x), hippt::min(a.m[1][1], x)); }
 
 	template <typename T>
 	static T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
@@ -674,7 +674,7 @@ namespace hippt
 	static bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 	static bool is_finite(float x) { return std::isfinite(x); }
 
-	static unsigned int float_as_uint(float float_num) { return std::bit_cast<unsigned int>(float_num);}
+	static unsigned int float_as_uint(float float_num) { return std::bit_cast<unsigned int>(float_num); }
 	static float uint_as_float(unsigned int uint_num) { return std::bit_cast<float>(uint_num); }
 
 	/**
@@ -682,17 +682,17 @@ namespace hippt
 	 * in global or shared memory and stores 'value' to memory at the same address.
 	 *
 	 * These two operations are performed in one atomic transaction.
-	 * 
+	 *
 	 * The function returns old.
 	 */
 	template <typename T>
 	T atomic_exchange(std::atomic<T>* address, T value) { return address->exchange(value); }
 
 	/**
-	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory, 
-	 * computes the maximum of 'old' and 'value', and stores the result back to memory at the 
-	 * same address. 
-	 * 
+	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
+	 * computes the maximum of 'old' and 'value', and stores the result back to memory at the
+	 * same address.
+	 *
 	 * The function returns 'old'
 	 */
 	template <typename T>
@@ -708,7 +708,7 @@ namespace hippt
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
 	 * same address.
-	 * 
+	 *
 	 * The function returns 'old'
 	 */
 	template <typename T>
@@ -716,7 +716,7 @@ namespace hippt
 	{
 		T prev_value = *address;
 		while (prev_value > value && !address->compare_exchange_weak(prev_value, value)) {}
-		
+
 		return prev_value;
 	}
 
@@ -735,14 +735,14 @@ namespace hippt
 	 * back to memory at the same address.
 	 *
 	 * These three operations are performed in one atomic transaction.
-	 * 
+	 *
 	 * The function returns old (Compare And Swap).
 	 */
 	template <typename T>
 	T atomic_compare_exchange(std::atomic<T>* atomic_address, T expected, T new_value)
 	{
 		atomic_address->compare_exchange_strong(expected, new_value);
-			
+
 		return expected;
 	}
 
@@ -760,24 +760,24 @@ namespace hippt
 	 * For 'value' == 'b', returns 1.0f
 	 */
 	template <typename T>
-	static float inverse_lerp(T value, T a, T b) 
-	{ 
+	static float inverse_lerp(T value, T a, T b)
+	{
 		// Clamping
-		value = hippt::max(a, hippt::min(value, b)); 
-		
-		return (value - a) / (b - a); 
+		value = hippt::max(a, hippt::min(value, b));
+
+		return (value - a) / (b - a);
 	}
-	
+
 	/**
 	 * Reference: https://registry.khronos.org/OpenGL-Refpages/gl4/html/smoothstep.xhtml
-	 * 
+	 *
 	 * For t == min, returns 0.0f
 	 * For t == max, returns 1.0f
 	 * Smoothstep interpolation in between
 	 */
 	template <typename T>
-	static T smoothstep(T min, T max, float x) 
-	{ 
+	static T smoothstep(T min, T max, float x)
+	{
 		float t = hippt::clamp(0.0f, 1.0f, (x - min) / (max - min));
 
 		return t * t * (3.0f - 2.0f * t);
@@ -853,7 +853,7 @@ namespace hippt
 
 	/**
 	 * Returns the index within its warp (not group) of the calling thread
-	 * 
+	 *
 	 * Warp sizes of 1 on the CPU
 	 */
 	static unsigned int warp_2D_thread_index() { return 1; }

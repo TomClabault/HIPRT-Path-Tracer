@@ -27,7 +27,7 @@ struct MicrofacetRegularization
 
 		if (regularization_mode == RegularizationMode::NO_REGULARIZATION)
 			return initial_roughness;
-			
+
 		float consistent_tau = MicrofacetRegularization::consistent_tau(regularization_settings.tau_0, sample_number);
 		// Note that the diffusion heuristic that we're using here is not the one proposed in the paper
 		// because the one of the paper requires the mean curvature of the surface and this requires additional

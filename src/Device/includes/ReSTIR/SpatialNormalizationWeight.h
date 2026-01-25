@@ -102,7 +102,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReST
 
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
-			{	
+			{
 				// ReSTIR GI target function
 
 				float jacobian = 1.0f;
@@ -126,7 +126,7 @@ template <bool IsReSTIRGI>
 struct ReSTIRSpatialNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
+		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
 		const ReSTIRSurface& center_pixel_surface,
 		int selected_neighbor,
 		int2 center_pixel_coords,

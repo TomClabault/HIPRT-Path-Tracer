@@ -8,7 +8,7 @@
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
 #include "UI/RenderWindow.h"
- 
+
 const std::string NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE = "NEE++ Pre-population";
 
 const std::string NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME = "NEE++ Render Pass";
@@ -25,13 +25,13 @@ const std::unordered_map<std::string, std::string> NEEPlusPlusRenderPass::KERNEL
 
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass() : NEEPlusPlusRenderPass(nullptr) {}
 NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer) : NEEPlusPlusRenderPass(renderer, NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME) {}
-NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, const std::string& name) : RenderPass(renderer, name) 
+NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, const std::string& name) : RenderPass(renderer, name)
 {
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
-	
+
 	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
-	
+
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE] = std::make_shared<GPUKernel>();
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_file_path(NEEPlusPlusRenderPass::KERNEL_FILES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_function_name(NEEPlusPlusRenderPass::KERNEL_FUNCTION_NAMES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
@@ -52,23 +52,23 @@ bool NEEPlusPlusRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOr
 
 	return !nee_plus_plus__grid_populate_compiled;
 }
- 
+
 bool NEEPlusPlusRenderPass::pre_render_update(float delta_time)
 {
 	if (!is_render_pass_used())
 		return m_nee_plus_plus_storage.free();
 
-    HIPRTRenderData& render_data = m_renderer->get_render_data();
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	return m_nee_plus_plus_storage.pre_render_update(render_data, m_render_window->is_interacting());
 }
- 
+
 void NEEPlusPlusRenderPass::update_render_data()
 {
 	m_nee_plus_plus_storage.update_render_data(m_renderer->get_render_data());
 }
 
-bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) 
+bool NEEPlusPlusRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!m_render_pass_used_this_frame)
 		return false;
@@ -107,7 +107,7 @@ void NEEPlusPlusRenderPass::launch_grid_pre_population(HIPRTRenderData& render_d
 }
 
 void NEEPlusPlusRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) {}
- 
+
 float NEEPlusPlusRenderPass::get_full_frame_time()
 {
 	float sum = 0.0f;
@@ -128,8 +128,8 @@ float NEEPlusPlusRenderPass::get_full_frame_time()
 
 void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 {
-     if (!is_render_pass_used())
-         return;
+	if (!is_render_pass_used())
+		return;
 
 	m_nee_plus_plus_storage.reset();
 }
@@ -137,14 +137,14 @@ void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 
 bool NEEPlusPlusRenderPass::is_render_pass_used() const
 {
-     // Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
-     // the initial candidates kernel
-     return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
+	// Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
+	// the initial candidates kernel
+	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
 }
- 
+
 NEEPlusPlusHashGridStorage& NEEPlusPlusRenderPass::get_nee_plus_plus_storage()
 {
-    return m_nee_plus_plus_storage;
+	return m_nee_plus_plus_storage;
 }
 
 float& NEEPlusPlusRenderPass::get_max_vram_usage()

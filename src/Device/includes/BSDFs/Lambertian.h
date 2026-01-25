@@ -13,23 +13,23 @@
 
 HIPRT_DEVICE static ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, float NoL, float& pdf)
 {
-    pdf = 0.0f;
+	pdf = 0.0f;
 
-    if (NoL <= 0.0f)
-        return ColorRGB32F(0.0f);
+	if (NoL <= 0.0f)
+		return ColorRGB32F(0.0f);
 
-    pdf = NoL * hippt::M_INV_PI;
-    return material.base_color * hippt::M_INV_PI;
+	pdf = NoL * hippt::M_INV_PI;
+	return material.base_color * hippt::M_INV_PI;
 }
 
 HIPRT_DEVICE static float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, float NoL)
 {
-    float pdf = 0.0f;
+	float pdf = 0.0f;
 
-    if (NoL <= 0.0f)
-        return 0.0f;
+	if (NoL <= 0.0f)
+		return 0.0f;
 
-    return NoL * hippt::M_INV_PI;
+	return NoL * hippt::M_INV_PI;
 }
 
 /**
@@ -39,22 +39,22 @@ HIPRT_DEVICE static float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMater
  */
 template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(
-    const DeviceUnpackedEffectiveMaterial& material, 
-    const float3& shading_normal, float3& sampled_direction, 
-    float& pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo& out_sampled_light_info)
+	const DeviceUnpackedEffectiveMaterial& material,
+	const float3& shading_normal, float3& sampled_direction,
+	float& pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo& out_sampled_light_info)
 {
-    sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
-    
-    out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
+	sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
 
-    if constexpr (sampleDirectionOnly)
-    {
-        pdf = 0.0f;
+	out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
 
-        return ColorRGB32F(0.0f);
-    }
-    else
-        return lambertian_brdf_eval(material, hippt::dot(shading_normal, sampled_direction), pdf);
+	if constexpr (sampleDirectionOnly)
+	{
+		pdf = 0.0f;
+
+		return ColorRGB32F(0.0f);
+	}
+	else
+		return lambertian_brdf_eval(material, hippt::dot(shading_normal, sampled_direction), pdf);
 }
 
 #endif

@@ -5,7 +5,7 @@
 
 #ifndef HOST_DEVICE_COMMON_BSDF_LIGHT_SAMPLE_RAY_HIT_INFO_H
 #define HOST_DEVICE_COMMON_BSDF_LIGHT_SAMPLE_RAY_HIT_INFO_H
- 
+
  /**
  * Information returned by a shadow ray cast from a BSDF sample.
  *
@@ -15,17 +15,17 @@
  */
 struct BSDFLightSampleRayHitInfo
 {
-    // TODO do we use this only for the area of the light? In which case we can just store the area of the light
-    int hit_prim_index;
-    // TODO is this used?
-    int hit_material_index;
-    float hit_distance;
+	// TODO do we use this only for the area of the light? In which case we can just store the area of the light
+	int hit_prim_index;
+	// TODO is this used?
+	int hit_material_index;
+	float hit_distance;
 
-    float2 hit_interpolated_texcoords;
-    float3 hit_shading_normal;
-    float3 hit_geometric_normal;
+	float2 hit_interpolated_texcoords;
+	float3 hit_shading_normal;
+	float3 hit_geometric_normal;
 
-    ColorRGB32F hit_emission;
+	ColorRGB32F hit_emission;
 };
 
 #endif

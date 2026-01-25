@@ -22,7 +22,7 @@ struct MaterialOverrideState
 	bool override_specular_color = false;
 	bool override_specular_tint_strength = false;
 	bool override_specular_darkening = false;
-	
+
 	bool override_metallic = false;
 	bool override_F82_reflectivity = false;
 	bool override_F90_reflectivity = false;
@@ -596,7 +596,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 			ImGui::EndTable();
 		}
-		
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
@@ -1184,15 +1184,15 @@ std::unordered_set<int> ImGuiObjectsWindow::filter_displayed_materials(int mater
 	}
 
 	auto case_insensitive_string_find = [](const std::string& haystack, const std::string& needle)
-	{
-		auto found = std::search(
-			haystack.begin(), haystack.end(), 
-			needle.begin(), needle.end(), 
-			[](unsigned char char1, unsigned char char2) { return std::toupper(char1) == std::toupper(char2); }
-		);
+		{
+			auto found = std::search(
+				haystack.begin(), haystack.end(),
+				needle.begin(), needle.end(),
+				[](unsigned char char1, unsigned char char2) { return std::toupper(char1) == std::toupper(char2); }
+			);
 
-		return found != haystack.end();
-	};
+			return found != haystack.end();
+		};
 
 	// Just pure brute force search...
 	// Will improve if this ever becomes a serious bottleneck

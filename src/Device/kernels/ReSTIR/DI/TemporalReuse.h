@@ -39,10 +39,10 @@
  * [10] [NVIDIA ReBLUR - Fast Denoising with Self Stabilizing Recurrent Blurs] https://developer.nvidia.com/gtc/2020/video/s22699-vid
  */
 
-// By convention, the temporal neighbor is the first one to be resampled in for loops 
-// (for looping over the neighbors when resampling / computing MIS weights)
-// So instead of hardcoding 0 everywhere in the code, we just basically give it a name
-// with a #define
+ // By convention, the temporal neighbor is the first one to be resampled in for loops 
+ // (for looping over the neighbors when resampling / computing MIS weights)
+ // So instead of hardcoding 0 everywhere in the code, we just basically give it a name
+ // with a #define
 #define TEMPORAL_NEIGHBOR_ID 0
 // Same when resampling the initial candidates
 #define INITIAL_CANDIDATES_ID 1
@@ -89,14 +89,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// We're also 'disabling' temporal accumulation if the random is frozen otherwise
 		// very strong correlations will creep up, corrupt the render and potentially invalidate
 		// performance measurements (which we're probably trying to measure since we froze the random)
-		
+
 		// The output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-		
+
 		return;
 	}
-	
-	
+
+
 	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
 	if (temporal_neighbor_reservoir.M == 0)
 	{
@@ -152,7 +152,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 			constexpr bool bias_correction_use_visibility = ReSTIR_DI_MISWeightsUseVisibility;
 			constexpr int mis_weights_type = ReSTIR_DI_MISWeightsType;
-			
+
 			constexpr bool need_visibility = bias_correction_use_visibility &&
 				(mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS ||
 					mis_weights_type == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE ||
@@ -169,19 +169,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH
-		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
 			temporal_neighbor_reservoir.sample,
-			initial_candidates_reservoir.M, 
+			initial_candidates_reservoir.M,
 
-			temporal_neighbor_surface, center_pixel_surface, 
+			temporal_neighbor_surface, center_pixel_surface,
 			temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
-			
+
 			temporal_neighbor_reservoir, initial_candidates_reservoir,
-			center_pixel_surface, temporal_neighbor_surface, 
-			target_function_at_center, TEMPORAL_NEIGHBOR_ID, 
+			center_pixel_surface, temporal_neighbor_surface,
+			target_function_at_center, TEMPORAL_NEIGHBOR_ID,
 			random_number_generator);
 
 #if DO_DEBUG
@@ -241,16 +241,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 
 		initial_candidates_reservoir.sample,
-		initial_candidates_reservoir.M, 
+		initial_candidates_reservoir.M,
 
-		temporal_neighbor_surface, center_pixel_surface, 
+		temporal_neighbor_surface, center_pixel_surface,
 		temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS || ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
-		
-		temporal_neighbor_reservoir, initial_candidates_reservoir, 
-		center_pixel_surface, temporal_neighbor_surface, 
-		/* unused */ 0.0f, INITIAL_CANDIDATES_ID, 
+
+		temporal_neighbor_reservoir, initial_candidates_reservoir,
+		center_pixel_surface, temporal_neighbor_surface,
+		/* unused */ 0.0f, INITIAL_CANDIDATES_ID,
 		random_number_generator);
 
 #if DO_DEBUG
@@ -298,12 +298,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	normalization_function.get_normalization(temporal_reuse_output_reservoir.weight_sum,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z
-	normalization_function.get_normalization(render_data, 
+	normalization_function.get_normalization(render_data,
 		temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
-		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface, 
+		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface,
 		normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_MISWeightsType == RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE
-	normalization_function.get_normalization(render_data, 
+	normalization_function.get_normalization(render_data,
 		temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface,
 		selected_neighbor, normalization_numerator, normalization_denominator, random_number_generator);

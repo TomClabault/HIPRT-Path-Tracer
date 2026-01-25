@@ -8,25 +8,25 @@
 
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 
-// The maximum number of sets allowed is 31
-// This means that the values of the histogram will never go above 31
-// 
-// 31 can be encoded with 5 bits
-// 1 unsigned int is 32 bits
-// 
-// That makes 6 histogram bins of 5 bits per 32bits uint
+ // The maximum number of sets allowed is 31
+ // This means that the values of the histogram will never go above 31
+ // 
+ // 31 can be encoded with 5 bits
+ // 1 unsigned int is 32 bits
+ // 
+ // That makes 6 histogram bins of 5 bits per 32bits uint
 #define BITS_PER_HISTOGRAM_BIN 5
 #define MAX_BINS_PER_HISTOGRAM_UINT 6
 #define MAX_BINS_PER_HISTOGRAM_UINT_F 6.0f
 
 /**
  * We're using a class here to compute the histogram for two reasons:
- * 
+ *
  *	- Without this class, we would probably use an array unsigned int[HISTOGRAM_SIZE] but arrays like that
  *		behave very poorly with the HIP compiler so we're using simple unsigned int variables instead, not an array
  *		(and that's why we have a big #if, #elif, #endif at the end of the structure to declare the histogram
  *		variables depending	on how many we need)
- * 
+ *
  *	- We use this class to do some packing since we allow only a maximum of 31 sets, we can make some assumption
  *		about how many bits we need per histogram bins
  */
@@ -80,8 +80,8 @@ struct GMoNRadixSortHistogram
 	}
 
 	/**
-     * Returns
-     */
+	 * Returns
+	 */
 	HIPRT_HOST_DEVICE unsigned int fetch_value(unsigned int index)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);

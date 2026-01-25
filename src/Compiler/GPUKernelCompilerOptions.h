@@ -125,7 +125,7 @@ public:
 	static const std::string RESTIR_GI_MIS_WEIGHTS_USE_VISIBILITY;
 	static const std::string RESTIR_GI_MIS_WEIGHTS_TYPE_WEIGHTS;
 	static const std::string RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING;
-	
+
 	static const std::string GMON_M_SETS_COUNT;
 
 	static const std::unordered_set<std::string> ALL_MACROS_NAMES;
@@ -135,17 +135,17 @@ public:
 
 	/**
 	 * Shallow copy of the options of 'other' into 'this'
-	 * 
-	 * The shared_ptr of the options of 'other' will be shared with 'this': 
-	 * this means that if changing the value of "OPTION_1" in 'other', 
+	 *
+	 * The shared_ptr of the options of 'other' will be shared with 'this':
+	 * this means that if changing the value of "OPTION_1" in 'other',
 	 * the value of "OPTION_1" will also change in 'this'.
-	 * 
+	 *
 	 * If this is exactly the behavior that you don't want, have a look at 'deep_copy'
 	 */
 	GPUKernelCompilerOptions& operator=(const GPUKernelCompilerOptions& other);
 	/**
 	 * Returns a new GPUKernelCompilerOptions object that has the same option values as 'this'
-	 * but with different shared_ptr. This means that if changing the value of "OPTION_1" in 'other', 
+	 * but with different shared_ptr. This means that if changing the value of "OPTION_1" in 'other',
 	 * the value of "OPTION_1" will not change in the new object returned by this function.
 	 */
 	GPUKernelCompilerOptions deep_copy() const;
@@ -153,7 +153,7 @@ public:
 	/**
 	 * Gets a list of all the compiler options of the form { "-D InteriorStackStrategy=1", ... }
 	 * that can directly be passed to the kernel compiler.
-	 * 
+	 *
 	 * The returned options do not contain additional include directories.
 	 * Additional include directories are not considered options.
 	 */
@@ -162,16 +162,16 @@ public:
 	/**
 	 * Same as get_all_macros_as_std_vector_string() but the returned vector doesn't contain
 	 * the macros that do not apply to the kernel given in parameter.
-	 * 
+	 *
 	 * For example, the camera rays kernel doesn't care about whether our direct lighting
 	 * strategy is MIS, RIS, ReSTIR DI, ... so if a camera ray kernel is given in parameter
 	 * the returned vector will not contain the macro for the direct lighting strategy.
 	 * Same logic for the other macros defined in KernelOptions.h
-	 * 
+	 *
 	 * The returned vector always contain all the "custom" macros manually defined through
 	 * a call to 'set_macro_value()' (unless the macro changed through 'set_macro_value()' is an
 	 * option macro defined in KernelOptions.h as defined above)
-	 * 
+	 *
 	 * The returned vector also contains all the additional compiler macro that were added
 	 * to the kernel by calling 'kernel.add_additional_macro_for_compilation()'
 	 */
@@ -181,8 +181,8 @@ public:
 	 * Replace the value of the macro if it has already been added previous to this call.
 	 * If the macro doesn't exist in these compiler options, it it added to the custom
 	 * options map.
-	 * 
-	 * The 'name' parameter is expected to be given without the '-D' macro prefix commonly 
+	 *
+	 * The 'name' parameter is expected to be given without the '-D' macro prefix commonly
 	 * given to compilers.
 	 * For example, if you want to define a macro "MyMacro" equal to 1, you simply
 	 * call set_macro_value("MyMacro", 1).
@@ -200,16 +200,16 @@ public:
 	 */
 	bool has_macro(const std::string& name);
 
-	/** 
+	/**
 	 * Gets the value of a macro or -1 if the macro isn't set
 	 */
 	int get_macro_value(const std::string& name) const;
 
 	/**
 	 * Returns a pointer to the value of a macro given its name.
-	 * 
+	 *
 	 * Useful for use with ImGui for example.
-	 * 
+	 *
 	 * nullptr is returned if the option doesn't exist (set_macro_value() wasn't called yet)
 	 */
 	const std::shared_ptr<int> get_pointer_to_macro_value(const std::string& name) const;

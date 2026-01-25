@@ -62,12 +62,12 @@ struct Triangle
 			return false;
 	}
 
-    float area() const;
+	float area() const;
 
 	float3& operator[] (int index);
 	const float3& operator[] (int index) const;
 
-	float3 m_a = {0, 0, 0}, m_b = { 0, 0, 0 }, m_c = { 0, 0, 0 };
+	float3 m_a = { 0, 0, 0 }, m_b = { 0, 0, 0 }, m_c = { 0, 0, 0 };
 };
 
 #endif

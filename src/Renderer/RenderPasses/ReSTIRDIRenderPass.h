@@ -51,8 +51,8 @@ public:
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
-	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;	
-	
+	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
+
 	/**
 	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
 	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
@@ -67,7 +67,7 @@ public:
 	virtual void compute_render_times() override;
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
-	
+
 	virtual bool is_render_pass_used() const override;
 	void request_temporal_bufffers_clear();
 

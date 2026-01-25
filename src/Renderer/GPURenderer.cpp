@@ -20,8 +20,8 @@
 
 #include <condition_variable>
 
-// List of partials_options that will be specific to each kernel. We don't want these partials_options
-// to be synchronized between kernels
+ // List of partials_options that will be specific to each kernel. We don't want these partials_options
+ // to be synchronized between kernels
 const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED =
 {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
@@ -47,14 +47,14 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_DEBUG_BUFFER_FLOAT.resize(1024);
 	m_DEBUG_BUFFER_STRINGS.resize(1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
 
-	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
+	m_hiprt_orochi_ctx = hiprt_oro_ctx;
 	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
 	// Just "fixing" the ReGIR options to be in sync with the UI
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
-		(m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_ONE_LIGHT || 
-		m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
+		(m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_ONE_LIGHT ||
+			m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
 		m_global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 
 	m_power_sampling_data_structure = PowerSamplingDataStructure(this);
@@ -347,7 +347,7 @@ void GPURenderer::synchronize_all_kernels()
 		return;
 
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
-	
+
 	m_render_thread.wait_on_render_completion();
 }
 
@@ -451,13 +451,13 @@ void GPURenderer::unmap_buffers()
 
 void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_denoiser_buffers.set_use_interop_AOV_buffers(this, use_interop); }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() 
-{ 
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer()
+{
 	// TODO use render graph here with render_graph.get_output_framebuffer()
 	if (get_gmon_render_pass()->is_render_pass_used() && get_gmon_render_pass()->buffers_allocated())
 		return get_gmon_render_pass()->get_result_framebuffer();
 	else
-		return m_framebuffer; 
+		return m_framebuffer;
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_interop_framebuffer()
@@ -465,23 +465,23 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_inter
 	return m_framebuffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer;}
-std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer() 
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer; }
+std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer()
 {
 	if (!m_denoiser_buffers.use_interop_AOVs)
 		// No using the interop buffers so let's not return a buffer that cannot be used
 		return nullptr;
 
-	return m_denoiser_buffers.m_normals_AOV_interop_buffer; 
+	return m_denoiser_buffers.m_normals_AOV_interop_buffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_interop_buffer() 
-{ 
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_interop_buffer()
+{
 	if (!m_denoiser_buffers.use_interop_AOVs)
 		// No using the interop buffers so let's not return a buffer that cannot be used
 		return nullptr;
 
-	return m_denoiser_buffers.m_albedo_AOV_interop_buffer; 
+	return m_denoiser_buffers.m_albedo_AOV_interop_buffer;
 }
 
 std::shared_ptr<OrochiBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_no_interop_buffer() { return m_denoiser_buffers.m_normals_AOV_no_interop_buffer; }
@@ -497,12 +497,12 @@ HIPRTRenderData& GPURenderer::get_render_data() { return m_render_data; }
 HIPRTScene& GPURenderer::get_hiprt_scene() { return m_hiprt_scene; }
 std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx() { return m_hiprt_orochi_ctx; }
 
-void GPURenderer::invalidate_render_data_buffers() 
-{ 
-	m_render_data_buffers_invalidated = true; 
+void GPURenderer::invalidate_render_data_buffers()
+{
+	m_render_data_buffers_invalidated = true;
 }
 
-oroDeviceProp GPURenderer::get_device_properties() { return m_device_properties;}
+oroDeviceProp GPURenderer::get_device_properties() { return m_device_properties; }
 
 std::string getDeviceName(oroCtx m_ctxt, oroDevice m_device)
 {
@@ -757,91 +757,91 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	// to upload the materials
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_MATERIALS, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
 	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]()
-	{
-		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
-
-		std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(scene.materials.size());
-		for (int i = 0; i < scene.materials.size(); i++)
-			packed_gpu_materials[i] = scene.materials[i].pack_to_GPU();
-
-		m_hiprt_scene.materials_buffer.resize(scene.materials.size());
-		m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
-
-		// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
-		std::vector<unsigned char> material_opaque(scene.materials.size());
-		for (int i = 0; i < scene.materials.size(); i++)
-			material_opaque[i] = scene.material_has_opaque_base_color_texture[i] && scene.materials[i].alpha_opacity == 1.0f;
-		m_hiprt_scene.material_opaque.resize(material_opaque.size());
-		m_hiprt_scene.material_opaque.upload_data(material_opaque);
-		m_hiprt_scene.material_has_opaque_base_color_texture = scene.material_has_opaque_base_color_texture;
-
-		m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
-		m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
-	});
-
-	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, [this, &scene]()
-	{
-		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
-
-		m_hiprt_scene.triangle_areas.resize(scene.triangle_areas.size());
-		m_hiprt_scene.triangle_areas.upload_data(scene.triangle_areas.data());
-	});
-
-	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TEXTURES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TEXTURES, [this, &scene]() 
-	{
-		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
-
-		if (scene.textures.size() > 0)
-		{
-			std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
-			m_hiprt_scene.orochi_materials_textures.reserve(scene.textures.size());
-			for (int i = 0; i < scene.textures.size(); i++)
-			{
-				if (scene.textures[i].width == 0 || scene.textures[i].height == 0)
-				{
-					// It can happen that for emissive textures for example, we had a texture but its color is constant.
-					// As a result, we have not read the texture but rather just stored the constant emissive color in the
-					// emission filed of the material so we have no texture to read here
-
-					// The shader will never read from that texture (because the texture index of the material has been set to -1)
-					// so we set it to nullptr
-					oro_textures[i] = nullptr;
-
-					continue;
-				}
-
-				// We need to keep the texture alive so they are not destroyed when returning from 
-				// this function so we're adding them to a member buffer
-				m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i], hipFilterModeLinear));
-
-				oro_textures[i] = m_hiprt_scene.orochi_materials_textures.back().get_device_texture();
-			}
-
-			m_hiprt_scene.gpu_materials_textures.resize(oro_textures.size());
-			m_hiprt_scene.gpu_materials_textures.upload_data(oro_textures.data());
-		}
-	});
-
-	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, [this, &scene]() 
-	{
-		m_hiprt_scene.emissive_triangles_count = scene.emissive_triangles_primitive_indices.size();
-		if (m_hiprt_scene.emissive_triangles_count > 0)
 		{
 			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-			m_hiprt_scene.emissive_triangles_primitive_indices.resize(scene.emissive_triangles_primitive_indices.size());
-			m_hiprt_scene.emissive_triangles_primitive_indices.upload_data(scene.emissive_triangles_primitive_indices.data());
+			std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(scene.materials.size());
+			for (int i = 0; i < scene.materials.size(); i++)
+				packed_gpu_materials[i] = scene.materials[i].pack_to_GPU();
 
-			m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.resize(scene.emissive_triangles_primitive_indices_and_emissive_textures.size());
-			m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
-		}
+			m_hiprt_scene.materials_buffer.resize(scene.materials.size());
+			m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
 
-		// Uploading emissive meshes
-		m_hiprt_scene.emissive_meshes_data.load_from_emissive_meshes(scene);
-	});
+			// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
+			std::vector<unsigned char> material_opaque(scene.materials.size());
+			for (int i = 0; i < scene.materials.size(); i++)
+				material_opaque[i] = scene.material_has_opaque_base_color_texture[i] && scene.materials[i].alpha_opacity == 1.0f;
+			m_hiprt_scene.material_opaque.resize(material_opaque.size());
+			m_hiprt_scene.material_opaque.upload_data(material_opaque);
+			m_hiprt_scene.material_has_opaque_base_color_texture = scene.material_has_opaque_base_color_texture;
+
+			m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
+			m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
+		});
+
+	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS);
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, [this, &scene]()
+		{
+			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
+			m_hiprt_scene.triangle_areas.resize(scene.triangle_areas.size());
+			m_hiprt_scene.triangle_areas.upload_data(scene.triangle_areas.data());
+		});
+
+	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TEXTURES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TEXTURES, [this, &scene]()
+		{
+			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
+			if (scene.textures.size() > 0)
+			{
+				std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
+				m_hiprt_scene.orochi_materials_textures.reserve(scene.textures.size());
+				for (int i = 0; i < scene.textures.size(); i++)
+				{
+					if (scene.textures[i].width == 0 || scene.textures[i].height == 0)
+					{
+						// It can happen that for emissive textures for example, we had a texture but its color is constant.
+						// As a result, we have not read the texture but rather just stored the constant emissive color in the
+						// emission filed of the material so we have no texture to read here
+
+						// The shader will never read from that texture (because the texture index of the material has been set to -1)
+						// so we set it to nullptr
+						oro_textures[i] = nullptr;
+
+						continue;
+					}
+
+					// We need to keep the texture alive so they are not destroyed when returning from 
+					// this function so we're adding them to a member buffer
+					m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i], hipFilterModeLinear));
+
+					oro_textures[i] = m_hiprt_scene.orochi_materials_textures.back().get_device_texture();
+				}
+
+				m_hiprt_scene.gpu_materials_textures.resize(oro_textures.size());
+				m_hiprt_scene.gpu_materials_textures.upload_data(oro_textures.data());
+			}
+		});
+
+	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, [this, &scene]()
+		{
+			m_hiprt_scene.emissive_triangles_count = scene.emissive_triangles_primitive_indices.size();
+			if (m_hiprt_scene.emissive_triangles_count > 0)
+			{
+				OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
+				m_hiprt_scene.emissive_triangles_primitive_indices.resize(scene.emissive_triangles_primitive_indices.size());
+				m_hiprt_scene.emissive_triangles_primitive_indices.upload_data(scene.emissive_triangles_primitive_indices.data());
+
+				m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.resize(scene.emissive_triangles_primitive_indices_and_emissive_textures.size());
+				m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
+			}
+
+			// Uploading emissive meshes
+			m_hiprt_scene.emissive_meshes_data.load_from_emissive_meshes(scene);
+		});
 }
 
 void GPURenderer::rebuild_bvh(HIPRTGeometry& geometry, hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM)
@@ -904,7 +904,7 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 
 		m_envmap.get_alias_table_device_pointers(m_render_data.world_settings.envmap_alias_table.alias_table_probas, m_render_data.world_settings.envmap_alias_table.alias_table_alias);
 #endif
-	});
+		});
 }
 
 bool GPURenderer::has_envmap()

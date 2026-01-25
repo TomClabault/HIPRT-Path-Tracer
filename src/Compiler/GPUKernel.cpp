@@ -76,10 +76,10 @@ void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<h
 
 	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
 	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx,
-															 func_name_sets.data(), 
-															 /* num geom */1,
-															 /* num ray */ func_name_sets.size() == 0 ? 0 : 1,
-															 use_cache, cache_key, silent);
+		func_name_sets.data(),
+		/* num geom */1,
+		/* num ray */ func_name_sets.size() == 0 ? 0 : 1,
+		use_cache, cache_key, silent);
 }
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)

@@ -6,10 +6,10 @@
 #ifndef HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
 #define HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
 
-/**
- * Note that no default values are set here because they are all set in
- * the ReSTIR_XXX_DefaultSettings structure/header files
- */
+ /**
+  * Note that no default values are set here because they are all set in
+  * the ReSTIR_XXX_DefaultSettings structure/header files
+  */
 
 struct ReSTIRCommonTemporalPassSettings
 {
@@ -86,11 +86,11 @@ struct ReSTIRCommonSpatialPassSettings
 	 * If you want to check whether you should use the features of the adaptive directional spatial
 	 * reuse, prefer using this function rather than directly checking the 'use_adaptive_directional_spatial_reuse'
 	 * member
-	 * 
+	 *
 	 * This is because the directional spatial reuse feature cannot be used in realtime mode so if you use the
 	 * 'use_adaptive_directional_spatial_reuse' member directly, you would also have to check for 'render_data.render_settings.accumulate'
 	 * everytime.
-	 * 
+	 *
 	 * This function does it all
 	 */
 	HIPRT_HOST_DEVICE bool do_adaptive_directional_spatial_reuse(bool render_data_render_settings_accumulate) const

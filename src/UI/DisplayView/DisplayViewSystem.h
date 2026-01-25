@@ -38,7 +38,7 @@ public:
 
 	/**
 	 * Applies queued changes (such as changing the display view for example)
-	 * 
+	 *
 	 * Returns true if the display view was changed. False otherwise
 	 */
 	bool update_selected_display_view();
@@ -105,7 +105,7 @@ private:
 
 	/**
 	 * Automatically changes the display view used if some conditions are met (or not met).
-	 * 
+	 *
 	 * For example, if the current display view is "GMoN Blend" but the user disables GMoN, we
 	 * don't want to keep using the GMoN blend view so this function will change it automatically
 	 */

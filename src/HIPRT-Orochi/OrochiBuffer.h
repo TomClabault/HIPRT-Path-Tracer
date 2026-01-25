@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright 2025 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
@@ -57,7 +57,7 @@ public:
 
 	bool is_allocated() const;
 
-	/** 
+	/**
 	 * Static function for downloading from a device buffer when we
 	 * only have the address of the buffer (and not the OrochiBuffer object)
 	 */
@@ -65,11 +65,11 @@ public:
 	std::vector<T> download_data() const;
 	/**
 	 * Download the data of the *whole* buffer directly to the given 'host_pointer'
-	 * 
+	 *
 	 * The given 'host_pointer' is supposed to be pointing to an allocated memory block
 	 * that is large enough to accomodate all the data of this buffer. Behavior is undefined
 	 * if this is not the case
-	 * 
+	 *
 	 * 'host_pointer' can also be the pointer returned by 'get_host_pinned_pointer()' if using host pinned
 	 * memory
 	 */
@@ -87,7 +87,7 @@ public:
 	/**
 	 * Uploads as many elements as returned by size from the data std::vector into the buffer.
 	 * The given std::vector must therefore contain at least size() elements.
-	 * 
+	 *
 	 * The overload using a void pointer reads sizeof(T) * size() bytes starting at
 	 * the given pointer address. The given pointer must therefore provide a contiguous access
 	 * to sizeof(T) * size() bytes of data
@@ -103,7 +103,7 @@ public:
 
 	/**
 	 * Copies the data in 'other' to this buffer.
-	 * 
+	 *
 	 * This copies the maximum amount of data from 'other' that can fit in this buffer
 	 */
 	void memcpy_from(const OrochiBuffer<T>& other);
@@ -175,7 +175,7 @@ inline void OrochiBuffer<T>::memset_whole_buffer(T value)
 {
 	if (m_data_pointer == nullptr)
 	{
- 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memset on an OrochiBuffer that hasn't been allocated yet!");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memset on an OrochiBuffer that hasn't been allocated yet!");
 		return;
 	}
 
@@ -396,7 +396,7 @@ inline std::vector<T> OrochiBuffer<T>::download_data_partial(int start_element_i
 }
 
 template <typename T>
-void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const 
+void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const
 {
 	if (m_data_pointer == nullptr)
 	{

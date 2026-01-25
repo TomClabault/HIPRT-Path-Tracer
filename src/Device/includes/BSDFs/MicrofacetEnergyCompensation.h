@@ -32,14 +32,14 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 	if (!material_do_energy_compensation || smooth_enough || max_bounce_reached || invalid_view_direction)
 		return ColorRGB32F(1.0f);
 
-    const void* GGX_directional_albedo_texture_pointer = nullptr;
+	const void* GGX_directional_albedo_texture_pointer = nullptr;
 #ifdef __KERNELCC__
-    GGX_directional_albedo_texture_pointer = &render_data.bsdfs_data.GGX_conductor_directional_albedo;
+	GGX_directional_albedo_texture_pointer = &render_data.bsdfs_data.GGX_conductor_directional_albedo;
 #else
-    GGX_directional_albedo_texture_pointer = render_data.bsdfs_data.GGX_conductor_directional_albedo;
+	GGX_directional_albedo_texture_pointer = render_data.bsdfs_data.GGX_conductor_directional_albedo;
 #endif
 
-    // Reading the precomputed directional albedo from the texture
+	// Reading the precomputed directional albedo from the texture
 	float2 uv = make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness);
 
 	// Flipping the Y manually (and that's why we pass 'false' in the sample call that follow)
@@ -48,19 +48,19 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 	uv.y = 1.0f - uv.y;
 	float Ess = sample_texture_rgb_32bits(GGX_directional_albedo_texture_pointer, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
 
-    // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
-    float kms = (1.0f - Ess) / Ess;
+	// Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
+	float kms = (1.0f - Ess) / Ess;
 
 #if PrincipledBSDFDoMetallicFresnelEnergyCompensation == KERNEL_OPTION_TRUE
-    // [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 15
-    ColorRGB32F fresnel_compensation_term = F0;
+	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 15
+	ColorRGB32F fresnel_compensation_term = F0;
 #else
-    // 1.0f F so that the fresnel compensation has no effect
-    ColorRGB32F fresnel_compensation_term = ColorRGB32F(1.0f);
+	// 1.0f F so that the fresnel compensation has no effect
+	ColorRGB32F fresnel_compensation_term = ColorRGB32F(1.0f);
 #endif
-    // Computing the compensation term and multiplying by the single scattering non-energy conserving base GGX BRDF,
-    // Eq. 9
-    return ColorRGB32F(1.0f) + kms * fresnel_compensation_term;
+	// Computing the compensation term and multiplying by the single scattering non-energy conserving base GGX BRDF,
+	// Eq. 9
+	return ColorRGB32F(1.0f) + kms * fresnel_compensation_term;
 }
 
 /**
@@ -100,9 +100,9 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
  */
 HIPRT_DEVICE static float GGX_glass_energy_compensation_get_correction_exponent(float roughness, float relative_eta)
 {
-    if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
-        // No correction for these, returning the original 2.5f that is used in the LUT
-        return 2.5f;
+	if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
+		// No correction for these, returning the original 2.5f that is used in the LUT
+		return 2.5f;
 
 	float lower_relative_eta_bound = 1.01f;
 	float lower_correction = 2.5f;

@@ -8,21 +8,21 @@
 
 #include "HostDeviceCommon/KernelOptions/Common.h"
 
-/**
- * Options are defined in a #ifndef __KERNELCC__ block because:
- *     - If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
- *             cannot override a #define statement. This means that if the #define statement are encountered by the compiler,
- *             we cannot modify the value of the macros anymore with the -D option which means no run-time switching / experimenting :(
- * - The CPU still needs the options to be able to compile the code so here they are, in a CPU-only block
- */
+ /**
+  * Options are defined in a #ifndef __KERNELCC__ block because:
+  *     - If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
+  *             cannot override a #define statement. This means that if the #define statement are encountered by the compiler,
+  *             we cannot modify the value of the macros anymore with the -D option which means no run-time switching / experimenting :(
+  * - The CPU still needs the options to be able to compile the code so here they are, in a CPU-only block
+  */
 #ifndef __KERNELCC__
 
-/**
- * If true, the specular/metallic/coat part of the material will be taken
- * into account when computing light tree node importances during sampling.
- * 
- * This improves light sampling quality on specular surfaces
- */
+  /**
+   * If true, the specular/metallic/coat part of the material will be taken
+   * into account when computing light tree node importances during sampling.
+   *
+   * This improves light sampling quality on specular surfaces
+   */
 #define LightTreeSGDoSpecularImportance KERNEL_OPTION_TRUE
 
 

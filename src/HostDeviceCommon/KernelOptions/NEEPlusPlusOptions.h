@@ -8,8 +8,8 @@
 
 #include "HostDeviceCommon/KernelOptions/Common.h"
 
-// This block is a security to make sure that we have everything defined otherwise this can lead
-// to weird behavior because of the compiler not knowing about some macros
+ // This block is a security to make sure that we have everything defined otherwise this can lead
+ // to weird behavior because of the compiler not knowing about some macros
 #ifndef KERNEL_OPTION_TRUE
 #error "KERNEL_OPTION_TRUE not defined, include 'HostDeviceCommon/KernelOptions/Common.h'"
 #else
@@ -28,57 +28,57 @@
  */
 #define NEEPlusPlus_GridPrepoluationResolutionDownscale 2
 
-/**
- * Options are defined in a #ifndef __KERNELCC__ block because:
- *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
- *		cannot override a #define statement. This means that if the #define statement are encountered by the compiler,
- *		we cannot modify the value of the macros anymore with the -D option which means no run-time switching / experimenting :(
- * - The CPU still needs the options to be able to compile the code so here they are, in a CPU-only block
- */
+ /**
+  * Options are defined in a #ifndef __KERNELCC__ block because:
+  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
+  *		cannot override a #define statement. This means that if the #define statement are encountered by the compiler,
+  *		we cannot modify the value of the macros anymore with the -D option which means no run-time switching / experimenting :(
+  * - The CPU still needs the options to be able to compile the code so here they are, in a CPU-only block
+  */
 #ifndef __KERNELCC__
 
-/**
-* Whether or not to use NEE++ features at all
-*/
+  /**
+  * Whether or not to use NEE++ features at all
+  */
 #define DirectLightUseNEEPlusPlus KERNEL_OPTION_TRUE
 
-/**
- * What light sampling strategy is going to be used to sample light
- * candidates during the NEE++ grid prepopulate pass to fill the visibility
- * cache a bit
- */
+  /**
+   * What light sampling strategy is going to be used to sample light
+   * candidates during the NEE++ grid prepopulate pass to fill the visibility
+   * cache a bit
+   */
 #define NEEPlusPlusGridPrepopulateLightSamplingStrategy LSS_BASE_LIGHT_TREE_ATS
 
-/**
-* Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility
-* information of NEE++
-*/
+   /**
+   * Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility
+   * information of NEE++
+   */
 #define DirectLightUseNEEPlusPlusRR KERNEL_OPTION_FALSE
 
-/**
-* This a debug option to visualize shadow rays discarded by the NEE++ russian roulette
-*/
+   /**
+   * This a debug option to visualize shadow rays discarded by the NEE++ russian roulette
+   */
 #define DirectLightNEEPlusPlusDisplayShadowRaysDiscarded KERNEL_OPTION_FALSE
 
-/**
-* When using the 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded' kernel options
-* for displaying in the viewport where shadow rays were discarded, this parameter is used
-* to determine at what bounce in the scene we should display the shadow ray discarded or not
-*
-* 0 is the first hit
-*/
+   /**
+   * When using the 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded' kernel options
+   * for displaying in the viewport where shadow rays were discarded, this parameter is used
+   * to determine at what bounce in the scene we should display the shadow ray discarded or not
+   *
+   * 0 is the first hit
+   */
 #define DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce 0
 
-/**
- * Maximum number of steps for the linear probing of the NEE++ hash grid
- */
+   /**
+	* Maximum number of steps for the linear probing of the NEE++ hash grid
+	*/
 #define NEEPlusPlus_LinearProbingSteps 4
 
-/**
- * Debug mode for displaying some debug infos about NEE++
- */
+	/**
+	 * Debug mode for displaying some debug infos about NEE++
+	 */
 #define NEEPlusPlusDebugMode NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
-//#define NEEPlusPlusDebugMode NEE_PLUS_PLUS_DEBUG_MODE_GRID_CELLS
+	 //#define NEEPlusPlusDebugMode NEE_PLUS_PLUS_DEBUG_MODE_GRID_CELLS
 
 #endif
 

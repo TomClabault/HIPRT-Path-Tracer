@@ -21,7 +21,7 @@
 
 #ifndef __KERNELCC__
 #include "HIPRT-Orochi/OrochiBuffer.h"
-//#include "Renderer/GPURenderer.h"
+ //#include "Renderer/GPURenderer.h"
 #endif
 
 // Just used for initializing some structure members below
@@ -246,7 +246,7 @@ struct HIPRTRenderSettings
 
 	/**
 	 * Returns true if the current frame should be renderer at low resolution, false otherwise.
-	 * 
+	 *
 	 * This function is a simple helper that combines a few flags to make sure that we
 	 * actually want to render at low resolution
 	 */
@@ -276,20 +276,20 @@ struct HIPRTRenderSettings
 
 	/**
 	 * Returns true if the renderer needs the G-buffer of the previous frame.
-	 * 
+	 *
 	 * The boolean parameter is some additional condition that must be satisfied
 	 * for the G-buffer to be needed
-	 * 
-	 * We need two overrides of this function: one for use in the shaders and one 
+	 *
+	 * We need two overrides of this function: one for use in the shaders and one
 	 * for use in the C++ CPU side code.
-	 * 
+	 *
 	 * This is because to determine whether or not we need the g-buffer of last
 	 * frame, we need to check if ReSTIR DI is being used or not. On the CPP side, this
 	 * can be done with the GPURenderer instance by checking the path tracer
 	 * options and check if the DirectLightNEEEstimator is equal to
 	 * LSS_RESTIR_DI. On the device however, we don't have access to the
-	 * GPURenderer instance but instead, we can check directly using the 
-	 * DirectLightNEEEstimator macro (and we don't want the GPURenderer parameter 
+	 * GPURenderer instance but instead, we can check directly using the
+	 * DirectLightNEEEstimator macro (and we don't want the GPURenderer parameter
 	 * because that doesn't exist on the device).
 	 */
 	HIPRT_DEVICE bool use_prev_frame_g_buffer() const

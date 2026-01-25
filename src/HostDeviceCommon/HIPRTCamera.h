@@ -10,46 +10,46 @@
 
 #include <hiprt/hiprt_types.h> // for hiprtRay
 
-/**
- * Simplified camera class passed to the shader
- */
+ /**
+  * Simplified camera class passed to the shader
+  */
 struct HIPRTCamera
 {
-    float4x4 inverse_view;
-    float4x4 inverse_projection;
-    float4x4 view_projection;
-    float3 position = make_float3(0.0f, 0.0f, 0.0f);
+	float4x4 inverse_view;
+	float4x4 inverse_projection;
+	float4x4 view_projection;
+	float3 position = make_float3(0.0f, 0.0f, 0.0f);
 
-    float vertical_fov = hippt::M_Pi * 0.5f;
-    int sensor_width = 1280, sensor_height = 720;
+	float vertical_fov = hippt::M_Pi * 0.5f;
+	int sensor_width = 1280, sensor_height = 720;
 
-    bool do_jittering = true;
+	bool do_jittering = true;
 
-    /**
-     * Returns a camera ray for pixel (x, y) and the given render solution
-     */
-    HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2 res)
-    {
-        float x_ndc_space = x / res.x * 2 - 1;
-        float y_ndc_space = y / res.y * 2 - 1;
+	/**
+	 * Returns a camera ray for pixel (x, y) and the given render solution
+	 */
+	HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2 res)
+	{
+		float x_ndc_space = x / res.x * 2 - 1;
+		float y_ndc_space = y / res.y * 2 - 1;
 
-        float3 ray_origin_view_space = { 0.0f, 0.0f, 0.0f };
-        float3 ray_origin = matrix_X_point(inverse_view, ray_origin_view_space);
+		float3 ray_origin_view_space = { 0.0f, 0.0f, 0.0f };
+		float3 ray_origin = matrix_X_point(inverse_view, ray_origin_view_space);
 
-        // Point on the near plane
-        float3 ray_point_dir_ndc_homog = { x_ndc_space, y_ndc_space, -1.0f };
-        float3 ray_point_dir_vs_homog = matrix_X_point(inverse_projection, ray_point_dir_ndc_homog);
-        float3 ray_point_dir_vs = ray_point_dir_vs_homog;
-        float3 ray_point_dir_ws = matrix_X_point(inverse_view, ray_point_dir_vs);
+		// Point on the near plane
+		float3 ray_point_dir_ndc_homog = { x_ndc_space, y_ndc_space, -1.0f };
+		float3 ray_point_dir_vs_homog = matrix_X_point(inverse_projection, ray_point_dir_ndc_homog);
+		float3 ray_point_dir_vs = ray_point_dir_vs_homog;
+		float3 ray_point_dir_ws = matrix_X_point(inverse_view, ray_point_dir_vs);
 
-        float3 ray_direction = hippt::normalize(ray_point_dir_ws - ray_origin);
+		float3 ray_direction = hippt::normalize(ray_point_dir_ws - ray_origin);
 
-        hiprtRay ray;
-        ray.origin = ray_origin;
-        ray.direction = ray_direction;
+		hiprtRay ray;
+		ray.origin = ray_origin;
+		ray.direction = ray_direction;
 
-        return ray;
-    }
+		return ray;
+	}
 };
 
 #endif

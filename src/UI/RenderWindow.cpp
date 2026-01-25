@@ -17,7 +17,7 @@
 
 #include "stb_image_write.h"
 
-// GPUKernelCompiler for waiting on threads currently reading files on disk
+ // GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
@@ -34,7 +34,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Emissive chminey texture broken in scandinavian-studio
 // - For any material that is perfectly specular / perfectly transparent (the issue is most appearant with mirrors or IOR 1 glass), seeing the envmap through this object takes the envmap intensity scaling into account and so the envmap through the object is much brighter than the main background (when camera rays miss the scene and hit the envmap directly) without background envmap intensity scaling: https://mega.nz/file/x8I12Q6b#DJ2ZobBav9rwFdtvTX-CmgA1eFEgKprjXSvOg0My38o
 // - White furnace mode not turning emissives off in the cornell_pbr with ReSTIR GI?
- 
+
 // TODO to mix microfacet regularization & BSDF MIS RAY reuse, we can check if we regularized hard or not. If the regularization roughness difference is large, let's not reuse the ray as this may roughen glossy objects. Otherwise, we can reuse
 // - Test ReSTIR GI with diffuse transmission
 // - We don't have to store the ReSTIR **samples** in the spatial pass. We can just store a pixel index and then on the next pass, when we need the sample, we can use that pixel index to go fetch the sample at the right pixel
@@ -535,7 +535,7 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	const void* userParam)
 {
 	// ignore non-significant error/warning codes
-	if (id == 131169 || id == 131185 || id == 131218 || id == 131204) 
+	if (id == 131169 || id == 131185 || id == 131218 || id == 131204)
 		return;
 
 	if (id == 131154)
@@ -587,7 +587,7 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	case GL_DEBUG_SEVERITY_NOTIFICATION: severity_str = "Severity: notification"; break;
 	}
 
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, 
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
 		"---------------\n"
 		"Debug message (%d): %s\n"
 		"%s\n%s\n%s\n\n", id, message, source_str.c_str(), type_str.c_str(), severity_str.c_str());
@@ -636,7 +636,7 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 
 		// Making the render dirty to force a cleanup at startup
 		set_render_dirty(true);
-	});
+		});
 
 
 	// Cannot create that on a thread since it compiles OpenGL shaders
@@ -732,7 +732,7 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	glfwSetWindowSizeCallback(m_glfw_window, glfw_window_resized_callback);
 	m_mouse_interactor->set_callbacks(m_glfw_window);
 	m_keyboard_interactor.set_callbacks(m_glfw_window);
-	
+
 	glewInit();
 
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "GLFW Initialized!");
@@ -787,7 +787,7 @@ void RenderWindow::resize(int pixels_width, int pixels_height)
 		// Can happen if resizing the window to a 1 pixel width/height while having a resolution scaling < 1. 
 		// Integer maths will round it down to 0
 		return;
-	
+
 	m_renderer->resize(new_render_width, new_render_height);
 	m_denoiser->resize(new_render_width, new_render_height);
 	m_denoiser->finalize();
@@ -1206,7 +1206,7 @@ void RenderWindow::render()
 				// Update the display view system so that the display view is changed to the
 				// one that we want to use (in the DisplayViewSystem's queue)
 				m_display_view_system->update_selected_display_view();
-				
+
 				// Denoising to fill the buffers with denoised data (if denoising is enabled)
 				denoise();
 

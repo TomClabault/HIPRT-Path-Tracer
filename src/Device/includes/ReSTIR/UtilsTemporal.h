@@ -83,7 +83,7 @@ HIPRT_DEVICE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_dat
 		// g-buffer is the same as the current frame's --> no need to read from previous
 		// frame g-buffer --> the previous frame G-buffer is deallocated to save VRAM
 		use_previous_frame_g_buffer &= render_data.render_settings.use_prev_frame_g_buffer();
-		if (check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data, 
+		if (check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 			temporal_neighbor_index, center_pixel_index, current_shading_point, current_normal, use_previous_frame_g_buffer))
 			// We found a good neighbor
 			break;

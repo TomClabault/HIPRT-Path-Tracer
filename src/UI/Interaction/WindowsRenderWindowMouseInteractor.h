@@ -15,18 +15,18 @@ struct GLFWwindow;
 class WindowsRenderWindowMouseInteractor : public RenderWindowMouseInteractor
 {
 public:
-    void set_callbacks(GLFWwindow* window);
+	void set_callbacks(GLFWwindow* window);
 
 protected:
-    bool m_just_pressed = false;
+	bool m_just_pressed = false;
 
 private:
-    static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-    static void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos);
+	static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+	static void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos);
 
-    // Position of the mouse when the user first clicked the viewport.
-    // Used to put the cursor back in place to allow infinite mouse movements
-    std::pair<float, float> m_grab_cursor_position = { 0.0f, 0.0f };
+	// Position of the mouse when the user first clicked the viewport.
+	// Used to put the cursor back in place to allow infinite mouse movements
+	std::pair<float, float> m_grab_cursor_position = { 0.0f, 0.0f };
 
 };
 

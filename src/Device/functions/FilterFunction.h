@@ -13,12 +13,12 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-/**
- * This filter function handles self intersection avoidance and alpha testing
- * 
- * return FALSE if the intersection is ACCEPTED
- * return true if the intersection is rejected
- */
+ /**
+  * This filter function handles self intersection avoidance and alpha testing
+  *
+  * return FALSE if the intersection is ACCEPTED
+  * return true if the intersection is rejected
+  */
 HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
 {
 	FilterFunctionPayload* payload = reinterpret_cast<FilterFunctionPayload*>(payld);

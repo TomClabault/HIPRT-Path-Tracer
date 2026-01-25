@@ -125,7 +125,7 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 
 		m_bake_buffer.free();
 		m_bake_complete = true;
-	});
+		});
 
 	ThreadManager::detach_threads("kernel_bake_" + m_kernel_title);
 }

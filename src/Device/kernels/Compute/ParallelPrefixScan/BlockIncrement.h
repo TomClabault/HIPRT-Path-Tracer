@@ -11,7 +11,7 @@
 
  /**
   * Adds each element of block_sums to each corresponding chunk of input ("chunks" are of size PARALLEL_PREFIX_SCAN_CHUNK_SIZE)
-  * 
+  *
   * This kernel should be launched with 1 thread per element of the input
   */
 GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScan_BlockIncrement(

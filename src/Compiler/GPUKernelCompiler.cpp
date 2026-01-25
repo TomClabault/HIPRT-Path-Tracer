@@ -58,7 +58,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	compiler_options.push_back("-g");
 	compiler_options.push_back("-ggdb");
 #endif
-	
+
 	// enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
 	// compiler_options.push_back("-g");
 	// compiler_options.push_back("-ggdb");

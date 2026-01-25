@@ -127,7 +127,7 @@ HIPRT_DEVICE static float3 operator*(const float3x3& a, const float3& v)
 /**
  * Multiplies the matrix on the right of the row vector v
  * The columns of the matrix should be the basis vectors (if that matrix is a change of basis)
- * 
+ *
  * Equivalent to transpose(a) * v
  */
 HIPRT_DEVICE static float3 operator*(const float3& v, const float3x3& a)

@@ -57,7 +57,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M,
 					continue;
 
 				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-					neighbor_pixel_index, center_pixel_index, 
+					neighbor_pixel_index, center_pixel_index,
 					center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface), render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;
 			}
@@ -90,7 +90,7 @@ template <bool IsReSTIRGI>
 struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
+		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
 		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_position, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
@@ -124,7 +124,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z,
 					continue;
 
 				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-					neighbor_pixel_index, center_pixel_index, 
+					neighbor_pixel_index, center_pixel_index,
 					center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface), render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;
 			}
@@ -180,7 +180,7 @@ template <bool IsReSTIRGI>
 struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
+		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
 		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		int selected_neighbor,
 		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords,
@@ -214,7 +214,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE,
 					continue;
 
 				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-					neighbor_pixel_index, center_pixel_index, 
+					neighbor_pixel_index, center_pixel_index,
 					center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface), render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;
 			}

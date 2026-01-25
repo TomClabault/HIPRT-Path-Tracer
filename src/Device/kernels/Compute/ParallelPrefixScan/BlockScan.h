@@ -12,7 +12,7 @@
  /**
   * Prefix scans the input in chunks of PARALLEL_PREFIX_SCAN_CHUNK_SIZE and outputs the block scans to output_blocks.
   * The input buffer must be padded to be multiple of PARALLEL_PREFIX_SCAN_CHUNK_SIZE elements.
-  * 
+  *
   * This kernel should be launched with a 1D grid of blocks with size PARALLEL_PREFIX_SCAN_CHUNK_SIZE/2 threads
   * and blocks of size PARALLEL_PREFIX_SCAN_CHUNK_SIZE/2.
   */

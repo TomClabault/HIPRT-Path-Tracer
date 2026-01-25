@@ -12,7 +12,7 @@
 
 class GPURenderer;
 
-class ReGIRRenderPass: public RenderPass
+class ReGIRRenderPass : public RenderPass
 {
 public:
 	static const std::string REGIR_GRID_PRE_POPULATE;
@@ -106,7 +106,7 @@ public:
 	size_t get_correlation_reduction_VRAM_usage_bytes(bool primary_hit) const;
 	size_t get_reservoirs_VRAM_usage_bytes(bool primary_hit) const;
 	size_t get_light_distibutions_VRAM_usage_bytes(bool primary_hit) const;
-	
+
 	float& get_light_distribution_target_incoming_energy();
 	float get_light_distributions_compaction_VRAM_savings(bool primary_hit) const;
 	/**
@@ -123,7 +123,7 @@ public:
 	ReGIRHashGridStorage& get_hash_grid_storage();
 
 	bool lights_in_scene(HIPRTRenderData& render_data) const;
-	
+
 private:
 	unsigned int m_number_of_cells_alive_primary_hits = 0;
 	unsigned int m_number_of_cells_alive_secondary_hits = 0;

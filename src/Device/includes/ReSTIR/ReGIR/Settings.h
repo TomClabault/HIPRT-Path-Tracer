@@ -22,7 +22,7 @@
 struct ReGIRGridFillSettings
 {
 	HIPRT_DEVICE ReGIRGridFillSettings() : ReGIRGridFillSettings(true) {}
-		
+
 	HIPRT_DEVICE ReGIRGridFillSettings(bool primary_hit)
 	{
 		light_sample_count_per_cell_reservoir = 4;
@@ -71,8 +71,8 @@ private:
 struct ReGIRSpatialReuseSettings
 {
 	bool do_spatial_reuse = true;
- 	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
- 	// This has the effect of coalescing neighbors memory accesses which improves performance
+	// If true, the same random seed will be used by all grid cells during the spatial reuse for a given frame
+	// This has the effect of coalescing neighbors memory accesses which improves performance
 	bool do_coalesced_spatial_reuse = true;
 
 	// How many successive spatial reuse to perform
@@ -274,8 +274,8 @@ struct ReGIRSettings
 		unsigned int neighbor_cell_index;
 		if (replay_canonical)
 			neighbor_cell_index = find_valid_jittered_neighbor_cell_index<true>(shading_point, surface_normal, current_camera, roughness, primary_hit, do_jittering, jittering_radius, rng);
-        else
-            neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, surface_normal, current_camera, roughness, primary_hit, do_jittering, jittering_radius, rng);
+		else
+			neighbor_cell_index = find_valid_jittered_neighbor_cell_index<false>(shading_point, surface_normal, current_camera, roughness, primary_hit, do_jittering, jittering_radius, rng);
 
 		if (neighbor_cell_index != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
@@ -294,7 +294,7 @@ struct ReGIRSettings
 	{
 		unsigned int retry = 0;
 		unsigned int neighbor_grid_cell_index;
-		
+
 		do
 		{
 			float3 jittered;
@@ -411,15 +411,15 @@ struct ReGIRSettings
 
 	/**
 	 * Returns the reservoir indicated by lienar_reservoir_index_in_grid but in the grid_index given
-	 * 
+	 *
 	 * This function only makes sense with temporal reuse where we have more than 1 grid and so a single reservoir index
 	 * isn't enough to fetch the reservoir in the reservoir buffer
-	 * 
-	 * The 'grid_index' parameter allows reading from a specific grid of past frames. 
+	 *
+	 * The 'grid_index' parameter allows reading from a specific grid of past frames.
 	 * This is index should be in [0, temporal_reuse.temporal_history_length - 1].
-	 * 
+	 *
 	 * If not specified, this function reads from the grid of the current frame
-	 * 
+	 *
 	 * The 'opt' suffix of the function means that the UCW of the reservoir will be read first and the rest of the reservoir
 	 * will only be read if the UCW is > 0.0f.
 	 * If the UCW is <= 0.0f, the returned reservoir will have uninitialized values in all of its fields
@@ -441,7 +441,7 @@ struct ReGIRSettings
 		hash_grid.store_reservoir_and_sample_opt(reservoir, output_reservoirs_grid, hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE void store_reservoir_custom_buffer_opt(ReGIRHashGridSoADevice& output_reservoirs_grid, ReGIRHashCellDataSoADevice& output_reservoirs_cell_data, const ReGIRReservoir& reservoir, 
+	HIPRT_DEVICE void store_reservoir_custom_buffer_opt(ReGIRHashGridSoADevice& output_reservoirs_grid, ReGIRHashCellDataSoADevice& output_reservoirs_cell_data, const ReGIRReservoir& reservoir,
 		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell)
 	{
 		hash_grid.store_reservoir_and_sample_opt(reservoir, output_reservoirs_grid, output_reservoirs_cell_data, world_position, surface_normal, current_camera, roughness, primary_hit, reservoir_index_in_cell);
@@ -519,13 +519,13 @@ struct ReGIRSettings
 		unsigned int hash_grid_cell_index = hash_grid.custom_regir_hash(world_position, surface_normal, current_camera, material.roughness, primary_hit, hash_grid_to_update.m_total_number_of_cells, checksum);
 
 		// TODO we can have a if (current_hash_key != undefined_key) here to skip some atomic operations
-		
+
 		// Trying to insert the new key atomically 
 		unsigned int existing_checksum = hippt::atomic_compare_exchange(&hash_cell_data_to_update.checksums[hash_grid_cell_index], HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX, checksum);
 		if (existing_checksum != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		{
 			// We tried inserting in our cell but there is something else there already
-			
+
 			if (existing_checksum != checksum)
 			{
 				// And it's not our hash so this is a collision
@@ -534,7 +534,7 @@ struct ReGIRSettings
 				if (!HashGrid::resolve_collision<ReGIR_HashGridCollisionResolutionMaxSteps, true>(hash_cell_data_to_update.checksums, hash_grid_to_update.m_total_number_of_cells, new_hash_cell_index, checksum, existing_checksum))
 					// Could not resolve the collision, we can't insert our data
 					return;
-				else 
+				else
 					insert_hash_cell_data(hash_cell_data_to_update, new_hash_cell_index, world_position, surface_normal, primitive_index, material);
 			}
 		}

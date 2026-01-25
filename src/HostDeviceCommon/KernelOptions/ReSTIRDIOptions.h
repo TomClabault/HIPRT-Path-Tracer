@@ -107,10 +107,10 @@
 *	- RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS (and the defensive version RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DEFENSIVE)
 *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
 *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
-* 
+*
 *	- RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO (and the defensive version RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO)
 *		A bit more variance than pairwise MIS but way more robust to temporal correlations
-* 
+*
 *		Implementation of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
 */
 #define ReSTIR_DI_MISWeightsType RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS
@@ -142,11 +142,11 @@
  */
 #define ReSTIR_DI_SpatialDirectionalReuseBitCount (RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT > 64 ? 64 : RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_BIT_COUNT)
 
-/**
- * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
- * 
- * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
- */
+ /**
+  * Technique presented in [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, Pan et al., 2024]
+  *
+  * Helps with the pepper noise introduced by not using visibility in the spatial resampling target function
+  */
 #define ReSTIR_DI_DoOptimalVisibilitySampling KERNEL_OPTION_FALSE
 
 #endif // #ifndef __KERNELCC__

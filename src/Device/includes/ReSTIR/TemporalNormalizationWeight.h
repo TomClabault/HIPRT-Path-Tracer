@@ -22,14 +22,14 @@
  * This structure here is only meant to encapsulate one method that
  * returns the numerator and denominator for normalizing a reservoir at
  * the end of the temporal / spatial reuse pass.
- * 
- * This is cleaner that having a single function with a ton of 
- * 
+ *
+ * This is cleaner that having a single function with a ton of
+ *
  * #if BiasCorrectionmode == 1_OVER_M
  * #elif BiasCorrectionmode == 1_OVER_Z
  * #elif BiasCorrectionmode == MIS_LIKE
  * ....
- * 
+ *
  * We now have one structure per mis weight type method one #if / #elif
  */
 template <int BiasCorrectionMode, bool IsReSTIRGI>
@@ -65,7 +65,7 @@ template <bool IsReSTIRGI>
 struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
+		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
 		int initial_candidates_M, int temporal_neighbor_M,
 		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		float& out_normalization_nume, float& out_normalization_denom,
@@ -101,7 +101,7 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReS
 		else
 			// ReSTIR DI target function
 			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
-		
+
 		// if the sample contained in our final reservoir (the 'reservoir' parameter) could have been produced by the center
 		// pixel, we're adding the confidence of that pixel to the denominator for normalization
 		out_normalization_denom += (center_pixel_target_function > 0) * initial_candidates_M;
@@ -234,7 +234,7 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO
 		out_normalization_nume = 1.0f;
 		out_normalization_denom = 1.0f;
 	}
-}; 
+};
 
 template <bool IsReSTIRGI>
 struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATIO, IsReSTIRGI>

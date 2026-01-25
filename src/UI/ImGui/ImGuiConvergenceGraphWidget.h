@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-class ImGuiConvergenceGraphWidget 
+class ImGuiConvergenceGraphWidget
 {
 public:
 	void draw();

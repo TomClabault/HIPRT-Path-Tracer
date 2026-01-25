@@ -69,7 +69,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 		default_display_view_type = DisplayViewType::DENOISED_BLEND;
 	else if (m_renderer->get_gmon_render_pass()->is_render_pass_used())
 		default_display_view_type = DisplayViewType::GMON_BLEND;
-	else 
+	else
 		default_display_view_type = DisplayViewType::DEFAULT;
 
 	queue_display_view_change(default_display_view_type);
@@ -135,7 +135,7 @@ void DisplayViewSystem::resize_framebuffer()
 bool DisplayViewSystem::update_selected_display_view()
 {
 	if (current_display_view_needs_adaptive_sampling_buffers()
-	&& !m_render_window->get_renderer()->get_render_settings().has_access_to_adaptive_sampling_buffers())
+		&& !m_render_window->get_renderer()->get_render_settings().has_access_to_adaptive_sampling_buffers())
 		// If the adaptive sampling heatmap is selected as the current view but
 		// the adaptive sampling buffers are no longer available (after a change
 		// to ImGui for example), we need to switch out of the adaptive sampling
@@ -162,7 +162,7 @@ bool DisplayViewSystem::update_selected_display_view()
 	}
 
 	handle_automatic_display_view_changes();
-	
+
 	return false;
 }
 
@@ -219,9 +219,9 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 {
 	const DisplayView* display_view = display_view_system->get_current_display_view();
 	const DisplaySettings& display_settings = display_view_system->m_display_settings;
-	
+
 	HIPRTRenderSettings render_settings = renderer->get_render_settings();
-	render_settings.sample_number = std::max(1u, render_settings.sample_number); 
+	render_settings.sample_number = std::max(1u, render_settings.sample_number);
 
 	bool display_low_resolution = display_view_system->get_render_low_resolution();
 	int render_low_resolution_scaling = display_low_resolution ? render_settings.render_low_resolution_scaling : 1;

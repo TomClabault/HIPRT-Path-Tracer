@@ -16,120 +16,120 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-/**
- * References:
- * 
- * [1] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer
- * [2] [PBR Book 3rd Ed - Infinite Light Sampling] https://www.pbr-book.org/3ed-2018/Light_Transport_I_Surface_Reflection/Sampling_Light_Sources
- */ 
+ /**
+  * References:
+  *
+  * [1] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer
+  * [2] [PBR Book 3rd Ed - Infinite Light Sampling] https://www.pbr-book.org/3ed-2018/Light_Transport_I_Surface_Reflection/Sampling_Light_Sources
+  */
 
-/**
- * This function expects 'direction' to be in world space
- */
+  /**
+   * This function expects 'direction' to be in world space
+   */
 HIPRT_DEVICE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3& direction)
 {
-    // Bringing the direction in envmap space for sampling the envmap
-    float3 rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
+	// Bringing the direction in envmap space for sampling the envmap
+	float3 rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
 
-    float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) * hippt::M_INV_TWO_PI;
-    float v = 0.5f + asin(rotated_direction.y) * hippt::M_INV_PI;
+	float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) * hippt::M_INV_TWO_PI;
+	float v = 0.5f + asin(rotated_direction.y) * hippt::M_INV_PI;
 
-    return sample_environment_map_texture(world_settings, make_float2(u, v));
+	return sample_environment_map_texture(world_settings, make_float2(u, v));
 }
 
 HIPRT_DEVICE void envmap_cdf_search(const WorldSettings& world_settings, float value, int& x, int& y)
 {
-    //First searching a line to sample
-    unsigned int lower = 0;
-    int upper = world_settings.envmap_height - 1;
+	//First searching a line to sample
+	unsigned int lower = 0;
+	int upper = world_settings.envmap_height - 1;
 
-    int x_index = world_settings.envmap_width - 1;
-    while (lower < upper)
-    {
-        int y_index = static_cast<int>(floorf((lower + upper) * 0.5f));
-        int env_map_index = y_index * world_settings.envmap_width + x_index;
+	int x_index = world_settings.envmap_width - 1;
+	while (lower < upper)
+	{
+		int y_index = static_cast<int>(floorf((lower + upper) * 0.5f));
+		int env_map_index = y_index * world_settings.envmap_width + x_index;
 
-        if (value < world_settings.envmap_cdf[env_map_index])
-            upper = y_index;
-        else
-            lower = y_index + 1;
-    }
-    y = hippt::max(hippt::min(lower, world_settings.envmap_height), 0u);
+		if (value < world_settings.envmap_cdf[env_map_index])
+			upper = y_index;
+		else
+			lower = y_index + 1;
+	}
+	y = hippt::max(hippt::min(lower, world_settings.envmap_height), 0u);
 
-    //Then sampling the line itself
-    lower = 0;
-    upper = world_settings.envmap_width - 1;
+	//Then sampling the line itself
+	lower = 0;
+	upper = world_settings.envmap_width - 1;
 
-    int y_index = y;
-    while (lower < upper)
-    {
-        int x_idx = static_cast<int>(floorf((lower + upper) * 0.5f));
-        int env_map_index = y_index * world_settings.envmap_width + x_idx;
+	int y_index = y;
+	while (lower < upper)
+	{
+		int x_idx = static_cast<int>(floorf((lower + upper) * 0.5f));
+		int env_map_index = y_index * world_settings.envmap_width + x_idx;
 
-        if (value < world_settings.envmap_cdf[env_map_index])
-            upper = x_idx;
-        else
-            lower = x_idx + 1;
-    }
-    x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
+		if (value < world_settings.envmap_cdf[env_map_index])
+			upper = x_idx;
+		else
+			lower = x_idx + 1;
+	}
+	x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
 }
 
 HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings, float3& sampled_direction, float& envmap_pdf, Xorshift32Generator& random_number_generator)
 {
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
-    envmap_pdf = 0.0f;
+	envmap_pdf = 0.0f;
 
-    return ColorRGB32F();
+	return ColorRGB32F();
 #endif
 
-    int x, y;
-    float env_map_total_sum = world_settings.envmap_total_sum;
+	int x, y;
+	float env_map_total_sum = world_settings.envmap_total_sum;
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
-    // Importance sampling a texel of the envmap with a binary search on the CDF
-    envmap_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
+	// Importance sampling a texel of the envmap with a binary search on the CDF
+	envmap_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
 #elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
-    int random_index = world_settings.envmap_alias_table.sample(random_number_generator);
+	int random_index = world_settings.envmap_alias_table.sample(random_number_generator);
 
-    y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
-    x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
+	y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
+	x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
 #endif
 
-    // Converting to UV coordinates
-    float u = static_cast<float>(x) / world_settings.envmap_width;
-    float v = static_cast<float>(y) / world_settings.envmap_height;
+	// Converting to UV coordinates
+	float u = static_cast<float>(x) / world_settings.envmap_width;
+	float v = static_cast<float>(y) / world_settings.envmap_height;
 
-    // Converting to polar coordinates
-    float phi = u * hippt::M_TWO_PI;
-    // Clamping because a theta of 0.0f would mean straight up which means singularity
-    // which means not good for numerical stability
-    float theta = hippt::max(1.0e-5f, v * hippt::M_Pi);
+	// Converting to polar coordinates
+	float phi = u * hippt::M_TWO_PI;
+	// Clamping because a theta of 0.0f would mean straight up which means singularity
+	// which means not good for numerical stability
+	float theta = hippt::max(1.0e-5f, v * hippt::M_Pi);
 
-    // Convert to cartesian coordinates
-    float cos_theta = hippt::intrin_cosf(theta);
-    float sin_theta = hippt::intrin_sinf(theta);
-    // Using this formula here instead of the usual (sin_theta * cos(phi), sin_theta * sin(phi), cos_theta)
-    // because we want our envmap to be Y-up
-    sampled_direction = make_float3(-sin_theta * hippt::intrin_cosf(phi), -cos_theta, -sin_theta * hippt::intrin_sinf(phi));
+	// Convert to cartesian coordinates
+	float cos_theta = hippt::intrin_cosf(theta);
+	float sin_theta = hippt::intrin_sinf(theta);
+	// Using this formula here instead of the usual (sin_theta * cos(phi), sin_theta * sin(phi), cos_theta)
+	// because we want our envmap to be Y-up
+	sampled_direction = make_float3(-sin_theta * hippt::intrin_cosf(phi), -cos_theta, -sin_theta * hippt::intrin_sinf(phi));
 
-    // Taking envmap rotation into account to bring the direction in world space
-    sampled_direction = matrix_X_vec(world_settings.envmap_to_world_matrix, sampled_direction);
+	// Taking envmap rotation into account to bring the direction in world space
+	sampled_direction = matrix_X_vec(world_settings.envmap_to_world_matrix, sampled_direction);
 
-    ColorRGB32F env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, v));
-    // Computing envmap PDF
-    envmap_pdf = 1.0f;
+	ColorRGB32F env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, v));
+	// Computing envmap PDF
+	envmap_pdf = 1.0f;
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE 
-    // The texel was sampled according to its luminance
-    envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
+	// The texel was sampled according to its luminance
+	envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
 
-    // Account for the fact that the envmap texels have some area in the world
-    envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
+	// Account for the fact that the envmap texels have some area in the world
+	envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
 #endif
 
-    // Converting the PDF from area measure on the envmap to solid angle measure
-    envmap_pdf /= (hippt::M_TWO_PI_SQUARED * sin_theta);
+	// Converting the PDF from area measure on the envmap to solid angle measure
+	envmap_pdf /= (hippt::M_TWO_PI_SQUARED * sin_theta);
 
-    return env_map_radiance;
+	return env_map_radiance;
 }
 
 /**
@@ -139,137 +139,137 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings, floa
 HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const float3& direction, float& pdf)
 {
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
-    pdf = 0.0f;
+	pdf = 0.0f;
 
-    return ColorRGB32F();
+	return ColorRGB32F();
 #endif
 
-    const WorldSettings& world_settings = render_data.world_settings;
+	const WorldSettings& world_settings = render_data.world_settings;
 
-    ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction);
+	ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction);
 
-    float envmap_total_sum = world_settings.envmap_total_sum;
+	float envmap_total_sum = world_settings.envmap_total_sum;
 
-    float theta_bsdf_dir = acosf(-direction.y);
-    float sin_theta = hippt::intrin_sinf(theta_bsdf_dir);
+	float theta_bsdf_dir = acosf(-direction.y);
+	float sin_theta = hippt::intrin_sinf(theta_bsdf_dir);
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH || EnvmapSamplingStrategy == ESS_ALIAS_TABLE 
-    // The texel was sampled according to its luminance
-    pdf = envmap_radiance.luminance() / (envmap_total_sum * render_data.world_settings.envmap_intensity);
+	// The texel was sampled according to its luminance
+	pdf = envmap_radiance.luminance() / (envmap_total_sum * render_data.world_settings.envmap_intensity);
 
-    // Account for the fact that the envmap texels have some area in the world
-    pdf *= world_settings.envmap_width * world_settings.envmap_height;
+	// Account for the fact that the envmap texels have some area in the world
+	pdf *= world_settings.envmap_width * world_settings.envmap_height;
 #endif
 
-    // Converting from "texel on envmap measure" to solid angle
-    pdf /= (hippt::M_TWO_PI_SQUARED * sin_theta);
+	// Converting from "texel on envmap measure" to solid angle
+	pdf /= (hippt::M_TWO_PI_SQUARED * sin_theta);
 
-    return envmap_radiance;
+	return envmap_radiance;
 }
 
 HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info,
-    const float3& view_direction, 
-    Xorshift32Generator& random_number_generator)
+	const float3& view_direction,
+	Xorshift32Generator& random_number_generator)
 {
-    float envmap_pdf;
-    float3 sampled_direction;
-    ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf, random_number_generator);
-    ColorRGB32F envmap_mis_contribution;
+	float envmap_pdf;
+	float3 sampled_direction;
+	ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf, random_number_generator);
+	ColorRGB32F envmap_mis_contribution;
 
-    if (ray_payload.material.can_do_light_sampling())
-    {
-        // Sampling the envmap with MIS
-        float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
-        if (envmap_pdf > 0.0f && cosine_term > 0.0f)
-        {
-            hiprtRay shadow_ray;
-            shadow_ray.origin = closest_hit_info.inter_point;
-            shadow_ray.direction = sampled_direction;
+	if (ray_payload.material.can_do_light_sampling())
+	{
+		// Sampling the envmap with MIS
+		float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
+		if (envmap_pdf > 0.0f && cosine_term > 0.0f)
+		{
+			hiprtRay shadow_ray;
+			shadow_ray.origin = closest_hit_info.inter_point;
+			shadow_ray.direction = sampled_direction;
 
-            NEEPlusPlusContext nee_plus_plus_context;
-            nee_plus_plus_context.shaded_point = closest_hit_info.inter_point;
-            nee_plus_plus_context.point_on_light = sampled_direction;
-            nee_plus_plus_context.envmap = true;
-            bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
-            if (!in_shadow)
-            {
-                float bsdf_pdf;
-                BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO; 
-                BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, EnvmapSamplingDoBSDFMIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
-                ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+			NEEPlusPlusContext nee_plus_plus_context;
+			nee_plus_plus_context.shaded_point = closest_hit_info.inter_point;
+			nee_plus_plus_context.point_on_light = sampled_direction;
+			nee_plus_plus_context.envmap = true;
+			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+			if (!in_shadow)
+			{
+				float bsdf_pdf;
+				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, EnvmapSamplingDoBSDFMIS ? MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS : MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 #if EnvmapSamplingDoBSDFMIS
-                float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);
+				float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);
 #else
-                float mis_weight = 1.0f;
+				float mis_weight = 1.0f;
 #endif
 
-                envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf / nee_plus_plus_context.unoccluded_probability;
-            }
-        }
-    }
+				envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf / nee_plus_plus_context.unoccluded_probability;
+			}
+		}
+	}
 
 
 
 #if EnvmapSamplingDoBSDFMIS
-    float bsdf_sample_pdf;
-    float3 bsdf_sampled_dir;
-    ColorRGB32F bsdf_color;
-    ColorRGB32F bsdf_mis_contribution;
+	float bsdf_sample_pdf;
+	float3 bsdf_sampled_dir;
+	ColorRGB32F bsdf_color;
+	ColorRGB32F bsdf_mis_contribution;
 
-    BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-    BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
-    bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+	bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
 
-    // Sampling the BSDF with MIS
-    float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
-    if (bsdf_sample_pdf > 0.0f)
-    {
-        hiprtRay shadow_ray;
-        shadow_ray.origin = closest_hit_info.inter_point;
-        shadow_ray.direction = bsdf_sampled_dir;
+	// Sampling the BSDF with MIS
+	float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
+	if (bsdf_sample_pdf > 0.0f)
+	{
+		hiprtRay shadow_ray;
+		shadow_ray.origin = closest_hit_info.inter_point;
+		shadow_ray.direction = bsdf_sampled_dir;
 
-        bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
-        if (!in_shadow)
-        {
-            float envmap_eval_pdf;
-            ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_dir, envmap_eval_pdf);
-            if (envmap_eval_pdf > 0.0f)
-            {
-                float mis_weight = balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
-                bsdf_mis_contribution = envmap_radiance * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
-            }
-        }
-    }
+		bool in_shadow = evaluate_shadow_ray_occluded(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+		if (!in_shadow)
+		{
+			float envmap_eval_pdf;
+			ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_dir, envmap_eval_pdf);
+			if (envmap_eval_pdf > 0.0f)
+			{
+				float mis_weight = balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
+				bsdf_mis_contribution = envmap_radiance * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
+			}
+		}
+	}
 
-    return bsdf_mis_contribution + envmap_mis_contribution;
+	return bsdf_mis_contribution + envmap_mis_contribution;
 #else
-    return envmap_mis_contribution;
+	return envmap_mis_contribution;
 #endif
 }
 
-HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
-    const float3& view_direction, 
-    Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info,
+	const float3& view_direction,
+	Xorshift32Generator& random_number_generator)
 {
-    const WorldSettings& world_settings = render_data.world_settings;
+	const WorldSettings& world_settings = render_data.world_settings;
 
-    if (world_settings.ambient_light_type != AmbientLightType::ENVMAP || render_data.bsdfs_data.white_furnace_mode)
-        // Not using the envmap
-        return ColorRGB32F(0.0f);
+	if (world_settings.ambient_light_type != AmbientLightType::ENVMAP || render_data.bsdfs_data.white_furnace_mode)
+		// Not using the envmap
+		return ColorRGB32F(0.0f);
 
-    if (world_settings.envmap_intensity <= 0.0f)
-        // No need to sample the envmap if the user has set the intensity to 0
-        return ColorRGB32F(0.0f);
+	if (world_settings.envmap_intensity <= 0.0f)
+		// No need to sample the envmap if the user has set the intensity to 0
+		return ColorRGB32F(0.0f);
 
-    if (ray_payload.bounce == 0 && DirectLightNEEEstimator == LSS_RESTIR_DI)
-        // The envmap lighting is handled by ReSTIR DI on the first bounce
-        return ColorRGB32F(0.0f);
+	if (ray_payload.bounce == 0 && DirectLightNEEEstimator == LSS_RESTIR_DI)
+		// The envmap lighting is handled by ReSTIR DI on the first bounce
+		return ColorRGB32F(0.0f);
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
-    return ColorRGB32F(0.0f);
+	return ColorRGB32F(0.0f);
 #else
-    return sample_environment_map_with_mis(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+	return sample_environment_map_with_mis(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
 }
 

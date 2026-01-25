@@ -33,14 +33,14 @@ public:
 
 	template <bool IsReSTIRGI>
 	static void resize_directional_reuse_buffers(GPURenderer* renderer, int new_width, int new_height,
-		OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius, 
-		OrochiBuffer<unsigned int>& per_pixel_spatial_reuse_direction_mask_u, 
+		OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
+		OrochiBuffer<unsigned int>& per_pixel_spatial_reuse_direction_mask_u,
 		OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull)
 	{
 		per_pixel_spatial_reuse_radius.resize(new_width * new_height);
 
-		int bit_count = IsReSTIRGI 
-			? renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT) 
+		int bit_count = IsReSTIRGI
+			? renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT)
 			: renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT);
 
 		if (bit_count <= 32)
@@ -48,7 +48,7 @@ public:
 		else
 			per_pixel_spatial_reuse_direction_mask_ull.resize(new_width * new_height);
 	}
-	
+
 	template <bool IsReSTIRGI>
 	static bool pre_render_update_common_buffers(const HIPRTRenderData& render_data, GPURenderer* renderer,
 		OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
@@ -72,15 +72,15 @@ public:
 
 	template <bool IsReSTIRGI>
 	static bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data, GPURenderer* renderer,
-		OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius, 
-		OrochiBuffer<unsigned int>& per_pixel_spatial_reuse_direction_mask_u, 
+		OrochiBuffer<unsigned char>& per_pixel_spatial_reuse_radius,
+		OrochiBuffer<unsigned int>& per_pixel_spatial_reuse_direction_mask_u,
 		OrochiBuffer<unsigned long long int>& per_pixel_spatial_reuse_direction_mask_ull,
 		OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_hits,
 		OrochiBuffer<unsigned long long int>& spatial_reuse_statistics_hit_total)
 	{
 		ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 		const std::string& mask_bit_count_macro_name = IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT : GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_DIRECTIONAL_REUSE_MASK_BIT_COUNT;
-			
+
 		// Allocating / deallocating the adaptive directional spatial reuse buffers if the feature
 		// isn't used
 		bool render_data_invalidated = false;
@@ -225,7 +225,7 @@ public:
 			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_u = per_pixel_spatial_reuse_direction_mask_u.get_device_pointer();
 		else
 			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_u = nullptr;
-			
+
 		if (per_pixel_spatial_reuse_direction_mask_ull.size() > 0)
 			common_spatial_pass_settings.per_pixel_spatial_reuse_directions_mask_ull = per_pixel_spatial_reuse_direction_mask_ull.get_device_pointer();
 		else

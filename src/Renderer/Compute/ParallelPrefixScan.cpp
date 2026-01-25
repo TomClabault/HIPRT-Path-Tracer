@@ -10,7 +10,7 @@
 
 ParallelPrefixScan::ParallelPrefixScan() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size_padded(0) {}
 
-ParallelPrefixScan::ParallelPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream) 
+ParallelPrefixScan::ParallelPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 	: m_hiprt_ctx(hiprt_ctx), m_stream(stream), m_size_padded(0)
 {
 	initialize_kernels();
@@ -134,7 +134,7 @@ void ParallelPrefixScan::scan()
 		/**
 		 * Exclusive prefix-scanning the block sums of level 0
 		 */
-		// We have scanned the input chunks, we need to scan the block sums now
+		 // We have scanned the input chunks, we need to scan the block sums now
 		{
 			unsigned int* level_0_block_sums = m_level_0_block_sums.get_device_pointer();
 			unsigned int* scanned_level_0_block_sums = m_scanned_level_0_blocks_sums.get_device_pointer();

@@ -24,7 +24,7 @@ struct ReGIRHashGrid
 	{
 		int width = current_camera.sensor_width;
 		int height = current_camera.sensor_height;
-		
+
 #if ReGIR_HashGridAdaptiveRoughnessGridPrecision == KERNEL_OPTION_TRUE && (BSDFOverride != BSDF_LAMBERTIAN && BSDFOverride != BSDF_OREN_NAYAR)
 		if (primary_hit)
 		{
@@ -141,7 +141,7 @@ struct ReGIRHashGrid
 		store_full_reservoir(soa, reservoir, reservoir_index_in_grid);
 	}
 
-	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashGridSoADevice& soa, ReGIRHashCellDataSoADevice& hash_cell_data, 
+	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashGridSoADevice& soa, ReGIRHashCellDataSoADevice& hash_cell_data,
 		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell)
 	{
 		unsigned int hash_key;
@@ -152,7 +152,7 @@ struct ReGIRHashGrid
 		store_reservoir_and_sample_opt(reservoir, soa, hash_grid_cell_index, reservoir_index_in_cell);
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
 		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
 	{
 		unsigned int hash_key;
@@ -171,7 +171,7 @@ struct ReGIRHashGrid
 		return hash_grid_cell_index * soa.reservoirs.number_of_reservoirs_per_cell + reservoir_index_in_cell;
 	}
 
-	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
+	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
 		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell) const
 	{
 		unsigned int hash_grid_cell_index = get_hash_grid_cell_index(soa, hash_cell_data, world_position, surface_normal, current_camera, roughness, primary_hit);
@@ -186,7 +186,7 @@ struct ReGIRHashGrid
 		if (reservoir.UCW <= 0.0f)
 		{
 			soa.reservoirs.UCW[reservoir_index_in_grid] = reservoir.UCW;
-			
+
 			// No need to store the rest if the UCW is invalid, we can already return
 			return;
 		}
@@ -253,7 +253,7 @@ struct ReGIRHashGrid
 		return read_full_reservoir(soa, reservoir_index_in_grid);
 	}
 
-	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data, 
+	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
 		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
 	{
 		unsigned int hash_key;

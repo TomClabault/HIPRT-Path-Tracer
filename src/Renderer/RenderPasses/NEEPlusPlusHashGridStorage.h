@@ -19,7 +19,7 @@ public:
 	void set_nee_plus_plus_render_pass(NEEPlusPlusRenderPass* nee_plus_plus_render_pass);
 
 	bool pre_render_update(HIPRTRenderData& render_data, bool is_interacting_camera);
-	
+
 	void update_render_data(HIPRTRenderData& render_data);
 	bool free();
 	void reset();
@@ -41,7 +41,7 @@ private:
 	OrochiBuffer<unsigned char> m_total_num_rays;
 
 	OrochiBuffer<unsigned int> m_checksum_buffer;
-	
+
 	// Counters on the GPU for tracking 
 	OrochiBuffer<unsigned long long int> m_total_shadow_ray_queries;
 	OrochiBuffer<unsigned long long int> m_shadow_rays_actually_traced;

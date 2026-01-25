@@ -16,36 +16,36 @@ class GPURenderer;
 class CameraAnimation
 {
 public:
-    void set_camera(Camera* camera);
+	void set_camera(Camera* camera);
 
-    /**
-    * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	/**
+	* The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
 	* call to animation_step()
-    */
-    void animation_step(GPURenderer* renderer, float delta_time);
-    /**
-    * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-    * call to do_rotation_animation()
-    */
-    void do_rotation_animation(float delta_time);
+	*/
+	void animation_step(GPURenderer* renderer, float delta_time);
+	/**
+	* The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	* call to do_rotation_animation()
+	*/
+	void do_rotation_animation(float delta_time);
 
-    // Public attributes here because we want them to be
-    // easily accessible and having to use getter/setters
-    // everywhere is a pain in the butt
-    bool animate = false;
+	// Public attributes here because we want them to be
+	// easily accessible and having to use getter/setters
+	// everywhere is a pain in the butt
+	bool animate = false;
 
-    // If true, the camera will rotate around 'm_rotate_around_point'
-    // with 'm_rotation_duration' as the speed target when 'animate' is
-    // set to true
-    bool m_do_rotation_animation = false;
-    CameraRotationType m_rotation_type = CameraRotationType::SECONDS_PER_ROTATION;
+	// If true, the camera will rotate around 'm_rotate_around_point'
+	// with 'm_rotation_duration' as the speed target when 'animate' is
+	// set to true
+	bool m_do_rotation_animation = false;
+	CameraRotationType m_rotation_type = CameraRotationType::SECONDS_PER_ROTATION;
 
-    glm::vec3 m_rotate_around_point = glm::vec3(0.0f, 0.0f, 0.0f);
-    // Rotation speed in number of rotations around the object per second
-    float m_rotation_value = 8.0f;
+	glm::vec3 m_rotate_around_point = glm::vec3(0.0f, 0.0f, 0.0f);
+	// Rotation speed in number of rotations around the object per second
+	float m_rotation_value = 8.0f;
 
 private:
-    Camera* m_camera = nullptr;
+	Camera* m_camera = nullptr;
 };
 
 #endif

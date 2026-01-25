@@ -21,10 +21,10 @@
 #include <hiprt/hiprt_device.h>
 #include <Orochi/Orochi.h>
 
-/**
- * The CPU and GPU use the same kernel code but the CPU still need some specific data
- * (the CPU BVH for example) which is stored in this structure
- */
+ /**
+  * The CPU and GPU use the same kernel code but the CPU still need some specific data
+  * (the CPU BVH for example) which is stored in this structure
+  */
 
 class BVH;
 struct CPUData
@@ -38,7 +38,7 @@ struct CPUData
 
 /*
  * A structure containing all the information about the scene
- * that the kernel is going to need for the render (vertices of the triangles, 
+ * that the kernel is going to need for the render (vertices of the triangles,
  * vertices indices, skysphere data, ...)
  */
 struct HIPRTRenderData

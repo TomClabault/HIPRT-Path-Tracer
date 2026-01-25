@@ -15,7 +15,7 @@
   * 'HeightCorrelated' is a little be more precise and
   * corect than 'HeightUncorrelated' so it should basically
   * always be preferred.
-  * 
+  *
   * This is basically only for experimentation purposes
   */
 enum GGXMaskingShadowingFlavor

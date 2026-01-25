@@ -10,7 +10,7 @@
 
 #define NUMBER_OF_BANKS 32
 #define LOG2_NUMBER_OF_BANKS 5
-// Unstable and annoying to use so not using the conflict free offsets
+ // Unstable and annoying to use so not using the conflict free offsets
 #define CONFLICT_FREE_OFFSET(index) 0 //((index) >> LOG2_NUMBER_OF_BANKS + ((index) >> (2 * LOG2_NUMBER_OF_BANKS)))
 
 #endif

@@ -53,9 +53,9 @@ HIPRT_DEVICE float ltc_jacobian(const HIPRTRenderData& render_data, float cos_th
 
 	// TODO can we precompute that in a texture?
 	float3x3 ltc_matrix_inverse = inverse(float3x3(
-		ltc_params.r,	0.0f,			ltc_params.g,
-		0.0f,			ltc_params.b,	0.0f,
-		ltc_params.a,	0.0f,			1.0f
+		ltc_params.r, 0.0f, ltc_params.g,
+		0.0f, ltc_params.b, 0.0f,
+		ltc_params.a, 0.0f, 1.0f
 	));
 
 	float3 direction_cosine_space = ltc_matrix_inverse * sampled_direction_shading_space;

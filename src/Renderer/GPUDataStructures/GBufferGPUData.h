@@ -12,7 +12,7 @@
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/Material/MaterialPacked.h"
 
-// GBuffer that stores information about the current frame first hit data
+ // GBuffer that stores information about the current frame first hit data
 struct GBufferGPURenderer
 {
 	void resize(unsigned int new_element_count, size_t ray_volume_state_byte_size)

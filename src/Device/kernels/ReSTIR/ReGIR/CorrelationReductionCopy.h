@@ -8,48 +8,48 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-/**
- * This kernel inserts the keys of the input hash table into the output hash table
- *
- * This is used when the hash table has been resized and we need to re-insert the keys
- * of the old (smaller) hash table into the new (larger) hash table
- */
+ /**
+  * This kernel inserts the keys of the input hash table into the output hash table
+  *
+  * This is used when the hash table has been resized and we need to re-insert the keys
+  * of the old (smaller) hash table into the new (larger) hash table
+  */
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy)
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Correlation_Reduction_Copy(HIPRTRenderData render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy, int thread_index)
 #endif
 {
-    ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
+	ReGIRSettings& regir_settings = render_data.render_settings.regir_settings;
 
 #ifdef __KERNELCC__
-    const uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 
 #ifdef __KERNELCC__
-    if (thread_index >= *render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count * regir_settings.get_number_of_reservoirs_per_cell(true))
+	if (thread_index >= *render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count * regir_settings.get_number_of_reservoirs_per_cell(true))
 #else
-    if (thread_index >= render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count->load() * regir_settings.get_number_of_reservoirs_per_cell(true))
+	if (thread_index >= render_data.render_settings.regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_count->load() * regir_settings.get_number_of_reservoirs_per_cell(true))
 #endif
-    {
-        return;
-    }
+	{
+		return;
+	}
 
-    unsigned int reservoir_index = thread_index;
-    unsigned int reservoir_index_in_cell = reservoir_index % regir_settings.get_number_of_reservoirs_per_cell(true);
-    unsigned int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell(true);
-    // If all cells are alive, the cell index is straightforward
-    //
-    // Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
-    // so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
-    unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_list[cell_alive_index];
-    unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(true) + reservoir_index_in_cell;
+	unsigned int reservoir_index = thread_index;
+	unsigned int reservoir_index_in_cell = reservoir_index % regir_settings.get_number_of_reservoirs_per_cell(true);
+	unsigned int cell_alive_index = reservoir_index / regir_settings.get_number_of_reservoirs_per_cell(true);
+	// If all cells are alive, the cell index is straightforward
+	//
+	// Not all cells are alive, what we have is cell_alive_index which is the index of the cell in the alive list
+	// so we can fetch the index of the cell in the grid cells alive list with that cell_alive_index
+	unsigned int hash_grid_cell_index = regir_settings.get_hash_cell_data_soa(true).grid_cells_alive_list[cell_alive_index];
+	unsigned int reservoir_index_in_grid = hash_grid_cell_index * regir_settings.get_number_of_reservoirs_per_cell(true) + reservoir_index_in_cell;
 
-    ReGIRReservoir reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(input_reservoirs_to_copy, reservoir_index_in_grid);
+	ReGIRReservoir reservoir_to_copy = regir_settings.hash_grid.read_full_reservoir(input_reservoirs_to_copy, reservoir_index_in_grid);
 
 	unsigned int reservoir_index_in_supersampling_grid = reservoir_index_in_grid + regir_settings.correlation_reduction.correl_reduction_current_grid * regir_settings.get_number_of_reservoirs_per_grid(true);
 
-    render_data.render_settings.regir_settings.hash_grid.store_full_reservoir(regir_settings.correlation_reduction.correlation_reduction_grid, reservoir_to_copy, reservoir_index_in_supersampling_grid);
+	render_data.render_settings.regir_settings.hash_grid.store_full_reservoir(regir_settings.correlation_reduction.correlation_reduction_grid, reservoir_to_copy, reservoir_index_in_supersampling_grid);
 }
 
 #endif

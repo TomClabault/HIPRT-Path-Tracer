@@ -126,7 +126,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HI
 		std::copy(images[i].data().begin(), images[i].data().end(), linear_image_data.begin() + width * height * i * channels);
 
 	oroMemcpy3DParms copyParams = { 0 };
-	copyParams.srcPtr = oroPitchedPtr{ linear_image_data.data(), width * channels * sizeof(float), width * channels, height};
+	copyParams.srcPtr = oroPitchedPtr{ linear_image_data.data(), width * channels * sizeof(float), width * channels, height };
 	copyParams.dstArray = m_texture_array;
 	copyParams.extent = { width, height, depth };
 	copyParams.kind = oroMemcpyHostToDevice;

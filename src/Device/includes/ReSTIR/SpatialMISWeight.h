@@ -121,7 +121,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, Is
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
-		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function, 
+		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function,
 		ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample, int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
 		ReSTIRReservoirType<IsReSTIRGI>& neighbor_pixel_reservoir,
 
@@ -167,7 +167,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, Is
 				{
 					// ReSTIR GI target function
 					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
-					
+
 					// Because we're using the target function as a PDF here, we need to scale the PDF
 					// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
 
@@ -178,7 +178,7 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, Is
 						if (!center_pixel_reservoir_sample.is_envmap_path())
 						{
 							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal.unpack(), neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
-							
+
 							if (jacobian == 0.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 								// and has been rejected), the target function is set to 0

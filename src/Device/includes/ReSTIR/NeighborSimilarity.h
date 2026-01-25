@@ -5,15 +5,15 @@
 
 #ifndef DEVICE_RESTIR_NEIGHBOR_SIMILARITY_H
 #define DEVICE_RESTIR_NEIGHBOR_SIMILARITY_H
- 
+
 #include "Device/includes/ReSTIR/Jacobian.h"
 
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
-/**
- * Returns true if the two given points pass the plane distance check, false otherwise
- */
+ /**
+  * Returns true if the two given points pass the plane distance check, false otherwise
+  */
 HIPRT_DEVICE bool plane_distance_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3& temporal_world_space_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
 {
 	if (!neighbor_similarity_settings.use_plane_distance_heuristic)
@@ -52,8 +52,8 @@ HIPRT_DEVICE bool roughness_similarity_heuristic(const ReSTIRCommonNeighborSimil
 
 template <bool IsReSTIRGI>
 HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& render_data,
-																		 int neighbor_pixel_index, int center_pixel_index, 
-																		 const float3& current_shading_point, const float3& current_normal, bool previous_frame = false)
+	int neighbor_pixel_index, int center_pixel_index,
+	const float3& current_shading_point, const float3& current_normal, bool previous_frame = false)
 {
 	if (neighbor_pixel_index == center_pixel_index)
 		// A pixel always passes the similarity test with itself

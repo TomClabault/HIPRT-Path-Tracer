@@ -9,19 +9,19 @@
 #include "Device/includes/LightSampling/EmissiveMeshAliasTableDevice.h"
 #include "Device/includes/AliasTable.h"
 
-/**
- * Contains the alias tables probas and aliases of all the emissive meshes in the scene
- * 
- * The alias tables of each emissive mesh are computed during scene load and all these
- * alias table (probas and aliases) are concatenated into the single 'alias_tables_probas'
- * and 'alias_tables_aliases' of this structure
- * 
- * 'offsets' and 'individual_alias_tables_sizes' are used to find where the alias table of a
- * given mesh is in the big concatenated buffer of all alias tables
- * 
- * Also contains an alias table for sampling a mesh amongst all the meshes of the scene
- * according to its total emissive power
- */
+ /**
+  * Contains the alias tables probas and aliases of all the emissive meshes in the scene
+  *
+  * The alias tables of each emissive mesh are computed during scene load and all these
+  * alias table (probas and aliases) are concatenated into the single 'alias_tables_probas'
+  * and 'alias_tables_aliases' of this structure
+  *
+  * 'offsets' and 'individual_alias_tables_sizes' are used to find where the alias table of a
+  * given mesh is in the big concatenated buffer of all alias tables
+  *
+  * Also contains an alias table for sampling a mesh amongst all the meshes of the scene
+  * according to its total emissive power
+  */
 struct EmissiveMeshesAliasTablesDevice
 {
 	static constexpr float INVALID_NORMAL = 4242.0f;

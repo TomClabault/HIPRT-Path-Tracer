@@ -20,287 +20,287 @@ extern ImGuiLogger g_imgui_logger;
 
 #include <deque>
 
-Image8Bit::Image8Bit(int width, int height, int channels) : Image8Bit(std::vector<unsigned char>(width * height * channels, 0), width, height, channels) {}
+Image8Bit::Image8Bit(int width, int height, int channels) : Image8Bit(std::vector<unsigned char>(width* height* channels, 0), width, height, channels) {}
 
 Image8Bit::Image8Bit(const unsigned char* data, int width, int height, int channels) : width(width), height(height), channels(channels)
 {
-    m_pixel_data = std::vector<unsigned char>();
-    m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height * channels]);
+	m_pixel_data = std::vector<unsigned char>();
+	m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height * channels]);
 }
 
 Image8Bit::Image8Bit(const std::vector<unsigned char>& data, int width, int height, int channels) : width(width), height(height), channels(channels), m_pixel_data(data) {}
 
 Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels, bool flipY)
 {
-    stbi_set_flip_vertically_on_load_thread(flipY);
+	stbi_set_flip_vertically_on_load_thread(flipY);
 
-    int width, height, read_channels;
-    unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
+	int width, height, read_channels;
+	unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
-    if (!pixels)
-    {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
-        return Image8Bit();
-    }
+	if (!pixels)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
+		return Image8Bit();
+	}
 
-    Image8Bit output_image(width, height, output_channels);
+	Image8Bit output_image(width, height, output_channels);
 #pragma omp parallel for
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = x + y * width;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int index = x + y * width;
 
-            for (int i = 0; i < output_channels; i++)
-                output_image[index * output_channels + i] = pixels[index * output_channels + i];
-        }
-    }
+			for (int i = 0; i < output_channels; i++)
+				output_image[index * output_channels + i] = pixels[index * output_channels + i];
+		}
+	}
 
-    stbi_image_free(pixels);
-    return output_image;
+	stbi_image_free(pixels);
+	return output_image;
 }
 
 Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_channels, bool flipY)
 {
-    stbi_set_flip_vertically_on_load(flipY);
+	stbi_set_flip_vertically_on_load(flipY);
 
-    int width, height, read_channels;
-    float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
+	int width, height, read_channels;
+	float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
-    if (!pixels)
-    {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
-        return Image8Bit();
-    }
+	if (!pixels)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
+		return Image8Bit();
+	}
 
-    std::vector<unsigned char> converted_data(width * height * output_channels);
+	std::vector<unsigned char> converted_data(width * height * output_channels);
 #pragma omp parallel for
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = x + y * width;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int index = x + y * width;
 
-            for (int i = 0; i < output_channels; i++)
-            {
-                converted_data[index * output_channels + i] = static_cast<unsigned char>(pixels[index * output_channels + i]);
-            }
-        }
-    }
+			for (int i = 0; i < output_channels; i++)
+			{
+				converted_data[index * output_channels + i] = static_cast<unsigned char>(pixels[index * output_channels + i]);
+			}
+		}
+	}
 
-    stbi_image_free(pixels);
-    return Image8Bit(converted_data, width, height, output_channels);
+	stbi_image_free(pixels);
+	return Image8Bit(converted_data, width, height, output_channels);
 }
 
 bool Image8Bit::write_image_png(const char* filename, const bool flipY) const
 {
-    if (byte_size() == 0)
-        return false;
+	if (byte_size() == 0)
+		return false;
 
-    std::vector<unsigned char> tmp(width * height * channels);
-    for (unsigned i = 0; i < width * height; i++)
-        for (int j = 0; j < channels; j++)
-            tmp[i * channels + j] = hippt::clamp(static_cast<unsigned char>(0), static_cast<unsigned char>(255), m_pixel_data[i * channels + j]);
+	std::vector<unsigned char> tmp(width * height * channels);
+	for (unsigned i = 0; i < width * height; i++)
+		for (int j = 0; j < channels; j++)
+			tmp[i * channels + j] = hippt::clamp(static_cast<unsigned char>(0), static_cast<unsigned char>(255), m_pixel_data[i * channels + j]);
 
-    stbi_flip_vertically_on_write(flipY);
-    return stbi_write_png(filename, width, height, channels, tmp.data(), width * channels) != 0;
+	stbi_flip_vertically_on_write(flipY);
+	return stbi_write_png(filename, width, height, channels, tmp.data(), width * channels) != 0;
 }
 
 bool Image8Bit::write_image_hdr(const char* filename, const bool flipY) const
 {
-    if (byte_size() == 0)
-        return false;
+	if (byte_size() == 0)
+		return false;
 
-    std::vector<float> tmp(width * height * channels);
-    for (unsigned i = 0; i < width * height; i++)
-        for (int j = 0; j < channels; j++)
-            tmp[i * channels + j] = m_pixel_data[i * channels + j] / 255.0f;
+	std::vector<float> tmp(width * height * channels);
+	for (unsigned i = 0; i < width * height; i++)
+		for (int j = 0; j < channels; j++)
+			tmp[i * channels + j] = m_pixel_data[i * channels + j] / 255.0f;
 
-    stbi_flip_vertically_on_write(flipY);
-    return stbi_write_hdr(filename, width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
+	stbi_flip_vertically_on_write(flipY);
+	return stbi_write_hdr(filename, width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
 float Image8Bit::luminance_of_pixel(int x, int y) const
 {
-    int start_pixel = (x + y * width) * channels;
+	int start_pixel = (x + y * width) * channels;
 
-    // Computing the luminance with a *maximum* of 3 components.
-    // 
-    // If the texture only has one component (i.e. only red), the following
-    // loop will only loop through the red component with the right weight. 
-    // 
-    // If the image has more than 1 components, 3 for example, then we'll loop through
-    // the 3 components and apply the weights.
-    // 
-    // If the image has 4 components, we will still only take RGB into account for the
-    // luminance computation but not alpha
-    float luminance = 0.0f;
-    float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
-    for (int i = 0; i < hippt::min(channels, 3); i++)
-        luminance += m_pixel_data[start_pixel + i] * weights[i];
+	// Computing the luminance with a *maximum* of 3 components.
+	// 
+	// If the texture only has one component (i.e. only red), the following
+	// loop will only loop through the red component with the right weight. 
+	// 
+	// If the image has more than 1 components, 3 for example, then we'll loop through
+	// the 3 components and apply the weights.
+	// 
+	// If the image has 4 components, we will still only take RGB into account for the
+	// luminance computation but not alpha
+	float luminance = 0.0f;
+	float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
+	for (int i = 0; i < hippt::min(channels, 3); i++)
+		luminance += m_pixel_data[start_pixel + i] * weights[i];
 
-    return luminance;
+	return luminance;
 }
 
 float Image8Bit::luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const
 {
-    float luminance = 0.0f;
+	float luminance = 0.0f;
 
-    for (int x = start_x; x < stop_x; x++)
-        for (int y = start_y; y < stop_y; y++)
-            luminance += luminance_of_pixel(x, y);
+	for (int x = start_x; x < stop_x; x++)
+		for (int y = start_y; y < stop_y; y++)
+			luminance += luminance_of_pixel(x, y);
 
-    return luminance;
+	return luminance;
 }
 
 float Image8Bit::luminance_of_area(const ImageBin& area) const
 {
-    return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
+	return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
 }
 
 ColorRGBA32F Image8Bit::sample_rgba32f(float2 uv) const
 {
-    // Sampling in repeat mode so we're just keeping the fractional part
-    float u = uv.x;
-    if (u != 1.0f)
-        // Only doing that if u != 1.0f because if we actually have
-        // uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
-        // give us 0.0f even though we actually want 1.0f (which is correct).
-        // 
-        // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
-        // U coordinate which needs not to be wrapped
-        u -= static_cast<int>(uv.x);
+	// Sampling in repeat mode so we're just keeping the fractional part
+	float u = uv.x;
+	if (u != 1.0f)
+		// Only doing that if u != 1.0f because if we actually have
+		// uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
+		// give us 0.0f even though we actually want 1.0f (which is correct).
+		// 
+		// Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
+		// U coordinate which needs not to be wrapped
+		u -= static_cast<int>(uv.x);
 
-    float v = uv.y;
-    if (v != 1.0f)
-        // Same for v
-        v -= static_cast<int>(uv.y);
+	float v = uv.y;
+	if (v != 1.0f)
+		// Same for v
+		v -= static_cast<int>(uv.y);
 
-    // For negative UVs, we also want to repeat and we want, for example, 
-    // -0.1f to behave as 0.9f
-    u = u < 0 ? 1.0f + u : u;
-    v = v < 0 ? 1.0f + v : v;
+	// For negative UVs, we also want to repeat and we want, for example, 
+	// -0.1f to behave as 0.9f
+	u = u < 0 ? 1.0f + u : u;
+	v = v < 0 ? 1.0f + v : v;
 
-    // Sampling with [0, 0] bottom-left convention
-    v = 1.0f - v;
+	// Sampling with [0, 0] bottom-left convention
+	v = 1.0f - v;
 
-    int x = (u * (width - 1));
-    int y = (v * (height - 1));
+	int x = (u * (width - 1));
+	int y = (v * (height - 1));
 
-    ColorRGBA32F out_color;
-    for (int i = 0; i < channels; i++)
-        out_color[i] = m_pixel_data[(x + y * width) * channels + i] / 255.0f;
+	ColorRGBA32F out_color;
+	for (int i = 0; i < channels; i++)
+		out_color[i] = m_pixel_data[(x + y * width) * channels + i] / 255.0f;
 
-    return out_color;
+	return out_color;
 }
 
 void Image8Bit::set_data(const std::vector<unsigned char>& data)
 {
-    m_pixel_data = data;
+	m_pixel_data = data;
 }
 
 const std::vector<unsigned char>& Image8Bit::data() const
 {
-    return m_pixel_data;
+	return m_pixel_data;
 }
 
 std::vector<unsigned char>& Image8Bit::data()
 {
-    return m_pixel_data;
+	return m_pixel_data;
 }
 
 const unsigned char& Image8Bit::operator[](int index) const
 {
-    return m_pixel_data[index];
+	return m_pixel_data[index];
 }
 
 unsigned char& Image8Bit::operator[](int index)
 {
-    return m_pixel_data[index];
+	return m_pixel_data[index];
 }
 
 std::vector<float> Image8Bit::compute_cdf() const
 {
-    std::vector<float> out_cdf;
-    out_cdf.resize(height * width);
-    out_cdf[0] = 0.0f;
+	std::vector<float> out_cdf;
+	out_cdf.resize(height * width);
+	out_cdf[0] = 0.0f;
 
-    float max_radiance = 0.0f;
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
+	float max_radiance = 0.0f;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int index = y * width + x;
 
-            out_cdf[index] = out_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
+			out_cdf[index] = out_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
 
-            for (int i = 0; i < hippt::min(3, channels); i++)
-                max_radiance = hippt::max(max_radiance, static_cast<float>(m_pixel_data[(x + y * width) * channels + i]));
-        }
-    }
+			for (int i = 0; i < hippt::min(3, channels); i++)
+				max_radiance = hippt::max(max_radiance, static_cast<float>(m_pixel_data[(x + y * width) * channels + i]));
+		}
+	}
 
-    return out_cdf;
+	return out_cdf;
 }
 
 size_t Image8Bit::byte_size() const
 {
-    return width * height * sizeof(unsigned char);
+	return width * height * sizeof(unsigned char);
 }
 
 bool Image8Bit::is_constant_color(int threshold) const
 {
-    if (width == 0 || height == 0)
-        // Incorrect image
-        return false;
+	if (width == 0 || height == 0)
+		// Incorrect image
+		return false;
 
-    std::vector<unsigned char> first_pixel_color(channels);
-    for (int i = 0; i < channels; i++)
-        first_pixel_color[i] = m_pixel_data[i];
+	std::vector<unsigned char> first_pixel_color(channels);
+	for (int i = 0; i < channels; i++)
+		first_pixel_color[i] = m_pixel_data[i];
 
-    // Comparing the first pixel to all pixels of the texture and returning as soon as we find one
-    // that is not within the threshold
-    for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-            for (int i = 0; i < channels; i++)
-                if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
-                    return false;
+	// Comparing the first pixel to all pixels of the texture and returning as soon as we find one
+	// that is not within the threshold
+	for (int y = 0; y < height; y++)
+		for (int x = 0; x < width; x++)
+			for (int i = 0; i < channels; i++)
+				if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
+					return false;
 
-    return true;
+	return true;
 }
 
 bool Image8Bit::is_fully_opaque() const
 {
-    if (width == 0 || height == 0)
-        // Incorrect image
-        return false;
+	if (width == 0 || height == 0)
+		// Incorrect image
+		return false;
 
-    if (channels < 4)
-        // No alpha channel so this is fully opaque
-        return true;
+	if (channels < 4)
+		// No alpha channel so this is fully opaque
+		return true;
 
-    // Comparing the first pixel to all pixels of the texture and returning as soon as we find one
-    // that is not within the threshold
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            // Checking the alpha channel
-            // Assuming 4 channels if we're here
-            unsigned char alpha_channel = m_pixel_data[(y * width + x) * 4 + 3];
-            if (alpha_channel != 255)
-                return false;
-        }
-    }
+	// Comparing the first pixel to all pixels of the texture and returning as soon as we find one
+	// that is not within the threshold
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			// Checking the alpha channel
+			// Assuming 4 channels if we're here
+			unsigned char alpha_channel = m_pixel_data[(y * width + x) * 4 + 3];
+			if (alpha_channel != 255)
+				return false;
+		}
+	}
 
-    return true;
+	return true;
 }
 
 void Image8Bit::free()
 {
-    m_pixel_data.clear();
-    width = 0;
-    height = 0;
-    channels = 0;
+	m_pixel_data.clear();
+	width = 0;
+	height = 0;
+	channels = 0;
 }
 
 
@@ -324,367 +324,367 @@ void Image8Bit::free()
 
 
 
-Image32Bit::Image32Bit(int width, int height, int channels) : Image32Bit(std::vector<float>(width * height * channels, 0), width, height, channels) {}
+Image32Bit::Image32Bit(int width, int height, int channels) : Image32Bit(std::vector<float>(width* height* channels, 0), width, height, channels) {}
 
 Image32Bit::Image32Bit(const float* data, int width, int height, int channels) : width(width), height(height), channels(channels)
 {
-    m_pixel_data = std::vector<float>();
-    m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height * channels]);
+	m_pixel_data = std::vector<float>();
+	m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height * channels]);
 }
 
 Image32Bit::Image32Bit(const std::vector<float>& data, int width, int height, int channels) : width(width), height(height), channels(channels), m_pixel_data(data) {}
 
 Image32Bit::Image32Bit(Image8Bit image, int channels)
 {
-    int input_channels = image.channels;
-    int output_channels = channels == -1 ? image.channels : channels;
+	int input_channels = image.channels;
+	int output_channels = channels == -1 ? image.channels : channels;
 
 	m_pixel_data.resize(image.width * image.height * output_channels);
 
-    for (int y = 0; y < image.height; y++)
-    {
-        for (int x = 0; x < image.width; x++)
-        {
-            int index = x + y * image.width;
-            for (int i = 0; i < output_channels; i++)
-                m_pixel_data[index * output_channels + i] = static_cast<float>(image[index * input_channels + i]) / 255.0f;
-        }
+	for (int y = 0; y < image.height; y++)
+	{
+		for (int x = 0; x < image.width; x++)
+		{
+			int index = x + y * image.width;
+			for (int i = 0; i < output_channels; i++)
+				m_pixel_data[index * output_channels + i] = static_cast<float>(image[index * input_channels + i]) / 255.0f;
+		}
 	}
 
-    width = image.width;
-    height = image.height;
-    this->channels = output_channels;
+	width = image.width;
+	height = image.height;
+	this->channels = output_channels;
 }
 
 Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channels, bool flipY)
 {
-    stbi_set_flip_vertically_on_load(flipY);
+	stbi_set_flip_vertically_on_load(flipY);
 
-    int width, height, read_channels;
-    unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
+	int width, height, read_channels;
+	unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
-    if (!pixels)
-    {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
-        return Image32Bit();
-    }
+	if (!pixels)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
+		return Image32Bit();
+	}
 
-    Image32Bit output_image(width, height, output_channels);
+	Image32Bit output_image(width, height, output_channels);
 #pragma omp parallel for
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = x + y * width;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int index = x + y * width;
 
-            for (int i = 0; i < output_channels; i++)
-                output_image[index * output_channels + i] = pixels[index * output_channels + i] / 255.0f;
-        }
-    }
+			for (int i = 0; i < output_channels; i++)
+				output_image[index * output_channels + i] = pixels[index * output_channels + i] / 255.0f;
+		}
+	}
 
-    stbi_image_free(pixels);
-    return output_image;
+	stbi_image_free(pixels);
+	return output_image;
 }
 
 Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_channels, bool flipY)
 {
-    stbi_set_flip_vertically_on_load_thread(flipY);
+	stbi_set_flip_vertically_on_load_thread(flipY);
 
-    int width, height, read_channels;
-    float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
+	int width, height, read_channels;
+	float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
-    if (!pixels)
-    {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
-        return Image32Bit();
-    }
+	if (!pixels)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
+		return Image32Bit();
+	}
 
-    std::vector<float> converted_data(width * height * output_channels);
+	std::vector<float> converted_data(width * height * output_channels);
 #pragma omp parallel for
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = x + y * width;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int index = x + y * width;
 
-            for (int i = 0; i < output_channels; i++)
-                converted_data[index * output_channels + i] = pixels[index * output_channels + i];
-        }
-    }
+			for (int i = 0; i < output_channels; i++)
+				converted_data[index * output_channels + i] = pixels[index * output_channels + i];
+		}
+	}
 
-    stbi_image_free(pixels);
-    return Image32Bit(converted_data, width, height, output_channels);
+	stbi_image_free(pixels);
+	return Image32Bit(converted_data, width, height, output_channels);
 }
 
 Image32Bit Image32Bit::read_image_exr(const std::string& filepath, bool flipY)
 {
-    float* out;
-    int width;
-    int height;
-    const char* err = nullptr;
+	float* out;
+	int width;
+	int height;
+	const char* err = nullptr;
 
-    int ret = LoadEXR(&out, &width, &height, filepath.c_str(), &err);
+	int ret = LoadEXR(&out, &width, &height, filepath.c_str(), &err);
 
-    if (ret != TINYEXR_SUCCESS) 
-    {
-        if (err) 
-        {
-            g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading EXR image: %s", err);
-            FreeEXRErrorMessage(err); // release memory of error message.
-        }
+	if (ret != TINYEXR_SUCCESS)
+	{
+		if (err)
+		{
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading EXR image: %s", err);
+			FreeEXRErrorMessage(err); // release memory of error message.
+		}
 
-        return Image32Bit();
-    }
-    else 
-    {
-        if (!flipY)
-        {
-            std::vector<float> vector_data(out, out + width * height * 4);
-            std::free(out); // release memory of image data
+		return Image32Bit();
+	}
+	else
+	{
+		if (!flipY)
+		{
+			std::vector<float> vector_data(out, out + width * height * 4);
+			std::free(out); // release memory of image data
 
-            return Image32Bit(vector_data, width, height, 4);
-        }
-        else
-        {
-            std::vector<float> vector_data(width * height * 4);
+			return Image32Bit(vector_data, width, height, 4);
+		}
+		else
+		{
+			std::vector<float> vector_data(width * height * 4);
 
-            for (int y = height - 1; y >= 0; y--)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int index_y_flipped = x + (height - 1 - y) * width;
-                    int index = x + y * width;
+			for (int y = height - 1; y >= 0; y--)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					int index_y_flipped = x + (height - 1 - y) * width;
+					int index = x + y * width;
 
-                    index *= 4; // for RGBA
-                    index_y_flipped *= 4; // for RGBA
+					index *= 4; // for RGBA
+					index_y_flipped *= 4; // for RGBA
 
-                    vector_data[index + 0] = out[index_y_flipped + 0];
-                    vector_data[index + 1] = out[index_y_flipped + 1];
-                    vector_data[index + 2] = out[index_y_flipped + 2];
-                    vector_data[index + 3] = out[index_y_flipped + 3];
-                }
-            }
+					vector_data[index + 0] = out[index_y_flipped + 0];
+					vector_data[index + 1] = out[index_y_flipped + 1];
+					vector_data[index + 2] = out[index_y_flipped + 2];
+					vector_data[index + 3] = out[index_y_flipped + 3];
+				}
+			}
 
-            std::free(out); // release memory of image data
-            return Image32Bit(vector_data, width, height, 4);
-        }
-    }
+			std::free(out); // release memory of image data
+			return Image32Bit(vector_data, width, height, 4);
+		}
+	}
 }
 
 bool Image32Bit::write_image_png(const char* filename, const bool flipY) const
 {
-    if (byte_size() == 0)
-        return false;
+	if (byte_size() == 0)
+		return false;
 
-    std::vector<unsigned char> tmp(width * height * channels);
-    for (unsigned i = 0; i < width * height * channels; i++)
-        tmp[i] = hippt::clamp(0.0f, 255.0f, m_pixel_data[i] * 255.0f);
+	std::vector<unsigned char> tmp(width * height * channels);
+	for (unsigned i = 0; i < width * height * channels; i++)
+		tmp[i] = hippt::clamp(0.0f, 255.0f, m_pixel_data[i] * 255.0f);
 
-    stbi_flip_vertically_on_write(flipY);
-    return stbi_write_png(filename, width, height, channels, tmp.data(), width * channels) != 0;
+	stbi_flip_vertically_on_write(flipY);
+	return stbi_write_png(filename, width, height, channels, tmp.data(), width * channels) != 0;
 }
 
 bool Image32Bit::write_image_hdr(const char* filename, const bool flipY) const
 {
-    if (byte_size() == 0)
-        return false;
+	if (byte_size() == 0)
+		return false;
 
-    std::vector<float> tmp(width * height * channels);
-    for (unsigned i = 0; i < width * height; i++)
-        for (int j = 0; j < channels; j++)
-            tmp[i * channels + j] = m_pixel_data[i * channels + j];
+	std::vector<float> tmp(width * height * channels);
+	for (unsigned i = 0; i < width * height; i++)
+		for (int j = 0; j < channels; j++)
+			tmp[i * channels + j] = m_pixel_data[i * channels + j];
 
-    stbi_flip_vertically_on_write(flipY);
-    return stbi_write_hdr(filename, width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
+	stbi_flip_vertically_on_write(flipY);
+	return stbi_write_hdr(filename, width, height, channels, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
 Image32Bit Image32Bit::to_linear_rgb() const
 {
-    Image32Bit out(width, height, channels);
+	Image32Bit out(width, height, channels);
 
 #pragma omp parallel for
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int start_pixel = (x + y * width) * channels;
-            int out_start_pixel = (x + y * width) * channels;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int start_pixel = (x + y * width) * channels;
+			int out_start_pixel = (x + y * width) * channels;
 
-            for (int i = 0; i < channels; i++)
-            {
-                float color_component = m_pixel_data[start_pixel + i];
+			for (int i = 0; i < channels; i++)
+			{
+				float color_component = m_pixel_data[start_pixel + i];
 
-                // Assuming gamma 2.2
-                out.m_pixel_data[out_start_pixel + i] = powf(color_component, 2.2f);
-            }
-        }
+				// Assuming gamma 2.2
+				out.m_pixel_data[out_start_pixel + i] = powf(color_component, 2.2f);
+			}
+		}
 	}
 
-    return out;
+	return out;
 }
 
 float Image32Bit::luminance_of_pixel(int x, int y) const
 {
-    int start_pixel = (x + y * width) * channels;
+	int start_pixel = (x + y * width) * channels;
 
-    // Computing the luminance with a *maximum* of 3 components.
-    // 
-    // If the texture only has one component (i.e. only red), the following
-    // loop will only loop through the red component with the right weight. 
-    // 
-    // If the image has more than 1 components, 3 for example, then we'll loop through
-    // the 3 components and apply the weights.
-    // 
-    // If the image has 4 components, we will still only take RGB into account for the
-    // luminance computation but not alpha
-    float luminance = 0.0f;
-    float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
-    for (int i = 0; i < hippt::min(channels, 3); i++)
-        luminance += m_pixel_data[start_pixel + i] * weights[i];
+	// Computing the luminance with a *maximum* of 3 components.
+	// 
+	// If the texture only has one component (i.e. only red), the following
+	// loop will only loop through the red component with the right weight. 
+	// 
+	// If the image has more than 1 components, 3 for example, then we'll loop through
+	// the 3 components and apply the weights.
+	// 
+	// If the image has 4 components, we will still only take RGB into account for the
+	// luminance computation but not alpha
+	float luminance = 0.0f;
+	float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
+	for (int i = 0; i < hippt::min(channels, 3); i++)
+		luminance += m_pixel_data[start_pixel + i] * weights[i];
 
-    return luminance;
+	return luminance;
 }
 
 float Image32Bit::luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const
 {
-    float luminance = 0.0f;
+	float luminance = 0.0f;
 
-    for (int x = start_x; x < stop_x; x++)
-        for (int y = start_y; y < stop_y; y++)
-            luminance += luminance_of_pixel(x, y);
+	for (int x = start_x; x < stop_x; x++)
+		for (int y = start_y; y < stop_y; y++)
+			luminance += luminance_of_pixel(x, y);
 
-    return luminance;
+	return luminance;
 }
 
 float Image32Bit::luminance_of_area(const ImageBin& area) const
 {
-    return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
+	return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
 }
 
 ColorRGBA32F Image32Bit::sample_rgba32f(float2 uv) const
 {
-    // Sampling in repeat mode so we're just keeping the fractional part
-    float u = uv.x;
-    if (u != 1.0f)
-        // Only doing that if u != 1.0f because if we actually have
-        // uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
-        // give us 0.0f even though we actually want 1.0f (which is correct).
-        // 
-        // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
-        // U coordinate which needs not to be wrapped
-        u -= static_cast<int>(uv.x);
+	// Sampling in repeat mode so we're just keeping the fractional part
+	float u = uv.x;
+	if (u != 1.0f)
+		// Only doing that if u != 1.0f because if we actually have
+		// uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
+		// give us 0.0f even though we actually want 1.0f (which is correct).
+		// 
+		// Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
+		// U coordinate which needs not to be wrapped
+		u -= static_cast<int>(uv.x);
 
-    float v = uv.y;
-    if (v != 1.0f)
-        // Same for v
-        v -= static_cast<int>(uv.y);
+	float v = uv.y;
+	if (v != 1.0f)
+		// Same for v
+		v -= static_cast<int>(uv.y);
 
-    // For negative UVs, we also want to repeat and we want, for example, 
-    // -0.1f to behave as 0.9f
-    u = u < 0 ? 1.0f + u : u;
-    v = v < 0 ? 1.0f + v : v;
+	// For negative UVs, we also want to repeat and we want, for example, 
+	// -0.1f to behave as 0.9f
+	u = u < 0 ? 1.0f + u : u;
+	v = v < 0 ? 1.0f + v : v;
 
-    // Sampling with [0, 0] bottom-left convention
-    // 
-    // Convention is reversed on the CPU vs. the GPU. On the GPU with CUDA/HIP, [0, 0] is
-    // in the bottom left corner.
-    // 
-    // On the CPU where we're using std::vectors, [0, 0] would be the
-    // top left corner so we're flipping here so that the default behavior
-    // on the CPU matches the default behavior on the GPU
-    v = 1.0f - v;
+	// Sampling with [0, 0] bottom-left convention
+	// 
+	// Convention is reversed on the CPU vs. the GPU. On the GPU with CUDA/HIP, [0, 0] is
+	// in the bottom left corner.
+	// 
+	// On the CPU where we're using std::vectors, [0, 0] would be the
+	// top left corner so we're flipping here so that the default behavior
+	// on the CPU matches the default behavior on the GPU
+	v = 1.0f - v;
 
-    int x = (u * (width - 1));
-    int y = (v * (height - 1));
+	int x = (u * (width - 1));
+	int y = (v * (height - 1));
 
-    ColorRGBA32F out_color;
-    switch (sampling_mode)
-    {
-    case ImageSamplingMode::SAMPLING_MODE_NEAREST:
-    {
-        for (int i = 0; i < channels; i++)
-            out_color[i] = m_pixel_data[(x + y * width) * channels + i];
-        break;
-    }
-
-    case ImageSamplingMode::SAMPLING_MODE_BILINEAR:
-    {
-        int x0 = hippt::clamp(0, width - 1, x);
-        int x1 = hippt::clamp(0, width - 1, x + 1);
-        int y0 = hippt::clamp(0, height - 1, y);
-        int y1 = hippt::clamp(0, height - 1, y + 1);
-
-        float u_ratio = (u * (width - 1)) - x;
-        float v_ratio = (v * (height - 1)) - y;
-
-        float u_opposite = 1.0f - u_ratio;
-        float v_opposite = 1.0f - v_ratio;
-
-        for (int i = 0; i < channels; i++)
-        {
-            float c00 = m_pixel_data[(x0 + y0 * width) * channels + i];
-            float c10 = m_pixel_data[(x1 + y0 * width) * channels + i];
-            float c01 = m_pixel_data[(x0 + y1 * width) * channels + i];
-            float c11 = m_pixel_data[(x1 + y1 * width) * channels + i];
-
-            out_color[i] = (c00 * u_opposite + c10 * u_ratio) * v_opposite +
-                           (c01 * u_opposite + c11 * u_ratio) * v_ratio;
-        }
+	ColorRGBA32F out_color;
+	switch (sampling_mode)
+	{
+	case ImageSamplingMode::SAMPLING_MODE_NEAREST:
+	{
+		for (int i = 0; i < channels; i++)
+			out_color[i] = m_pixel_data[(x + y * width) * channels + i];
 		break;
-    }
-    }
+	}
+
+	case ImageSamplingMode::SAMPLING_MODE_BILINEAR:
+	{
+		int x0 = hippt::clamp(0, width - 1, x);
+		int x1 = hippt::clamp(0, width - 1, x + 1);
+		int y0 = hippt::clamp(0, height - 1, y);
+		int y1 = hippt::clamp(0, height - 1, y + 1);
+
+		float u_ratio = (u * (width - 1)) - x;
+		float v_ratio = (v * (height - 1)) - y;
+
+		float u_opposite = 1.0f - u_ratio;
+		float v_opposite = 1.0f - v_ratio;
+
+		for (int i = 0; i < channels; i++)
+		{
+			float c00 = m_pixel_data[(x0 + y0 * width) * channels + i];
+			float c10 = m_pixel_data[(x1 + y0 * width) * channels + i];
+			float c01 = m_pixel_data[(x0 + y1 * width) * channels + i];
+			float c11 = m_pixel_data[(x1 + y1 * width) * channels + i];
+
+			out_color[i] = (c00 * u_opposite + c10 * u_ratio) * v_opposite +
+				(c01 * u_opposite + c11 * u_ratio) * v_ratio;
+		}
+		break;
+	}
+	}
 
 
-    return out_color;
+	return out_color;
 }
 
 void Image32Bit::set_data(const std::vector<float>& data)
 {
-    m_pixel_data = data;
+	m_pixel_data = data;
 }
 
 const std::vector<float>& Image32Bit::data() const
 {
-    return m_pixel_data;
+	return m_pixel_data;
 }
 
 std::vector<float>& Image32Bit::data()
 {
-    return m_pixel_data;
+	return m_pixel_data;
 }
 
 const float& Image32Bit::operator[](int index) const
 {
-    return m_pixel_data[index];
+	return m_pixel_data[index];
 }
 
 float& Image32Bit::operator[](int index)
 {
-    return m_pixel_data[index];
+	return m_pixel_data[index];
 }
 
 std::vector<float> Image32Bit::compute_cdf() const
 {
-    std::vector<float> out_cdf;
-    out_cdf.resize(height * width);
-    out_cdf[0] = 0.0f;
+	std::vector<float> out_cdf;
+	out_cdf.resize(height * width);
+	out_cdf[0] = 0.0f;
 
-    float max_radiance = 0.0f;
+	float max_radiance = 0.0f;
 
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			int index = y * width + x;
 
-            out_cdf[index] = out_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
+			out_cdf[index] = out_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
 
-            for (int i = 0; i < hippt::min(3, channels); i++)
-                max_radiance = hippt::max(max_radiance, m_pixel_data[(x + y * width) * channels + i]);
-        }
-    }
+			for (int i = 0; i < hippt::min(3, channels); i++)
+				max_radiance = hippt::max(max_radiance, m_pixel_data[(x + y * width) * channels + i]);
+		}
+	}
 
-    return out_cdf;
+	return out_cdf;
 }
 
 /**
@@ -692,199 +692,199 @@ std::vector<float> Image32Bit::compute_cdf() const
  */
 void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum) const
 {
-    float luminance_sum = 0.0f;
+	float luminance_sum = 0.0f;
 
-    std::vector<float> texel_luminance(width * height);
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            float luminance = luminance_of_pixel(x, y);
+	std::vector<float> texel_luminance(width * height);
+	for (int y = 0; y < height; y++)
+	{
+		for (int x = 0; x < width; x++)
+		{
+			float luminance = luminance_of_pixel(x, y);
 
-            luminance_sum += luminance;
-            texel_luminance[x + y * width] = luminance;
-        }
-    }
+			luminance_sum += luminance;
+			texel_luminance[x + y * width] = luminance;
+		}
+	}
 
-    if (out_luminance_total_sum)
-        *out_luminance_total_sum = luminance_sum;
+	if (out_luminance_total_sum)
+		*out_luminance_total_sum = luminance_sum;
 
-    Utils::compute_alias_table(texel_luminance, luminance_sum, out_probas, out_alias);
+	Utils::compute_alias_table(texel_luminance, luminance_sum, out_probas, out_alias);
 }
 
 float Image32Bit::compute_luminance_sum() const
 {
-    float sum = 0.0f;
+	float sum = 0.0f;
 
-    for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-            sum += luminance_of_pixel(x, y);
+	for (int y = 0; y < height; y++)
+		for (int x = 0; x < width; x++)
+			sum += luminance_of_pixel(x, y);
 
-    return sum;
+	return sum;
 }
 
 size_t Image32Bit::byte_size() const
 {
-    return width * height * sizeof(unsigned char);
+	return width * height * sizeof(unsigned char);
 }
 
 bool Image32Bit::is_constant_color(float threshold) const
 {
-    if (width == 0 || height == 0)
-        // Incorrect image
-        return false;
+	if (width == 0 || height == 0)
+		// Incorrect image
+		return false;
 
-    std::vector<float> first_pixel_color(channels);
-    for (int i = 0; i < channels; i++)
-        first_pixel_color[i] = m_pixel_data[i];
+	std::vector<float> first_pixel_color(channels);
+	for (int i = 0; i < channels; i++)
+		first_pixel_color[i] = m_pixel_data[i];
 
-    std::atomic<bool> different_pixel_found = false;
+	std::atomic<bool> different_pixel_found = false;
 
-    // Comparing the first pixel to all pixels of the texture and returning as soon as we find one
-    // that is not within the threshold
-    for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-            for (int i = 0; i < channels; i++)
-                if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
-                    return false;
+	// Comparing the first pixel to all pixels of the texture and returning as soon as we find one
+	// that is not within the threshold
+	for (int y = 0; y < height; y++)
+		for (int x = 0; x < width; x++)
+			for (int i = 0; i < channels; i++)
+				if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
+					return false;
 
-    return true;
+	return true;
 }
 
 ColorRGB32F* Image32Bit::get_data_as_ColorRGB32F()
 {
-    return reinterpret_cast<ColorRGB32F*>(m_pixel_data.data());
+	return reinterpret_cast<ColorRGB32F*>(m_pixel_data.data());
 }
 
 ColorRGB32F Image32Bit::get_pixel_ColorRGB32F(int pixel_index) const
 {
-    return ColorRGB32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2]);
+	return ColorRGB32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2]);
 }
 
 ColorRGBA32F* Image32Bit::get_data_as_ColorRGBA32F()
 {
-    return reinterpret_cast<ColorRGBA32F*>(m_pixel_data.data());
+	return reinterpret_cast<ColorRGBA32F*>(m_pixel_data.data());
 }
 
 ColorRGBA32F Image32Bit::get_pixel_ColorRGBA32F(int pixel_index) const
 {
-    return ColorRGBA32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2], m_pixel_data[pixel_index * channels + 3]);
+	return ColorRGBA32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2], m_pixel_data[pixel_index * channels + 3]);
 }
 
 void Image32Bit::free()
 {
-    m_pixel_data.clear();
-    width = 0;
-    height = 0;
-    channels = 0;
+	m_pixel_data.clear();
+	width = 0;
+	height = 0;
+	channels = 0;
 }
 
-Image32Bit3D::Image32Bit3D() 
+Image32Bit3D::Image32Bit3D()
 {
-    width = 0;
-    height = 0;
-    depth = 0;
+	width = 0;
+	height = 0;
+	depth = 0;
 
-    channels = 0;
+	channels = 0;
 }
 
 Image32Bit3D::Image32Bit3D(const std::vector<Image32Bit> images)
 {
-    m_images = images;
+	m_images = images;
 
-    width = images[0].width;
-    height = images[0].height;
-    depth = images.size();
+	width = images[0].width;
+	height = images[0].height;
+	depth = images.size();
 
-    channels = images[0].channels;
+	channels = images[0].channels;
 }
 
 ColorRGBA32F Image32Bit3D::sample_rgba32f(float3 uvw) const
 {
-    // Sampling in repeat mode so we're just keeping the fractional part
-    float u = uvw.x;
-    if (u != 1.0f)
-        // Only doing that if u != 1.0f because if we actually have
-        // uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
-        // give us 0.0f even though we actually want 1.0f (which is correct).
-        // 
-        // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
-        // U coordinate which needs not to be wrapped
-        u -= static_cast<int>(uvw.x);
+	// Sampling in repeat mode so we're just keeping the fractional part
+	float u = uvw.x;
+	if (u != 1.0f)
+		// Only doing that if u != 1.0f because if we actually have
+		// uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
+		// give us 0.0f even though we actually want 1.0f (which is correct).
+		// 
+		// Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
+		// U coordinate which needs not to be wrapped
+		u -= static_cast<int>(uvw.x);
 
-    float v = uvw.y;
-    if (v != 1.0f)
-        // Same for v
-        v -= static_cast<int>(uvw.y);
+	float v = uvw.y;
+	if (v != 1.0f)
+		// Same for v
+		v -= static_cast<int>(uvw.y);
 
-    float w = uvw.z;
-    if (w != 1.0f)
-        // Same for w
-        w -= static_cast<int>(uvw.z);
-    
+	float w = uvw.z;
+	if (w != 1.0f)
+		// Same for w
+		w -= static_cast<int>(uvw.z);
 
-    // For negative UVs, we also want to repeat and we want, for example, 
-    // -0.1f to behave as 0.9f
-    u = u < 0 ? 1.0f + u : u;
-    v = v < 0 ? 1.0f + v : v;
-    w = w < 0 ? 1.0f + w : w;
 
-    // Sampling with [0, 0] bottom-left convention
-    v = 1.0f - v;
+	// For negative UVs, we also want to repeat and we want, for example, 
+	// -0.1f to behave as 0.9f
+	u = u < 0 ? 1.0f + u : u;
+	v = v < 0 ? 1.0f + v : v;
+	w = w < 0 ? 1.0f + w : w;
 
-    int x = (u * (width - 1));
-    int y = (v * (height - 1));
-    int z = (w * (depth - 1));
+	// Sampling with [0, 0] bottom-left convention
+	v = 1.0f - v;
 
-    ColorRGBA32F out_color;
-    for (int i = 0; i < channels; i++)
-        out_color[i] = m_images[z][(x + y * width) * channels + i];
+	int x = (u * (width - 1));
+	int y = (v * (height - 1));
+	int z = (w * (depth - 1));
 
-    switch (sampling_mode)
-    {
-    case ImageSamplingMode::SAMPLING_MODE_NEAREST:
-    {
-        for (int i = 0; i < channels; i++)
-            out_color[i] = m_images[z][(x + y * width) * channels + i];
+	ColorRGBA32F out_color;
+	for (int i = 0; i < channels; i++)
+		out_color[i] = m_images[z][(x + y * width) * channels + i];
 
-        break;
-    }
+	switch (sampling_mode)
+	{
+	case ImageSamplingMode::SAMPLING_MODE_NEAREST:
+	{
+		for (int i = 0; i < channels; i++)
+			out_color[i] = m_images[z][(x + y * width) * channels + i];
 
-    case ImageSamplingMode::SAMPLING_MODE_BILINEAR:
-    {
-        // Bilinear interpolation in 3D
-        int x1 = (x + 1) % width;
-        int y1 = (y + 1) % height;
-        int z1 = (z + 1) % depth;
-
-        float u_ratio = (u * (width - 1)) - x;
-        float v_ratio = (v * (height - 1)) - y;
-        float w_ratio = (w * (depth - 1)) - z;
-
-        for (int i = 0; i < channels; i++)
-        {
-            float c000 = m_images[z][(x + y * width) * channels + i];
-            float c100 = m_images[z][(x1 + y * width) * channels + i];
-            float c010 = m_images[z][(x + y1 * width) * channels + i];
-            float c110 = m_images[z][(x1 + y1 * width) * channels + i];
-            float c001 = m_images[z1][(x + y * width) * channels + i];
-            float c101 = m_images[z1][(x1 + y * width) * channels + i];
-            float c011 = m_images[z1][(x + y1 * width) * channels + i];
-            float c111 = m_images[z1][(x1 + y1 * width) * channels + i];
-
-            float c00 = c000 * (1 - u_ratio) + c100 * u_ratio;
-            float c10 = c010 * (1 - u_ratio) + c110 * u_ratio;
-            float c01 = c001 * (1 - u_ratio) + c101 * u_ratio;
-            float c11 = c011 * (1 - u_ratio) + c111 * u_ratio;
-            
-            float c0 = c00 * (1 - v_ratio) + c10 * v_ratio;
-            float c1 = c01 * (1 - v_ratio) + c11 * v_ratio;
-
-            out_color[i] = c0 * (1 - w_ratio) + c1 * w_ratio;
-        }
 		break;
-    }
-    }
+	}
 
-    return out_color;
+	case ImageSamplingMode::SAMPLING_MODE_BILINEAR:
+	{
+		// Bilinear interpolation in 3D
+		int x1 = (x + 1) % width;
+		int y1 = (y + 1) % height;
+		int z1 = (z + 1) % depth;
+
+		float u_ratio = (u * (width - 1)) - x;
+		float v_ratio = (v * (height - 1)) - y;
+		float w_ratio = (w * (depth - 1)) - z;
+
+		for (int i = 0; i < channels; i++)
+		{
+			float c000 = m_images[z][(x + y * width) * channels + i];
+			float c100 = m_images[z][(x1 + y * width) * channels + i];
+			float c010 = m_images[z][(x + y1 * width) * channels + i];
+			float c110 = m_images[z][(x1 + y1 * width) * channels + i];
+			float c001 = m_images[z1][(x + y * width) * channels + i];
+			float c101 = m_images[z1][(x1 + y * width) * channels + i];
+			float c011 = m_images[z1][(x + y1 * width) * channels + i];
+			float c111 = m_images[z1][(x1 + y1 * width) * channels + i];
+
+			float c00 = c000 * (1 - u_ratio) + c100 * u_ratio;
+			float c10 = c010 * (1 - u_ratio) + c110 * u_ratio;
+			float c01 = c001 * (1 - u_ratio) + c101 * u_ratio;
+			float c11 = c011 * (1 - u_ratio) + c111 * u_ratio;
+
+			float c0 = c00 * (1 - v_ratio) + c10 * v_ratio;
+			float c1 = c01 * (1 - v_ratio) + c11 * v_ratio;
+
+			out_color[i] = c0 * (1 - w_ratio) + c1 * w_ratio;
+		}
+		break;
+	}
+	}
+
+	return out_color;
 }

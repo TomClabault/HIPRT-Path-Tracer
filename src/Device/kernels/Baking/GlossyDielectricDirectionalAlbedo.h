@@ -33,100 +33,100 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 #endif
 {
 #ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-    const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
+	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
 #endif
 
-    const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o + z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
+	const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o + z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
 
-    if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
-        return;
+	if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
+		return;
 
-    Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1)* current_iteration);
+	Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);
 
-    float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1.0f) * x;
-    cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
-    cos_theta_o = hippt::intrin_pow(cos_theta_o, 2.5f);
-    float sin_theta_o = hippt::intrin_sinf(acos(cos_theta_o));
+	float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1.0f) * x;
+	cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
+	cos_theta_o = hippt::intrin_pow(cos_theta_o, 2.5f);
+	float sin_theta_o = hippt::intrin_sinf(acos(cos_theta_o));
 
-    float roughness = 1.0f / (bake_settings.texture_size_roughness - 1.0f) * y;
-    roughness = hippt::max(roughness, 1.0e-4f);
+	float roughness = 1.0f / (bake_settings.texture_size_roughness - 1.0f) * y;
+	roughness = hippt::max(roughness, 1.0e-4f);
 
-    // Integrates for interface reflectivities of IORs between 1.0f and 3.0f
-    float F0 = 1.0f / (bake_settings.texture_size_ior - 1.0f) * z;
-    // Relative eta (eta_t / eta_i) from F0
-    // Using F0^4 to get more precision near 0
-    F0 *= F0; // F0^2
-    F0 *= F0; // F0^4
-    float sqrt_F0 = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
-    float relative_ior = (1.0f + sqrt_F0) / (1.0f - sqrt_F0);
+	// Integrates for interface reflectivities of IORs between 1.0f and 3.0f
+	float F0 = 1.0f / (bake_settings.texture_size_ior - 1.0f) * z;
+	// Relative eta (eta_t / eta_i) from F0
+	// Using F0^4 to get more precision near 0
+	F0 *= F0; // F0^2
+	F0 *= F0; // F0^4
+	float sqrt_F0 = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
+	float relative_ior = (1.0f + sqrt_F0) / (1.0f - sqrt_F0);
 
-    float3 local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
+	float3 local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
-    int iterations_per_kernel = floor(hippt::max(1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
-    int nb_kernel_launch = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));
-    int nb_samples = nb_kernel_launch * iterations_per_kernel;
+	int iterations_per_kernel = floor(hippt::max(1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
+	int nb_kernel_launch = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));
+	int nb_samples = nb_kernel_launch * iterations_per_kernel;
 
-    for (int sample = 0; sample < kernel_iterations; sample++)
-    {
-        // Sampling the specular GGX lobe or diffuse lobe
-        float rand_lobe = random_number_generator();
-        float3 sampled_local_to_light_direction;
-        if (rand_lobe < 0.5f)
-        {
-            // Sampling the specular lobe
-            sampled_local_to_light_direction = microfacet_GGX_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
+	for (int sample = 0; sample < kernel_iterations; sample++)
+	{
+		// Sampling the specular GGX lobe or diffuse lobe
+		float rand_lobe = random_number_generator();
+		float3 sampled_local_to_light_direction;
+		if (rand_lobe < 0.5f)
+		{
+			// Sampling the specular lobe
+			sampled_local_to_light_direction = microfacet_GGX_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
 
-            if (sampled_local_to_light_direction.z < 0)
-                // Sampled direction below surface, this can happen with microfacet
-                // sampling
-                continue;
-        }
-        else
-            // Sampling the diffuse lobe
-            sampled_local_to_light_direction = cosine_weighted_sample_z_up_frame(random_number_generator);
+			if (sampled_local_to_light_direction.z < 0)
+				// Sampled direction below surface, this can happen with microfacet
+				// sampling
+				continue;
+		}
+		else
+			// Sampling the diffuse lobe
+			sampled_local_to_light_direction = cosine_weighted_sample_z_up_frame(random_number_generator);
 
-        float3 microfacet_normal = hippt::normalize(local_view_direction + sampled_local_to_light_direction);
-        float total_pdf = 0.0f;
+		float3 microfacet_normal = hippt::normalize(local_view_direction + sampled_local_to_light_direction);
+		float total_pdf = 0.0f;
 
-        HIPRTRenderData render_data;
-        render_data.bsdfs_data.GGX_masking_shadowing = bake_settings.masking_shadowing_term;
+		HIPRTRenderData render_data;
+		render_data.bsdfs_data.GGX_masking_shadowing = bake_settings.masking_shadowing_term;
 
-        float F = full_fresnel_dielectric(hippt::dot(microfacet_normal, sampled_local_to_light_direction), relative_ior);
-        float eval_pdf_specular;
-        float directional_albedo_specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, roughness, /* aniso */ 0.0f, false, ColorRGB32F(F),
-            local_view_direction, sampled_local_to_light_direction, microfacet_normal, eval_pdf_specular, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0).r;
-        // Multiplying the PDF by 0.5f because we have a 50% chance to sample the specular lobe
-        total_pdf += eval_pdf_specular * 0.5f;
-        float specular_layer_throughput = 1.0f;
-        specular_layer_throughput *= 1.0f - full_fresnel_dielectric(sampled_local_to_light_direction.z, relative_ior);
-        specular_layer_throughput *= 1.0f - full_fresnel_dielectric(local_view_direction.z, relative_ior);
+		float F = full_fresnel_dielectric(hippt::dot(microfacet_normal, sampled_local_to_light_direction), relative_ior);
+		float eval_pdf_specular;
+		float directional_albedo_specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, roughness, /* aniso */ 0.0f, false, ColorRGB32F(F),
+			local_view_direction, sampled_local_to_light_direction, microfacet_normal, eval_pdf_specular, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0).r;
+		// Multiplying the PDF by 0.5f because we have a 50% chance to sample the specular lobe
+		total_pdf += eval_pdf_specular * 0.5f;
+		float specular_layer_throughput = 1.0f;
+		specular_layer_throughput *= 1.0f - full_fresnel_dielectric(sampled_local_to_light_direction.z, relative_ior);
+		specular_layer_throughput *= 1.0f - full_fresnel_dielectric(local_view_direction.z, relative_ior);
 
-        // A material with the base color defined is the only thing needed for
-        // lambertian_brdf_eval()
-        DeviceUnpackedEffectiveMaterial mat;
-        mat.base_color = ColorRGB32F(1.0f);
-        float eval_pdf_diffuse;
-        float directional_albedo_diffuse = lambertian_brdf_eval(mat, sampled_local_to_light_direction.z, eval_pdf_diffuse).r;
-        // Multiplying the PDF by 0.5f because we have a 50% chance to sample the diffuse lobe
-        total_pdf += eval_pdf_diffuse * 0.5f;
-        // Only the fraction of light that got through the specular layer
-        // and that can get back to the viewer contributes to the illumination
-        // we get from the diffuse layer
-        directional_albedo_diffuse *= specular_layer_throughput;
+		// A material with the base color defined is the only thing needed for
+		// lambertian_brdf_eval()
+		DeviceUnpackedEffectiveMaterial mat;
+		mat.base_color = ColorRGB32F(1.0f);
+		float eval_pdf_diffuse;
+		float directional_albedo_diffuse = lambertian_brdf_eval(mat, sampled_local_to_light_direction.z, eval_pdf_diffuse).r;
+		// Multiplying the PDF by 0.5f because we have a 50% chance to sample the diffuse lobe
+		total_pdf += eval_pdf_diffuse * 0.5f;
+		// Only the fraction of light that got through the specular layer
+		// and that can get back to the viewer contributes to the illumination
+		// we get from the diffuse layer
+		directional_albedo_diffuse *= specular_layer_throughput;
 
-        float final_albedo = directional_albedo_specular + directional_albedo_diffuse;
-        final_albedo *= sampled_local_to_light_direction.z;
-        final_albedo /= total_pdf;
+		float final_albedo = directional_albedo_specular + directional_albedo_diffuse;
+		final_albedo *= sampled_local_to_light_direction.z;
+		final_albedo /= total_pdf;
 
-        out_buffer[pixel_index] += final_albedo / nb_samples;
-    }
+		out_buffer[pixel_index] += final_albedo / nb_samples;
+	}
 
 #ifndef __KERNELCC__
-    // Some sanity checks on the CPU
-    float threshold = 1.1f;
-    if (out_buffer[pixel_index] > threshold || out_buffer[pixel_index] < 0 || std::isinf(out_buffer[pixel_index]) || std::isnan(out_buffer[pixel_index]))
-        std::cout << "Error at x, y, z = [" << x << ", " << y << ", " << z << "]. Value = " << out_buffer[pixel_index] << std::endl;
+	// Some sanity checks on the CPU
+	float threshold = 1.1f;
+	if (out_buffer[pixel_index] > threshold || out_buffer[pixel_index] < 0 || std::isinf(out_buffer[pixel_index]) || std::isnan(out_buffer[pixel_index]))
+		std::cout << "Error at x, y, z = [" << x << ", " << y << ", " << z << "]. Value = " << out_buffer[pixel_index] << std::endl;
 #endif
 }

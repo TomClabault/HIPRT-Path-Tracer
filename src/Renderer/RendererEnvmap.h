@@ -29,14 +29,14 @@ public:
 	/**
 	 * Uploads the data from 'image' to a texture on the GPU and remembers the path
 	 * of the envmap if needed later (when recomputing the CDF/alias table for example
-	 * since we do not keep the data of the envmap in memory (envmaps can be quite big), 
+	 * since we do not keep the data of the envmap in memory (envmaps can be quite big),
 	 * we'll have to read it again from the disk)
 	 */
 	void init_from_image(const Image32Bit& image, const std::string& envmap_filepath);
 
 	/**
 	 * - Updates the animation of the envmap
-	 * - Recomputes the sampling data structure (CDF for binary search sampling, 
+	 * - Recomputes the sampling data structure (CDF for binary search sampling,
 	 *		alias table for alias table sampling) if necessary
 	 */
 	void update(GPURenderer* renderer, float delta_time);
@@ -44,7 +44,7 @@ public:
 	/**
 	 * Computes the CDF or alias table of the envmap based of the envmap sampling strategy used
 	 * by the renderer.
-	 * 
+	 *
 	 * The data structure that is unused will also be freed to free some VRAM.
 	 */
 	void recompute_sampling_data_structure(GPURenderer* renderer, const Image32Bit* = nullptr);
@@ -68,9 +68,9 @@ private:
 	/**
 	 * Recomputes the envmap matrices if necessary based on
 	 * the current values of rotation_X, rotation_Y and rotation_Z
-	 * 
-     * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-     * call to do_animation()
+	 *
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to do_animation()
 	 */
 	void do_animation(GPURenderer* renderer, float delta_time);
 

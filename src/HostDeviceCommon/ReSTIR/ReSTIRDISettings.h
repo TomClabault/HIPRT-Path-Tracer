@@ -44,7 +44,7 @@ struct ReSTIRDISpatialPassSettings
 
 struct ReSTIRDISettings : public ReSTIRCommonSettings
 {
-	HIPRT_HOST_DEVICE ReSTIRDISettings() 
+	HIPRT_HOST_DEVICE ReSTIRDISettings()
 	{
 		common_temporal_pass.do_temporal_reuse_pass = true;
 

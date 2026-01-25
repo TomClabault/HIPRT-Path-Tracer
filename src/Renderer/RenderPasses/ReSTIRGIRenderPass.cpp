@@ -35,7 +35,7 @@ const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FI
 };
 
 ReSTIRGIRenderPass::ReSTIRGIRenderPass() : ReSTIRGIRenderPass(nullptr) {}
-ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer) : MegaKernelRenderPass(renderer, ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME) 
+ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer) : MegaKernelRenderPass(renderer, ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME)
 {
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_stop));
@@ -62,7 +62,7 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer) : MegaKernelRender
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
-	
+
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->set_kernel_file_path(ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID));
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->set_kernel_function_name(ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID));
@@ -86,9 +86,9 @@ void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_temporal_buffer.resize(new_width * new_height);
 	m_spatial_buffer.resize(new_width * new_height);
 
-	ReSTIRRenderPassCommon::resize_directional_reuse_buffers<true>(m_renderer, new_width, new_height, 
-		m_per_pixel_spatial_reuse_radius, 
-		m_per_pixel_spatial_reuse_direction_mask_u, 
+	ReSTIRRenderPassCommon::resize_directional_reuse_buffers<true>(m_renderer, new_width, new_height,
+		m_per_pixel_spatial_reuse_radius,
+		m_per_pixel_spatial_reuse_direction_mask_u,
 		m_per_pixel_spatial_reuse_direction_mask_ull);
 }
 
@@ -153,7 +153,7 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
 		render_data_invalidated |= ReSTIRRenderPassCommon::pre_render_update_directional_reuse_buffers<true>(render_data, m_renderer,
-			m_per_pixel_spatial_reuse_radius, 
+			m_per_pixel_spatial_reuse_radius,
 			m_per_pixel_spatial_reuse_direction_mask_u,
 			m_per_pixel_spatial_reuse_direction_mask_ull,
 			m_spatial_reuse_statistics_hit_hits,
@@ -249,7 +249,7 @@ void ReSTIRGIRenderPass::configure_temporal_reuse_pass(HIPRTRenderData& render_d
 {
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 	render_data.render_settings.restir_gi_settings.common_temporal_pass.temporal_buffer_clear_requested = m_temporal_buffer_clear_requested;
-	
+
 	ReSTIRGIReservoir* temporal_input_reservoirs;
 	ReSTIRGIReservoir* temporal_output_reservoirs;
 
@@ -456,9 +456,9 @@ void ReSTIRGIRenderPass::request_temporal_bufffers_clear()
 
 float ReSTIRGIRenderPass::get_VRAM_usage() const
 {
-	return (m_initial_candidates_buffer.get_byte_size() + 
-		m_temporal_buffer.get_byte_size() + 
-		m_spatial_buffer.get_byte_size() + 
+	return (m_initial_candidates_buffer.get_byte_size() +
+		m_temporal_buffer.get_byte_size() +
+		m_spatial_buffer.get_byte_size() +
 		m_per_pixel_spatial_reuse_direction_mask_u.get_byte_size() +
 		m_per_pixel_spatial_reuse_direction_mask_ull.get_byte_size() +
 		m_per_pixel_spatial_reuse_radius.get_byte_size()) / 1000000.0f;

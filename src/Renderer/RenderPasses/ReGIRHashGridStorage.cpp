@@ -29,8 +29,8 @@ std::size_t ReGIRHashGridStorage::get_byte_size() const
 		m_correlation_reduction_grid_primary_hits.get_byte_size() +
 
 		m_canonical_pre_integration_factors_primary_hits.get_byte_size() +
-		m_canonical_pre_integration_factors_secondary_hits.get_byte_size() + 
-		
+		m_canonical_pre_integration_factors_secondary_hits.get_byte_size() +
+
 		m_cells_light_distributions_primary_hits.get_byte_size() +
 		m_cells_light_distributions_secondary_hits.get_byte_size();
 }
@@ -196,7 +196,7 @@ bool ReGIRHashGridStorage::try_rehash_internal(HIPRTRenderData& render_data, boo
 
 	// We don't need a full reset, instead checking if we need to dynamically grow the size of the hash
 	// table to keep the load factor in check
-	float cell_alive_ratio = m_regir_render_pass->get_alive_cells_ratio(primary_hit);	
+	float cell_alive_ratio = m_regir_render_pass->get_alive_cells_ratio(primary_hit);
 	if (cell_alive_ratio > 0.60f)
 	{
 		m_regir_render_pass->update_all_cell_alive_count(render_data);
@@ -416,7 +416,7 @@ void ReGIRHashGridStorage::to_device(HIPRTRenderData& render_data)
 
 		render_data.render_settings.regir_settings.non_canonical_pre_integration_factors_secondary_hits = get_non_canonical_factors(false).get_atomic_device_pointer();
 		render_data.render_settings.regir_settings.canonical_pre_integration_factors_secondary_hits = get_canonical_factors(false).get_atomic_device_pointer();
-		
+
 		if (render_data.render_settings.regir_settings.use_per_cell_light_distributions && get_cell_light_distributions(false).get_byte_size() > 0)
 			render_data.render_settings.regir_settings.cells_light_distributions_secondary_hits = get_cell_light_distributions(false).to_device(render_data);
 	}

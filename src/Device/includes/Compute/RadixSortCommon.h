@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_COMPUTE_RADIX_SORT_COUNT_H
 #define DEVICE_INCLUDES_COMPUTE_RADIX_SORT_COUNT_H
 
-// The input buffer is processed in blocks of this size
+ // The input buffer is processed in blocks of this size
 #define RADIX_SORT_INPUT_CHUNK_SIZE 1024
 #define RADIX_SORT_THREADS_PER_BLOCK 256
 

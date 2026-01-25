@@ -23,17 +23,17 @@
 /**
  * This structure here is only meant to encapsulate one method that
  * returns the resampling MIS weight used by the temporal resampling pass.
- * 
+ *
  * This whole file basically defines the functions to compute the different resampling
  * MIS weights that the renderer supports.
- * 
- * This is cleaner that having a single function with a ton of 
- * 
+ *
+ * This is cleaner that having a single function with a ton of
+ *
  * #if BiasCorrectionmode == 1_OVER_M
  * #elif BiasCorrectionmode == 1_OVER_Z
  * #elif BiasCorrectionmode == MIS_LIKE
  * ....
- * 
+ *
  * We now have one structure per MIS weight computation mode instead of one #if / #elif
  */
 template <int BiasCorrectionMode, bool IsReSTIRGI>

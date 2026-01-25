@@ -8,7 +8,7 @@
 #include <future>
 #include <numeric>
 
-// DELETEBISTROSGTREEEDBUG.glt
+ // DELETEBISTROSGTREEEDBUG.glt
 
 int LightTreeATSBuilder::bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const
 {
@@ -191,7 +191,7 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 	{
 		auto left_future = std::async(std::launch::async, [&]() {
 			subdivide_node(left_child_index, triangles_data, depth + 1);
-		});
+			});
 
 		// Run right subtree in current thread
 		subdivide_node(right_child_index, triangles_data, depth + 1);
@@ -326,7 +326,7 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 				if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAOH)
 				{
 					cost = 0.0f;
-					
+
 					// Numerator
 					cost += m_left_bins_info_temp_buffer[split_plane_index].surface_area * m_left_bins_info_temp_buffer[split_plane_index].energy * m_left_bins_info_temp_buffer[split_plane_index].m_omega;
 					cost += m_right_bins_info_temp_buffer[split_plane_index].surface_area * m_right_bins_info_temp_buffer[split_plane_index].energy * m_right_bins_info_temp_buffer[split_plane_index].m_omega;
@@ -341,7 +341,7 @@ float LightTreeATSBuilder::compute_split_position(const LightTreeATSNode& node, 
 				else if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAH)
 				{
 					cost = m_left_bins_info_temp_buffer[split_plane_index].tri_count * m_left_bins_info_temp_buffer[split_plane_index].surface_area +
-						   m_right_bins_info_temp_buffer[split_plane_index].tri_count * m_right_bins_info_temp_buffer[split_plane_index].surface_area;
+						m_right_bins_info_temp_buffer[split_plane_index].tri_count * m_right_bins_info_temp_buffer[split_plane_index].surface_area;
 				}
 
 				if (cost < best_cost)

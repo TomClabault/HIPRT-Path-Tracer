@@ -10,12 +10,12 @@
 
 #include <cassert>
 
-/**
- * Defining the strings that go with the option so that they can be passed to the shader compiler
- * with the -D<string>=<value> option.
- * 
- * The strings used here must match the ones used in KernelOptions.h
- */
+ /**
+  * Defining the strings that go with the option so that they can be passed to the shader compiler
+  * with the -D<string>=<value> option.
+  *
+  * The strings used here must match the ones used in KernelOptions.h
+  */
 const std::string GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL = "UseSharedStackBVHTraversal";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE = "SharedStackBVHTraversalSize";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "KernelWorkgroupThreadCount";
@@ -35,7 +35,7 @@ const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_COAT_BASED_ON
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_DIFFUSE_LUMINANCE = "PrincipledBSDFSampleDiffuseLuminance";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION = "PrincipledBSDFDoMicrofacetRegularization";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION = "PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization";
-const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC= "PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC = "PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
 const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION = "NestedDielectricsStackSize";
 
@@ -354,7 +354,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING] = std::make_shared<int>(ReSTIR_GI_DoOptimalVisibilitySampling);
 
 	m_options_macro_map[GPUKernelCompilerOptions::GMON_M_SETS_COUNT] = std::make_shared<int>(GMoNMSetsCount);
-	
+
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
 	if (GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() != m_options_macro_map.size())
 		Debug::debugbreak();

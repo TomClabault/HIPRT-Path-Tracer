@@ -103,7 +103,7 @@ std::vector<unsigned char> ImGuiConvergenceGraphWidget::screenshot_graph_to_memo
 
 	// Flip rows because glReadPixels returns bottom->top but PNG expects top->down
 	std::vector<unsigned char> flipped(out_width * out_height * 4);
-	for (int row = 0; row < out_height; ++row) 
+	for (int row = 0; row < out_height; ++row)
 	{
 		memcpy(&flipped[row * out_width * 4],
 			&pixels[(out_height - 1 - row) * out_width * 4],

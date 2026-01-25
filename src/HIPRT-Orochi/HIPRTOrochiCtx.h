@@ -1,6 +1,6 @@
-/* 
+/*
  * Copyright 2025 Tom Clabault. GNU GPL3 license.
- * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt 
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
 #ifndef HIPRT_OROCHI_CTX_H
@@ -57,28 +57,28 @@ struct HIPRTOrochiCtx
 			switch (error_initialize)
 			{
 				// Unable to load HIP/CUDA
-				case ORO_API_HIPDRIVER:
-					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, 
-						"Unable to load HIP... Are your drivers up-to-date?");
-					break;
+			case ORO_API_HIPDRIVER:
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+					"Unable to load HIP... Are your drivers up-to-date?");
+				break;
 
-				case ORO_API_CUDADRIVER:
-					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, 
-						"Unable to load CUDA... Are your drivers up-to-date?");
-					break;
+			case ORO_API_CUDADRIVER:
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+					"Unable to load CUDA... Are your drivers up-to-date?");
+				break;
 
 				// Unable to load HIP/CUDA
-				case ORO_API_HIPRTC:
-					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-						"Unable to load HIPRTC... Is the HIP SDK (Windows) or ROCm + HIP (Linux) installed?");
-					break;
+			case ORO_API_HIPRTC:
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+					"Unable to load HIPRTC... Is the HIP SDK (Windows) or ROCm + HIP (Linux) installed?");
+				break;
 
-				case ORO_API_CUDARTC:
-					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, 
-						"Unable to load CUDARTC... Is the CUDA Toolkit installed + is the CUDA_PATH "
-						"environment variable set? (or have {CUDA_TOOLKIT_FOLDER/bin} in your "
-						"PATH environment variable)");
-					break;
+			case ORO_API_CUDARTC:
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+					"Unable to load CUDARTC... Is the CUDA Toolkit installed + is the CUDA_PATH "
+					"environment variable set? (or have {CUDA_TOOLKIT_FOLDER/bin} in your "
+					"PATH environment variable)");
+				break;
 			}
 
 			int trash = std::getchar();

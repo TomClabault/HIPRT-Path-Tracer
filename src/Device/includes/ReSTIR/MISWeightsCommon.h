@@ -6,23 +6,23 @@
 #ifndef DEVICE_RESTIR_DI_MIS_WEIGHTS_COMMON_H
 #define DEVICE_RESTIR_DI_MIS_WEIGHTS_COMMON_H
 
-/**
- * Forward declarations
- */
+ /**
+  * Forward declarations
+  */
 struct ReSTIRDIReservoirSample;
 struct ReSTIRGIReservoirSample;
 struct ReSTIRDIReservoir;
 struct ReSTIRGIReservoir;
 
- /**
- * The ReSTIRTypeStruct is used to automatically determine what SampleType to use
- * based on the 'IsReSTIRGI' template parameter
- *
- * This allows us to use the ReSTIRDISample type of ReSTIRGIReservoirSample type automatically
- * based on whether or not we're instantiating the structures for ReSTIR DI or ReSTIR GI
- *
- * This sample type is then used in some of the specialization to pass to the target functions
- */
+/**
+* The ReSTIRTypeStruct is used to automatically determine what SampleType to use
+* based on the 'IsReSTIRGI' template parameter
+*
+* This allows us to use the ReSTIRDISample type of ReSTIRGIReservoirSample type automatically
+* based on whether or not we're instantiating the structures for ReSTIR DI or ReSTIR GI
+*
+* This sample type is then used in some of the specialization to pass to the target functions
+*/
 template <bool IsReSTIRGI>
 struct ReSTIRTypeStruct {};
 

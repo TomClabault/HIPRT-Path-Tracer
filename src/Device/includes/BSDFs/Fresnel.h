@@ -10,11 +10,11 @@
 
 HIPRT_DEVICE static float F0_from_eta(float eta_t, float eta_i)
 {
-    float nume_F0 = (eta_t - eta_i);
-    float denom_F0 = (eta_t + eta_i);
-    float F0 = (nume_F0 * nume_F0) / (denom_F0 * denom_F0);
+	float nume_F0 = (eta_t - eta_i);
+	float denom_F0 = (eta_t + eta_i);
+	float F0 = (nume_F0 * nume_F0) / (denom_F0 * denom_F0);
 
-    return F0;
+	return F0;
 }
 
 /**
@@ -22,7 +22,7 @@ HIPRT_DEVICE static float F0_from_eta(float eta_t, float eta_i)
  */
 HIPRT_DEVICE static float F0_from_eta_t_and_relative_ior(float eta_t, float relative_eta)
 {
-    return F0_from_eta(eta_t, /* eta_i */ eta_t / relative_eta);
+	return F0_from_eta(eta_t, /* eta_i */ eta_t / relative_eta);
 }
 
 /**
@@ -30,7 +30,7 @@ HIPRT_DEVICE static float F0_from_eta_t_and_relative_ior(float eta_t, float rela
  */
 HIPRT_DEVICE static ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
 {
-    return F0 + (ColorRGB32F(1.0f) - F0) * hippt::pow_5(1.0f - angle);
+	return F0 + (ColorRGB32F(1.0f) - F0) * hippt::pow_5(1.0f - angle);
 }
 
 /**
@@ -40,22 +40,22 @@ HIPRT_DEVICE static ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
  */
 HIPRT_DEVICE static float full_fresnel_dielectric(float cos_theta_i, float relative_eta)
 {
-    if (hippt::abs(1.0f - relative_eta) < 1.0e-4f)
-        // relative_eta of 1, no fresnel
-        return 0.0f;
+	if (hippt::abs(1.0f - relative_eta) < 1.0e-4f)
+		// relative_eta of 1, no fresnel
+		return 0.0f;
 
-    // Computing cos_theta_t
-    float sin_theta_i2 = 1.0f - cos_theta_i * cos_theta_i;
-    float sin_theta_t2 = sin_theta_i2 / (relative_eta * relative_eta);
+	// Computing cos_theta_t
+	float sin_theta_i2 = 1.0f - cos_theta_i * cos_theta_i;
+	float sin_theta_t2 = sin_theta_i2 / (relative_eta * relative_eta);
 
-    if (sin_theta_t2 >= 1.0f)
-        // Total internal reflection, 0% refraction, all reflection
-        return 1.0f;
+	if (sin_theta_t2 >= 1.0f)
+		// Total internal reflection, 0% refraction, all reflection
+		return 1.0f;
 
-    float cos_theta_t = sqrt(1.0f - sin_theta_t2);
-    float r_parallel = (relative_eta * cos_theta_i - cos_theta_t) / (relative_eta * cos_theta_i + cos_theta_t);
-    float r_perpendicular = (cos_theta_i - relative_eta * cos_theta_t) / (cos_theta_i + relative_eta * cos_theta_t);
-    return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
+	float cos_theta_t = sqrt(1.0f - sin_theta_t2);
+	float r_parallel = (relative_eta * cos_theta_i - cos_theta_t) / (relative_eta * cos_theta_i + cos_theta_t);
+	float r_perpendicular = (cos_theta_i - relative_eta * cos_theta_t) / (cos_theta_i + relative_eta * cos_theta_t);
+	return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
 }
 
 /**
@@ -63,7 +63,7 @@ HIPRT_DEVICE static float full_fresnel_dielectric(float cos_theta_i, float relat
  */
 HIPRT_DEVICE static float full_fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
 {
-    return full_fresnel_dielectric(cos_theta_i, eta_t / eta_i);
+	return full_fresnel_dielectric(cos_theta_i, eta_t / eta_i);
 }
 
 /**
@@ -77,9 +77,9 @@ HIPRT_DEVICE static float full_fresnel_dielectric(float cos_theta_i, float eta_i
  */
 HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, float cos_theta_i)
 {
-    float F0 = F0_from_eta(eta_t, eta_i);
+	float F0 = F0_from_eta(eta_t, eta_i);
 
-    return fresnel_schlick(ColorRGB32F(F0), cos_theta_i);
+	return fresnel_schlick(ColorRGB32F(F0), cos_theta_i);
 }
 
 /**
@@ -87,9 +87,9 @@ HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_
  */
 HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, const float3& normal, const float3& local_to_light_direction)
 {
-    float NoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(normal, local_to_light_direction));
+	float NoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(normal, local_to_light_direction));
 
-    return fresnel_schlick_from_ior(eta_i, eta_t, NoL);
+	return fresnel_schlick_from_ior(eta_i, eta_t, NoL);
 }
 
 /**
@@ -99,34 +99,34 @@ HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_
  */
 HIPRT_DEVICE static ColorRGB32F gulbrandsen_metallic_complex_fresnel(const ColorRGB32F& reflectivity, const ColorRGB32F& edge_tint, float cos_theta_i)
 {
-    // TODO we should precompute k and n on the CPU from 'reflectivity' and 'edge_tint'
+	// TODO we should precompute k and n on the CPU from 'reflectivity' and 'edge_tint'
 
 
-    // Computing n and k from the 'reflectivity' and 'edge_tint' artist parameters
-    ColorRGB32F one = ColorRGB32F(1.0f);
-    ColorRGB32F sqrt_r = sqrt(reflectivity);
-    ColorRGB32F left_n = edge_tint * ((one - reflectivity) / (one + reflectivity));
-    ColorRGB32F right_n = (one - edge_tint) * ((one + sqrt_r) / (one - sqrt_r));
-    ColorRGB32F n = left_n + right_n;
+	// Computing n and k from the 'reflectivity' and 'edge_tint' artist parameters
+	ColorRGB32F one = ColorRGB32F(1.0f);
+	ColorRGB32F sqrt_r = sqrt(reflectivity);
+	ColorRGB32F left_n = edge_tint * ((one - reflectivity) / (one + reflectivity));
+	ColorRGB32F right_n = (one - edge_tint) * ((one + sqrt_r) / (one - sqrt_r));
+	ColorRGB32F n = left_n + right_n;
 
-    ColorRGB32F k_left = n + one;
-    k_left *= k_left;
-    k_left *= reflectivity;
-    ColorRGB32F k_right = n - one;
-    k_right *= k_right;
-    ColorRGB32F k_sqr = (k_left - k_right) / (one - reflectivity);
+	ColorRGB32F k_left = n + one;
+	k_left *= k_left;
+	k_left *= reflectivity;
+	ColorRGB32F k_right = n - one;
+	k_right *= k_right;
+	ColorRGB32F k_sqr = (k_left - k_right) / (one - reflectivity);
 
-    // Computing the approximation for non polarized light based on Rs and Rp
-    // for the perpendicular and parallel components of the light
-    ColorRGB32F Rs_nume = n * n + k_sqr - 2.0f * n * cos_theta_i + ColorRGB32F(cos_theta_i * cos_theta_i);
-    ColorRGB32F Rs_denom = n * n + k_sqr + 2.0f * n * cos_theta_i + ColorRGB32F(cos_theta_i * cos_theta_i);
-    ColorRGB32F Rs = Rs_nume / Rs_denom;
+	// Computing the approximation for non polarized light based on Rs and Rp
+	// for the perpendicular and parallel components of the light
+	ColorRGB32F Rs_nume = n * n + k_sqr - 2.0f * n * cos_theta_i + ColorRGB32F(cos_theta_i * cos_theta_i);
+	ColorRGB32F Rs_denom = n * n + k_sqr + 2.0f * n * cos_theta_i + ColorRGB32F(cos_theta_i * cos_theta_i);
+	ColorRGB32F Rs = Rs_nume / Rs_denom;
 
-    ColorRGB32F Rp_nume = (n * n + k_sqr) * cos_theta_i * cos_theta_i - 2.0f * n * cos_theta_i + one;
-    ColorRGB32F Rp_denom = (n * n + k_sqr) * cos_theta_i * cos_theta_i + 2.0f * n * cos_theta_i + one;
-    ColorRGB32F Rp = Rp_nume / Rp_denom;
+	ColorRGB32F Rp_nume = (n * n + k_sqr) * cos_theta_i * cos_theta_i - 2.0f * n * cos_theta_i + one;
+	ColorRGB32F Rp_denom = (n * n + k_sqr) * cos_theta_i * cos_theta_i + 2.0f * n * cos_theta_i + one;
+	ColorRGB32F Rp = Rp_nume / Rp_denom;
 
-    return 0.5f * (Rs + Rp);
+	return 0.5f * (Rs + Rp);
 }
 
 /**
@@ -137,38 +137,38 @@ HIPRT_DEVICE static ColorRGB32F gulbrandsen_metallic_complex_fresnel(const Color
  */
 HIPRT_DEVICE static ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, const ColorRGB32F& F82, const ColorRGB32F& F90, float F90_falloff_exponent, float cos_theta)
 {
-    ColorRGB32F base_term = F0 + (F90 - F0) * hippt::intrin_pow(1.0f - cos_theta, F90_falloff_exponent);
-    if (base_term.max_component() < 1.0e-8f)
-        // Quick exit if the base term is super low to avoid numerical issues with super low
-        // float numbers
-        return ColorRGB32F(0.0f);
+	ColorRGB32F base_term = F0 + (F90 - F0) * hippt::intrin_pow(1.0f - cos_theta, F90_falloff_exponent);
+	if (base_term.max_component() < 1.0e-8f)
+		// Quick exit if the base term is super low to avoid numerical issues with super low
+		// float numbers
+		return ColorRGB32F(0.0f);
 
-    float lazanyi_correction = cos_theta * hippt::pow_6(1.0f - cos_theta);
+	float lazanyi_correction = cos_theta * hippt::pow_6(1.0f - cos_theta);
 
-    // cos_theta_max for beta exponent = 6 in the lazanyi correction term
-    constexpr float cos_theta_max = 1.0f / 7.0f;
-    constexpr float denom_a = cos_theta_max * hippt::pow_6(1.0f - cos_theta_max);
+	// cos_theta_max for beta exponent = 6 in the lazanyi correction term
+	constexpr float cos_theta_max = 1.0f / 7.0f;
+	constexpr float denom_a = cos_theta_max * hippt::pow_6(1.0f - cos_theta_max);
 
-    ColorRGB32F nume_a = (F0 + (F90 - F0) * hippt::intrin_pow(1.0f - cos_theta_max, F90_falloff_exponent)) * (ColorRGB32F(1.0f) - F82);
-    ColorRGB32F a = nume_a / denom_a;
+	ColorRGB32F nume_a = (F0 + (F90 - F0) * hippt::intrin_pow(1.0f - cos_theta_max, F90_falloff_exponent)) * (ColorRGB32F(1.0f) - F82);
+	ColorRGB32F a = nume_a / denom_a;
 
-    ColorRGB32F F = base_term - a * lazanyi_correction;
-    F.clamp(0.0f, 1.0f);
+	ColorRGB32F F = base_term - a * lazanyi_correction;
+	F.clamp(0.0f, 1.0f);
 
-    return F;
+	return F;
 }
 
 /**
  * Reference:
  * [1] [A Hitchhiker's Guide to Multiple Scattering, Eugene d'Eon] https://eugenedeon.com/hitchhikers
  * Eq. 11.15
- * 
- * Hemispherical albedo (integral of directional albedos over view directions) 
+ *
+ * Hemispherical albedo (integral of directional albedos over view directions)
  * of a perfectly smooth dielectric layer. This is an approximated fit.
  */
 HIPRT_DEVICE static float fresnel_hemispherical_albedo_fit(float relative_eta)
 {
-    return hippt::intrin_logf((10893.0f * relative_eta - 1438.2f) / (-774.4f * hippt::square(relative_eta) + 10212.0f * relative_eta + 1.0f));
+	return hippt::intrin_logf((10893.0f * relative_eta - 1438.2f) / (-774.4f * hippt::square(relative_eta) + 10212.0f * relative_eta + 1.0f));
 }
 
 #endif

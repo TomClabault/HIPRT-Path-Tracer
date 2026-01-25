@@ -28,7 +28,7 @@ public:
 
 	/**
 	 * Allocates/deallocates the buffers used by GMoN.
-	 * 
+	 *
 	 * Returns true or false depending on whether or not the render buffer data have been invalidated
 	 */
 	virtual bool pre_render_update(float delta_time) override;
@@ -36,7 +36,7 @@ public:
 
 	/**
 	 * Does the actual allocation/deallocation of the GMoN buffers.
-	 * 
+	 *
 	 * Returns true a buffer was allocated or deallocated
 	 * Returns false if buffer were left untouched
 	 */

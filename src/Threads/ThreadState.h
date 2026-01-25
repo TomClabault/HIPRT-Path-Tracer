@@ -8,10 +8,10 @@
 
 struct TextureLoadingThreadState
 {
-    std::vector<std::pair<aiTextureType, std::string>> texture_paths;
-    std::vector<int> material_indices;
+	std::vector<std::pair<aiTextureType, std::string>> texture_paths;
+	std::vector<int> material_indices;
 
-    std::string scene_filepath;
+	std::string scene_filepath;
 };
 
 #endif

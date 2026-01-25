@@ -10,10 +10,10 @@
 #include "Device/includes/Compute/ParallelPrefixScanDecoupledLookbackBlockDescriptor.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 
-/**
- * Reference: Fast CDF generation on the GPU for light picking
- * https://blog.traverseresearch.nl/fast-cdf-generation-on-the-gpu-for-light-picking-5c50b97c552b
- */
+ /**
+  * Reference: Fast CDF generation on the GPU for light picking
+  * https://blog.traverseresearch.nl/fast-cdf-generation-on-the-gpu-for-light-picking-5c50b97c552b
+  */
 class ParallelPrefixScanDecoupledLookback
 {
 public:

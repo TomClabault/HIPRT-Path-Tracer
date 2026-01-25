@@ -20,14 +20,14 @@ GLOBAL_KERNEL_SIGNATURE(void) Test3DTexture(oroTextureObject_t texture_3D, int t
 #endif
 {
 #ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-    const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
+	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
 #endif
-    if (x >= tex_size || y >= tex_size || z >= tex_size)
-        return;
+	if (x >= tex_size || y >= tex_size || z >= tex_size)
+		return;
 
-    const uint32_t thread_index = (x + y * tex_size + z * tex_size * tex_size);
+	const uint32_t thread_index = (x + y * tex_size + z * tex_size * tex_size);
 
-    out_buffer[thread_index * 4] = tex3D<float4>(texture_3D, x + 0.35f, y + 0.35f, z + 0.35f).y;
+	out_buffer[thread_index * 4] = tex3D<float4>(texture_3D, x + 0.35f, y + 0.35f, z + 0.35f).y;
 }

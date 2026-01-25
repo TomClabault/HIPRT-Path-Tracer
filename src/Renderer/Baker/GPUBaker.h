@@ -35,7 +35,7 @@ public:
 
 	void bake_ggx_glass_directional_albedo(const GGXGlassDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
 	bool is_ggx_glass_directional_albedo_bake_complete() const;
-	
+
 	void bake_ggx_thin_glass_directional_albedo(const GGXThinGlassDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
 	bool is_ggx_thin_glass_directional_albedo_bake_complete() const;
 
