@@ -40,7 +40,7 @@ void ParallelPrefixScanDecoupledLookback::initialize_kernels()
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 }
 
-void ParallelPrefixScanDecoupledLookback::upload_data(const std::vector<unsigned int>& data)
+void ParallelPrefixScanDecoupledLookback::upload_input_data(const std::vector<unsigned int>& data)
 {
 	m_size = data.size();
 
@@ -116,7 +116,7 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 		auto stop = std::chrono::high_resolution_clock::now();
 		std::cout << "CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements." << std::endl;
 
-		scanner.upload_data(input);
+		scanner.upload_input_data(input);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
 		unsigned int repeats = 5;

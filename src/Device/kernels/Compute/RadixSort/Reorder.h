@@ -11,11 +11,11 @@
 #include "HostDeviceCommon/Maths/Math.h"
 
 GLOBAL_KERNEL_SIGNATURE(void) RadixSort_Reorder(
-	unsigned int* __restrict__ input_keys,
-	unsigned int* __restrict__ input_values,
+	const unsigned int* __restrict__ input_keys,
+	const unsigned int* __restrict__ input_values,
 	unsigned int* __restrict__ output_keys,
 	unsigned int* __restrict__ output_values,
-	unsigned int* __restrict__ count_table,
+	const unsigned int* __restrict__ count_table,
 	unsigned int size,
 	int bit_offset)
 {

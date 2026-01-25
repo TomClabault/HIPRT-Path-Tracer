@@ -40,7 +40,7 @@ void ParallelPrefixScan::initialize_kernels()
 	m_block_increment_kernel.compile(m_hiprt_ctx, {}, true, false);
 }
 
-void ParallelPrefixScan::upload_data(const std::vector<unsigned int>& data)
+void ParallelPrefixScan::upload_input_data(const std::vector<unsigned int>& data)
 {
 	if (data.size() > 0xFFFFFFFFull)
 	{
@@ -297,7 +297,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		auto stop = std::chrono::high_resolution_clock::now();
 		std::cout << "CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements." << std::endl;
 
-		scanner.upload_data(input);
+		scanner.upload_input_data(input);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
 		unsigned int repeats = 3;

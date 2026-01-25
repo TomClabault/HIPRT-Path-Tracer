@@ -9,7 +9,7 @@
 #include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
-#include "Renderer/Compute/ParallelPrefixScan.h"
+#include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
 
 #include <memory>
 
@@ -37,7 +37,7 @@ private:
 	OrochiBuffer<unsigned int> m_temp_values_buffer;
 	OrochiBuffer<unsigned int> m_count_tables_buffer;
 
-	ParallelPrefixScan m_prefix_scan;
+	ParallelPrefixScanDecoupledLookback m_prefix_scan;
 	GPUKernel m_count_kernel;
 	GPUKernel m_reorder_kernel;
 

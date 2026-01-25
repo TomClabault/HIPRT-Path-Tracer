@@ -24,7 +24,7 @@ public:
 	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	void initialize_kernels();
 
-	void upload_data(const std::vector<unsigned int>& data);
+	void upload_input_data(const std::vector<unsigned int>& data);
 	void scan();
 
 	OrochiBuffer<unsigned int>& get_output_buffer();

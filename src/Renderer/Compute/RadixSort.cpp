@@ -4,16 +4,16 @@
  */
 
 #include "Device/includes/Compute/RadixSortCommon.h"
-#include "Renderer/Compute/RadixSort.h"
-#include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
+#include "Renderer/Compute/RadixSort.h"
 
 #include <numeric>
 #include <random>
 
 RadixSort::RadixSort() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0) {}
 
-RadixSort::RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream) 
+RadixSort::RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 	: m_hiprt_ctx(hiprt_ctx), m_stream(stream), m_size(0)
 {
 	initialize_kernels();
@@ -32,7 +32,7 @@ void RadixSort::initialize_kernels()
 	m_count_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/Count.h");
 	m_count_kernel.set_kernel_function_name("RadixSort_Count");
 	m_count_kernel.compile(m_hiprt_ctx, {}, true, false);
-	
+
 	m_reorder_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/RadixSort/Reorder.h");
 	m_reorder_kernel.set_kernel_function_name("RadixSort_Reorder");
 	m_reorder_kernel.compile(m_hiprt_ctx, {}, true, false);
@@ -40,22 +40,16 @@ void RadixSort::initialize_kernels()
 
 void RadixSort::sort()
 {
-	ParallelPrefixScanDecoupledLookback::unit_test(m_hiprt_ctx, m_stream);
-	return;
-
 	if (m_size == 0 || !m_hiprt_ctx || !m_stream)
 		return;
-
-	// How many chunks is the input split into
-	int num_chunks = std::ceil(m_size / (float)RADIX_SORT_INPUT_CHUNK_SIZE);
 
 	// Allocate temporary buffers if needed
 	if (m_temp_keys_buffer.size() < m_size)
 		m_temp_keys_buffer.resize(m_size);
 	if (m_temp_values_buffer.size() < m_size)
 		m_temp_values_buffer.resize(m_size);
-	if (m_count_tables_buffer.size() < RADIX_SORT_RADIX_SIZE * num_chunks)
-		m_count_tables_buffer.resize(RADIX_SORT_RADIX_SIZE * num_chunks);
+	if (m_count_tables_buffer.size() < RADIX_SORT_RADIX_SIZE)
+		m_count_tables_buffer.resize(RADIX_SORT_RADIX_SIZE);
 
 	if (!m_prefix_scan.is_setup())
 		m_prefix_scan.set_context(m_hiprt_ctx, m_stream);
@@ -73,59 +67,48 @@ void RadixSort::sort()
 		int bit_offset = pass * RADIX_SORT_RADIX_BITS;
 
 		// Zero the count table before counting
+		// 
+		// TODO memset with a kernel is faster?
 		m_count_tables_buffer.memset_whole_buffer(0);
 
 		// Count kernel: Count occurrences of each radix digit
 		void* count_args[] = { &input_keys, &count_tables, &m_size, &bit_offset };
-		m_count_kernel.launch_asynchronous(RADIX_SORT_THREADS_PER_BLOCK, 1, num_chunks, 1, count_args, m_stream);
+		m_count_kernel.launch_asynchronous(1024, 1, m_size, 1, count_args, m_stream);
 
 		// Scan kernel: Compute exclusive prefix sum
 		{
-			const int size = 151256;
-			std::vector<unsigned int> input(size);
-			std::vector<unsigned int> output(size);
+			std::vector<unsigned int> count_table_host = m_count_tables_buffer.download_data();
 
-			std::iota(input.begin(), input.end(), 0);
-			std::shuffle(input.begin(), input.end(), std::mt19937{ 42 });
-
-			std::vector<unsigned int> reference_output(size);
-			reference_output[0] = 0;
-			for (size_t i = 1; i < input.size(); i++)
-				reference_output[i] = reference_output[i - 1] + input[i - 1];
-
-			OrochiBuffer<unsigned int> input_buffer(input);
-			OrochiBuffer<unsigned int> output_buffer(output);
-
-			void* scan_args[] = { &input, &output };/*
-			m_block_scan_kernel.launch_asynchronous(256, 1, size, 1, scan_args, m_stream);*/
-			m_prefix_scan.upload_data(input);
-			m_prefix_scan.scan();
-
-			output = m_prefix_scan.get_output_buffer().download_data();
-
-			// Verify correctness
-			for (size_t i = 0; i < output.size(); i++)
+			std::cout << "Count table before: " << std::endl;
+			for (int i = 0; i < count_table_host.size(); i++)
 			{
-				if (output[i] != reference_output[i])
-				{
-					std::cout << "Mismatch at index " << i << ": expected " << reference_output[i] << ", got " << output[i] << std::endl;
-					break;
-				}
+				std::cout << count_table_host[i] << ", ";
 			}
+			std::cout << std::endl;
+			std::cout << std::endl;
+			std::cout << std::endl;
+
+			// Replace the prefix scan here with just a block prefix scan because the count table is always small (256 elements) AND THIS IS A VERY VERY LONG LINE BLAH LBAH TAKING MORE SPACE TO TRIGGER CLANGF FORAMT
+			m_prefix_scan.upload_input_data(count_table_host);
+			m_prefix_scan.scan();
 		}
 
-		std::vector<unsigned int> count_table_host = m_count_tables_buffer.download_data();
-		for (int i = 0; i < RADIX_SORT_RADIX_SIZE; i++)
+		m_count_tables_buffer.upload_data(m_prefix_scan.get_output_buffer().download_data());
+		unsigned int* count_tables_prefix_scanned = m_count_tables_buffer.get_device_pointer();
+
+		std::vector<unsigned int> after = m_count_tables_buffer.download_data();
+		std::cout << "Count table after: " << std::endl;
+		for (int i = 0; i < after.size(); i++)
 		{
-			// Early out if no keys have this radix value
-			std::cout << count_table_host[i] << ", ";
+			std::cout << after[i] << ", ";
 		}
 		std::cout << std::endl;
-		return;
+		std::cout << std::endl;
+		std::cout << std::endl;
 
 		// Reorder kernel: Scatter elements to sorted positions
-		void* reorder_args[] = { &input_keys, &input_values, &output_keys, &output_values, 
-								 &count_tables, &m_size, &bit_offset };
+		void* reorder_args[] = { &input_keys, &input_values, &output_keys, &output_values,
+								 &count_tables_prefix_scanned, &m_size, &bit_offset };
 		m_reorder_kernel.launch_asynchronous(RADIX_SORT_THREADS_PER_BLOCK, 1, m_size, 1, reorder_args, m_stream);
 
 		// Synchronize stream to ensure all kernels complete before next pass
@@ -137,7 +120,7 @@ void RadixSort::sort()
 			// Swap the buffer objects, not just pointers
 			std::swap(m_keys_buffer, m_temp_keys_buffer);
 			std::swap(m_values_buffer, m_temp_values_buffer);
-			
+
 			// Update pointers for next iteration
 			input_keys = m_keys_buffer.get_device_pointer();
 			input_values = m_values_buffer.get_device_pointer();
