@@ -21,12 +21,13 @@ public:
 
 	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
-	template <typename T>
-	void upload_data(const std::vector<T>& keys, const std::vector<T>& values);
+	void upload_input_data(const std::vector<unsigned int>& keys, const std::vector<unsigned int>& values);
 	void sort();
 
 	OrochiBuffer<unsigned int>& get_sorted_keys_buffer();
 	OrochiBuffer<unsigned int>& get_sorted_values_buffer();
+
+	static void unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
 private:
 	void initialize_kernels();
@@ -35,10 +36,12 @@ private:
 	OrochiBuffer<unsigned int> m_values_buffer;
 	OrochiBuffer<unsigned int> m_temp_keys_buffer;
 	OrochiBuffer<unsigned int> m_temp_values_buffer;
-	OrochiBuffer<unsigned int> m_count_tables_buffer;
+	OrochiBuffer<unsigned int> m_global_count_tables_buffer;
+	OrochiBuffer<unsigned int> m_per_block_count_tables_buffer;
 
-	ParallelPrefixScanDecoupledLookback m_prefix_scan;
 	GPUKernel m_count_kernel;
+	ParallelPrefixScanDecoupledLookback m_prefix_scan;
+	GPUKernel m_per_block_prefix_scan_kernel;
 	GPUKernel m_reorder_kernel;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_ctx;
@@ -46,19 +49,5 @@ private:
 
 	size_t m_size;
 };
-
-template <typename T>
-void RadixSort::upload_data(const std::vector<T>& keys, const std::vector<T>& values)
-{
-	if (keys.size() != values.size())
-		return; // Error: sizes don't match
-
-	m_size = keys.size();
-	m_keys_buffer.resize(m_size);
-	m_values_buffer.resize(m_size);
-
-	m_keys_buffer.upload_data(reinterpret_cast<const unsigned int*>(keys.data()));
-	m_values_buffer.upload_data(reinterpret_cast<const unsigned int*>(values.data()));
-}
 
 #endif
