@@ -6,7 +6,9 @@
 #ifndef HOST_DEVICE_COMMON_XORSHIFT_H
 #define HOST_DEVICE_COMMON_XORSHIFT_H
 
+#ifdef __KERNELCC__
 #include <hiprt/hiprt_device.h>
+#endif
 
 #include "HostDeviceCommon/Maths/Math.h"
 
@@ -19,15 +21,9 @@ struct Xorshift32Generator
 {
 	static const unsigned int XORSHIFT_MAX = 0xffffffff;
 
-	HIPRT_DEVICE Xorshift32Generator()
-	{
-		m_state.seed = 42;
-	}
+	HIPRT_DEVICE Xorshift32Generator() { m_state.seed = 42; }
 
-	HIPRT_DEVICE Xorshift32Generator(unsigned int seed)
-	{
-		m_state.seed = seed;
-	}
+	HIPRT_DEVICE Xorshift32Generator(unsigned int seed) { m_state.seed = seed; }
 
 	/*
 	 * Returns a uniform random number between 0 and
@@ -44,7 +40,7 @@ struct Xorshift32Generator
 	 */
 	HIPRT_DEVICE float operator()()
 	{
-		//Float in [0, 1[
+		// Float in [0, 1[
 		float a = xorshift32() / static_cast<float>(XORSHIFT_MAX);
 		return hippt::min(a, 1.0f - 1.0e-7f);
 	}

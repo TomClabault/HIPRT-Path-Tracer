@@ -100,10 +100,10 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 
 if (WIN32)
 	# "version" is a library from the Windows SDK
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02004 clip version)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt03001 clip version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02004 clip)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt03001 clip)
 endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
@@ -131,26 +131,23 @@ if (WIN32)
 	file(COPY ${OIDN_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
 	# For copying HIPRT's DLL
-	get_target_property(HIPRT_DLL_NAME hiprt02004 OUTPUT_NAME)
+	get_target_property(HIPRT_DLL_NAME hiprt03001 OUTPUT_NAME)
 
-	#if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND MSVC_IDE)
-		# Adding the 'd' suffix that MSVC adds to debug libraries file names
-		set(HIPRT_DLL_NAME_DEBUG ${HIPRT_DLL_NAME}d.dll)
-	#endif()
+	set(HIPRT_DLL_NAME_DEBUG ${HIPRT_DLL_NAME}d.dll)
 	# Appending .dll extension
 	set(HIPRT_DLL_NAME ${HIPRT_DLL_NAME}.dll)
 
 	add_custom_command(OUTPUT
         ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt02004>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt03001>
         ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
-    DEPENDS hiprt02004)
+    DEPENDS hiprt03001)
 
 	add_custom_command(OUTPUT
         ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG}
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt02004>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt03001>
         ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG}
-    DEPENDS hiprt02004)
+    DEPENDS hiprt03001)
 
 	# Create target which consume the command via DEPENDS.
 	add_custom_target(hiprtCopyDLL ALL DEPENDS ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME} ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME_DEBUG})
@@ -184,6 +181,9 @@ if(MSVC_IDE)
 
 			# No inlining of functions
 			add_definitions(/Ob0)
+			
+			# Debug information (Program database)
+			add_definitions(/Zi)
 		endif()
 	endif()
 
@@ -210,7 +210,7 @@ if(MSVC_IDE)
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 	set_target_properties(
 		assimp uninstall zlibstatic UpdateAssimpLibsDebugSymbolsAndDLLs # ASSIMP Targets
-		hiprt02004 hiprtCopyDLL # HIPRT Targets
+		hiprt03001 hiprtCopyDLL # HIPRT Targets
 		hello_world copy clip_user_format_tests clip_text_tests clip_image_tests clip int_format paste put_image show_image # Clip
 		PROPERTIES FOLDER ExternalTargets)
 endif()

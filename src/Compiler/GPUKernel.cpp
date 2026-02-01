@@ -14,13 +14,8 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
-const std::vector<std::string> GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS =
-{
-	KERNEL_COMPILER_ADDITIONAL_INCLUDE,
-	DEVICE_INCLUDES_DIRECTORY,
-	OROCHI_INCLUDES_DIRECTORY,
-	"./"
-};
+const std::vector<std::string> GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY,
+																					OROCHI_INCLUDES_DIRECTORY, "./" };
 
 GPUKernel::GPUKernel()
 {
@@ -30,34 +25,19 @@ GPUKernel::GPUKernel()
 
 GPUKernel::GPUKernel(const std::string& kernel_file_path, const std::string& kernel_function_name) : GPUKernel()
 {
-	m_kernel_file_path = kernel_file_path;
+	m_kernel_file_path	   = kernel_file_path;
 	m_kernel_function_name = kernel_function_name;
 }
 
-std::string GPUKernel::get_kernel_file_path() const
-{
-	return m_kernel_file_path;
-}
+std::string GPUKernel::get_kernel_file_path() const { return m_kernel_file_path; }
 
-std::string GPUKernel::get_kernel_function_name() const
-{
-	return m_kernel_function_name;
-}
+std::string GPUKernel::get_kernel_function_name() const { return m_kernel_function_name; }
 
-void GPUKernel::set_kernel_file_path(const std::string& kernel_file_path)
-{
-	m_kernel_file_path = kernel_file_path;
-}
+void GPUKernel::set_kernel_file_path(const std::string& kernel_file_path) { m_kernel_file_path = kernel_file_path; }
 
-void GPUKernel::set_kernel_function_name(const std::string& kernel_function_name)
-{
-	m_kernel_function_name = kernel_function_name;
-}
+void GPUKernel::set_kernel_function_name(const std::string& kernel_function_name) { m_kernel_function_name = kernel_function_name; }
 
-void GPUKernel::add_additional_macro_for_compilation(const std::string& name, int value)
-{
-	m_additional_compilation_macros[name] = value;
-}
+void GPUKernel::add_additional_macro_for_compilation(const std::string& name, int value) { m_additional_compilation_macros[name] = value; }
 
 std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 {
@@ -75,11 +55,9 @@ void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<h
 		parse_option_macros_used();
 
 	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
-	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx,
-		func_name_sets.data(),
-		/* num geom */1,
-		/* num ray */ func_name_sets.size() == 0 ? 0 : 1,
-		use_cache, cache_key, silent);
+	m_kernel_function	  = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(),
+																 /* num geom */ 1,
+															 /* num ray */ func_name_sets.size() == 0 ? 0 : 1, use_cache, cache_key, silent);
 }
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)
@@ -114,22 +92,16 @@ int GPUKernel::get_kernel_attribute(oroFunction_attribute attribute) const
 	return numRegs;
 }
 
-GPUKernelCompilerOptions& GPUKernel::get_kernel_options()
-{
-	return m_compiler_options;
-}
+GPUKernelCompilerOptions& GPUKernel::get_kernel_options() { return m_compiler_options; }
 
-const GPUKernelCompilerOptions& GPUKernel::get_kernel_options() const
-{
-	return m_compiler_options;
-}
+const GPUKernelCompilerOptions& GPUKernel::get_kernel_options() const { return m_compiler_options; }
 
 void GPUKernel::synchronize_options_with(std::shared_ptr<GPUKernelCompilerOptions> other_options, const std::unordered_set<std::string>& options_excluded)
 {
 	for (auto macro_to_value : other_options->get_options_macro_map())
 	{
 		const std::string& macro_name = macro_to_value.first;
-		int macro_value = *macro_to_value.second;
+		int macro_value				  = *macro_to_value.second;
 
 		if (options_excluded.find(macro_name) == options_excluded.end())
 			// Option is not excluded
@@ -140,7 +112,7 @@ void GPUKernel::synchronize_options_with(std::shared_ptr<GPUKernelCompilerOption
 	for (auto macro_to_value : other_options->get_custom_macro_map())
 	{
 		const std::string& macro_name = macro_to_value.first;
-		int macro_value = *macro_to_value.second;
+		int macro_value				  = *macro_to_value.second;
 
 		if (options_excluded.find(macro_name) == options_excluded.end())
 			// Option is not excluded
@@ -153,20 +125,36 @@ void GPUKernel::launch(int block_size_x, int block_size_y, int nb_threads_x, int
 	launch_3D_block_size(block_size_x, block_size_y, 1, nb_threads_x, nb_threads_y, 1, launch_args, stream);
 }
 
-void GPUKernel::launch_3D_block_size(int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream)
+void GPUKernel::launch_3D_block_size(int block_size_x,
+									 int block_size_y,
+									 int block_size_z,
+									 int nb_threads_x,
+									 int nb_threads_y,
+									 int nb_threads_z,
+									 void** launch_args,
+									 oroStream_t stream)
 {
 	unsigned int block_count_x = (nb_threads_x + block_size_x - 1) / block_size_x;
 	unsigned int block_count_y = (nb_threads_y + block_size_y - 1) / block_size_y;
 	unsigned int block_count_z = (nb_threads_z + block_size_z - 1) / block_size_z;
 
-	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, block_count_x, block_count_y, block_count_z, block_size_x, block_size_y, block_size_z, 0, stream, launch_args, 0));
+	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, block_count_x, block_count_y, block_count_z, block_size_x, block_size_y, block_size_z, 0,
+											 stream, launch_args, 0));
 
 	m_launched_at_least_once = true;
 }
 
-void GPUKernel::launch_3D_block_count(int block_count_x, int block_count_y, int block_count_z, int block_size_x, int block_size_y, int block_size_z, void** launch_args, oroStream_t stream)
+void GPUKernel::launch_3D_block_count(int block_count_x,
+									  int block_count_y,
+									  int block_count_z,
+									  int block_size_x,
+									  int block_size_y,
+									  int block_size_z,
+									  void** launch_args,
+									  oroStream_t stream)
 {
-	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, block_count_x, block_count_y, block_count_z, block_size_x, block_size_y, block_size_z, 0, stream, launch_args, 0));
+	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, block_count_x, block_count_y, block_count_z, block_size_x, block_size_y, block_size_z, 0,
+											 stream, launch_args, 0));
 	m_launched_at_least_once = true;
 }
 
@@ -184,14 +172,11 @@ void GPUKernel::launch_synchronous(int block_size_x, int block_size_y, int nb_th
 
 void GPUKernel::parse_option_macros_used()
 {
-	m_used_option_macros = g_gpu_kernel_compiler.get_option_macros_used_by_kernel(*this);
+	m_used_option_macros	   = g_gpu_kernel_compiler.get_option_macros_used_by_kernel(*this);
 	m_option_macro_invalidated = false;
 }
 
-bool GPUKernel::uses_macro(const std::string& name) const
-{
-	return m_used_option_macros.find(name) != m_used_option_macros.end();
-}
+bool GPUKernel::uses_macro(const std::string& name) const { return m_used_option_macros.find(name) != m_used_option_macros.end(); }
 
 float GPUKernel::compute_execution_time()
 {
@@ -206,32 +191,27 @@ float GPUKernel::compute_execution_time()
 	return out;
 }
 
-float GPUKernel::get_last_execution_time()
-{
-	return m_last_execution_time;
-}
+float GPUKernel::get_last_execution_time() { return m_last_execution_time; }
 
-bool GPUKernel::has_been_compiled() const
-{
-	return m_kernel_function != nullptr;
-}
+bool GPUKernel::has_been_compiled() const { return m_kernel_function != nullptr; }
 
-bool GPUKernel::is_precompiled() const
-{
-	return m_is_precompiled_kernel;
-}
+bool GPUKernel::is_precompiled() const { return m_is_precompiled_kernel; }
 
-void GPUKernel::set_precompiled(bool precompiled)
-{
-	m_is_precompiled_kernel = precompiled;
-}
+void GPUKernel::set_precompiled(bool precompiled) { m_is_precompiled_kernel = precompiled; }
 
 void GPUKernel::launch_asynchronous(int block_size_x, int block_size_y, int nb_threads_x, int nb_threads_y, void** launch_args, oroStream_t stream)
 {
 	launch_asynchronous_3D(block_size_x, block_size_y, 1, nb_threads_x, nb_threads_y, 1, launch_args, stream);
 }
 
-void GPUKernel::launch_asynchronous_3D(int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream)
+void GPUKernel::launch_asynchronous_3D(int block_size_x,
+									   int block_size_y,
+									   int block_size_z,
+									   int nb_threads_x,
+									   int nb_threads_y,
+									   int nb_threads_z,
+									   void** launch_args,
+									   oroStream_t stream)
 {
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
 

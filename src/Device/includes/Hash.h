@@ -6,7 +6,7 @@
 #ifndef DEVICE_HASH_H
 #define DEVICE_HASH_H
 
-#include <hiprt/hiprt_device.h>
+#include "Device/includes/FixIntellisense.h"
 
 HIPRT_HOST_DEVICE static unsigned int wang_hash(unsigned int seed)
 {

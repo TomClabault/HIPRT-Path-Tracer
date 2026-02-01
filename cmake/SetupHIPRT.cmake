@@ -7,7 +7,6 @@ endif()
 
 set(NO_ENCRYPT ON)
 set(NO_UNITTEST ON)
-#option(HIPRT_PREFER_HIP_5 "Prefer HIP 5" OFF)
 
 set(CMAKE_EXE_LINKER_FLAGS_DEBUGGPU "")
 add_subdirectory(${HIPRT_SUBMODULE_DIR})
@@ -19,6 +18,7 @@ set(HIPRT_HEADERS_DIR ${HIPRT_SUBMODULE_DIR}/hiprt)
 
 # The GPU compiler will need this additional include folder to properly compile some kernels
 add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${HIPRT_SUBMODULE_DIR}")
+add_compile_definitions(HIPRT_ROOT_DIRECTORY="${HIPRT_SUBMODULE_DIR}")
 
 # Replacing backslashes in the Windows paths that lead to wrong escape character
 # note that the four backslashes \\\\ are required because we need a regular expression that

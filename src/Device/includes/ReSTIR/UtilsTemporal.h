@@ -32,23 +32,27 @@ HIPRT_DEVICE int2 apply_permutation_sampling(int2 pixel_position, int random_bit
  */
 template <bool IsReSTIRGI>
 HIPRT_DEVICE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_data,
-	const float3& current_shading_point, const float3& current_normal, int center_pixel_index, Xorshift32Generator& random_number_generator)
+											   const float3& current_shading_point,
+											   const float3& current_normal,
+											   int center_pixel_index,
+											   Xorshift32Generator& random_number_generator)
 {
 	if (render_data.render_settings.accumulate)
 		// If accumulating, the camera isn't moving, just returning
 		// the current pixel index
-		return make_int3(center_pixel_index, center_pixel_index % render_data.render_settings.render_resolution.x, center_pixel_index / render_data.render_settings.render_resolution.x);
+		return make_int3(center_pixel_index, center_pixel_index % render_data.render_settings.render_resolution.x,
+						 center_pixel_index / render_data.render_settings.render_resolution.x);
 
 	const ReSTIRCommonTemporalPassSettings& temporal_pass_settings = ReSTIRSettingsHelper::get_restir_temporal_pass_settings<IsReSTIRGI>(render_data);
 
 	float3 previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
-	float2 previous_screen_space_point = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
+	float2 previous_screen_space_point	   = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
 
 	// Bringing back in [0, 1] from [-1, 1]
 	previous_screen_space_point += make_float2(1.0f, 1.0f);
 	previous_screen_space_point *= make_float2(0.5f, 0.5f);
 
-	int2 resolution = render_data.render_settings.render_resolution;
+	int2 resolution			= render_data.render_settings.render_resolution;
 	float2 prev_pixel_float = make_float2(previous_screen_space_point.x * resolution.x, previous_screen_space_point.y * resolution.y);
 	// Bringing back in the center of the pixel
 	prev_pixel_float -= make_float2(0.5f, 0.5f);
@@ -62,15 +66,18 @@ HIPRT_DEVICE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_dat
 		if (i > 0)
 			// Only randomly looking after we've at least checked whether or not the exact temporally reprojected location
 			// is valid or not
-			offset = make_float2(random_number_generator() - 0.5f, random_number_generator() - 0.5f) * temporal_pass_settings.neighbor_search_radius;
+			offset = make_float2(random_number_generator() - 0.5f, random_number_generator() - 0.5f) *
+					 static_cast<float>(temporal_pass_settings.neighbor_search_radius);
 
 		int2 temporal_neighbor_screen_pixel_pos = make_int2(round(prev_pixel_float.x + offset.x), round(prev_pixel_float.y + offset.y));
 		if (temporal_pass_settings.use_permutation_sampling && i == 0)
 			// If we're looking at the direct temporal neighbor (without random offset), applying
 			// permutation sampling if enabled
-			temporal_neighbor_screen_pixel_pos = apply_permutation_sampling(temporal_neighbor_screen_pixel_pos, temporal_pass_settings.permutation_sampling_random_bits);
+			temporal_neighbor_screen_pixel_pos =
+									apply_permutation_sampling(temporal_neighbor_screen_pixel_pos, temporal_pass_settings.permutation_sampling_random_bits);
 
-		if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 || temporal_neighbor_screen_pixel_pos.y >= resolution.y)
+		if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 ||
+			temporal_neighbor_screen_pixel_pos.y >= resolution.y)
 			// Previous pixel is out of the current viewport
 			continue;
 
@@ -83,8 +90,8 @@ HIPRT_DEVICE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_dat
 		// g-buffer is the same as the current frame's --> no need to read from previous
 		// frame g-buffer --> the previous frame G-buffer is deallocated to save VRAM
 		use_previous_frame_g_buffer &= render_data.render_settings.use_prev_frame_g_buffer();
-		if (check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-			temporal_neighbor_index, center_pixel_index, current_shading_point, current_normal, use_previous_frame_g_buffer))
+		if (check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data, temporal_neighbor_index, center_pixel_index, current_shading_point, current_normal,
+															 use_previous_frame_g_buffer))
 			// We found a good neighbor
 			break;
 

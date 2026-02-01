@@ -18,13 +18,15 @@
 #include "HostDeviceCommon/RenderSettings.h"
 #include "HostDeviceCommon/WorldSettings.h"
 
+#ifdef __KERNELCC__
 #include <hiprt/hiprt_device.h>
 #include <Orochi/Orochi.h>
+#endif
 
- /**
-  * The CPU and GPU use the same kernel code but the CPU still need some specific data
-  * (the CPU BVH for example) which is stored in this structure
-  */
+/**
+ * The CPU and GPU use the same kernel code but the CPU still need some specific data
+ * (the CPU BVH for example) which is stored in this structure
+ */
 
 class BVH;
 struct CPUData
@@ -55,7 +57,7 @@ struct HIPRTRenderData
 	hiprtFuncTable hiprt_function_table = nullptr;
 
 	// Size of the *global* stack per thread. Default is 32.
-	int global_traversal_stack_buffer_size = 32;
+	int global_traversal_stack_buffer_size				 = 32;
 	hiprtGlobalStackBuffer global_traversal_stack_buffer = { 0, 0, nullptr };
 
 	RenderBuffers buffers;

@@ -9,7 +9,7 @@
 #include <memory>
 
 #include <hiprt/hiprt.h>
-#include <hiprt/impl/Context.h>
+// #include <hiprt/impl/Context.h>
 #include <Orochi/Orochi.h>
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
@@ -22,10 +22,7 @@ struct HIPRTOrochiCtx
 {
 	HIPRTOrochiCtx() {}
 
-	HIPRTOrochiCtx(int device_index)
-	{
-		init(device_index);
-	}
+	HIPRTOrochiCtx(int device_index) { init(device_index); }
 
 #ifdef _WIN32
 	Utils::AddEnvVarError add_CUDA_PATH_to_PATH()
@@ -58,26 +55,23 @@ struct HIPRTOrochiCtx
 			{
 				// Unable to load HIP/CUDA
 			case ORO_API_HIPDRIVER:
-				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-					"Unable to load HIP... Are your drivers up-to-date?");
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to load HIP... Are your drivers up-to-date?");
 				break;
 
 			case ORO_API_CUDADRIVER:
-				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-					"Unable to load CUDA... Are your drivers up-to-date?");
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to load CUDA... Are your drivers up-to-date?");
 				break;
 
 				// Unable to load HIP/CUDA
 			case ORO_API_HIPRTC:
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-					"Unable to load HIPRTC... Is the HIP SDK (Windows) or ROCm + HIP (Linux) installed?");
+										"Unable to load HIPRTC... Is the HIP SDK (Windows) or ROCm + HIP (Linux) installed?");
 				break;
 
 			case ORO_API_CUDARTC:
-				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-					"Unable to load CUDARTC... Is the CUDA Toolkit installed + is the CUDA_PATH "
-					"environment variable set? (or have {CUDA_TOOLKIT_FOLDER/bin} in your "
-					"PATH environment variable)");
+				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to load CUDARTC... Is the CUDA Toolkit installed + is the CUDA_PATH "
+																				 "environment variable set? (or have {CUDA_TOOLKIT_FOLDER/bin} in your "
+																				 "PATH environment variable)");
 				break;
 			}
 
@@ -98,17 +92,18 @@ struct HIPRTOrochiCtx
 		else
 			hiprt_ctx_input.deviceType = hiprtDeviceAMD;
 
-		hiprt_ctx_input.ctxt = oroGetRawCtx(orochi_ctx);
+		hiprt_ctx_input.ctxt   = oroGetRawCtx(orochi_ctx);
 		hiprt_ctx_input.device = oroGetRawDevice(orochi_device);
-		hiprtSetLogLevel(hiprtLogLevelError);
 
 		HIPRT_CHECK_ERROR(hiprtCreateContext(HIPRT_API_VERSION, hiprt_ctx_input, hiprt_ctx));
+
+		HIPRT_CHECK_ERROR(hiprtSetLogLevel(hiprt_ctx, hiprtLogLevelError));
 	}
 
 	hiprtContextCreationInput hiprt_ctx_input = { nullptr, -1, hiprtDeviceAMD };
 
-	oroCtx orochi_ctx = nullptr;
-	oroDevice orochi_device = -1;
+	oroCtx orochi_ctx				= nullptr;
+	oroDevice orochi_device			= -1;
 	oroDeviceProp device_properties = {};
 
 	hiprtContext hiprt_ctx = nullptr;

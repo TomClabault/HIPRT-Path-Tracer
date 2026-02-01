@@ -7,20 +7,28 @@
 #include "Compiler/GPUKernel.h"
 #include "Threads/ThreadFunctions.h"
 
- // For replacing backslashes in texture paths
+// For replacing backslashes in texture paths
 #include <regex>
 
-void ThreadFunctions::compile_kernel(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+void ThreadFunctions::compile_kernel(std::shared_ptr<GPUKernel> kernel,
+									 std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
+									 const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
 	kernel->compile(hiprt_orochi_ctx, func_name_sets, true, false);
 }
 
-void ThreadFunctions::compile_kernel_silent(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+void ThreadFunctions::compile_kernel_silent(std::shared_ptr<GPUKernel> kernel,
+											std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
+											const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
 	kernel->compile(hiprt_orochi_ctx, func_name_sets, true, true);
 }
 
-void ThreadFunctions::precompile_kernel(const std::string& kernel_function_name, const std::string& kernel_filepath, GPUKernelCompilerOptions options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+void ThreadFunctions::precompile_kernel(const std::string& kernel_function_name,
+										const std::string& kernel_filepath,
+										GPUKernelCompilerOptions options,
+										std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
+										const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
 	OROCHI_CHECK_ERROR(oroCtxSetCurrent(hiprt_orochi_ctx->orochi_ctx));
 
@@ -30,7 +38,12 @@ void ThreadFunctions::precompile_kernel(const std::string& kernel_function_name,
 	kernel.compile(hiprt_orochi_ctx, func_name_sets, true, true);
 }
 
-void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads)
+void ThreadFunctions::load_scene_texture(Scene& parsed_scene,
+										 std::string scene_path,
+										 const std::vector<std::pair<aiTextureType, std::string>>& tex_paths,
+										 const std::vector<int>& material_indices,
+										 int thread_index,
+										 int nb_threads)
 {
 	// Preparing the scene_filepath so that it's ready to be appended with the texture name
 	std::string corrected_filepath;
@@ -54,7 +67,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 		// Adding the name of the texture to the absolute path of the scene file such that
 		// we're looking for textures next to the GLTF file
 		std::string full_path = corrected_filepath + texture_file_path;
-		aiTextureType type = tex_paths[thread_index].first;
+		aiTextureType type	  = tex_paths[thread_index].first;
 		int nb_channels;
 
 		switch (type)
@@ -68,7 +81,8 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 		case aiTextureType_NORMALS:
 		case aiTextureType_HEIGHT:
 			// Don't need the alpha
-			// TODO we only need 3 channels here but it's tricky to handle 3 channels texture with HIP/CUDA. Supported formats are only 1, 2, 4 channels, not three
+			// TODO we only need 3 channels here but it's tricky to handle 3 channels texture with HIP/CUDA. Supported formats are only 1, 2, 4 channels, not
+			// three
 			nb_channels = 4;
 			break;
 
@@ -89,7 +103,8 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 			}
 
 		case aiTextureType_EMISSIVE:
-			// TODO we only need 3 channels here but it's tricky to handle 3 channels texture with HIP/CUDA. Supported formats are only 1, 2, 4 channels, not three
+			// TODO we only need 3 channels here but it's tricky to handle 3 channels texture with HIP/CUDA. Supported formats are only 1, 2, 4 channels, not
+			// three
 			nb_channels = 4;
 			break;
 
@@ -105,11 +120,11 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 		{
 			if (texture.is_constant_color(/* threshold */ 5))
 			{
-				// The emissive texture is constant color, we can then just not use that texture and use 
+				// The emissive texture is constant color, we can then just not use that texture and use
 				// the emission filed of the material to store the emission of the texture
 				parsed_scene.materials[material_index].emission_texture_index = MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
 
-				ColorRGBA32F emission_rgba = texture.sample_rgba32f(make_float2(0, 0));
+				ColorRGBA32F emission_rgba						= texture.sample_rgba32f(make_float2(0, 0));
 				parsed_scene.materials[material_index].emission = ColorRGB32F(emission_rgba.r, emission_rgba.g, emission_rgba.b);
 			}
 			else
@@ -123,7 +138,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 			if (type == aiTextureType_DIFFUSE || type == aiTextureType_BASE_COLOR)
 			{
 				// For base color textures, we're going to search for alpha transparency in the texture
-				unsigned char texture_fully_opaque = texture.is_fully_opaque() ? 1 : 0;
+				unsigned char texture_fully_opaque									= texture.is_fully_opaque() ? 1 : 0;
 				parsed_scene.material_has_opaque_base_color_texture[material_index] = texture_fully_opaque;
 			}
 			parsed_scene.textures[thread_index] = texture;
@@ -141,7 +156,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
 	// If the scene contains multiple meshes, each mesh will have
 	// its vertices indices starting at 0. We don't want that.
-	// 
+	//
 	// We want indices to be continuously growing (because we don't want
 	// the second mesh (with indices starting at 0, i.e its own indices) to use
 	// the vertices of the first mesh that have been parsed (and that use indices 0!)
@@ -154,7 +169,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 	// Looping over all the meshes
 	for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
 	{
-		aiMesh* mesh = scene->mMeshes[mesh_index];
+		aiMesh* mesh	   = scene->mMeshes[mesh_index];
 		int material_index = mesh->mMaterialIndex;
 
 		CPUMaterial& renderer_material = parsed_scene.materials[material_index];
@@ -164,7 +179,8 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 		//
 		// We are not importance sampling emissive texture so if the mesh has an emissive texture attached, we're
 		// not adding its triangles to the list of emissive triangles
-		bool emissive_texture_used = renderer_material.emission_texture_index != MaterialConstants::NO_TEXTURE && renderer_material.emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
+		bool emissive_texture_used = renderer_material.emission_texture_index != MaterialConstants::NO_TEXTURE &&
+									 renderer_material.emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
 		bool is_mesh_emissive = renderer_material.is_emissive() || emissive_texture_used;
 
 		int max_emissive_mesh_index_offset = 0;
@@ -197,10 +213,11 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
 	// Counting the emissive meshes in the scene
 	// Reserving the worst case where all meshes of the scene are emissive
-	std::vector<unsigned int> emissive_meshes_indices; emissive_meshes_indices.reserve(scene->mNumMeshes);
+	std::vector<unsigned int> emissive_meshes_indices;
+	emissive_meshes_indices.reserve(scene->mNumMeshes);
 	for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
 	{
-		aiMesh* mesh = scene->mMeshes[mesh_index];
+		aiMesh* mesh	   = scene->mMeshes[mesh_index];
 		int material_index = mesh->mMaterialIndex;
 
 		CPUMaterial& renderer_material = parsed_scene.materials[material_index];
@@ -233,15 +250,16 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 		{
 			aiMesh* mesh = scene->mMeshes[emissive_meshes_indices[emissive_mesh_index]];
 
-			int material_index = mesh->mMaterialIndex;
+			int material_index			   = mesh->mMaterialIndex;
 			CPUMaterial& renderer_material = parsed_scene.materials[material_index];
 
 			// If the mesh is emissive, we're going to compute its average vertex, it's total
 			// emissive power and an alias table for sampling the emissive triangles of that mesh
 
-			float total_mesh_power = 0.0f;
+			float total_mesh_power	 = 0.0f;
 			unsigned int mesh_offset = emissive_meshes_offsets[emissive_mesh_index];
-			std::vector<float> power_per_face; power_per_face.reserve(mesh->mNumFaces);
+			std::vector<float> power_per_face;
+			power_per_face.reserve(mesh->mNumFaces);
 
 			float3 average_normal = make_float3(0.0f, 0.0f, 0.0f);
 			for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
@@ -253,14 +271,15 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
 				// Using the triangle class to easily compute the area of the triangle
 				float3 face_normal = hippt::cross(vertex_2 - vertex_1, vertex_3 - vertex_1);
-				float face_area = hippt::length(face_normal) * 0.5f;
-				float face_power = face_area * renderer_material.emission.luminance() * renderer_material.emission_strength * renderer_material.global_emissive_factor;
+				float face_area	   = hippt::length(face_normal) * 0.5f;
+				float face_power   = face_area * renderer_material.emission.luminance() * renderer_material.emission_strength *
+								   renderer_material.global_emissive_factor;
 
 				// The PDF of each emissive triangle of the mesh is going to be its power divided by the total power
 				// of the mesh (we'll divide later).
 				// This assumes that emissive triangles within a mesh are always sampled according to power but
 				// this is the case for now
-				parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.at(mesh_offset + face_index) = face_power;
+				parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs.at(mesh_offset + face_index)					 = face_power;
 				parsed_scene.parsed_emissive_meshes.global_triangle_index_to_emissive_mesh_index[emissive_triangle_global_index] = emissive_mesh_index;
 
 				power_per_face.push_back(face_power);
@@ -278,21 +297,26 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 			float3 average_vertex = make_float3(0.0f, 0.0f, 0.0f);
 			for (int j = 0; j < mesh->mNumVertices; j++)
 				average_vertex += *reinterpret_cast<float3*>(&mesh->mVertices[j]);
-			parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].average_mesh_point = average_vertex / mesh->mNumVertices;
+			parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].average_mesh_point =
+									average_vertex / static_cast<float>(mesh->mNumVertices);
 			if (hippt::length(average_normal) <= 0.01f)
-				parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].representative_normal = make_float3(EmissiveMeshesAliasTablesDevice::INVALID_NORMAL, 0.0f, 0.0f);
+				parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].representative_normal =
+										make_float3(EmissiveMeshesAliasTablesDevice::INVALID_NORMAL, 0.0f, 0.0f);
 			else
-				parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].representative_normal = hippt::normalize(average_normal / mesh->mNumFaces);
-			parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].emissive_triangle_count = mesh->mNumFaces;
+				parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].representative_normal =
+										hippt::normalize(average_normal / static_cast<float>(mesh->mNumFaces));
+			parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].emissive_triangle_count   = mesh->mNumFaces;
 			parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].total_mesh_emissive_power = total_mesh_power;
 
-			Utils::compute_alias_table(power_per_face, total_mesh_power, parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].alias_probas, parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].alias_aliases);
+			Utils::compute_alias_table(power_per_face, total_mesh_power, parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].alias_probas,
+									   parsed_scene.parsed_emissive_meshes.emissive_meshes[emissive_mesh_index].alias_aliases);
 		}
 	}
 
 	auto stop = std::chrono::high_resolution_clock::now();
 
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Parsed emissive triangles in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Parsed emissive triangles in %ldms",
+							std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 }
 
 void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)
@@ -311,9 +335,9 @@ void ThreadFunctions::load_scene_compute_triangle_areas(Scene& parsed_scene)
 		float3 AB = vertex_B - vertex_A;
 		float3 AC = vertex_C - vertex_A;
 
-		float3 normal = hippt::cross(AB, AC);
+		float3 normal		= hippt::cross(AB, AC);
 		float length_normal = hippt::length(normal);
-		float area = hippt::length(normal) * 0.5f;
+		float area			= hippt::length(normal) * 0.5f;
 
 		parsed_scene.triangle_areas[triangle_index] = area;
 	}

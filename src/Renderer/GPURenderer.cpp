@@ -11,58 +11,54 @@
 #include "Renderer/Baker/GPUBakerConstants.h"
 #include "Renderer/GPURenderer.h"
 #include "RenderPasses/FillGBufferRenderPass.h"
-#include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
-#include "Threads/ThreadFunctions.h"
 #include "UI/RenderWindow.h"
-
-#include <Orochi/OrochiUtils.h>
+#include "hiprt/impl/Context.h"
 
 #include <condition_variable>
 
- // List of partials_options that will be specific to each kernel. We don't want these partials_options
- // to be synchronized between kernels
-const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED =
-{
+// List of partials_options that will be specific to each kernel. We don't want these partials_options
+// to be synchronized between kernels
+const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED = {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
 };
 
-const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY = "FullFrameTime";
+const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY	= "FullFrameTime";
 const std::string GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY = "FullFrameTimeWithCPU";
 
 GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings)
 {
 	// Creating buffers
-	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-	m_denoiser_buffers.m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-	m_denoiser_buffers.m_normals_AOV_interop_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
+	m_framebuffer									   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_denoiser_buffers.m_denoised_framebuffer		   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_denoiser_buffers.m_normals_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<float3>>();
 	m_denoiser_buffers.m_normals_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<float3>>();
-	m_denoiser_buffers.m_albedo_AOV_interop_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<ColorRGB32F>>();
-	m_pixels_converged_sample_count_buffer = std::make_shared<OrochiBuffer<int>>();
+	m_denoiser_buffers.m_albedo_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer  = std::make_shared<OrochiBuffer<ColorRGB32F>>();
+	m_pixels_converged_sample_count_buffer			   = std::make_shared<OrochiBuffer<int>>();
 
 	m_DEBUG_BUFFER_ULL_1.resize(1024);
 	m_DEBUG_BUFFER_ULL_2.resize(1024);
 	m_DEBUG_BUFFER_FLOAT.resize(1024);
 	m_DEBUG_BUFFER_STRINGS.resize(1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
 
-	m_hiprt_orochi_ctx = hiprt_oro_ctx;
+	m_hiprt_orochi_ctx		  = hiprt_oro_ctx;
 	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
 	// Just "fixing" the ReGIR options to be in sync with the UI
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
 		(m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_ONE_LIGHT ||
-			m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
+		 m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
 		m_global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 
-	m_power_sampling_data_structure = PowerSamplingDataStructure(this);
+	m_power_sampling_data_structure			 = PowerSamplingDataStructure(this);
 	m_light_tree_ats_sampling_data_structure = LightTreeATSSamplingDataStructure(this);
-	m_light_tree_sg_sampling_data_structure = LightTreeSGSamplingDataStructure(this);
+	m_light_tree_sg_sampling_data_structure	 = LightTreeSGSamplingDataStructure(this);
 
 	m_render_thread.init(this);
-	m_device_properties = m_hiprt_orochi_ctx->device_properties;
+	m_device_properties	   = m_hiprt_orochi_ctx->device_properties;
 	m_application_settings = application_settings;
 
 	setup_brdfs_data();
@@ -77,15 +73,9 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_status_buffers.pixels_converged_count_buffer.resize(1);
 }
 
-GPURenderer::~GPURenderer()
-{
-	m_render_thread.request_exit();
-}
+GPURenderer::~GPURenderer() { m_render_thread.request_exit(); }
 
-void GPURenderer::start_render_thread()
-{
-	m_render_thread.start();
-}
+void GPURenderer::start_render_thread() { m_render_thread.start(); }
 
 void GPURenderer::setup_brdfs_data()
 {
@@ -106,7 +96,7 @@ void GPURenderer::load_sheen_ltc_texture()
 	{
 		for (int x = 0; x < 32; x++)
 		{
-			int padded_index = (y * 32 + x) * 4;
+			int padded_index	 = (y * 32 + x) * 4;
 			int non_padded_index = y * 32 + x;
 
 			padded_ltc[padded_index + 0] = zeltner_2022_sheen_ltc_fit_parameters[non_padded_index].x;
@@ -122,18 +112,24 @@ void GPURenderer::load_sheen_ltc_texture()
 
 void GPURenderer::load_ltc_textures()
 {
-	Image32Bit GGX_conductor_ltc_params(reinterpret_cast<const float*>(ggx_conductor_ltc_fit.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 4);
-	Image32Bit GGX_conductor_amplitude_ltc_data(reinterpret_cast<const float*>(ggx_conductor_ltc_amplitude_data.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 1);
-	Image32Bit GGX_conductor_fresnel_ltc_data(reinterpret_cast<const float*>(ggx_conductor_ltc_fresnel_data.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE, 1);
+	Image32Bit GGX_conductor_ltc_params(reinterpret_cast<const float*>(ggx_conductor_ltc_fit.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE,
+										4);
+	Image32Bit GGX_conductor_amplitude_ltc_data(reinterpret_cast<const float*>(ggx_conductor_ltc_amplitude_data.data()), GGX_CONDUCTOR_LTC_FIT_SIZE,
+												GGX_CONDUCTOR_LTC_FIT_SIZE, 1);
+	Image32Bit GGX_conductor_fresnel_ltc_data(reinterpret_cast<const float*>(ggx_conductor_ltc_fresnel_data.data()), GGX_CONDUCTOR_LTC_FIT_SIZE,
+											  GGX_CONDUCTOR_LTC_FIT_SIZE, 1);
 
-	m_GGX_conductor_ltc_params = OrochiTexture(GGX_conductor_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
+	m_GGX_conductor_ltc_params		   = OrochiTexture(GGX_conductor_ltc_params, hipFilterModeLinear, hipAddressModeClamp);
 	m_GGX_conductor_ltc_amplitude_data = OrochiTexture(GGX_conductor_amplitude_ltc_data, hipFilterModeLinear, hipAddressModeClamp);
-	m_GGX_conductor_ltc_fresnel_data = OrochiTexture(GGX_conductor_fresnel_ltc_data, hipFilterModeLinear, hipAddressModeClamp);
+	m_GGX_conductor_ltc_fresnel_data   = OrochiTexture(GGX_conductor_fresnel_ltc_data, hipFilterModeLinear, hipAddressModeClamp);
 }
 
 void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode)
 {
-	Image32Bit GGXEss_image = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/" + GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing), 1, true);
+	Image32Bit GGXEss_image			   = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/" +
+																							GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(
+																											m_render_data.bsdfs_data.GGX_masking_shadowing),
+																	1, true);
 	m_GGX_conductor_directional_albedo = OrochiTexture(GGXEss_image, filtering_mode, hipAddressModeClamp);
 
 	m_render_data_buffers_invalidated = true;
@@ -146,11 +142,13 @@ void GPURenderer::load_glossy_dielectric_energy_compensation_textures(hipTexture
 	std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename = std::to_string(i) +
+							   GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GlossyDielectrics/" + filename;
-		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
+		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_glossy_dielectric_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
+	m_glossy_dielectric_directional_albedo = OrochiTexture3D(
+							images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	m_render_data_buffers_invalidated = true;
 }
@@ -162,28 +160,34 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 	std::vector<Image32Bit> images(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename = std::to_string(i) +
+							   GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
-		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
+		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
+	m_GGX_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT,
+													 ORO_TR_ADDRESS_MODE_CLAMP);
 
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_inv_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename = std::to_string(i) +
+							   GPUBakerConstants::get_GGX_glass_directional_albedo_inv_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
-		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
+		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_glass_inverse_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
+	m_GGX_glass_inverse_directional_albedo = OrochiTexture3D(
+							images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	images.resize(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename = std::to_string(i) +
+							   GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
-		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
+		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_thin_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
+	m_GGX_thin_glass_directional_albedo = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT,
+														  ORO_TR_ADDRESS_MODE_CLAMP);
 
 	m_render_data_buffers_invalidated = true;
 }
@@ -217,55 +221,25 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 	get_NEE_plus_plus_render_pass()->reset(false);
 }
 
-LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options()
-{
-	return m_light_tree_ats_sampling_data_structure.get_builder_options();
-}
+LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options() { return m_light_tree_ats_sampling_data_structure.get_builder_options(); }
 
-LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data_structure()
-{
-	return m_light_tree_ats_sampling_data_structure;
-}
+LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data_structure() { return m_light_tree_ats_sampling_data_structure; }
 
-LightTreeATSBuilderOptions& GPURenderer::get_light_tree_sg_build_options()
-{
-	return m_light_tree_sg_sampling_data_structure.get_builder_options();
-}
+LightTreeATSBuilderOptions& GPURenderer::get_light_tree_sg_build_options() { return m_light_tree_sg_sampling_data_structure.get_builder_options(); }
 
-LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_structure()
-{
-	return m_light_tree_sg_sampling_data_structure;
-}
+LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_structure() { return m_light_tree_sg_sampling_data_structure; }
 
-std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
-{
-	return m_render_thread.get_gmon_render_pass();
-}
+std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass() { return m_render_thread.get_gmon_render_pass(); }
 
-std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pass()
-{
-	return m_render_thread.get_NEE_plus_plus_render_pass();
-}
+std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pass() { return m_render_thread.get_NEE_plus_plus_render_pass(); }
 
-std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass()
-{
-	return m_render_thread.get_ReGIR_render_pass();
-}
+std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass() { return m_render_thread.get_ReGIR_render_pass(); }
 
-std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
-{
-	return m_render_thread.get_ReSTIR_DI_render_pass();
-}
+std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass() { return m_render_thread.get_ReSTIR_DI_render_pass(); }
 
-std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
-{
-	return m_render_thread.get_ReSTIR_GI_render_pass();
-}
+std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass() { return m_render_thread.get_ReSTIR_GI_render_pass(); }
 
-NEEPlusPlusHashGridStorage& GPURenderer::get_nee_plus_plus_storage()
-{
-	return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage();
-}
+NEEPlusPlusHashGridStorage& GPURenderer::get_nee_plus_plus_storage() { return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage(); }
 
 void GPURenderer::setup_filter_functions()
 {
@@ -296,13 +270,15 @@ void GPURenderer::prepare_light_sampling_data_structures()
 
 void GPURenderer::download_status_buffers()
 {
-	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.one_ray_active, m_status_buffers.still_one_ray_active_buffer.get_device_pointer(), sizeof(unsigned char), oroMemcpyDeviceToHost));
-	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_status_buffers.pixels_converged_count_buffer.get_device_pointer(), sizeof(unsigned int), oroMemcpyDeviceToHost));
+	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.one_ray_active, m_status_buffers.still_one_ray_active_buffer.get_device_pointer(),
+								 sizeof(unsigned char), oroMemcpyDeviceToHost));
+	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_status_buffers.pixels_converged_count_buffer.get_device_pointer(),
+								 sizeof(unsigned int), oroMemcpyDeviceToHost));
 }
 
 void GPURenderer::internal_clear_m_status_buffers()
 {
-	m_status_buffers_values.one_ray_active = true;
+	m_status_buffers_values.one_ray_active		  = true;
 	m_status_buffers_values.pixel_converged_count = 0;
 }
 
@@ -311,7 +287,8 @@ bool GPURenderer::needs_global_bvh_stack_buffer()
 	for (const auto& name_to_kernel : m_render_thread.get_render_graph().get_tracing_kernels())
 	{
 		bool global_stack_buffer_needed = false;
-		global_stack_buffer_needed |= name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) == KERNEL_OPTION_TRUE;
+		global_stack_buffer_needed |= name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) ==
+									  KERNEL_OPTION_TRUE;
 
 		if (global_stack_buffer_needed)
 			return true;
@@ -326,13 +303,9 @@ void GPURenderer::recreate_global_bvh_stack_buffer()
 	int nbBlocksY = std::ceil(m_render_resolution.y / (float)KernelBlockWidthHeight) * KernelBlockWidthHeight;
 
 	// Resizing the global stack buffer for BVH traversal
-	hiprtGlobalStackBufferInput stackBufferInput
-	{
-		hiprtStackTypeGlobal,
-		hiprtStackEntryTypeInteger,
-		static_cast<uint32_t>(m_render_data.global_traversal_stack_buffer_size),
-		static_cast<uint32_t>(nbBlocksX * nbBlocksY)
-	};
+	hiprtGlobalStackBufferInput stackBufferInput{ hiprtStackTypeGlobal, hiprtStackEntryTypeInteger,
+												  static_cast<uint32_t>(m_render_data.global_traversal_stack_buffer_size),
+												  static_cast<uint32_t>(nbBlocksX * nbBlocksY) };
 
 	if (m_render_data.global_traversal_stack_buffer.stackData != nullptr)
 		// Freeing if the buffer already exists
@@ -351,15 +324,9 @@ void GPURenderer::synchronize_all_kernels()
 	m_render_thread.wait_on_render_completion();
 }
 
-bool GPURenderer::was_last_frame_low_resolution()
-{
-	return m_was_last_frame_low_resolution;
-}
+bool GPURenderer::was_last_frame_low_resolution() { return m_was_last_frame_low_resolution; }
 
-bool GPURenderer::frame_render_done()
-{
-	return m_render_thread.frame_render_done();
-}
+bool GPURenderer::frame_render_done() { return m_render_thread.frame_render_done(); }
 
 void GPURenderer::resize(int new_width, int new_height)
 {
@@ -398,8 +365,8 @@ void GPURenderer::resize(int new_width, int new_height)
 		recreate_global_bvh_stack_buffer();
 
 	m_render_data.render_settings.render_resolution = m_render_resolution;
-	m_render_data.render_settings.need_to_reset = true;
-	m_render_data_buffers_invalidated = true;
+	m_render_data.render_settings.need_to_reset		= true;
+	m_render_data_buffers_invalidated				= true;
 }
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
@@ -408,7 +375,7 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 	pre_render_update(delta_time_gpu, render_window);
 
 	// Mapping the render buffers on the main thread so that we can use them in the render thread.
-	// 
+	//
 	// This is done on the main thread because using OpenGL (required when mapping the buffers from OpenGL to CUDA/HIP)
 	// on a non-main thread is a bit sketchy
 	map_buffers_for_render();
@@ -418,23 +385,20 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 		// of all the render passes
 		m_render_thread.get_render_graph().prepass();
 
-	HIPRTRenderData render_data_for_frame = m_render_data;
+	HIPRTRenderData render_data_for_frame				= m_render_data;
 	GPUKernelCompilerOptions compiler_options_for_frame = m_global_compiler_options->deep_copy();
 	m_render_thread.request_frame(render_data_for_frame, compiler_options_for_frame);
 }
 
-void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window)
-{
-	m_render_thread.pre_render_update(delta_time, render_window);
-}
+void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window) { m_render_thread.pre_render_update(delta_time, render_window); }
 
 void GPURenderer::map_buffers_for_render()
 {
-	m_render_data.buffers.accumulated_ray_colors = m_framebuffer->map();
+	m_render_data.buffers.accumulated_ray_colors			= m_framebuffer->map();
 	m_render_data.buffers.gmon_estimator.result_framebuffer = get_gmon_render_pass()->map_result_framebuffer();
 
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
-	m_render_data.aux_buffers.denoiser_albedo = m_denoiser_buffers.map_albedo_buffer();
+	m_render_data.aux_buffers.denoiser_albedo  = m_denoiser_buffers.map_albedo_buffer();
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		m_render_data.aux_buffers.pixel_converged_sample_count = m_pixels_converged_sample_count_buffer->get_device_pointer();
 }
@@ -460,10 +424,7 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop
 		return m_framebuffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_interop_framebuffer()
-{
-	return m_framebuffer;
-}
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_interop_framebuffer() { return m_framebuffer; }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer; }
 std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer()
@@ -485,7 +446,10 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albe
 }
 
 std::shared_ptr<OrochiBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_no_interop_buffer() { return m_denoiser_buffers.m_normals_AOV_no_interop_buffer; }
-std::shared_ptr<OrochiBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_no_interop_buffer() { return m_denoiser_buffers.m_albedo_AOV_no_interop_buffer; }
+std::shared_ptr<OrochiBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_no_interop_buffer()
+{
+	return m_denoiser_buffers.m_albedo_AOV_no_interop_buffer;
+}
 
 std::shared_ptr<OrochiBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer() { return m_pixels_converged_sample_count_buffer; }
 const StatusBuffersValues& GPURenderer::get_status_buffer_values() const { return m_status_buffers_values; }
@@ -497,10 +461,7 @@ HIPRTRenderData& GPURenderer::get_render_data() { return m_render_data; }
 HIPRTScene& GPURenderer::get_hiprt_scene() { return m_hiprt_scene; }
 std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx() { return m_hiprt_orochi_ctx; }
 
-void GPURenderer::invalidate_render_data_buffers()
-{
-	m_render_data_buffers_invalidated = true;
-}
+void GPURenderer::invalidate_render_data_buffers() { m_render_data_buffers_invalidated = true; }
 
 oroDeviceProp GPURenderer::get_device_properties() { return m_device_properties; }
 
@@ -530,7 +491,7 @@ uint32_t getGcnArchNumber(oroCtx m_ctxt, oroDevice m_device)
 
 bool enableHwi(oroCtx m_ctxt, oroDevice m_device)
 {
-	std::string	   deviceName = getDeviceName(m_ctxt, m_device);
+	std::string deviceName	  = getDeviceName(m_ctxt, m_device);
 	const uint32_t archNumber = getGcnArchNumber(m_ctxt, m_device);
 	return (archNumber >= 1030 && deviceName.find("NVIDIA") == std::string::npos);
 }
@@ -555,10 +516,7 @@ HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
 	}
 }
 
-std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options()
-{
-	return m_global_compiler_options;
-}
+std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options() { return m_global_compiler_options; }
 
 // Variables used to give the priority to the main thread when compiling shaders
 extern bool g_main_thread_compiling;
@@ -604,10 +562,7 @@ std::string GPURenderer::read_debug_buffer_string(char* DEBUG_BUFFER_STRINGS, in
 	return std::string(&debug_string_CPU[index * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH]);
 }
 
-oroStream_t GPURenderer::get_main_stream()
-{
-	return m_main_stream;
-}
+oroStream_t GPURenderer::get_main_stream() { return m_main_stream; }
 
 void GPURenderer::compute_render_pass_times()
 {
@@ -617,15 +572,9 @@ void GPURenderer::compute_render_pass_times()
 	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = m_render_thread.get_render_graph().get_full_frame_time();
 }
 
-std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()
-{
-	return m_render_pass_times;
-}
+std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times() { return m_render_pass_times; }
 
-float GPURenderer::get_last_frame_time()
-{
-	return m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY];
-}
+float GPURenderer::get_last_frame_time() { return m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]; }
 
 void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
@@ -648,8 +597,8 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 		// Only resetting the seed for deterministic rendering if we're accumulating.
 		// If we're not accumulating, we want each frame of the render to be different
 		// so we don't get into that if block and we don't reset the seed
-		m_rng.m_state.seed = 42;
-		m_render_data.random_number = 42;
+		m_rng.m_state.seed							= 42;
+		m_render_data.random_number					= 42;
 		m_render_data.render_settings.need_to_reset = true;
 	}
 
@@ -662,36 +611,35 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 	m_render_thread.get_render_graph().reset(reset_by_camera_movement);
 }
 
-Xorshift32Generator& GPURenderer::get_rng_generator()
-{
-	return m_rng;
-}
+Xorshift32Generator& GPURenderer::get_rng_generator() { return m_rng; }
 
 void GPURenderer::update_render_data()
 {
 	if (m_render_data_buffers_invalidated)
 	{
-		m_render_data.GPU_BVH = m_hiprt_scene.whole_scene_BLAS.m_geometry;
+		m_render_data.GPU_BVH		= m_hiprt_scene.whole_scene_BLAS.m_geometry;
 		m_render_data.light_GPU_BVH = m_hiprt_scene.emissive_triangles_BLAS.m_geometry;
 
-		m_render_data.render_settings.DEBUG_BUFFER_ULL_1 = m_DEBUG_BUFFER_ULL_1.get_atomic_device_pointer();
-		m_render_data.render_settings.DEBUG_BUFFER_ULL_2 = m_DEBUG_BUFFER_ULL_2.get_atomic_device_pointer();
-		m_render_data.render_settings.DEBUG_BUFFER_FLOAT = m_DEBUG_BUFFER_FLOAT.get_atomic_device_pointer();
+		m_render_data.render_settings.DEBUG_BUFFER_ULL_1   = m_DEBUG_BUFFER_ULL_1.get_atomic_device_pointer();
+		m_render_data.render_settings.DEBUG_BUFFER_ULL_2   = m_DEBUG_BUFFER_ULL_2.get_atomic_device_pointer();
+		m_render_data.render_settings.DEBUG_BUFFER_FLOAT   = m_DEBUG_BUFFER_FLOAT.get_atomic_device_pointer();
 		m_render_data.render_settings.DEBUG_BUFFER_STRINGS = m_DEBUG_BUFFER_STRINGS.get_device_pointer();
 
-		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
+		m_render_data.buffers.triangles_indices	 = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
 		m_render_data.buffers.has_vertex_normals = m_hiprt_scene.has_vertex_normals.get_device_pointer();
-		m_render_data.buffers.vertex_normals = m_hiprt_scene.vertex_normals.get_device_pointer();
+		m_render_data.buffers.vertex_normals	 = m_hiprt_scene.vertex_normals.get_device_pointer();
 
-		m_render_data.buffers.material_indices = m_hiprt_scene.material_indices.get_device_pointer();
-		m_render_data.buffers.materials_buffer_soa = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
-		m_render_data.buffers.material_opaque = m_hiprt_scene.material_opaque.get_device_pointer();
+		m_render_data.buffers.material_indices		   = m_hiprt_scene.material_indices.get_device_pointer();
+		m_render_data.buffers.materials_buffer_soa	   = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
+		m_render_data.buffers.material_opaque		   = m_hiprt_scene.material_opaque.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
-			m_render_data.buffers.emissive_triangles_primitive_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_primitive_indices.get_device_pointer());
+			m_render_data.buffers.emissive_triangles_primitive_indices =
+									reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_primitive_indices.get_device_pointer());
 		if (m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.size() > 0)
-			m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
+			m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures =
+									reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
 			m_render_data.buffers.emissive_meshes_data = m_hiprt_scene.emissive_meshes_data.to_device();
 		m_render_data.buffers.triangles_areas = m_hiprt_scene.triangle_areas.get_device_pointer();
@@ -701,24 +649,24 @@ void GPURenderer::update_render_data()
 			m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
 		m_render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params = m_sheen_ltc_params.get_device_texture();
-		m_render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params = m_GGX_conductor_ltc_params.get_device_texture();
+		m_render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params			= m_GGX_conductor_ltc_params.get_device_texture();
 		m_render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_amplitude_data = m_GGX_conductor_ltc_amplitude_data.get_device_texture();
-		m_render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_fresnel_data = m_GGX_conductor_ltc_fresnel_data.get_device_texture();
+		m_render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_fresnel_data	= m_GGX_conductor_ltc_fresnel_data.get_device_texture();
 
-		m_render_data.bsdfs_data.GGX_conductor_directional_albedo = m_GGX_conductor_directional_albedo.get_device_texture();
+		m_render_data.bsdfs_data.GGX_conductor_directional_albedo	  = m_GGX_conductor_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.glossy_dielectric_directional_albedo = m_glossy_dielectric_directional_albedo.get_device_texture();
-		m_render_data.bsdfs_data.GGX_glass_directional_albedo = m_GGX_glass_directional_albedo.get_device_texture();
+		m_render_data.bsdfs_data.GGX_glass_directional_albedo		  = m_GGX_glass_directional_albedo.get_device_texture();
 		m_render_data.bsdfs_data.GGX_glass_inverse_directional_albedo = m_GGX_glass_inverse_directional_albedo.get_device_texture();
-		m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo = m_GGX_thin_glass_directional_albedo.get_device_texture();
+		m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo	  = m_GGX_thin_glass_directional_albedo.get_device_texture();
 
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		{
-			m_render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer.get_device_pointer();
+			m_render_data.aux_buffers.pixel_sample_count	  = m_pixels_sample_count_buffer.get_device_pointer();
 			m_render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
 		}
 
-		m_render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
-		m_render_data.aux_buffers.still_one_ray_active = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
+		m_render_data.aux_buffers.pixel_active				   = m_pixel_active.get_device_pointer();
+		m_render_data.aux_buffers.still_one_ray_active		   = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
 		m_render_data.aux_buffers.pixel_count_converged_so_far = m_status_buffers.pixels_converged_count_buffer.get_atomic_device_pointer();
 
 		m_render_data_buffers_invalidated = false;
@@ -734,7 +682,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	m_hiprt_scene.whole_scene_BLAS.upload_triangle_indices(scene.triangles_vertex_indices);
 	m_hiprt_scene.whole_scene_BLAS.upload_vertices_positions(scene.vertices_positions);
 	m_hiprt_scene.whole_scene_BLAS.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
-	m_hiprt_scene.total_triangle_count = scene.triangles_vertex_indices.size() / 3;
+	m_hiprt_scene.total_triangle_count		   = scene.triangles_vertex_indices.size() / 3;
 	rebuild_bvh(m_hiprt_scene.whole_scene_BLAS, hiprtBuildFlagBitPreferHighQualityBuild, true, true);
 
 	m_hiprt_scene.emissive_triangles_BLAS.upload_triangle_indices(scene.emissive_triangle_vertex_indices);
@@ -756,92 +704,98 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	// material directly for example) so we need to wait for the end of texture parsing
 	// to upload the materials
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_MATERIALS, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]()
-		{
-			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS,
+								[this, &scene]()
+								{
+									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-			std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(scene.materials.size());
-			for (int i = 0; i < scene.materials.size(); i++)
-				packed_gpu_materials[i] = scene.materials[i].pack_to_GPU();
+									std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(scene.materials.size());
+									for (int i = 0; i < scene.materials.size(); i++)
+										packed_gpu_materials[i] = scene.materials[i].pack_to_GPU();
 
-			m_hiprt_scene.materials_buffer.resize(scene.materials.size());
-			m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
+									m_hiprt_scene.materials_buffer.resize(scene.materials.size());
+									m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
 
-			// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
-			std::vector<unsigned char> material_opaque(scene.materials.size());
-			for (int i = 0; i < scene.materials.size(); i++)
-				material_opaque[i] = scene.material_has_opaque_base_color_texture[i] && scene.materials[i].alpha_opacity == 1.0f;
-			m_hiprt_scene.material_opaque.resize(material_opaque.size());
-			m_hiprt_scene.material_opaque.upload_data(material_opaque);
-			m_hiprt_scene.material_has_opaque_base_color_texture = scene.material_has_opaque_base_color_texture;
+									// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
+									std::vector<unsigned char> material_opaque(scene.materials.size());
+									for (int i = 0; i < scene.materials.size(); i++)
+										material_opaque[i] = scene.material_has_opaque_base_color_texture[i] && scene.materials[i].alpha_opacity == 1.0f;
+									m_hiprt_scene.material_opaque.resize(material_opaque.size());
+									m_hiprt_scene.material_opaque.upload_data(material_opaque);
+									m_hiprt_scene.material_has_opaque_base_color_texture = scene.material_has_opaque_base_color_texture;
 
-			m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
-			m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
-		});
+									m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
+									m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
+								});
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, ThreadManager::SCENE_LOADING_COMPUTE_TRIANGLE_AREAS);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS, [this, &scene]()
-		{
-			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TRIANGLE_AREAS,
+								[this, &scene]()
+								{
+									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-			m_hiprt_scene.triangle_areas.resize(scene.triangle_areas.size());
-			m_hiprt_scene.triangle_areas.upload_data(scene.triangle_areas.data());
-		});
+									m_hiprt_scene.triangle_areas.resize(scene.triangle_areas.size());
+									m_hiprt_scene.triangle_areas.upload_data(scene.triangle_areas.data());
+								});
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TEXTURES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TEXTURES, [this, &scene]()
-		{
-			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TEXTURES,
+								[this, &scene]()
+								{
+									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-			if (scene.textures.size() > 0)
-			{
-				std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
-				m_hiprt_scene.orochi_materials_textures.reserve(scene.textures.size());
-				for (int i = 0; i < scene.textures.size(); i++)
-				{
-					if (scene.textures[i].width == 0 || scene.textures[i].height == 0)
-					{
-						// It can happen that for emissive textures for example, we had a texture but its color is constant.
-						// As a result, we have not read the texture but rather just stored the constant emissive color in the
-						// emission filed of the material so we have no texture to read here
+									if (scene.textures.size() > 0)
+									{
+										std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
+										m_hiprt_scene.orochi_materials_textures.reserve(scene.textures.size());
+										for (int i = 0; i < scene.textures.size(); i++)
+										{
+											if (scene.textures[i].width == 0 || scene.textures[i].height == 0)
+											{
+												// It can happen that for emissive textures for example, we had a texture but its color is constant.
+												// As a result, we have not read the texture but rather just stored the constant emissive color in the
+												// emission filed of the material so we have no texture to read here
 
-						// The shader will never read from that texture (because the texture index of the material has been set to -1)
-						// so we set it to nullptr
-						oro_textures[i] = nullptr;
+												// The shader will never read from that texture (because the texture index of the material has been set to -1)
+												// so we set it to nullptr
+												oro_textures[i] = nullptr;
 
-						continue;
-					}
+												continue;
+											}
 
-					// We need to keep the texture alive so they are not destroyed when returning from 
-					// this function so we're adding them to a member buffer
-					m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i], hipFilterModeLinear));
+											// We need to keep the texture alive so they are not destroyed when returning from
+											// this function so we're adding them to a member buffer
+											m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i], hipFilterModeLinear));
 
-					oro_textures[i] = m_hiprt_scene.orochi_materials_textures.back().get_device_texture();
-				}
+											oro_textures[i] = m_hiprt_scene.orochi_materials_textures.back().get_device_texture();
+										}
 
-				m_hiprt_scene.gpu_materials_textures.resize(oro_textures.size());
-				m_hiprt_scene.gpu_materials_textures.upload_data(oro_textures.data());
-			}
-		});
+										m_hiprt_scene.gpu_materials_textures.resize(oro_textures.size());
+										m_hiprt_scene.gpu_materials_textures.upload_data(oro_textures.data());
+									}
+								});
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, [this, &scene]()
-		{
-			m_hiprt_scene.emissive_triangles_count = scene.emissive_triangles_primitive_indices.size();
-			if (m_hiprt_scene.emissive_triangles_count > 0)
-			{
-				OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES,
+								[this, &scene]()
+								{
+									m_hiprt_scene.emissive_triangles_count = scene.emissive_triangles_primitive_indices.size();
+									if (m_hiprt_scene.emissive_triangles_count > 0)
+									{
+										OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-				m_hiprt_scene.emissive_triangles_primitive_indices.resize(scene.emissive_triangles_primitive_indices.size());
-				m_hiprt_scene.emissive_triangles_primitive_indices.upload_data(scene.emissive_triangles_primitive_indices.data());
+										m_hiprt_scene.emissive_triangles_primitive_indices.resize(scene.emissive_triangles_primitive_indices.size());
+										m_hiprt_scene.emissive_triangles_primitive_indices.upload_data(scene.emissive_triangles_primitive_indices.data());
 
-				m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.resize(scene.emissive_triangles_primitive_indices_and_emissive_textures.size());
-				m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
-			}
+										m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.resize(
+																scene.emissive_triangles_primitive_indices_and_emissive_textures.size());
+										m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.upload_data(
+																scene.emissive_triangles_primitive_indices_and_emissive_textures.data());
+									}
 
-			// Uploading emissive meshes
-			m_hiprt_scene.emissive_meshes_data.load_from_emissive_meshes(scene);
-		});
+									// Uploading emissive meshes
+									m_hiprt_scene.emissive_meshes_data.load_from_emissive_meshes(scene);
+								});
 }
 
 void GPURenderer::rebuild_bvh(HIPRTGeometry& geometry, hiprtBuildFlags build_flags, bool do_compaction, bool disable_spatial_splits_on_OOM)
@@ -862,70 +816,61 @@ void GPURenderer::set_scene(const Scene& scene)
 	// TODO multithread this call here
 	compute_emissives_sampling_data_structure_from_scene(scene);
 
-	m_original_materials = scene.materials;
-	m_current_materials = scene.materials;
+	m_original_materials	= scene.materials;
+	m_current_materials		= scene.materials;
 	m_parsed_scene_metadata = scene.metadata;
 }
 
 void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& envmap_filepath)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_SET_ENVMAP, ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD);
-	ThreadManager::start_thread(ThreadManager::RENDERER_SET_ENVMAP, [this, &envmap_image, &envmap_filepath]() {
-		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::RENDERER_SET_ENVMAP,
+								[this, &envmap_image, &envmap_filepath]()
+								{
+									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
-		if (envmap_image.width == 0 || envmap_image.height == 0)
-		{
-			if (m_render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-				// We were going for the envmap but it's not available so defaulting to
-				// uniform lighting instead
-				m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+									if (envmap_image.width == 0 || envmap_image.height == 0)
+									{
+										if (m_render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+											// We were going for the envmap but it's not available so defaulting to
+											// uniform lighting instead
+											m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light instead.");
+										g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING,
+																"Empty envmap set on the GPURenderer... Defaulting to uniform ambient light instead.");
 
-			return;
-		}
+										return;
+									}
 
-		m_envmap.init_from_image(envmap_image, envmap_filepath);
-		m_envmap.recompute_sampling_data_structure(this, &envmap_image);
+									m_envmap.init_from_image(envmap_image, envmap_filepath);
+									m_envmap.recompute_sampling_data_structure(this, &envmap_image);
 
-		m_render_data.world_settings.envmap = m_envmap.get_packed_data_pointer();
-		m_render_data.world_settings.envmap_width = m_envmap.get_width();
-		m_render_data.world_settings.envmap_height = m_envmap.get_height();
-		// We found an envmap so let's use it
-		m_render_data.world_settings.ambient_light_type = AmbientLightType::ENVMAP;
+									m_render_data.world_settings.envmap		   = m_envmap.get_packed_data_pointer();
+									m_render_data.world_settings.envmap_width  = m_envmap.get_width();
+									m_render_data.world_settings.envmap_height = m_envmap.get_height();
+									// We found an envmap so let's use it
+									m_render_data.world_settings.ambient_light_type = AmbientLightType::ENVMAP;
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
-		m_render_data.world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
+									m_render_data.world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
 
-		m_render_data.world_settings.alias_table_probas = nullptr;
-		m_render_data.world_settings.alias_table_alias = nullptr;
+									m_render_data.world_settings.alias_table_probas = nullptr;
+									m_render_data.world_settings.alias_table_alias	= nullptr;
 #elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 		m_render_data.world_settings.envmap_cdf = nullptr;
 
 		m_envmap.get_alias_table_device_pointers(m_render_data.world_settings.envmap_alias_table.alias_table_probas, m_render_data.world_settings.envmap_alias_table.alias_table_alias);
 #endif
-		});
+								});
 }
 
-bool GPURenderer::has_envmap()
-{
-	return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0;
-}
+bool GPURenderer::has_envmap() { return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0; }
 
-const std::vector<CPUMaterial>& GPURenderer::get_original_materials()
-{
-	return m_original_materials;
-}
+const std::vector<CPUMaterial>& GPURenderer::get_original_materials() { return m_original_materials; }
 
-const std::vector<CPUMaterial>& GPURenderer::get_current_materials()
-{
-	return m_current_materials;
-}
+const std::vector<CPUMaterial>& GPURenderer::get_current_materials() { return m_current_materials; }
 
-const std::vector<std::string>& GPURenderer::get_material_names()
-{
-	return m_parsed_scene_metadata.material_names;
-}
+const std::vector<std::string>& GPURenderer::get_material_names() { return m_parsed_scene_metadata.material_names; }
 
 void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 {
@@ -961,61 +906,27 @@ void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
 	m_hiprt_scene.materials_buffer.upload_data_partial(material_index, &packed_gpu_material, 1);
 }
 
+const std::vector<AABB>& GPURenderer::get_mesh_bounding_boxes() { return m_parsed_scene_metadata.mesh_bounding_boxes; }
 
-const std::vector<AABB>& GPURenderer::get_mesh_bounding_boxes()
-{
-	return m_parsed_scene_metadata.mesh_bounding_boxes;
-}
+const std::vector<std::string>& GPURenderer::get_mesh_names() { return m_parsed_scene_metadata.mesh_names; }
 
-const std::vector<std::string>& GPURenderer::get_mesh_names()
-{
-	return m_parsed_scene_metadata.mesh_names;
-}
+const std::vector<int>& GPURenderer::get_mesh_material_indices() { return m_parsed_scene_metadata.mesh_material_indices; }
 
-const std::vector<int>& GPURenderer::get_mesh_material_indices()
-{
-	return m_parsed_scene_metadata.mesh_material_indices;
-}
+unsigned int GPURenderer::get_emissive_mesh_count() const { return m_hiprt_scene.emissive_meshes_data.get_emissive_mesh_count(); }
 
-unsigned int GPURenderer::get_emissive_mesh_count() const
-{
-	return m_hiprt_scene.emissive_meshes_data.get_emissive_mesh_count();
-}
+unsigned int GPURenderer::get_total_triangle_count() const { return m_hiprt_scene.total_triangle_count; }
 
-unsigned int GPURenderer::get_total_triangle_count() const
-{
-	return m_hiprt_scene.total_triangle_count;
-}
+Camera& GPURenderer::get_camera() { return m_camera; }
 
-Camera& GPURenderer::get_camera()
-{
-	return m_camera;
-}
+Camera& GPURenderer::get_previous_frame_camera() { return m_previous_frame_camera; }
 
-Camera& GPURenderer::get_previous_frame_camera()
-{
-	return m_previous_frame_camera;
-}
+CameraAnimation& GPURenderer::get_camera_animation() { return m_camera_animation; }
 
-CameraAnimation& GPURenderer::get_camera_animation()
-{
-	return m_camera_animation;
-}
+RendererEnvmap& GPURenderer::get_envmap() { return m_envmap; }
 
-RendererEnvmap& GPURenderer::get_envmap()
-{
-	return m_envmap;
-}
+SceneMetadata& GPURenderer::get_scene_metadata() { return m_parsed_scene_metadata; }
 
-SceneMetadata& GPURenderer::get_scene_metadata()
-{
-	return m_parsed_scene_metadata;
-}
-
-RenderGraph& GPURenderer::get_render_graph()
-{
-	return m_render_thread.get_render_graph();
-}
+RenderGraph& GPURenderer::get_render_graph() { return m_render_thread.get_render_graph(); }
 
 void GPURenderer::set_camera(const Camera& camera)
 {
@@ -1025,25 +936,14 @@ void GPURenderer::set_camera(const Camera& camera)
 
 void GPURenderer::resize_g_buffer_ray_volume_states()
 {
-	std::dynamic_pointer_cast<FillGBufferRenderPass>(m_render_thread.get_render_graph().get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME))->resize_g_buffer_ray_volume_states();
+	std::dynamic_pointer_cast<FillGBufferRenderPass>(m_render_thread.get_render_graph().get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME))
+							->resize_g_buffer_ray_volume_states();
 }
 
-void GPURenderer::translate_camera_view(glm::vec3 translation)
-{
-	m_camera.translate(translation);
-}
+void GPURenderer::translate_camera_view(glm::vec3 translation) { m_camera.translate(translation); }
 
-void GPURenderer::rotate_camera_view(glm::vec3 rotation_angles)
-{
-	m_camera.rotate(rotation_angles);
-}
+void GPURenderer::rotate_camera_view(glm::vec3 rotation_angles) { m_camera.rotate(rotation_angles); }
 
-void GPURenderer::zoom_camera_view(float offset)
-{
-	m_camera.zoom(offset);
-}
+void GPURenderer::zoom_camera_view(float offset) { m_camera.zoom(offset); }
 
-RendererAnimationState& GPURenderer::get_animation_state()
-{
-	return m_animation_state;
-}
+RendererAnimationState& GPURenderer::get_animation_state() { return m_animation_state; }
