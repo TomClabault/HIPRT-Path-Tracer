@@ -80,9 +80,9 @@
  *		Very custom and advanced implementation of [Rendering many lights with grid-based reservoirs, Boksansky, 2021] +
  *		Disney's cache points: [Cache Points For Production-Scale Occlusion-Aware Many-Lights Sampling And Volumetric Scattering, Li et al. 2024]
  *
- *       Blog post explaining the ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
+ *       Blog post explaining the details of this ReGIR implementation: https://tomclabault.github.io/blog/2025/regir/
  */
-#define DirectLightSamplingStrategy LSS_BASE_REGIR
+#define DirectLightSamplingStrategy LSS_BASE_POWER
 
 /**
  * What direct lighting sampling strategy to use.

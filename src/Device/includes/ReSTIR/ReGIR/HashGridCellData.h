@@ -13,7 +13,7 @@ struct ReGIRHashCellDataSoADevice
 	static constexpr float UNDEFINED_DISTANCE = -42.0f;
 
 	static constexpr unsigned int UNDEFINED_POINT = 0xFFFFFFFF;
-	static constexpr float3 UNDEFINED_NORMAL	  = make_float3(0.0f, 0.0f, 0.0f);
+	static constexpr float3 UNDEFINED_NORMAL	  = { 0.0f, 0.0f, 0.0f };
 	static constexpr int UNDEFINED_PRIMITIVE	  = -1;
 
 	// These three buffers are only allocated per each cell, not per each reservoir so they are

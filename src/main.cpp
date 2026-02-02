@@ -67,6 +67,7 @@ int main(int argc, char* argv[])
 	ThreadManager::join_all_threads();
 
 	RadixSort::unit_test(hiprt_orochi_ctx, renderer->get_main_stream());
+	return 0;
 
 	parsed_scene.print_statistics(std::cout);
 

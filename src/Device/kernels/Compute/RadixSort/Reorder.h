@@ -56,12 +56,6 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 
 			unsigned int position = global_offset + block_offset + local_offset;
 
-			if (position == 0)
-				printf("Key / value: %u / %u, Radix: %u, Position: %u\n", key, value, radix, position);
-			if (position >= size)
-				printf("Error: position %u out of bounds for size %u (Key: %u, Value: %u, Radix: %u, Global offset: %u, Block offset: %u, Local offset: %u)\n",
-					   position, size, key, value, radix, global_offset, block_offset, local_offset);
-
 			// Scatter to the output position
 			output_keys[position]	= key;
 			output_values[position] = value;

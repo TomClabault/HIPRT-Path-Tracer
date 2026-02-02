@@ -11,14 +11,9 @@
 #include <numeric>
 #include <random>
 
-RadixSort::RadixSort() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0)
-{
-}
+RadixSort::RadixSort() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0) {}
 
-RadixSort::RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
-{
-	set_context(hiprt_ctx, stream);
-}
+RadixSort::RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream) { set_context(hiprt_ctx, stream); }
 
 void RadixSort::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
@@ -49,6 +44,8 @@ void RadixSort::upload_input_data(const std::vector<unsigned int>& keys, const s
 {
 	if (keys.size() != values.size())
 		return; // Error: sizes don't match
+	else if (keys.size() == 0)
+		return;
 
 	m_size = keys.size();
 	m_keys_buffer.resize(m_size);
@@ -60,11 +57,14 @@ void RadixSort::upload_input_data(const std::vector<unsigned int>& keys, const s
 	m_values_buffer.upload_data(reinterpret_cast<const unsigned int*>(values.data()));
 
 	unsigned int per_block_count_table_size = (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE * RADIX_SORT_RADIX_SIZE;
-	if (m_per_block_count_tables_buffer.size() < per_block_count_table_size)
+	if (m_per_block_count_tables_buffer.size() != per_block_count_table_size)
+	{
 		m_per_block_count_tables_buffer.resize(per_block_count_table_size);
+		m_per_block_count_tables_scanned_buffer.resize(per_block_count_table_size);
+	}
 
 	unsigned int count_table_size = RADIX_SORT_RADIX_SIZE;
-	if (m_global_count_tables_buffer.size() < count_table_size)
+	if (m_global_count_tables_buffer.size() != count_table_size)
 		m_global_count_tables_buffer.resize(count_table_size);
 }
 
@@ -73,12 +73,13 @@ void RadixSort::sort()
 	if (m_size == 0 || !m_hiprt_ctx || !m_stream)
 		return;
 
-	unsigned int* input_keys			 = m_keys_buffer.get_device_pointer();
-	unsigned int* input_values			 = m_values_buffer.get_device_pointer();
-	unsigned int* output_keys			 = m_temp_keys_buffer.get_device_pointer();
-	unsigned int* output_values			 = m_temp_values_buffer.get_device_pointer();
-	unsigned int* count_tables			 = m_global_count_tables_buffer.get_device_pointer();
-	unsigned int* per_block_count_tables = m_per_block_count_tables_buffer.get_device_pointer();
+	unsigned int* input_keys					 = m_keys_buffer.get_device_pointer();
+	unsigned int* input_values					 = m_values_buffer.get_device_pointer();
+	unsigned int* output_keys					 = m_temp_keys_buffer.get_device_pointer();
+	unsigned int* output_values					 = m_temp_values_buffer.get_device_pointer();
+	unsigned int* count_tables					 = m_global_count_tables_buffer.get_device_pointer();
+	unsigned int* per_block_count_tables		 = m_per_block_count_tables_buffer.get_device_pointer();
+	unsigned int* per_block_count_tables_scanned = m_per_block_count_tables_scanned_buffer.get_device_pointer();
 
 	// Perform radix sort in multiple passes
 	static constexpr int NUM_PASSES = 32 / RADIX_SORT_RADIX_BITS;
@@ -91,28 +92,30 @@ void RadixSort::sort()
 		// TODO memset with a kernel is faster?
 		m_global_count_tables_buffer.memset_whole_buffer(0);
 		m_per_block_count_tables_buffer.memset_whole_buffer(0);
+		m_per_block_count_tables_scanned_buffer.memset_whole_buffer(0);
 
 		// Count kernel: Count occurrences of each radix digit
 		void* count_args[] = { &input_keys, &count_tables, &per_block_count_tables, &m_size, &bit_offset };
 		m_count_kernel.launch_asynchronous(RADIX_SORT_INPUT_CHUNK_SIZE, 1, m_size, 1, count_args, m_stream);
 
-		/*void* per_block_scan_args[] = { &per_block_count_tables, &m_size };
-		m_per_block_prefix_scan_kernel.launch_asynchronous(RADIX_SORT_RADIX_SIZE, 1,
-														   (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE * RADIX_SORT_RADIX_SIZE, 1,
-														   per_block_scan_args, m_stream);*/
+		// TODO this kernel is very un-optimal
+		unsigned int num_blocks		= (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
+		void* per_block_scan_args[] = { &per_block_count_tables, &per_block_count_tables_scanned, &num_blocks };
+		m_per_block_prefix_scan_kernel.launch_asynchronous(RADIX_SORT_RADIX_SIZE, 1, RADIX_SORT_RADIX_SIZE, 1, per_block_scan_args, m_stream);
 
 		// Scan kernel: Compute exclusive prefix sum
 		{
 			// DEBUG VERIFICATION BLOCK
 			{
-				std::vector<unsigned int> count_table_host			 = m_global_count_tables_buffer.download_data();
-				std::vector<unsigned int> per_block_count_table_host = m_per_block_count_tables_buffer.download_data();
-				std::vector<unsigned int> input_keys_host			 = m_keys_buffer.download_data();
+				std::vector<unsigned int> count_table_host					 = m_global_count_tables_buffer.download_data();
+				std::vector<unsigned int> per_block_count_table_host		 = m_per_block_count_tables_buffer.download_data();
+				std::vector<unsigned int> per_block_count_table_scanned_host = m_per_block_count_tables_scanned_buffer.download_data();
+				std::vector<unsigned int> input_keys_host					 = m_keys_buffer.download_data();
 				std::vector<unsigned int> expected_count_table(RADIX_SORT_RADIX_SIZE, 0);
 
 				for (int i = 0; i < m_size; i++)
 				{
-					unsigned int key   = input_keys_host[i];
+					unsigned int key   = input_keys_host.at(i);
 					unsigned int digit = (key >> bit_offset) & (RADIX_SORT_RADIX_SIZE - 1);
 
 					expected_count_table[digit]++;
@@ -120,7 +123,7 @@ void RadixSort::sort()
 
 				for (int i = 0; i < RADIX_SORT_RADIX_SIZE; i++)
 				{
-					if (count_table_host[i] != expected_count_table[i])
+					if (count_table_host.at(i) != expected_count_table.at(i))
 					{
 						std::cout << "Count table mismatch at index " << i << ": got " << count_table_host[i] << ", expected " << expected_count_table[i]
 								  << std::endl;
@@ -129,9 +132,9 @@ void RadixSort::sort()
 					}
 				}
 
-				std::vector<unsigned int> per_block_expected_count_table(per_block_count_table_host.size(), 0);
-				for (int block = 0;
-					 block < ((input_keys_host.size() + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE) * RADIX_SORT_INPUT_CHUNK_SIZE; block++)
+				unsigned int num_blocks = (input_keys_host.size() + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
+				std::vector<unsigned int> per_block_expected_count_table(num_blocks * RADIX_SORT_RADIX_SIZE, 0);
+				for (int block = 0; block < num_blocks; block++)
 				{
 					for (int i = 0; i < RADIX_SORT_INPUT_CHUNK_SIZE; i++)
 					{
@@ -140,35 +143,38 @@ void RadixSort::sort()
 							break;
 
 						unsigned int key   = input_keys_host[index];
-						unsigned int digit = (key >> bit_offset) & (RADIX_SORT_RADIX_MASK);
+						unsigned int digit = (key >> bit_offset) & RADIX_SORT_RADIX_MASK;
 
 						// Writing in column major order so that the prefix scan can be done easily
-						per_block_expected_count_table[digit * RADIX_SORT_RADIX_SIZE + block]++;
+						per_block_expected_count_table.at(block * RADIX_SORT_RADIX_SIZE + digit)++;
 					}
 				}
 
-				for (int block = 0; block < per_block_expected_count_table.size() / RADIX_SORT_RADIX_SIZE; block++)
+				std::vector<unsigned int> per_block_expected_count_table_prefix_summed(num_blocks * RADIX_SORT_RADIX_SIZE, 0);
+				for (int digit = 0; digit < RADIX_SORT_RADIX_SIZE; digit++)
 				{
 					unsigned int running_sum = 0;
 
-					for (int i = 0; i < RADIX_SORT_RADIX_SIZE; i++)
+					for (int block = 0; block < num_blocks; block++)
 					{
-						unsigned int index = block * RADIX_SORT_RADIX_SIZE + i;
+						unsigned int index = block * RADIX_SORT_RADIX_SIZE + digit;
+						unsigned int temp  = per_block_expected_count_table.at(index);
 
-						unsigned int temp					  = per_block_expected_count_table[index];
-						per_block_expected_count_table[index] = running_sum;
+						per_block_expected_count_table_prefix_summed.at(index) = running_sum;
 						running_sum += temp;
 					}
 
 					running_sum = 0;
 				}
 
-				for (int i = 0; i < per_block_count_table_host.size(); i++)
+				for (int i = 0; i < per_block_count_table_scanned_host.size(); i++)
 				{
-					if (per_block_count_table_host[i] != per_block_expected_count_table[i])
+					if (per_block_count_table_scanned_host.at(i) != per_block_expected_count_table_prefix_summed.at(i))
 					{
-						std::cout << "Per-block count table mismatch at index " << i << ": got " << per_block_count_table_host[i] << ", expected "
-								  << per_block_expected_count_table[i] << std::endl;
+						std::cout << "Per-block count table mismatch at index " << i << ": got " << per_block_count_table_scanned_host.at(i) << ", expected "
+								  << per_block_expected_count_table_prefix_summed.at(i) << std::endl;
+
+						break;
 					}
 				}
 			}
@@ -184,7 +190,7 @@ void RadixSort::sort()
 		// TODO Avoid this download + upload by directly using the output buffer of the prefix scan
 		m_global_count_tables_buffer.upload_data(m_prefix_scan.get_output_buffer().download_data());
 		unsigned int* global_count_table_prefix_scanned	   = m_global_count_tables_buffer.get_device_pointer();
-		unsigned int* per_block_count_table_prefix_scanned = m_per_block_count_tables_buffer.get_device_pointer();
+		unsigned int* per_block_count_table_prefix_scanned = m_per_block_count_tables_scanned_buffer.get_device_pointer();
 
 		// Reorder kernel: Scatter elements to sorted positions
 		void* reorder_args[] = {
@@ -222,15 +228,9 @@ void RadixSort::sort()
 	}
 }
 
-OrochiBuffer<unsigned int>& RadixSort::get_sorted_keys_buffer()
-{
-	return m_keys_buffer;
-}
+OrochiBuffer<unsigned int>& RadixSort::get_sorted_keys_buffer() { return m_keys_buffer; }
 
-OrochiBuffer<unsigned int>& RadixSort::get_sorted_values_buffer()
-{
-	return m_values_buffer;
-}
+OrochiBuffer<unsigned int>& RadixSort::get_sorted_values_buffer() { return m_values_buffer; }
 
 void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
@@ -249,13 +249,13 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 	{
 		rng.seed(i);
 
-		unsigned int test_size = rng() % 256;
+		unsigned int test_size = rng() % 65536;
 
 		std::vector<unsigned int> input_keys(test_size);
 		std::vector<unsigned int> input_values(test_size);
 
 		std::iota(input_values.begin(), input_values.end(), 0);
-		std::transform(input_keys.begin(), input_keys.end(), input_keys.begin(), [&rng](unsigned int) { return rng() % 1000; });
+		std::transform(input_keys.begin(), input_keys.end(), input_keys.begin(), [&rng](unsigned int) { return rng() % 10; });
 
 		std::vector<std::pair<unsigned int, unsigned int>> key_value_pairs(test_size);
 
@@ -265,7 +265,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 		}
 
 		auto start = std::chrono::high_resolution_clock::now();
-		std::sort(key_value_pairs.begin(), key_value_pairs.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+		std::stable_sort(key_value_pairs.begin(), key_value_pairs.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
 		auto stop = std::chrono::high_resolution_clock::now();
 
 		std::cout << "CPU sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements."

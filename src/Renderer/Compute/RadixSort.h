@@ -38,6 +38,7 @@ private:
 	OrochiBuffer<unsigned int> m_temp_values_buffer;
 	OrochiBuffer<unsigned int> m_global_count_tables_buffer;
 	OrochiBuffer<unsigned int> m_per_block_count_tables_buffer;
+	OrochiBuffer<unsigned int> m_per_block_count_tables_scanned_buffer;
 
 	GPUKernel m_count_kernel;
 	ParallelPrefixScanDecoupledLookback m_prefix_scan;
