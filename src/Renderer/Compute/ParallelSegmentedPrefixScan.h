@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_COMPUTE_PARALLEL_PREFIX_SCAN_ONE_PASS_H
-#define RENDERER_COMPUTE_PARALLEL_PREFIX_SCAN_ONE_PASS_H
+#ifndef RENDERER_COMPUTE_PARALLEL_SEGMENTED_PREFIX_SCAN_ONE_PASS_H
+#define RENDERER_COMPUTE_PARALLEL_SEGMENTED_PREFIX_SCAN_ONE_PASS_H
 
 #include "Compiler/GPUKernel.h"
 #include "Device/includes/Compute/ParallelPrefixScanDecoupledLookbackBlockDescriptor.h"
@@ -13,18 +13,28 @@
 /**
  * Reference: Single-pass Parallel Prefix Scan with Decoupled Look-back
  * https://research.nvidia.com/publication/2016-03_single-pass-parallel-prefix-scan-decoupled-look-back
+ *
+ * and
+ *
+ * Efficient Parallel Scan Algorithms for GPUs
+ * https://research.nvidia.com/publication/2008-12_efficient-parallel-scan-algorithms-gpus
  */
-class ParallelPrefixScanDecoupledLookback
+class ParallelSegmentedPrefixScan
 {
 public:
-	ParallelPrefixScanDecoupledLookback();
-	ParallelPrefixScanDecoupledLookback(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
+	ParallelSegmentedPrefixScan();
+	ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 
 	bool is_setup();
 	void set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream);
 	void initialize_kernels();
 
-	void upload_input_data(const std::vector<unsigned int>& data);
+	/**
+	 * @param data Input data to scan
+	 * @param flags Segment flags. The prefix scans will be computed separately for each segment. This vector should contain packed bits, i.e. one unsigned int
+	 * contains 32 flags. This vector should therefore be of size ceil(data.size() / 32)
+	 */
+	void upload_input_data(const std::vector<unsigned int>& data, const std::vector<unsigned int>& flags);
 	void scan();
 
 	OrochiBuffer<unsigned int>& get_output_buffer();
@@ -33,7 +43,9 @@ public:
 
 private:
 	OrochiBuffer<unsigned int> m_input_buffer;
+	OrochiBuffer<unsigned int> m_flags_buffer;
 	OrochiBuffer<unsigned int> m_output_buffer;
+
 	OrochiBuffer<unsigned int> m_global_block_index_counter_buffer;
 	OrochiBuffer<ParallelPrefixScanDecoupledLookbackBlockDescriptor> m_block_descriptors_buffer;
 

@@ -4,21 +4,22 @@
  */
 
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
-#include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
+#include "Renderer/Compute/ParallelSegmentedPrefixScan.h"
 
+#include <bitset>
 #include <random>
 
-ParallelPrefixScanDecoupledLookback::ParallelPrefixScanDecoupledLookback() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0) {}
+ParallelSegmentedPrefixScan::ParallelSegmentedPrefixScan() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0) {}
 
-ParallelPrefixScanDecoupledLookback::ParallelPrefixScanDecoupledLookback(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+ParallelSegmentedPrefixScan::ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 	: m_hiprt_ctx(hiprt_ctx), m_stream(stream), m_size(0)
 {
 	initialize_kernels();
 }
 
-bool ParallelPrefixScanDecoupledLookback::is_setup() { return m_hiprt_ctx != nullptr && m_stream != nullptr; }
+bool ParallelSegmentedPrefixScan::is_setup() { return m_hiprt_ctx != nullptr && m_stream != nullptr; }
 
-void ParallelPrefixScanDecoupledLookback::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelSegmentedPrefixScan::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
 	m_hiprt_ctx = hiprt_ctx;
 	m_stream	= stream;
@@ -26,10 +27,10 @@ void ParallelPrefixScanDecoupledLookback::set_context(std::shared_ptr<HIPRTOroch
 	initialize_kernels();
 }
 
-void ParallelPrefixScanDecoupledLookback::initialize_kernels()
+void ParallelSegmentedPrefixScan::initialize_kernels()
 {
-	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/Scan.h");
-	m_scan_kernel.set_kernel_function_name("ParallelPrefixScanDecoupledLookback_Scan");
+	m_scan_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelSegmentedPrefixScan/Scan.h");
+	m_scan_kernel.set_kernel_function_name("ParallelSegmentedPrefixScanDecoupledLookback_Scan");
 	m_scan_kernel.compile(m_hiprt_ctx, {}, true, false);
 
 	m_block_descriptor_init_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Compute/ParallelPrefixScanDecoupledLookback/BlockDescriptorInit.h");
@@ -37,12 +38,15 @@ void ParallelPrefixScanDecoupledLookback::initialize_kernels()
 	m_block_descriptor_init_kernel.compile(m_hiprt_ctx, {}, true, false);
 }
 
-void ParallelPrefixScanDecoupledLookback::upload_input_data(const std::vector<unsigned int>& data)
+void ParallelSegmentedPrefixScan::upload_input_data(const std::vector<unsigned int>& data, const std::vector<unsigned int>& flags)
 {
 	m_size = data.size();
 
 	m_input_buffer.resize(m_size);
 	m_input_buffer.upload_data(data);
+
+	m_flags_buffer.resize(flags.size());
+	m_flags_buffer.upload_data(flags);
 
 	m_output_buffer.resize(m_size);
 
@@ -50,12 +54,12 @@ void ParallelPrefixScanDecoupledLookback::upload_input_data(const std::vector<un
 	m_block_descriptors_buffer.resize((m_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE);
 }
 
-void ParallelPrefixScanDecoupledLookback::scan()
+void ParallelSegmentedPrefixScan::scan()
 {
 	if (m_size == 0 || !m_hiprt_ctx || !m_stream)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-								"ParallelPrefixScanDecoupledLookback: scan() called but the class hasn't been setup properly or no data uploaded");
+								"ParallelSegmentedPrefixScan: scan() called but the class hasn't been setup properly or no data uploaded");
 
 		return;
 	}
@@ -68,19 +72,21 @@ void ParallelPrefixScanDecoupledLookback::scan()
 	m_block_descriptor_init_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, block_descriptor_count, 1, block_descriptor_init_args, m_stream);
 
 	unsigned int* input_buffer_pointer	= m_input_buffer.get_device_pointer();
+	unsigned int* flags_buffer_pointer	= m_flags_buffer.get_device_pointer();
 	unsigned int* output_buffer_pointer = m_output_buffer.get_device_pointer();
-	void* block_scan_args[] = { &input_buffer_pointer, &output_buffer_pointer, &block_descriptors_buffer_pointer, &global_block_index_counter_pointer,
-								&m_size };
+	void* block_scan_args[]				= {
+		&input_buffer_pointer, &flags_buffer_pointer, &output_buffer_pointer, &block_descriptors_buffer_pointer, &global_block_index_counter_pointer, &m_size
+	};
 	m_scan_kernel.launch_asynchronous(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, 1, m_size, 1, block_scan_args, m_stream);
 
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
 }
 
-OrochiBuffer<unsigned int>& ParallelPrefixScanDecoupledLookback::get_output_buffer() { return m_output_buffer; }
+OrochiBuffer<unsigned int>& ParallelSegmentedPrefixScan::get_output_buffer() { return m_output_buffer; }
 
-void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+void ParallelSegmentedPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
-	ParallelPrefixScanDecoupledLookback scanner(hiprt_ctx, stream);
+	ParallelSegmentedPrefixScan scanner(hiprt_ctx, stream);
 
 	std::mt19937 rng(42);
 
@@ -91,21 +97,48 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
 
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 10000; i++)
 	{
 		rng.seed(i);
 
-		unsigned int test_size = 500000000; // rng() % 500000000;
+		unsigned int test_size = 500000000; // rng() % 500000000 + 1;
+
+		std::vector<unsigned int> input(test_size);
+		std::vector<unsigned int> flags((test_size + 31) / 32, 0);
+
+		std::transform(input.begin(), input.end(), input.begin(), [&rng](unsigned int) { return rng() % 3; });
+		std::transform(flags.begin(), flags.end(), flags.begin(), [&rng](unsigned int) { return rng() % std::numeric_limits<unsigned int>::max(); });
+
+		// Adding 2% of random warps that are full zero
+		unsigned int warps_count = (test_size + 31) / 32;
+		for (unsigned int w = 0; w < warps_count; w++)
+			if (rng() % 100 < 2) // 2% chance
+				flags[w] = 0;	 // This warp will have all flags set to zero, meaning that all its elements belong to the same segment
+
+		// Adding 1% of random blocks that are full zero
+		unsigned int blocks_count = (test_size + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE;
+		for (unsigned int b = 0; b < blocks_count; b++)
+		{
+			if (rng() % 100 < 1) // 1% chance
+			{
+				for (unsigned int w = 0; w < PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32; w++)
+				{
+					if ((b * (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32) + w) < warps_count)
+						// This block will have all flags set to zero, meaning that all its elements belong to the same segment
+						flags[b * (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32) + w] = 0;
+				}
+			}
+		}
 
 		unsigned int running_sum = 0;
 		std::vector<unsigned int> expected_output(test_size);
-		std::vector<unsigned int> input(test_size);
-
-		std::transform(input.begin(), input.end(), input.begin(), [&rng](unsigned int) { return rng() % 3; });
 
 		auto start = std::chrono::high_resolution_clock::now();
 		for (size_t j = 0; j < test_size; j++)
 		{
+			if (flags[j / (sizeof(unsigned int) * 8)] & (1u << (j % (sizeof(unsigned int) * 8))))
+				running_sum = 0;
+
 			expected_output[j] = running_sum;
 			running_sum += input[j];
 		}
@@ -113,7 +146,7 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 		std::cout << "CPU time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms for " << test_size << " elements."
 				  << std::endl;
 
-		scanner.upload_input_data(input);
+		scanner.upload_input_data(input, flags);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
 		unsigned int repeats = 5;
@@ -127,8 +160,9 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 		OROCHI_CHECK_ERROR(oroEventSynchronize(scan_end));
 		OROCHI_CHECK_ERROR(oroEventElapsedTime(&elapsed_time_ms, scan_start, scan_end));
 
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "\tParallelPrefixScan unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i,
-								test_size, elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO,
+								"\tParallelSegmentedPrefixScan unit test %d: scanned %u elements in %.3f ms. %.3fGItems/s", i, test_size,
+								elapsed_time_ms / repeats, test_size / (elapsed_time_ms * 1e6f / repeats));
 
 		std::vector<unsigned int> output = scanner.get_output_buffer().download_data();
 
@@ -137,8 +171,10 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 			if (output[j] != expected_output[j])
 			{
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-										"ParallelPrefixScanDecoupledLookback unit test failed for test %d at index %d (size=%u): got %u, expected %u", i, j,
-										test_size, output[j], expected_output[j]);
+										"ParallelSegmentedPrefixScan unit test failed for test %d at index %d (size=%u): got %u, expected %u", i, j, test_size,
+										output[j], expected_output[j]);
+
+				std::terminate();
 				break;
 			}
 		}

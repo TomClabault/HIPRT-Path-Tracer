@@ -9,7 +9,8 @@
 #include "HostDeviceCommon/Maths/Math.h"
 
 // Register-based warp inclusive scan
-HIPRT_DEVICE unsigned int warp_scan_inclusive(unsigned int val)
+// Flag here is an unsigned int type so that it can be used in shfl instructions but its value should be either 0 or 1.
+HIPRT_DEVICE unsigned int warp_segmented_scan_inclusive(unsigned int val, unsigned int flag, unsigned int& out_propagated_flag)
 {
 	unsigned int lane = threadIdx.x % 32;
 
@@ -17,90 +18,131 @@ HIPRT_DEVICE unsigned int warp_scan_inclusive(unsigned int val)
 	for (int i = 1; i <= 16; i *= 2)
 	{
 		unsigned int n = hippt::warp_shfl_up(val, i);
+		unsigned int f = hippt::warp_shfl_up(flag, i);
 
 		if (lane >= i)
-			val += n;
+		{
+			val = flag ? val : val + n;
+			flag |= f;
+		}
 	}
 
+	out_propagated_flag = flag;
 	return val;
 }
 
-HIPRT_DEVICE unsigned int block_scan_early_publish(unsigned int thread_input_value,
-												   unsigned int bid,
-												   int tid,
-												   ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs)
+HIPRT_DEVICE unsigned int block_segmented_scan_early_publish(unsigned int thread_input_value,
+															 unsigned int flag,
+															 unsigned int bid,
+															 int tid,
+															 bool& out_thread_needs_block_prefix,
+															 bool& out_block_is_open,
+															 ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs)
 {
-	// Per-warp scan
-	unsigned int warp_prefix = warp_scan_inclusive(thread_input_value);
+	unsigned int lane_id = tid % 32;
+	unsigned int warp_id = tid >> 5;
 
-	// The last lane of each warp holds the sum for that warp
-	unsigned int lane	 = tid % 32;
-	unsigned int warp_id = tid / 32;
+	// Per-warp scan
+	bool warp_is_open = hippt::warp_shfl(flag, 0) == 0; // Whether or not the warp begins with an open flag
+	unsigned int propagated_flag;
+	unsigned int warp_prefix = warp_segmented_scan_inclusive(thread_input_value, flag, propagated_flag);
+
+	// Last value of the last segment of the warp.
+	unsigned int warp_total_sum = hippt::warp_shfl(warp_prefix, 31);
+
+	// Encodes whether this warp is a homogeneous continuation of the previous warp
+	unsigned int warp_flag = (hippt::warp_shfl(propagated_flag, 31) != 0) || !warp_is_open;
+	// The warp is open and we have no flag up until this lane so we will have to accumulate the previous warp of the block into this lane
+	unsigned int accumulate_previous_warp = warp_is_open && (propagated_flag == 0);
 
 	// Shared memory to hold the sum of each warp
 	// (Size = Max Threads / 32). Assuming max 1024 threads -> 32 warps.
-	__shared__ unsigned int smem_warp_sums[PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32];
+	constexpr unsigned int num_warps = PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32;
+	__shared__ unsigned int smem_warp_sums[num_warps];
+	__shared__ unsigned int smem_flags[num_warps];
+	__shared__ unsigned int smem_inclusive_flag_scan[num_warps];
+	__shared__ bool smem_block_is_open;
 
-	if (lane == 31)
+	if (lane_id == 31)
+	{
 		// Storing the total sum of each warp in shared memory
-		smem_warp_sums[warp_id] = warp_prefix;
+		smem_warp_sums[warp_id] = warp_total_sum;
+		smem_flags[warp_id]		= warp_flag;
+	}
 
 	__syncthreads();
 
 	// Scan the warp sums (only warp 0 does this)
 	// This calculates the base value to add to each warp
-	unsigned int warp_base = 0;
 	if (warp_id == 0)
 	{
 		unsigned int my_warp_sum = 0;
+		unsigned int my_flag	 = 0;
 
-		if (tid < (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32))
+		if (tid < num_warps)
+		{
 			// Only load if the warp actually exists in this block
 			my_warp_sum = smem_warp_sums[tid];
+			my_flag		= smem_flags[tid];
+		}
 
-		unsigned int inclusive_warp_sum_scan = warp_scan_inclusive(my_warp_sum);
+		// unsigned int tail_sum = smem_warp_sums[PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32 - 1];
+
+		unsigned int propagated_all_warp_flags;
+		unsigned int inclusive_warp_sum_scan = warp_segmented_scan_inclusive(my_warp_sum, my_flag, propagated_all_warp_flags);
 
 		// Write the inclusive scan back to smem so other warps can read their "base"
-		// Note: We shift by 1 index effectively, because Warp N needs the sum of Warps 0..N-1
-		// We can store it directly and handle the shift on read.
-		smem_warp_sums[tid] = inclusive_warp_sum_scan;
+		if (tid < num_warps)
+		{
+			smem_warp_sums[tid]			  = inclusive_warp_sum_scan;
+			smem_inclusive_flag_scan[tid] = propagated_all_warp_flags;
+		}
 
-		// The last active thread in Warp 0 holds the sum of ALL warps (the total block sum).
-		//
-		// We can publish this immediately without having to wait for other warps of the block to finish,
-		unsigned int num_warps = PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32;
 		if (tid == num_warps - 1)
 		{
 			ParallelPrefixScanDecoupledLookbackBlockDescriptor new_desc;
 			new_desc.set_inclusive_sum(inclusive_warp_sum_scan);
 
-			if (bid == 0)
-				new_desc.set_status(DecoupledLookbackStatus::P);
-			else
+			if (bid != 0 && propagated_all_warp_flags == 0)
 				new_desc.set_status(DecoupledLookbackStatus::A);
+			else
+				// bid 0 is always completed. We also mark blocks with flags as completed right away because they don't need to look back at previous blocks
+				// since they have segment boundaries inside the block
+				new_desc.set_status(DecoupledLookbackStatus::P);
 
 			ParallelPrefixScanDecoupledLookbackBlockDescriptor::atomic_write(block_descs, bid, new_desc);
+
+			smem_block_is_open = propagated_all_warp_flags == 0;
 		}
 	}
 
 	__syncthreads();
 
+	// A thread needs the global lookback prefix only if:
+	//	- It has no flags in its own warp history (propagated_flag == 0)
+	//	- All previous warps in the block were also flag-free (smem_inclusive_flag_scan[warp_id - 1] == 0)
+
+	bool warp_open_up_to_current_lane = propagated_flag == 0;
+	bool all_previous_warps_open	  = warp_id == 0 || smem_inclusive_flag_scan[warp_id - 1] == 0;
+	out_thread_needs_block_prefix	  = warp_open_up_to_current_lane && all_previous_warps_open;
+	out_block_is_open				  = smem_block_is_open;
+
+	unsigned int warp_base = 0;
 	// Add the base from previous warps to the local warp prefix
-	if (warp_id > 0)
-	{
+	if (warp_id > 0 && accumulate_previous_warp)
 		warp_base = smem_warp_sums[warp_id - 1];
-	}
 
 	// This thread's inclusive sum over the whole block
 	return warp_prefix + warp_base;
 }
 
 GLOBAL_KERNEL_SIGNATURE(void)
-ParallelPrefixScanDecoupledLookback_Scan(const unsigned int* __restrict__ input,
-										 unsigned int* __restrict__ output,
-										 ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs,
-										 unsigned int* __restrict__ g_global_block_index_counter,
-										 unsigned int input_size)
+ParallelSegmentedPrefixScanDecoupledLookback_Scan(const unsigned int* __restrict__ input,
+												  const unsigned int* __restrict__ flags,
+												  unsigned int* __restrict__ output,
+												  ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs,
+												  unsigned int* __restrict__ g_global_block_index_counter,
+												  unsigned int input_size)
 {
 	int tid = threadIdx.x;
 
@@ -118,12 +160,19 @@ ParallelPrefixScanDecoupledLookback_Scan(const unsigned int* __restrict__ input,
 	unsigned int global_tid			= bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
 	unsigned int thread_input_value = (global_tid < input_size) ? input[global_tid] : 0;
 
+	unsigned int warp_id = global_tid >> 5;
+	unsigned int lane_id = global_tid & 31;
+	unsigned int flag	 = (global_tid < input_size) ? flags[warp_id] & (1u << lane_id) : 0;
+	if (tid == 0 && bid == 0)
+		flag = 1; // Ensure the very first element of the array is a head / segment start
+
 	// Inclusive block scan for this thread.
 	//
 	// It also internally publishes the 'A' status for the block as soon as possible.
-	unsigned int inclusive_sum = block_scan_early_publish(thread_input_value, bid, tid, block_descs);
 
-	__syncthreads();
+	bool thread_needs_block_prefix;
+	bool block_is_open;
+	unsigned int inclusive_sum = block_segmented_scan_early_publish(thread_input_value, flag, bid, tid, thread_needs_block_prefix, block_is_open, block_descs);
 
 	__shared__ unsigned int block_prefix;
 	__shared__ int base_lookback_block_index;
@@ -204,7 +253,7 @@ ParallelPrefixScanDecoupledLookback_Scan(const unsigned int* __restrict__ input,
 				base_lookback_block_index -= active_lanes_count;
 		}
 
-		if (tid == 0)
+		if (tid == 0 && block_is_open)
 		{
 			ParallelPrefixScanDecoupledLookbackBlockDescriptor block_descriptor = block_descs[bid];
 			block_descriptor.set_inclusive_sum(block_descriptor.get_inclusive_sum() + block_prefix);
@@ -216,7 +265,9 @@ ParallelPrefixScanDecoupledLookback_Scan(const unsigned int* __restrict__ input,
 
 	__syncthreads();
 
+	unsigned int prefix_contribution = thread_needs_block_prefix ? block_prefix : 0;
+
 	if (global_tid < input_size)
 		// - thread_input_value here to get an exclusive scan output. Removing that yields an inclusive scan output
-		output[global_tid] = inclusive_sum - thread_input_value + block_prefix;
+		output[global_tid] = inclusive_sum - thread_input_value + prefix_contribution;
 }

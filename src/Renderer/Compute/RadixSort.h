@@ -10,6 +10,7 @@
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Renderer/Compute/ParallelPrefixScanDecoupledLookback.h"
+#include "Renderer/Compute/ParallelSegmentedPrefixScan.h"
 
 #include <memory>
 
