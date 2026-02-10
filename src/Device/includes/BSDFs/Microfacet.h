@@ -455,7 +455,7 @@ HIPRT_DEVICE static float3 GGX_VNDF_sample(const float3 local_view_direction, fl
 	t2		  = (1.0f - s) * hippt::sqrt(1.0f - t1 * t1) + s * t2;
 
 	// Sampling the hemisphere
-	float3 Nh = t1 * T1 + t2 * T2 + sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
+	float3 Nh = t1 * T1 + t2 * T2 + hippt::sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
 	// Un-stretching back to our ellipsoid
 	return hippt::normalize(float3{ alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z) });

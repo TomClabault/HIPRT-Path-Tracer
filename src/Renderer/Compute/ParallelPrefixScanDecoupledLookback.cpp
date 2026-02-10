@@ -137,7 +137,7 @@ void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiC
 			if (output[j] != expected_output[j])
 			{
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-										"ParallelPrefixScanDecoupledLookback unit test failed for test %d at index %d (size=%u): got %u, expected %u", i, j,
+										"ParallelPrefixScanDecoupledLookback unit test failed for test %d at index %lld (size=%u): got %u, expected %u", i, j,
 										test_size, output[j], expected_output[j]);
 				break;
 			}

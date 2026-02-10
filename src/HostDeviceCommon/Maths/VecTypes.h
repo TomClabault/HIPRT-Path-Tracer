@@ -18,7 +18,7 @@ struct math_vector
 template <typename T>
 struct math_vector<T, 2>
 {
-	math_vector<T, 2>() = default;
+	math_vector() = default;
 	constexpr math_vector<T, 2>(T x_, T y_) : x(x_), y(y_) {}
 	constexpr math_vector<T, 2>(const hiprt::Vector<T, 2>& v) : x(v.x), y(v.y) {}
 
@@ -70,7 +70,7 @@ struct math_vector<T, 2>
 template <typename T>
 struct math_vector<T, 3>
 {
-	math_vector<T, 3>() = default;
+	math_vector() = default;
 	constexpr math_vector<T, 3>(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
 	constexpr math_vector<T, 3>(const hiprt::Vector<T, 3>& v) : x(v.x), y(v.y), z(v.z) {}
 
@@ -127,7 +127,7 @@ struct math_vector<T, 3>
 template <typename T>
 struct math_vector<T, 4>
 {
-	math_vector<T, 4>() = default;
+	math_vector() = default;
 	constexpr math_vector<T, 4>(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
 	constexpr math_vector<T, 4>(const hiprt::Vector<T, 4>& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
 

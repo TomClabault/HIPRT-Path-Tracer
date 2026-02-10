@@ -171,7 +171,7 @@ void ParallelSegmentedPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hipr
 			if (output[j] != expected_output[j])
 			{
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-										"ParallelSegmentedPrefixScan unit test failed for test %d at index %d (size=%u): got %u, expected %u", i, j, test_size,
+										"ParallelSegmentedPrefixScan unit test failed for test %d at index %lld (size=%u): got %u, expected %u", i, j, test_size,
 										output[j], expected_output[j]);
 
 				std::terminate();
