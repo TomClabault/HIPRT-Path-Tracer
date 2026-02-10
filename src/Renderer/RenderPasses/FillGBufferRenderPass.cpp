@@ -11,7 +11,7 @@
 #include <memory>
 
 const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME = "Fill G-Buffer Render Pass";
-const std::string FillGBufferRenderPass::FILL_GBUFFER_KERNEL = "Fill G-Buffer";
+const std::string FillGBufferRenderPass::FILL_GBUFFER_KERNEL		   = "Fill G-Buffer";
 
 FillGBufferRenderPass::FillGBufferRenderPass() : FillGBufferRenderPass(nullptr) {}
 FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer) : RenderPass(renderer, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
@@ -21,8 +21,10 @@ FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer) : RenderPass
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/CameraRays.h");
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_function_name("CameraRays");
-	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->synchronize_options_with(m_renderer->get_global_compiler_options(), GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->synchronize_options_with(m_renderer->get_global_compiler_options(),
+																					GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
+																								KERNEL_OPTION_TRUE);
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 }
 
@@ -39,7 +41,8 @@ void FillGBufferRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi
 	m_ray_volume_state_byte_size_kernel->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h");
 	m_ray_volume_state_byte_size_kernel->set_kernel_function_name("RayVolumeStateSize");
 	m_ray_volume_state_byte_size_kernel->synchronize_options_with(m_renderer->get_global_compiler_options(), GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	ThreadManager::start_serial_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, m_ray_volume_state_byte_size_kernel, hiprt_orochi_ctx, std::ref(func_name_sets));
+	ThreadManager::start_serial_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent,
+									   m_ray_volume_state_byte_size_kernel, hiprt_orochi_ctx, std::vector<hiprtFuncNameSet>());
 
 	RenderPass::compile(hiprt_orochi_ctx, func_name_sets);
 }
@@ -92,7 +95,8 @@ bool FillGBufferRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 
 	void* launch_args[] = { &render_data };
 
-	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x,
+																			   m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	return true;
 }
@@ -108,9 +112,9 @@ void FillGBufferRenderPass::update_render_data()
 		render_data.g_buffer_prev_frame = m_g_buffer_prev_frame.get_device_g_buffer();
 	else
 	{
-		render_data.g_buffer_prev_frame.materials = nullptr;
-		render_data.g_buffer_prev_frame.geometric_normals = nullptr;
-		render_data.g_buffer_prev_frame.shading_normals = nullptr;
+		render_data.g_buffer_prev_frame.materials			 = nullptr;
+		render_data.g_buffer_prev_frame.geometric_normals	 = nullptr;
+		render_data.g_buffer_prev_frame.shading_normals		 = nullptr;
 		render_data.g_buffer_prev_frame.primary_hit_position = nullptr;
 	}
 }
@@ -124,9 +128,12 @@ size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
 
 	void* launch_args[] = { &out_size_buffer_pointer };
 	m_ray_volume_state_byte_size_kernel->launch_synchronous(1, 1, 1, 1, launch_args, 0);
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(0));
 
 	size_t size = out_size_buffer.download_data()[0];
+	if (size > sizeof(RayVolumeState) * 2)
+		// That's too much of a difference, there must be an issue
+		Debug::debugbreak();
+
 	return size;
 }
 

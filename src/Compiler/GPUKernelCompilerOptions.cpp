@@ -10,12 +10,14 @@
 
 #include <cassert>
 
- /**
-  * Defining the strings that go with the option so that they can be passed to the shader compiler
-  * with the -D<string>=<value> option.
-  *
-  * The strings used here must match the ones used in KernelOptions.h
-  */
+/**
+ * Defining the strings that go with the option so that they can be passed to the shader compiler
+ * with the -D<string>=<value> option.
+ *
+ * The strings used here must match the ones used in KernelOptions.h
+ */
+
+// clang-format off
 const std::string GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL = "UseSharedStackBVHTraversal";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE = "SharedStackBVHTraversalSize";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "KernelWorkgroupThreadCount";
@@ -24,6 +26,8 @@ const std::string GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N = "DisplayOnly
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE = "PrincipledBSDFDiffuseLobe";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION = "PrincipledBSDFDoEnergyCompensation";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE = "PrincipledBSDFEnergyCompensationMode";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES = "PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION = "PrincipledBSDFDoGlassEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION = "PrincipledBSDFDoClearcoatEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION = "PrincipledBSDFDoMetallicEnergyCompensation";
@@ -127,6 +131,8 @@ const std::string GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMP
 
 const std::string GPUKernelCompilerOptions::GMON_M_SETS_COUNT = "GMoNMSetsCount";
 
+// clang-format on
+
 const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
@@ -136,6 +142,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::BSDF_OVERRIDE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION,
@@ -147,7 +155,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_DIFFUSE_LUMINANCE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION,
-	GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC ,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
 
@@ -244,6 +252,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 {
 	// Mandatory options that every kernel must have so we're
 	// adding them here with their default values
+
+	// clang-format off
 	m_options_macro_map[GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL] = std::make_shared<int>(UseSharedStackBVHTraversal);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE] = std::make_shared<int>(SharedStackBVHTraversalSize);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(KernelWorkgroupThreadCount);
@@ -252,6 +262,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = std::make_shared<int>(BSDFOverride);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE] = std::make_shared<int>(PrincipledBSDFDiffuseLobe);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoEnergyCompensation);
+	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE] = std::make_shared<int>(PrincipledBSDFEnergyCompensationMode);
+	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES] = std::make_shared<int>(PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoGlassEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoClearcoatEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoMetallicEnergyCompensation);
@@ -354,6 +366,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_GI_DO_OPTIMAL_VISIBILITY_SAMPLING] = std::make_shared<int>(ReSTIR_GI_DoOptimalVisibilitySampling);
 
 	m_options_macro_map[GPUKernelCompilerOptions::GMON_M_SETS_COUNT] = std::make_shared<int>(GMoNMSetsCount);
+	// clang-format on
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
 	if (GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() != m_options_macro_map.size())
@@ -368,7 +381,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions(const GPUKernelCompilerOption
 GPUKernelCompilerOptions& GPUKernelCompilerOptions::operator=(const GPUKernelCompilerOptions& other)
 {
 	m_options_macro_map = other.m_options_macro_map;
-	m_custom_macro_map = other.m_custom_macro_map;
+	m_custom_macro_map	= other.m_custom_macro_map;
 
 	return *this;
 }

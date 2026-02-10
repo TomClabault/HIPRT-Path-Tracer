@@ -6,9 +6,9 @@
 #ifndef DEVICE_INCLUDES_PATH_TRACING_H
 #define DEVICE_INCLUDES_PATH_TRACING_H
 
-#include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
+#include "Device/includes/LightSampling/Envmap.h"
 #include "Device/includes/LightSampling/LightClamping.h"
 #include "Device/includes/RussianRoulette.h"
 
@@ -262,8 +262,10 @@ HIPRT_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_da
 	}
 }
 
-HIPRT_DEVICE void
-path_tracing_accumulate_debug_view_color(const HIPRTRenderData& render_data, RayPayload& ray_payload, int pixel_index, Xorshift32Generator& rng)
+HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData& render_data,
+														   RayPayload& ray_payload,
+														   int pixel_index,
+														   Xorshift32Generator& rng)
 {
 #if ViewportColorOverriden == 1
 	// Modifying the ray color such that we display some debug color to the screen

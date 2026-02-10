@@ -45,11 +45,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline TraceTest(HIPRTRenderData render_data, int2
 
 #ifdef __KERNELCC__
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
-#if SharedStackBVHTraversalSize > 0
-	hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
-#else
-	hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
-#endif
+	DECLARE_SHARED_STACK_BUFFER;
+
 	hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
 	hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault);

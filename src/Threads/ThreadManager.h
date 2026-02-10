@@ -7,6 +7,7 @@
 #define THREAD_MANAGER_H
 
 #include <deque>
+#include <format>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -18,6 +19,8 @@
 
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
+
+static std::mutex DEBUGlog_mutex;
 
 extern ImGuiLogger g_imgui_logger;
 
@@ -39,6 +42,8 @@ extern ImGuiLogger g_imgui_logger;
 class ThreadManager
 {
 public:
+	static std::unordered_map<std::string, unsigned int> DEBUGstarted_count;
+
 	static std::string COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY;
 	static std::string COMPILE_NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_KERNEL_KEY;
 	static std::string COMPILE_KERNELS_THREAD_KEY;
@@ -94,8 +99,14 @@ public:
 				bool empty = m_threads_map[key].empty();
 			}
 			else
+			{
+				{
+					std::lock_guard<std::mutex> lock(DEBUGlog_mutex);
+					DEBUGstarted_count[key]++;
+				}
 				// Starting the thread and adding it to the list of threads for the given key
 				m_threads_map[key].push_back(std::thread(function, args...));
+			}
 		}
 	}
 
@@ -125,8 +136,8 @@ public:
 
 			for (std::thread& thread : find->second)
 			{
-				// TODO: This is just for debugging. 
-				// There seems to be some very rare bug in the ThreadManager where sometimes, 
+				// TODO: This is just for debugging.
+				// There seems to be some very rare bug in the ThreadManager where sometimes,
 				// we're trying to join (with thread.join()) below a thread that has a NULL
 				// handle from the 'ParseEmissiveTrianglesKey' thread key
 				//
@@ -143,7 +154,8 @@ public:
 		}
 		else
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to joing threads with key \"%s\" but no threads have been started with this key.", key.c_str());
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+									"Trying to joing threads with key \"%s\" but no threads have been started with this key.", key.c_str());
 
 			return;
 		}
@@ -157,6 +169,20 @@ public:
 	 */
 	static void join_all_threads(const std::unordered_set<std::string>& exceptions = {})
 	{
+		unsigned int max_key_len = 0;
+		for (const auto& [key, thread] : m_threads_map)
+			max_key_len = std::max(max_key_len, (unsigned int)key.size());
+
+		std::cout << "Join map: [" << std::endl;
+		for (const auto& [key, thread] : m_threads_map)
+		{
+			std::lock_guard<std::mutex> lock(DEBUGlog_mutex);
+
+			std::string name_string = DEBUGstarted_count.find(key) != DEBUGstarted_count.end() ? std::to_string(DEBUGstarted_count.at(key)) : std::string("X");
+			std::cout << std::format("\t{:<{}} : {}\n", key, max_key_len, name_string);
+		}
+		std::cout << "]" << std::endl;
+
 		// Joining all the threads and their dependencies
 		for (const auto& key_to_threads : m_threads_map)
 		{
@@ -221,7 +247,8 @@ public:
 
 private:
 	template <class _Fn, class... _Args>
-	static void start_with_dependencies(const std::unordered_set<std::string>& dependencies, const std::string& thread_key_to_start, _Fn function, _Args... args)
+	static void
+	start_with_dependencies(const std::unordered_set<std::string>& dependencies, const std::string& thread_key_to_start, _Fn function, _Args... args)
 	{
 		// These threads have a dependency
 
@@ -236,13 +263,19 @@ private:
 		else
 		{
 			// Starting a thread that will wait for the dependencies before calling the given function
-			m_threads_map[thread_key_to_start].push_back(std::thread([thread_key_to_start, dependencies, function, args...]()
-				{
-					wait_for_dependencies(dependencies);
+			m_threads_map[thread_key_to_start].push_back(std::thread(
+									[thread_key_to_start, dependencies, function, args...]()
+									{
+										{
+											std::lock_guard<std::mutex> lock(DEBUGlog_mutex);
+											DEBUGstarted_count[thread_key_to_start]++;
+										}
 
-					std::thread function_thread(function, args...);
-					function_thread.join();
-				}));
+										wait_for_dependencies(dependencies);
+
+										std::thread function_thread(function, args...);
+										function_thread.join();
+									}));
 		}
 	}
 

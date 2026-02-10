@@ -20,54 +20,54 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-#if SharedStackBVHTraversalSize > 0
- // This if is necessary to avoid declaring 0 size arrays if the
- // shared stack traversal sizes are 0
-__shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * KernelWorkgroupThreadCount];
-#endif
-
-//#define __KERNELCC__
-
 #ifdef __KERNELCC__
 
+// This #if is necessary to avoid declaring 0 size arrays if the
+// shared stack traversal sizes are 0
 #if SharedStackBVHTraversalSize > 0
-#define DECLARE_SHARED_STACK_BUFFER shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache }
+#define DECLARE_SHARED_STACK_BUFFER                                                                                                                            \
+	__shared__ int shared_stack_cache[SharedStackBVHTraversalSize * KernelWorkgroupThreadCount];                                                               \
+	hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSize, shared_stack_cache }
 #else
-#define DECLARE_SHARED_STACK_BUFFER shared_stack_buffer{ 0, nullptr }
+#define DECLARE_SHARED_STACK_BUFFER                                                                                                                            \
+	shared_stack_buffer { 0, nullptr }
 #endif
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
-#define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom) hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal_variable_name(GPU_BVH_hiprtGeom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0)
-#define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom) hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal_variable_name(GPU_BVH_hiprtGeom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0)
+#define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                      \
+	hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal_variable_name(GPU_BVH_hiprtGeom, ray, global_stack, hiprtTraversalHintDefault, &payload,  \
+																				   render_data.hiprt_function_table, 0)
+#define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                          \
+	hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal_variable_name(GPU_BVH_hiprtGeom, ray, global_stack, hiprtTraversalHintDefault, &payload,   \
+																				  render_data.hiprt_function_table, 0)
 #else
-#define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom) hiprtGeomTraversalClosest traversal_variable_name(GPU_BVH_hiprtGeom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom) hiprtGeomTraversalAnyHit traversal_variable_name(GPU_BVH_hiprtGeom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+#define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                      \
+	hiprtGeomTraversalClosest traversal_variable_name(GPU_BVH_hiprtGeom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+#define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)                                                                          \
+	hiprtGeomTraversalAnyHit traversal_variable_name(GPU_BVH_hiprtGeom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif
 
-#define DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator)   \
-  /* Payload for the alpha testing filter function */                                                               \
-  FilterFunctionPayload payload;                                                                                    \
-  payload.render_data = &render_data;                                                                               \
-  payload.random_number_generator = &random_number_generator;                                                       \
-  /* Filling the payload with the last hit primitive index to avoid self intersections */                           \
-  /* (avoid that the ray intersects the triangle it is currently sitting on) */                                     \
-  payload.last_hit_primitive_index = last_hit_primitive_index;                                                      \
-  payload.simplified_light_ray = GPU_BVH_hiprtGeom == render_data.light_GPU_BVH;                                    \
-  payload.bounce = bounce;                                                                                          \
-                                                                                                                    \
-  hiprtSharedStackBuffer DECLARE_SHARED_STACK_BUFFER;                                                               \
-  hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer)
+#define DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator)                           \
+	/* Payload for the alpha testing filter function */                                                                                                        \
+	FilterFunctionPayload payload;                                                                                                                             \
+	payload.render_data				= &render_data;                                                                                                            \
+	payload.random_number_generator = &random_number_generator;                                                                                                \
+	/* Filling the payload with the last hit primitive index to avoid self intersections */                                                                    \
+	/* (avoid that the ray intersects the triangle it is currently sitting on) */                                                                              \
+	payload.last_hit_primitive_index = last_hit_primitive_index;                                                                                               \
+	payload.simplified_light_ray	 = GPU_BVH_hiprtGeom == render_data.light_GPU_BVH;                                                                         \
+	payload.bounce					 = bounce;                                                                                                                 \
+                                                                                                                                                               \
+	DECLARE_SHARED_STACK_BUFFER;                                                                                                                               \
+	hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer)
 
+#define DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator)   \
+	DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator);                              \
+	CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)
 
-
-
-#define DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator) \
-  DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator);                              \
-  CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)
-
-#define DECLARE_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator) \
-  DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator);                          \
-  CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)
+#define DECLARE_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator)       \
+	DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, GPU_BVH_hiprtGeom, ray, last_hit_primitive_index, random_number_generator);                              \
+	CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, GPU_BVH_hiprtGeom)
 
 #endif
 
@@ -75,7 +75,12 @@ __shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * KernelWor
  *
  * [1] [Foundations of Game Engine Development: Rendering - Tangent/Bitangent calculation] http://foundationsofgameenginedev.com/#fged2
  */
-HIPRT_DEVICE float3 normal_mapping(const HIPRTRenderData& render_data, int normal_map_texture_index, TriangleIndices triangle_vertex_indices, TriangleTexcoords& texcoords, const float2& interpolated_texcoords, const float3& surface_normal)
+HIPRT_DEVICE float3 normal_mapping(const HIPRTRenderData& render_data,
+								   int normal_map_texture_index,
+								   TriangleIndices triangle_vertex_indices,
+								   TriangleTexcoords& texcoords,
+								   const float2& interpolated_texcoords,
+								   const float3& surface_normal)
 {
 	// Calculating tangents and bitangents aligned with texture U and V coordinates
 	float2 P0_texcoords = texcoords.x;
@@ -94,11 +99,11 @@ HIPRT_DEVICE float3 normal_mapping(const HIPRTRenderData& render_data, int norma
 
 	// To counter degenerate UVs
 	constexpr float det_bias = 1.0e-6f;
-	float det = delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x + det_bias;
+	float det				 = delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x + det_bias;
 	// Check if the det isn't too low to avoid degenerate geometries that can then cause NaNs
 	float det_inverse = 1.0f / det;
-	float3 T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
-	float3 B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
+	float3 T		  = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
+	float3 B		  = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
 	if (hippt::length2(T) < 1.0e-6f || hippt::length2(B) < 1.0e-6f)
 		// The tangent or the bitangent is degenerate
 		return surface_normal;
@@ -112,7 +117,13 @@ HIPRT_DEVICE float3 normal_mapping(const HIPRTRenderData& render_data, int norma
 	return local_to_world_frame(hippt::normalize(T), hippt::normalize(B), surface_normal, normal_tangent_space);
 }
 
-HIPRT_DEVICE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, TriangleIndices triangle_vertex_indices, TriangleTexcoords triangle_texcoords, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
+HIPRT_DEVICE float3 get_shading_normal(const HIPRTRenderData& render_data,
+									   const float3& geometric_normal,
+									   TriangleIndices triangle_vertex_indices,
+									   TriangleTexcoords triangle_texcoords,
+									   int primitive_index,
+									   const float2& uv,
+									   const float2& interpolated_texcoords)
 {
 	if (!render_data.render_settings.do_normal_mapping)
 		return geometric_normal;
@@ -126,10 +137,11 @@ HIPRT_DEVICE float3 get_shading_normal(const HIPRTRenderData& render_data, const
 		surface_normal = geometric_normal;
 
 	// Do normal mapping if we have a normal map
-	int material_index = render_data.buffers.material_indices[primitive_index];
+	int material_index							= render_data.buffers.material_indices[primitive_index];
 	unsigned short int normal_map_texture_index = render_data.buffers.materials_buffer_soa.get_normal_map_texture_index(material_index);
 	if (normal_map_texture_index != MaterialConstants::NO_TEXTURE)
-		surface_normal = normal_mapping(render_data, normal_map_texture_index, triangle_vertex_indices, triangle_texcoords, interpolated_texcoords, surface_normal);
+		surface_normal = normal_mapping(render_data, normal_map_texture_index, triangle_vertex_indices, triangle_texcoords, interpolated_texcoords,
+										surface_normal);
 
 	return surface_normal;
 }
@@ -168,7 +180,8 @@ HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3& view_d
 
 		constexpr float epsilon = 0.01f;
 
-		perfect_reflected_direction -= hippt::normalize((hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) - epsilon) * hit_info.geometric_normal);
+		perfect_reflected_direction -=
+								hippt::normalize((hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) - epsilon) * hit_info.geometric_normal);
 
 		// The new shading normal is the half vector between the pulled up reflected direction
 		// and the view direction
@@ -178,11 +191,15 @@ HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3& view_d
 
 #ifndef __KERNELCC__
 #include "Renderer/BVH.h"
-HIPRT_DEVICE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, BVH* bvh, const hiprtRay& ray, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data,
+										  BVH* bvh,
+										  const hiprtRay& ray,
+										  int last_hit_primitive_index,
+										  Xorshift32Generator& random_number_generator)
 {
 	FilterFunctionPayload filter_function_payload;
-	filter_function_payload.simplified_light_ray = bvh == render_data.cpu_only.light_bvh;
-	filter_function_payload.render_data = &render_data;
+	filter_function_payload.simplified_light_ray	= bvh == render_data.cpu_only.light_bvh;
+	filter_function_payload.render_data				= &render_data;
 	filter_function_payload.random_number_generator = &random_number_generator;
 	// Filling the payload with the last hit primitive index to avoid self intersections
 	// (avoid that the ray intersects the triangle it is currently sitting on)
@@ -198,7 +215,13 @@ HIPRT_DEVICE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, BV
 /**
  * Returns true if a hit was found, false otherwise
  */
-HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
+									  hiprtRay ray,
+									  RayPayload& in_out_ray_payload,
+									  HitInfo& out_hit_info,
+									  int last_hit_primitive_index,
+									  int bounce,
+									  Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
 	if (render_data.GPU_BVH == nullptr)
@@ -222,22 +245,24 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtR
 			return false;
 
 		TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, hit.primID);
-		TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+		TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
 
-		out_hit_info.inter_point = ray.origin + hit.t * ray.direction;
+		out_hit_info.inter_point	 = ray.origin + hit.t * ray.direction;
 		out_hit_info.primitive_index = hit.primID;
-		out_hit_info.texcoords = uv_interpolate(triangle_texcoords, hit.uv);
+		out_hit_info.texcoords		 = uv_interpolate(triangle_texcoords, hit.uv);
 		// TODO hit.normal is in object space, this simple approach will not work if using
 		// multiple-levels BVH (TLAS/BLAS). We'll have to  transform by the BLAS transform
 		out_hit_info.geometric_normal = hippt::normalize(hit.normal);
-		out_hit_info.shading_normal = get_shading_normal(render_data, out_hit_info.geometric_normal, triangle_vertex_indices, triangle_texcoords, hit.primID, hit.uv, out_hit_info.texcoords);
-		out_hit_info.t = hit.t;
+		out_hit_info.shading_normal	  = get_shading_normal(render_data, out_hit_info.geometric_normal, triangle_vertex_indices, triangle_texcoords, hit.primID,
+														   hit.uv, out_hit_info.texcoords);
+		out_hit_info.t				  = hit.t;
 
-		int material_index = render_data.buffers.material_indices[hit.primID];
+		int material_index			= render_data.buffers.material_indices[hit.primID];
 		in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
 		skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
-			in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
+								in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index,
+								in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
 
 		if (in_out_ray_payload.volume_state.inside_material)
 			// If we're traveling inside a volume, accumulating the distance for Beer's law
@@ -257,7 +282,8 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtR
 
 	} while ((skipping_volume_boundary && hit.hasHit()));
 
-	if (in_out_ray_payload.material.dispersion_scale > 0.0f && in_out_ray_payload.material.specular_transmission > 0.0f && in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
+	if (in_out_ray_payload.material.dispersion_scale > 0.0f && in_out_ray_payload.material.specular_transmission > 0.0f &&
+		in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
 		// If we hit a dispersive material, we sample the wavelength that will be used
 		// for computing the wavelength dependent IORs used for dispersion
 		//
@@ -274,7 +300,12 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data, hiprtR
  * Returns true if in shadow (a hit was found before 't_max' distance)
  * Returns false if unoccluded
  */
-HIPRT_DEVICE bool evaluate_shadow_ray_occluded(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool evaluate_shadow_ray_occluded(const HIPRTRenderData& render_data,
+											   hiprtRay ray,
+											   float t_max,
+											   int last_hit_primitive_index,
+											   int bounce,
+											   Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
 	if (render_data.GPU_BVH == nullptr)
@@ -331,17 +362,23 @@ HIPRT_DEVICE bool evaluate_shadow_ray_occluded(const HIPRTRenderData& render_dat
  * This function also uses NEE++ if enabled in the kernel options and this
  * function can update the visibility map of NEE++ if enabled in 'render_data.nee_plus_plus'
  */
-HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator, int bounce)
+HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data,
+													hiprtRay ray,
+													float t_max,
+													int last_hit_primitive_index,
+													NEEPlusPlusContext& nee_plus_plus_context,
+													Xorshift32Generator& random_number_generator,
+													int bounce)
 {
 #if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
 	bool shadow_ray_discarded = false;
-	bool shadow_ray_occluded = false;
+	bool shadow_ray_occluded  = false;
 
 	if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
 		// Updating the statistics
 		hippt::atomic_fetch_add(render_data.nee_plus_plus.total_shadow_ray_queries, 1ull);
 
-	bool nee_plus_plus_envmap_rr_disabled = nee_plus_plus_context.envmap && !render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_envmap;
+	bool nee_plus_plus_envmap_rr_disabled	 = nee_plus_plus_context.envmap && !render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_envmap;
 	bool nee_plus_plus_emissives_rr_disabled = !nee_plus_plus_context.envmap && !render_data.nee_plus_plus.m_enable_nee_plus_plus_RR_for_emissives;
 	if (nee_plus_plus_envmap_rr_disabled || nee_plus_plus_emissives_rr_disabled)
 	{
@@ -352,7 +389,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
 			// Updating the statistics
 			hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1ull);
 
-		shadow_ray_occluded = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
+		shadow_ray_occluded	 = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
 		shadow_ray_discarded = false;
 	}
 
@@ -363,7 +400,8 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
 	unsigned int seed_before = random_number_generator.m_state.seed;
 
 	unsigned int nee_plus_plus_hash_grid_cell_index;
-	float visible_probability = nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, render_data.current_camera, nee_plus_plus_hash_grid_cell_index);
+	float visible_probability = nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(
+							nee_plus_plus_context, render_data.current_camera, nee_plus_plus_hash_grid_cell_index);
 	bool likely_visible = random_number_generator() < visible_probability;
 
 	if (likely_visible)
@@ -373,7 +411,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
 			hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1ull);
 
 		// The shadow ray is likely visible, testing with a shadow ray
-		shadow_ray_occluded = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
+		shadow_ray_occluded	 = evaluate_shadow_ray_occluded(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
 		shadow_ray_discarded = false;
 
 		if (render_data.nee_plus_plus.m_update_visibility_map)
@@ -407,7 +445,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
 	uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 
-	uint32_t seed = blockIdx.x + blockIdx.y * gridDim.x + 1 + (threadIdx.y >= 4) * 1;
+	uint32_t seed		 = blockIdx.x + blockIdx.y * gridDim.x + 1 + (threadIdx.y >= 4) * 1;
 	uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
 	Xorshift32Generator color_random(wang_hash(seed));
@@ -432,7 +470,13 @@ HIPRT_DEVICE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data
  *
  * Returns true if a hit was found, false otherwise
  */
-HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, BSDFLightSampleRayHitInfo& out_light_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderData& render_data,
+															hiprtRay ray,
+															float t_max,
+															BSDFLightSampleRayHitInfo& out_light_hit_info,
+															int last_hit_primitive_index,
+															int bounce,
+															Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
 	if (render_data.light_GPU_BVH == nullptr)
@@ -453,13 +497,13 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	// alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
 
 	// Reading the emission of the material
-	int global_triangle_index = render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures[shadow_ray_hit.primID];
-	int material_index = render_data.buffers.material_indices[global_triangle_index];
+	int global_triangle_index  = render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures[shadow_ray_hit.primID];
+	int material_index		   = render_data.buffers.material_indices[global_triangle_index];
 	int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
 
 	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, global_triangle_index);
-	TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-	float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+	float2 interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 	if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
@@ -468,11 +512,12 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
 
 	out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
-	out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, global_triangle_index, shadow_ray_hit.uv, interpolated_texcoords);
-	out_light_hit_info.hit_geometric_normal = hippt::normalize(shadow_ray_hit.normal);
-	out_light_hit_info.hit_prim_index = global_triangle_index;
-	out_light_hit_info.hit_material_index = material_index;
-	out_light_hit_info.hit_distance = shadow_ray_hit.t;
+	out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
+																	   triangle_texcoords, global_triangle_index, shadow_ray_hit.uv, interpolated_texcoords);
+	out_light_hit_info.hit_geometric_normal		  = hippt::normalize(shadow_ray_hit.normal);
+	out_light_hit_info.hit_prim_index			  = global_triangle_index;
+	out_light_hit_info.hit_material_index		  = material_index;
+	out_light_hit_info.hit_distance				  = shadow_ray_hit.t;
 
 	return true;
 #else
@@ -511,12 +556,12 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	{
 		// If we found a hit and that it is close enough (hit_found conditions)
 
-		int material_index = render_data.buffers.material_indices[global_triangle_index_hit];
+		int material_index		   = render_data.buffers.material_indices[global_triangle_index_hit];
 		int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
 
 		TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, global_triangle_index_hit);
-		TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-		float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+		TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+		float2 interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 		if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 			out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
@@ -524,11 +569,12 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 			out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
 
 		out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
-		out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, global_triangle_index_hit, shadow_ray_hit.uv, interpolated_texcoords);
-		out_light_hit_info.hit_geometric_normal = hippt::normalize(shadow_ray_hit.normal);
-		out_light_hit_info.hit_prim_index = global_triangle_index_hit;
-		out_light_hit_info.hit_material_index = material_index;
-		out_light_hit_info.hit_distance = cumulative_t;
+		out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
+																		   triangle_texcoords, global_triangle_index_hit, shadow_ray_hit.uv, interpolated_texcoords);
+		out_light_hit_info.hit_geometric_normal		  = hippt::normalize(shadow_ray_hit.normal);
+		out_light_hit_info.hit_prim_index			  = global_triangle_index_hit;
+		out_light_hit_info.hit_material_index		  = material_index;
+		out_light_hit_info.hit_distance				  = cumulative_t;
 
 		return true;
 	}
@@ -542,7 +588,13 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
  *
  * Also, if a hit was found, outputs the emission of the material at the hit point in 'out_hit_emission'
  */
-HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, BSDFLightSampleRayHitInfo& out_light_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_data,
+												 hiprtRay ray,
+												 float t_max,
+												 BSDFLightSampleRayHitInfo& out_light_hit_info,
+												 int last_hit_primitive_index,
+												 int bounce,
+												 Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
 	if (render_data.GPU_BVH == nullptr)
@@ -563,12 +615,12 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 	// alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
 
 	// Reading the emission of the material
-	int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
+	int material_index		   = render_data.buffers.material_indices[shadow_ray_hit.primID];
 	int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
 
 	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
-	TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-	float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+	float2 interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 	if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
@@ -577,11 +629,12 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 		out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
 
 	out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
-	out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
-	out_light_hit_info.hit_geometric_normal = hippt::normalize(shadow_ray_hit.normal);
-	out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
-	out_light_hit_info.hit_material_index = material_index;
-	out_light_hit_info.hit_distance = shadow_ray_hit.t;
+	out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
+																	   triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
+	out_light_hit_info.hit_geometric_normal		  = hippt::normalize(shadow_ray_hit.normal);
+	out_light_hit_info.hit_prim_index			  = shadow_ray_hit.primID;
+	out_light_hit_info.hit_material_index		  = material_index;
+	out_light_hit_info.hit_distance				  = shadow_ray_hit.t;
 
 	return true;
 #else
@@ -617,12 +670,12 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 	{
 		// If we found a hit and that it is close enough (hit_found conditions)
 
-		int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
+		int material_index		   = render_data.buffers.material_indices[shadow_ray_hit.primID];
 		int emission_texture_index = render_data.buffers.materials_buffer_soa.get_emission_texture_index(material_index);
 
 		TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
-		TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-		float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+		TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+		float2 interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 		if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 			out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
@@ -630,11 +683,12 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 			out_light_hit_info.hit_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
 
 		out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
-		out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
-		out_light_hit_info.hit_geometric_normal = hippt::normalize(shadow_ray_hit.normal);
-		out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
-		out_light_hit_info.hit_material_index = material_index;
-		out_light_hit_info.hit_distance = cumulative_t;
+		out_light_hit_info.hit_shading_normal		  = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices,
+																		   triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
+		out_light_hit_info.hit_geometric_normal		  = hippt::normalize(shadow_ray_hit.normal);
+		out_light_hit_info.hit_prim_index			  = shadow_ray_hit.primID;
+		out_light_hit_info.hit_material_index		  = material_index;
+		out_light_hit_info.hit_distance				  = cumulative_t;
 
 		return true;
 	}
@@ -643,26 +697,32 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 #endif // __KERNELCC__
 }
 
-HIPRT_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data, hiprtRay ray, int last_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data,
+										 hiprtRay ray,
+										 int last_primitive_index,
+										 Xorshift32Generator& random_number_generator)
 {
 	hiprtHit hit;
 
 #ifdef __KERNELCC__
 	// Payload for the alpha testing filter function
 	FilterFunctionPayload payload;
-	payload.render_data = &render_data;
-	payload.random_number_generator = &random_number_generator;
+	payload.render_data				 = &render_data;
+	payload.random_number_generator	 = &random_number_generator;
 	payload.last_hit_primitive_index = last_primitive_index;
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSize > 0
-	hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
+	// This if is necessary to avoid declaring 0 size arrays if the
+	// shared stack traversal sizes are 0
+	DECLARE_SHARED_STACK_BUFFER;
 #else
 	hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
 #endif
 	hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-	hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+	hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload,
+																	 render_data.hiprt_function_table, 0);
 #else
 	hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif

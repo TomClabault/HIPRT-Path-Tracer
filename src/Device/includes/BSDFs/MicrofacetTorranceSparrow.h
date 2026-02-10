@@ -3,69 +3,13 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_BSDF_MICROFACET_H
-#define DEVICE_BSDF_MICROFACET_H
+#ifndef DEVICE_INCLUDES_BSDF_MICROFACET_TORRANCE_SPARROW_H
+#define DEVICE_INCLUDES_BSDF_MICROFACET_TORRANCE_SPARROW_H
 
-#include "Device/includes/Sampling.h"
+#include "Device/includes/BSDFs/MicrofacetCommon.h"
 #include "Device/includes/BSDFs/MicrofacetEnergyCompensation.h"
-
-// Clamping value for dot products when evaluating the GGX distribution
-// This helps with fireflies due to numerical imprecisions
-//
-// 1.0e-4f seems indistinguishable from 1.0e-8f (which is closer to
-// "ground truth" since we're not clamping as hard) except that 1.0e-8f
-// has a bunch of fireflies / is not very stable at all.
-//
-// So even though 1.0e-4f may seem a bit harsh, it's actually fine
-#define GGX_DOT_PRODUCTS_CLAMP 1.0e-4f
-
-/**
- * Evaluates the GGX anisotropic normal distribution function
- */
-HIPRT_DEVICE static float GGX_anisotropic(float alpha_x, float alpha_y, const float3& local_microfacet_normal)
-{
-	float denom = (local_microfacet_normal.x * local_microfacet_normal.x) / (alpha_x * alpha_x) +
-				  (local_microfacet_normal.y * local_microfacet_normal.y) / (alpha_y * alpha_y) + (local_microfacet_normal.z * local_microfacet_normal.z);
-
-	return 1.0f / (hippt::M_Pi * alpha_x * alpha_y * denom * denom);
-}
-
-/**
- * Evaluates the visible normal distribution function with GGX as
- * the normal disitrbution function
- *
- * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
- * Equation 3
- */
-HIPRT_DEVICE static float GGX_anisotropic_vndf(float D, float G1V, const float3& local_view_direction, const float3& local_microfacet_normal)
-{
-	float HoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::dot(local_view_direction, local_microfacet_normal));
-	return G1V * D * HoL / local_view_direction.z;
-}
-
-/**
- * Lambda function for the denominator of the G1 Smith masking/shadowing functions
- */
-HIPRT_DEVICE static float G1_Smith_lambda(float alpha_x, float alpha_y, const float3& local_direction)
-{
-	float ax = local_direction.x * alpha_x;
-	float ay = local_direction.y * alpha_y;
-
-	return (-1.0f + sqrt(1.0f + (ax * ax + ay * ay) / (local_direction.z * local_direction.z))) * 0.5f;
-}
-
-/**
- * G1 Smith masking/shadowing (depending on whether local_direction is wo or wi) function
- *
- * Reference: [Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs, Heitz, 2014]
- * Equation 43
- */
-HIPRT_DEVICE static float G1_Smith(float alpha_x, float alpha_y, const float3& local_direction)
-{
-	float lambda = G1_Smith_lambda(alpha_x, alpha_y, local_direction);
-
-	return 1.0f / (1.0f + lambda);
-}
+#include "Device/includes/BSDFs/MicrofacetMultipleScatteringCui2023.h"
+#include "Device/includes/Sampling.h"
 
 /**
  * 'incident_light_direction_is_from_GGX_sample' should be true if the 'local_to_light_direction' given comes from
@@ -76,16 +20,19 @@ HIPRT_DEVICE static float G1_Smith(float alpha_x, float alpha_y, const float3& l
  */
 template <bool useMultipleScatteringEnergyCompensation>
 HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRenderData& render_data,
+																  const DeviceUnpackedEffectiveMaterial& material,
 																  float material_roughness,
 																  float material_anisotropy,
-																  bool material_do_energy_compensation,
+																  float incident_ior,
+																  bool do_energy_compensation,
 																  const ColorRGB32F& F,
 																  const float3& local_view_direction,
 																  const float3& local_to_light_direction,
 																  const float3& local_halfway_vector,
 																  float& out_pdf,
 																  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
-																  int current_bounce)
+																  int current_bounce,
+																  Xorshift32Generator& rng)
 {
 	out_pdf = -1.0f;
 	return ColorRGB32F(-1.0f);
@@ -107,19 +54,24 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRen
  */
 template <>
 HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data,
+															  const DeviceUnpackedEffectiveMaterial& material,
 															  float material_roughness,
 															  float material_anisotropy,
-															  bool material_do_energy_compensation,
+															  float incident_ior,
+															  bool do_energy_compensation,
 															  const ColorRGB32F& F,
 															  const float3& local_view_direction,
 															  const float3& local_to_light_direction,
 															  const float3& local_halfway_vector,
 															  float& out_pdf,
 															  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
-															  int current_bounce)
+															  int current_bounce,
+															  Xorshift32Generator& rng)
 {
 	out_pdf = 0.0f;
 
+	// TODO can we remove this somehow? This is annoying to manage. The target functions in ReSTIR would basically need to be 0 if the surface is specular.
+	// ReSTIR spatial/temporal reuse is basically the only reason this exists
 	if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
 	{
 		// Fast path for perfectly specular BRDF
@@ -212,24 +164,33 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderD
  */
 template <>
 HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderData& render_data,
+															  const DeviceUnpackedEffectiveMaterial& material,
 															  float material_roughness,
 															  float material_anisotropy,
-															  bool material_do_energy_compensation,
+															  float incident_ior,
+															  bool do_energy_compensation,
 															  const ColorRGB32F& F,
 															  const float3& local_view_direction,
 															  const float3& local_to_light_direction,
 															  const float3& local_halfway_vector,
 															  float& out_pdf,
 															  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
-															  int current_bounce)
+															  int current_bounce,
+															  Xorshift32Generator& rng)
 {
-	ColorRGB32F ms_compensation_term = get_GGX_energy_compensation_conductors(render_data, F, material_roughness, material_do_energy_compensation,
-																			  local_view_direction, current_bounce);
-	ColorRGB32F single_scattering = torrance_sparrow_GGX_eval_reflect<0>(render_data, material_roughness, material_anisotropy, false, F, local_view_direction,
-																		 local_to_light_direction, local_halfway_vector, out_pdf,
-																		 incident_light_direction_is_from_GGX_sample, current_bounce);
+#if PrincipledBSDFEnergyCompensationMode == ENERGY_COMPENSATION_MODE_INVARIANCE_CUI
+	return torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(material, material_roughness, material_anisotropy, incident_ior, F,
+																		   local_view_direction, local_to_light_direction, rng, out_pdf,
+																		   incident_light_direction_is_from_GGX_sample);
+#else
+	ColorRGB32F ms_compensation_term = get_GGX_energy_compensation_conductors(render_data, F, material_roughness, do_energy_compensation, local_view_direction,
+																			  current_bounce);
+	ColorRGB32F single_scattering	 = torrance_sparrow_GGX_eval_reflect<0>(
+							   render_data, material, material_roughness, material_anisotropy, incident_ior, do_energy_compensation, F, local_view_direction,
+							   local_to_light_direction, local_halfway_vector, out_pdf, incident_light_direction_is_from_GGX_sample, current_bounce, rng);
 
 	return single_scattering * ms_compensation_term;
+#endif
 }
 
 /**
@@ -245,13 +206,12 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderD
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 15
  */
-HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_reflect(const HIPRTRenderData& render_data,
-														   float material_roughness,
-														   float material_anisotropy,
-														   const float3& local_view_direction,
-														   const float3& local_to_light_direction,
-														   const float3& local_halfway_vector,
-														   SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
+HIPRT_DEVICE float microfacet_GGX_pdf_reflect(float material_roughness,
+											  float material_anisotropy,
+											  const float3& local_view_direction,
+											  const float3& local_to_light_direction,
+											  const float3& local_halfway_vector,
+											  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
 {
 	if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
 	{
@@ -283,9 +243,9 @@ HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_reflect(const HIPRTRenderData
 		}
 	}
 
-	if (local_to_light_direction.z < 0.0f)
-		// A direction that is below the surface is invalid for a microfacet ** BRDF **
-		return 0.0f;
+	// if (local_to_light_direction.z < 0.0f)
+	//	// A direction that is below the surface is invalid for a microfacet ** BRDF **
+	//	return 0.0f;
 
 	float pdf = 0.0f;
 
@@ -299,6 +259,7 @@ HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_reflect(const HIPRTRenderData
 	// GGX visible normal distribution for evaluating the PDF
 	float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
 	float G1V	   = 1.0f / (1.0f + lambda_V);
+	// Using abs()
 	float Dvisible = GGX_anisotropic_vndf(D, G1V, local_view_direction, local_halfway_vector);
 
 	// Because we're exactly sampling the visible normals distribution function,
@@ -306,9 +267,9 @@ HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_reflect(const HIPRTRenderData
 	//
 	// Additionally, because we need to take into account the reflection operator
 	// that we're going to apply to get our final 'to light direction' and so the
-	// jacobian determinant of that reflection operator is the (4.0f * NoV) in the
+	// jacobian determinant of that reflection operator is the (4.0f * HoV) in the
 	// denominator
-	return Dvisible / (4.0f * hippt::dot(local_view_direction, local_halfway_vector));
+	return Dvisible / (4.0f * hippt::abs(hippt::dot(local_view_direction, local_halfway_vector)));
 }
 
 HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_refract(const DeviceUnpackedEffectiveMaterial& material,
@@ -428,116 +389,6 @@ HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_refract(const DeviceUnpackedE
 
 		return dwm_dwi * D_pdf;
 	}
-}
-
-/**
- * Reference: [Sampling the GGX Distribution of Visible Normals, Unity: Heitz ; 2018]
- */
-HIPRT_DEVICE static float3 GGX_VNDF_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
-{
-	float r1 = random_number_generator();
-	float r2 = random_number_generator();
-
-	// Stretching the ellipsoid to the hemisphere configuration
-	float3 Vh = hippt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
-
-	// Orthonormal basis construction
-	float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-	float3 T1	= lensq > 0.0f ? float3{ -Vh.y, Vh.x, 0 } / hippt::sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
-	float3 T2	= hippt::cross(Vh, T1);
-
-	// Parametrization of the projected area of the hemisphere
-	float r	  = hippt::sqrt(r1);
-	float phi = hippt::M_TWO_PI * r2;
-	float t1  = r * hippt::intrin_cosf(phi);
-	float t2  = r * hippt::intrin_sinf(phi);
-	float s	  = 0.5f * (1.0f + Vh.z);
-	t2		  = (1.0f - s) * hippt::sqrt(1.0f - t1 * t1) + s * t2;
-
-	// Sampling the hemisphere
-	float3 Nh = t1 * T1 + t2 * T2 + hippt::sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
-
-	// Un-stretching back to our ellipsoid
-	return hippt::normalize(float3{ alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z) });
-}
-
-/**
- * Sample the distribution anisotropic GGX of visible normals using
- * the spherical caps formulation which is slightly faster than the traditional
- * VNDF sampling by Heitz 2018.
- *
- * Reference: [Sampling Visible GGX Normals with Spherical Caps, Dupuy, Benyoub, 2023]
- */
-HIPRT_DEVICE static float3
-GGX_VNDF_spherical_caps_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
-{
-	float r1 = random_number_generator();
-	float r2 = random_number_generator();
-
-	// Stretching the ellipsoid to the hemisphere configuration
-	float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
-
-	// Sample a spherical cap in (-wi.z, 1]
-	float phi	   = hippt::M_TWO_PI * r1;
-	float z		   = (1.0f - r2) * (1.0f + Vh.z) - Vh.z;
-	float sinTheta = hippt::sqrt(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
-	float x		   = sinTheta * hippt::intrin_cosf(phi);
-	float y		   = sinTheta * hippt::intrin_sinf(phi);
-	float3 c	   = make_float3(x, y, z);
-
-	// Compute microfacet normal
-	float3 Nh = c + Vh;
-
-	// Un-stretching back to our ellipsoid
-	return hippt::normalize(make_float3(alpha_x * Nh.x, alpha_y * Nh.y, Nh.z));
-}
-
-/**
- * Samples a microfacet normal from the distribution of visible normals of
- * the GGX normal function distribution
- */
-HIPRT_DEVICE static float3
-GGX_anisotropic_sample_microfacet(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
-{
-	if (alpha_x <= MaterialConstants::ROUGHNESS_CLAMP && alpha_y <= MaterialConstants::ROUGHNESS_CLAMP)
-		// For delta GGX distribution, the sampled normal is always the same as the surface normal
-		// (so (0, 0, 1) in local space
-		//
-		// This is basically a small optimization to avoid the whole sampling routine
-		return make_float3(0.0f, 0.0f, 1.0f);
-
-#if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
-	return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
-#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SPHERICAL_CAPS
-	return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
-#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_BOUNDED
-	// TODO
-#else
-	// Not implemented
-	return make_float3(0.0f, 0.0f, 0.0f);
-#endif
-}
-
-/*
- * Samples a microfacet normal from the distribution of visible normals of
- * the GGX normal function distribution and reflects the given view direction
- * about that microfacet normal to produce a 'to_light_direction' in local
- * shading space that is then returned by that function
- */
-HIPRT_DEVICE static float3
-microfacet_GGX_sample_reflection(float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
-{
-	// The view direction can sometimes be below the shading normal hemisphere
-	// because of normal mapping / smooth normals
-	float below_normal = (local_view_direction.z < 0.0f) ? -1.0f : 1.0f;
-	float alpha_x, alpha_y;
-	MaterialUtils::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
-
-	float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction * below_normal, alpha_x, alpha_y, random_number_generator);
-	float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
-
-	// Should already be normalized but float imprecisions...
-	return hippt::normalize(sampled_direction);
 }
 
 #endif

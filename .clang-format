@@ -5,7 +5,9 @@ AlignConsecutiveAssignments: 'true'
 AlignConsecutiveDeclarations: 'false'
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: 'false'
+AllowShortFunctionsOnASingleLine: 'Empty'
 AlwaysBreakTemplateDeclarations: 'Yes'
+PenaltyReturnTypeOnItsOwnLine: '10000000'
 BinPackParameters: 'false'
 BreakBeforeBraces: Allman
 ColumnLimit: '160'

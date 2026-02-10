@@ -46,6 +46,7 @@ private:
 	void draw_environment_panel();
 
 	void draw_sampling_panel();
+	void draw_material_settings_panel();
 	void draw_ris_settings_panel();
 	void draw_risltc_settings_panel();
 	void draw_restir_di_settings_panel();

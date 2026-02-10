@@ -25,6 +25,8 @@ public:
 	static const std::string BSDF_OVERRIDE;
 	static const std::string PRINCIPLED_BSDF_DIFFUSE_LOBE;
 	static const std::string PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION;
+	static const std::string PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE;
+	static const std::string PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES;
 	static const std::string PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION;
 	static const std::string PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION;
 	static const std::string PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION;
@@ -244,9 +246,9 @@ public:
 	void apply_onto(GPUKernelCompilerOptions& other);
 
 private:
-	// Maps the name of the macro to its value. 
+	// Maps the name of the macro to its value.
 	// Example: ["InteriorStackStrategy", 1]
-	// 
+	//
 	// This "options macro" map only contains the macro as defined in KernelOptions.h
 	// Those are the macros that control the compilation of the kernels to enable / disable
 	// certain behavior of the path tracer by recompilation (to save registers by eliminating code)
@@ -262,6 +264,5 @@ private:
 	// Any macro that isn't defined in KernelOptions.h will be found in this custom macro map
 	std::unordered_map<std::string, std::shared_ptr<int>> m_custom_macro_map;
 };
-
 
 #endif

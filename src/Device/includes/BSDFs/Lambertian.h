@@ -19,6 +19,7 @@ HIPRT_DEVICE static ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffecti
 		return ColorRGB32F(0.0f);
 
 	pdf = NoL * hippt::M_INV_PI;
+
 	return material.base_color * hippt::M_INV_PI;
 }
 
@@ -38,10 +39,12 @@ HIPRT_DEVICE static float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMater
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(
-	const DeviceUnpackedEffectiveMaterial& material,
-	const float3& shading_normal, float3& sampled_direction,
-	float& pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo& out_sampled_light_info)
+HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(const DeviceUnpackedEffectiveMaterial& material,
+													   const float3& shading_normal,
+													   float3& sampled_direction,
+													   float& pdf,
+													   Xorshift32Generator& random_number_generator,
+													   BSDFIncidentLightInfo& out_sampled_light_info)
 {
 	sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
 

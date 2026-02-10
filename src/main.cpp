@@ -22,6 +22,8 @@
 
 extern ImGuiLogger g_imgui_logger;
 
+std::unordered_map<std::string, unsigned int> ThreadManager::DEBUGstarted_count;
+
 #define GPU_RENDER 1
 
 int main(int argc, char* argv[])
@@ -66,9 +68,9 @@ int main(int argc, char* argv[])
 	// Joining everyone before starting the render except the precompilation threads
 	ThreadManager::join_all_threads();
 
-	ParallelSegmentedPrefixScan::unit_test(hiprt_orochi_ctx, renderer->get_main_stream());
+	/*ParallelSegmentedPrefixScan::unit_test(hiprt_orochi_ctx, renderer->get_main_stream());
 	ParallelPrefixScanDecoupledLookback::unit_test(hiprt_orochi_ctx, renderer->get_main_stream());
-	return 0;
+	return 0;*/
 
 	parsed_scene.print_statistics(std::cout);
 

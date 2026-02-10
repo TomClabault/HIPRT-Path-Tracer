@@ -11,14 +11,15 @@
 #include "Device/includes/BSDFs/Principled.h"
 #include "Device/includes/RayPayload.h"
 
- /**
-  * The 'random_number_generator' passed here is used only in case
-  * monte-carlo integration of the directional albedo is enabled
-  *
-  * If 'update_ray_volume_state' is passed as true, the givenargument is passed as nullptr, the volume state of the ray won't
-  * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)
-  */
-HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& random_number_generator)
+/**
+ * The 'random_number_generator' passed here is used only in case
+ * monte-carlo integration of the directional albedo is enabled
+ *
+ * If 'update_ray_volume_state' is passed as true, the givenargument is passed as nullptr, the volume state of the ray won't
+ * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)
+ */
+HIPRT_DEVICE static ColorRGB32F
+bsdf_dispatcher_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& random_number_generator)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)
@@ -28,7 +29,7 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& rend
 	default:
 		break;
 	}*/
-	return principled_bsdf_eval(render_data, bsdf_context, pdf);
+	return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
 #elif BSDFOverride == BSDF_LAMBERTIAN
 	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
 #elif BSDFOverride == BSDF_OREN_NAYAR
@@ -63,7 +64,11 @@ HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data
  * ColorRGB32F(0.0f) and the 'pdf' out parameter will always be set to 0.0f
  */
 template <bool sampleDirectionOnly = false>
-HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data,
+													   BSDFContext& bsdf_context,
+													   float3& sampled_direction,
+													   float& pdf,
+													   Xorshift32Generator& random_number_generator)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)
@@ -75,9 +80,11 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& re
 	}*/
 	return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
 #elif BSDFOverride == BSDF_LAMBERTIAN
-	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator, bsdf_context.incident_light_info);
+	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator,
+													   bsdf_context.incident_light_info);
 #elif BSDFOverride == BSDF_OREN_NAYAR
-	return oren_nayar_brdf_sample<sampleDirectionOnly>(material, view_direction, surface_normal, sampled_direction, pdf, random_number_generator, out_sampled_light_info);
+	return oren_nayar_brdf_sample<sampleDirectionOnly>(material, view_direction, surface_normal, sampled_direction, pdf, random_number_generator,
+													   out_sampled_light_info);
 #endif
 }
 

@@ -47,14 +47,23 @@ void enable_compilation_warnings(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ct
 	}
 }
 
-oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, int num_geom_types, int num_ray_types, bool use_cache, const std::string& additional_cache_key, bool silent)
+oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
+												const GPUKernelCompilerOptions& kernel_compiler_options,
+												std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
+												hiprtFuncNameSet* function_name_sets,
+												int num_geom_types,
+												int num_ray_types,
+												bool use_cache,
+												const std::string& additional_cache_key,
+												bool silent)
 {
-	std::string kernel_file_path = kernel.get_kernel_file_path();
-	std::string kernel_function_name = kernel.get_kernel_function_name();
+	std::string kernel_file_path							= kernel.get_kernel_file_path();
+	std::string kernel_function_name						= kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
-	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
+	std::vector<std::string> compiler_options				= kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
 
 #ifndef OROCHI_ENABLE_CUEW
+	// compiler_options.push_back("-O0");
 	compiler_options.push_back("-g");
 	compiler_options.push_back("-ggdb");
 #endif
@@ -79,7 +88,9 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	else
 		use_shader_cache = use_cache;
 
-	hiprtError compile_status = HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache, function_name_sets, additional_cache_key);
+	hiprtError compile_status = HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out,
+																	 additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache,
+																	 function_name_sets, additional_cache_key);
 	if (compile_status != hiprtError::hiprtSuccess)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\". Cannot continue.", kernel_function_name.c_str());
@@ -94,7 +105,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 		// Updating the logs
 		m_precompiled_kernels_compilation_ended++;
 
-		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Compiling kernel permutations in the background... [%d / %d]", m_precompiled_kernels_compilation_ended.load(), m_precompiled_kernels_parsing_started.load());
+		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Compiling kernel permutations in the background... [%d / %d]",
+								   m_precompiled_kernels_compilation_ended.load(), m_precompiled_kernels_parsing_started.load());
 	}
 
 	auto stop = std::chrono::high_resolution_clock::now();
@@ -107,11 +119,13 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 		// the main thread (which we are not if we are compiling kernels on multithreads)
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(hiprt_orochi_ctx->orochi_ctx));
 
-		int nb_reg = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS);
+		int nb_reg	  = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS);
 		int nb_shared = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
-		int nb_local = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES);
+		int nb_local  = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES);
 
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Kernel \"%s\" compiled in %ldms.\n\t[Reg, Shared, Local] = [%d, %d, %d]\n", kernel_function_name.c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count(), nb_reg, nb_shared, nb_local);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Kernel \"%s\" compiled in %ldms.\n\t[Reg, Shared, Local] = [%d, %d, %d]\n",
+								kernel_function_name.c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count(), nb_reg, nb_shared,
+								nb_local);
 	}
 
 	return kernel_function;
@@ -131,7 +145,9 @@ std::string GPUKernelCompiler::find_in_include_directories(const std::string& in
 	return "";
 }
 
-void GPUKernelCompiler::read_includes_of_file(const std::string& include_file_path, const std::vector<std::string>& include_directories, std::unordered_set<std::string>& output_includes)
+void GPUKernelCompiler::read_includes_of_file(const std::string& include_file_path,
+											  const std::vector<std::string>& include_directories,
+											  std::unordered_set<std::string>& output_includes)
 {
 	std::ifstream include_file(include_file_path);
 	if (include_file.is_open())
@@ -179,11 +195,11 @@ void GPUKernelCompiler::read_includes_of_file(const std::string& include_file_pa
 			else
 				continue;
 		}
-
 	}
 	else
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not generate additional cache key for kernel with path \"%s\": %s", include_file_path.c_str(), strerror(errno));
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not generate additional cache key for kernel with path \"%s\": %s",
+								include_file_path.c_str(), strerror(errno));
 
 		Debug::debugbreak();
 	}
@@ -201,7 +217,8 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 	}
 	catch (std::filesystem::filesystem_error e)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPKernelCompiler - Unable to open include file \"%s\" for option macros analyzing: %s", filepath.c_str(), e.what());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"HIPKernelCompiler - Unable to open include file \"%s\" for option macros analyzing: %s", filepath.c_str(), e.what());
 
 		return std::unordered_set<std::string>();
 	}
@@ -228,17 +245,17 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 			for (const std::string& existing_macro_option : GPUKernelCompilerOptions::ALL_MACROS_NAMES)
 				if (line.find(existing_macro_option) != std::string::npos)
 					option_macros.insert(existing_macro_option);
-
 	}
 	else
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not open file \"%s\" for reading option macros used by that file: %s", filepath.c_str(), strerror(errno));
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not open file \"%s\" for reading option macros used by that file: %s",
+								filepath.c_str(), strerror(errno));
 
 	// The cache is shared to all threads using this GPUKernelCompiler so we're locking that operation
 	// The lock is destroyed when the function returns
 	std::lock_guard<std::mutex> lock(m_option_macro_cache_mutex);
 
 	// Updating the cache
-	m_filepath_to_option_macros_cache[filepath] = option_macros;
+	m_filepath_to_option_macros_cache[filepath]			   = option_macros;
 	m_filepath_to_options_macros_cache_timestamp[filepath] = file_modification_time;
 
 	return option_macros;
@@ -276,7 +293,8 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 	std::string final_cache_key = "";
 	for (const std::string& include : already_processed_includes)
 	{
-		// TODO this exception here should probably go up a level so that we can know that the kernel compilation failed --> set the kernel function to nullptr --> do try to launch the kernel (otherwise this will probably crash the driver)
+		// TODO this exception here should probably go up a level so that we can know that the kernel compilation failed --> set the kernel function to nullptr
+		// --> do try to launch the kernel (otherwise this will probably crash the driver)
 		try
 		{
 			std::chrono::time_point modification_time = std::filesystem::last_write_time(include);
@@ -285,7 +303,8 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 		}
 		catch (std::filesystem::filesystem_error e)
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPKernelCompiler - Unable to open include file \"%s\" for shader cache validation: %s", include.c_str(), e.what());
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+									"HIPKernelCompiler - Unable to open include file \"%s\" for shader cache validation: %s", include.c_str(), e.what());
 
 			m_additional_cache_key_ended++;
 			// Notifying the condition variable that's used to
@@ -363,9 +382,9 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 		m_precompiled_kernels_parsing_ended++;
 
 		// And update the log line
-		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernel permutations in the background... [%d / %d]", m_precompiled_kernels_parsing_ended.load(), m_precompiled_kernels_parsing_started.load());
+		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernel permutations in the background... [%d / %d]",
+								   m_precompiled_kernels_parsing_ended.load(), m_precompiled_kernels_parsing_started.load());
 	}
-
 
 	return option_macro_names;
 }
@@ -379,13 +398,9 @@ void GPUKernelCompiler::wait_compiler_file_operations()
 	m_read_macros_cv.wait(lock, [this]() { return m_additional_cache_key_started == m_additional_cache_key_ended; });
 }
 
-GPUKernelCompiler::ShaderCacheUsageOverride GPUKernelCompiler::get_shader_cache_usage_override() const
-{
-	return m_shader_cache_force_usage;
-}
+GPUKernelCompiler::ShaderCacheUsageOverride GPUKernelCompiler::get_shader_cache_usage_override() const { return m_shader_cache_force_usage; }
 
 void GPUKernelCompiler::set_shader_cache_usage_override(GPUKernelCompiler::ShaderCacheUsageOverride override_usage)
 {
 	m_shader_cache_force_usage = override_usage;
 }
-

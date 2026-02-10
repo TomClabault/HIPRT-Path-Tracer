@@ -2,7 +2,7 @@
 
 ImGuiLogger g_imgui_logger;
 
-const char* ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME = "BackgroundKernelParsingLineName";
+const char* ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME	 = "BackgroundKernelParsingLineName";
 const char* ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME = "BackgroundKernelPrecompilationLineName";
 
 ImGuiLogger::ImGuiLogger()
@@ -85,10 +85,10 @@ void ImGuiLogger::draw(const char* title, bool* p_open)
 				std::pair<std::shared_ptr<ImGuiLoggerLine>, std::string_view*> line_view_pair = get_line_from_index(line_no);
 
 				std::shared_ptr<ImGuiLoggerLine> line = line_view_pair.first;
-				std::string_view* str_view = line_view_pair.second;
+				std::string_view* str_view			  = line_view_pair.second;
 
 				const char* line_start = str_view->data();
-				const char* line_end = line_start + str_view->length();
+				const char* line_end   = line_start + str_view->length();
 
 				if (m_text_filter.PassFilter(line_start, line_end))
 				{
@@ -122,10 +122,10 @@ void ImGuiLogger::draw(const char* title, bool* p_open)
 					std::pair<std::shared_ptr<ImGuiLoggerLine>, std::string_view*> line_view_pair = get_line_from_index(line_no);
 
 					std::shared_ptr<ImGuiLoggerLine> line = line_view_pair.first;
-					std::string_view* str_view = line_view_pair.second;
+					std::string_view* str_view			  = line_view_pair.second;
 
 					const char* line_start = str_view->data();
-					const char* line_end = line_start + str_view->length();
+					const char* line_end   = line_start + str_view->length();
 
 					ImGui::PushStyleColor(ImGuiCol_Text, ImGuiLogger::get_severity_color(line->severity));
 					ImGui::TextUnformatted(line_start, line_end);
@@ -165,12 +165,13 @@ void ImGuiLogger::update_line(const char* line_name, const char* fmt, ...)
 	auto find = m_names_to_lines.find(line_name);
 	if (find == m_names_to_lines.end())
 	{
-		add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot update line with name %s. There is no such line. Did you forget to call add_line(severity, LINE_NAME, ...)?", line_name);
+		add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+				 "Cannot update line with name %s. There is no such line. Did you forget to call add_line(severity, LINE_NAME, ...)?", line_name);
 		return;
 	}
 
 	std::shared_ptr<ImGuiLoggerLine> line = find->second;
-	std::string prefix = ImGuiLogger::get_severity_prefix(line->severity);
+	std::string prefix					  = ImGuiLogger::get_severity_prefix(line->severity);
 
 	va_list args;
 	va_start(args, fmt);
@@ -235,12 +236,12 @@ void ImGuiLogger::add_line_internal(ImGuiLoggerSeverity severity, const char* li
 	// For logger's thread safety
 	std::lock_guard<std::mutex> lock(m_mutex);
 
-	std::string prefix = ImGuiLogger::get_severity_prefix(severity);
+	std::string prefix					 = ImGuiLogger::get_severity_prefix(severity);
 	std::string formatted_string_no_endl = prefix + compute_formatted_string(fmt, args);
 	std::cout << formatted_string_no_endl << std::endl; // Also printing to the console with std::endl to flush the output
 
 	std::string formatted_string = formatted_string_no_endl + "\n";
-	int line_index = m_log_lines.size();
+	int line_index				 = m_log_lines.size();
 
 	std::shared_ptr<ImGuiLoggerLine> logger_line = std::make_shared<ImGuiLoggerLine>(formatted_string, severity);
 	m_log_lines.push_back(logger_line);
@@ -262,7 +263,7 @@ std::string ImGuiLogger::compute_formatted_string(const char* fmt, va_list args)
 {
 	// Copying the arg list because the first call to vsnprintf modifies args
 	// and so if we use args again in the second call to vsnprintf, we're going
-	// to get garbage in the formatted output 
+	// to get garbage in the formatted output
 	va_list args_copy;
 	va_copy(args_copy, args);
 
@@ -296,7 +297,7 @@ void ImGuiLogger::compute_actual_lines(std::shared_ptr<ImGuiLoggerLine> logger_l
 		if (logger_line->string[character_pos] == '\n')
 		{
 			const char* line_start = logger_line->string.c_str() + previous_line_feed_pos;
-			int line_length = character_pos - previous_line_feed_pos;
+			int line_length		   = character_pos - previous_line_feed_pos;
 
 			actual_lines.push_back(std::string_view(line_start, line_length));
 
@@ -322,18 +323,17 @@ std::pair<std::shared_ptr<ImGuiLoggerLine>, std::string_view*> ImGuiLogger::get_
 		{
 			// This means that the line we're looking for is in the current ImGuiLoggerLine
 
-			int offset = total - actual_lines.size();
+			int offset				  = total - actual_lines.size();
 			int index_in_actual_lines = index - offset;
 
 			std::shared_ptr<ImGuiLoggerLine> logger_line = m_log_lines[actual_line_index];
-			std::string_view* line = &actual_lines[index_in_actual_lines];
+			std::string_view* line						 = &actual_lines[index_in_actual_lines];
 
 			std::pair<std::shared_ptr<ImGuiLoggerLine>, std::string_view*> pair(logger_line, line);
 			m_index_to_line_cache[index] = pair;
 
 			return pair;
 		}
-
 	}
 
 	return std::make_pair(nullptr, nullptr);

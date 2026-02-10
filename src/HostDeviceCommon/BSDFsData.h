@@ -9,15 +9,15 @@
 #include "HostDeviceCommon/LTCsData.h"
 #include "HostDeviceCommon/MicrofacetRegularizationSettings.h"
 
- /**
-  * What masking-shadowing term to use with the GGX NDF.
-  *
-  * 'HeightCorrelated' is a little be more precise and
-  * corect than 'HeightUncorrelated' so it should basically
-  * always be preferred.
-  *
-  * This is basically only for experimentation purposes
-  */
+/**
+ * What masking-shadowing term to use with the GGX NDF.
+ *
+ * 'HeightCorrelated' is a little be more precise and
+ * corect than 'HeightUncorrelated' so it should basically
+ * always be preferred.
+ *
+ * This is basically only for experimentation purposes
+ */
 enum GGXMaskingShadowingFlavor
 {
 	HeightCorrelated,
@@ -26,7 +26,7 @@ enum GGXMaskingShadowingFlavor
 
 struct BRDFsData
 {
-	bool white_furnace_mode = false;
+	bool white_furnace_mode					   = false;
 	bool white_furnace_mode_turn_off_emissives = true;
 
 	LTCsData ltcs_data;
@@ -56,19 +56,19 @@ struct BRDFsData
 	// when fetching the LUTs. It's faster but less precise.
 	bool use_hardware_tex_interpolation = false;
 
-	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightUncorrelated;
+	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 
 	float energy_compensation_roughness_threshold = 0.0f;
 
 	// After hom many bounces to stop doing energy compensation to save performance?
-	// 
+	//
 	// For example, 0 means that energy compensation will only be done on the first hit and
 	// not later
 	//
 	// -1 to disable
-	int glass_energy_compensation_max_bounce = -1;
-	int metal_energy_compensation_max_bounce = -1;
-	int clearcoat_energy_compensation_max_bounce = -1;
+	int glass_energy_compensation_max_bounce	   = -1;
+	int metal_energy_compensation_max_bounce	   = -1;
+	int clearcoat_energy_compensation_max_bounce   = -1;
 	int glossy_base_energy_compensation_max_bounce = -1;
 
 	MicrofacetRegularizationSettings microfacet_regularization;

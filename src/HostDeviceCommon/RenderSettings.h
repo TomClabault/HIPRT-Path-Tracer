@@ -21,7 +21,7 @@
 
 #ifndef __KERNELCC__
 #include "HIPRT-Orochi/OrochiBuffer.h"
- //#include "Renderer/GPURenderer.h"
+// #include "Renderer/GPURenderer.h"
 #endif
 
 // Just used for initializing some structure members below
@@ -37,23 +37,22 @@ struct HIPRTRenderSettings
 	// This is mainly useful for the first frame of the render
 	bool need_to_reset = true;
 
-
 	// TODO DEBUG REMOVE THESE
 	////////////////////////////////////////////////////
 
-	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS = 4;
+	int DEBUG_REGIR_PRE_INTEGRATION_ITERATIONS				   = 4;
 	int DEBUG_REGIR_PRE_INTEGRATION_SAMPLE_COUNT_PER_RESERVOIR = 32;
 
 	bool enable_direct = true;
 
 	static constexpr unsigned long long int DEBUG_DEFAULT_ULL = 4242424242;
-	static constexpr float DEBUG_DEFAULT_FLOAT = -4242.0f;
-	static constexpr int DEBUG_STRING_MAX_LENGTH = 96;
+	static constexpr float DEBUG_DEFAULT_FLOAT				  = -4242.0f;
+	static constexpr int DEBUG_STRING_MAX_LENGTH			  = 96;
 
 	AtomicType<unsigned long long int>* DEBUG_BUFFER_ULL_1 = nullptr;
 	AtomicType<unsigned long long int>* DEBUG_BUFFER_ULL_2 = nullptr;
-	AtomicType<float>* DEBUG_BUFFER_FLOAT = nullptr;
-	char* DEBUG_BUFFER_STRINGS = nullptr;
+	AtomicType<float>* DEBUG_BUFFER_FLOAT				   = nullptr;
+	char* DEBUG_BUFFER_STRINGS							   = nullptr;
 
 	HIPRT_DEVICE void write_debug_string(const char debug_string[HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH], int index) const
 	{
@@ -64,7 +63,7 @@ struct HIPRTRenderSettings
 #ifndef __KERNELCC__
 	void print_debug_floats(int max_number_of_values)
 	{
-		std::vector<float> debug = OrochiBuffer<float>::download_data((float*)DEBUG_BUFFER_FLOAT, 1024);
+		std::vector<float> debug		   = OrochiBuffer<float>::download_data((float*)DEBUG_BUFFER_FLOAT, 1024);
 		std::vector<char> debug_string_CPU = OrochiBuffer<char>::download_data(DEBUG_BUFFER_STRINGS, 1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
 
 		printf("\n\n-----------------\n");
@@ -74,7 +73,7 @@ struct HIPRTRenderSettings
 			{
 
 				std::string debug_str(&debug_string_CPU[i * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH]);
-				//std::string debug_str = GPURenderer::read_debug_buffer_string(DEBUG_BUFFER_STRINGS, i);
+				// std::string debug_str = GPURenderer::read_debug_buffer_string(DEBUG_BUFFER_STRINGS, i);
 				printf("\t(%d) %s: %f\n", i, debug_str.c_str(), debug[i]);
 			}
 		}
@@ -84,19 +83,19 @@ struct HIPRTRenderSettings
 	////////////////////////////////////////////////////
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
-	// 
+	//
 	// Why is this useful?
 	// There is a "status" buffer that contains the number of pixels that have converged for a kernel launch.
 	// It is a simple counter that threads of the kernel increment if the pixel corresponding to the thread has converged.
 	// Because thread keep incrementing this counter, we need to reset it to 0 before each kernel launch.
-	// 
+	//
 	// To simulate multiple samples per frame and reduce CPU overhead, we can launch multiple times the kernels per frame.
 	// We would thus need to reset the status buffer before each kernel launch but this is a synchronous operation which then
 	// slows down the UI. This means that we cannot reset the status buffer before each kernel launch, we can only reset it
 	// at each frame before GPURenderer::render() is called.
-	// 
+	//
 	// In the case where we have 5 samples per pixel for example, we would have each kernel launch increment the status
-	// buffer and that would largely go above 100% of pixels converged (which doesn't make sense). 
+	// buffer and that would largely go above 100% of pixels converged (which doesn't make sense).
 	// What we do instead is that we only allow the last kernel launch of the frame to increment the status buffers.
 	//
 	// This is the variable that enables / disables the increment of status buffers
@@ -108,18 +107,18 @@ struct HIPRTRenderSettings
 
 	// How many samples were accumulated in the denoiser's AOV buffers (albedo & normals)
 	// This is used mainly for the normals AOVs because we want a way to accumulate the normals.
-	// However, we still want to feed the normalized normals to the denoiser. 
-	// This means that we need to store normalized normals in the normals AOV GPU buffer. 
+	// However, we still want to feed the normalized normals to the denoiser.
+	// This means that we need to store normalized normals in the normals AOV GPU buffer.
 	// But if we also want to accumulate, we also need to get the normals back from "normalized"
 	// to their "accumulated" value. We can then add the normal of the first hit of our current
 	// frame to that "accumulated" value and then normalize again.
-	// 
+	//
 	// We need denoiser_AOV_accumulation_counter to multiply the normalized normals of the buffer with
 	// and get that "accumulated" normals value.
 	int denoiser_AOV_accumulation_counter = 0;
 
 	// Number of samples rendered so far before (before means that this counter starts at 0) the kernel call
-	// 
+	//
 	// This is the sum of samples_per_frame for all frames that have been rendered.
 	unsigned int sample_number = 0;
 	// See the DisplayOnlySampleN kernel option
@@ -129,9 +128,9 @@ struct HIPRTRenderSettings
 	// Higher values reduce CPU overhead since the GPU spends
 	// more time computing per frame but reduces interactivity
 	int samples_per_frame = 1;
-	// Maximum number of bounces of rays in the scene. 
+	// Maximum number of bounces of rays in the scene.
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 1;
 
 	bool do_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -140,7 +139,7 @@ struct HIPRTRenderSettings
 	int russian_roulette_min_depth = local_min_macro(5, nb_bounces / 2);
 	// After applying russian roulette(dividing by the continuation probability)
 	// the energy added to the ray throughput is clamped to this maximum value.
-	// 
+	//
 	// This is biased and darkens the image the lower the threshold but it helps
 	// reduce variance and fireflies introduced by the russian roulette --> faster
 	// convergence.
@@ -152,7 +151,7 @@ struct HIPRTRenderSettings
 	// probability
 	PathRussianRoulette path_russian_roulette_method = PathRussianRoulette::MAX_THROUGHPUT;
 
-	// If true, NaNs encountered during rendering will be rendered as very bright pink. 
+	// If true, NaNs encountered during rendering will be rendered as very bright pink.
 	// Useful for debugging only.
 	bool display_NaNs = true;
 
@@ -178,7 +177,7 @@ struct HIPRTRenderSettings
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
-	// chance find a path to a potentially 
+	// chance find a path to a potentially
 	int adaptive_sampling_min_samples = 96;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.075f;
@@ -192,15 +191,13 @@ struct HIPRTRenderSettings
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.
-	// 
+	//
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
 	float stop_pixel_percentage_converged = 55.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.075f;
-
-
 
 	// Clamp direct lighting contribution to reduce fireflies
 	float direct_contribution_clamp = 0.0f;
@@ -212,10 +209,10 @@ struct HIPRTRenderSettings
 	// Whether or not to do alpha testing for geometry with transparent base color textures
 	bool do_alpha_testing = true;
 	// At what bounce to stop doing alpha testing
-	// 
+	//
 	// A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera
 	// rays do not do alpha testing --> alpha testing is disable
-	// 
+	//
 	// A value of 1 means that camera rays do alpha testing but the next bounce rays do not do alpha
 	// testing
 	//
@@ -250,10 +247,7 @@ struct HIPRTRenderSettings
 	 * This function is a simple helper that combines a few flags to make sure that we
 	 * actually want to render at low resolution
 	 */
-	HIPRT_HOST_DEVICE bool do_render_low_resolution() const
-	{
-		return wants_render_low_resolution && allow_render_low_resolution && accumulate;
-	}
+	HIPRT_HOST_DEVICE bool do_render_low_resolution() const { return wants_render_low_resolution && allow_render_low_resolution && accumulate; }
 
 	/**
 	 * Returns true if the adaptive sampling buffers are ready for use, false otherwise.
