@@ -28,39 +28,30 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpacked
 /**
  * Implementation of [Multiple-bounce Smith Microfacet BRDFs using the Invariance Principle, Cui et al., 2023]
  */
-struct SegmentTerm
+class SegmentTerm
 {
+public:
 	HIPRT_DEVICE SegmentTerm(float lambda_0) : lambda_0(lambda_0) {}
 
-	HIPRT_DEVICE void add_bounce(float lambda_k)
+	HIPRT_DEVICE void add_bounce(fp16 lambda_k)
 	{
-		if (lambda_k < 0.0f)
+		if (lambda_k < (fp16)0.0f)
 		{
 			// Ray is going down into the microsurface
 
 			l[N] = -lambda_k;
-			e[N] = 1.0f / (lambda_0 - lambda_k);
 			g[N] = 0.0f;
-			m *= e[N];
+			m *= get_e(N);
 
 			N++;
 		}
 		else
 		{
-			if (N == 0)
-			{
-				// This is going to hit N - 1 below, maybe we should never allow first bounces to go up because that means that the initial view direction is
-				// below the surface
-				m = -1000000000.0f;
-
-				hippt::debugbreak();
-			}
-
 			if (m == 0.0f)
 				g[N - 1] /= (lambda_k + l[N - 1]);
 			else
 			{
-				g[N - 1] = 1.0f / (lambda_k + l[N - 1]);
+				g[N - 1] = (fp16)(1.0f) / (lambda_k + l[N - 1]);
 				m		 = 0.0f;
 			}
 
@@ -75,51 +66,38 @@ struct SegmentTerm
 			return m;
 
 		float s = 0.0f;
+
 		for (int i = N - 1; i >= 0; i--)
-			s = e[i] * (s + g[i]);
+			s = get_e(i) * (s + (float)g[i]);
 
 		return s;
 	}
 
-	float lambda_0 = 0.0f;
+private:
+	HIPRT_DEVICE float get_e(int i) const
+	{
+		return (fp16)1.0f / (lambda_0 + l[i]);
+	}
+
+private:
+	fp16 lambda_0 = 0.0f;
 
 	int N = 0;
 
-	float e[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
-	float g[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
-	float l[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
+	fp16 g[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
+	fp16 l[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
+
 	float m = 1.0f;
 };
 
 // TODO do we need 2022 and 2023? Are they not the same when developing?
 HIPRT_DEVICE float G1_Smith_lambda_signed_2023(float alpha_x, float alpha_y, const float3& local_direction)
 {
-	float cosTheta			 = local_direction.z;
-	float theta				 = acosf(cosTheta);
-	float sinTheta			 = sinf(theta);
-	float tanTheta			 = sinTheta / cosTheta;
-	const float invSinTheta2 = 1.0f / (1.0f - cosTheta * cosTheta);
-	const float cosPhi2		 = local_direction.x * local_direction.x * invSinTheta2;
-	const float sinPhi2		 = local_direction.y * local_direction.y * invSinTheta2;
-	float alpha				 = sqrtf(cosPhi2 * alpha_x * alpha_x + sinPhi2 * alpha_y * alpha_y);
-	float Lambda;
-	if (cosTheta > 0.9999f)
-		Lambda = 0.0f;
-	else if (cosTheta < -0.9999f)
-		Lambda = 1.0f;
-	else
-	{
-		const float a = 1.0f / tanTheta / alpha;
-		Lambda		  = 0.5f * (((a < 0) ? 1.0f : -1.0f) + sqrtf(1 + 1 / (a * a)));
-	}
-
-	return Lambda * (local_direction.z > 0.0f ? 1.0f : -1.0f);
-
 	// 1.0f + Lambda if the direction is below the surface and Lambda iif the direction is above the surface
 	//
 	// And then that result is multiplied by the sign of the direction.z (1.0f if above the surface and -1.0f if below the surface) to match the convention of
 	// the paper where Lambda is negative when the ray is going down into the microsurface and positive when it's going up from the microsurface
-	// return (G1_Smith_lambda(alpha_x, alpha_y, local_direction) + (local_direction.z < 0.0f ? 1.0f : 0.0f)) * (local_direction.z > 0.0f ? 1.0f : -1.0f);
+	return (G1_Smith_lambda(alpha_x, alpha_y, local_direction) + (local_direction.z < 0.0f ? 1.0f : 0.0f)) * (local_direction.z > 0.0f ? 1.0f : -1.0f);
 }
 
 HIPRT_DEVICE float G1_Smith_lambda_signed_2022(float alpha_x, float alpha_y, const float3& local_direction)
@@ -220,9 +198,6 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 
 	out_pdf = 1.0f;
 
-	/*local_view_direction	 = make_float3(0.000726556405f, 0.424233139f, 0.905552804f);
-	local_to_light_direction = make_float3(0.998808146f, -0.0453723408f, 0.0179922078f);*/
-
 	float alpha_x;
 	float alpha_y;
 	MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
@@ -258,9 +233,6 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 		current_view_direction = -current_to_light_direction;
 		multiple_scattering_contribution += Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, current_view_direction, local_to_light_direction) *
 											weight * hippt::abs(inverse_pdf) * s_k;
-
-		if (multiple_scattering_contribution.has_nan_or_inf())
-			hippt::debugbreak();
 
 		inverse_pdf *= lambda;
 	}
@@ -458,53 +430,6 @@ evalBounceSample(const DeviceUnpackedEffectiveMaterial& material, float incident
 //
 //	return result / local_to_light_direction.z;
 // }
-
-// int bounce							  = 0;
-// ColorRGB32F weight					  = ColorRGB32F(1.0f);
-// ColorRGB32F multiscatter_contribution = ColorRGB32F(0.0f);
-
-// if (local_to_light_direction.z < 0.0f)
-//	// A direction that is below the surface is invalid for a microfacet ** BRDF **
-//	return ColorRGB32F(0.0f);
-
-// SegmentTerm segment_term(G1_Smith_lambda_signed(alpha_x, alpha_y, local_to_light_direction));
-// segment_term.add_bounce(G1_Smith_lambda_signed(alpha_x, alpha_y, -local_view_direction));
-//// TODO if get_sk below is 0.0f, we don't need to compute this vertex term
-// multiscatter_contribution += Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, local_view_direction, local_to_light_direction) *
-//							 segment_term.get_sk();
-
-//// TODO change this variable to always be positive and only apply the - where needed because this is more optimized this way
-//// This is d_k in the paper
-// float3 current_view_direction = -local_view_direction; // Points downwards the surface
-
-// for (int bounce = 1; bounce < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; bounce++)
-//{
-//	float3 next_to_light_direction = microfacet_GGX_sample_reflection(material_roughness, material_anisotropy, -current_view_direction, rng, false);
-
-//	segment_term.add_bounce(G1_Smith_lambda_signed(alpha_x, alpha_y, next_to_light_direction));
-
-//	// Getting the PDF of the just-sampled direction
-//	float pdf = torrance_sparrow_GGX_pdf_reflect(material_roughness, material_anisotropy, -current_view_direction, next_to_light_direction,
-//												 hippt::normalize(next_to_light_direction - current_view_direction),
-//												 SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED, false);
-//	if (pdf < 0.0f)
-//		hippt::debugbreak();
-
-//	current_view_direction = -next_to_light_direction;
-
-//	// TODO if get_sk below is 0.0f, we don't need to compute this vertex term
-//	ColorRGB32F vertex_term = Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, current_view_direction, local_to_light_direction);
-//	weight *= vertex_term / pdf;
-//	multiscatter_contribution += weight * vertex_term * segment_term.get_sk();
-
-//	// TODO Do RR somewhere
-//}
-
-// out_pdf = torrance_sparrow_GGX_pdf_reflect(material_roughness, material_anisotropy, local_view_direction, local_to_light_direction,
-//										   hippt::normalize(local_view_direction + local_to_light_direction), incident_light_direction_is_from_GGX_sample,
-//										   true);
-
-// return multiscatter_contribution / local_to_light_direction.z;
 
 HIPRT_DEVICE float pdfVNDF(const float3& wi, const float3& wo, float alpha_x, float alpha_y)
 {
