@@ -27,7 +27,9 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
 - Diffuse lambertian BTDF
 - Spectral dispersion using Cauchy's equation
-- Multiple-scattering energy compensation for conductors (double metal layer), dielectrics (transmission layer), glossy-diffuse (specular + diffuse layer) and coated (coat layer) materials [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
+- **Multiple-scattering**
+	- Multiple-bounce Smith Microfacet BRDFs using the Invariance Principle [\[Cui et al., 2023\]](https://wangningbei.github.io/2023/GMBBRDF.html)
+	- Energy compensation for conductors (double metal layer), dielectrics (transmission layer), glossy-diffuse (specular + diffuse layer) and coated (coat layer) materials [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
 - Thin-film interference over dielectrics and conductors [\[Belcour, Barla, 2017\]](https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html)
 - Thin-walled model
 

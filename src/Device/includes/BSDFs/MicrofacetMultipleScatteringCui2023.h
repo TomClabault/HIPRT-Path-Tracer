@@ -80,14 +80,13 @@ private:
 	}
 
 private:
-	fp16 lambda_0 = 0.0f;
+	int N	= 0;
+	float m = 1.0f;
 
-	int N = 0;
+	fp16 lambda_0 = 0.0f;
 
 	fp16 g[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
 	fp16 l[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
-
-	float m = 1.0f;
 };
 
 // TODO do we need 2022 and 2023? Are they not the same when developing?

@@ -154,7 +154,7 @@
  * allowed, the more accurate the energy recovery will be but the more expensive it will be to compute. Setting this to 1 means that only single scattering will
  * be accounted for and no walk in the microsurface will be performed, yielding the same results as a classic microfacet BRDF.
  */
-#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 15
+#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 4
 
 /**
  * Whether or not to perform energy compensation for the glass layer of the Principled BSDF
