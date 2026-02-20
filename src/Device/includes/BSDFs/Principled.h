@@ -153,10 +153,10 @@ HIPRT_DEVICE static float3 principled_sheen_sample(const HIPRTRenderData& render
 
 HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpackedEffectiveMaterial& material,
 															float incident_ior,
-															float3 local_to_light_direction,
+															float3 local_to_light_or_view_direction,
 															float3 local_half_vector)
 {
-	float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_direction));
+	float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_or_view_direction));
 
 	ColorRGB32F F_metal		= adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent,
 													 HoL);
@@ -193,11 +193,18 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 
 	ColorRGB32F F = principled_metallic_fresnel(bsdf_context.material, incident_ior, local_to_light_direction, local_half_vector);
 
-	return torrance_sparrow_GGX_eval_reflect < PrincipledBSDFDoEnergyCompensation &&
-		   PrincipledBSDFDoMetallicEnergyCompensation > (render_data, bsdf_context.material, regularized_roughness, anisotropy, incident_ior,
-														 bsdf_context.material.do_metallic_energy_compensation, F, local_view_direction,
-														 local_to_light_direction, local_half_vector, pdf, metal_delta_direction_sampled,
-														 bsdf_context.current_bounce, rng);
+	ColorRGB32F eval = torrance_sparrow_GGX_eval_reflect < PrincipledBSDFDoEnergyCompensation &&
+					   PrincipledBSDFDoMetallicEnergyCompensation > (render_data, bsdf_context.material, regularized_roughness, anisotropy, incident_ior,
+																	 bsdf_context.material.do_metallic_energy_compensation, F, local_view_direction,
+																	 local_to_light_direction, local_half_vector, pdf, metal_delta_direction_sampled,
+																	 bsdf_context.current_bounce, rng);
+
+#if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
+	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
+		pdf = lambertian_brdf_pdf(local_to_light_direction.z);
+#endif
+
+	return eval;
 }
 
 HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_data,
@@ -219,8 +226,15 @@ HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_
 		// light direction wasn't sampled from a specular distribution
 		return 0.0f;
 
-	return microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
-									  metal_delta_direction_sampled);
+	float pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
+										   metal_delta_direction_sampled);
+
+#if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
+	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
+		pdf = cosine_weighted_pdf(local_to_light_direction.z);
+#endif
+
+	return pdf;
 }
 
 /**
@@ -236,6 +250,11 @@ HIPRT_DEVICE static float3 principled_metallic_sample(const HIPRTRenderData& ren
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
 							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
 							bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+
+#if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
+	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
+		return cosine_weighted_sample_z_up_frame(random_number_generator);
+#endif
 
 	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator);
 }
@@ -259,7 +278,7 @@ HIPRT_DEVICE static float principled_diffuse_pdf(const DeviceUnpackedEffectiveMa
 {
 	// The diffuse lobe is a simple Oren Nayar lobe
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
-	return lambertian_brdf_pdf(material, local_to_light_direction.z);
+	return lambertian_brdf_pdf(local_to_light_direction.z);
 #elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 	return oren_nayar_brdf_pdf(material, local_view_direction, local_to_light_direction);
 #endif
@@ -268,10 +287,10 @@ HIPRT_DEVICE static float principled_diffuse_pdf(const DeviceUnpackedEffectiveMa
 /**
  * The sampled direction is returned in world space
  */
-HIPRT_DEVICE static float3 principled_diffuse_sample(const float3& surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static float3 principled_diffuse_sample(const float3& world_space_surface_normal, Xorshift32Generator& random_number_generator)
 {
 	// Our Oren-Nayar diffuse lobe is sampled by a cosine weighted distribution
-	return cosine_weighted_sample_around_normal_world_space(surface_normal, random_number_generator);
+	return cosine_weighted_sample_around_normal_world_space(world_space_surface_normal, random_number_generator);
 }
 
 HIPRT_DEVICE static ColorRGB32F principled_specular_fresnel(const DeviceUnpackedEffectiveMaterial& material, float relative_specular_ior, float cos_theta_i)

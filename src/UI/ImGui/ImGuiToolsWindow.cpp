@@ -19,7 +19,8 @@ const char* ImGuiToolsWindow::TITLE = "Tools";
 
 void ImGuiToolsWindow::set_render_window(RenderWindow* render_window)
 {
-	m_render_window = render_window;
+	m_render_window	  = render_window;
+	m_settings_window = &render_window->get_imgui_renderer()->get_imgui_settings_window();
 
 	m_renderer = m_render_window->get_renderer();
 }
@@ -56,15 +57,15 @@ void ImGuiToolsWindow::draw_ggx_energy_compensation_panel()
 			draw_glossy_dielectric();
 
 			static std::vector<float> roughnesses = { 0.0f, 0.25f, 0.5f, 1.0f };
-			static std::vector<float> iors = { 1.0f, 1.1f, 1.3f, 1.5f, 2.0f };
-			static bool cooking = false;
-			static bool next_step_ready = true;
-			static int step = -1;
-			int nb_steps = roughnesses.size() * iors.size();
+			static std::vector<float> iors		  = { 1.0f, 1.1f, 1.3f, 1.5f, 2.0f };
+			static bool cooking					  = false;
+			static bool next_step_ready			  = true;
+			static int step						  = -1;
+			int nb_steps						  = roughnesses.size() * iors.size();
 
 			if (ImGui::Button("Start screenshotting"))
 			{
-				step = -1;
+				step	= -1;
 				cooking = true;
 			}
 
@@ -76,8 +77,8 @@ void ImGuiToolsWindow::draw_ggx_energy_compensation_panel()
 					step++;
 
 					std::vector<CPUMaterial> materials = m_renderer->get_current_materials();
-					materials[0].ior = iors[step % iors.size()];
-					materials[0].roughness = roughnesses[step / iors.size()];
+					materials[0].ior				   = iors[step % iors.size()];
+					materials[0].roughness			   = roughnesses[step / iors.size()];
 					materials[0].make_safe();
 
 					m_renderer->update_all_materials(materials);
@@ -85,9 +86,13 @@ void ImGuiToolsWindow::draw_ggx_energy_compensation_panel()
 				}
 				else
 				{
-					if (m_render_window->is_rendering_done() && m_renderer->get_render_settings().sample_number > m_renderer->get_render_settings().adaptive_sampling_min_samples)
+					if (m_render_window->is_rendering_done() &&
+						m_renderer->get_render_settings().sample_number > m_renderer->get_render_settings().adaptive_sampling_min_samples)
 					{
-						std::string filename = "Screenshot" + std::to_string(roughnesses[step / iors.size()]) + "x" + std::to_string(iors[step % iors.size()]) + " - " + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O) + "x" + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS) + "x" + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR) + "x" + ".png";
+						std::string filename = "Screenshot" + std::to_string(roughnesses[step / iors.size()]) + "x" + std::to_string(iors[step % iors.size()]) +
+											   " - " + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O) + "x" +
+											   std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS) + "x" +
+											   std::to_string(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR) + "x" + ".png";
 						m_render_window->get_screenshoter()->write_to_png(filename);
 
 						next_step_ready = true;
@@ -123,7 +128,8 @@ void ImGuiToolsWindow::draw_GGX_conductors()
 		ImGui::InputInt("Texture Size - Roughness", &ggx_dir_albedo_settings.texture_size_roughness);
 		ImGui::InputInt("Integration Sample Count", &ggx_dir_albedo_settings.integration_sample_count);
 		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
-		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(),
+					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
@@ -133,8 +139,8 @@ void ImGuiToolsWindow::draw_GGX_conductors()
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
 			output_filename = GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(ggx_dir_albedo_settings.masking_shadowing_term,
-				ggx_dir_albedo_settings.texture_size_cos_theta,
-				ggx_dir_albedo_settings.texture_size_roughness);
+																									   ggx_dir_albedo_settings.texture_size_cos_theta,
+																									   ggx_dir_albedo_settings.texture_size_roughness);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -182,7 +188,8 @@ void ImGuiToolsWindow::draw_GGX_fresnel()
 		ImGui::InputInt("Texture Size - IOR", &ggx_fresnel_dir_albedo_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &ggx_fresnel_dir_albedo_settings.integration_sample_count);
 		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
-		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_fresnel_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_fresnel_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(),
+					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
@@ -191,10 +198,9 @@ void ImGuiToolsWindow::draw_GGX_fresnel()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_fresnel_directional_albedo_texture_filename(ggx_fresnel_dir_albedo_settings.masking_shadowing_term,
-				ggx_fresnel_dir_albedo_settings.texture_size_cos_theta,
-				ggx_fresnel_dir_albedo_settings.texture_size_roughness,
-				ggx_fresnel_dir_albedo_settings.texture_size_ior);
+			output_filename = GPUBakerConstants::get_GGX_fresnel_directional_albedo_texture_filename(
+									ggx_fresnel_dir_albedo_settings.masking_shadowing_term, ggx_fresnel_dir_albedo_settings.texture_size_cos_theta,
+									ggx_fresnel_dir_albedo_settings.texture_size_roughness, ggx_fresnel_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -243,7 +249,8 @@ void ImGuiToolsWindow::draw_GGX_glass()
 		ImGui::InputInt("Texture Size - IOR", &ggx_glass_dir_albedo_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &ggx_glass_dir_albedo_settings.integration_sample_count);
 		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
-		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_glass_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_glass_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(),
+					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
@@ -252,10 +259,9 @@ void ImGuiToolsWindow::draw_GGX_glass()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(ggx_glass_dir_albedo_settings.masking_shadowing_term,
-				ggx_glass_dir_albedo_settings.texture_size_cos_theta_o,
-				ggx_glass_dir_albedo_settings.texture_size_roughness,
-				ggx_glass_dir_albedo_settings.texture_size_ior);
+			output_filename = GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(
+									ggx_glass_dir_albedo_settings.masking_shadowing_term, ggx_glass_dir_albedo_settings.texture_size_cos_theta_o,
+									ggx_glass_dir_albedo_settings.texture_size_roughness, ggx_glass_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -300,7 +306,8 @@ void ImGuiToolsWindow::draw_GGX_thin_glass()
 		ImGui::InputInt("Texture Size - IOR", &ggx_thin_glass_dir_albedo_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &ggx_thin_glass_dir_albedo_settings.integration_sample_count);
 		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
-		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_thin_glass_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&ggx_thin_glass_dir_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(),
+					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
@@ -309,10 +316,9 @@ void ImGuiToolsWindow::draw_GGX_thin_glass()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(ggx_thin_glass_dir_albedo_settings.masking_shadowing_term,
-				ggx_thin_glass_dir_albedo_settings.texture_size_cos_theta_o,
-				ggx_thin_glass_dir_albedo_settings.texture_size_roughness,
-				ggx_thin_glass_dir_albedo_settings.texture_size_ior);
+			output_filename = GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(
+									ggx_thin_glass_dir_albedo_settings.masking_shadowing_term, ggx_thin_glass_dir_albedo_settings.texture_size_cos_theta_o,
+									ggx_thin_glass_dir_albedo_settings.texture_size_roughness, ggx_thin_glass_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -360,7 +366,8 @@ void ImGuiToolsWindow::draw_glossy_dielectric()
 		ImGui::InputInt("Texture Size - IOR", &glossy_dielectric_albedo_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &glossy_dielectric_albedo_settings.integration_sample_count);
 		std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
-		ImGui::Combo("GGX Masking-Shadowing", (int*)&glossy_dielectric_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(), masking_shadowing_items.size());
+		ImGui::Combo("GGX Masking-Shadowing", (int*)&glossy_dielectric_albedo_settings.masking_shadowing_term, masking_shadowing_items.data(),
+					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
@@ -369,10 +376,9 @@ void ImGuiToolsWindow::draw_glossy_dielectric()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(glossy_dielectric_albedo_settings.masking_shadowing_term,
-				glossy_dielectric_albedo_settings.texture_size_cos_theta_o,
-				glossy_dielectric_albedo_settings.texture_size_roughness,
-				glossy_dielectric_albedo_settings.texture_size_ior);
+			output_filename = GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(
+									glossy_dielectric_albedo_settings.masking_shadowing_term, glossy_dielectric_albedo_settings.texture_size_cos_theta_o,
+									glossy_dielectric_albedo_settings.texture_size_roughness, glossy_dielectric_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -410,10 +416,10 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 
 		const char* filters[] = { "*.png", "*.jpg" };
 
-		static float error_value = 1.0f;
-		static std::string status_text = "";
+		static float error_value				= 1.0f;
+		static std::string status_text			= "";
 		static std::string reference_image_path = "";
-		static std::string subject_image_path = "";
+		static std::string subject_image_path	= "";
 
 		static Image32Bit reference_image;
 		static Image32Bit subject_image;
@@ -422,7 +428,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		if (ImGui::Button("Select reference image"))
 		{
 			reference_image_path = Utils::open_file_dialog(filters, 2);
-			reference_image = Image32Bit::read_image(reference_image_path, 3, false);
+			reference_image		 = Image32Bit::read_image(reference_image_path, 3, false);
 		}
 		if (reference_image_path != "")
 		{
@@ -432,7 +438,8 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 				Utils::copy_image_to_clipboard(reference_image);
 			ImGuiRenderer::add_tooltip("Copies the image to the clipboard");
 			std::string filename = std::filesystem::path(reference_image_path).filename().string();
-			ImGui::SameLine();  ImGui::Text("%s", filename.c_str());
+			ImGui::SameLine();
+			ImGui::Text("%s", filename.c_str());
 
 			ImGui::TreePop();
 		}
@@ -443,14 +450,14 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		if (ImGui::Button("Select subject image"))
 		{
 			subject_image_path = Utils::open_file_dialog(filters, 2);
-			subject_image = Image32Bit::read_image(subject_image_path, 3, false);
+			subject_image	   = Image32Bit::read_image(subject_image_path, 3, false);
 
 			subject_image_text = std::filesystem::path(subject_image_path).filename().string();
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Use viewport"))
 		{
-			subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
+			subject_image	   = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 			subject_image_text = USING_VIEWPORT_TEXT;
 		}
 		if (subject_image_text != "")
@@ -477,8 +484,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
-			if (reference_image.width != subject_image.width ||
-				reference_image.height != subject_image.height)
+			if (reference_image.width != subject_image.width || reference_image.height != subject_image.height)
 			{
 				status_text = "Error: Images must have the same dimensions!";
 			}
@@ -496,8 +502,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
-			if (reference_image.width != subject_image.width ||
-				reference_image.height != subject_image.height)
+			if (reference_image.width != subject_image.width || reference_image.height != subject_image.height)
 			{
 				status_text = "Error: Images must have the same dimensions!";
 			}
@@ -516,15 +521,14 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 
-			if (reference_image.width != subject_image.width ||
-				reference_image.height != subject_image.height)
+			if (reference_image.width != subject_image.width || reference_image.height != subject_image.height)
 			{
 				status_text = "Error: Images must have the same dimensions!";
 			}
 			else
 			{
 				float* error_map = nullptr;
-				error_value = Utils::compute_image_weighted_median_FLIP(reference_image, subject_image, &error_map);
+				error_value		 = Utils::compute_image_weighted_median_FLIP(reference_image, subject_image, &error_map);
 
 				if (output_flip_error_map)
 					// Write the error map to disk
@@ -561,6 +565,9 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 	if (ImGui::CollapsingHeader("Convergence graph"))
 	{
+		m_settings_window->draw_header();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		ImGui::TreePush("Convergence graph tree");
 
 		ImGui::Text("Step 1: Choose a reference image");
@@ -570,10 +577,10 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		static std::string ref_image_text = "";
 		if (ImGui::Button("Select reference image"))
 		{
-			const char* filters[] = { "*.png", "*.jpg" };
+			const char* filters[]	   = { "*.png", "*.jpg" };
 			std::string ref_image_path = Utils::open_file_dialog(filters, 2);
-			ref_image = Image32Bit::read_image(ref_image_path, 3, false);
-			ref_image_text = std::filesystem::path(ref_image_path).filename().string();
+			ref_image				   = Image32Bit::read_image(ref_image_path, 3, false);
+			ref_image_text			   = std::filesystem::path(ref_image_path).filename().string();
 		}
 		if (ref_image_text != "")
 		{
@@ -584,11 +591,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		ImGui::TreePop();
 
-
-
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-
 
 		ImGui::Text("Step 2: Data capture settings");
 		ImGui::TreePush("Convergence graph - step 2 tree");
@@ -606,8 +609,8 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Capture duration");
 
-		static int number_of_captures = 16;
-		std::vector<std::string>& recorded_legends = m_convergence_graph_widget.get_recorded_legends();
+		static int number_of_captures					  = 16;
+		std::vector<std::string>& recorded_legends		  = m_convergence_graph_widget.get_recorded_legends();
 		std::vector<std::vector<float>>& recorded_xs_list = m_convergence_graph_widget.get_recorded_xs_list();
 		std::vector<std::vector<float>>& recorded_ys_list = m_convergence_graph_widget.get_recorded_ys_list();
 		if (ImGui::InputInt("Number of captures", &number_of_captures))
@@ -638,7 +641,6 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			}
 		}
 
-
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		static int error_metric_type = 2;
 		ImGui::SeparatorText("Error metric");
@@ -648,11 +650,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		ImGui::TreePop();
 
-
-
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-
 
 		ImGui::Text("Step 3: Configure your render settings...");
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -661,10 +659,10 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::TreePush("Start capture tree");
 		// Only used in "real-time" non accumulated mode for sampled-based captures
 		static int total_samples_rendered = 0;
-		static bool capture_requested = false;
-		static bool capture_started = false;
-		static int captures_taken = 0;
-		static float last_captured_ratio = 0.0f;
+		static bool capture_requested	  = false;
+		static bool capture_started		  = false;
+		static int captures_taken		  = 0;
+		static float last_captured_ratio  = 0.0f;
 		static std::vector<float> current_captured_errors;
 		static std::vector<float> current_recorded_xs;
 		static std::vector<float> current_recorded_ys;
@@ -675,7 +673,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			ImGui::Button("Capturing... ");
 			ImGui::EndDisabled();
 
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 1.0f));        // Red
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 1.0f));		   // Red
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.2f, 0.2f, 1.0f)); // Lighter red when hovered
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));  // Darker red when clicked
 			if (ImGui::Button("Stop capturing"))
@@ -687,19 +685,20 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		}
 		else
 		{
-			ImGui::BeginDisabled(ref_image.width == 0);
+			bool capture_impossible = render_settings.render_resolution.x != ref_image.width || render_settings.render_resolution.y != ref_image.height;
+			ImGui::BeginDisabled(capture_impossible);
 
 			if (ImGui::Button("Start capture"))
 			{
 				// Removing auto samples per frame for consistency and to avoid
 				// that multiple samples are rendered between two captures (especially when using sample-based captures)
-				render_settings.samples_per_frame = 1;
+				render_settings.samples_per_frame								   = 1;
 				m_render_window->get_application_settings()->auto_sample_per_frame = false;
-				m_render_window->get_application_settings()->max_sample_count = 0;
-				m_render_window->get_application_settings()->max_render_time = 0;
+				m_render_window->get_application_settings()->max_sample_count	   = 0;
+				m_render_window->get_application_settings()->max_render_time	   = 0;
 
-				captures_taken = 0;
-				last_captured_ratio = 0.0f;
+				captures_taken		   = 0;
+				last_captured_ratio	   = 0.0f;
 				total_samples_rendered = 0;
 				current_captured_errors.clear();
 				current_recorded_xs.clear();
@@ -715,16 +714,21 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				capture_requested = true;
 			}
 
-			if (ref_image.width == 0)
-				ImGuiRenderer::add_warning("No reference image selected");
+			if (capture_impossible)
+			{
+				if (ref_image.width == 0 || ref_image.height == 0)
+					ImGuiRenderer::add_warning("No reference image selected");
+				else if (ref_image.width != render_settings.render_resolution.x || ref_image.height != render_settings.render_resolution.y)
+					ImGuiRenderer::add_warning("Reference image dimensions don't match render resolution");
+			}
 
 			ImGui::EndDisabled();
 		}
 
-		if (capture_requested && render_settings.sample_number == 0)
+		if (capture_requested && render_settings.sample_number == 1)
 		{
 			// Starting the capture only once the render has effectively restarted
-			capture_started = true;
+			capture_started	  = true;
 			capture_requested = false;
 		}
 
@@ -767,7 +771,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			{
 				// FLIP
 				float* error_map = nullptr;
-				error = Utils::compute_image_weighted_median_FLIP(ref_image, current_image, &error_map);
+				error			 = Utils::compute_image_weighted_median_FLIP(ref_image, current_image, &error_map);
 
 				free(error_map);
 
@@ -801,8 +805,6 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		ImGui::TreePop();
 
-
-
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::Text("Step 5: Add capture data to graph");
 		ImGui::TreePush("Add capture data tree");
@@ -822,8 +824,10 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		for (int i = 0; i < recorded_legends.size(); i++)
 		{
 			std::string& leg = recorded_legends.at(i);
-			ImGui::Text("- "); ImGui::SameLine();
-			ImGui::InputText(std::string("##" + std::to_string(i)).c_str(), &leg); ImGui::SameLine();
+			ImGui::Text("- ");
+			ImGui::SameLine();
+			ImGui::InputText(std::string("##" + std::to_string(i)).c_str(), &leg);
+			ImGui::SameLine();
 			if (ImGui::Button(std::string("Delete##" + std::to_string(i)).c_str()))
 			{
 				recorded_legends.erase(recorded_legends.begin() + i);

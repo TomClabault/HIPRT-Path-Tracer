@@ -60,6 +60,13 @@ struct BRDFsData
 
 	float energy_compensation_roughness_threshold = 0.0f;
 
+	// If the roughness of the metallic lobe of the Principled BSDF is higher or equal to this threshold, the metallic lobe will be sampled using
+	// cosine-weighted hemisphere sampling instead of GGX VNDF sampling. This massively improves variance on very rough conductor lobes (> 0.7 roughness)
+	// and also saves on performance because cosine weighted hemisphere sampling is much faster to compute than GGX VNDF sampling.
+	//
+	// This option is only useful if PrincipledBSDFMetallicSampleCosineWeighted is KERNEL_OPTION_TRUE
+	float metallic_sample_cosine_weighted_roughness_threshold = 0.75f;
+
 	// After hom many bounces to stop doing energy compensation to save performance?
 	//
 	// For example, 0 means that energy compensation will only be done on the first hit and

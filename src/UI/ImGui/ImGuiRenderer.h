@@ -9,12 +9,12 @@
 #include "Renderer/OpenImageDenoiser.h"
 #include "UI/ApplicationSettings.h"
 #include "UI/ImGui/ImGuiAnimationWindow.h"
-#include "UI/ImGui/ImGuiToolsWindow.h"
 #include "UI/ImGui/ImGuiLogWindow.h"
 #include "UI/ImGui/ImGuiObjectsWindow.h"
-#include "UI/ImGui/ImGuiRenderWindow.h"
 #include "UI/ImGui/ImGuiRendererPerformancePreset.h"
+#include "UI/ImGui/ImGuiRenderWindow.h"
 #include "UI/ImGui/ImGuiSettingsWindow.h"
+#include "UI/ImGui/ImGuiToolsWindow.h"
 #include "UI/PerformanceMetricsComputer.h"
 
 #include "imgui.h"
@@ -40,7 +40,12 @@ public:
 	static void add_tooltip(const std::string& tooltip_text, ImGuiHoveredFlags flags = ImGuiHoveredFlags_AllowWhenDisabled);
 	static void add_warning(const std::string& warning_text);
 
-	static bool ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips, bool* disabled_items = nullptr);
+	static bool ComboWithTooltips(const std::string& combo_text,
+								  int* combo_value,
+								  const char** items,
+								  size_t items_count,
+								  const char** tooltips,
+								  bool* disabled_items = nullptr);
 
 	void set_render_window(RenderWindow* renderer);
 	void set_status_text(const std::string& new_status_text);
@@ -57,6 +62,7 @@ public:
 	void draw_log_window();
 
 	ImGuiRenderWindow& get_imgui_render_window();
+	ImGuiSettingsWindow& get_imgui_settings_window();
 	ImGuiToolsWindow& get_imgui_tools_window();
 
 private:

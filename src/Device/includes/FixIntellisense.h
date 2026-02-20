@@ -33,6 +33,8 @@
 #define UNROLL_PRAGMA(x) _Pragma(UNROLL_STR(x))
 #define UNROLL_LOOP		 UNROLL_PRAGMA(unroll)
 
+using fp16 = __half;
+
 #ifndef __CUDACC__
 inline void __syncwarp(unsigned int mask) {}
 #endif
@@ -58,12 +60,20 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 
 #define UNROLL_LOOP
 
+using fp16 = float;
+
 // TODO move all of this in Math.h
 inline void __syncthreads() {}
 inline void __threadfence() {}
 inline void __syncwarp(unsigned int mask) {}
-inline unsigned int __activemask() { return 1; }
-inline unsigned int __ballot() { return 1; }
+inline unsigned int __activemask()
+{
+	return 1;
+}
+inline unsigned int __ballot()
+{
+	return 1;
+}
 
 // For using printf in Kernels
 #include <stdio.h>

@@ -23,7 +23,7 @@ HIPRT_DEVICE static ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffecti
 	return material.base_color * hippt::M_INV_PI;
 }
 
-HIPRT_DEVICE static float lambertian_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, float NoL)
+HIPRT_DEVICE static float lambertian_brdf_pdf(float NoL)
 {
 	float pdf = 0.0f;
 

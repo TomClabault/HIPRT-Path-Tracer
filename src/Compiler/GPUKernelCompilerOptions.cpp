@@ -25,6 +25,8 @@ const std::string GPUKernelCompilerOptions::DISPLAY_ONLY_SAMPLE_N = "DisplayOnly
 
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE = "PrincipledBSDFDiffuseLobe";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED = "PrincipledBSDFMetallicSampleCosineWeighted";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION = "PrincipledBSDFDoEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE = "PrincipledBSDFEnergyCompensationMode";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES = "PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces";
@@ -40,7 +42,6 @@ const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_SAMPLE_DIFFUSE_LUMIN
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION = "PrincipledBSDFDoMicrofacetRegularization";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION = "PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC = "PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic";
-const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
 const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION = "NestedDielectricsStackSize";
 
 const std::string GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY = "TrianglePointSamplingStrategy";
@@ -141,6 +142,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 
 	GPUKernelCompilerOptions::BSDF_OVERRIDE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES,
@@ -156,7 +159,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC,
-	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
 
 	GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY,
@@ -261,6 +263,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 
 	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = std::make_shared<int>(BSDFOverride);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE] = std::make_shared<int>(PrincipledBSDFDiffuseLobe);
+	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION] = std::make_shared<int>(PrincipledBSDFAnisotropicGGXSampleFunction);
+	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED] = std::make_shared<int>(PrincipledBSDFMetallicSampleCosineWeighted);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENERGY_COMPENSATION_MODE] = std::make_shared<int>(PrincipledBSDFEnergyCompensationMode);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES] = std::make_shared<int>(PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces);
@@ -276,7 +280,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION] = std::make_shared<int>(PrincipledBSDFDoMicrofacetRegularization);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_MICROFACET_REGULARIZATION_CONSISTENT_PARAMETERIZATION] = std::make_shared<int>(PrincipledBSDFDoMicrofacetRegularizationConsistentParameterization);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_MICROFACET_REGULARIZATION_DIFFUSION_HEURISTIC] = std::make_shared<int>(PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic);
-	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = std::make_shared<int>(PrincipledBSDFAnisotropicGGXSampleFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION] = std::make_shared<int>(NestedDielectricsStackSize);
 
 	m_options_macro_map[GPUKernelCompilerOptions::TRIANGLE_POINT_SAMPLING_STRATEGY] = std::make_shared<int>(TrianglePointSamplingStrategy);

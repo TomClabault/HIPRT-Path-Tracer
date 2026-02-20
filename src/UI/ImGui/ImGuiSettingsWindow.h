@@ -28,10 +28,11 @@ public:
 	std::string get_status_text() const;
 
 	void draw();
+
+	void draw_header();
 	static void draw_camera_panel_static(const std::string& panel_title, RenderWindow* render_window, std::shared_ptr<GPURenderer> renderer);
 
 private:
-	void draw_header();
 	void draw_render_settings_panel();
 	void draw_render_stopping_conditions_panel();
 	void draw_russian_roulette_options();
@@ -76,8 +77,9 @@ private:
 	void toggle_gmon();
 
 	void draw_performance_settings_panel();
-	void
-	draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label);
+	void draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics,
+										 const std::string& perf_metrics_key,
+										 const std::string& label);
 	template <class... Args>
 	std::string format_perf_metrics_tooltip_line(const std::string& label,
 												 const std::string& suffix,

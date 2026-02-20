@@ -174,6 +174,7 @@ void ImGuiSettingsWindow::draw_header()
 										"is used.");
 	}
 
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (ImGui::Button("Save viewport to PNG"))
 		m_render_window->get_screenshoter()->write_to_png();
 	if (ImGui::Button("Copy viewport to clipboard"))
@@ -1611,6 +1612,40 @@ void ImGuiSettingsWindow::draw_material_settings_panel()
 			ImGui::TreePop();
 		}
 
+		if (ImGui::CollapsingHeader("Principled BSDF metallic lobe"))
+		{
+			ImGui::TreePush("Principled bsdf metallic lobe tree");
+
+			static bool sample_cosine_weighted =
+									global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED);
+			if (ImGui::Checkbox("Sample cosine weighted##metallic", &sample_cosine_weighted))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_METALLIC_SAMPLE_COSINE_WEIGHTED,
+													   sample_cosine_weighted ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Whether or not to sample the metallic lobe of the BSDF cosine-weighted (instead of VNDF sampling) or not.\n\n"
+											"Cosine-weighted sampling is going to have massively lower variance at high roughnesses (> 0.7) and it is faster "
+											"to sample on top of that.");
+
+			if (sample_cosine_weighted)
+			{
+				ImGui::TreePush("Cosine-weighted metallic sampling settings tree");
+
+				if (ImGui::SliderFloat("Roughness threshold", &render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold, 0.0f, 1.0f))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If the roughness of the metallic lobe of the Principled BSDF is higher or equal to this threshold, the "
+												"metallic lobe will be sampled using cosine-weighted hemisphere sampling instead of GGX VNDF sampling.");
+
+				ImGui::TreePop();
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
 		if (ImGui::CollapsingHeader("Principled BSDF glossy lobe"))
 		{
 			ImGui::TreePush("Principled bsdf glossy lobe tree");
@@ -1661,7 +1696,8 @@ void ImGuiSettingsWindow::draw_material_settings_panel()
 
 		std::vector<const char*> ggx_sampling_items = { "- VNDF", "- VNDF Spherical Caps" };
 		if (ImGui::Combo("GGX Sampling Method",
-						 m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION),
+						 m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(
+												 GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION),
 						 ggx_sampling_items.data(), ggx_sampling_items.size()))
 		{
 			m_renderer->recompile_kernels();

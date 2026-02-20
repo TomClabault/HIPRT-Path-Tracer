@@ -10,6 +10,7 @@
 #include "UI/ImGui/ImGuiConvergenceGraphWidget.h"
 
 class RenderWindow;
+class ImGuiSettingsWindow;
 
 class ImGuiToolsWindow
 {
@@ -17,6 +18,7 @@ public:
 	static const char* TITLE;
 
 	void set_render_window(RenderWindow* render_window);
+	void set_settings_window(ImGuiSettingsWindow* settings_window);
 
 	void draw();
 	void draw_ggx_energy_compensation_panel();
@@ -35,6 +37,7 @@ public:
 private:
 	RenderWindow* m_render_window = nullptr;
 	ImGuiConvergenceGraphWidget m_convergence_graph_widget;
+	ImGuiSettingsWindow* m_settings_window = nullptr;
 
 	std::shared_ptr<GPURenderer> m_renderer;
 };

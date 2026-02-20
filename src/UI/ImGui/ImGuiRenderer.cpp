@@ -17,7 +17,7 @@
 ImGuiRenderer::ImGuiRenderer()
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	float windowDpiScale = viewport->DpiScale;
+	float windowDpiScale	= viewport->DpiScale;
 	if (windowDpiScale > 1.0f)
 		ImGui::GetStyle().ScaleAllSizes(windowDpiScale);
 }
@@ -29,7 +29,7 @@ void ImGuiRenderer::init_imgui(GLFWwindow* glfw_window)
 	ImGui::CreateContext();
 	ImPlot::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 	ImGui_ImplGlfw_InitForOpenGL(glfw_window, true);
@@ -48,7 +48,8 @@ void ImGuiRenderer::add_warning(const std::string& warning_text)
 	ImGuiRenderer::show_help_marker(warning_text.c_str());
 }
 
-bool ImGuiRenderer::ComboWithTooltips(const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips, bool* disabled_items)
+bool ImGuiRenderer::ComboWithTooltips(
+						const std::string& combo_text, int* combo_value, const char** items, size_t items_count, const char** tooltips, bool* disabled_items)
 {
 	if (ImGui::BeginCombo(combo_text.c_str(), items[*combo_value]))
 	{
@@ -149,7 +150,7 @@ void ImGuiRenderer::draw_interface()
 
 void ImGuiRenderer::rescale_ui()
 {
-	ImGuiIO& io = ImGui::GetIO();
+	ImGuiIO& io				= ImGui::GetIO();
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 
 	io.FontGlobalScale = viewport->DpiScale;
@@ -190,10 +191,13 @@ void ImGuiRenderer::draw_dockspace()
 			ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags | ImGuiDockNodeFlags_DockSpace);
 			ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
-			int renderer_width = m_render_window->get_renderer()->m_render_resolution.x;
+			int renderer_width	= m_render_window->get_renderer()->m_render_resolution.x;
 			int renderer_height = m_render_window->get_renderer()->m_render_resolution.y;
-			m_dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr, &dockspace_id);
-			m_dock_id_bottom = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, ImGuiLogWindow::BASE_SIZE / (renderer_height + ImGuiLogWindow::BASE_SIZE), nullptr, &dockspace_id);
+			m_dock_id_left		= ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left,
+															  ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr,
+															  &dockspace_id);
+			m_dock_id_bottom	= ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down,
+															  ImGuiLogWindow::BASE_SIZE / (renderer_height + ImGuiLogWindow::BASE_SIZE), nullptr, &dockspace_id);
 
 			// we now dock our windows into the docking node we made above
 			ImGui::DockBuilderDockWindow(ImGuiLogWindow::TITLE, m_dock_id_bottom);
@@ -252,6 +256,11 @@ void ImGuiRenderer::draw_log_window()
 ImGuiRenderWindow& ImGuiRenderer::get_imgui_render_window()
 {
 	return m_imgui_render_window;
+}
+
+ImGuiSettingsWindow& ImGuiRenderer::get_imgui_settings_window()
+{
+	return m_imgui_settings_window;
 }
 
 ImGuiToolsWindow& ImGuiRenderer::get_imgui_tools_window()

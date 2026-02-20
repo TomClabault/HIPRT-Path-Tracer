@@ -114,6 +114,18 @@
 #define PrincipledBSDFAnisotropicGGXSampleFunction GGX_VNDF_SAMPLING
 
 /**
+ * If true, when sampling the metallic layer of the Principled BSDF, the GGX lobe will be sampled with a cosine-weighted distribution instead of a pure GGX VNDF
+ * (or whatever model is chosen with PrincipledBSDFAnisotropicGGXSampleFunction option) distribution.
+ *
+ * This is very beneficial for variance reduction when the metallic layer is very rough (> 0.7) because this is where VNDF sampling tends to produce a bunch of
+ * invalid samples that go below the surface.
+ *
+ * The roughness threshold at which this starts to be beneficial is something that can be experimented with, but 0.7 seems to be a good value for now. This
+ * threshold is defined in render_data.bsdf_data.metallic_sample_cosine_weighted_roughness_threshold
+ */
+#define PrincipledBSDFMetallicSampleCosineWeighted KERNEL_OPTION_TRUE
+
+/**
  * Whether or not to use multiple scattering at all to conserve energy when evaluating GGX BRDF lobes in the Principled BSDF
  *
  * The method used to compute the missing energy depends on PrincipledBSDFEnergyCompensationMode
@@ -142,7 +154,7 @@
  * allowed, the more accurate the energy recovery will be but the more expensive it will be to compute. Setting this to 1 means that only single scattering will
  * be accounted for and no walk in the microsurface will be performed, yielding the same results as a classic microfacet BRDF.
  */
-#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 3
+#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 15
 
 /**
  * Whether or not to perform energy compensation for the glass layer of the Principled BSDF

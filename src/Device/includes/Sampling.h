@@ -15,13 +15,14 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
- /**
-  * Returns the radical inverse base 2 of a given number.
-  * Used for generating 2D points following the Hammersley point set
-  *
-  * Reference: [Holger Dammertz, Hammersley Points on the Hemisphere] http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
-  */
-HIPRT_DEVICE static float radical_inverse_base_2(unsigned int index) {
+/**
+ * Returns the radical inverse base 2 of a given number.
+ * Used for generating 2D points following the Hammersley point set
+ *
+ * Reference: [Holger Dammertz, Hammersley Points on the Hemisphere] http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+ */
+HIPRT_DEVICE static float radical_inverse_base_2(unsigned int index)
+{
 	index = (index << 16u) | (index >> 16u);
 	index = ((index & 0x55555555u) << 1u) | ((index & 0xAAAAAAAAu) >> 1u);
 	index = ((index & 0x33333333u) << 2u) | ((index & 0xCCCCCCCCu) >> 2u);
@@ -50,8 +51,8 @@ HIPRT_DEVICE static float2 sample_hammersley_2D(unsigned int number_of_points, u
 HIPRT_DEVICE static float2 sample_in_disk_uv(float radius, float2 uv)
 {
 	float r_sqrt_v = radius * hippt::sqrt(uv.y);
-	float x = r_sqrt_v * hippt::intrin_cosf(hippt::M_TWO_PI * uv.x);
-	float y = r_sqrt_v * hippt::intrin_sinf(hippt::M_TWO_PI * uv.x);
+	float x		   = r_sqrt_v * hippt::intrin_cosf(hippt::M_TWO_PI * uv.x);
+	float y		   = r_sqrt_v * hippt::intrin_sinf(hippt::M_TWO_PI * uv.x);
 
 	return make_float2(x, y);
 }
@@ -138,9 +139,9 @@ HIPRT_DEVICE static float3 refract_ray(const float3& ray_direction, const float3
 	float NoI = hippt::dot(ray_direction, surface_normal);
 
 	float sin_theta_i_2 = 1.0f - NoI * NoI;
-	float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
+	float root_term		= 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
 
-	float cos_theta_t = sqrt(root_term);
+	float cos_theta_t		 = sqrt(root_term);
 	float3 refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
 
 	return refract_direction;
@@ -170,7 +171,7 @@ HIPRT_DEVICE static float3 cosine_weighted_sample_around_normal_world_space(cons
 
 	float theta = hippt::M_TWO_PI * rand_1;
 
-	float2 xy = hippt::sqrt(1.0f - rand_2 * rand_2) * make_float2(hippt::intrin_cosf(theta), hippt::intrin_sinf(theta));
+	float2 xy			= hippt::sqrt(1.0f - rand_2 * rand_2) * make_float2(hippt::intrin_cosf(theta), hippt::intrin_sinf(theta));
 	float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
 
 	return hippt::normalize(normal + sphere_point);
@@ -188,11 +189,19 @@ HIPRT_DEVICE static float3 cosine_weighted_sample_z_up_frame(Xorshift32Generator
 	float r1 = random_number_generator();
 	float r2 = random_number_generator();
 
-	float phi = hippt::M_TWO_PI * r1;
+	float phi		= hippt::M_TWO_PI * r1;
 	float cos_theta = hippt::sqrt(r2);
 	float sin_theta = hippt::sqrt(1 - cos_theta * cos_theta);
 
 	return hippt::normalize(make_float3(hippt::intrin_cosf(phi) * sin_theta, hippt::intrin_sinf(phi) * sin_theta, cos_theta));
+}
+
+HIPRT_DEVICE static float cosine_weighted_pdf(float NoL)
+{
+	if (NoL <= 0.0f)
+		return 0.0f;
+
+	return NoL * hippt::M_INV_PI;
 }
 
 #endif
