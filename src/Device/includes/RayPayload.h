@@ -22,13 +22,16 @@ enum RayState
 struct RayPayload
 {
 	// Energy left in the ray after it bounces around the scene
+	// Todo RGB9E5?
 	ColorRGB32F throughput = ColorRGB32F(1.0f);
 	// Final color of the ray
 	ColorRGB32F ray_color = ColorRGB32F(0.0f);
 	// Camera ray is "Bounce" to give it a chance to hit the scene
+	// TODO pack as bits, maybe with bounce
 	RayState next_ray_state = RayState::BOUNCE;
 
 	// What bounce we're currently at
+	// TODO make unsigned char
 	int bounce = 0;
 	// Roughness accumulated by the bounces of the ray along the path. In [0, 1]
 	//
@@ -42,6 +45,8 @@ struct RayPayload
 	//
 	// The accumulated roughness is computed as the maximum between the current accumulated roughness
 	// and the roughness of the lobe that was sampled to get the next bounce direction
+	//
+	// TODO unsigned char packed
 	float accumulated_roughness = 0.0f;
 
 	// Material of the current hit

@@ -6,8 +6,8 @@
 #ifndef DEVICE_NEE_ESTIMATORS_H
 #define DEVICE_NEE_ESTIMATORS_H
 
-#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/BSDFs/Dispatcher.h"
+#include "Device/includes/BSDFs/MicrofacetRegularization.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/Intersect.h"
@@ -15,8 +15,8 @@
 #include "Device/includes/LightSampling/RIS/RIS.h"
 #include "Device/includes/LightSampling/RISLTC/RISLTC.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
-#include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/DI/FinalShading.h"
+#include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/ReGIR/FinalShading.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/SanityCheck.h"
@@ -25,17 +25,20 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
+												 RayPayload& ray_payload,
+												 const HitInfo closest_hit_info,
+												 const float3& view_direction,
+												 Xorshift32Generator& random_number_generator)
 {
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);
 
 	ColorRGB32F light_source_radiance;
 
-	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(render_data,
-		closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-		closest_hit_info.primitive_index, ray_payload,
-		random_number_generator);
+	LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(
+							render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+							closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
 	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 	{
@@ -46,13 +49,13 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
 			// sampling technique couldn't sample a triangle
 			continue;
 
-		float3 shadow_ray_origin = closest_hit_info.inter_point;
-		float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
-		float distance_to_light = hippt::length(shadow_ray_direction);
+		float3 shadow_ray_origin			   = closest_hit_info.inter_point;
+		float3 shadow_ray_direction			   = light_sample.point_on_light - shadow_ray_origin;
+		float distance_to_light				   = hippt::length(shadow_ray_direction);
 		float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 		hiprtRay shadow_ray;
-		shadow_ray.origin = shadow_ray_origin;
+		shadow_ray.origin	 = shadow_ray_origin;
 		shadow_ray.direction = shadow_ray_direction_normalized;
 
 		// abs() here to allow backfacing light sources
@@ -62,8 +65,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
 		{
 			NEEPlusPlusContext nee_plus_plus_context;
 			nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-			nee_plus_plus_context.shaded_point = shadow_ray_origin;
-			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+			nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+			bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+															   nee_plus_plus_context, random_number_generator, ray_payload.bounce);
 
 			if (!in_shadow)
 			{
@@ -71,9 +75,13 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
 
 				BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE && DirectLightSamplingStrategy == LSS_BASE_REGIR
-				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 #else
-				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+				BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+										 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+										 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
 #endif
 				ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
@@ -84,7 +92,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
 					if (light_sample_solid_angle_pdf > 0.0f)
 					{
 						float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-						light_source_radiance += light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+						light_source_radiance += light_sample.emission * cosine_term * bsdf_color / light_sample_solid_angle_pdf /
+												 nee_plus_plus_context.unoccluded_probability;
 
 						// Just a CPU-only sanity check
 						sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
@@ -97,31 +106,39 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, R
 	return light_source_radiance / DirectLightIntegrationFactor<DirectLightSamplingStrategy>();
 }
 
-HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data,
+											   RayPayload& ray_payload,
+											   const HitInfo closest_hit_info,
+											   const float3& view_direction,
+											   Xorshift32Generator& random_number_generator)
 {
 	float bsdf_sample_pdf;
 	float3 sampled_bsdf_direction;
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 
-	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
+	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
+							 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+							 MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
 	ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
 	ColorRGB32F bsdf_radiance = ColorRGB32F(0.0f);
 	if (bsdf_sample_pdf > 0.0f)
 	{
 		hiprtRay new_ray;
-		new_ray.origin = closest_hit_info.inter_point;
+		new_ray.origin	  = closest_hit_info.inter_point;
 		new_ray.direction = sampled_bsdf_direction;
 
 		BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
-		bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+		bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
+																 ray_payload.bounce, random_number_generator);
 
 		// Checking that we did hit something and if we hit something,
 		// it needs to be emissive
-		if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
+		if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() &&
+			compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
 		{
 			float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
-			bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf;
+			bsdf_radiance	  = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf;
 
 			// Just a CPU-only sanity check
 			sanity_check</* CPUOnly */ true>(render_data, bsdf_radiance, 0, 0);
@@ -131,16 +148,19 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_dat
 	return bsdf_radiance;
 }
 
-HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data,
+											  RayPayload& ray_payload,
+											  const HitInfo closest_hit_info,
+											  const float3& view_direction,
+											  Xorshift32Generator& random_number_generator)
 {
 	ColorRGB32F light_source_radiance_mis;
 
 	if (ray_payload.material.can_do_light_sampling())
 	{
-		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(render_data,
-			closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-			closest_hit_info.primitive_index, ray_payload,
-			random_number_generator);
+		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(
+								render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+								closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
 		for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 		{
@@ -149,24 +169,27 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
 			// Can happen for very small triangles that the PDF of the sampled triangle couldn't be computed
 			if (light_sample.area_measure_pdf > 0.0f)
 			{
-				float3 shadow_ray_direction = light_sample.point_on_light - closest_hit_info.inter_point;
-				float distance_to_light = hippt::length(shadow_ray_direction);
+				float3 shadow_ray_direction			   = light_sample.point_on_light - closest_hit_info.inter_point;
+				float distance_to_light				   = hippt::length(shadow_ray_direction);
 				float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 				hiprtRay shadow_ray;
-				shadow_ray.origin = closest_hit_info.inter_point;
+				shadow_ray.origin	 = closest_hit_info.inter_point;
 				shadow_ray.direction = shadow_ray_direction_normalized;
 
 				NEEPlusPlusContext nee_plus_plus_context;
 				nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-				nee_plus_plus_context.shaded_point = shadow_ray.origin;
-				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+				nee_plus_plus_context.shaded_point	 = shadow_ray.origin;
+				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+																   nee_plus_plus_context, random_number_generator, ray_payload.bounce);
 
 				if (!in_shadow)
 				{
 					float bsdf_pdf;
 					BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+					BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+											 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+											 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 					if (bsdf_pdf > 0.0f)
@@ -176,11 +199,14 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
 						// Preventing division by 0 in the conversion to solid angle here
 						if (cos_theta_at_light_source > 1.0e-5f)
 						{
-							float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, cos_theta_at_light_source);
-							float mis_weight = balance_heuristic(light_sample_solid_angle_pdf, DirectLightIntegrationFactor<DirectLightSamplingStrategy>(), bsdf_pdf, 1);
+							float light_sample_solid_angle_pdf =
+													area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, cos_theta_at_light_source);
+							float mis_weight = balance_heuristic(light_sample_solid_angle_pdf, DirectLightIntegrationFactor<DirectLightSamplingStrategy>(),
+																 bsdf_pdf, 1);
 
 							float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
-							light_source_radiance_mis += bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf / nee_plus_plus_context.unoccluded_probability;
+							light_source_radiance_mis += bsdf_color * cosine_term * light_sample.emission * mis_weight / light_sample_solid_angle_pdf /
+														 nee_plus_plus_context.unoccluded_probability;
 
 							// Just a CPU-only sanity check
 							sanity_check</* CPUOnly */ true>(render_data, light_source_radiance_mis, 0, 0);
@@ -193,34 +219,38 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
 
 	float bsdf_sample_pdf;
 	float3 sampled_bsdf_direction;
-	float3 bsdf_shadow_ray_origin = closest_hit_info.inter_point;
+	float3 bsdf_shadow_ray_origin			  = closest_hit_info.inter_point;
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 	ColorRGB32F bsdf_radiance_mis;
 
 	unsigned int previous_seed = random_number_generator.m_state.seed;
 
 	random_number_generator.m_state.seed = previous_seed;
-	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.bounce, ray_payload.accumulated_roughness, MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
+	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
+							 incident_light_info, ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
+							 MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 	ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
 	if (bsdf_sample_pdf > 0.0f)
 	{
 		hiprtRay new_ray;
-		new_ray.origin = bsdf_shadow_ray_origin;
+		new_ray.origin	  = bsdf_shadow_ray_origin;
 		new_ray.direction = sampled_bsdf_direction;
 
 		BSDFLightSampleRayHitInfo shadow_light_ray_hit_info;
-		bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
+		bool intersection_found = evaluate_bsdf_light_sample_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index,
+																 ray_payload.bounce, random_number_generator);
 
 		// Checking that we did hit something and if we hit something,
 		// it needs to be emissive
 		//
 		// We're also checking if the light is backfacing maybe with compute_cosine_term()
-		if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() && compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
+		if (intersection_found && !shadow_light_ray_hit_info.hit_emission.is_black() &&
+			compute_cosine_term_at_light_source(shadow_light_ray_hit_info.hit_geometric_normal, -sampled_bsdf_direction) > 0.0f)
 		{
-			float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-				ray_payload.material,
-				shadow_light_ray_hit_info, sampled_bsdf_direction);
+			float light_pdf_solid_angle = pdf_of_emissive_triangle_hit_solid_angle(render_data, closest_hit_info.inter_point, view_direction,
+																				   closest_hit_info.shading_normal, ray_payload.material,
+																				   shadow_light_ray_hit_info, sampled_bsdf_direction);
 			float mis_weight = balance_heuristic(bsdf_sample_pdf, 1, light_pdf_solid_angle, DirectLightIntegrationFactor<DirectLightSamplingStrategy>());
 
 			// Using abs here because we want the dot product to be positive.
@@ -243,9 +273,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data, RayP
 	return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
-HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info,
-	const float3& view_direction,
-	Xorshift32Generator& random_number_generator, int2 pixel_coords)
+HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data,
+													RayPayload& ray_payload,
+													const HitInfo closest_hit_info,
+													const float3& view_direction,
+													Xorshift32Generator& random_number_generator,
+													int2 pixel_coords)
 {
 	// ReSTIR DI doesn't support explicitely looping to sample
 	// multiple lights per shading point so that's why we don't
@@ -278,18 +311,21 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data
 	return direct_light_contribution;
 }
 
-HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_data,
+													  RayPayload& ray_payload,
+													  const HitInfo closest_hit_info,
+													  const float3& view_direction,
+													  Xorshift32Generator& random_number_generator)
 {
 	if (!ray_payload.material.can_do_light_sampling())
 		return ColorRGB32F(0.0f);
 
-	int valid_light_sample_count = 0;
+	int valid_light_sample_count		= 0;
 	ColorRGB32F total_outgoing_radiance = ColorRGB32F(0.0f);
 
-	LightSampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_light(render_data,
-		closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-		closest_hit_info.primitive_index, ray_payload,
-		random_number_generator);
+	LightSampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples =
+							sample_one_light(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
+											 closest_hit_info.geometric_normal, closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
 	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 	{
@@ -306,17 +342,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
 		float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 1]];
 		float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 2]];
 
-		float specular_lobe = evaluate_ltc(render_data,
-			vertex_A, vertex_B, vertex_C,
-			closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-			ray_payload.material,
-			LTCLobe::SPECULAR_LOBE);
+		float specular_lobe = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, closest_hit_info.inter_point, view_direction,
+										   closest_hit_info.shading_normal, ray_payload.material, LTCLobe::SPECULAR_LOBE);
 
-		float diffuse_lobe = evaluate_ltc(render_data,
-			vertex_A, vertex_B, vertex_C,
-			closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
-			ray_payload.material,
-			LTCLobe::DIFFUSE_LOBE);
+		float diffuse_lobe = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, closest_hit_info.inter_point, view_direction,
+										  closest_hit_info.shading_normal, ray_payload.material, LTCLobe::DIFFUSE_LOBE);
 
 		ColorRGB32F light_sample_emission = triangle_load_emission(render_data, light_sample.emissive_triangle_global_index);
 		total_outgoing_radiance += (ColorRGB32F(specular_lobe) + diffuse_lobe * ray_payload.material.base_color) * light_sample_emission;
@@ -325,7 +355,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
 	return total_outgoing_radiance / valid_light_sample_count;
 }
 
-HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data,
+														   RayPayload& ray_payload,
+														   const HitInfo closest_hit_info,
+														   const float3& view_direction,
+														   Xorshift32Generator& random_number_generator)
 {
 	ColorRGB32F direct_light_contribution;
 
@@ -335,7 +369,7 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 	{
 #if DirectLightSamplingStrategy == LSS_BASE_REGIR && DirectLightNEEEstimator != LSS_BSDF
 		// ReGIR has its own special path to optimize things a bit.
-		// 
+		//
 		// Also, BSDF sampling only can be handled by the usual path because then
 		// ReGIR isn't used
 		direct_light_contribution += sample_one_light_ReGIR(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
@@ -379,12 +413,15 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
  * I think the better morale to remember is that the material being emissive doesn't matter at
  * all. As long as the material itself reflects light, then we should do NEE.
  */
-HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info,
-	const float3& view_direction,
-	Xorshift32Generator& random_number_generator, int2 pixel_coords)
+HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
+												  RayPayload& ray_payload,
+												  const HitInfo closest_hit_info,
+												  const float3& view_direction,
+												  Xorshift32Generator& random_number_generator,
+												  int2 pixel_coords)
 {
-	if (render_data.buffers.emissive_triangles_count == 0
-		&& !(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightNEEEstimator == LSS_RESTIR_DI))
+	if (render_data.buffers.emissive_triangles_count == 0 &&
+		!(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightNEEEstimator == LSS_RESTIR_DI))
 		// No emissive geometry in the scene to sample
 		// And we're not sampling the envmap with ReSTIR DI which means
 		// that we're not sampling anything so return black
@@ -422,30 +459,36 @@ HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data, 
 HIPRT_DEVICE ColorRGB32F clamp_direct_lighting_estimation(ColorRGB32F direct_lighting_contribution, float direct_contribution_clamp, int bounce)
 {
 	return clamp_light_contribution(direct_lighting_contribution, direct_contribution_clamp, bounce > 0);
-
 }
 
 /**
  * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
  * They can be ignored if not using ReSTIR DI
  */
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
-	float3 view_direction,
-	int x, int y,
-	Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
+												  RayPayload& ray_payload,
+												  ColorRGB32F custom_ray_throughput,
+												  HitInfo& closest_hit_info,
+												  float3 view_direction,
+												  int x,
+												  int y,
+												  Xorshift32Generator& random_number_generator)
 {
 	ColorRGB32F total_direct_lighting;
 
-	ColorRGB32F emissive_geometry_direct_contribution = sample_emissive_geometry(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y));
+	ColorRGB32F emissive_geometry_direct_contribution =
+							sample_emissive_geometry(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y));
 	ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
 	// Clamping direct lighting
-	emissive_geometry_direct_contribution = clamp_light_contribution(emissive_geometry_direct_contribution, render_data.render_settings.direct_contribution_clamp, ray_payload.bounce == 0);
-	envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
+	emissive_geometry_direct_contribution = clamp_light_contribution(emissive_geometry_direct_contribution,
+																	 render_data.render_settings.direct_contribution_clamp, ray_payload.bounce == 0);
+	envmap_direct_contribution			  = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp,
+																	 ray_payload.bounce == 0);
 
 #if DirectLightNEEEstimator == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
 	ColorRGB32F hit_emission = ray_payload.material.emission;
-	hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
+	hit_emission			 = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
 
 	total_direct_lighting += hit_emission * custom_ray_throughput;
 #else
@@ -456,7 +499,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, 
 		// geometry + direct light sampling). Otherwise, we don't check for bounce == 0
 		total_direct_lighting += ray_payload.material.emission;
 
-	// Clamped indirect lighting 
+	// Clamped indirect lighting
 	ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * custom_ray_throughput;
 
 	total_direct_lighting += direct_lighting_contribution;
@@ -469,9 +512,14 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, 
  * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
  * They can be ignored if not using ReSTIR DI
  */
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data, RayPayload& ray_payload, ColorRGB32F custom_ray_throughput, HitInfo& closest_hit_info,
-	float3 view_direction,
-	int x, int y, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& render_data,
+															  RayPayload& ray_payload,
+															  ColorRGB32F custom_ray_throughput,
+															  HitInfo& closest_hit_info,
+															  float3 view_direction,
+															  int x,
+															  int y,
+															  Xorshift32Generator& random_number_generator)
 {
 	return estimate_direct_lighting(render_data, ray_payload, custom_ray_throughput, closest_hit_info, view_direction, x, y, random_number_generator);
 }
@@ -480,12 +528,16 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& r
  * The x & y parameters are only used if using ReSTIR DI (they are for fetching the ReSTIR DI reservoir).
  * They can be ignored if not using ReSTIR DI
  */
-HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info,
-	float3 view_direction,
-	int x, int y,
-	Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
+												  RayPayload& ray_payload,
+												  HitInfo& closest_hit_info,
+												  float3 view_direction,
+												  int x,
+												  int y,
+												  Xorshift32Generator& random_number_generator)
 {
-	ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting(render_data, ray_payload, ray_payload.throughput, closest_hit_info, view_direction, x, y, random_number_generator);
+	ColorRGB32F unclamped_direct_lighting = estimate_direct_lighting(render_data, ray_payload, ray_payload.throughput, closest_hit_info, view_direction, x, y,
+																	 random_number_generator);
 
 	return clamp_direct_lighting_estimation(unclamped_direct_lighting, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce);
 }

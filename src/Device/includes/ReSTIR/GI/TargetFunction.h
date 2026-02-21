@@ -7,13 +7,16 @@
 #define DEVICE_RESTIR_GI_TARGET_FUNCTION_H
 
 #include "Device/includes/LightSampling/NEEEstimators.h"
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/Surface.h"
-#include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool withVisiblity, bool resamplingNeighbor = true>
-HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRGIReservoirSample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData& render_data,
+														   const ReSTIRGIReservoirSample& sample,
+														   ReSTIRSurface& surface,
+														   Xorshift32Generator& random_number_generator)
 {
 	float distance_to_sample_point;
 	float3 incident_light_direction;
@@ -57,17 +60,20 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 	if constexpr (withVisiblity)
 	{
 		hiprtRay visibility_ray;
-		visibility_ray.origin = surface.shading_point;
+		visibility_ray.origin	 = surface.shading_point;
 		visibility_ray.direction = incident_light_direction;
 
 		Xorshift32Generator random_number_generator_alpha_test(sample.visible_to_sample_point_alpha_test_random_seed);
-		bool sample_point_occluded = evaluate_shadow_ray_occluded(render_data, visibility_ray, distance_to_sample_point, surface.primitive_index, 0, random_number_generator_alpha_test);
+		bool sample_point_occluded = evaluate_shadow_ray_occluded(render_data, visibility_ray, distance_to_sample_point, surface.primitive_index, 0,
+																  random_number_generator_alpha_test);
 		if (sample_point_occluded)
 			return 0.0f;
 	}
 
 	float bsdf_pdf;
-	BSDFContext bsdf_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_visible_point), surface.ray_volume_state, false, surface.material, 0, 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
+	BSDFContext bsdf_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction,
+							 const_cast<BSDFIncidentLightInfo&>(sample.incident_light_info_at_visible_point), surface.ray_volume_state, false, surface.material,
+							 0.0f, MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
 	ColorRGB32F visible_point_bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 	if (bsdf_pdf > 0.0f)
 		visible_point_bsdf_color *= hippt::abs(cosine_term);

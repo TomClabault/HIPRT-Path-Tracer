@@ -40,8 +40,7 @@ HIPRT_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& rend
 														   BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
 {
 	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
-							 *out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.bounce,
-							 ray_payload.accumulated_roughness);
+							 *out_sampled_light_info, ray_payload.volume_state, true, ray_payload.material, ray_payload.accumulated_roughness);
 
 	out_bsdf_color = bsdf_dispatcher_sample<sampleDirectionOnly>(render_data, bsdf_context, out_bounce_direction, out_bsdf_pdf, random_number_generator);
 

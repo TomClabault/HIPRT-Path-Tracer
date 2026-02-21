@@ -10,13 +10,15 @@
 #include "Device/includes/TriangleLoadUtils.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE float3 ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& render_data, const ReSTIRDIReservoirSample& sample,
-	float3 surface_shading_point, float& out_distance_to_light)
+HIPRT_DEVICE float3 ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& render_data,
+														 const ReSTIRDIReservoirSample& sample,
+														 float3 surface_shading_point,
+														 float& out_distance_to_light)
 {
 	float3 sample_direction;
 	if (sample.is_envmap_sample())
 	{
-		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
+		sample_direction	  = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
 		out_distance_to_light = 1.0e35f;
 	}
 	else
@@ -39,14 +41,17 @@ HIPRT_DEVICE ColorRGB32F ReSTIR_DI_get_light_sample_emission(const HIPRTRenderDa
 	else
 	{
 		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_global_index];
-		sample_emission = render_data.buffers.materials_buffer_soa.get_emission(material_index);
+		sample_emission	   = render_data.buffers.materials_buffer_soa.get_emission(material_index);
 	}
 
 	return sample_emission;
 }
 
 template <bool withVisibility>
-HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDIReservoirSample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data,
+													  const ReSTIRDIReservoirSample& sample,
+													  ReSTIRSurface& surface,
+													  Xorshift32Generator& random_number_generator)
 {
 	if (sample.emissive_triangle_global_index == -1 && !sample.is_envmap_sample())
 		// No sample
@@ -63,15 +68,16 @@ HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& ren
 		return 0.0f;
 
 	BSDFIncidentLightInfo incident_light_info = sample.flags_to_BSDF_incident_light_info();
-	BSDFContext bsdf_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, sample_direction, incident_light_info, surface.ray_volume_state, false, surface.material, /* bounce. Always 0 for ReSTIR DI */ 0, 0.0f);
-	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+	BSDFContext bsdf_context(surface.view_direction, surface.shading_normal, surface.geometric_normal, sample_direction, incident_light_info,
+							 surface.ray_volume_state, false, surface.material, 0.0f);
+	ColorRGB32F bsdf_color		= bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 	ColorRGB32F sample_emission = ReSTIR_DI_get_light_sample_emission(render_data, sample, sample_direction);
 
 	float geometry_term = 1.0f;
 	if (!sample.is_envmap_sample())
 	{
 		float3 emissive_triangle_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, sample.emissive_triangle_global_index));
-		geometry_term = compute_cosine_term_at_light_source(emissive_triangle_normal, -sample_direction);
+		geometry_term					= compute_cosine_term_at_light_source(emissive_triangle_normal, -sample_direction);
 		geometry_term /= hippt::square(distance_to_light);
 	}
 
@@ -84,10 +90,11 @@ HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& ren
 	if constexpr (withVisibility)
 	{
 		hiprtRay shadow_ray;
-		shadow_ray.origin = surface.shading_point;
+		shadow_ray.origin	 = surface.shading_point;
 		shadow_ray.direction = sample_direction;
 
-		bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, surface.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
+		bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, surface.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0,
+													 random_number_generator);
 
 		target_function *= visible;
 	}
