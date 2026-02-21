@@ -56,8 +56,6 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_uniform_area(
 	return vertex_A + edge_AB * u + edge_AC * v;
 }
 
-bool DEBUG_ON = false;
-
 /**
  * Samples a point uniformly on the given triangle (given with the triangle index)
  *

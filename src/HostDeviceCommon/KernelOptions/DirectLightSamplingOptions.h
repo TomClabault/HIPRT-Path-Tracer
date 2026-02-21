@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/KernelOptions/Common.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
+#include "Device/includes/FixIntellisense.h"
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_ONE_LIGHT				 1
@@ -213,7 +214,7 @@
 // if #ifdef to avoid compilation issues.
 
 template <int lightSamplingStrategy>
-constexpr int DirectLightSampleCount()
+HIPRT_DEVICE constexpr int DirectLightSampleCount()
 {
 	if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE)
 		// ATS Light tree with splitting is the only strategy that supports multiple light samples per path vertex
@@ -226,7 +227,7 @@ constexpr int DirectLightSampleCount()
 }
 
 template <int lightSamplingStrategy>
-constexpr int DirectLightIntegrationFactor()
+HIPRT_DEVICE constexpr int DirectLightIntegrationFactor()
 {
 	if constexpr (lightSamplingStrategy == LSS_BASE_LIGHT_TREE_ATS && LightTreeATSDoSplitting == KERNEL_OPTION_TRUE)
 		// ATS Light tree with splitting is essentially not a MC integrator since the returned
