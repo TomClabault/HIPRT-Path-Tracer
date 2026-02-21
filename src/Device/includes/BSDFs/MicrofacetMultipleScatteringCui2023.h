@@ -88,86 +88,96 @@ private:
 
 	HIPRT_DEVICE fp16 get_g(int i) const
 	{
-#ifdef __KERNELCC__
-		return get_g_impl(i, __hip_internal::make_index_sequence<PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces>());
-#else
-		return get_g_impl(i, std::make_index_sequence<PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces>());
-#endif
-	}
+		switch (i)
+		{
+		case 0:
+			return g0;
 
-	template <size_t... Is>
-#ifdef __KERNELCC__
-	HIPRT_DEVICE fp16 get_g_impl(int i, __hip_internal::index_sequence<Is...>) const
-#else
-	HIPRT_DEVICE fp16 get_g_impl(int i, std::index_sequence<Is...>) const
-#endif
-	{
-		fp16 result = g[0];
+		case 1:
+			return g1;
 
-		((i == Is ? (result = g[Is], 0) : 0), ...);
+		case 2:
+			return g2;
 
-		return result;
+		case 3:
+			return g3;
+
+		default:
+			return g0;
+		}
 	}
 
 	HIPRT_DEVICE fp16 get_l(int i) const
 	{
-#ifdef __KERNELCC__
-		return get_l_impl(i, __hip_internal::make_index_sequence<PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces>());
-#else
-		return get_l_impl(i, std::make_index_sequence<PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces>());
-#endif
-	}
+		switch (i)
+		{
+		case 0:
+			return l0;
 
-	template <size_t... Is>
-#ifdef __KERNELCC__
-	HIPRT_DEVICE fp16 get_l_impl(int i, __hip_internal::index_sequence<Is...>) const
-#else
-	HIPRT_DEVICE fp16 get_l_impl(int i, std::index_sequence<Is...>) const
-#endif
-	{
-		fp16 result = l[0];
+		case 1:
+			return l1;
 
-		((i == Is ? (result = l[Is], 0) : 0), ...);
+		case 2:
+			return l2;
 
-		return result;
+		case 3:
+			return l3;
+
+		default:
+			return l0;
+		}
 	}
 
 	HIPRT_DEVICE void set_g(int i, fp16 value)
 	{
-#ifdef __KERNELCC__
-		set_g_impl(i, value, __hip_internal::make_index_sequence<PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces>());
-#else
-		set_g_impl(i, value, std::make_index_sequence<PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces>());
-#endif
-	}
+		switch (i)
+		{
+		case 0:
+			g0 = value;
+			break;
 
-	template <size_t... Is>
-#ifdef __KERNELCC__
-	HIPRT_DEVICE void set_g_impl(int i, fp16 value, __hip_internal::index_sequence<Is...>)
-#else
-	HIPRT_DEVICE void set_g_impl(int i, fp16 value, std::index_sequence<Is...>)
-#endif
-	{
-		((i == Is ? (g[Is] = value, 0) : 0), ...);
+		case 1:
+			g1 = value;
+			break;
+
+		case 2:
+			g2 = value;
+			break;
+
+		case 3:
+			g3 = value;
+			break;
+
+		default:
+			g0 = value;
+			break;
+		}
 	}
 
 	HIPRT_DEVICE void set_l(int i, fp16 value)
 	{
-#ifdef __KERNELCC__
-		set_l_impl(i, value, __hip_internal::make_index_sequence<PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces>());
-#else
-		set_l_impl(i, value, std::make_index_sequence<PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces>());
-#endif
-	}
+		switch (i)
+		{
+		case 0:
+			l0 = value;
+			break;
 
-	template <size_t... Is>
-#ifdef __KERNELCC__
-	HIPRT_DEVICE void set_l_impl(int i, fp16 value, __hip_internal::index_sequence<Is...>)
-#else
-	HIPRT_DEVICE void set_l_impl(int i, fp16 value, std::index_sequence<Is...>)
-#endif
-	{
-		((i == Is ? (l[i] = value, 0) : 0), ...);
+		case 1:
+			l1 = value;
+			break;
+
+		case 2:
+			l2 = value;
+			break;
+
+		case 3:
+			l3 = value;
+			break;
+
+		default:
+			l0 = value;
+			break;
+		}
 	}
 
 private:
@@ -176,11 +186,11 @@ private:
 
 	fp16 lambda_0 = 0.0f;
 
-	fp16 g[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
-	fp16 l[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
+	// fp16 g[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
+	// fp16 l[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
 
-	// fp16 g0, g1, g2, g3;
-	// fp16 l0, l1, l2, l3;
+	fp16 g0, g1, g2, g3;
+	fp16 l0, l1, l2, l3;
 };
 
 // TODO do we need 2022 and 2023? Are they not the same when developing?
