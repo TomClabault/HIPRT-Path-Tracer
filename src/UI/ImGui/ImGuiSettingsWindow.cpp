@@ -4183,13 +4183,13 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 				static int max_microsurface_bounces = global_kernel_options->get_macro_value(
 										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES);
-				ImGui::SliderInt("Max microsurface bounces", &max_microsurface_bounces, 1, 16);
+				ImGui::SliderInt("Max microsurface bounces", &max_microsurface_bounces, 1, 15);
 				if (max_microsurface_bounces !=
 					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES))
 				{
 					if (ImGui::Button("Apply##max microsurface bounces"))
 					{
-						max_microsurface_bounces = hippt::clamp(1, 16, max_microsurface_bounces);
+						max_microsurface_bounces = hippt::clamp(1, 15, max_microsurface_bounces);
 
 						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES,
 															   max_microsurface_bounces);
@@ -4299,35 +4299,6 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 					ImGui::TreePop();
 				}
 			}
-
-			bool setting_changed = false;
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Energy conservation max bounces");
-			ImGui::Text("%s", "");
-			ImGuiRenderer::show_help_marker(
-									"After what bounce to stop doing energy conservation (depending on the type of material)\n\n"
-									""
-									"0 means that energy conservation will only be done on the first hit (of camera rays) for example.\n\n"
-									""
-									"For glass, a value of 4 is usually enough to avoid losing too much energy when looking straight at a rough glass "
-									"object.\n\n"
-									""
-									"For metals, 0 (only on the first hit) is also probably good enough except in some specific cases where rays get trapped "
-									"(on a Mitsuba knob for example) where 4+ bounces may be required for decent results.\n\n"
-									""
-									"For clearcoated and specular materials, 0 is enough for smooth clearcoat/specular layers. "
-									"For high roughness clearcoats/specular layers, the situation is the same as for metals: "
-									"0 should be good enough as long as there are not too many concentrated inter-reflections "
-									"(in which case, a higher value, 4+, is going to be preferred).\n\n"
-									""
-									"-1 to disable and always do energy compensation.");
-			setting_changed |= ImGui::SliderInt("Glass", &render_data.bsdfs_data.glass_energy_compensation_max_bounce, -1, render_settings.nb_bounces);
-			setting_changed |= ImGui::SliderInt("Clearcoat", &render_data.bsdfs_data.clearcoat_energy_compensation_max_bounce, -1, render_settings.nb_bounces);
-			setting_changed |= ImGui::SliderInt("Specular/diffuse", &render_data.bsdfs_data.glossy_base_energy_compensation_max_bounce, -1,
-												render_settings.nb_bounces);
-			setting_changed |= ImGui::SliderInt("Metallic", &render_data.bsdfs_data.metal_energy_compensation_max_bounce, -1, render_settings.nb_bounces);
-			if (setting_changed)
-				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::Text("Energy compensation roughness threshold");
