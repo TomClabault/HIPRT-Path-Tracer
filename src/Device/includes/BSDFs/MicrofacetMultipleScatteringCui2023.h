@@ -38,7 +38,7 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpacked
 class SegmentTerm
 {
 public:
-	HIPRT_DEVICE SegmentTerm(float lambda_0) : lambda_0(lambda_0) {}
+	HIPRT_DEVICE SegmentTerm(float lambda_0) : lambda_init(lambda_0) {}
 
 	HIPRT_DEVICE void add_bounce(fp16 lambda_k)
 	{
@@ -54,36 +54,36 @@ public:
 		}
 		else
 		{
-			if (m == 0.0f)
-				set_g(N - 1, get_g(N - 1) / (lambda_k + get_l(N - 1)));
+			if (m == (fp16)0.0f)
+				set_g(N - 1, get_g(N - 1) / (lambda_k + get_lambda(N - 1)));
 			else
 			{
-				set_g(N - 1, (fp16)(1.0f) / (lambda_k + get_l(N - 1)));
-				m = 0.0f;
+				set_g(N - 1, (fp16)(1.0f) / (lambda_k + get_lambda(N - 1)));
+				m = (fp16)0.0f;
 			}
 
 			for (int i = N - 2; i >= 0; i--)
-				set_g(i, (get_g(i) + get_g(i + 1)) / (lambda_k + get_l(i)));
+				set_g(i, (get_g(i) + get_g(i + 1)) / (lambda_k + get_lambda(i)));
 		}
 	}
 
 	HIPRT_DEVICE float get_sk() const
 	{
-		if (m != 0.0f)
+		if (m != (fp16)0.0f)
 			return m;
 
-		float s = 0.0f;
+		fp16 s = 0.0f;
 
 		for (int i = N - 1; i >= 0; i--)
-			s = get_e(i) * (s + (float)get_g(i));
+			s = get_e(i) * (s + get_g(i));
 
-		return s;
+		return (float)s;
 	}
 
 private:
-	HIPRT_DEVICE float get_e(int i) const
+	HIPRT_DEVICE fp16 get_e(int i) const
 	{
-		return (fp16)1.0f / (lambda_0 + get_l(i));
+		return (fp16)1.0f / (lambda_init + get_lambda(i));
 	}
 
 	HIPRT_DEVICE fp16 get_g(int i) const
@@ -107,24 +107,24 @@ private:
 		}
 	}
 
-	HIPRT_DEVICE fp16 get_l(int i) const
+	HIPRT_DEVICE fp16 get_lambda(int i) const
 	{
 		switch (i)
 		{
 		case 0:
-			return l0;
+			return lambda_0;
 
 		case 1:
-			return l1;
+			return lambda_1;
 
 		case 2:
-			return l2;
+			return lambda_2;
 
 		case 3:
-			return l3;
+			return lambda_3;
 
 		default:
-			return l0;
+			return lambda_0;
 		}
 	}
 
@@ -159,38 +159,35 @@ private:
 		switch (i)
 		{
 		case 0:
-			l0 = value;
+			lambda_0 = value;
 			break;
 
 		case 1:
-			l1 = value;
+			lambda_1 = value;
 			break;
 
 		case 2:
-			l2 = value;
+			lambda_2 = value;
 			break;
 
 		case 3:
-			l3 = value;
+			lambda_3 = value;
 			break;
 
 		default:
-			l0 = value;
+			lambda_0 = value;
 			break;
 		}
 	}
 
 private:
-	int N	= 0;
-	float m = 1.0f;
+	int N  = 0;
+	fp16 m = 1.0f;
 
-	fp16 lambda_0 = 0.0f;
-
-	// fp16 g[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
-	// fp16 l[PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces];
+	fp16 lambda_init = 0.0f;
 
 	fp16 g0, g1, g2, g3;
-	fp16 l0, l1, l2, l3;
+	fp16 lambda_0, lambda_1, lambda_2, lambda_3;
 };
 
 // TODO do we need 2022 and 2023? Are they not the same when developing?
