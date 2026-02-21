@@ -27,6 +27,7 @@
 #include "HostDeviceCommon/Maths/float2x2.h"
 #include "HostDeviceCommon/Maths/float3x3.h"
 #include "HostDeviceCommon/Maths/float4x4.h"
+#include "HostDeviceCommon/Maths/Types.h"
 
 // Here we're defining aliases for common functions used in shader code.
 //

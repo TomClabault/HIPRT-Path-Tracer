@@ -33,8 +33,6 @@
 #define UNROLL_PRAGMA(x) _Pragma(UNROLL_STR(x))
 #define UNROLL_LOOP		 UNROLL_PRAGMA(unroll)
 
-using fp16 = __half;
-
 #ifndef __CUDACC__
 inline void __syncwarp(unsigned int mask) {}
 #endif
@@ -60,8 +58,6 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define HIPRT_HOST		  __host__
 
 #define UNROLL_LOOP
-
-using fp16 = float;
 
 // TODO move all of this in Math.h
 inline void __syncthreads() {}

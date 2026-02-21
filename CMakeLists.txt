@@ -124,6 +124,10 @@ target_include_directories(HIPRTPathTracer PRIVATE ".")
 
 # Auto setup of Orochi for NVIDIA by including their cmake file
 include(${HIPRT_SUBMODULE_DIR}/contrib/Orochi/Orochi/enable_cuew.cmake)
+if (cuda_path)
+	cmake_path(SET NORMALIZED_CUDA_PATH NORMALIZE ${cuda_path})
+	add_definitions(-DCUDA_TOOLKIT_PATH="${NORMALIZED_CUDA_PATH}")
+endif()
 
 if (WIN32)
 	message(STATUS "Copying OpenImageDenoise binaries...")

@@ -66,6 +66,9 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	// compiler_options.push_back("-O0");
 	compiler_options.push_back("-g");
 	compiler_options.push_back("-ggdb");
+#else
+	// Adding CUDA toolkit includes for device side includes such as cuda_fp16
+	compiler_options.push_back(std::string("-I") + CUDA_TOOLKIT_PATH + "/include");
 #endif
 
 	// enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
