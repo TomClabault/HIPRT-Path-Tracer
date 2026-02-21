@@ -49,6 +49,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 
 #define GLOBAL_KERNEL_SIGNATURE(returnType) returnType
 #define DEVICE_KERNEL_SIGNATURE(returnType) returnType
+
 #define __shared__
 #define __restrict__
 #define __host__

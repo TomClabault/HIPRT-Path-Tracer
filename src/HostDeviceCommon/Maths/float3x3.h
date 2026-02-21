@@ -21,7 +21,7 @@ struct float3x3
 		m[2][0] = m20; m[2][1] = m21; m[2][2] = m22;
 	}
 
-	float3x3(const float3_t& col0, const float3_t& col1, const float3_t& col2)
+	HIPRT_DEVICE float3x3(const float3_t& col0, const float3_t& col1, const float3_t& col2)
 	{
 		m[0][0] = col0.x; m[0][1] = col1.x; m[0][2] = col2.x;
 		m[1][0] = col0.y; m[1][1] = col1.y; m[1][2] = col2.y;
