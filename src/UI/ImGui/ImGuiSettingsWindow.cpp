@@ -4189,6 +4189,8 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 				{
 					if (ImGui::Button("Apply##max microsurface bounces"))
 					{
+						max_microsurface_bounces = hippt::clamp(1, 16, max_microsurface_bounces);
+
 						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES,
 															   max_microsurface_bounces);
 

@@ -9,6 +9,7 @@
 #include "Device/includes/BSDFs/Fresnel.h"
 #include "Device/includes/BSDFs/MicrofacetCommon.h"
 #include "Device/includes/BSDFs/MicrofacetGGX.h"
+#include "Device/includes/BSDFs/MicrofacetMultipleScatteringCui2023Macros.h"
 #include "Device/includes/BSDFs/ThinFilm.h"
 
 #include "HostDeviceCommon/Color.h"
@@ -88,96 +89,22 @@ private:
 
 	HIPRT_DEVICE fp16 get_g(int i) const
 	{
-		switch (i)
-		{
-		case 0:
-			return g0;
-
-		case 1:
-			return g1;
-
-		case 2:
-			return g2;
-
-		case 3:
-			return g3;
-
-		default:
-			return g0;
-		}
+		MS_CUI2023_GET_G_BODY;
 	}
 
 	HIPRT_DEVICE fp16 get_lambda(int i) const
 	{
-		switch (i)
-		{
-		case 0:
-			return lambda_0;
-
-		case 1:
-			return lambda_1;
-
-		case 2:
-			return lambda_2;
-
-		case 3:
-			return lambda_3;
-
-		default:
-			return lambda_0;
-		}
+		MS_CUI2023_GET_L_BODY;
 	}
 
 	HIPRT_DEVICE void set_g(int i, fp16 value)
 	{
-		switch (i)
-		{
-		case 0:
-			g0 = value;
-			break;
-
-		case 1:
-			g1 = value;
-			break;
-
-		case 2:
-			g2 = value;
-			break;
-
-		case 3:
-			g3 = value;
-			break;
-
-		default:
-			g0 = value;
-			break;
-		}
+		MS_CUI2023_SET_G_BODY;
 	}
 
 	HIPRT_DEVICE void set_l(int i, fp16 value)
 	{
-		switch (i)
-		{
-		case 0:
-			lambda_0 = value;
-			break;
-
-		case 1:
-			lambda_1 = value;
-			break;
-
-		case 2:
-			lambda_2 = value;
-			break;
-
-		case 3:
-			lambda_3 = value;
-			break;
-
-		default:
-			lambda_0 = value;
-			break;
-		}
+		MS_CUI2023_SET_L_BODY;
 	}
 
 private:
@@ -186,8 +113,8 @@ private:
 
 	fp16 lambda_init = 0.0f;
 
-	fp16 g0, g1, g2, g3;
-	fp16 lambda_0, lambda_1, lambda_2, lambda_3;
+	MS_CUI2023_DECLARE_G;
+	MS_CUI2023_DECLARE_LAMBDAS;
 };
 
 // TODO do we need 2022 and 2023? Are they not the same when developing?
