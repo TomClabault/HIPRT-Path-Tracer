@@ -11,25 +11,28 @@
 
 #include "Device/includes/SanityCheck.h"
 #include "HostDeviceCommon/RenderData.h"
- // To be able to access GPUBakerConstants::GGX_DIRECTIONAL_ALBEDO_TEXTURE_SIZE && GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE
+// To be able to access GPUBakerConstants::GGX_DIRECTIONAL_ALBEDO_TEXTURE_SIZE && GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE
 #include "Renderer/Baker/GPUBakerConstants.h"
 
- /**
-  * References:
-  * [1] [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
-  * [2] [Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017]
-  * [3] [Dassault Enterprise PBR 2025 Specification]
-  * [4] [Google - Physically Based Rendering in Filament]
-  * [5] [MaterialX codebase on Github]
-  * [6] [Blender's Cycles codebase on Github]
-  */
+/**
+ * References:
+ * [1] [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
+ * [2] [Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017]
+ * [3] [Dassault Enterprise PBR 2025 Specification]
+ * [4] [Google - Physically Based Rendering in Filament]
+ * [5] [MaterialX codebase on Github]
+ * [6] [Blender's Cycles codebase on Github]
+ */
 
-HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction, int current_bounce)
+HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data,
+																	   const ColorRGB32F& F0,
+																	   float material_roughness,
+																	   bool material_do_energy_compensation,
+																	   const float3& local_view_direction)
 {
-	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.metal_energy_compensation_max_bounce && render_data.bsdfs_data.metal_energy_compensation_max_bounce > -1;
-	bool smooth_enough = material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
+	bool smooth_enough			= material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	bool invalid_view_direction = local_view_direction.z < 0.0f;
-	if (!material_do_energy_compensation || smooth_enough || max_bounce_reached || invalid_view_direction)
+	if (!material_do_energy_compensation || smooth_enough || invalid_view_direction)
 		return ColorRGB32F(1.0f);
 
 	const void* GGX_directional_albedo_texture_pointer = nullptr;
@@ -45,7 +48,7 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 	// Flipping the Y manually (and that's why we pass 'false' in the sample call that follow)
 	// because that GGX energy compensation texture is created with a clamp address mode, not wrap
 	// and we have to do the Y-flipping manually when not sampling in wrap mode
-	uv.y = 1.0f - uv.y;
+	uv.y	  = 1.0f - uv.y;
 	float Ess = sample_texture_rgb_32bits(GGX_directional_albedo_texture_pointer, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
 
 	// Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
@@ -105,7 +108,7 @@ HIPRT_DEVICE static float GGX_glass_energy_compensation_get_correction_exponent(
 		return 2.5f;
 
 	float lower_relative_eta_bound = 1.01f;
-	float lower_correction = 2.5f;
+	float lower_correction		   = 2.5f;
 	if (relative_eta > 1.01f && relative_eta <= 1.02f)
 	{
 		lower_relative_eta_bound = 1.01f;
@@ -351,7 +354,7 @@ HIPRT_DEVICE static float GGX_glass_energy_compensation_get_correction_exponent(
 	}
 
 	float higher_relative_eta_bound = 1.01f;
-	float higher_correction = 2.5f;
+	float higher_correction			= 2.5f;
 	if (relative_eta <= 1.01f)
 	{
 		higher_relative_eta_bound = 1.01f;
@@ -624,17 +627,23 @@ HIPRT_DEVICE static float GGX_glass_energy_compensation_get_correction_exponent(
 	}
 
 	if (higher_relative_eta_bound == lower_relative_eta_bound)
-		// Arbitrarily returning the lower correction 
+		// Arbitrarily returning the lower correction
 		return lower_correction;
 
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
-HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float custom_roughness, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
+HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data,
+																  const DeviceUnpackedEffectiveMaterial& material,
+																  float custom_roughness,
+																  bool inside_object,
+																  float eta_t,
+																  float eta_i,
+																  float relative_eta,
+																  float NoV)
 {
 	bool smooth_enough = custom_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
-	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glass_energy_compensation_max_bounce && render_data.bsdfs_data.glass_energy_compensation_max_bounce > -1;
-	if (!material.do_glass_energy_compensation || smooth_enough || max_bounce_reached)
+	if (!material.do_glass_energy_compensation || smooth_enough)
 		return 1.0f;
 
 	float compensation_term = 1.0f;
@@ -648,7 +657,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 	if (material.thin_film < 1.0f)
 	{
 		float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
-		float exponent_correction = 2.5f;
+		float exponent_correction		  = 2.5f;
 		if (!material.thin_walled)
 			exponent_correction = GGX_glass_energy_compensation_get_correction_exponent(custom_roughness, relative_eta_for_correction);
 
@@ -669,14 +678,18 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 		if (material.thin_walled)
 		{
 			void* texture = render_data.bsdfs_data.GGX_thin_glass_directional_albedo;
-			int3 dims = make_int3(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
+			int3 dims	  = make_int3(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
+									  GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS,
+									  GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 
 			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 		}
 		else
 		{
 			void* texture = inside_object ? render_data.bsdfs_data.GGX_glass_inverse_directional_albedo : render_data.bsdfs_data.GGX_glass_directional_albedo;
-			int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
+			int3 dims	  = make_int3(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
+									  GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS,
+									  GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 
 			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 		}
@@ -684,7 +697,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 		// TODO FIX THIS HORROR
 		// This is here because directional albedo for the glass BSDF is tabulated with the standard non-colored Fresnel
 		// This means that the precomputed table is incompatible with the thin-film interference fresnel
-		// 
+		//
 		// And as a matter of fact, using the energy compensation term (precomputed for the traditional fresnel)
 		// with thin-film interference Fresnel results in noticeable energy gains at grazing angles at high roughnesses
 		//
@@ -702,9 +715,15 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 	return compensation_term;
 }
 
-HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
+HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data,
+																  const DeviceUnpackedEffectiveMaterial& material,
+																  bool inside_object,
+																  float eta_t,
+																  float eta_i,
+																  float relative_eta,
+																  float NoV)
 {
-	return get_GGX_energy_compensation_dielectrics(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV, current_bounce);
+	return get_GGX_energy_compensation_dielectrics(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV);
 }
 
 #endif

@@ -15,14 +15,14 @@ struct BSDFContext
 	DeviceUnpackedEffectiveMaterial& material;
 	RayVolumeState& volume_state;
 
-	float3 view_direction = make_float3(-1.0f, -1.0f, -1.0f);
-	float3 shading_normal = make_float3(-1.0f, -1.0f, -1.0f);
-	float3 geometric_normal = make_float3(-1.0f, -1.0f, -1.0f);
+	float3 view_direction	  = make_float3(-1.0f, -1.0f, -1.0f);
+	float3 shading_normal	  = make_float3(-1.0f, -1.0f, -1.0f);
+	float3 geometric_normal	  = make_float3(-1.0f, -1.0f, -1.0f);
 	float3 to_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
 
 	BSDFIncidentLightInfo& incident_light_info;
-	int current_bounce = 0;
 
+	int current_bounce				 = 0;
 	float accumulated_path_roughness = 0.0f;
 
 	// Whether or not to modify the volume state of the ray as the BSDF is sampled / evaluated.
@@ -37,20 +37,28 @@ struct BSDFContext
 
 	/**
 	 * 'to_light_direction' is only needed if evaluating the BSDF // TODO create a separate eval context and sampling context
-	 * 'incident_light_info' should be passed as BSDFIncidentLightInfo::NO_INFO if you don't care about what lobe the BSDF sampled of if you don't have the information about
-	 * what lobe the 'to_light_direction' comes from (during NEE light sampling for example)
+	 * 'incident_light_info' should be passed as BSDFIncidentLightInfo::NO_INFO if you don't care about what lobe the BSDF sampled of if you don't have the
+	 * information about what lobe the 'to_light_direction' comes from (during NEE light sampling for example)
 	 */
-	HIPRT_HOST_DEVICE BSDFContext(const float3& view_direction_, const float3& shading_normal_, const float3& geometric_normal_, const float3& to_light_direction_,
-		BSDFIncidentLightInfo& incident_light_info_,
-		RayVolumeState& ray_volume_state_, bool update_ray_volume_state_,
-		DeviceUnpackedEffectiveMaterial& material_,
-		int current_bounce_, float accumulated_path_roughness_,
-		MicrofacetRegularization::RegularizationMode regularize_bsdf = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION) :
+	HIPRT_HOST_DEVICE BSDFContext(
+							const float3& view_direction_,
+							const float3& shading_normal_,
+							const float3& geometric_normal_,
+							const float3& to_light_direction_,
+							BSDFIncidentLightInfo& incident_light_info_,
+							RayVolumeState& ray_volume_state_,
+							bool update_ray_volume_state_,
+							DeviceUnpackedEffectiveMaterial& material_,
+							int current_bounce_,
+							float accumulated_path_roughness_,
+							MicrofacetRegularization::RegularizationMode regularize_bsdf = MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION)
+		:
 
-		material(material_), volume_state(ray_volume_state_),
-		view_direction(view_direction_), shading_normal(shading_normal_), geometric_normal(geometric_normal_), to_light_direction(to_light_direction_),
-		incident_light_info(incident_light_info_), current_bounce(current_bounce_), accumulated_path_roughness(accumulated_path_roughness_),
-		update_ray_volume_state(update_ray_volume_state_), bsdf_regularization_mode(regularize_bsdf) {
+		  material(material_), volume_state(ray_volume_state_), view_direction(view_direction_), shading_normal(shading_normal_),
+		  geometric_normal(geometric_normal_), to_light_direction(to_light_direction_), incident_light_info(incident_light_info_),
+		  current_bounce(current_bounce_), accumulated_path_roughness(accumulated_path_roughness_), update_ray_volume_state(update_ray_volume_state_),
+		  bsdf_regularization_mode(regularize_bsdf)
+	{
 	}
 };
 

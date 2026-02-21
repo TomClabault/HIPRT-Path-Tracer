@@ -67,17 +67,6 @@ struct BRDFsData
 	// This option is only useful if PrincipledBSDFMetallicSampleCosineWeighted is KERNEL_OPTION_TRUE
 	float metallic_sample_cosine_weighted_roughness_threshold = 0.75f;
 
-	// After hom many bounces to stop doing energy compensation to save performance?
-	//
-	// For example, 0 means that energy compensation will only be done on the first hit and
-	// not later
-	//
-	// -1 to disable
-	int glass_energy_compensation_max_bounce	   = -1;
-	int metal_energy_compensation_max_bounce	   = -1;
-	int clearcoat_energy_compensation_max_bounce   = -1;
-	int glossy_base_energy_compensation_max_bounce = -1;
-
 	MicrofacetRegularizationSettings microfacet_regularization;
 };
 

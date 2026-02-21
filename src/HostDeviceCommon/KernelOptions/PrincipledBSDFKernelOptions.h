@@ -147,7 +147,7 @@
  *		Principle, Cui et al., 2023] to compute the true multiple scattering path integral within the microsurface. More expensive than LUTs but more accurate
  *		and physically based.
  */
-#define PrincipledBSDFEnergyCompensationMode ENERGY_COMPENSATION_MODE_INVARIANCE_CUI
+#define PrincipledBSDFEnergyCompensationMode ENERGY_COMPENSATION_MODE_LUTS_TURQUIN
 
 /**
  * The maximum number of bounces allowed while performing the random walk in the microsurface for the invariance Cui et al. method. The more bounces are

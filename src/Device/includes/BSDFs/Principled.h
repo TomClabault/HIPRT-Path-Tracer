@@ -79,7 +79,7 @@ HIPRT_DEVICE static ColorRGB32F principled_coat_eval(const HIPRTRenderData& rend
 
 	return torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.coat_anisotropy,
 												incident_medium_ior, false, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf,
-												coat_delta_direction_sampled, bsdf_context.current_bounce, rng);
+												coat_delta_direction_sampled, rng);
 }
 
 HIPRT_DEVICE static float principled_coat_pdf(const HIPRTRenderData& render_data,
@@ -196,8 +196,7 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 	ColorRGB32F eval = torrance_sparrow_GGX_eval_reflect < PrincipledBSDFDoEnergyCompensation &&
 					   PrincipledBSDFDoMetallicEnergyCompensation > (render_data, bsdf_context.material, regularized_roughness, anisotropy, incident_ior,
 																	 bsdf_context.material.do_metallic_energy_compensation, F, local_view_direction,
-																	 local_to_light_direction, local_half_vector, pdf, metal_delta_direction_sampled,
-																	 bsdf_context.current_bounce, rng);
+																	 local_to_light_direction, local_half_vector, pdf, metal_delta_direction_sampled, rng);
 
 #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
@@ -397,7 +396,7 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_eval(const HIPRTRenderData& 
 	// not just specular.
 	ColorRGB32F specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy,
 																incident_medium_ior, false, F, local_view_direction, local_to_light_direction,
-																local_half_vector, pdf, is_specular_delta_reflection_sampled, bsdf_context.current_bounce, rng);
+																local_half_vector, pdf, is_specular_delta_reflection_sampled, rng);
 
 	return specular;
 }
@@ -617,12 +616,12 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 
 		color = torrance_sparrow_GGX_eval_reflect<0>(render_data, bsdf_context.material, regularized_roughness, bsdf_context.material.anisotropy, eta_i, false,
 													 F, local_view_direction, local_to_light_direction, local_half_vector, pdf, delta_glass_direction_sampled,
-													 bsdf_context.current_bounce, rng);
+													 rng);
 
 		// Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
 		// The function will return very quickly and will return 1.0f
 		float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, bsdf_context.material, bsdf_context.volume_state.inside_material, eta_t,
-																		  eta_i, relative_eta, local_view_direction.z, bsdf_context.current_bounce);
+																		  eta_i, relative_eta, local_view_direction.z);
 		// [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
 		color /= compensation_term;
 
@@ -653,7 +652,7 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 		// The function will return very quickly and will return 1.0f
 		float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, bsdf_context.material, regularized_roughness,
 																		  bsdf_context.volume_state.inside_material, eta_t, eta_i, relative_eta,
-																		  local_view_direction.z, bsdf_context.current_bounce);
+																		  local_view_direction.z);
 		// [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
 		color /= compensation_term;
 
@@ -1748,8 +1747,8 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_glossy_base(const HIPRTRenderData&
 							internal_eval_diffuse_layer(render_data, incident_medium_ior, bsdf_context.material, local_view_direction, local_to_light_direction,
 														diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
 
-	float glossy_base_energy_compensation = get_principled_energy_compensation_glossy_base(render_data, bsdf_context.material, incident_medium_ior,
-																						   local_view_direction.z, bsdf_context.current_bounce);
+	float glossy_base_energy_compensation =
+							get_principled_energy_compensation_glossy_base(render_data, bsdf_context.material, incident_medium_ior, local_view_direction.z);
 	return glossy_base_contribution / glossy_base_energy_compensation;
 }
 
@@ -1989,8 +1988,7 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 	// closure contains the full BSDF below. So the full BSDF below + the clearcoat (= the whole BSDF actually)
 	// should be compensated, not just the clearcoat lobe. So that's why we're doing
 	// it here, after the full BSDF evaluation so that everything gets compensated
-	final_color /= get_principled_energy_compensation_clearcoat_lobe(render_data, bsdf_context.material, incident_medium_ior, local_view_direction.z,
-																	 bsdf_context.current_bounce);
+	final_color /= get_principled_energy_compensation_clearcoat_lobe(render_data, bsdf_context.material, incident_medium_ior, local_view_direction.z);
 
 	// TODO compare CPU rendering with and without
 	sanity_check</* CPUOnly */ true>(render_data, final_color, 0, 0);
