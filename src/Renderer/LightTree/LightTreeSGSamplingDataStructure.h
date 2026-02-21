@@ -21,7 +21,7 @@ public:
 	void compute_from_scene(const Scene& scene);
 	void compute(
 		const std::vector<int>& emissive_triangle_indices,
-		const std::vector<float3>& vertices_positions,
+		const std::vector<float3_t>& vertices_positions,
 		const std::vector<int>& triangles_vertex_indices,
 		const std::vector<int>& material_indices,
 		const std::vector<CPUMaterial>& materials);

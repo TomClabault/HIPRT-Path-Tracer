@@ -13,7 +13,7 @@
 
 struct BoundingVolume
 {
-	static const float3 PLANE_NORMALS[BVHConstants::PLANES_COUNT];
+	static const float3_t PLANE_NORMALS[BVHConstants::PLANES_COUNT];
 
 	std::array<float, BVHConstants::PLANES_COUNT> _d_near;
 	std::array<float, BVHConstants::PLANES_COUNT> _d_far;
@@ -33,7 +33,7 @@ struct BoundingVolume
 		{
 			for (int j = 0; j < 3; j++)
 			{
-				float dist = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3(triangle[j]));
+				float dist = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3_t(triangle[j]));
 
 				d_near[i] = hippt::min(d_near[i], dist);
 				d_far[i] = hippt::max(d_far[i], dist);

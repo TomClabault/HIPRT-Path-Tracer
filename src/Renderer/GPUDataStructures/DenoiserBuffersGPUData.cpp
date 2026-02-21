@@ -6,7 +6,7 @@
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
 #include "Renderer/GPURenderer.h"
 
-float3* DenoiserBuffersGPUData::map_normals_buffer()
+float3_t* DenoiserBuffersGPUData::map_normals_buffer()
 {
 	if (use_interop_AOVs)
 		return m_normals_AOV_interop_buffer->map();

@@ -19,7 +19,7 @@
 HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& render_data,
 														  RayPayload& ray_payload,
 														  const HitInfo& closest_hit_info,
-														  const float3& view_direction,
+														  const float3_t& view_direction,
 														  const RISLTCReservoir& reservoir,
 														  Xorshift32Generator& random_number_generator)
 {
@@ -37,8 +37,8 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 
 	bool in_shadow;
 	float distance_to_light;
-	float3 shadow_ray_direction			   = light_sample_info.point_on_light - closest_hit_info.inter_point;
-	float3 shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
+	float3_t shadow_ray_direction			   = light_sample_info.point_on_light - closest_hit_info.inter_point;
+	float3_t shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
 
 	NEEPlusPlusContext nee_plus_plus_context;
 	if (sample.is_bsdf_sample)
@@ -85,15 +85,15 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 }
 
 HIPRT_DEVICE float compute_light_LTC(const HIPRTRenderData& render_data,
-									 float3 shading_point,
-									 float3 view_direction,
-									 float3 shading_normal,
+									 float3_t shading_point,
+									 float3_t view_direction,
+									 float3_t shading_normal,
 									 DeviceUnpackedEffectiveMaterial& material,
 									 int light_index)
 {
-	float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_index * 3 + 0]];
-	float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_index * 3 + 1]];
-	float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_index * 3 + 2]];
+	float3_t vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_index * 3 + 0]];
+	float3_t vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_index * 3 + 1]];
+	float3_t vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_index * 3 + 2]];
 
 	float ltc_coat	   = 0.0f;
 	float ltc_specular = 0.0f;
@@ -123,7 +123,7 @@ HIPRT_DEVICE float compute_light_LTC(const HIPRTRenderData& render_data,
 HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRTRenderData& render_data,
 																	 RayPayload& ray_payload,
 																	 const HitInfo& closest_hit_info,
-																	 const float3& view_direction,
+																	 const float3_t& view_direction,
 																	 Xorshift32Generator& random_number_generator)
 {
 	// If we're rendering at low resolution, only doing 1 candidate of each
@@ -175,7 +175,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 	for (int i = 0; i < nb_bsdf_candidates; i++)
 	{
 		float bsdf_sample_pdf;
-		float3 sampled_bsdf_direction;
+		float3_t sampled_bsdf_direction;
 
 		BSDFIncidentLightInfo incident_light_info;
 		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
@@ -246,7 +246,7 @@ HIPRT_DEVICE RISLTCReservoir sample_bsdf_and_lights_RISLTC_reservoir(const HIPRT
 HIPRT_DEVICE ColorRGB32F sample_lights_RISLTC(HIPRTRenderData& render_data,
 											  RayPayload& ray_payload,
 											  const HitInfo& closest_hit_info,
-											  const float3& view_direction,
+											  const float3_t& view_direction,
 											  Xorshift32Generator& random_number_generator)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)

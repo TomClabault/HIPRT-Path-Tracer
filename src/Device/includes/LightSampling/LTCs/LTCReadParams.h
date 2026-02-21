@@ -9,7 +9,7 @@
 #include "Device/includes/LightSampling/LTCs/LTCLobe.h"
 #include "Device/includes/Texture.h"
 
- /**
+/**
  * This function returns the LTC parameters for the given cos_theta_v and material.
  * The coefficients M00, M02, M11 and M20 are stored in the R, G, B and A
  * components of the returned ColorRGBA32F respectively.
@@ -21,8 +21,7 @@
  * The PDF should be taken into account in the sampling routine using these LTC parameters.
  * The PDF parameter can be passed nullptr if not needed
  */
-HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float cos_theta_v,
-	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
+HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float cos_theta_v, const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
 
@@ -50,9 +49,9 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 #endif
 
 #ifdef __KERNELCC__
-	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
+	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
 #else
-	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
+	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
 #endif
 
 	// R, G, B and A components represent respectively:
@@ -67,8 +66,7 @@ HIPRT_DEVICE ColorRGBA32F read_ltc_params(void* ltcs_data_param_pointer, float c
 	return ltc_params;
 }
 
-HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float cos_theta_v,
-	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
+HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float cos_theta_v, const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
 	switch (ltc_lobe)
@@ -96,16 +94,15 @@ HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float c
 #endif
 
 #ifdef __KERNELCC__
-	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
+	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
 #else
-	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
+	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
 #endif
 
 	return sample_texture_rgba_32bits(texture_ptr, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
 }
 
-HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_theta_v,
-	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
+HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_theta_v, const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
 	switch (ltc_lobe)
@@ -133,9 +130,9 @@ HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_t
 #endif
 
 #ifdef __KERNELCC__
-	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
+	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, roughness * roughness);
 #else
-	float2 uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
+	float2_t uv = make_float2(acos(cos_theta_v) / hippt::M_PI_TWO, 1.0f - roughness * roughness);
 #endif
 
 	return sample_texture_rgba_32bits(texture_ptr, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;

@@ -11,7 +11,7 @@
 #include "Device/includes/LightSampling/LTCs/LTCTransform.h"
 #include "Device/includes/LightSampling/TriangleSamplingPolygonClipping.h"
 
-HIPRT_DEVICE float integrate_edge_vector(float3 vertex_1, float3 vertex_2)
+HIPRT_DEVICE float integrate_edge_vector(float3_t vertex_1, float3_t vertex_2)
 {
 	vertex_1 = hippt::normalize(vertex_1);
 	vertex_2 = hippt::normalize(vertex_2);
@@ -30,7 +30,7 @@ HIPRT_DEVICE float integrate_edge_vector(float3 vertex_1, float3 vertex_2)
 /**
  * 4 maximum clipped_vertices in the array for a triangle + clipping
  */
-HIPRT_DEVICE float integrate_ltc_clipped_triangle(unsigned int vertex_count, float3 clipped_vertices[4])
+HIPRT_DEVICE float integrate_ltc_clipped_triangle(unsigned int vertex_count, float3_t clipped_vertices[4])
 {
 	float result = 0.0f;
 
@@ -48,8 +48,8 @@ HIPRT_DEVICE float integrate_ltc_clipped_triangle(unsigned int vertex_count, flo
 }
 
 HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
-	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t vertex_A_world_space, float3_t vertex_B_world_space, float3_t vertex_C_world_space,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
 	LTCLobe	ltc_lobe)
 {
@@ -61,11 +61,11 @@ HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 		ltc_params.a, 0.0f, 1.0f
 	));
 
-	float3 T, B;
+	float3_t T, B;
 	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
-	float3 vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);
-	float3 vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
-	float3 vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
+	float3_t vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);
+	float3_t vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
+	float3_t vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
 
 	// Shading space to cosine space such that we sample the projected
 	// solid angle of the triangle but transformed by the LTC
@@ -74,7 +74,7 @@ HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 	vertex_B_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_B_local, material, ltc_lobe);
 	vertex_C_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_C_local, material, ltc_lobe);
 
-	float3 vertices_local_space[4] = { vertex_A_local, vertex_C_local, vertex_B_local };
+	float3_t vertices_local_space[4] = { vertex_A_local, vertex_C_local, vertex_B_local };
 	unsigned int clipped_vertex_count = clip_polygon(3, vertices_local_space);
 	if (clipped_vertex_count == 0)
 		return 0.0f;

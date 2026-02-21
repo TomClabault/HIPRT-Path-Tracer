@@ -1584,7 +1584,7 @@ bool RenderWindow::denoise()
 
 float RenderWindow::denoise_interop_buffers()
 {
-	std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer		= nullptr;
+	std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_buffer		= nullptr;
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_buffer = nullptr;
 
 	if (m_application_settings->denoiser_use_normals)
@@ -1604,7 +1604,7 @@ float RenderWindow::denoise_interop_buffers()
 
 float RenderWindow::denoise_no_interop_buffers()
 {
-	std::shared_ptr<OrochiBuffer<float3>> normals_buffer	 = nullptr;
+	std::shared_ptr<OrochiBuffer<float3_t>> normals_buffer	 = nullptr;
 	std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_buffer = nullptr;
 
 	if (m_application_settings->denoiser_use_normals)

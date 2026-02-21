@@ -28,16 +28,16 @@ struct RenderBuffers
 	// represent the indices of the vertices of the first triangle for example
 	int* triangles_indices = nullptr;
 	// A device pointer to the buffer of triangle vertices positions
-	float3* vertices_positions = nullptr;
+	float3_t* vertices_positions = nullptr;
 	// A device pointer to a buffer filled with 0s and 1s that
 	// indicates whether or not a vertex normal is available for
 	// the given vertex index
 	unsigned char* has_vertex_normals = nullptr;
 	// The smooth normal at each vertex of the scene
 	// Needs to be indexed by a vertex index
-	float3* vertex_normals = nullptr;
+	float3_t* vertex_normals = nullptr;
 	// Texture coordinates at each vertices
-	float2* texcoords = nullptr;
+	float2_t* texcoords = nullptr;
 	// Precomputed areas of all triangles of the scene
 	float* triangles_areas = nullptr;
 

@@ -16,7 +16,7 @@
  // get it at materials[50].get_roughness()
 struct GBufferDevice
 {
-	HIPRT_HOST_DEVICE float3 get_view_direction(float3 camera_position, int pixel_index) const
+	HIPRT_HOST_DEVICE float3_t get_view_direction(float3_t camera_position, int pixel_index) const
 	{
 		return hippt::normalize(camera_position - primary_hit_position[pixel_index]);
 	}
@@ -24,7 +24,7 @@ struct GBufferDevice
 	DevicePackedEffectiveMaterial* materials = nullptr;
 
 	int* first_hit_prim_index = nullptr;
-	float3* primary_hit_position = nullptr;
+	float3_t* primary_hit_position = nullptr;
 
 	// We need both normals to correct the black fringes from the microfacet
 	// model when used with smooth normals / normal mapping

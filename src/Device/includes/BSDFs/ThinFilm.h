@@ -15,10 +15,10 @@ HIPRT_DEVICE static ColorRGB32F eval_sensitivity(float opd, float shift)
 
 	float phase = 2.0f * hippt::M_Pi * opd * 1.0e-6f;
 
-	float3 val = make_float3(5.4856e-13f, 4.4201e-13f, 5.2481e-13f);
-	float3 pos = make_float3(1.6810e+06f, 1.7953e+06f, 2.2084e+06f);
-	float3 var = make_float3(4.3278e+09f, 9.3046e+09f, 6.6121e+09f);
-	float3 xyz = val * hippt::sqrt(2.0f * hippt::M_Pi * var) * hippt::intrin_cosf(pos * phase + shift) * hippt::intrin_expf(-1.0f * var * phase * phase);
+	float3_t val = make_float3(5.4856e-13f, 4.4201e-13f, 5.2481e-13f);
+	float3_t pos = make_float3(1.6810e+06f, 1.7953e+06f, 2.2084e+06f);
+	float3_t var = make_float3(4.3278e+09f, 9.3046e+09f, 6.6121e+09f);
+	float3_t xyz = val * hippt::sqrt(2.0f * hippt::M_Pi * var) * hippt::intrin_cosf(pos * phase + shift) * hippt::intrin_expf(-1.0f * var * phase * phase);
 
 	xyz.x += 9.7470e-14f * hippt::sqrt(2.0f * hippt::M_Pi * 4.5282e+09f) * hippt::intrin_cosf(2.2399e+06f * phase + shift) * hippt::intrin_expf(-4.5282e+09f * phase * phase);
 

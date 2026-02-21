@@ -13,7 +13,7 @@
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
- // Some macros to make that single function work on the CPU and GPU
+// Some macros to make that single function work on the CPU and GPU
 #ifdef __KERNELCC__
 #define GMoNThreadsPerBlock (GMoNComputeMeansKernelThreadBlockSize * GMoNComputeMeansKernelThreadBlockSize)
 
@@ -25,30 +25,31 @@ __shared__ unsigned short int sorted_keys[GMoNThreadsPerBlock * GMoNMSetsCount];
 
 #define ThreadIndex1D (threadIdx.x + threadIdx.y * blockDim.x)
 // The indexing used here tries to avoid bank conflicts
-#define SCRATCH_MEMORY_INDEX(input_buffer_index, key_index) (ThreadIndex1D + key_index * GMoNThreadsPerBlock + input_buffer_index * GMoNThreadsPerBlock * GMoNMSetsCount)
+#define SCRATCH_MEMORY_INDEX(input_buffer_index, key_index)                                                                                                    \
+	(ThreadIndex1D + key_index * GMoNThreadsPerBlock + input_buffer_index * GMoNThreadsPerBlock * GMoNMSetsCount)
 #define SORTED_KEYS_INDEX(key_index) (ThreadIndex1D + key_index * GMoNThreadsPerBlock)
 
 #define RETURN_TYPE void
 
 #define INITIAL_STORE_KEY_IN_INPUT_BUFFER(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(0, key_index)] = value
 
-#define READ_KEY(key_index) scratch_memory[SCRATCH_MEMORY_INDEX(input_buffer_index, key_index)]
+#define READ_KEY(key_index)			scratch_memory[SCRATCH_MEMORY_INDEX(input_buffer_index, key_index)]
 #define STORE_KEY(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(!input_buffer_index, key_index)] = value
 
 #else // #ifdef __KERNELCC__
 
 #define SCRATCH_MEMORY_INDEX(input_buffer_index, key_index) (key_index)
-#define SORTED_KEYS_INDEX(key_index) (key_index)
+#define SORTED_KEYS_INDEX(key_index)						(key_index)
 
 #define RETURN_TYPE std::pair<std::vector<unsigned int>, std::vector<unsigned short int>>
 
 #define INITIAL_STORE_KEY_IN_INPUT_BUFFER(key_index, value) keys[key_index] = value
 
-#define READ_KEY(key_index) (keys[SCRATCH_MEMORY_INDEX(42, key_index)])
+#define READ_KEY(key_index)			(keys[SCRATCH_MEMORY_INDEX(42, key_index)])
 #define STORE_KEY(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(42, key_index)] = value
 #endif
 
-HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution)
+HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2_t render_resolution)
 {
 #ifndef __KERNELCC__
 	std::vector<unsigned int> keys_vector(GMoNMSetsCount);
@@ -56,7 +57,7 @@ HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint
 	std::vector<unsigned short int> sorted_keys(GMoNMSetsCount);
 	std::vector<unsigned short int>& out_sorted_indices = sorted_keys;
 
-	unsigned int* keys = keys_vector.data();
+	unsigned int* keys			 = keys_vector.data();
 	unsigned int* scratch_memory = scratch_memory_vector.data();
 #else
 	bool input_buffer_index = false;
@@ -78,7 +79,7 @@ HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint
 	}
 
 	// Initializing the sorted indices
-	// 
+	//
 	// The sorted indices are 16 bits.
 	// The low 8 bits are the actual sorted indices
 	// The high 16 bits are used for internal machinery
@@ -112,7 +113,7 @@ HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint
 		// Reordering
 		for (int key_index = number_of_keys - 1; key_index >= 0; key_index--)
 		{
-			unsigned int key = READ_KEY(key_index);
+			unsigned int key   = READ_KEY(key_index);
 			unsigned int radix = key & radix_extraction_mask;
 			radix >>= digit;
 
@@ -145,8 +146,8 @@ HIPRT_HOST_DEVICE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint
 #else
 		// On the CPU, input/output ping-ponging is just a swap of pointer
 		unsigned int* temp = keys;
-		keys = scratch_memory;
-		scratch_memory = temp;
+		keys			   = scratch_memory;
+		scratch_memory	   = temp;
 #endif
 	}
 

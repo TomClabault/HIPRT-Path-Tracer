@@ -26,9 +26,9 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRen
 																  float incident_ior,
 																  bool do_energy_compensation,
 																  const ColorRGB32F& F,
-																  const float3& local_view_direction,
-																  const float3& local_to_light_direction,
-																  const float3& local_halfway_vector,
+																  const float3_t& local_view_direction,
+																  const float3_t& local_to_light_direction,
+																  const float3_t& local_halfway_vector,
 																  float& out_pdf,
 																  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
 																  Xorshift32Generator& rng)
@@ -59,9 +59,9 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderD
 															  float incident_ior,
 															  bool do_energy_compensation,
 															  const ColorRGB32F& F,
-															  const float3& local_view_direction,
-															  const float3& local_to_light_direction,
-															  const float3& local_halfway_vector,
+															  const float3_t& local_view_direction,
+															  const float3_t& local_to_light_direction,
+															  const float3_t& local_halfway_vector,
 															  float& out_pdf,
 															  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
 															  Xorshift32Generator& rng)
@@ -169,9 +169,9 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderD
 															  float incident_ior,
 															  bool do_energy_compensation,
 															  const ColorRGB32F& F,
-															  const float3& local_view_direction,
-															  const float3& local_to_light_direction,
-															  const float3& local_halfway_vector,
+															  const float3_t& local_view_direction,
+															  const float3_t& local_to_light_direction,
+															  const float3_t& local_halfway_vector,
 															  float& out_pdf,
 															  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
 															  Xorshift32Generator& rng)
@@ -212,9 +212,9 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderD
  */
 HIPRT_DEVICE float microfacet_GGX_pdf_reflect(float material_roughness,
 											  float material_anisotropy,
-											  const float3& local_view_direction,
-											  const float3& local_to_light_direction,
-											  const float3& local_halfway_vector,
+											  const float3_t& local_view_direction,
+											  const float3_t& local_to_light_direction,
+											  const float3_t& local_halfway_vector,
 											  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
 {
 	if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
@@ -280,9 +280,9 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_refract(const DeviceUn
 																  float roughness,
 																  float relative_eta,
 																  ColorRGB32F fresnel_reflectance,
-																  const float3& local_view_direction,
-																  const float3& local_to_light_direction,
-																  const float3& local_halfway_vector,
+																  const float3_t& local_view_direction,
+																  const float3_t& local_to_light_direction,
+																  const float3_t& local_halfway_vector,
 																  float& out_pdf,
 																  BSDFIncidentLightInfo incident_light_info)
 {
@@ -352,9 +352,9 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_refract(const DeviceUn
 HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_refract(const DeviceUnpackedEffectiveMaterial& material,
 														   float roughness,
 														   float relative_eta,
-														   const float3& local_view_direction,
-														   const float3& local_to_light_direction,
-														   const float3& local_halfway_vector,
+														   const float3_t& local_view_direction,
+														   const float3_t& local_to_light_direction,
+														   const float3_t& local_halfway_vector,
 														   BSDFIncidentLightInfo incident_light_info)
 {
 	float NoL = local_to_light_direction.z;

@@ -11,19 +11,19 @@
 
 template <int samplingStrategy>
 HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
-																										 const float3& shading_point,
-																										 const float3& view_direction,
-																										 const float3& shading_normal,
-																										 const float3& geometric_normal,
+																										 const float3_t& shading_point,
+																										 const float3_t& view_direction,
+																										 const float3_t& shading_normal,
+																										 const float3_t& geometric_normal,
 																										 int last_hit_primitive_index,
 																										 RayPayload& ray_payload,
 																										 Xorshift32Generator& random_number_generator);
 
 HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(const HIPRTRenderData& render_data,
-																			float3 view_direction,
-																			float3 shading_point,
-																			float3 shading_normal,
-																			float3 geometric_normal,
+																			float3_t view_direction,
+																			float3_t shading_point,
+																			float3_t shading_normal,
+																			float3_t geometric_normal,
 																			RayPayload& ray_payload,
 																			int last_hit_primitive_index,
 																			unsigned int hash_grid_cell_index,
@@ -152,7 +152,7 @@ HIPRT_DEVICE static ReGIRReservoir ReGIR_shading_sample_light_distributions(cons
 
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 	float bsdf_sample_pdf;
-	float3 sampled_bsdf_direction;
+	float3_t sampled_bsdf_direction;
 
 	BSDFIncidentLightInfo incident_light_info;
 	BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, make_float3(0.0f, 0.0f, 0.0f), incident_light_info, ray_payload.volume_state,

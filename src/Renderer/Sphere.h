@@ -11,11 +11,11 @@
 
 struct Sphere
 {
-	Sphere(float3 center, float radius, int primitive_index) : center(center), radius(radius), primitive_index(primitive_index) {};
+	Sphere(float3_t center, float radius, int primitive_index) : center(center), radius(radius), primitive_index(primitive_index) {};
 
 	inline bool intersect(const hiprtRay& ray, HitInfo& hit_info) const
 	{
-		float3 L = ray.origin - center;
+		float3_t L = ray.origin - center;
 
 		//dot(ray._direction, ray._direction) = 1 because direction is normalized
 		constexpr float a = 1.0f;
@@ -57,7 +57,7 @@ struct Sphere
 		}
 	}
 
-	float3 center;
+	float3_t center;
 	float radius;
 
 	int primitive_index;

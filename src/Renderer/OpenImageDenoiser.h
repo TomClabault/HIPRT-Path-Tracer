@@ -44,13 +44,13 @@ public:
 	 * See set_use_albedo(bool use_albedo), set_denoise_albedo(bool denoise_normals_or_not), set_use_normals(bool use_normal), ...
 	 */
 	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
-		std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov = nullptr,
+		std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_aov = nullptr,
 		std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov = nullptr);
 	/**
 	 * Overload to denoise from non OpenGL Interop AOV buffers
 	 */
 	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
-		std::shared_ptr<OrochiBuffer<float3>> normals_aov,
+		std::shared_ptr<OrochiBuffer<float3_t>> normals_aov,
 		std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov);
 	/**
 	 * Function used to copy the denoiser result after a call to denoise() to a given buffer
@@ -70,7 +70,7 @@ private:
 	bool check_buffer_sizes();
 
 	// Internal denoise function that takes raw pointers
-	void denoise(ColorRGB32F* data_to_denoise, float3* normals_aov, ColorRGB32F*);
+	void denoise(ColorRGB32F* data_to_denoise, float3_t* normals_aov, ColorRGB32F*);
 
 	bool m_use_albedo = false;
 	bool m_denoise_albedo = true;

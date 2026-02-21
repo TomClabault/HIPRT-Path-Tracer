@@ -33,7 +33,7 @@ struct ReGIRSampleSoADevice
 		return sample;
 	}
 
-	float3* point_on_light = nullptr;
+	float3_t* point_on_light = nullptr;
 
 private:
 	AtomicType<ReGIRSampleEmissiveTriangleIndicesPackingType>* emissive_triangle_indices_packed = nullptr;

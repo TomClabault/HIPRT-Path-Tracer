@@ -238,12 +238,12 @@ struct GPU_CPU_ALIGN(4) Octahedral24BitNormalPadded32b
 {
 public:
 	HIPRT_DEVICE Octahedral24BitNormalPadded32b() {}
-	HIPRT_DEVICE Octahedral24BitNormalPadded32b(float3 normal)
+	HIPRT_DEVICE Octahedral24BitNormalPadded32b(float3_t normal)
 	{
 		pack(normal);
 	}
 
-	HIPRT_DEVICE static Octahedral24BitNormalPadded32b pack_static(float3 normal)
+	HIPRT_DEVICE static Octahedral24BitNormalPadded32b pack_static(float3_t normal)
 	{
 		Octahedral24BitNormalPadded32b packed;
 		packed.pack(normal);
@@ -251,7 +251,7 @@ public:
 		return packed;
 	}
 
-	HIPRT_DEVICE void pack(float3 normal)
+	HIPRT_DEVICE void pack(float3_t normal)
 	{
 		float2_to_Snorm12_2x_as_3UChar(octahedral_encode(normal), m_packed_x, m_packed_y, m_packed_z);
 	}
@@ -261,9 +261,9 @@ public:
 	 *
 	 * The returned normal is normalized
 	 */
-	HIPRT_DEVICE float3 unpack() const
+	HIPRT_DEVICE float3_t unpack() const
 	{
-		float2 v = Snorm12_2x_as_UChar_to_float2(m_packed_x, m_packed_y, m_packed_z);
+		float2_t v = Snorm12_2x_as_UChar_to_float2(m_packed_x, m_packed_y, m_packed_z);
 		return final_decode(v.x, v.y);
 	}
 
@@ -273,9 +273,9 @@ private:
 		return roundf(hippt::clamp(0.0f, 2.0f, f + 1.0f) * 2047.0f);
 	}
 
-	HIPRT_DEVICE void Snorm12_2x_as_3Uchar(float2 s, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
+	HIPRT_DEVICE void Snorm12_2x_as_3Uchar(float2_t s, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
 	{
-		float3 u;
+		float3_t u;
 		u.x = s.x / 16.0f;
 		float t = floorf(s.y / 256.0f);
 		u.y = ((u.x - floorf(u.x)) * 256.0f) + t;
@@ -286,17 +286,17 @@ private:
 		out_z = u.z;
 	}
 
-	HIPRT_DEVICE void float2_to_Snorm12_2x_as_3UChar(float2 v, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
+	HIPRT_DEVICE void float2_to_Snorm12_2x_as_3UChar(float2_t v, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
 	{
-		float2 s = make_float2(pack_Snorm12_float(v.x), pack_Snorm12_float(v.y));
+		float2_t s = make_float2(pack_Snorm12_float(v.x), pack_Snorm12_float(v.y));
 
 		Snorm12_2x_as_3Uchar(s, out_x, out_y, out_z);
 	}
 
-	HIPRT_DEVICE float2 octahedral_encode(float3 v)
+	HIPRT_DEVICE float2_t octahedral_encode(float3_t v)
 	{
 		float l1norm_inv = 1.0f / (abs(v.x) + abs(v.y) + abs(v.z));
-		float2 result = make_float2(v.x * l1norm_inv, v.y * l1norm_inv);
+		float2_t result = make_float2(v.x * l1norm_inv, v.y * l1norm_inv);
 		if (v.z < 0.0f)
 			result = (make_float2(1.0f) - make_float2(hippt::abs(result.y), hippt::abs(result.x))) * sign_not_zero(make_float2(result.x, result.y));
 
@@ -308,26 +308,26 @@ private:
 		return k >= 0.0f ? 1.0f : -1.0f;
 	}
 
-	HIPRT_DEVICE float2 sign_not_zero(float2 v) const
+	HIPRT_DEVICE float2_t sign_not_zero(float2_t v) const
 	{
 		return make_float2(sign_not_zero(v.x), sign_not_zero(v.y));
 	}
 
-	HIPRT_DEVICE float3 final_decode(float x, float y) const
+	HIPRT_DEVICE float3_t final_decode(float x, float y) const
 	{
-		float3 v = make_float3(x, y, 1.0f - abs(x) - abs(y));
+		float3_t v = make_float3(x, y, 1.0f - abs(x) - abs(y));
 		if (v.z < 0.0f)
 		{
-			float2 temp = make_float2(v.x, v.y);
+			float2_t temp = make_float2(v.x, v.y);
 			v.x = (1.0f - hippt::abs(temp.y)) * sign_not_zero(temp.x);
 			v.y = (1.0f - hippt::abs(temp.x)) * sign_not_zero(temp.y);
 		}
 		return hippt::normalize(v);
 	}
 
-	HIPRT_DEVICE float2 Snorm12_2x_as_Uchar_to_packed_float2(unsigned char x, unsigned char y, unsigned char z) const
+	HIPRT_DEVICE float2_t Snorm12_2x_as_Uchar_to_packed_float2(unsigned char x, unsigned char y, unsigned char z) const
 	{
-		float2 s;
+		float2_t s;
 
 		float temp = y / 16.0f;
 		s.x = x * 16.0f + floorf(temp);
@@ -341,9 +341,9 @@ private:
 		return hippt::clamp(-1.0f, 1.0f, (f / 2047.0f) - 1.0f);
 	}
 
-	HIPRT_DEVICE float2 Snorm12_2x_as_UChar_to_float2(unsigned char x, unsigned char y, unsigned char z) const
+	HIPRT_DEVICE float2_t Snorm12_2x_as_UChar_to_float2(unsigned char x, unsigned char y, unsigned char z) const
 	{
-		float2 s = Snorm12_2x_as_Uchar_to_packed_float2(x, y, z);
+		float2_t s = Snorm12_2x_as_Uchar_to_packed_float2(x, y, z);
 		return make_float2(unpack_Snorm12(s.x), unpack_Snorm12(s.y));
 	}
 
@@ -361,18 +361,18 @@ private:
 };
 
 /**
- * Packs a float3 into 8 bytes (saves 4 bytes) with very good precision
+ * Packs a float3_t into 8 bytes (saves 4 bytes) with very good precision
  *
- * This stores the length of the float3 and then normalizes it and then stores
- * a 10 bit quantized version of each normalized component of the float3
+ * This stores the length of the float3_t and then normalizes it and then stores
+ * a 10 bit quantized version of each normalized component of the float3_t
  */
 struct Float3xLengthUint10bPacked
 {
-	HIPRT_DEVICE void pack(float3 data)
+	HIPRT_DEVICE void pack(float3_t data)
 	{
 		length = hippt::length(data);
 
-		float3 normalized = data / length;
+		float3_t normalized = data / length;
 
 		// Bringing in [0, 1] from [-1, 1]
 		normalized += make_float3(1.0f, 1.0f, 1.0f);
@@ -393,7 +393,7 @@ struct Float3xLengthUint10bPacked
 		pack(make_float3(data.r, data.g, data.b));
 	}
 
-	HIPRT_DEVICE static Float3xLengthUint10bPacked pack_static(float3 data)
+	HIPRT_DEVICE static Float3xLengthUint10bPacked pack_static(float3_t data)
 	{
 		Float3xLengthUint10bPacked packed;
 		packed.pack(data);
@@ -411,21 +411,21 @@ struct Float3xLengthUint10bPacked
 
 	HIPRT_DEVICE ColorRGB32F unpack_color3x32f() const
 	{
-		float3 unpacked = unpack_float3();
+		float3_t unpacked = unpack_float3();
 
 		return ColorRGB32F(unpacked.x, unpacked.y, unpacked.z);
 	}
 
-	HIPRT_DEVICE float3 unpack_float3() const
+	HIPRT_DEVICE float3_t unpack_float3() const
 	{
 		unsigned int quantized_x = (quantized >> 00) & 0b1111111111;
 		unsigned int quantized_y = (quantized >> 10) & 0b1111111111;
 		unsigned int quantized_z = (quantized >> 20) & 0b1111111111;
 
-		float3 normalized = make_float3(quantized_x / 1023.0f, quantized_y / 1023.0f, quantized_z / 1023.0f);
+		float3_t normalized = make_float3(quantized_x / 1023.0f, quantized_y / 1023.0f, quantized_z / 1023.0f);
 		// Back in [-1, 1] from [0, 1]
-		float3 rescaled = normalized * 2.0f - 1.0f;
-		float3 with_length = rescaled * length;
+		float3_t rescaled = normalized * 2.0f - 1.0f;
+		float3_t with_length = rescaled * length;
 
 		return with_length;
 	}
@@ -476,7 +476,7 @@ struct RGBE9995Packed
 
 	HIPRT_DEVICE ColorRGB32F unpack() const
 	{
-		float3 rgb = make_float3(m_packed & 0x1FF, (m_packed >> 9) & 0x1FF, (m_packed >> 18) & 0x1FF);
+		float3_t rgb = make_float3(m_packed & 0x1FF, (m_packed >> 9) & 0x1FF, (m_packed >> 18) & 0x1FF);
 		return ColorRGB32F(hippt::ldexp(rgb, static_cast<int>(m_packed >> 27) - 24));
 	}
 

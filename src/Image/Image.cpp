@@ -156,7 +156,7 @@ float Image8Bit::luminance_of_area(int start_x, int start_y, int stop_x, int sto
 
 float Image8Bit::luminance_of_area(const ImageBin& area) const { return luminance_of_area(area.x0, area.y0, area.x1, area.y1); }
 
-ColorRGBA32F Image8Bit::sample_rgba32f(float2 uv) const
+ColorRGBA32F Image8Bit::sample_rgba32f(float2_t uv) const
 {
 	// Sampling in repeat mode so we're just keeping the fractional part
 	float u = uv.x;
@@ -520,7 +520,7 @@ float Image32Bit::luminance_of_area(int start_x, int start_y, int stop_x, int st
 
 float Image32Bit::luminance_of_area(const ImageBin& area) const { return luminance_of_area(area.x0, area.y0, area.x1, area.y1); }
 
-ColorRGBA32F Image32Bit::sample_rgba32f(float2 uv) const
+ColorRGBA32F Image32Bit::sample_rgba32f(float2_t uv) const
 {
 	// Sampling in repeat mode so we're just keeping the fractional part
 	float u = uv.x;
@@ -733,7 +733,7 @@ Image32Bit3D::Image32Bit3D(const std::vector<Image32Bit> images)
 	channels = images[0].channels;
 }
 
-ColorRGBA32F Image32Bit3D::sample_rgba32f(float3 uvw) const
+ColorRGBA32F Image32Bit3D::sample_rgba32f(float3_t uvw) const
 {
 	// Sampling in repeat mode so we're just keeping the fractional part
 	float u = uvw.x;

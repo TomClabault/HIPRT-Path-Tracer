@@ -48,7 +48,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Pre_integration(HIPRTRenderData rende
 		ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
 
 		// This kernel always uses a Lambertian BRDF where the view direction is not used so it can be set to zero
-		float3 view_direction = make_float3(0.0f, 0.0f, 0.0f);
+		float3_t view_direction = make_float3(0.0f, 0.0f, 0.0f);
 
 		float non_canonical_cell_integration_sum = 0.0f;
 		for (int i = 0; i < regir_settings.get_grid_fill_settings(primary_hit).get_non_canonical_reservoir_count_per_cell(); i++)

@@ -25,14 +25,14 @@
 HIPRT_DEVICE ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> sample_light_candidate_array(
 						const HIPRTRenderData& render_data,
 						float envmap_candidate_probability,
-						const float3& view_direction,
+						const float3_t& view_direction,
 						const HitInfo& closest_hit_info,
 						RayPayload& ray_payload,
 						Xorshift32Generator& random_number_generator)
 {
 	ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> di_samples;
 
-	float3 evaluated_point = closest_hit_info.inter_point;
+	float3_t evaluated_point = closest_hit_info.inter_point;
 
 	if (random_number_generator() > envmap_candidate_probability)
 	{
@@ -62,7 +62,7 @@ HIPRT_DEVICE ReSTIRDISampleArray<DirectLightSampleCount<DirectLightSamplingStrat
 		// times as we would sample lights
 		for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 		{
-			float3 envmap_sampled_direction;
+			float3_t envmap_sampled_direction;
 			di_samples[i].emission = envmap_sample(render_data.world_settings, envmap_sampled_direction, di_samples[i].pdf, random_number_generator);
 			// Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
 			// the envmap
@@ -84,9 +84,9 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data,
 										  int nb_light_candidates,
 										  int nb_bsdf_candidates,
 										  float envmap_candidate_probability,
-										  const float3& view_direction,
+										  const float3_t& view_direction,
 										  Xorshift32Generator& random_number_generator,
-										  const int2& pixel_coords)
+										  const int2_t& pixel_coords)
 {
 	for (int i = 0; i < nb_light_candidates; i++)
 	{
@@ -100,7 +100,7 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data,
 				continue; // Invalid sample
 
 			float distance_to_light;
-			float3 to_light_direction;
+			float3_t to_light_direction;
 			if (light_sample.is_envmap_sample())
 			{
 				to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_sample.point_on_light_source);
@@ -140,9 +140,9 @@ HIPRT_DEVICE void sample_light_candidates(const HIPRTRenderData& render_data,
 					light_pdf_solid_angle = light_sample.pdf;
 				else
 				{
-					float3 light_normal = triangle_load_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
-					float normal_length = hippt::length(light_normal);
-					float light_area	= normal_length * 0.5f;
+					float3_t light_normal = triangle_load_normal_not_normalized(render_data, light_sample.emissive_triangle_global_index);
+					float normal_length	  = hippt::length(light_normal);
+					float light_area	  = normal_length * 0.5f;
 					light_normal /= normal_length;
 
 					// Converting from area measure to solid angle measure so that we use the balance heuristic we the same measure PDFs
@@ -204,14 +204,14 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data,
 										 int nb_light_candidates,
 										 int nb_bsdf_candidates,
 										 float envmap_candidate_probability,
-										 const float3& view_direction,
+										 const float3_t& view_direction,
 										 Xorshift32Generator& random_number_generator)
 {
 	// Sampling the BSDF candidates
 	for (int i = 0; i < nb_bsdf_candidates; i++)
 	{
 		float bsdf_sample_pdf_solid_angle = 0.0f;
-		float3 bsdf_sampled_direction;
+		float3_t bsdf_sampled_direction;
 
 		BSDFIncidentLightInfo sampled_lobe_info;
 		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
@@ -345,10 +345,10 @@ HIPRT_DEVICE void sample_bsdf_candidates(const HIPRTRenderData& render_data,
 }
 
 HIPRT_DEVICE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data,
-														 const int2& pixel_coords,
+														 const int2_t& pixel_coords,
 														 RayPayload& ray_payload,
 														 const HitInfo closest_hit_info,
-														 const float3& view_direction,
+														 const float3_t& view_direction,
 														 Xorshift32Generator& random_number_generator)
 {
 	ReSTIRDIReservoir reservoir;
@@ -437,7 +437,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 	ray_payload.volume_state.reconstruct_first_hit(ray_payload.material, render_data.buffers.material_indices,
 												   render_data.g_buffer.first_hit_prim_index[pixel_index], random_number_generator);
 
-	float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+	float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 	// Producing and storing the reservoir
 	ReSTIRDIReservoir initial_candidates_reservoir =
 							sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);

@@ -17,7 +17,7 @@ void LightTreeATSSamplingDataStructure::compute_from_scene(const Scene& scene)
 		scene.materials);
 }
 
-void LightTreeATSSamplingDataStructure::compute(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
+void LightTreeATSSamplingDataStructure::compute(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<float3_t>& vertices_positions, const std::vector<int>& triangles_vertex_indices, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_ATS, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
 	ThreadManager::start_thread(ThreadManager::RENDERER_COMPUTE_LIGHT_TREE_ATS,
@@ -63,7 +63,7 @@ void LightTreeATSSamplingDataStructure::recompute_if_needed(bool skip_if_already
 	HIPRTScene& hiprt_scene = m_renderer->get_hiprt_scene();
 
 	std::vector<int> emissive_triangle_indices = hiprt_scene.emissive_triangles_primitive_indices.download_data();
-	std::vector<float3> vertices_positions = hiprt_scene.whole_scene_BLAS.download_vertices_positions();
+	std::vector<float3_t> vertices_positions = hiprt_scene.whole_scene_BLAS.download_vertices_positions();
 	std::vector<int> triangles_indices = hiprt_scene.whole_scene_BLAS.download_triangle_indices();
 	std::vector<int> material_indices = hiprt_scene.material_indices.download_data();
 

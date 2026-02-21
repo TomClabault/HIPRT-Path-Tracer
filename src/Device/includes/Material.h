@@ -17,17 +17,21 @@
 #endif
 
 template <typename T>
-HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, bool is_srgb, const float2& texcoords, int texture_index);
-HIPRT_DEVICE static float2 get_metallic_roughness(const HIPRTRenderData& render_data, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
-HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2& texcoords, int base_color_texture_index);
+HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, bool is_srgb, const float2_t& texcoords, int texture_index);
+HIPRT_DEVICE static float2_t get_metallic_roughness(const HIPRTRenderData& render_data,
+													const float2_t& texcoords,
+													int metallic_texture_index,
+													int roughness_texture_index,
+													int metallic_roughness_texture_index);
+HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2_t& texcoords, int base_color_texture_index);
 
-HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, unsigned short int base_color_texture_index, int prim_id, float2 uv)
+HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, unsigned short int base_color_texture_index, int prim_id, float2_t uv)
 {
 	if (base_color_texture_index == MaterialConstants::NO_TEXTURE)
 		// Quick exit if no texture
 		return 1.0f;
 
-	float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, prim_id, render_data.buffers.texcoords, uv);
+	float2_t texcoords = uv_interpolate(render_data.buffers.triangles_indices, prim_id, render_data.buffers.texcoords, uv);
 
 	// Getting the alpha for transparency check to see if we need to pass the ray through or not
 	float alpha;
@@ -41,9 +45,9 @@ HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render
 	return get_hit_base_color_alpha(render_data, material.get_base_color_texture_index(), hit.primID, hit.uv);
 }
 
-HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, int prim_id, float2 uv)
+HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, int prim_id, float2_t uv)
 {
-	int material_index = render_data.buffers.material_indices[prim_id];
+	int material_index							= render_data.buffers.material_indices[prim_id];
 	unsigned short int base_color_texture_index = render_data.buffers.materials_buffer_soa.get_base_color_texture_index(material_index);
 
 	return get_hit_base_color_alpha(render_data, base_color_texture_index, prim_id, uv);
@@ -51,13 +55,13 @@ HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render
 
 HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
 {
-	int material_index = render_data.buffers.material_indices[hit.primID];
+	int material_index							= render_data.buffers.material_indices[hit.primID];
 	unsigned short int base_color_texture_index = render_data.buffers.materials_buffer_soa.get_base_color_texture_index(material_index);
 
 	return get_hit_base_color_alpha(render_data, base_color_texture_index, hit.primID, hit.uv);
 }
 
-HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
+HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2_t texcoords)
 {
 	DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer_soa.read_partial_material(material_index).unpack();
 
@@ -74,13 +78,14 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 
 	// Reading some parameters from the textures
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
-	float2 roughness_metallic = get_metallic_roughness(render_data, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
+	float2_t roughness_metallic = get_metallic_roughness(render_data, texcoords, material.metallic_texture_index, material.roughness_texture_index,
+														 material.roughness_metallic_texture_index);
 	if (material.roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
 	{
 		// Merged roughness metallic texture
 
 		material.roughness = roughness_metallic.x;
-		material.metallic = roughness_metallic.y;
+		material.metallic  = roughness_metallic.y;
 	}
 	else
 	{
@@ -120,15 +125,11 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 	if (material.emission_texture_index == MaterialConstants::NO_TEXTURE || material.emission_texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
 		emission = material.emission;
 
-
-
-
-
 	DeviceUnpackedEffectiveMaterial unpacked_effective_material(material);
 	unpacked_effective_material.base_color = material.base_color;
 
 	unpacked_effective_material.emissive_texture_used = material.emission_texture_index != MaterialConstants::NO_TEXTURE;
-	unpacked_effective_material.emission = emission;
+	unpacked_effective_material.emission			  = emission;
 	// Roughening of the base roughness and second metallic roughness based
 	// on the coat roughness. This should be precomputed instead of being done here
 	//
@@ -140,16 +141,16 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 		float coat_roughness = unpacked_effective_material.coat_roughness;
 
 		// Roughening of the base roughness of the material based on the coat roughness
-		float target_base_roughness = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(base_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
-		float roughened_base_roughness = hippt::lerp(base_roughness, target_base_roughness, material.coat);
+		float target_base_roughness			  = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(base_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
+		float roughened_base_roughness		  = hippt::lerp(base_roughness, target_base_roughness, material.coat);
 		unpacked_effective_material.roughness = hippt::lerp(base_roughness, roughened_base_roughness, coat_roughening);
 
 		if (unpacked_effective_material.second_roughness_weight > 0.0f)
 		{
 			// Roughening of the second metallic roughness based on the coat roughness
 
-			float second_roughness = unpacked_effective_material.second_roughness;
-			float target_second_metal_roughness = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(second_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
+			float second_roughness				   = unpacked_effective_material.second_roughness;
+			float target_second_metal_roughness	   = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(second_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
 			float roughened_second_metal_roughness = hippt::lerp(second_roughness, target_second_metal_roughness, material.coat);
 			unpacked_effective_material.second_roughness = hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening);
 		}
@@ -159,11 +160,15 @@ HIPRT_DEVICE static DeviceUnpackedEffectiveMaterial get_intersection_material(co
 }
 
 /**
- * The float2 returned is (roughness, metallic)
+ * The float2_t returned is (roughness, metallic)
  */
-HIPRT_DEVICE static float2 get_metallic_roughness(const HIPRTRenderData& render_data, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index)
+HIPRT_DEVICE static float2_t get_metallic_roughness(const HIPRTRenderData& render_data,
+													const float2_t& texcoords,
+													int metallic_texture_index,
+													int roughness_texture_index,
+													int metallic_roughness_texture_index)
 {
-	float2 out;
+	float2_t out;
 
 	if (metallic_roughness_texture_index != MaterialConstants::NO_TEXTURE)
 	{
@@ -182,14 +187,14 @@ HIPRT_DEVICE static float2 get_metallic_roughness(const HIPRTRenderData& render_
 	return out;
 }
 
-HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2& texcoords, int base_color_texture_index)
+HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2_t& texcoords, int base_color_texture_index)
 {
-	out_alpha = 1.0f;
+	out_alpha		  = 1.0f;
 	ColorRGBA32F rgba = read_material_texture<ColorRGBA32F>(render_data, true, texcoords, base_color_texture_index);
 	if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
 	{
 		ColorRGB32F base_color = ColorRGB32F(rgba.r, rgba.g, rgba.b);
-		out_alpha = rgba.a;
+		out_alpha			   = rgba.a;
 
 		return base_color;
 	}
@@ -198,28 +203,30 @@ HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_dat
 }
 
 template <typename T>
-HIPRT_DEVICE static T read_data(const ColorRGBA32F& rgba) {}
+HIPRT_DEVICE static T read_data(const ColorRGBA32F& rgba)
+{
+}
 
-template<>
+template <>
 HIPRT_DEVICE ColorRGBA32F read_data<ColorRGBA32F>(const ColorRGBA32F& rgba)
 {
 	return rgba;
 }
 
-template<>
+template <>
 HIPRT_DEVICE ColorRGB32F read_data<ColorRGB32F>(const ColorRGBA32F& rgba)
 {
 	return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
 
-template<>
+template <>
 HIPRT_DEVICE float read_data<float>(const ColorRGBA32F& rgba)
 {
 	return rgba.r;
 }
 
 template <typename T>
-HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, bool is_srgb, const float2& texcoords, int texture_index)
+HIPRT_DEVICE static T read_material_texture(const HIPRTRenderData& render_data, bool is_srgb, const float2_t& texcoords, int texture_index)
 {
 	if (texture_index == MaterialConstants::NO_TEXTURE || texture_index == MaterialConstants::CONSTANT_EMISSIVE_TEXTURE)
 		return T();

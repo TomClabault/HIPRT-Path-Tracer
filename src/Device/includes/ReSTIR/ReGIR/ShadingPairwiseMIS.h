@@ -14,8 +14,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 														const ReGIRGridFillSurface& surface,
 														bool primary_hit,
 														float PDF_normalization,
-														float3 point_on_light,
-														float3 light_source_normal,
+														float3_t point_on_light,
+														float3_t light_source_normal,
 														ColorRGB32F emission,
 														Xorshift32Generator& random_number_generator)
 {
@@ -35,8 +35,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 														const ReGIRGridFillSurface& surface,
 														unsigned int grid_cell_index,
 														bool primary_hit,
-														float3 point_on_light,
-														float3 light_source_normal,
+														float3_t point_on_light,
+														float3_t light_source_normal,
 														ColorRGB32F emission,
 														Xorshift32Generator& random_number_generator)
 {
@@ -54,8 +54,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 
 template <bool canonicalPDF>
 HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data,
-														float3 point_on_light,
-														float3 light_source_normal,
+														float3_t point_on_light,
+														float3_t light_source_normal,
 														ColorRGB32F emission,
 														unsigned int grid_cell_index,
 														bool primary_hit,
@@ -71,8 +71,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 
 template <bool canonicalPDF>
 HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& render_data,
-														float3 point_on_light,
-														float3 light_source_normal,
+														float3_t point_on_light,
+														float3_t light_source_normal,
 														ColorRGB32F emission,
 														unsigned int grid_cell_index,
 														float RIS_integral,
@@ -97,8 +97,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 	if (reservoir.UCW <= 0.0f)
 		return 0.0f;
 
-	float3 light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
-	float3 point_on_light	   = reservoir.sample.point_on_light;
+	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+	float3_t point_on_light	   = reservoir.sample.point_on_light;
 	ColorRGB32F emission	   = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
 	return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, primary_hit,
@@ -116,8 +116,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 	if (reservoir.UCW <= 0.0f)
 		return 0.0f;
 
-	float3 light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
-	float3 point_on_light	   = reservoir.sample.point_on_light;
+	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+	float3_t point_on_light	   = reservoir.sample.point_on_light;
 	ColorRGB32F emission	   = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
 	return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, RIS_integral,
@@ -125,13 +125,13 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 }
 
 HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& render_data,
-													   float3 point_on_light,
-													   float3 light_source_normal,
+													   float3_t point_on_light,
+													   float3_t light_source_normal,
 													   ColorRGB32F emission,
-													   float3 view_direction,
-													   float3 shading_point,
-													   float3 shading_normal,
-													   float3 geometric_normal,
+													   float3_t view_direction,
+													   float3_t shading_point,
+													   float3_t shading_normal,
+													   float3_t geometric_normal,
 													   BSDFIncidentLightInfo incident_light_info,
 													   RayPayload& ray_payload,
 													   int last_hit_primitive_index)
@@ -139,7 +139,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
 	if (emission.is_black())
 		return 0.0f;
 
-	float3 to_light_direction = point_on_light - shading_point;
+	float3_t to_light_direction = point_on_light - shading_point;
 	float distance_to_light	  = hippt::length(to_light_direction);
 	to_light_direction /= distance_to_light; // Normalization
 
@@ -155,10 +155,10 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
 
 HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& render_data,
 													   const ReGIRReservoir& reservoir,
-													   float3 view_direction,
-													   float3 shading_point,
-													   float3 shading_normal,
-													   float3 geometric_normal,
+													   float3_t view_direction,
+													   float3_t shading_point,
+													   float3_t shading_normal,
+													   float3_t geometric_normal,
 													   BSDFIncidentLightInfo incident_light_info,
 													   RayPayload& ray_payload,
 													   int last_hit_primitive_index,
@@ -167,8 +167,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
 	if (reservoir.UCW <= 0.0f)
 		return 0.0f;
 
-	float3 light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
-	float3 point_on_light	   = reservoir.sample.point_on_light;
+	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
+	float3_t point_on_light	   = reservoir.sample.point_on_light;
 	ColorRGB32F emission	   = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
 	return ReGIR_get_reservoir_sample_BSDF_PDF(render_data, point_on_light, light_source_normal, emission, view_direction, shading_point, shading_normal,
@@ -188,14 +188,14 @@ struct ReGIRPairwiseMIS
 	}
 
 	HIPRT_DEVICE void sum_non_canonical_sample_to_canonical_weights(const HIPRTRenderData& render_data,
-																	float3 canonical_technique_1_point_on_light,
-																	float3 canonical_technique_1_light_normal,
+																	float3_t canonical_technique_1_point_on_light,
+																	float3_t canonical_technique_1_light_normal,
 																	ColorRGB32F canonical_technique_1_emission,
-																	float3 canonical_technique_2_point_on_light,
-																	float3 canonical_technique_2_light_normal,
+																	float3_t canonical_technique_2_point_on_light,
+																	float3_t canonical_technique_2_light_normal,
 																	ColorRGB32F canonical_technique_2_emission,
-																	float3 canonical_technique_3_point_on_light,
-																	float3 canonical_technique_3_light_normal,
+																	float3_t canonical_technique_3_point_on_light,
+																	float3_t canonical_technique_3_light_normal,
 																	ColorRGB32F canonical_technique_3_emission,
 
 																	float canonical_technique_1_canonical_reservoir_1_pdf,
@@ -245,20 +245,20 @@ struct ReGIRPairwiseMIS
 	}
 
 	HIPRT_DEVICE float compute_MIS_weight_for_non_canonical_sample(const HIPRTRenderData& render_data,
-																   float3 sample_point_on_light,
-																   float3 sample_light_source_normal,
+																   float3_t sample_point_on_light,
+																   float3_t sample_light_source_normal,
 																   ColorRGB32F sample_emission,
 																   int sample_triangle_index,
 																   float sample_shading_target_function,
 
-																   float3 canonical_technique_1_point_on_light,
-																   float3 canonical_technique_1_light_normal,
+																   float3_t canonical_technique_1_point_on_light,
+																   float3_t canonical_technique_1_light_normal,
 																   ColorRGB32F canonical_technique_1_emission,
-																   float3 canonical_technique_2_point_on_light,
-																   float3 canonical_technique_2_light_normal,
+																   float3_t canonical_technique_2_point_on_light,
+																   float3_t canonical_technique_2_light_normal,
 																   ColorRGB32F canonical_technique_2_emission,
-																   float3 canonical_technique_3_point_on_light,
-																   float3 canonical_technique_3_light_normal,
+																   float3_t canonical_technique_3_point_on_light,
+																   float3_t canonical_technique_3_light_normal,
 																   ColorRGB32F canonical_technique_3_emission,
 
 																   const ReGIRGridFillSurface& center_grid_cell_surface,
@@ -283,10 +283,10 @@ struct ReGIRPairwiseMIS
 																   ReGIRGridFillSurface neighbor_surface,
 																   float neighbor_non_canonical_RIS_integral,
 
-																   float3 view_direction,
-																   float3 shading_point,
-																   float3 shading_normal,
-																   float3 geometric_normal,
+																   float3_t view_direction,
+																   float3_t shading_point,
+																   float3_t shading_normal,
+																   float3_t geometric_normal,
 																   RayPayload& ray_payload,
 																   int last_hit_primitive_index,
 

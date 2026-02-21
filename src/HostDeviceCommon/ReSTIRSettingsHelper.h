@@ -115,7 +115,7 @@ struct ReSTIRSettingsHelper
 	 * Returns the shading normal or geometric normal of the given surface depending on the rejection heuristics settings
 	 */
 	template <bool IsReSTIRGI>
-	HIPRT_HOST_DEVICE static float3 get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, const ReSTIRSurface& surface)
+	HIPRT_HOST_DEVICE static float3_t get_normal_for_rejection_heuristic(const HIPRTRenderData& render_data, const ReSTIRSurface& surface)
 	{
 		if constexpr (IsReSTIRGI)
 		{

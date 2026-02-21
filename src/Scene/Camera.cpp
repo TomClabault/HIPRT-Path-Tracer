@@ -89,7 +89,7 @@ void Camera::translate(glm::vec3 translation_vec)
 	m_translation = m_translation + translation_vec * glm::conjugate(m_rotation);
 }
 
-void Camera::translate(float3 translation_vec)
+void Camera::translate(float3_t translation_vec)
 {
 	translate(glm::vec3(translation_vec.x, translation_vec.y, translation_vec.z));
 }
@@ -107,8 +107,8 @@ void Camera::zoom(float offset)
  */
 void Camera::look_at_object(const AABB& object_bounding_box)
 {
-	float3 object_center = object_bounding_box.get_center();
-	float3 new_camera_position = object_center;
+	float3_t object_center = object_bounding_box.get_center();
+	float3_t new_camera_position = object_center;
 	new_camera_position += object_bounding_box.get_max_extent() * make_float3(3.0f, 0.0f, 0.0f);
 	new_camera_position += object_bounding_box.get_max_extent() * make_float3(0.0f, 1.0f, 0.0f);
 
@@ -137,12 +137,12 @@ void Camera::rotate(glm::vec3 rotation_angles_rad)
 	m_rotation = new_orientation;
 }
 
-void Camera::rotate(float3 rotation_angles_rad)
+void Camera::rotate(float3_t rotation_angles_rad)
 {
 	rotate(glm::vec3(rotation_angles_rad.x, rotation_angles_rad.y, rotation_angles_rad.z));
 }
 
-void Camera::rotate_around_point(const float3& point, const float3& angles_rad)
+void Camera::rotate_around_point(const float3_t& point, const float3_t& angles_rad)
 {
 	glm::quat rotation_quat_x = glm::angleAxis(angles_rad.x, glm::vec3(1.0f, 0.0f, 0.0f));
 	glm::quat rotation_quat_y = glm::angleAxis(angles_rad.y, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -162,7 +162,7 @@ void Camera::rotate_around_point(const float3& point, const float3& angles_rad)
 	m_rotation = glm::quat(rot_mat);
 }
 
-void Camera::rotate_around_point(const glm::vec3& point, const float3& angles_rad)
+void Camera::rotate_around_point(const glm::vec3& point, const float3_t& angles_rad)
 {
 	rotate_around_point(make_float3(point.x, point.y, point.z), angles_rad);
 }

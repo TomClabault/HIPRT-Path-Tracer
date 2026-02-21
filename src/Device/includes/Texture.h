@@ -17,10 +17,10 @@
 #endif
 
 #ifdef __KERNELCC__
- // Dummy usings so that the GPU compiler doesn't complain that Image8Bit / Image32Bit don't exist.
- // It's okay to dummy use them as int because they are not used on the GPU side anyway, this is
- // purely for the compiler to be happy
-using Image8Bit = int;
+// Dummy usings so that the GPU compiler doesn't complain that Image8Bit / Image32Bit don't exist.
+// It's okay to dummy use them as int because they are not used on the GPU side anyway, this is
+// purely for the compiler to be happy
+using Image8Bit	 = int;
 using Image32Bit = int;
 #endif
 
@@ -36,7 +36,7 @@ using Image32Bit = int;
  * If 'flip_uv_y' is true, then the UV coordinates are just used as is
  */
 template <typename ImageType = Image8Bit>
-HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer, int texture_index, bool is_srgb, float2 uv, bool flip_uv_y = true)
+HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer, int texture_index, bool is_srgb, float2_t uv, bool flip_uv_y = true)
 {
 	ColorRGBA32F rgba;
 
@@ -51,7 +51,7 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer,
 	if (texture == 0)
 		return ColorRGBA32F(0.0f);
 
-	rgba = ColorRGBA32F(tex2D<float4>(texture, u, v));
+	rgba = ColorRGBA32F(tex2D<float4_t>(texture, u, v));
 #else
 	const ImageType& texture = reinterpret_cast<const ImageType*>(texture_buffer)[texture_index];
 
@@ -77,7 +77,7 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer,
  * It should be set to false if your texture addressing mode isn't 'warping'
  * or when you know what you're doing and why you need to have it to false
  */
-HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_8bits(const void* texture_buffer, int texture_index, bool is_srgb, float2 uv, bool flip_uv_y = true)
+HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_8bits(const void* texture_buffer, int texture_index, bool is_srgb, float2_t uv, bool flip_uv_y = true)
 {
 	ColorRGBA32F rgba = sample_texture_rgba<Image8Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
 
@@ -103,14 +103,14 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_8bits(const void* texture_buf
  * It should be set to false if your texture addressing mode isn't 'warping'
  * or when you know what you're doing and why you need to have it to false
  */
-HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_32bits(const void* texture_buffer, int texture_index, bool is_srgb, float2 uv, bool flip_uv_y = true)
+HIPRT_DEVICE static ColorRGB32F sample_texture_rgb_32bits(const void* texture_buffer, int texture_index, bool is_srgb, float2_t uv, bool flip_uv_y = true)
 {
 	ColorRGBA32F rgba = sample_texture_rgba<Image32Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
 
 	return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
 
-HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba_32bits(const void* texture_buffer, int texture_index, bool is_srgb, float2 uv, bool flip_uv_y = true)
+HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba_32bits(const void* texture_buffer, int texture_index, bool is_srgb, float2_t uv, bool flip_uv_y = true)
 {
 	return sample_texture_rgba<Image32Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
 }
@@ -122,20 +122,20 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba_32bits(const void* texture_
  *
  * uv is supposed to be in [0, 1] already
  */
-HIPRT_DEVICE static ColorRGBA32F internal_bilinear_sample_on_3D_texture(const oroTextureObject_t texture, int3 ires, float2 uv, int z)
+HIPRT_DEVICE static ColorRGBA32F internal_bilinear_sample_on_3D_texture(const oroTextureObject_t texture, int3_t ires, float2_t uv, int z)
 {
 	// Reference: https://iquilezles.org/articles/hwinterpolation/
 
-	float2 res_f = make_float2(ires.x, ires.y);
+	float2_t res_f = make_float2(ires.x, ires.y);
 
-	float2 st = (uv - 0.5f / res_f) * res_f;
-	int2 i = make_int2(floorf(st.x), floorf(st.y));
-	float2 w = make_float2(hippt::fract(st.x), hippt::fract(st.y));
+	float2_t st = (uv - 0.5f / res_f) * res_f;
+	int2_t i	= make_int2(floorf(st.x), floorf(st.y));
+	float2_t w	= make_float2(hippt::fract(st.x), hippt::fract(st.y));
 
-	ColorRGBA32F a = ColorRGBA32F(tex3D<float4>(texture, i.x + 0, i.y + 0, z));
-	ColorRGBA32F b = ColorRGBA32F(tex3D<float4>(texture, i.x + 1, i.y + 0, z));
-	ColorRGBA32F c = ColorRGBA32F(tex3D<float4>(texture, i.x + 0, i.y + 1, z));
-	ColorRGBA32F d = ColorRGBA32F(tex3D<float4>(texture, i.x + 1, i.y + 1, z));
+	ColorRGBA32F a = ColorRGBA32F(tex3D<float4_t>(texture, i.x + 0, i.y + 0, z));
+	ColorRGBA32F b = ColorRGBA32F(tex3D<float4_t>(texture, i.x + 1, i.y + 0, z));
+	ColorRGBA32F c = ColorRGBA32F(tex3D<float4_t>(texture, i.x + 0, i.y + 1, z));
+	ColorRGBA32F d = ColorRGBA32F(tex3D<float4_t>(texture, i.x + 1, i.y + 1, z));
 
 	return hippt::lerp(hippt::lerp(a, b, w.x), hippt::lerp(c, d, w.x), w.y);
 }
@@ -146,7 +146,7 @@ HIPRT_DEVICE static ColorRGBA32F internal_bilinear_sample_on_3D_texture(const or
  * This parameter should be an oroTextureObject_t on the GPU, not a
  * pointer 'oroTextureObject_t*' as is the case for 'sample_texture_rgb_32bits'
  */
-HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3 texture_dims, float3 uvw, bool hardware_interpolation = false)
+HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3_t texture_dims, float3_t uvw, bool hardware_interpolation = false)
 {
 	if (texture == nullptr)
 		return ColorRGB32F(0.0f);
@@ -158,7 +158,7 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3
 		// Only doing that if u != 1.0f because if we actually have
 		// uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
 		// give us 0.0f even though we actually want 1.0f (which is correct).
-		// 
+		//
 		// Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
 		// U coordinate which needs not to be wrapped
 		u = hippt::fract(uvw.x);
@@ -173,7 +173,7 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3
 		// Same for w
 		w = hippt::fract(uvw.z);
 
-	// For negative UVs, we also want to repeat and we want, for example, 
+	// For negative UVs, we also want to repeat and we want, for example,
 	// -0.1f to behave as 0.9f
 	u = u < 0 ? 1.0f + u : u;
 	v = v < 0 ? 1.0f + v : v;
@@ -188,7 +188,7 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3
 		float y = (v * (texture_dims.y - 1));
 		float z = (w * (texture_dims.z - 1));
 
-		return ColorRGB32F(ColorRGBA32F(tex3D<float4>(reinterpret_cast<oroTextureObject_t>(texture), x, y, z)));
+		return ColorRGB32F(ColorRGBA32F(tex3D<float4_t>(reinterpret_cast<oroTextureObject_t>(texture), x, y, z)));
 	}
 	else
 	{
@@ -196,8 +196,8 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3
 
 		// Whether or not we need to interpolate with layer z+1 or z-1
 		bool z_layer_up = hippt::fract(w * texture_dims.z) > 0.5f;
-		int z0 = z;
-		int z1 = z_layer_up ? z0 + 1 : z0 - 1;
+		int z0			= z;
+		int z1			= z_layer_up ? z0 + 1 : z0 - 1;
 
 		ColorRGBA32F rgba0 = internal_bilinear_sample_on_3D_texture(reinterpret_cast<oroTextureObject_t>(texture), texture_dims, make_float2(u, v), z0);
 		ColorRGBA32F rgba1 = internal_bilinear_sample_on_3D_texture(reinterpret_cast<oroTextureObject_t>(texture), texture_dims, make_float2(u, v), z1);
@@ -206,13 +206,13 @@ HIPRT_DEVICE static ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3
 	}
 #else
 	const Image32Bit3D& image = *reinterpret_cast<const Image32Bit3D*>(texture);
-	ColorRGBA32F rgba = image.sample_rgba32f(uvw);
+	ColorRGBA32F rgba		  = image.sample_rgba32f(uvw);
 
 	return ColorRGB32F(rgba);
 #endif
 }
 
-HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettings& world_settings, float2 uv)
+HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettings& world_settings, float2_t uv)
 {
 #if EnvmapSamplingDoBilinearFiltering == KERNEL_OPTION_TRUE
 	float x = uv.x * (world_settings.envmap_width - 1);
@@ -221,9 +221,9 @@ HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettin
 	float x_frac = hippt::fract(x);
 	float y_frac = hippt::fract(y);
 
-	int x_i = (int)x;
+	int x_i	  = (int)x;
 	int x_i_1 = hippt::min(x_i + 1, (int)world_settings.envmap_width - 1);
-	int y_i = (int)y;
+	int y_i	  = (int)y;
 	int y_i_1 = hippt::min(y_i + 1, (int)world_settings.envmap_height - 1);
 
 	int index_x0y0 = x_i + y_i * world_settings.envmap_width;
@@ -238,8 +238,8 @@ HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettin
 
 	return hippt::lerp(hippt::lerp(color_x0y0, color_x1y0, x_frac), hippt::lerp(color_x0y1, color_x1y1, x_frac), y_frac);
 #else
-	int x = uv.x * (world_settings.envmap_width - 1);
-	int y = uv.y * (world_settings.envmap_height - 1);
+	int x	  = uv.x * (world_settings.envmap_width - 1);
+	int y	  = uv.y * (world_settings.envmap_height - 1);
 	int index = x + y * world_settings.envmap_width;
 
 	return world_settings.envmap[index].unpack() * world_settings.envmap_intensity;
@@ -251,7 +251,7 @@ HIPRT_DEVICE static ColorRGB32F sample_environment_map_texture(const WorldSettin
  * in the 'data' buffer passed as argument as the given UV coordinates
  */
 template <typename T>
-HIPRT_DEVICE static T uv_interpolate(int vertex_A_index, int vertex_B_index, int vertex_C_index, T* data, float2 uv)
+HIPRT_DEVICE static T uv_interpolate(int vertex_A_index, int vertex_B_index, int vertex_C_index, T* data, float2_t uv)
 {
 	return data[vertex_B_index] * uv.x + data[vertex_C_index] * uv.y + data[vertex_A_index] * (1.0f - uv.x - uv.y);
 }
@@ -261,7 +261,7 @@ HIPRT_DEVICE static T uv_interpolate(int vertex_A_index, int vertex_B_index, int
  * in the 'data' buffer passed as argument as the given UV coordinates
  */
 template <typename T>
-HIPRT_DEVICE static T uv_interpolate(TriangleIndices triangle_vertex_indices, T* data, float2 uv)
+HIPRT_DEVICE static T uv_interpolate(TriangleIndices triangle_vertex_indices, T* data, float2_t uv)
 {
 	return uv_interpolate(triangle_vertex_indices.x, triangle_vertex_indices.y, triangle_vertex_indices.z, data, uv);
 }
@@ -269,7 +269,7 @@ HIPRT_DEVICE static T uv_interpolate(TriangleIndices triangle_vertex_indices, T*
 /**
  * Just a simple "specialization" for when we're interpolating texcoords
  */
-HIPRT_DEVICE static float2 uv_interpolate(TriangleTexcoords texcoords, float2 uv)
+HIPRT_DEVICE static float2_t uv_interpolate(TriangleTexcoords texcoords, float2_t uv)
 {
 	return texcoords.y * uv.x + texcoords.z * uv.y + texcoords.x * (1.0f - uv.x - uv.y);
 }
@@ -279,7 +279,7 @@ HIPRT_DEVICE static float2 uv_interpolate(TriangleTexcoords texcoords, float2 uv
  * from the place you're calling this function from. This function will then fetch the vertex indices again
  */
 template <typename T>
-HIPRT_DEVICE static T uv_interpolate(int* vertex_indices, int primitive_index, T* data, float2 uv)
+HIPRT_DEVICE static T uv_interpolate(int* vertex_indices, int primitive_index, T* data, float2_t uv)
 {
 	int vertex_A_index = vertex_indices[primitive_index * 3 + 0];
 	int vertex_B_index = vertex_indices[primitive_index * 3 + 1];

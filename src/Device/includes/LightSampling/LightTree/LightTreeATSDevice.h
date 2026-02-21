@@ -28,13 +28,13 @@ struct LightTreeATSNodeDevice
 	float energy_variance;
 
 	// Axis of the cluster
-	float3 axis = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t axis = make_float3(0.0f, 0.0f, 0.0f);
 	unsigned int total_emitter_count = 0;
 
-	float3 bounds_min = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t bounds_min = make_float3(0.0f, 0.0f, 0.0f);
 	unsigned int left_child_index_or_first_triangle_index;
 
-	float3 bounds_max = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t bounds_max = make_float3(0.0f, 0.0f, 0.0f);
 	// If triangle count is 0, this contains the left child index
 	// If triangle count is > 0, this is the first triangle index in the leaf node
 	unsigned int triangle_count;

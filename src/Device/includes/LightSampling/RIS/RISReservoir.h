@@ -12,7 +12,7 @@
 #ifndef __KERNELCC__
 #include "Utils/Utils.h"
 
- // For multithreaded console error logging on the CPU if NaNs are detected
+// For multithreaded console error logging on the CPU if NaNs are detected
 #include <mutex>
 static std::mutex ris_log_mutex;
 #endif
@@ -20,7 +20,7 @@ static std::mutex ris_log_mutex;
 struct RISSample
 {
 	ColorRGB32F emission;
-	float3 point_on_light_source = { 0, 0, 0 };
+	float3_t point_on_light_source = { 0, 0, 0 };
 
 	float target_function = 0.0f;
 
@@ -49,7 +49,7 @@ struct RISReservoir
 			UCW = 1.0f / sample.target_function * weight_sum;
 	}
 
-	HIPRT_DEVICE void sanity_check(int2 pixel_coords = make_int2(-1, -1))
+	HIPRT_DEVICE void sanity_check(int2_t pixel_coords = make_int2(-1, -1))
 	{
 #ifndef __KERNELCC__
 		if (M < 0)
@@ -97,7 +97,8 @@ struct RISReservoir
 		else if (sample.target_function < 0)
 		{
 			std::lock_guard<std::mutex> lock(ris_log_mutex);
-			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
+			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function
+					  << std::endl;
 			Debug::debugbreak();
 		}
 #else
@@ -108,7 +109,7 @@ struct RISReservoir
 	unsigned int M = 0;
 	// TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
 	float weight_sum = 0.0f;
-	float UCW = 0.0f;
+	float UCW		 = 0.0f;
 
 	RISSample sample;
 };

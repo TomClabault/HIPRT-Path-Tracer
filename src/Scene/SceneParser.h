@@ -127,15 +127,15 @@ struct Scene
 	std::vector<Image8Bit> textures;
 
 	std::vector<int> triangles_vertex_indices;
-	std::vector<float3> vertices_positions;
+	std::vector<float3_t> vertices_positions;
 	std::vector<unsigned char> has_vertex_normals;
-	std::vector<float3> vertex_normals;
-	std::vector<float2> texcoords;
+	std::vector<float3_t> vertex_normals;
+	std::vector<float2_t> texcoords;
 	std::vector<float> triangle_areas;
 	// Vertex A, edges AB and AC of the triangles of the scene
-	/*std::vector<float3> triangle_A;
-	std::vector<float3> triangle_AB;
-	std::vector<float3> triangle_AC;*/
+	/*std::vector<float3_t> triangle_A;
+	std::vector<float3_t> triangle_AB;
+	std::vector<float3_t> triangle_AC;*/
 
 	// Contains the primitive indices of all the emissives triangles that will be used for light sampling.
 	// 
@@ -165,9 +165,9 @@ struct Scene
 
 		for (int i = 0; i < triangle_indices_to_get.size(); i += 3)
 		{
-			triangles.push_back(Triangle(*reinterpret_cast<float3*>(&vertices_positions[triangle_indices_to_get[i + 0]]),
-				*reinterpret_cast<float3*>(&vertices_positions[triangle_indices_to_get[i + 1]]),
-				*reinterpret_cast<float3*>(&vertices_positions[triangle_indices_to_get[i + 2]])));
+			triangles.push_back(Triangle(*reinterpret_cast<float3_t*>(&vertices_positions[triangle_indices_to_get[i + 0]]),
+				*reinterpret_cast<float3_t*>(&vertices_positions[triangle_indices_to_get[i + 1]]),
+				*reinterpret_cast<float3_t*>(&vertices_positions[triangle_indices_to_get[i + 2]])));
 		}
 
 		return triangles;

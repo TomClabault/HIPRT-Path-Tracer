@@ -13,7 +13,6 @@
 #include "RenderPasses/FillGBufferRenderPass.h"
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
-#include "hiprt/impl/Context.h"
 
 #include <condition_variable>
 
@@ -32,8 +31,8 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	// Creating buffers
 	m_framebuffer									   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_denoised_framebuffer		   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-	m_denoiser_buffers.m_normals_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<float3>>();
-	m_denoiser_buffers.m_normals_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<float3>>();
+	m_denoiser_buffers.m_normals_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<float3_t>>();
+	m_denoiser_buffers.m_normals_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<float3_t>>();
 	m_denoiser_buffers.m_albedo_AOV_interop_buffer	   = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer  = std::make_shared<OrochiBuffer<ColorRGB32F>>();
 	m_pixels_converged_sample_count_buffer			   = std::make_shared<OrochiBuffer<int>>();
@@ -73,9 +72,15 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_status_buffers.pixels_converged_count_buffer.resize(1);
 }
 
-GPURenderer::~GPURenderer() { m_render_thread.request_exit(); }
+GPURenderer::~GPURenderer()
+{
+	m_render_thread.request_exit();
+}
 
-void GPURenderer::start_render_thread() { m_render_thread.start(); }
+void GPURenderer::start_render_thread()
+{
+	m_render_thread.start();
+}
 
 void GPURenderer::setup_brdfs_data()
 {
@@ -221,25 +226,55 @@ void GPURenderer::recompute_emissives_sampling_data_structure()
 	get_NEE_plus_plus_render_pass()->reset(false);
 }
 
-LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options() { return m_light_tree_ats_sampling_data_structure.get_builder_options(); }
+LightTreeATSBuilderOptions& GPURenderer::get_light_tree_ats_build_options()
+{
+	return m_light_tree_ats_sampling_data_structure.get_builder_options();
+}
 
-LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data_structure() { return m_light_tree_ats_sampling_data_structure; }
+LightTreeATSSamplingDataStructure& GPURenderer::get_light_tree_ats_sampling_data_structure()
+{
+	return m_light_tree_ats_sampling_data_structure;
+}
 
-LightTreeATSBuilderOptions& GPURenderer::get_light_tree_sg_build_options() { return m_light_tree_sg_sampling_data_structure.get_builder_options(); }
+LightTreeATSBuilderOptions& GPURenderer::get_light_tree_sg_build_options()
+{
+	return m_light_tree_sg_sampling_data_structure.get_builder_options();
+}
 
-LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_structure() { return m_light_tree_sg_sampling_data_structure; }
+LightTreeSGSamplingDataStructure& GPURenderer::get_light_tree_sg_sampling_data_structure()
+{
+	return m_light_tree_sg_sampling_data_structure;
+}
 
-std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass() { return m_render_thread.get_gmon_render_pass(); }
+std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
+{
+	return m_render_thread.get_gmon_render_pass();
+}
 
-std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pass() { return m_render_thread.get_NEE_plus_plus_render_pass(); }
+std::shared_ptr<NEEPlusPlusRenderPass> GPURenderer::get_NEE_plus_plus_render_pass()
+{
+	return m_render_thread.get_NEE_plus_plus_render_pass();
+}
 
-std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass() { return m_render_thread.get_ReGIR_render_pass(); }
+std::shared_ptr<ReGIRRenderPass> GPURenderer::get_ReGIR_render_pass()
+{
+	return m_render_thread.get_ReGIR_render_pass();
+}
 
-std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass() { return m_render_thread.get_ReSTIR_DI_render_pass(); }
+std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
+{
+	return m_render_thread.get_ReSTIR_DI_render_pass();
+}
 
-std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass() { return m_render_thread.get_ReSTIR_GI_render_pass(); }
+std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
+{
+	return m_render_thread.get_ReSTIR_GI_render_pass();
+}
 
-NEEPlusPlusHashGridStorage& GPURenderer::get_nee_plus_plus_storage() { return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage(); }
+NEEPlusPlusHashGridStorage& GPURenderer::get_nee_plus_plus_storage()
+{
+	return get_NEE_plus_plus_render_pass()->get_nee_plus_plus_storage();
+}
 
 void GPURenderer::setup_filter_functions()
 {
@@ -324,9 +359,15 @@ void GPURenderer::synchronize_all_kernels()
 	m_render_thread.wait_on_render_completion();
 }
 
-bool GPURenderer::was_last_frame_low_resolution() { return m_was_last_frame_low_resolution; }
+bool GPURenderer::was_last_frame_low_resolution()
+{
+	return m_was_last_frame_low_resolution;
+}
 
-bool GPURenderer::frame_render_done() { return m_render_thread.frame_render_done(); }
+bool GPURenderer::frame_render_done()
+{
+	return m_render_thread.frame_render_done();
+}
 
 void GPURenderer::resize(int new_width, int new_height)
 {
@@ -390,7 +431,10 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 	m_render_thread.request_frame(render_data_for_frame, compiler_options_for_frame);
 }
 
-void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window) { m_render_thread.pre_render_update(delta_time, render_window); }
+void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window)
+{
+	m_render_thread.pre_render_update(delta_time, render_window);
+}
 
 void GPURenderer::map_buffers_for_render()
 {
@@ -413,7 +457,10 @@ void GPURenderer::unmap_buffers()
 	m_denoiser_buffers.unmap_albedo_buffer();
 }
 
-void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_denoiser_buffers.set_use_interop_AOV_buffers(this, use_interop); }
+void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop)
+{
+	m_denoiser_buffers.set_use_interop_AOV_buffers(this, use_interop);
+}
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer()
 {
@@ -424,10 +471,16 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop
 		return m_framebuffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_interop_framebuffer() { return m_framebuffer; }
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_interop_framebuffer()
+{
+	return m_framebuffer;
+}
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer; }
-std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer()
+{
+	return m_denoiser_buffers.m_denoised_framebuffer;
+}
+std::shared_ptr<OpenGLInteropBuffer<float3_t>> GPURenderer::get_denoiser_normals_AOV_interop_buffer()
 {
 	if (!m_denoiser_buffers.use_interop_AOVs)
 		// No using the interop buffers so let's not return a buffer that cannot be used
@@ -445,25 +498,58 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albe
 	return m_denoiser_buffers.m_albedo_AOV_interop_buffer;
 }
 
-std::shared_ptr<OrochiBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_no_interop_buffer() { return m_denoiser_buffers.m_normals_AOV_no_interop_buffer; }
+std::shared_ptr<OrochiBuffer<float3_t>> GPURenderer::get_denoiser_normals_AOV_no_interop_buffer()
+{
+	return m_denoiser_buffers.m_normals_AOV_no_interop_buffer;
+}
 std::shared_ptr<OrochiBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_no_interop_buffer()
 {
 	return m_denoiser_buffers.m_albedo_AOV_no_interop_buffer;
 }
 
-std::shared_ptr<OrochiBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer() { return m_pixels_converged_sample_count_buffer; }
-const StatusBuffersValues& GPURenderer::get_status_buffer_values() const { return m_status_buffers_values; }
+std::shared_ptr<OrochiBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer()
+{
+	return m_pixels_converged_sample_count_buffer;
+}
+const StatusBuffersValues& GPURenderer::get_status_buffer_values() const
+{
+	return m_status_buffers_values;
+}
 
-HIPRTRenderSettings& GPURenderer::get_render_settings() { return m_render_data.render_settings; }
-std::shared_ptr<ApplicationSettings> GPURenderer::get_application_settings() { return m_application_settings; }
-WorldSettings& GPURenderer::get_world_settings() { return m_render_data.world_settings; }
-HIPRTRenderData& GPURenderer::get_render_data() { return m_render_data; }
-HIPRTScene& GPURenderer::get_hiprt_scene() { return m_hiprt_scene; }
-std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx() { return m_hiprt_orochi_ctx; }
+HIPRTRenderSettings& GPURenderer::get_render_settings()
+{
+	return m_render_data.render_settings;
+}
+std::shared_ptr<ApplicationSettings> GPURenderer::get_application_settings()
+{
+	return m_application_settings;
+}
+WorldSettings& GPURenderer::get_world_settings()
+{
+	return m_render_data.world_settings;
+}
+HIPRTRenderData& GPURenderer::get_render_data()
+{
+	return m_render_data;
+}
+HIPRTScene& GPURenderer::get_hiprt_scene()
+{
+	return m_hiprt_scene;
+}
+std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx()
+{
+	return m_hiprt_orochi_ctx;
+}
 
-void GPURenderer::invalidate_render_data_buffers() { m_render_data_buffers_invalidated = true; }
+void GPURenderer::invalidate_render_data_buffers()
+{
+	m_render_data_buffers_invalidated = true;
+}
 
-oroDeviceProp GPURenderer::get_device_properties() { return m_device_properties; }
+oroDeviceProp GPURenderer::get_device_properties()
+{
+	return m_device_properties;
+}
 
 std::string getDeviceName(oroCtx m_ctxt, oroDevice m_device)
 {
@@ -498,7 +584,7 @@ bool enableHwi(oroCtx m_ctxt, oroDevice m_device)
 
 HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
 {
-	bool enabled = reinterpret_cast<hiprt::Context*>(m_hiprt_orochi_ctx->hiprt_ctx)->enableHwi();
+	bool enabled = m_hiprt_orochi_ctx->has_hardware_ray_tracing_support();
 	if (enabled)
 		return HardwareAccelerationSupport::SUPPORTED;
 	else
@@ -516,7 +602,10 @@ HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
 	}
 }
 
-std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options() { return m_global_compiler_options; }
+std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options()
+{
+	return m_global_compiler_options;
+}
 
 // Variables used to give the priority to the main thread when compiling shaders
 extern bool g_main_thread_compiling;
@@ -562,7 +651,10 @@ std::string GPURenderer::read_debug_buffer_string(char* DEBUG_BUFFER_STRINGS, in
 	return std::string(&debug_string_CPU[index * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH]);
 }
 
-oroStream_t GPURenderer::get_main_stream() { return m_main_stream; }
+oroStream_t GPURenderer::get_main_stream()
+{
+	return m_main_stream;
+}
 
 void GPURenderer::compute_render_pass_times()
 {
@@ -572,9 +664,15 @@ void GPURenderer::compute_render_pass_times()
 	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = m_render_thread.get_render_graph().get_full_frame_time();
 }
 
-std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times() { return m_render_pass_times; }
+std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()
+{
+	return m_render_pass_times;
+}
 
-float GPURenderer::get_last_frame_time() { return m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]; }
+float GPURenderer::get_last_frame_time()
+{
+	return m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY];
+}
 
 void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
@@ -611,7 +709,10 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 	m_render_thread.get_render_graph().reset(reset_by_camera_movement);
 }
 
-Xorshift32Generator& GPURenderer::get_rng_generator() { return m_rng; }
+Xorshift32Generator& GPURenderer::get_rng_generator()
+{
+	return m_rng;
+}
 
 void GPURenderer::update_render_data()
 {
@@ -626,7 +727,7 @@ void GPURenderer::update_render_data()
 		m_render_data.render_settings.DEBUG_BUFFER_STRINGS = m_DEBUG_BUFFER_STRINGS.get_device_pointer();
 
 		m_render_data.buffers.triangles_indices	 = reinterpret_cast<int*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.triangleIndices);
-		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
+		m_render_data.buffers.vertices_positions = reinterpret_cast<float3_t*>(m_hiprt_scene.whole_scene_BLAS.m_mesh.vertices);
 		m_render_data.buffers.has_vertex_normals = m_hiprt_scene.has_vertex_normals.get_device_pointer();
 		m_render_data.buffers.vertex_normals	 = m_hiprt_scene.vertex_normals.get_device_pointer();
 
@@ -646,7 +747,7 @@ void GPURenderer::update_render_data()
 		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
 			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
 		if (m_hiprt_scene.texcoords_buffer.size() > 0)
-			m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
+			m_render_data.buffers.texcoords = reinterpret_cast<float2_t*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
 		m_render_data.bsdfs_data.ltcs_data.sheen_zeltner_texture_ltc_params = m_sheen_ltc_params.get_device_texture();
 		m_render_data.bsdfs_data.ltcs_data.GGX_conductor_ltc_params			= m_GGX_conductor_ltc_params.get_device_texture();
@@ -864,13 +965,25 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 								});
 }
 
-bool GPURenderer::has_envmap() { return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0; }
+bool GPURenderer::has_envmap()
+{
+	return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0;
+}
 
-const std::vector<CPUMaterial>& GPURenderer::get_original_materials() { return m_original_materials; }
+const std::vector<CPUMaterial>& GPURenderer::get_original_materials()
+{
+	return m_original_materials;
+}
 
-const std::vector<CPUMaterial>& GPURenderer::get_current_materials() { return m_current_materials; }
+const std::vector<CPUMaterial>& GPURenderer::get_current_materials()
+{
+	return m_current_materials;
+}
 
-const std::vector<std::string>& GPURenderer::get_material_names() { return m_parsed_scene_metadata.material_names; }
+const std::vector<std::string>& GPURenderer::get_material_names()
+{
+	return m_parsed_scene_metadata.material_names;
+}
 
 void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 {
@@ -906,27 +1019,60 @@ void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
 	m_hiprt_scene.materials_buffer.upload_data_partial(material_index, &packed_gpu_material, 1);
 }
 
-const std::vector<AABB>& GPURenderer::get_mesh_bounding_boxes() { return m_parsed_scene_metadata.mesh_bounding_boxes; }
+const std::vector<AABB>& GPURenderer::get_mesh_bounding_boxes()
+{
+	return m_parsed_scene_metadata.mesh_bounding_boxes;
+}
 
-const std::vector<std::string>& GPURenderer::get_mesh_names() { return m_parsed_scene_metadata.mesh_names; }
+const std::vector<std::string>& GPURenderer::get_mesh_names()
+{
+	return m_parsed_scene_metadata.mesh_names;
+}
 
-const std::vector<int>& GPURenderer::get_mesh_material_indices() { return m_parsed_scene_metadata.mesh_material_indices; }
+const std::vector<int>& GPURenderer::get_mesh_material_indices()
+{
+	return m_parsed_scene_metadata.mesh_material_indices;
+}
 
-unsigned int GPURenderer::get_emissive_mesh_count() const { return m_hiprt_scene.emissive_meshes_data.get_emissive_mesh_count(); }
+unsigned int GPURenderer::get_emissive_mesh_count() const
+{
+	return m_hiprt_scene.emissive_meshes_data.get_emissive_mesh_count();
+}
 
-unsigned int GPURenderer::get_total_triangle_count() const { return m_hiprt_scene.total_triangle_count; }
+unsigned int GPURenderer::get_total_triangle_count() const
+{
+	return m_hiprt_scene.total_triangle_count;
+}
 
-Camera& GPURenderer::get_camera() { return m_camera; }
+Camera& GPURenderer::get_camera()
+{
+	return m_camera;
+}
 
-Camera& GPURenderer::get_previous_frame_camera() { return m_previous_frame_camera; }
+Camera& GPURenderer::get_previous_frame_camera()
+{
+	return m_previous_frame_camera;
+}
 
-CameraAnimation& GPURenderer::get_camera_animation() { return m_camera_animation; }
+CameraAnimation& GPURenderer::get_camera_animation()
+{
+	return m_camera_animation;
+}
 
-RendererEnvmap& GPURenderer::get_envmap() { return m_envmap; }
+RendererEnvmap& GPURenderer::get_envmap()
+{
+	return m_envmap;
+}
 
-SceneMetadata& GPURenderer::get_scene_metadata() { return m_parsed_scene_metadata; }
+SceneMetadata& GPURenderer::get_scene_metadata()
+{
+	return m_parsed_scene_metadata;
+}
 
-RenderGraph& GPURenderer::get_render_graph() { return m_render_thread.get_render_graph(); }
+RenderGraph& GPURenderer::get_render_graph()
+{
+	return m_render_thread.get_render_graph();
+}
 
 void GPURenderer::set_camera(const Camera& camera)
 {
@@ -940,10 +1086,22 @@ void GPURenderer::resize_g_buffer_ray_volume_states()
 							->resize_g_buffer_ray_volume_states();
 }
 
-void GPURenderer::translate_camera_view(glm::vec3 translation) { m_camera.translate(translation); }
+void GPURenderer::translate_camera_view(glm::vec3 translation)
+{
+	m_camera.translate(translation);
+}
 
-void GPURenderer::rotate_camera_view(glm::vec3 rotation_angles) { m_camera.rotate(rotation_angles); }
+void GPURenderer::rotate_camera_view(glm::vec3 rotation_angles)
+{
+	m_camera.rotate(rotation_angles);
+}
 
-void GPURenderer::zoom_camera_view(float offset) { m_camera.zoom(offset); }
+void GPURenderer::zoom_camera_view(float offset)
+{
+	m_camera.zoom(offset);
+}
 
-RendererAnimationState& GPURenderer::get_animation_state() { return m_animation_state; }
+RendererAnimationState& GPURenderer::get_animation_state()
+{
+	return m_animation_state;
+}

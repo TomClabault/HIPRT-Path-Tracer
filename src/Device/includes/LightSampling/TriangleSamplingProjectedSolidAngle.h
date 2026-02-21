@@ -6,6 +6,7 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_PROJECTED_SOLID_ANGLE_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_TRIANGLE_SAMPLING_PROJECTED_SOLID_ANGLE_H
 
+#include "Device/includes/LightSampling/LTCs/LTCLobeUtils.h"
 #include "Device/includes/LightSampling/LTCs/LTCTransform.h"
 #include "Device/includes/LightSampling/TriangleSamplingPolygonClipping.h"
 #include "Device/includes/LightSampling/TriangleSamplingSolidAngleCommon.h"
@@ -13,23 +14,23 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
- /**
-  * Adapted from the implementation given with the paper from Cristoph Peters,
-  * [BRDF Importance Sampling for Polygonal Lights, 2021]
-  */
+/**
+ * Adapted from the implementation given with the paper from Cristoph Peters,
+ * [BRDF Importance Sampling for Polygonal Lights, 2021]
+ */
 
 #define MANUAL_UNROLL_LOOPS KERNEL_OPTION_FALSE
 
-  /*! This structure carries intermediate results that only need to be computed
-	 once per polygon and shading point to take samples proportional to
-	 projected solid angle.*/
+/*! This structure carries intermediate results that only need to be computed
+   once per polygon and shading point to take samples proportional to
+   projected solid angle.*/
 struct projected_solid_angle_triangle_t
 {
 	//! The number of vertices that form the polygon
 	unsigned int vertex_count = 0;
 	//! The inner ellipse adjacent to vertex 0. If the x-component is positive,
 	//! the central case is present.
-	float2 inner_ellipse_0 = make_float2(0.0f, 0.0f);
+	float2_t inner_ellipse_0 = make_float2(0.0f, 0.0f);
 	/*! At index i, this array holds the projected solid angle of the polygon
 		in the sector between (sorted) vertices i and (i + 1) % vertex_count
 		In the central case, entry vertex_count - 1 is meaningful, otherwise
@@ -44,29 +45,34 @@ struct projected_solid_angle_triangle_t
 #endif
 
 	// Utilitary functions that I found to be faster than indexing in arrays
-	// of float2
-	HIPRT_DEVICE float2& get_vertex(int i) { return *(&vertex_0 + i); }
-	HIPRT_DEVICE float2& get_ellipse(int i) { return *(&ellipse_0 + i); }
+	// of float2_t
+	HIPRT_DEVICE float2_t& get_vertex(int i)
+	{
+		return *(&vertex_0 + i);
+	}
+	HIPRT_DEVICE float2_t& get_ellipse(int i)
+	{
+		return *(&ellipse_0 + i);
+	}
 
 private:
 	/*! The x- and y-coordinates of each polygon vertex in a coordinate system
 		where the normal is the z-axis. The vertices are sorted
 		counterclockwise.*/
-	float2 vertex_0;
-	float2 vertex_1;
-	float2 vertex_2;
-	float2 vertex_3;
+	float2_t vertex_0;
+	float2_t vertex_1;
+	float2_t vertex_2;
+	float2_t vertex_3;
 
 	/*! For each vertex in vertices, this vector describes the ellipse for the
 		next edge in counterclockwise direction. The last entry is meaningless,
 		except in the central case. For vertex 0, it holds the outer ellipse.
 		\see ellipse_from_edge() */
-	float2 ellipse_0;
-	float2 ellipse_1;
-	float2 ellipse_2;
-	float2 ellipse_3;
+	float2_t ellipse_0;
+	float2_t ellipse_1;
+	float2_t ellipse_2;
+	float2_t ellipse_3;
 };
-
 
 //! Computes a * b - c * d with at most 1.5 ulps of error in the result. See
 //! https://pharr.org/matt/blog/2019/11/03/difference-of-floats.html or
@@ -78,37 +84,30 @@ HIPRT_DEVICE float kahan(float a, float b, float c, float d)
 {
 	// Uncomment the line below to improve efficiency but reduce accuracy
 	// return a * b - c * d;
-	float cd = c * d;
-	float error = hippt::fma(c, d, -cd);
+	float cd	 = c * d;
+	float error	 = hippt::fma(c, d, -cd);
 	float result = hippt::fma(a, b, -cd);
 	return result - error;
 }
 
-
 //! Implements a cross product using Kahan's algorithm for every single entry,
 //! i.e. the error in each output entry is at most 1.5 ulps
-HIPRT_DEVICE float3 cross_stable(float3 lhs, float3 rhs)
+HIPRT_DEVICE float3_t cross_stable(float3_t lhs, float3_t rhs)
 {
-	return make_float3(
-		kahan(lhs.y, rhs.z, lhs.z, rhs.y),
-		kahan(lhs.z, rhs.x, lhs.x, rhs.z),
-		kahan(lhs.x, rhs.y, lhs.y, rhs.x)
-	);
+	return make_float3(kahan(lhs.y, rhs.z, lhs.z, rhs.y), kahan(lhs.z, rhs.x, lhs.x, rhs.z), kahan(lhs.x, rhs.y, lhs.y, rhs.x));
 }
-
 
 //! \return The given vector, rotated 90 degrees counterclockwise around the
 //! 		origin
-HIPRT_DEVICE float2 rotate_90(float2 input_vector)
+HIPRT_DEVICE float2_t rotate_90(float2_t input_vector)
 {
 	return make_float2(-input_vector.y, input_vector.x);
 }
 
-
 //! \return true iff the given ellipse is marked as inner ellipse, i.e. iff the
 //!		spherical polygon that is bounded by it is further away from the zenith
 //!		than this ellipse.
-HIPRT_DEVICE bool is_inner_ellipse(float2 ellipse)
+HIPRT_DEVICE bool is_inner_ellipse(float2_t ellipse)
 {
 	// If the implementation below causes you trouble, e.g. because you want to
 	// port to a different language, you may replace it by the commented line
@@ -119,14 +118,12 @@ HIPRT_DEVICE bool is_inner_ellipse(float2 ellipse)
 	return (hippt::float_as_uint(ellipse.x) & 0x80000000) != 0;
 }
 
-
 //! \return true iff the given polygon contains the zenith (also known as
 //!		normal vector).
 HIPRT_DEVICE bool is_central_case(projected_solid_angle_triangle_t polygon)
 {
 	return polygon.inner_ellipse_0.x > 0.0f;
 }
-
 
 /*! Takes the great circle for the plane through the origin and the given two
 	points and constructs an ellipse for its projection to the xy-plane.
@@ -136,12 +133,12 @@ HIPRT_DEVICE bool is_central_case(projected_solid_angle_triangle_t polygon)
 		vector space. The sign bit of x encodes whether the edge runs clockwise
 		from vertex_0 to vertex_1 (inner ellipse) or not.
 	\see is_inner_ellipse() */
-HIPRT_DEVICE float2 ellipse_from_edge(float3 vertex_0, float3 vertex_1, bool DEBUG = false)
+HIPRT_DEVICE float2_t ellipse_from_edge(float3_t vertex_0, float3_t vertex_1, bool DEBUG = false)
 {
-	float3 normal = cross_stable(vertex_0, vertex_1);
-	float scaling = 1.0f / normal.z;
-	scaling = is_inner_ellipse(make_float2(normal.x, normal.y)) ? -scaling : scaling;
-	float2 ellipse = make_float2(normal.x, normal.y) * scaling;
+	float3_t normal	 = cross_stable(vertex_0, vertex_1);
+	float scaling	 = 1.0f / normal.z;
+	scaling			 = is_inner_ellipse(make_float2(normal.x, normal.y)) ? -scaling : scaling;
+	float2_t ellipse = make_float2(normal.x, normal.y) * scaling;
 
 	// By convention, degenerate ellipses are outer ellipses, i.e. the first
 	// component is infinite
@@ -151,36 +148,34 @@ HIPRT_DEVICE float2 ellipse_from_edge(float3 vertex_0, float3 vertex_1, bool DEB
 	return ellipse;
 }
 
-
 //! Transforms the given point using the matrix that characterizes the given
 //! ellipse (as produced by ellipse_from_edge()). To be precise, this matrix is
 //! identity + outer_product(ellipse, ellipse).
-HIPRT_DEVICE float2 ellipse_transform(float2 ellipse, float2 point)
+HIPRT_DEVICE float2_t ellipse_transform(float2_t ellipse, float2_t point)
 {
 	return hippt::fma(make_float2(hippt::dot(ellipse, point)), ellipse, point);
 }
 
-
 //! Given an ellipse in the format produced by ellipse_from_edge(), this
 //! function returns the determinant of the matrix characterizing this
 //! ellipse.
-HIPRT_DEVICE float get_ellipse_det(float2 ellipse)
+HIPRT_DEVICE float get_ellipse_det(float2_t ellipse)
 {
 	return hippt::fma(ellipse.x, ellipse.x, hippt::fma(ellipse.y, ellipse.y, 1.0f));
 }
 
 //! Returns the reciprocal square root of the ellipse determinant produced by
 //! get_ellipse_det().
-HIPRT_DEVICE float get_ellipse_rsqrt_det(float2 ellipse)
+HIPRT_DEVICE float get_ellipse_rsqrt_det(float2_t ellipse)
 {
 	return hippt::rsqrt(get_ellipse_det(ellipse));
 }
 
 //! \return Reciprocal square of get_ellipse_direction_factor(ellipse, dir)
-HIPRT_DEVICE float get_ellipse_direction_factor_rsq(float2 ellipse, float2 dir)
+HIPRT_DEVICE float get_ellipse_direction_factor_rsq(float2_t ellipse, float2_t dir)
 {
 	float ellipse_dot_dir = hippt::dot(ellipse, dir);
-	float dir_dot_dir = hippt::dot(dir, dir);
+	float dir_dot_dir	  = hippt::dot(dir, dir);
 	return hippt::fma(ellipse_dot_dir, ellipse_dot_dir, dir_dot_dir);
 }
 
@@ -190,14 +185,14 @@ HIPRT_DEVICE float get_ellipse_direction_factor_rsq(float2 ellipse, float2 dir)
 	\param dir The direction vector to be scaled onto the ellipse.
 	\return get_ellipse_direction_factor(ellipse, dir) * dir is a point on
 		the ellipse.*/
-HIPRT_DEVICE float get_ellipse_direction_factor(float2 ellipse, float2 dir)
+HIPRT_DEVICE float get_ellipse_direction_factor(float2_t ellipse, float2_t dir)
 {
 	return hippt::rsqrt(get_ellipse_direction_factor_rsq(ellipse, dir));
 }
 
 //! Like get_ellipse_direction_factor() but assumes that the given direction is
 //! normalized. Faster.
-HIPRT_DEVICE float get_ellipse_normalized_direction_factor(float2 ellipse, float2 normalized_dir)
+HIPRT_DEVICE float get_ellipse_normalized_direction_factor(float2_t ellipse, float2_t normalized_dir)
 {
 	float ellipse_dot_dir = hippt::dot(ellipse, normalized_dir);
 	return hippt::rsqrt(hippt::fma(ellipse_dot_dir, ellipse_dot_dir, 1.0f));
@@ -208,7 +203,7 @@ HIPRT_DEVICE float get_ellipse_normalized_direction_factor(float2 ellipse, float
 HIPRT_DEVICE float get_area_between_ellipses_in_sector_from_tangents(float inner_rsqrt_det, float inner_tangent, float outer_rsqrt_det, float outer_tangent)
 {
 	float inner_area = inner_rsqrt_det * positive_atan(inner_tangent);
-	float result = hippt::fma(outer_rsqrt_det, positive_atan(outer_tangent), -inner_area);
+	float result	 = hippt::fma(outer_rsqrt_det, positive_atan(outer_tangent), -inner_area);
 
 	// Sort out NaNs and negative results
 	return (result > 0.0f) ? (0.5f * result) : 0.0f;
@@ -219,16 +214,15 @@ HIPRT_DEVICE float get_area_between_ellipses_in_sector_from_tangents(float inner
 	ellipse_from_edge(), you also have to pass output of
 	get_ellipse_rsqrt_det(). Faster than calling get_ellipse_area_in_sector()
 	twice.*/
-HIPRT_DEVICE float get_area_between_ellipses_in_sector(float2 inner_ellipse, float inner_rsqrt_det, float2 outer_ellipse, float outer_rsqrt_det, float2 dir_0, float2 dir_1)
+HIPRT_DEVICE float get_area_between_ellipses_in_sector(
+						float2_t inner_ellipse, float inner_rsqrt_det, float2_t outer_ellipse, float outer_rsqrt_det, float2_t dir_0, float2_t dir_1)
 {
 	float det_dirs = hippt::max(+0.0f, hippt::dot(dir_1, rotate_90(dir_0)));
 
 	float inner_dot = inner_rsqrt_det * hippt::dot(dir_0, ellipse_transform(inner_ellipse, dir_1));
 	float outer_dot = outer_rsqrt_det * hippt::dot(dir_0, ellipse_transform(outer_ellipse, dir_1));
 
-	return get_area_between_ellipses_in_sector_from_tangents(
-		inner_rsqrt_det, det_dirs / inner_dot,
-		outer_rsqrt_det, det_dirs / outer_dot);
+	return get_area_between_ellipses_in_sector_from_tangents(inner_rsqrt_det, det_dirs / inner_dot, outer_rsqrt_det, det_dirs / outer_dot);
 }
 
 /*! Computes the area for the intersection of the given ellipse and the sector
@@ -236,17 +230,16 @@ HIPRT_DEVICE float get_area_between_ellipses_in_sector(float2 inner_ellipse, flo
 	dir_1 for at most 180 degrees). The scaling of the directions is
 	irrelevant.
 	\see ellipse_from_edge() */
-HIPRT_DEVICE float get_ellipse_area_in_sector(float2 ellipse, float2 dir_0, float2 dir_1)
+HIPRT_DEVICE float get_ellipse_area_in_sector(float2_t ellipse, float2_t dir_0, float2_t dir_1)
 {
 	float ellipse_rsqrt_det = get_ellipse_rsqrt_det(ellipse);
-	float det_dirs = hippt::max(+0.0f, hippt::dot(dir_1, rotate_90(dir_0)));
-	float ellipse_dot = ellipse_rsqrt_det * hippt::dot(dir_0, ellipse_transform(ellipse, dir_1));
-	float area = 0.5f * ellipse_rsqrt_det * positive_atan(det_dirs / ellipse_dot);
+	float det_dirs			= hippt::max(+0.0f, hippt::dot(dir_1, rotate_90(dir_0)));
+	float ellipse_dot		= ellipse_rsqrt_det * hippt::dot(dir_0, ellipse_transform(ellipse, dir_1));
+	float area				= 0.5f * ellipse_rsqrt_det * positive_atan(det_dirs / ellipse_dot);
 
 	// For degenerate ellipses, the result may be NaN but must be 0.0f
 	return (ellipse_rsqrt_det > 0.0f) ? area : 0.0f;
 }
-
 
 /*! Swaps vertices lhs and rhs (along with corresponding ellipses) of the given
 	polygon if the shorter path from lhs to rhs is clockwise. If the vertices
@@ -256,7 +249,7 @@ HIPRT_DEVICE float get_ellipse_area_in_sector(float2 ellipse, float2 dir_0, floa
 		constants.*/
 HIPRT_DEVICE void compare_and_swap(projected_solid_angle_triangle_t& polygon, unsigned int lhs, unsigned int rhs)
 {
-	float2 lhs_copy = polygon.get_vertex(lhs);
+	float2_t lhs_copy = polygon.get_vertex(lhs);
 	// This line is designed to agree with the implementation of cross_stable
 	// for the z-coordinate, which determines if ellipses are inner or outer
 	float normal_z = kahan(lhs_copy.x, -polygon.get_vertex(rhs).y, lhs_copy.y, -polygon.get_vertex(rhs).x);
@@ -266,28 +259,30 @@ HIPRT_DEVICE void compare_and_swap(projected_solid_angle_triangle_t& polygon, un
 
 	bool swap = (normal_z == 0.0f) ? (hippt::is_inf(polygon.get_ellipse(rhs).x)) : (normal_z > 0.0f);
 
-	polygon.get_vertex(lhs) = swap ? polygon.get_vertex(rhs) : lhs_copy;
-	polygon.get_vertex(rhs) = swap ? lhs_copy : polygon.get_vertex(rhs);
-	lhs_copy = polygon.get_ellipse(lhs);
+	polygon.get_vertex(lhs)	 = swap ? polygon.get_vertex(rhs) : lhs_copy;
+	polygon.get_vertex(rhs)	 = swap ? lhs_copy : polygon.get_vertex(rhs);
+	lhs_copy				 = polygon.get_ellipse(lhs);
 	polygon.get_ellipse(lhs) = swap ? polygon.get_ellipse(rhs) : lhs_copy;
 	polygon.get_ellipse(rhs) = swap ? lhs_copy : polygon.get_ellipse(rhs);
 }
-
 
 //! Sorts the vertices of the given convex polygon counterclockwise using a
 //! special sorting network. For non-convex polygons, the method may fail.
 HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t& polygon)
 {
-	if (polygon.vertex_count == 3) {
+	if (polygon.vertex_count == 3)
+	{
 		compare_and_swap(polygon, 1, 2);
 	}
 #if MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 4
-	else if (polygon.vertex_count == 4) {
+	else if (polygon.vertex_count == 4)
+	{
 		compare_and_swap(polygon, 1, 3);
 	}
 #endif
 #if MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 5
-	else if (polygon.vertex_count == 5) {
+	else if (polygon.vertex_count == 5)
+	{
 		compare_and_swap(polygon, 2, 4);
 		compare_and_swap(polygon, 1, 3);
 		compare_and_swap(polygon, 1, 2);
@@ -296,7 +291,8 @@ HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t&
 	}
 #endif
 #if MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 6
-	else if (polygon.vertex_count == 6) {
+	else if (polygon.vertex_count == 6)
+	{
 		compare_and_swap(polygon, 3, 5);
 		compare_and_swap(polygon, 2, 4);
 		compare_and_swap(polygon, 1, 5);
@@ -306,7 +302,8 @@ HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t&
 	}
 #endif
 #if MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 7
-	else if (polygon.vertex_count == 7) {
+	else if (polygon.vertex_count == 7)
+	{
 		compare_and_swap(polygon, 2, 5);
 		compare_and_swap(polygon, 1, 6);
 		compare_and_swap(polygon, 5, 6);
@@ -319,7 +316,8 @@ HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t&
 	}
 #endif
 #if MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 8
-	else if (polygon.vertex_count == 8) {
+	else if (polygon.vertex_count == 8)
+	{
 		compare_and_swap(polygon, 2, 6);
 		compare_and_swap(polygon, 3, 7);
 		compare_and_swap(polygon, 1, 5);
@@ -334,7 +332,8 @@ HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t&
 	// This comparison is shared by all sorting networks
 	compare_and_swap(polygon, 0, 2);
 #if MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING >= 4
-	if (polygon.vertex_count >= 4) {
+	if (polygon.vertex_count >= 4)
+	{
 		// This comparison is shared by all sorting networks except the one for
 		// triangles
 		compare_and_swap(polygon, 2, 3);
@@ -357,7 +356,8 @@ HIPRT_DEVICE void sort_convex_polygon_vertices(projected_solid_angle_triangle_t&
 		the vertices as seen from the origin must be clockwise. No three
 		vertices should be collinear.
 	\return Intermediate values for sampling.*/
-HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling(unsigned int vertex_count, float3 vertices_clockwise_order[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING])
+HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling(
+						unsigned int vertex_count, float3_t vertices_clockwise_order[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING])
 {
 	projected_solid_angle_triangle_t polygon;
 	// Copy vertices and assign ellipses
@@ -366,15 +366,15 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		return polygon;
 
 	polygon.inner_ellipse_0 = make_float2(1.0f, 0.0f);
-	polygon.get_vertex(0) = make_float2(vertices_clockwise_order[0].x, vertices_clockwise_order[0].y);
-	polygon.get_ellipse(0) = ellipse_from_edge(vertices_clockwise_order[0], vertices_clockwise_order[1]);
+	polygon.get_vertex(0)	= make_float2(vertices_clockwise_order[0].x, vertices_clockwise_order[0].y);
+	polygon.get_ellipse(0)	= ellipse_from_edge(vertices_clockwise_order[0], vertices_clockwise_order[1]);
 
-	float2 previous_ellipse = polygon.get_ellipse(0);
+	float2_t previous_ellipse = polygon.get_ellipse(0);
 
 #if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
 	do
 	{
-		float2 ellipse;
+		float2_t ellipse;
 		bool ellipse_inner;
 
 		// i == 1
@@ -385,7 +385,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		polygon.get_ellipse(1) = ellipse_inner ? previous_ellipse : ellipse;
 		// In doing so, we drop one ellipse, unless we store it explicitly
 		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
-		previous_ellipse = ellipse;
+		previous_ellipse		= ellipse;
 
 		// i == 2
 		polygon.get_vertex(2) = make_float2(vertices_clockwise_order[2].x, vertices_clockwise_order[2].y);
@@ -395,7 +395,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		polygon.get_ellipse(2) = ellipse_inner ? previous_ellipse : ellipse;
 		// In doing so, we drop one ellipse, unless we store it explicitly
 		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
-		previous_ellipse = ellipse;
+		previous_ellipse		= ellipse;
 
 		// i == 3
 		polygon.get_vertex(3) = make_float2(vertices_clockwise_order[3].x, vertices_clockwise_order[3].y);
@@ -407,28 +407,30 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		polygon.get_ellipse(3) = ellipse_inner ? previous_ellipse : ellipse;
 		// In doing so, we drop one ellipse, unless we store it explicitly
 		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
-		previous_ellipse = ellipse;
+		previous_ellipse		= ellipse;
 	} while (false);
 #else
 	for (unsigned int i = 1; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 	{
 		polygon.get_vertex(i) = make_float2(vertices_clockwise_order[i].x, vertices_clockwise_order[i].y);
-		if (i > 2 && i == polygon.vertex_count) break;
-		float2 ellipse = ellipse_from_edge(vertices_clockwise_order[i], vertices_clockwise_order[(i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
+		if (i > 2 && i == polygon.vertex_count)
+			break;
+		float2_t ellipse   = ellipse_from_edge(vertices_clockwise_order[i],
+											   vertices_clockwise_order[(i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
 		bool ellipse_inner = is_inner_ellipse(ellipse);
 		// If the edge is an inner edge, the order is going to flip
 		polygon.get_ellipse(i) = ellipse_inner ? previous_ellipse : ellipse;
 		// In doing so, we drop one ellipse, unless we store it explicitly
 		polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
-		previous_ellipse = ellipse;
+		previous_ellipse		= ellipse;
 	}
 #endif
 
 	// Same thing for the first vertex (i.e. here we close the loop)
-	float2 ellipse = polygon.get_ellipse(0);
+	float2_t ellipse   = polygon.get_ellipse(0);
 	bool ellipse_inner = is_inner_ellipse(ellipse);
 
-	polygon.get_ellipse(0) = ellipse_inner ? previous_ellipse : ellipse;
+	polygon.get_ellipse(0)	= ellipse_inner ? previous_ellipse : ellipse;
 	polygon.inner_ellipse_0 = (is_inner_ellipse(previous_ellipse) && !ellipse_inner) ? previous_ellipse : polygon.inner_ellipse_0;
 	// Compute projected solid angles per sector and in total
 	polygon.projected_solid_angle = 0.0f;
@@ -442,31 +444,46 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 		do
 		{
 			// i == 0
-			if (0 > 2 && 0 == polygon.vertex_count) break;
-			polygon.sector_projected_solid_angles[0] = get_ellipse_area_in_sector(polygon.get_ellipse(0), polygon.get_vertex(0), polygon.get_vertex((0 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			if (0 > 2 && 0 == polygon.vertex_count)
+				break;
+			polygon.sector_projected_solid_angles[0] =
+									get_ellipse_area_in_sector(polygon.get_ellipse(0), polygon.get_vertex(0),
+															   polygon.get_vertex((0 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[0];
 
 			// i == 1
-			if (1 > 2 && 1 == polygon.vertex_count) break;
-			polygon.sector_projected_solid_angles[1] = get_ellipse_area_in_sector(polygon.get_ellipse(1), polygon.get_vertex(1), polygon.get_vertex((1 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			if (1 > 2 && 1 == polygon.vertex_count)
+				break;
+			polygon.sector_projected_solid_angles[1] =
+									get_ellipse_area_in_sector(polygon.get_ellipse(1), polygon.get_vertex(1),
+															   polygon.get_vertex((1 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[1];
 
 			// i == 2
-			if (2 > 2 && 2 == polygon.vertex_count) break;
-			polygon.sector_projected_solid_angles[2] = get_ellipse_area_in_sector(polygon.get_ellipse(2), polygon.get_vertex(2), polygon.get_vertex((2 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			if (2 > 2 && 2 == polygon.vertex_count)
+				break;
+			polygon.sector_projected_solid_angles[2] =
+									get_ellipse_area_in_sector(polygon.get_ellipse(2), polygon.get_vertex(2),
+															   polygon.get_vertex((2 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[2];
 
 			// i == 3
-			if (3 > 2 && 3 == polygon.vertex_count) break;
-			polygon.sector_projected_solid_angles[3] = get_ellipse_area_in_sector(polygon.get_ellipse(3), polygon.get_vertex(3), polygon.get_vertex((3 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			if (3 > 2 && 3 == polygon.vertex_count)
+				break;
+			polygon.sector_projected_solid_angles[3] =
+									get_ellipse_area_in_sector(polygon.get_ellipse(3), polygon.get_vertex(3),
+															   polygon.get_vertex((3 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[3];
 
 		} while (false);
 #else
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 		{
-			if (i > 2 && i == polygon.vertex_count) break;
-			polygon.sector_projected_solid_angles[i] = get_ellipse_area_in_sector(polygon.get_ellipse(i), polygon.get_vertex(i), polygon.get_vertex((i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
+			if (i > 2 && i == polygon.vertex_count)
+				break;
+			polygon.sector_projected_solid_angles[i] =
+									get_ellipse_area_in_sector(polygon.get_ellipse(i), polygon.get_vertex(i),
+															   polygon.get_vertex((i + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[i];
 		}
 #endif
@@ -478,85 +495,89 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 
 		// There are polygon.vertex_count - 1 sectors, each bounded by an inner
 		// and an outer ellipse
-		float2 inner_ellipse = polygon.inner_ellipse_0;
-		float inner_rsqrt_det = get_ellipse_rsqrt_det(inner_ellipse);
-		float2 outer_ellipse = make_float2(0.0f, 0.0f);
-		float outer_rsqrt_det = 0.0f;
+		float2_t inner_ellipse = polygon.inner_ellipse_0;
+		float inner_rsqrt_det  = get_ellipse_rsqrt_det(inner_ellipse);
+		float2_t outer_ellipse = make_float2(0.0f, 0.0f);
+		float outer_rsqrt_det  = 0.0f;
 
 #if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
 		do
 		{
-			float2 vertex_ellipse;
+			float2_t vertex_ellipse;
 			bool vertex_inner;
 			float vertex_rsqrt_det;
 
-			//i == 0
-			if (0 > 1 && 0 + 1 == polygon.vertex_count) break;
+			// i == 0
+			if (0 > 1 && 0 + 1 == polygon.vertex_count)
+				break;
 
-			vertex_ellipse = polygon.get_ellipse(0);
-			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			vertex_ellipse	 = polygon.get_ellipse(0);
+			vertex_inner	 = is_inner_ellipse(vertex_ellipse);
 			vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
-			outer_ellipse = vertex_ellipse;
-			outer_rsqrt_det = vertex_rsqrt_det;
+			outer_ellipse	 = vertex_ellipse;
+			outer_rsqrt_det	 = vertex_rsqrt_det;
 
-			polygon.sector_projected_solid_angles[0] = get_area_between_ellipses_in_sector(
-				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(0), polygon.get_vertex(0 + 1));
+			polygon.sector_projected_solid_angles[0] = get_area_between_ellipses_in_sector(inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det,
+																						   polygon.get_vertex(0), polygon.get_vertex(0 + 1));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[0];
 
 			// i == 1
-			if (1 > 1 && 1 + 1 == polygon.vertex_count) break;
+			if (1 > 1 && 1 + 1 == polygon.vertex_count)
+				break;
 
-			vertex_ellipse = polygon.get_ellipse(1);
-			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			vertex_ellipse	 = polygon.get_ellipse(1);
+			vertex_inner	 = is_inner_ellipse(vertex_ellipse);
 			vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
-			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
-			inner_rsqrt_det = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
-			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
-			outer_rsqrt_det = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
+			inner_ellipse	 = vertex_inner ? vertex_ellipse : inner_ellipse;
+			inner_rsqrt_det	 = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
+			outer_ellipse	 = vertex_inner ? outer_ellipse : vertex_ellipse;
+			outer_rsqrt_det	 = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
 
-			polygon.sector_projected_solid_angles[1] = get_area_between_ellipses_in_sector(
-				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(1), polygon.get_vertex(1 + 1));
+			polygon.sector_projected_solid_angles[1] = get_area_between_ellipses_in_sector(inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det,
+																						   polygon.get_vertex(1), polygon.get_vertex(1 + 1));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[1];
 
 			// i == 2
-			if (2 > 1 && 2 + 1 == polygon.vertex_count) break;
+			if (2 > 1 && 2 + 1 == polygon.vertex_count)
+				break;
 
-			vertex_ellipse = polygon.get_ellipse(2);
-			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			vertex_ellipse	 = polygon.get_ellipse(2);
+			vertex_inner	 = is_inner_ellipse(vertex_ellipse);
 			vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
-			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
-			inner_rsqrt_det = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
-			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
-			outer_rsqrt_det = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
+			inner_ellipse	 = vertex_inner ? vertex_ellipse : inner_ellipse;
+			inner_rsqrt_det	 = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
+			outer_ellipse	 = vertex_inner ? outer_ellipse : vertex_ellipse;
+			outer_rsqrt_det	 = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
 
-			polygon.sector_projected_solid_angles[2] = get_area_between_ellipses_in_sector(
-				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(2), polygon.get_vertex(2 + 1));
+			polygon.sector_projected_solid_angles[2] = get_area_between_ellipses_in_sector(inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det,
+																						   polygon.get_vertex(2), polygon.get_vertex(2 + 1));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[2];
 		} while (false);
 #else
 		for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; ++i)
 		{
-			if (i > 1 && i + 1 == polygon.vertex_count) break;
+			if (i > 1 && i + 1 == polygon.vertex_count)
+				break;
 
-			float2 vertex_ellipse = polygon.get_ellipse(i);
-			bool vertex_inner = is_inner_ellipse(vertex_ellipse);
-			float vertex_rsqrt_det = get_ellipse_rsqrt_det(vertex_ellipse);
+			float2_t vertex_ellipse = polygon.get_ellipse(i);
+			bool vertex_inner		= is_inner_ellipse(vertex_ellipse);
+			float vertex_rsqrt_det	= get_ellipse_rsqrt_det(vertex_ellipse);
 
 			if (i == 0)
 			{
-				outer_ellipse = vertex_ellipse;
+				outer_ellipse	= vertex_ellipse;
 				outer_rsqrt_det = vertex_rsqrt_det;
 			}
 			else
 			{
-				inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
+				inner_ellipse	= vertex_inner ? vertex_ellipse : inner_ellipse;
 				inner_rsqrt_det = vertex_inner ? vertex_rsqrt_det : inner_rsqrt_det;
-				outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
+				outer_ellipse	= vertex_inner ? outer_ellipse : vertex_ellipse;
 				outer_rsqrt_det = vertex_inner ? outer_rsqrt_det : vertex_rsqrt_det;
 			}
 
-			polygon.sector_projected_solid_angles[i] = get_area_between_ellipses_in_sector(
-				inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det, polygon.get_vertex(i), polygon.get_vertex(i + 1));
+			polygon.sector_projected_solid_angles[i] = get_area_between_ellipses_in_sector(inner_ellipse, inner_rsqrt_det, outer_ellipse, outer_rsqrt_det,
+																						   polygon.get_vertex(i), polygon.get_vertex(i + 1));
 			polygon.projected_solid_angle += polygon.sector_projected_solid_angles[i];
 		}
 #endif
@@ -565,47 +586,53 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	return polygon;
 }
 
-HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(const HIPRTRenderData& render_data,
-	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
-	const DeviceUnpackedEffectiveMaterial& material, LTCLobe ltc_lobe)
+HIPRT_DEVICE projected_solid_angle_triangle_t
+prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(const HIPRTRenderData& render_data,
+																		  float3_t vertex_A_world_space,
+																		  float3_t vertex_B_world_space,
+																		  float3_t vertex_C_world_space,
+																		  float3_t shading_point,
+																		  float3_t view_direction,
+																		  float3_t shading_normal,
+																		  const DeviceUnpackedEffectiveMaterial& material,
+																		  LTCLobe ltc_lobe)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	/**
 	 * With the view direction in the x-z plane + LTC transform
 	 */
-	 // Building a shading space where the shading point is the origin, the shading normal
-	 // is the z axis, and the view direction lies in the x-z plane
-	float3 T, B;
+	// Building a shading space where the shading point is the origin, the shading normal
+	// is the z axis, and the view direction lies in the x-z plane
+	float3_t T, B;
 	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
-	float3 vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);
-	float3 vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
-	float3 vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
+	float3_t vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);
+	float3_t vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
+	float3_t vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
 
 	// Shading space to cosine space such that we sample the projected
 	// solid angle of the triangle but transformed by the LTC
-	float NoV = hippt::dot(view_direction, shading_normal);
+	float NoV				= hippt::dot(view_direction, shading_normal);
 	float3x3 ltc_matrix_inv = ltc_transform_shading_to_cosine_read_matrix(render_data, NoV, view_direction, material, ltc_lobe);
-	vertex_A_local = ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_A_local);
-	vertex_B_local = ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_B_local);
-	vertex_C_local = ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_C_local);
+	vertex_A_local			= ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_A_local);
+	vertex_B_local			= ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_B_local);
+	vertex_C_local			= ltc_transform_shading_to_cosine(ltc_matrix_inv, vertex_C_local);
 
 	// Normalizing vertices helps a bit with float numerical precision
 	vertex_A_local = hippt::normalize(vertex_A_local);
 	vertex_B_local = hippt::normalize(vertex_B_local);
 	vertex_C_local = hippt::normalize(vertex_C_local);
 #else
-	float3 T, B;
+	float3_t T, B;
 	build_ONB(shading_normal, T, B);
 
-	float3 vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);
-	float3 vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
-	float3 vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
+	float3_t vertex_A_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_A_world_space - shading_point);
+	float3_t vertex_B_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_B_world_space - shading_point);
+	float3_t vertex_C_local = world_to_local_frame_non_normalized(T, B, shading_normal, vertex_C_world_space - shading_point);
 #endif
 
 	// The vertices array reorganizes the vertices in clockwise order
-	float3 vertices_local_space[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING] = { vertex_A_local, vertex_C_local, vertex_B_local };
-	unsigned int clipped_vertex_count = clip_polygon(3, vertices_local_space);
+	float3_t vertices_local_space[MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING] = { vertex_A_local, vertex_C_local, vertex_B_local };
+	unsigned int clipped_vertex_count													   = clip_polygon(3, vertices_local_space);
 
 	vertices_local_space[0] = hippt::normalize(vertices_local_space[0]);
 	vertices_local_space[1] = hippt::normalize(vertices_local_space[1]);
@@ -620,35 +647,42 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	return prepared_triangle;
 }
 
-HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_triangle_sampling_from_world_space(const HIPRTRenderData& render_data,
-	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
-	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material, Xorshift32Generator& rng)
+HIPRT_DEVICE projected_solid_angle_triangle_t
+prepare_projected_solid_angle_triangle_sampling_from_world_space(const HIPRTRenderData& render_data,
+																 float3_t vertex_A_world_space,
+																 float3_t vertex_B_world_space,
+																 float3_t vertex_C_world_space,
+																 float3_t shading_point,
+																 float3_t view_direction,
+																 float3_t shading_normal,
+																 const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
+																 const DeviceUnpackedEffectiveMaterial& material,
+																 Xorshift32Generator& rng)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	LTCLobe ltc_lobe = ltc_lobe_sample(ltc_lobe_probabilities, rng);
 
-	return prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
-		render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal,
-		material, ltc_lobe);
+	return prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(render_data, vertex_A_world_space, vertex_B_world_space,
+																					 vertex_C_world_space, shading_point, view_direction, shading_normal,
+																					 material, ltc_lobe);
 #else
 	return prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
-		render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal,
-		material,
-		// Not using LTCs, we don't care about the lobe parameter, just using diffuse as default
-		LTCLobe::DIFFUSE_LOBE);
+							render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space, shading_point, view_direction, shading_normal,
+							material,
+							// Not using LTCs, we don't care about the lobe parameter, just using diffuse as default
+							LTCLobe::DIFFUSE_LOBE);
 #endif
 }
 
 HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRenderData& render_data,
-	float triangle_projected_solid_angle, float NoL,
-	float3 view_direction, float3 shading_normal, float3 sampled_dir_shading_space,
-	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material,
-	LTCLobe ltc_lobe)
+																		   float triangle_projected_solid_angle,
+																		   float NoL,
+																		   float3_t view_direction,
+																		   float3_t shading_normal,
+																		   float3_t sampled_dir_shading_space,
+																		   const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
+																		   const DeviceUnpackedEffectiveMaterial& material,
+																		   LTCLobe ltc_lobe)
 {
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	float ltc_lobe_pdf = ltc_lobe_eval_pdf(ltc_lobe_probabilities, ltc_lobe);
@@ -674,154 +708,140 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 }
 
 HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRenderData& render_data,
-	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
-	float3 point_on_light,
-	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material,
-	LTCLobe ltc_lobe)
+																		   float3_t vertex_A_world_space,
+																		   float3_t vertex_B_world_space,
+																		   float3_t vertex_C_world_space,
+																		   float3_t shading_point,
+																		   float3_t view_direction,
+																		   float3_t shading_normal,
+																		   float3_t point_on_light,
+																		   const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
+																		   const DeviceUnpackedEffectiveMaterial& material,
+																		   LTCLobe ltc_lobe)
 {
 	float ltc_lobe_pdf = ltc_lobe_eval_pdf(ltc_lobe_probabilities, ltc_lobe);
 	if (ltc_lobe_pdf == 0.0f)
 		return 0.0f;
 
 	float projected_solid_angle = prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(
-		render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal,
-		material, ltc_lobe).projected_solid_angle;
+														  render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space, shading_point,
+														  view_direction, shading_normal, material, ltc_lobe)
+														  .projected_solid_angle;
 
 	if (projected_solid_angle == 0.0f)
 		// The whole polygon is below the hemisphere, clipping returned 0 vertices
 		return 0.0f;
 
-	float3 to_light_direction = hippt::normalize(point_on_light - shading_point);
+	float3_t to_light_direction = hippt::normalize(point_on_light - shading_point);
 
-	float3 sampled_dir_shading_space;
-	float3 sampled_dir_cosine_space;
+	float3_t sampled_dir_shading_space;
+	float3_t sampled_dir_cosine_space;
 #if TrianglePointSamplingStrategySolidAngleUseLTC == KERNEL_OPTION_TRUE
 	// Jacobian of the LTC transform
-	float3 T, B;
+	float3_t T, B;
 	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
 	sampled_dir_shading_space = world_to_local_frame(T, B, shading_normal, to_light_direction);
-	sampled_dir_cosine_space = hippt::normalize(ltc_transform_shading_to_cosine(render_data, hippt::dot(view_direction, shading_normal), sampled_dir_shading_space, material, ltc_lobe));
+	sampled_dir_cosine_space  = hippt::normalize(ltc_transform_shading_to_cosine(render_data, hippt::dot(view_direction, shading_normal),
+																				 sampled_dir_shading_space, material, ltc_lobe));
 
-	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-		projected_solid_angle, sampled_dir_cosine_space.z,
-		view_direction, shading_normal, sampled_dir_shading_space,
-		ltc_lobe_probabilities, material, ltc_lobe);
+	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, projected_solid_angle, sampled_dir_cosine_space.z,
+																					view_direction, shading_normal, sampled_dir_shading_space,
+																					ltc_lobe_probabilities, material, ltc_lobe);
 #else
-	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-		projected_solid_angle, hippt::dot(shading_normal, to_light_direction),
-		view_direction, shading_normal, make_float3(0.0f, 0.0f, 0.0f),
-		ltc_lobe_probabilities, material, ltc_lobe);
+	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf_internal(
+							render_data, projected_solid_angle, hippt::dot(shading_normal, to_light_direction), view_direction, shading_normal,
+							make_float3(0.0f, 0.0f, 0.0f), ltc_lobe_probabilities, material, ltc_lobe);
 #endif
 
 	return pdf_solid_angle;
 }
 
 HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& render_data,
-	float triangle_projected_solid_angle, float NoL, LTCLobe ltc_lobe,
-	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
-	float3 shading_point, float3 view_direction, float3 shading_normal, float3 sampled_dir_shading_space, float3 point_on_light,
-	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material)
+																  float triangle_projected_solid_angle,
+																  float NoL,
+																  LTCLobe ltc_lobe,
+																  float3_t vertex_A_world_space,
+																  float3_t vertex_B_world_space,
+																  float3_t vertex_C_world_space,
+																  float3_t shading_point,
+																  float3_t view_direction,
+																  float3_t shading_normal,
+																  float3_t sampled_dir_shading_space,
+																  float3_t point_on_light,
+																  const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
+																  const DeviceUnpackedEffectiveMaterial& material)
 {
 	float out_pdf = 0.0f;
 
 	// For each lobe, if we already have the projected solid angle in cosine space,
 	// then we don't have to recompute it (if branch).
-	// 
+	//
 	// Otherwise, we compute it from world space (else branch)
 	//
 	// This avoids recomputing the projected solid angle when we already have it and it's a bit faster
 	if (ltc_lobe == LTCLobe::COAT_LOBE)
-		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-			triangle_projected_solid_angle, NoL,
-			view_direction, shading_normal, sampled_dir_shading_space,
-			ltc_lobe_probabilities, material,
-			LTCLobe::COAT_LOBE);
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, triangle_projected_solid_angle, NoL, view_direction, shading_normal,
+																		   sampled_dir_shading_space, ltc_lobe_probabilities, material, LTCLobe::COAT_LOBE);
 	else
-		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-			vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-			shading_point, view_direction, shading_normal, point_on_light,
-			ltc_lobe_probabilities, material,
-			LTCLobe::COAT_LOBE);
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+																		   shading_point, view_direction, shading_normal, point_on_light,
+																		   ltc_lobe_probabilities, material, LTCLobe::COAT_LOBE);
 
 	if (ltc_lobe == LTCLobe::METALLIC_LOBE)
-		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-			triangle_projected_solid_angle, NoL,
-			view_direction, shading_normal, sampled_dir_shading_space,
-			ltc_lobe_probabilities, material,
-			LTCLobe::METALLIC_LOBE);
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, triangle_projected_solid_angle, NoL, view_direction, shading_normal,
+																		   sampled_dir_shading_space, ltc_lobe_probabilities, material, LTCLobe::METALLIC_LOBE);
 	else
-		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-			vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-			shading_point, view_direction, shading_normal, point_on_light,
-			ltc_lobe_probabilities, material,
-			LTCLobe::METALLIC_LOBE);
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+																		   shading_point, view_direction, shading_normal, point_on_light,
+																		   ltc_lobe_probabilities, material, LTCLobe::METALLIC_LOBE);
 
 	if (ltc_lobe == LTCLobe::SPECULAR_LOBE)
-		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-			triangle_projected_solid_angle, NoL,
-			view_direction, shading_normal, sampled_dir_shading_space,
-			ltc_lobe_probabilities, material,
-			LTCLobe::SPECULAR_LOBE);
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, triangle_projected_solid_angle, NoL, view_direction, shading_normal,
+																		   sampled_dir_shading_space, ltc_lobe_probabilities, material, LTCLobe::SPECULAR_LOBE);
 	else
-		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-			vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-			shading_point, view_direction, shading_normal, point_on_light,
-			ltc_lobe_probabilities, material,
-			LTCLobe::SPECULAR_LOBE);
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+																		   shading_point, view_direction, shading_normal, point_on_light,
+																		   ltc_lobe_probabilities, material, LTCLobe::SPECULAR_LOBE);
 
 	if (ltc_lobe == LTCLobe::DIFFUSE_LOBE)
-		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-			triangle_projected_solid_angle, NoL,
-			view_direction, shading_normal, sampled_dir_shading_space,
-			ltc_lobe_probabilities, material,
-			LTCLobe::DIFFUSE_LOBE);
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, triangle_projected_solid_angle, NoL, view_direction, shading_normal,
+																		   sampled_dir_shading_space, ltc_lobe_probabilities, material, LTCLobe::DIFFUSE_LOBE);
 	else
-		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data,
-			vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-			shading_point, view_direction, shading_normal, point_on_light,
-			ltc_lobe_probabilities, material,
-			LTCLobe::DIFFUSE_LOBE);
+		out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+																		   shading_point, view_direction, shading_normal, point_on_light,
+																		   ltc_lobe_probabilities, material, LTCLobe::DIFFUSE_LOBE);
 
 	return out_pdf;
 }
 
 HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRenderData& render_data,
-	float3 vertex_A_world_space, float3 vertex_B_world_space, float3 vertex_C_world_space,
-	float3 shading_point, float3 view_direction, float3 shading_normal, float3 point_on_light,
-	const LTCLobeSampleProbabilities& ltc_lobe_probabilities, const DeviceUnpackedEffectiveMaterial& material)
+																  float3_t vertex_A_world_space,
+																  float3_t vertex_B_world_space,
+																  float3_t vertex_C_world_space,
+																  float3_t shading_point,
+																  float3_t view_direction,
+																  float3_t shading_normal,
+																  float3_t point_on_light,
+																  const LTCLobeSampleProbabilities& ltc_lobe_probabilities,
+																  const DeviceUnpackedEffectiveMaterial& material)
 {
 	float out_pdf = 0.0f;
 
-	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(
-		render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, point_on_light,
-		ltc_lobe_probabilities, material,
-		LTCLobe::COAT_LOBE);
+	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+																	   shading_point, view_direction, shading_normal, point_on_light, ltc_lobe_probabilities,
+																	   material, LTCLobe::COAT_LOBE);
 
-	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(
-		render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, point_on_light,
-		ltc_lobe_probabilities, material,
-		LTCLobe::METALLIC_LOBE);
+	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+																	   shading_point, view_direction, shading_normal, point_on_light, ltc_lobe_probabilities,
+																	   material, LTCLobe::METALLIC_LOBE);
 
-	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(
-		render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, point_on_light,
-		ltc_lobe_probabilities, material,
-		LTCLobe::SPECULAR_LOBE);
+	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+																	   shading_point, view_direction, shading_normal, point_on_light, ltc_lobe_probabilities,
+																	   material, LTCLobe::SPECULAR_LOBE);
 
-	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(
-		render_data,
-		vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
-		shading_point, view_direction, shading_normal, point_on_light,
-		ltc_lobe_probabilities, material,
-		LTCLobe::DIFFUSE_LOBE);
+	out_pdf += projected_solid_angle_triangle_solid_angle_pdf_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
+																	   shading_point, view_direction, shading_normal, point_on_light, ltc_lobe_probabilities,
+																	   material, LTCLobe::DIFFUSE_LOBE);
 
 	return out_pdf;
 }
@@ -833,7 +853,7 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf(const HIPRTRen
 	\note Introduces less latency than normalize() and does not use special
 		functions. Useful to avoid under- and overflow when working with
 		homogeneous coordinates. The result is undefined if rhs is zero.*/
-HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle)
+HIPRT_DEVICE float2_t normalize_approx_and_flip(float2_t rhs, float2_t semi_circle)
 {
 	float scaling = hippt::abs(rhs.x) + hippt::abs(rhs.y);
 	// By flipping each bit on the exponent E, we turn it into 1 - E, which is
@@ -860,11 +880,11 @@ HIPRT_DEVICE float2 normalize_approx_and_flip(float2 rhs, float2 semi_circle)
 	James F. Blinn 2006, How to Solve a Quadratic Equation, Part 2, IEEE
 	Computer Graphics and Applications 26:2 https://doi.org/10.1109/MCG.2006.35
 */
-HIPRT_DEVICE float2 solve_homogeneous_quadratic(float2x2 quadratic)
+HIPRT_DEVICE float2_t solve_homogeneous_quadratic(float2x2 quadratic)
 {
-	float coeff_xy = 0.5f * (quadratic.m[0][1] + quadratic.m[1][0]);
+	float coeff_xy			= 0.5f * (quadratic.m[0][1] + quadratic.m[1][0]);
 	float sqrt_discriminant = hippt::sqrt(hippt::max(0.0f, coeff_xy * coeff_xy - quadratic.m[0][0] * quadratic.m[1][1]));
-	float scaled_root = hippt::abs(coeff_xy) + sqrt_discriminant;
+	float scaled_root		= hippt::abs(coeff_xy) + sqrt_discriminant;
 	return (coeff_xy >= 0.0f) ? make_float2(scaled_root, -quadratic.m[0][0]) : make_float2(quadratic.m[1][1], scaled_root);
 }
 
@@ -880,41 +900,37 @@ HIPRT_DEVICE float2 solve_homogeneous_quadratic(float2x2 quadratic)
 	\param iteration_count The number of iterations to perform. Lower values
 		trade speed for bias. Two iterations give practically no bias.
 	\return The sample in Cartesian coordinates.*/
-HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float target_area, float2 inner_ellipse, float2 outer_ellipse, float2 dir_0, float2 dir_1, unsigned int iteration_count)
+HIPRT_DEVICE float2_t sample_sector_between_ellipses(float2_t random_numbers,
+													 float target_area,
+													 float2_t inner_ellipse,
+													 float2_t outer_ellipse,
+													 float2_t dir_0,
+													 float2_t dir_1,
+													 unsigned int iteration_count)
 {
 	// For the initialization, split the sector in half
-	float2 quad_dirs[3];
+	float2_t quad_dirs[3];
 	quad_dirs[0] = hippt::normalize(dir_0);
 	quad_dirs[2] = hippt::normalize(dir_1);
 	quad_dirs[1] = quad_dirs[0] + quad_dirs[2];
 	// Compute where these lines intersect the ellipses. The six intersection
 	// points define two adjacent quads.
-	float normalization_factor[2][3] =
-	{
-		{
-			get_ellipse_normalized_direction_factor(inner_ellipse, quad_dirs[0]),
-			get_ellipse_direction_factor(inner_ellipse, quad_dirs[1]),
-			get_ellipse_normalized_direction_factor(inner_ellipse, quad_dirs[2])
-		},
-		{
-			get_ellipse_normalized_direction_factor(outer_ellipse, quad_dirs[0]),
-			get_ellipse_direction_factor(outer_ellipse, quad_dirs[1]),
-			get_ellipse_normalized_direction_factor(outer_ellipse, quad_dirs[2])
-		}
+	float normalization_factor[2][3] = {
+		{ get_ellipse_normalized_direction_factor(inner_ellipse, quad_dirs[0]), get_ellipse_direction_factor(inner_ellipse, quad_dirs[1]),
+		  get_ellipse_normalized_direction_factor(inner_ellipse, quad_dirs[2]) },
+		{ get_ellipse_normalized_direction_factor(outer_ellipse, quad_dirs[0]), get_ellipse_direction_factor(outer_ellipse, quad_dirs[1]),
+		  get_ellipse_normalized_direction_factor(outer_ellipse, quad_dirs[2]) }
 	};
 
 	// Compute the relative size of the areas inside these quads
-	float sector_areas[2] =
-	{
-		normalization_factor[1][0] * normalization_factor[1][1] - normalization_factor[0][0] * normalization_factor[0][1],
-		normalization_factor[1][1] * normalization_factor[1][2] - normalization_factor[0][1] * normalization_factor[0][2]
-	};
+	float sector_areas[2] = { normalization_factor[1][0] * normalization_factor[1][1] - normalization_factor[0][0] * normalization_factor[0][1],
+							  normalization_factor[1][1] * normalization_factor[1][2] - normalization_factor[0][1] * normalization_factor[0][2] };
 
 	// Now pick which of the two quads should be sampled for the
 	// initialization. If it is not the second, we move data such that the
 	// relevant array indices are 1 and 2 anyway.
-	float target_quad_area = mix_fma(-sector_areas[0], sector_areas[1], random_numbers.x);
-	quad_dirs[2] = (target_quad_area <= 0.0f) ? quad_dirs[0] : quad_dirs[2];
+	float target_quad_area	   = hippt::mix_fma(-sector_areas[0], sector_areas[1], random_numbers.x);
+	quad_dirs[2]			   = (target_quad_area <= 0.0f) ? quad_dirs[0] : quad_dirs[2];
 	normalization_factor[0][2] = (target_quad_area <= 0.0f) ? normalization_factor[0][0] : normalization_factor[0][2];
 	normalization_factor[1][2] = (target_quad_area <= 0.0f) ? normalization_factor[1][0] : normalization_factor[1][2];
 	target_quad_area += (target_quad_area <= 0.0f) ? sector_areas[0] : -sector_areas[1];
@@ -925,32 +941,27 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	// quad. We construct the normal like a half vector (i.e. by addition)
 	// because it is less prone to cancellation than an approach using the edge
 	// direction (i.e. subtraction of sometimes nearly identical vectors)
-	float2 quad_normals[2] =
-	{
-		quad_dirs[1] * normalization_factor[0][1] + quad_dirs[2] * normalization_factor[0][2],
-		quad_dirs[1] * normalization_factor[1][1] + quad_dirs[2] * normalization_factor[1][2]
-	};
+	float2_t quad_normals[2] = { quad_dirs[1] * normalization_factor[0][1] + quad_dirs[2] * normalization_factor[0][2],
+								 quad_dirs[1] * normalization_factor[1][1] + quad_dirs[2] * normalization_factor[1][2] };
 
 	quad_normals[0] = ellipse_transform(inner_ellipse, quad_normals[0]);
 	quad_normals[1] = ellipse_transform(outer_ellipse, quad_normals[1]);
 	// Construct complete line equations
-	float quad_offsets[2] =
-	{
-		hippt::dot(quad_normals[0], quad_dirs[1]) * normalization_factor[0][1],
-		hippt::dot(quad_normals[1], quad_dirs[1]) * normalization_factor[1][1]
-	};
+	float quad_offsets[2] = { hippt::dot(quad_normals[0], quad_dirs[1]) * normalization_factor[0][1],
+							  hippt::dot(quad_normals[1], quad_dirs[1]) * normalization_factor[1][1] };
 
 	// Now sample the direction within the selected quad by constructing a
 	// quadratic equation. This is the initialization for the iteration.
 	float2x2 quadratic = outer_product((quad_offsets[1] * normalization_factor[1][2]) * rotate_90(quad_dirs[2]), quad_normals[0]);
-	quadratic = quadratic - outer_product((quad_offsets[0] * normalization_factor[0][2]) * rotate_90(quad_dirs[2]) + target_quad_area * quad_normals[0], quad_normals[1]);
-	float2 current_dir = solve_homogeneous_quadratic(quadratic);
+	quadratic		   = quadratic -
+				outer_product((quad_offsets[0] * normalization_factor[0][2]) * rotate_90(quad_dirs[2]) + target_quad_area * quad_normals[0], quad_normals[1]);
+	float2_t current_dir = solve_homogeneous_quadratic(quadratic);
 
 #ifndef USE_BIASED_PROJECTED_SOLID_ANGLE_SAMPLING
 	// For boundary values, the initialization is perfect but the iteration may
 	// be unstable, so we disable it
 	float acceptable_error = 1.0e-5f;
-	iteration_count = (hippt::abs(random_numbers.x - 0.5f) <= 0.5f - acceptable_error) ? iteration_count : 0;
+	iteration_count		   = (hippt::abs(random_numbers.x - 0.5f) <= 0.5f - acceptable_error) ? iteration_count : 0;
 
 	// Now refine this initialization iteratively
 	float inner_rsqrt_det = get_ellipse_rsqrt_det(inner_ellipse);
@@ -963,18 +974,18 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 		current_dir = normalize_approx_and_flip(current_dir, quad_dirs[1]);
 
 		// Transform current_dir using both ellipses
-		float2 inner_dir = ellipse_transform(inner_ellipse, current_dir);
-		float2 outer_dir = ellipse_transform(outer_ellipse, current_dir);
+		float2_t inner_dir = ellipse_transform(inner_ellipse, current_dir);
+		float2_t outer_dir = ellipse_transform(outer_ellipse, current_dir);
 
 		// Evaluate the objective function (reusing inner_dir and outer_dir)
 		float det_dirs = hippt::max(+0.0f, hippt::dot(current_dir, rotate_90(quad_dirs[0])));
-		float error = target_area - get_area_between_ellipses_in_sector_from_tangents(
-			inner_rsqrt_det, det_dirs / (inner_rsqrt_det * hippt::dot(quad_dirs[0], inner_dir)),
-			outer_rsqrt_det, det_dirs / (outer_rsqrt_det * hippt::dot(quad_dirs[0], outer_dir)));
+		float error	   = target_area -
+					  get_area_between_ellipses_in_sector_from_tangents(inner_rsqrt_det, det_dirs / (inner_rsqrt_det * hippt::dot(quad_dirs[0], inner_dir)),
+																		outer_rsqrt_det, det_dirs / (outer_rsqrt_det * hippt::dot(quad_dirs[0], outer_dir)));
 
 		// Construct a homogeneous quadratic whose solutions include the next
 		// step of the iteration
-		quadratic = outer_product(inner_dir - outer_dir, rotate_90(current_dir)) - outer_product((2.0f * error) * inner_dir, outer_dir);
+		quadratic	= outer_product(inner_dir - outer_dir, rotate_90(current_dir)) - outer_product((2.0f * error) * inner_dir, outer_dir);
 		current_dir = solve_homogeneous_quadratic(quadratic);
 	}
 #endif
@@ -985,7 +996,7 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	// Sample a squared radius uniformly between the two ellipses
 	float inner_factor = 1.0f / get_ellipse_direction_factor_rsq(inner_ellipse, current_dir);
 	float outer_factor = 1.0f / get_ellipse_direction_factor_rsq(outer_ellipse, current_dir);
-	current_dir *= hippt::sqrt(mix_fma(inner_factor, outer_factor, random_numbers.y));
+	current_dir *= hippt::sqrt(hippt::mix_fma(inner_factor, outer_factor, random_numbers.y));
 
 	return current_dir;
 }
@@ -997,23 +1008,24 @@ HIPRT_DEVICE float2 sample_sector_between_ellipses(float2 random_numbers, float 
 	\param random_numbers A uniform point in [0,1]^2.
 	\return A sample on the upper hemisphere (i.e. z>=0) in Cartesian
 		coordinates.*/
-HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(const HIPRTRenderData& render_data,
-	float3 vertex_A, float3 vertex_B, float3 vertex_C, float3 triangle_normal,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
-	ColorRGB32F triangle_emission, const DeviceUnpackedEffectiveMaterial& material,
-	float& out_area_pdf,
-	Xorshift32Generator& rng)
+HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021(const HIPRTRenderData& render_data,
+																				 float3_t vertex_A,
+																				 float3_t vertex_B,
+																				 float3_t vertex_C,
+																				 float3_t triangle_normal,
+																				 float3_t shading_point,
+																				 float3_t view_direction,
+																				 float3_t shading_normal,
+																				 ColorRGB32F triangle_emission,
+																				 const DeviceUnpackedEffectiveMaterial& material,
+																				 float& out_area_pdf,
+																				 Xorshift32Generator& rng)
 {
-	LTCLobeSampleProbabilities ltc_lobe_probabilities = ltc_lobe_probas(render_data,
-		vertex_A, vertex_B, vertex_C,
-		shading_point, view_direction, shading_normal,
-		triangle_emission, material);
+	LTCLobeSampleProbabilities ltc_lobe_probabilities = ltc_lobe_probas(render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction,
+																		shading_normal, triangle_emission, material);
 
-	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(render_data,
-		vertex_A, vertex_B, vertex_C,
-		shading_point, view_direction, shading_normal,
-		ltc_lobe_probabilities, material,
-		rng);
+	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(
+							render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, ltc_lobe_probabilities, material, rng);
 
 	if (polygon.vertex_count == 0 || polygon.projected_solid_angle == 0.0f)
 	{
@@ -1027,9 +1039,9 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 
 	float target_projected_solid_angle = rand_1 * polygon.projected_solid_angle;
 	// Distinguish between the central case
-	float3 sampled_dir = make_float3(0.0f, 0.0f, 0.0f);
-	float2 outer_ellipse = make_float2(0.0f, 0.0f);
-	float2 dir_0 = make_float2(0.0f, 0.0f);
+	float3_t sampled_dir   = make_float3(0.0f, 0.0f, 0.0f);
+	float2_t outer_ellipse = make_float2(0.0f, 0.0f);
+	float2_t dir_0		   = make_float2(0.0f, 0.0f);
 
 	if (is_central_case(polygon))
 	{
@@ -1039,7 +1051,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 		{
 			// i == 0
 			outer_ellipse = polygon.get_ellipse(0);
-			dir_0 = polygon.get_vertex(0);
+			dir_0		  = polygon.get_vertex(0);
 			if (target_projected_solid_angle < polygon.sector_projected_solid_angles[0])
 				break;
 
@@ -1047,21 +1059,21 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 			target_projected_solid_angle -= polygon.sector_projected_solid_angles[1 - 1];
 
 			outer_ellipse = polygon.get_ellipse(1);
-			dir_0 = polygon.get_vertex(1);
+			dir_0		  = polygon.get_vertex(1);
 			if ((1 >= 2 && 1 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[1])
 				break;
 
 			// i == 2
 			target_projected_solid_angle -= polygon.sector_projected_solid_angles[2 - 1];
 			outer_ellipse = polygon.get_ellipse(2);
-			dir_0 = polygon.get_vertex(2);
+			dir_0		  = polygon.get_vertex(2);
 			if ((2 >= 2 && 2 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[2])
 				break;
 
 			// i == 3
 			target_projected_solid_angle -= polygon.sector_projected_solid_angles[3 - 1];
 			outer_ellipse = polygon.get_ellipse(3);
-			dir_0 = polygon.get_vertex(3);
+			dir_0		  = polygon.get_vertex(3);
 			if ((3 >= 2 && 3 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[3])
 				break;
 		} while (false);
@@ -1072,16 +1084,16 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
 
 			outer_ellipse = polygon.get_ellipse(i);
-			dir_0 = polygon.get_vertex(i);
+			dir_0		  = polygon.get_vertex(i);
 			if ((i >= 2 && i + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[i])
 				break;
 		}
 #endif
 
 		// Sample a direction within the sector
-		float sqrt_det = hippt::sqrt(get_ellipse_det(outer_ellipse));
-		float angle = 2.0f * target_projected_solid_angle * sqrt_det;
-		float2 dir_xy = (hippt::intrin_cosf(angle) * sqrt_det) * dir_0 + hippt::intrin_sinf(angle) * rotate_90(ellipse_transform(outer_ellipse, dir_0));
+		float sqrt_det	= hippt::sqrt(get_ellipse_det(outer_ellipse));
+		float angle		= 2.0f * target_projected_solid_angle * sqrt_det;
+		float2_t dir_xy = (hippt::intrin_cosf(angle) * sqrt_det) * dir_0 + hippt::intrin_sinf(angle) * rotate_90(ellipse_transform(outer_ellipse, dir_0));
 
 		sampled_dir.x = dir_xy.x;
 		sampled_dir.y = dir_xy.y;
@@ -1096,21 +1108,21 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 	{
 		// Select a sector and copy the relevant attributes
 		float sector_projected_solid_angle = 0.0f;
-		float2 inner_ellipse = polygon.inner_ellipse_0;
-		float2 dir_1 = make_float2(0.0f, 0.0f);
+		float2_t inner_ellipse			   = polygon.inner_ellipse_0;
+		float2_t dir_1					   = make_float2(0.0f, 0.0f);
 
 #if MANUAL_UNROLL_LOOPS == KERNEL_OPTION_TRUE
 		do
 		{
-			float2 vertex_ellipse;
+			float2_t vertex_ellipse;
 			bool vertex_inner;
 
 			// i == 0
 			vertex_ellipse = polygon.get_ellipse(0);
-			outer_ellipse = vertex_ellipse;
+			outer_ellipse  = vertex_ellipse;
 
-			dir_0 = polygon.get_vertex(0);
-			dir_1 = polygon.get_vertex(0 + 1);
+			dir_0						 = polygon.get_vertex(0);
+			dir_1						 = polygon.get_vertex(0 + 1);
 			sector_projected_solid_angle = polygon.sector_projected_solid_angles[0];
 
 			if ((0 >= 1 && 0 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
@@ -1119,12 +1131,12 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 			// i == 1
 			vertex_ellipse = polygon.get_ellipse(1);
 			target_projected_solid_angle -= polygon.sector_projected_solid_angles[1 - 1];
-			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			vertex_inner  = is_inner_ellipse(vertex_ellipse);
 			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
 			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
 
-			dir_0 = polygon.get_vertex(1);
-			dir_1 = polygon.get_vertex(1 + 1);
+			dir_0						 = polygon.get_vertex(1);
+			dir_1						 = polygon.get_vertex(1 + 1);
 			sector_projected_solid_angle = polygon.sector_projected_solid_angles[1];
 
 			if ((1 >= 1 && 1 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
@@ -1133,12 +1145,12 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 			// i == 2
 			vertex_ellipse = polygon.get_ellipse(2);
 			target_projected_solid_angle -= polygon.sector_projected_solid_angles[2 - 1];
-			vertex_inner = is_inner_ellipse(vertex_ellipse);
+			vertex_inner  = is_inner_ellipse(vertex_ellipse);
 			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
 			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
 
-			dir_0 = polygon.get_vertex(2);
-			dir_1 = polygon.get_vertex(2 + 1);
+			dir_0						 = polygon.get_vertex(2);
+			dir_1						 = polygon.get_vertex(2 + 1);
 			sector_projected_solid_angle = polygon.sector_projected_solid_angles[2];
 
 			if ((2 >= 1 && 2 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
@@ -1147,7 +1159,7 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 #else
 		for (unsigned int i = 0; i < MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; i++)
 		{
-			float2 vertex_ellipse = polygon.get_ellipse(i);
+			float2_t vertex_ellipse = polygon.get_ellipse(i);
 
 			if (i == 0)
 				outer_ellipse = vertex_ellipse;
@@ -1155,12 +1167,12 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 			{
 				target_projected_solid_angle -= polygon.sector_projected_solid_angles[i - 1];
 				bool vertex_inner = is_inner_ellipse(vertex_ellipse);
-				inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
-				outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
+				inner_ellipse	  = vertex_inner ? vertex_ellipse : inner_ellipse;
+				outer_ellipse	  = vertex_inner ? outer_ellipse : vertex_ellipse;
 			}
 
-			dir_0 = polygon.get_vertex(i);
-			dir_1 = polygon.get_vertex(i + 1);
+			dir_0						 = polygon.get_vertex(i);
+			dir_1						 = polygon.get_vertex(i + 1);
 			sector_projected_solid_angle = polygon.sector_projected_solid_angles[i];
 
 			if ((i >= 1 && i + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
@@ -1171,9 +1183,10 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 		// Sample it
 		rand_1 = target_projected_solid_angle / sector_projected_solid_angle;
 
-		float2 sector = sample_sector_between_ellipses(make_float2(rand_1, rand_2), target_projected_solid_angle, inner_ellipse, outer_ellipse, dir_0, dir_1, 2);
-		sampled_dir.x = sector.x;
-		sampled_dir.y = sector.y;
+		float2_t sector = sample_sector_between_ellipses(make_float2(rand_1, rand_2), target_projected_solid_angle, inner_ellipse, outer_ellipse, dir_0, dir_1,
+														 2);
+		sampled_dir.x	= sector.x;
+		sampled_dir.y	= sector.y;
 	}
 
 	// Construct the sample
@@ -1186,22 +1199,23 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 	 * View direction lies in the x-z plane + LTC.
 	 */
 
-	 // From cosine space to shading space
+	// From cosine space to shading space
 	float ltc_lobe_pdf;
-	float3 sampled_dir_shading_space = hippt::normalize(ltc_transform_cosine_to_shading(render_data, hippt::dot(view_direction, shading_normal), sampled_dir, material, polygon.ltc_lobe));
+	float3_t sampled_dir_shading_space = hippt::normalize(
+							ltc_transform_cosine_to_shading(render_data, hippt::dot(view_direction, shading_normal), sampled_dir, material, polygon.ltc_lobe));
 
-	float3 T, B;
+	float3_t T, B;
 	build_ONB_XZ_plane(shading_normal, T, B, view_direction);
 	float3x3 rotation_matrix = float3x3::from_rows(T, B, shading_normal);
 	// Multiplying the vector from the left to effectively
 	// multiply by the transpose of the rotation matrix which is its inverse.
 	//
 	// This brings the direction from shading space to world space.
-	float3 sampled_dir_world_space = hippt::normalize(sampled_dir_shading_space * rotation_matrix);
+	float3_t sampled_dir_world_space = hippt::normalize(sampled_dir_shading_space * rotation_matrix);
 
 	bool valid = false;
 	// Computing the point on light without the PDF since we compute it later
-	float3 point_on_light = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, valid);
+	float3_t point_on_light = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, valid);
 	if (!valid)
 	{
 		out_area_pdf = 0.0f;
@@ -1210,22 +1224,21 @@ HIPRT_DEVICE float3 sample_point_on_triangle_projected_solid_angle_peters_2021(c
 	}
 
 	// Computing the PDF in solid angle measure
-	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data,
-		polygon.projected_solid_angle, sampled_dir.z, polygon.ltc_lobe,
-		vertex_A, vertex_B, vertex_C,
-		shading_point, view_direction, shading_normal, sampled_dir_shading_space, point_on_light,
-		ltc_lobe_probabilities, material);
+	float pdf_solid_angle = projected_solid_angle_triangle_solid_angle_pdf(render_data, polygon.projected_solid_angle, sampled_dir.z, polygon.ltc_lobe,
+																		   vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal,
+																		   sampled_dir_shading_space, point_on_light, ltc_lobe_probabilities, material);
 
 	// Converting the PDF from solid angle to area measure
-	out_area_pdf = solid_angle_to_area_pdf(pdf_solid_angle, hippt::length(shading_point - point_on_light), compute_cosine_term_at_light_source(triangle_normal, -sampled_dir_world_space));
+	out_area_pdf = solid_angle_to_area_pdf(pdf_solid_angle, hippt::length(shading_point - point_on_light),
+										   compute_cosine_term_at_light_source(triangle_normal, -sampled_dir_world_space));
 #else
 	/**
 	 * Simply sampling projected solid angle.
 	 */
-	float3 sampled_dir_world_space = hippt::normalize(local_to_world_frame(shading_normal, sampled_dir));
-	float pdf_solid_angle = hippt::max(0.0f, hippt::dot(shading_normal, sampled_dir_world_space)) / polygon.projected_solid_angle;
+	float3_t sampled_dir_world_space = hippt::normalize(local_to_world_frame(shading_normal, sampled_dir));
+	float pdf_solid_angle			 = hippt::max(0.0f, hippt::dot(shading_normal, sampled_dir_world_space)) / polygon.projected_solid_angle;
 
-	float3 point_on_light = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);
+	float3_t point_on_light = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, pdf_solid_angle, out_area_pdf);
 #endif
 
 	return point_on_light;

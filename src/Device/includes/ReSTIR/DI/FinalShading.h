@@ -17,7 +17,7 @@
 HIPRT_DEVICE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data,
 													  RayPayload& ray_payload,
 													  const HitInfo& closest_hit_info,
-													  const float3& view_direction,
+													  const float3_t& view_direction,
 													  const ReSTIRDIReservoir& reservoir,
 													  Xorshift32Generator& random_number_generator)
 {
@@ -31,7 +31,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& ren
 
 	float distance_to_light;
 
-	float3 shadow_ray_direction;
+	float3_t shadow_ray_direction;
 	if (sample.is_envmap_sample())
 	{
 		shadow_ray_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
@@ -94,7 +94,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& ren
 				area_measure_to_solid_angle_conversion = 1.0f;
 			else
 			{
-				float3 emissive_triangle_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, sample.emissive_triangle_global_index));
+				float3_t emissive_triangle_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, sample.emissive_triangle_global_index));
 				area_measure_to_solid_angle_conversion = compute_cosine_term_at_light_source(emissive_triangle_normal, -shadow_ray_direction);
 				area_measure_to_solid_angle_conversion /= hippt::square(distance_to_light);
 			}
@@ -116,9 +116,9 @@ HIPRT_DEVICE void validate_reservoir(const HIPRTRenderData& render_data, ReSTIRD
 HIPRT_DEVICE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data,
 												RayPayload& ray_payload,
 												const HitInfo closest_hit_info,
-												const float3& view_direction,
+												const float3_t& view_direction,
 												Xorshift32Generator& random_number_generator,
-												int2 pixel_coords)
+												int2_t pixel_coords)
 {
 	int pixel_index = pixel_coords.x + pixel_coords.y * render_data.render_settings.render_resolution.x;
 

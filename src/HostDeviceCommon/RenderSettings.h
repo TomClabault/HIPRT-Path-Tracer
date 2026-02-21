@@ -6,18 +6,18 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 #define HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 
-#include "Device/includes/ReSTIR/ReGIR/Settings.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/ReGIR/Settings.h"
 
-#include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
-#include "HostDeviceCommon/RIS/RISSettings.h"
-#include "HostDeviceCommon/RISLTC/RISLTCSettings.h"
+#include "HostDeviceCommon/Maths/Math.h"
+#include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRDISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
-#include "HostDeviceCommon/Maths/Math.h"
+#include "HostDeviceCommon/RIS/RISSettings.h"
+#include "HostDeviceCommon/RISLTC/RISLTCSettings.h"
 
 #ifndef __KERNELCC__
 #include "HIPRT-Orochi/OrochiBuffer.h"
@@ -31,7 +31,7 @@ class GPURenderer;
 
 struct HIPRTRenderSettings
 {
-	int2 render_resolution = make_int2(1280, 720);
+	int2_t render_resolution = make_int2(1280, 720);
 
 	// If true, the camera ray kernel will reset all buffers to their default values.
 	// This is mainly useful for the first frame of the render
@@ -247,7 +247,10 @@ struct HIPRTRenderSettings
 	 * This function is a simple helper that combines a few flags to make sure that we
 	 * actually want to render at low resolution
 	 */
-	HIPRT_HOST_DEVICE bool do_render_low_resolution() const { return wants_render_low_resolution && allow_render_low_resolution && accumulate; }
+	HIPRT_HOST_DEVICE bool do_render_low_resolution() const
+	{
+		return wants_render_low_resolution && allow_render_low_resolution && accumulate;
+	}
 
 	/**
 	 * Returns true if the adaptive sampling buffers are ready for use, false otherwise.

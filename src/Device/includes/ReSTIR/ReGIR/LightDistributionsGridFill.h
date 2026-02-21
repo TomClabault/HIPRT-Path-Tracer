@@ -15,7 +15,7 @@
 #include "Device/includes/TriangleLoadUtils.h"
 
 HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillCellDistributionsCanonicalSamplingTechnique>()> grid_fill_cell_light_distributions_canonical_sample(
-	const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, Xorshift32Generator& rng)
+	const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3_t view_direction, Xorshift32Generator& rng)
 {
 	RayPayload dummy_ray_payload;
 	dummy_ray_payload.material.roughness = surface.cell_roughness;
@@ -28,7 +28,7 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillCellDist
 }
 
 HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_with_cell_light_distribution(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
 	unsigned int hash_grid_cell_index, bool primary_hit, Xorshift32Generator& rng)
 {

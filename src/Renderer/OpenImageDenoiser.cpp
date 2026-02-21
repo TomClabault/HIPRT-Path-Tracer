@@ -69,7 +69,7 @@ void OpenImageDenoiser::finalize()
 		// Creating the buffers here instead of in resize() because we want the creation/destruction 
 		// to be dynamic in response to ImGui input so we cannot just wait for a window queue_resize event
 		// that would trigger OpenImageDenoiser::queue_resize()
-		m_normals_buffer_denoised_oidn = m_device.newBuffer(sizeof(float3) * m_width * m_height);
+		m_normals_buffer_denoised_oidn = m_device.newBuffer(sizeof(float3_t) * m_width * m_height);
 
 		m_beauty_filter.setImage("normal", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
 	}
@@ -176,7 +176,7 @@ bool OpenImageDenoiser::check_device()
 
 bool OpenImageDenoiser::check_buffer_sizes()
 {
-	size_t normals_buffer_size = m_normals_buffer_denoised_oidn.getSize() / sizeof(float3);
+	size_t normals_buffer_size = m_normals_buffer_denoised_oidn.getSize() / sizeof(float3_t);
 	size_t albedo_buffer_size = m_albedo_buffer_denoised_oidn.getSize() / sizeof(ColorRGB32F);
 	size_t denoised_buffer_size = m_denoised_buffer.getSize() / sizeof(ColorRGB32F);
 	size_t noisy_input_buffer_size = m_input_color_buffer_oidn.getSize() / sizeof(ColorRGB32F);
@@ -203,7 +203,7 @@ bool OpenImageDenoiser::check_buffer_sizes()
 	return true;
 }
 
-void OpenImageDenoiser::denoise(ColorRGB32F* data_to_denoise_device_pointer, float3* normals_aov_device_pointer, ColorRGB32F* albedo_aov_device_pointer)
+void OpenImageDenoiser::denoise(ColorRGB32F* data_to_denoise_device_pointer, float3_t* normals_aov_device_pointer, ColorRGB32F* albedo_aov_device_pointer)
 {
 	if (!check_valid_state())
 		return;
@@ -215,7 +215,7 @@ void OpenImageDenoiser::denoise(ColorRGB32F* data_to_denoise_device_pointer, flo
 
 	if (normals_aov_device_pointer != nullptr)
 	{
-		OROCHI_CHECK_ERROR(oroMemcpy(m_normals_buffer_denoised_oidn.getData(), normals_aov_device_pointer, sizeof(float3) * m_width * m_height, memcpyKind));
+		OROCHI_CHECK_ERROR(oroMemcpy(m_normals_buffer_denoised_oidn.getData(), normals_aov_device_pointer, sizeof(float3_t) * m_width * m_height, memcpyKind));
 
 		if (m_denoise_normals)
 			m_normals_filter.execute();
@@ -233,7 +233,7 @@ void OpenImageDenoiser::denoise(ColorRGB32F* data_to_denoise_device_pointer, flo
 	m_beauty_filter.execute();
 }
 
-void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov, std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov)
+void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_aov, std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov)
 {
 	if (!check_valid_state())
 		return;
@@ -243,7 +243,7 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
 
 	oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
 
-	float3* normals_pointer = nullptr;
+	float3_t* normals_pointer = nullptr;
 	if (normals_aov != nullptr)
 		normals_pointer = normals_aov->map();
 
@@ -259,7 +259,7 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
 	data_to_denoise->unmap();
 }
 
-void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OrochiBuffer<float3>> normals_aov, std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov)
+void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OrochiBuffer<float3_t>> normals_aov, std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov)
 {
 	if (!check_valid_state())
 		return;
@@ -269,7 +269,7 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
 
 	oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
 
-	float3* normals_pointer = nullptr;
+	float3_t* normals_pointer = nullptr;
 	if (normals_aov != nullptr)
 		normals_pointer = normals_aov->get_device_pointer();
 

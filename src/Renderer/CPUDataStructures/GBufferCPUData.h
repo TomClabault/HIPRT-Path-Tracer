@@ -29,7 +29,7 @@ struct GBufferCPUData
 	std::vector<DevicePackedEffectiveMaterial> materials;
 	std::vector<Octahedral24BitNormalPadded32b> geometric_normals;
 	std::vector<Octahedral24BitNormalPadded32b> shading_normals;
-	std::vector<float3> primary_hit_position;
+	std::vector<float3_t> primary_hit_position;
 	std::vector<int> first_hit_prim_index;
 
 	std::vector<unsigned char> cameray_ray_hit;

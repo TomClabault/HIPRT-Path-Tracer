@@ -29,7 +29,7 @@
  * the thin BSDF and its IOR (F0 actually)
  */
 
-HIPRT_DEVICE float3 thin_glass_sample(float relative_eta, float roughness, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float3_t thin_glass_sample(float relative_eta, float roughness, const float3_t& local_view_direction, Xorshift32Generator& random_number_generator)
 {
 	// To avoid sampling directions that would lead to a null half_vector.
 	// Explained in more details in principled_glass_eval.
@@ -40,7 +40,7 @@ HIPRT_DEVICE float3 thin_glass_sample(float relative_eta, float roughness, const
 	float alpha_y;
 	MaterialUtils::get_alphas(roughness, /* anisotropy */ 0.0f, alpha_x, alpha_y);
 
-	float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
+	float3_t microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
 	float HoV = hippt::dot(local_view_direction, microfacet_normal);
 	float F = full_fresnel_dielectric(HoV, relative_eta);
@@ -55,7 +55,7 @@ HIPRT_DEVICE float3 thin_glass_sample(float relative_eta, float roughness, const
 
 	float rand_1 = random_number_generator();
 
-	float3 sampled_direction;
+	float3_t sampled_direction;
 	if (rand_1 < F)
 		// Reflection
 		sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
@@ -74,7 +74,7 @@ HIPRT_DEVICE float3 thin_glass_sample(float relative_eta, float roughness, const
 		// the refraction direction is just the incoming (view direction) reflected
 		// and flipped about the normal plane
 
-		float3 reflected = reflect_ray(local_view_direction, microfacet_normal);
+		float3_t reflected = reflect_ray(local_view_direction, microfacet_normal);
 		// Now flipping
 		reflected.z *= -1.0f;
 
@@ -84,7 +84,7 @@ HIPRT_DEVICE float3 thin_glass_sample(float relative_eta, float roughness, const
 	return sampled_direction;
 }
 
-HIPRT_DEVICE float thin_glass_eval(float relative_eta, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
+HIPRT_DEVICE float thin_glass_eval(float relative_eta, float roughness, const float3_t& local_view_direction, const float3_t& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
 {
 	pdf = 0.0f;
 
@@ -122,7 +122,7 @@ HIPRT_DEVICE float thin_glass_eval(float relative_eta, float roughness, const fl
 		relative_eta = 1.0f + 1.0e-5f;
 
 	// Computing the generalized (that takes refraction into account) half vector
-	float3 local_half_vector;
+	float3_t local_half_vector;
 	if (reflecting)
 		local_half_vector = local_to_light_direction + local_view_direction;
 	else
@@ -236,7 +236,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXThinGlassDirectionalAlbedoBake(int kerne
 	float sqrt_F0 = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
 	float relative_ior = (1.0f + sqrt_F0) / (1.0f - sqrt_F0);
 
-	float3 local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
+	float3_t local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
 	int nb_kernel_launch = ceil(bake_settings.integration_sample_count / (float)kernel_iterations);
 	int nb_samples = nb_kernel_launch * kernel_iterations;
@@ -245,7 +245,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXThinGlassDirectionalAlbedoBake(int kerne
 	for (int sample = 0; sample < kernel_iterations; sample++)
 	{
 		float thin_walled_roughness = MaterialUtils::get_thin_walled_roughness(true, roughness, relative_ior);
-		float3 sampled_local_to_light_direction = thin_glass_sample(relative_ior, thin_walled_roughness, local_view_direction, random_number_generator);
+		float3_t sampled_local_to_light_direction = thin_glass_sample(relative_ior, thin_walled_roughness, local_view_direction, random_number_generator);
 
 		float eval_pdf = 0.0f;
 		float directional_albedo = thin_glass_eval(relative_ior, thin_walled_roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf, bake_settings.masking_shadowing_term);

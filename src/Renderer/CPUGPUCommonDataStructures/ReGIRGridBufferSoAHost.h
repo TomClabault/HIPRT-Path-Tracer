@@ -13,7 +13,7 @@
 template <template <typename> typename DataContainer>
 using ReGIRSampleSoAHost = GenericSoA<DataContainer,
 	GenericAtomicType<ReGIRSampleSoADevice::ReGIRSampleEmissiveTriangleIndicesPackingType, DataContainer>, // Emissive triangle indices packed
-	float3 // Point on light
+	float3_t // Point on light
 >;
 
 template <template <typename> typename DataContainer>

@@ -19,7 +19,7 @@ HIPRT_HOST_DEVICE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData
 														   Xorshift32Generator& random_number_generator)
 {
 	float distance_to_sample_point;
-	float3 incident_light_direction;
+	float3_t incident_light_direction;
 	if (sample.is_envmap_path())
 	{
 		// For envmap path, the direction is stored in the 'sample_point' value

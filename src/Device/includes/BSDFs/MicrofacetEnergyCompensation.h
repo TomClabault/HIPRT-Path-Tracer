@@ -28,7 +28,7 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 																	   const ColorRGB32F& F0,
 																	   float material_roughness,
 																	   bool material_do_energy_compensation,
-																	   const float3& local_view_direction)
+																	   const float3_t& local_view_direction)
 {
 	bool smooth_enough			= material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	bool invalid_view_direction = local_view_direction.z < 0.0f;
@@ -43,7 +43,7 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 #endif
 
 	// Reading the precomputed directional albedo from the texture
-	float2 uv = make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness);
+	float2_t uv = make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness);
 
 	// Flipping the Y manually (and that's why we pass 'false' in the sample call that follow)
 	// because that GGX energy compensation texture is created with a clamp address mode, not wrap
@@ -674,11 +674,11 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 		// sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
 		float F0_remapped = hippt::sqrt(hippt::sqrt(F0));
 
-		float3 uvw = make_float3(view_direction_tex_fetch, custom_roughness, F0_remapped);
+		float3_t uvw = make_float3(view_direction_tex_fetch, custom_roughness, F0_remapped);
 		if (material.thin_walled)
 		{
 			void* texture = render_data.bsdfs_data.GGX_thin_glass_directional_albedo;
-			int3 dims	  = make_int3(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
+			int3_t dims	  = make_int3(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
 									  GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS,
 									  GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 
@@ -687,7 +687,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 		else
 		{
 			void* texture = inside_object ? render_data.bsdfs_data.GGX_glass_inverse_directional_albedo : render_data.bsdfs_data.GGX_glass_directional_albedo;
-			int3 dims	  = make_int3(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
+			int3_t dims	  = make_int3(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_COS_THETA_O,
 									  GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_ROUGHNESS,
 									  GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
 

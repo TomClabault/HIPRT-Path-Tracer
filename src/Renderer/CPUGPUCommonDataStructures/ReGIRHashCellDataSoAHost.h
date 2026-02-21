@@ -16,7 +16,7 @@
 template <template <typename> typename DataContainer>
 using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
 	GenericAtomicType<int, DataContainer>,  // primitive index
-	float3, // world points
+	float3_t, // world points
 	Octahedral24BitNormalPadded32b,  // world normals
 	unsigned char,  // roughness
 	unsigned char,  // metallic

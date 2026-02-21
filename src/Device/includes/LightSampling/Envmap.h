@@ -26,10 +26,10 @@
 /**
  * This function expects 'direction' to be in world space
  */
-HIPRT_DEVICE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3& direction)
+HIPRT_DEVICE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3_t& direction)
 {
 	// Bringing the direction in envmap space for sampling the envmap
-	float3 rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
+	float3_t rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
 
 	float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) * hippt::M_INV_TWO_PI;
 	float v = 0.5f + asin(rotated_direction.y) * hippt::M_INV_PI;
@@ -75,7 +75,7 @@ HIPRT_DEVICE void envmap_cdf_search(const WorldSettings& world_settings, float v
 }
 
 HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
-									   float3& sampled_direction,
+									   float3_t& sampled_direction,
 									   float& envmap_pdf,
 									   Xorshift32Generator& random_number_generator)
 {
@@ -139,7 +139,7 @@ HIPRT_DEVICE ColorRGB32F envmap_sample(const WorldSettings& world_settings,
  * This function expects the given direction to be in world space i.e.
  * the direction is already rotated by the envmap rotation matrix
  */
-HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const float3& direction, float& pdf)
+HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const float3_t& direction, float& pdf)
 {
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
 	pdf = 0.0f;
@@ -173,11 +173,11 @@ HIPRT_DEVICE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const f
 HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data,
 														 RayPayload& ray_payload,
 														 HitInfo& closest_hit_info,
-														 const float3& view_direction,
+														 const float3_t& view_direction,
 														 Xorshift32Generator& random_number_generator)
 {
 	float envmap_pdf;
-	float3 sampled_direction;
+	float3_t sampled_direction;
 	ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf, random_number_generator);
 	ColorRGB32F envmap_mis_contribution;
 
@@ -220,7 +220,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 
 #if EnvmapSamplingDoBSDFMIS
 	float bsdf_sample_pdf;
-	float3 bsdf_sampled_dir;
+	float3_t bsdf_sampled_dir;
 	ColorRGB32F bsdf_color;
 	ColorRGB32F bsdf_mis_contribution;
 
@@ -261,7 +261,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
 												RayPayload& ray_payload,
 												HitInfo& closest_hit_info,
-												const float3& view_direction,
+												const float3_t& view_direction,
 												Xorshift32Generator& random_number_generator)
 {
 	const WorldSettings& world_settings = render_data.world_settings;

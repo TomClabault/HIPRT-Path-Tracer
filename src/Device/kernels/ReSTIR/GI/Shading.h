@@ -106,7 +106,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 	ray_payload.volume_state.reconstruct_first_hit(ray_payload.material, render_data.buffers.material_indices, closest_hit_info.primitive_index,
 												   random_number_generator);
 
-	float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+	float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
 	ColorRGB32F camera_outgoing_radiance;
 	if (render_data.render_settings.enable_direct)
@@ -122,9 +122,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 		{
 			// Only doing the shading if we do actually have a sample
 
-			float3 geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+			float3_t geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 
-			float3 restir_resampled_indirect_direction;
+			float3_t restir_resampled_indirect_direction;
 			if (resampling_reservoir.sample.is_envmap_path())
 				restir_resampled_indirect_direction = resampling_reservoir.sample.sample_point;
 			else

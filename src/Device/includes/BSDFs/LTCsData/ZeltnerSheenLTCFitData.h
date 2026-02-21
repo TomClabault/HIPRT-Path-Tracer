@@ -28,7 +28,7 @@
 	*  y = cos(theta)
 	*  x = alpha
 	*/
-static const std::array<float3, 32 * 32> zeltner_2022_sheen_ltc_fit_parameters = {
+static const std::array<float3_t, 32 * 32> zeltner_2022_sheen_ltc_fit_parameters = {
 		make_float3(0.10027f, -0.00000f, 0.33971f), make_float3(0.10760f, -0.00000f, 0.35542f), make_float3(0.11991f, 0.00001f, 0.30888f),
 		make_float3(0.13148f, 0.00001f, 0.23195f), make_float3(0.14227f, 0.00001f, 0.15949f), make_float3(0.15231f, -0.00000f, 0.10356f),
 		make_float3(0.16168f, -0.00000f, 0.06466f), make_float3(0.17044f, 0.00000f, 0.03925f), make_float3(0.17867f, 0.00001f, 0.02334f),

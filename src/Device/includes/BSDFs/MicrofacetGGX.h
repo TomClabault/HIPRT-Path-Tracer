@@ -13,18 +13,18 @@
 /**
  * Reference: [Sampling the GGX Distribution of Visible Normals, Unity: Heitz ; 2018]
  */
-HIPRT_DEVICE static float3 GGX_VNDF_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static float3_t GGX_VNDF_sample(const float3_t local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
 	float r1 = random_number_generator();
 	float r2 = random_number_generator();
 
 	// Stretching the ellipsoid to the hemisphere configuration
-	float3 Vh = hippt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
+	float3_t Vh = hippt::normalize(float3_t{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
 
 	// Orthonormal basis construction
 	float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-	float3 T1	= lensq > 0.0f ? float3{ -Vh.y, Vh.x, 0 } / hippt::sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
-	float3 T2	= hippt::cross(Vh, T1);
+	float3_t T1	= lensq > 0.0f ? float3_t{ -Vh.y, Vh.x, 0 } / hippt::sqrt(lensq) : float3_t{ 1.0f, 0.0f, 0.0f };
+	float3_t T2	= hippt::cross(Vh, T1);
 
 	// Parametrization of the projected area of the hemisphere
 	float r	  = hippt::sqrt(r1);
@@ -35,10 +35,10 @@ HIPRT_DEVICE static float3 GGX_VNDF_sample(const float3 local_view_direction, fl
 	t2		  = (1.0f - s) * hippt::sqrt(1.0f - t1 * t1) + s * t2;
 
 	// Sampling the hemisphere
-	float3 Nh = t1 * T1 + t2 * T2 + hippt::sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
+	float3_t Nh = t1 * T1 + t2 * T2 + hippt::sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
 	// Un-stretching back to our ellipsoid
-	return hippt::normalize(float3{ alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z) });
+	return hippt::normalize(float3_t{ alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z) });
 }
 
 /**
@@ -48,7 +48,7 @@ HIPRT_DEVICE static float3 GGX_VNDF_sample(const float3 local_view_direction, fl
  *
  * Reference: [Sampling Visible GGX Normals with Spherical Caps, Dupuy, Benyoub, 2023]
  */
-HIPRT_DEVICE static float3 GGX_VNDF_spherical_caps_sample(const float3 local_view_direction,
+HIPRT_DEVICE static float3_t GGX_VNDF_spherical_caps_sample(const float3_t local_view_direction,
 														  float alpha_x,
 														  float alpha_y,
 														  Xorshift32Generator& random_number_generator)
@@ -57,7 +57,7 @@ HIPRT_DEVICE static float3 GGX_VNDF_spherical_caps_sample(const float3 local_vie
 	float r2 = random_number_generator();
 
 	// Stretching the ellipsoid to the hemisphere configuration
-	float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
+	float3_t Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
 
 	// Sample a spherical cap in (-wi.z, 1]
 	float phi	   = hippt::M_TWO_PI * r1;
@@ -65,10 +65,10 @@ HIPRT_DEVICE static float3 GGX_VNDF_spherical_caps_sample(const float3 local_vie
 	float sinTheta = hippt::sqrt(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
 	float x		   = sinTheta * hippt::intrin_cosf(phi);
 	float y		   = sinTheta * hippt::intrin_sinf(phi);
-	float3 c	   = make_float3(x, y, z);
+	float3_t c	   = make_float3(x, y, z);
 
 	// Compute microfacet normal
-	float3 Nh = c + Vh;
+	float3_t Nh = c + Vh;
 
 	// Un-stretching back to our ellipsoid
 	return hippt::normalize(make_float3(alpha_x * Nh.x, alpha_y * Nh.y, Nh.z));
@@ -78,7 +78,7 @@ HIPRT_DEVICE static float3 GGX_VNDF_spherical_caps_sample(const float3 local_vie
  * Samples a microfacet normal from the distribution of visible normals of
  * the GGX normal function distribution
  */
-HIPRT_DEVICE static float3 GGX_anisotropic_sample_microfacet(const float3& local_view_direction,
+HIPRT_DEVICE static float3_t GGX_anisotropic_sample_microfacet(const float3_t& local_view_direction,
 															 float roughness,
 															 float anisotropy,
 															 Xorshift32Generator& random_number_generator)
@@ -106,7 +106,7 @@ HIPRT_DEVICE static float3 GGX_anisotropic_sample_microfacet(const float3& local
 }
 
 // Forward declaration
-HIPRT_DEVICE float3 microfacet_GGX_multiple_scattering_invariance_sample_reflection(const float3& local_view_direction,
+HIPRT_DEVICE float3_t microfacet_GGX_multiple_scattering_invariance_sample_reflection(const float3_t& local_view_direction,
 																					float material_roughness,
 																					float material_anisotropy,
 																					Xorshift32Generator& rng);
@@ -118,9 +118,9 @@ HIPRT_DEVICE float3 microfacet_GGX_multiple_scattering_invariance_sample_reflect
  * shading space that is then returned by that function
  */
 template <bool multipleScatteringAllowed = true>
-HIPRT_DEVICE static float3 microfacet_GGX_sample_reflection(float roughness,
+HIPRT_DEVICE static float3_t microfacet_GGX_sample_reflection(float roughness,
 															float anisotropy,
-															const float3& local_view_direction,
+															const float3_t& local_view_direction,
 															Xorshift32Generator& random_number_generator,
 															bool flip_view_direction_below_surface = true)
 {
@@ -136,8 +136,8 @@ HIPRT_DEVICE static float3 microfacet_GGX_sample_reflection(float roughness,
 		// because of normal mapping / smooth normals
 		float below_normal = (local_view_direction.z < 0.0f && flip_view_direction_below_surface) ? -1.0f : 1.0f;
 
-		float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction * below_normal, roughness, anisotropy, random_number_generator);
-		float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
+		float3_t microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction * below_normal, roughness, anisotropy, random_number_generator);
+		float3_t sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
 
 		// Should already be normalized but float imprecisions...
 		return hippt::normalize(sampled_direction);

@@ -8,9 +8,9 @@
 
 struct PrecomputedEmissiveTrianglesDataSoADevice
 {
-	float3* triangles_A = nullptr;
-	float3* triangles_AB = nullptr;
-	float3* triangles_AC = nullptr;
+	float3_t* triangles_A = nullptr;
+	float3_t* triangles_AB = nullptr;
+	float3_t* triangles_AC = nullptr;
 };
 
 #endif

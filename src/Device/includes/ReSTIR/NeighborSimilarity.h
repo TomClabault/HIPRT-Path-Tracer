@@ -14,18 +14,18 @@
  /**
   * Returns true if the two given points pass the plane distance check, false otherwise
   */
-HIPRT_DEVICE bool plane_distance_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3& temporal_world_space_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
+HIPRT_DEVICE bool plane_distance_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3_t& temporal_world_space_point, const float3_t& current_point, const float3_t& current_surface_normal, float plane_distance_threshold)
 {
 	if (!neighbor_similarity_settings.use_plane_distance_heuristic)
 		return true;
 
-	float3 direction_between_points = temporal_world_space_point - current_point;
+	float3_t direction_between_points = temporal_world_space_point - current_point;
 	float distance_to_plane = hippt::abs(hippt::dot(direction_between_points, current_surface_normal));
 
 	return distance_to_plane < plane_distance_threshold;
 }
 
-HIPRT_DEVICE bool normal_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3& current_normal, const float3& neighbor_normal, float threshold)
+HIPRT_DEVICE bool normal_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3_t& current_normal, const float3_t& neighbor_normal, float threshold)
 {
 	if (!neighbor_similarity_settings.use_normal_similarity_heuristic)
 		return true;
@@ -53,7 +53,7 @@ HIPRT_DEVICE bool roughness_similarity_heuristic(const ReSTIRCommonNeighborSimil
 template <bool IsReSTIRGI>
 HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& render_data,
 	int neighbor_pixel_index, int center_pixel_index,
-	const float3& current_shading_point, const float3& current_normal, bool previous_frame = false)
+	const float3_t& current_shading_point, const float3_t& current_normal, bool previous_frame = false)
 {
 	if (neighbor_pixel_index == center_pixel_index)
 		// A pixel always passes the similarity test with itself
@@ -74,7 +74,7 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 
 	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 
-	float3 neighbor_world_space_point;
+	float3_t neighbor_world_space_point;
 	float neighbor_roughness = 0.0f;
 	float current_material_roughness = 0.0f;
 
@@ -98,7 +98,7 @@ HIPRT_DEVICE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& re
 		// Getting the roughness at the current point
 		current_material_roughness = render_data.g_buffer.materials[center_pixel_index].get_roughness();
 
-	float3 neighbor_normal = neighbor_similarity_settings.reject_using_geometric_normals ? render_data.g_buffer.geometric_normals[neighbor_pixel_index].unpack() : render_data.g_buffer.shading_normals[neighbor_pixel_index].unpack();
+	float3_t neighbor_normal = neighbor_similarity_settings.reject_using_geometric_normals ? render_data.g_buffer.geometric_normals[neighbor_pixel_index].unpack() : render_data.g_buffer.shading_normals[neighbor_pixel_index].unpack();
 	bool plane_distance_passed = plane_distance_heuristic(neighbor_similarity_settings, neighbor_world_space_point, current_shading_point, current_normal, neighbor_similarity_settings.plane_distance_threshold);
 	bool normal_similarity_passed = normal_similarity_heuristic(neighbor_similarity_settings, current_normal, neighbor_normal, neighbor_similarity_settings.normal_similarity_angle_precomp);
 	bool roughness_similarity_passed = roughness_similarity_heuristic(neighbor_similarity_settings, neighbor_roughness, current_material_roughness, neighbor_similarity_settings.roughness_similarity_threshold);

@@ -56,11 +56,11 @@ HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const
 
 HIPRT_DEVICE float compute_mesh_contribution(HIPRTRenderData& render_data, const ReGIRGridFillSurface& cell_surface, unsigned int mesh_index_for_grid_cell, bool primary_hit, Xorshift32Generator& rng)
 {
-	float3 mesh_average_point = render_data.buffers.emissive_meshes_data.meshes_average_points[mesh_index_for_grid_cell];
-	float3 mesh_normal;
+	float3_t mesh_average_point = render_data.buffers.emissive_meshes_data.meshes_average_points[mesh_index_for_grid_cell];
+	float3_t mesh_normal;
 
 #if ReGIR_GridFillCellDistributionsUseRepresentativeNormal == KERNEL_OPTION_TRUE
-	float3 mesh_average_normal = render_data.buffers.emissive_meshes_data.meshes_representative_normals[mesh_index_for_grid_cell];
+	float3_t mesh_average_normal = render_data.buffers.emissive_meshes_data.meshes_representative_normals[mesh_index_for_grid_cell];
 	if (mesh_average_normal.x == EmissiveMeshesAliasTablesDevice::INVALID_NORMAL)
 		// Invalid normal, using the direction from the cell to the mesh average point instead
 		// such that the geometry term cosine term evaluates to 1 and the normal essentially

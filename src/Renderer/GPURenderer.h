@@ -7,10 +7,10 @@
 #define RENDERER_GPU_RENDERER_H
 
 #include "Compiler/GPUKernel.h"
+#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
+#include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/OrochiTexture3D.h"
-#include "HIPRT-Orochi/HIPRTScene.h"
-#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
@@ -25,9 +25,9 @@
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
-#include "Renderer/RenderPasses/RenderGraph.h"
 #include "Renderer/RenderPasses/NEEPlusPlusRenderPass.h"
 #include "Renderer/RenderPasses/ReGIRRenderPass.h"
+#include "Renderer/RenderPasses/RenderGraph.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
 #include "Renderer/StatusBuffersValues.h"
@@ -202,9 +202,9 @@ public:
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_default_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_interop_framebuffer();
-	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_interop_buffer();
+	std::shared_ptr<OpenGLInteropBuffer<float3_t>> get_denoiser_normals_AOV_interop_buffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_interop_buffer();
-	std::shared_ptr<OrochiBuffer<float3>> get_denoiser_normals_AOV_no_interop_buffer();
+	std::shared_ptr<OrochiBuffer<float3_t>> get_denoiser_normals_AOV_no_interop_buffer();
 	std::shared_ptr<OrochiBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_no_interop_buffer();
 	std::shared_ptr<OrochiBuffer<int>>& get_pixels_converged_sample_count_buffer();
 	/**
@@ -322,7 +322,7 @@ public:
 
 	Xorshift32Generator& get_rng_generator();
 
-	int2 m_render_resolution = make_int2(0, 0);
+	int2_t m_render_resolution = make_int2(0, 0);
 
 	Camera m_camera;
 	Camera m_previous_frame_camera;
@@ -380,10 +380,10 @@ private:
 	// False otherwise
 	bool m_was_last_frame_low_resolution = false;
 	// If true, the buffer pointers of m_render_data will be updated when pre_render_update() is called.
-	// This boolean is mainly set to true when resizing the renderer since resizing re-creates the 
+	// This boolean is mainly set to true when resizing the renderer since resizing re-creates the
 	// buffers -> invalidates the pointer -> we need to set them back on render_data
 	//
-	// Modifying the scene also invalidates the m_render_data buffers. 
+	// Modifying the scene also invalidates the m_render_data buffers.
 	// Freeing / allocating ReSTIR DI/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
 	bool m_render_data_buffers_invalidated = true;
 	// Whether or not the renderer was updated (with pre_render_update()) since the last render() call.
@@ -392,7 +392,7 @@ private:
 	bool m_updated = false;
 
 	// Time taken per each pass of the renderer for the last frame.
-	// 
+	//
 	// Some more keys are defined as static const std::string members of this class
 	std::unordered_map<std::string, float> m_render_pass_times;
 
@@ -435,10 +435,10 @@ private:
 	std::vector<AABB> m_mesh_bounding_boxes;
 
 	// Options used for compiling the render passes of this renderer.
-	// 
+	//
 	// Most of the options in there are shared with all the passes. For example,
 	// the "__USE_HWI__" macro that dictates whether to use hardware acceleration
-	// ray tracing is shared between all kernels (because there's no real reasons for 
+	// ray tracing is shared between all kernels (because there's no real reasons for
 	// one kernel not to use it if all other kernels use it).
 	// The value 1 or 0 of this macro is stored in this 'm_global_compiler_options' member
 	// and is 'synchronized' through the use of pointers with the options of the other kernels.
@@ -455,10 +455,10 @@ private:
 	oroStream_t m_main_stream = nullptr;
 
 	// Render data passed to the GPU for rendering. Most importantly it contains
-	// 
+	//
 	// The WorldSettings: Settings relative to the scene such as the intensity of the uniform light, the
 	// environment map used, the rotation of the envmap, ...
-	// 
+	//
 	// The RenderSettings: Settings that alter the way the path tracing kernel behaves such as the number
 	// of bounces, the number of samples per kernel invocation (samples per frame),
 	// whether or not the adaptive sampling is enabled, ...
@@ -505,7 +505,7 @@ private:
 	OrochiTexture3D m_GGX_glass_inverse_directional_albedo;
 	OrochiTexture3D m_GGX_thin_glass_directional_albedo;
 
-	//BSDFDataHost m_bsdf_data_cpu_data;
+	// BSDFDataHost m_bsdf_data_cpu_data;
 };
 
 #endif

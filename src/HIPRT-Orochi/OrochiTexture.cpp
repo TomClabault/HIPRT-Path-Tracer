@@ -68,7 +68,7 @@ void OrochiTexture::create_texture_from_array(hipTextureFilterMode filtering_mod
 #else
 	// Using native CUDA here to access 'normalizedCoords' which isn't  exposed by Orochi
 	// Note that this function is defined in another compile unit because we need to include CUDA headers
-	// and they conflict with HIP headers (structures redefinition, float2, float4, ...) it seems so we need to separate them
+	// and they conflict with HIP headers (structures redefinition, float2_t, float4_t, ...) it seems so we need to separate them
 	create_texture_from_array_cuda(m_texture_array, &m_texture, &filtering_mode, &address_mode, read_mode_float_normalized);
 #endif
 }

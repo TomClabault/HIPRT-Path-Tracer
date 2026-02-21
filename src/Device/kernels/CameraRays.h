@@ -13,8 +13,8 @@
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/ReSTIR/ReGIR/Representative.h"
 
-#include "HostDeviceCommon/HIPRTCamera.h"
 #include "Device/includes/HitInfo.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
@@ -72,7 +72,7 @@ HIPRT_DEVICE void rescale_samples(HIPRTRenderData& render_data, uint32_t pixel_i
 							render_data.buffers.accumulated_ray_colors[pixel_index] / float_sample_number * (render_data.render_settings.sample_number + 1);
 	if (render_data.buffers.gmon_estimator.sets != nullptr)
 	{
-		int2 res = render_data.render_settings.render_resolution;
+		int2_t res = render_data.render_settings.render_resolution;
 		// GMoN is enabled, we're also going to scale the GMoN samples for the same reason
 		for (int set_index = 0; set_index < GMoNMSetsCount; set_index++)
 			// TODO this is slow
@@ -194,7 +194,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		//
 		// If you're wondering: "yeah but then the rest of the ray tracing passes are going to use a wrong primary hit position?"
 		//      --> No because the 'first_hit_prim_index' indicates whether we have a primary hit or not.
-		//          If we don't have a primary hit, we're never going to use the float3 in the 'primary_hit_position'
+		//          If we don't have a primary hit, we're never going to use the float3_t in the 'primary_hit_position'
 		//          buffer as an actual position,
 		render_data.g_buffer.primary_hit_position[pixel_index] = ray.origin + ray.direction;
 

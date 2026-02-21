@@ -85,7 +85,7 @@ HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_
 /**
  * Overload with normal and light direction
  */
-HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, const float3& normal, const float3& local_to_light_direction)
+HIPRT_DEVICE static ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, const float3_t& normal, const float3_t& local_to_light_direction)
 {
 	float NoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(normal, local_to_light_direction));
 

@@ -16,9 +16,9 @@
  // template <int trianglePointSamplingStrategy = TrianglePointSamplingStrategy>
 template <int trianglePointSamplingStrategy>
 HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
-	float3 point_on_triangle, float3 triangle_normal,
+	float3_t point_on_triangle, float3_t triangle_normal,
 	int emissive_triangle_global_index, float light_area)
 {
 	if constexpr (trianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_UNIFORM_AREA)
@@ -27,12 +27,12 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
 	}
 	else if constexpr (trianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_SOLID_ANGLE)
 	{
-		float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 0]];
-		float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 1]];
-		float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
+		float3_t vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 0]];
+		float3_t vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 1]];
+		float3_t vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
 		ColorRGB32F triangle_emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[emissive_triangle_global_index]);
 
-		float3 to_light_direction = point_on_triangle - shading_point;
+		float3_t to_light_direction = point_on_triangle - shading_point;
 		float to_light_distance = hippt::length(to_light_direction);
 
 		float pdf_solid_angle = solid_angle_triangle_solid_angle_pdf_from_sampled_point(render_data,
@@ -45,12 +45,12 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
 	}
 	else if constexpr (trianglePointSamplingStrategy == TRIANGLE_POINT_SAMPLING_STRATEGY_PROJECTED_SOLID_ANGLE)
 	{
-		float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 0]];
-		float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 1]];
-		float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
+		float3_t vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 0]];
+		float3_t vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 1]];
+		float3_t vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[emissive_triangle_global_index * 3 + 2]];
 		ColorRGB32F triangle_emission = render_data.buffers.materials_buffer_soa.get_emission(render_data.buffers.material_indices[emissive_triangle_global_index]);
 
-		float3 to_light_direction = point_on_triangle - shading_point;
+		float3_t to_light_direction = point_on_triangle - shading_point;
 		float to_light_distance = hippt::length(to_light_direction);
 
 		float solid_angle = triangle_solid_angle(vertex_A, vertex_B, vertex_C, shading_point);
@@ -86,7 +86,7 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE float pdf_of_emissive_triangle(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
 	int emissive_triangle_global_index, float light_area, ColorRGB32F light_emission)
 {
@@ -121,9 +121,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle(const HIPRTRenderData& render_data,
  */
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
-	float3 point_on_triangle, float3 triangle_normal,
+	float3_t point_on_triangle, float3_t triangle_normal,
 	int emissive_triangle_global_index, float light_area, ColorRGB32F light_emission)
 {
 	float point_on_light_pdf;
@@ -181,9 +181,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
-HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 shading_normal,
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
-	float3 point_on_triangle, float3 triangle_normal,
+	float3_t point_on_triangle, float3_t triangle_normal,
 	int emissive_triangle_global_index, ColorRGB32F light_emission)
 {
 	return pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal,
@@ -193,9 +193,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
-HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, float3 shading_point, float3 view_direction, float3 shading_normal,
+HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderData& render_data, float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
-	float3 point_on_triangle, const BSDFLightSampleRayHitInfo& light_hit_info)
+	float3_t point_on_triangle, const BSDFLightSampleRayHitInfo& light_hit_info)
 {
 	return pdf_of_emissive_triangle_hit_area_measure<lightSamplingStrategy>(render_data, shading_point, view_direction, shading_normal,
 		material,
@@ -216,10 +216,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_area_measure(const HIPRTRenderDa
  */
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
-	int emissive_triangle_global_index, float light_area, ColorRGB32F light_emission, float3 light_surface_normal,
-	float hit_distance, float3 to_light_direction)
+	int emissive_triangle_global_index, float light_area, ColorRGB32F light_emission, float3_t light_surface_normal,
+	float hit_distance, float3_t to_light_direction)
 {
 	// abs() here to allow backfacing lights
 	// Without abs() here:
@@ -238,10 +238,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderDat
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
-	int emissive_triangle_global_index, ColorRGB32F light_emission, float3 light_surface_normal,
-	float hit_distance, float3 to_light_direction)
+	int emissive_triangle_global_index, ColorRGB32F light_emission, float3_t light_surface_normal,
+	float hit_distance, float3_t to_light_direction)
 {
 	return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(render_data,
 		shading_point, view_direction, shading_normal,
@@ -254,9 +254,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderDat
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
-	const BSDFLightSampleRayHitInfo& light_hit_info, float3 to_light_direction)
+	const BSDFLightSampleRayHitInfo& light_hit_info, float3_t to_light_direction)
 {
 	return pdf_of_emissive_triangle_hit_solid_angle<lightSamplingStrategy>(render_data,
 		shading_point, view_direction, shading_normal, material,

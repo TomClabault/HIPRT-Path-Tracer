@@ -25,11 +25,11 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderDat
 															ReGIRGridFillSurface surface,
 															bool primary_hit,
 															ColorRGB32F sample_emission,
-															float3 sample_normal,
-															float3 sample_position,
+															float3_t sample_normal,
+															float3_t sample_position,
 															Xorshift32Generator& rng)
 {
-	float3 to_light_direction = sample_position - surface.cell_point;
+	float3_t to_light_direction = sample_position - surface.cell_point;
 	float distance_to_light	  = hippt::length(to_light_direction);
 	to_light_direction /= distance_to_light;
 
@@ -91,8 +91,8 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_non_canonical_target_function(const 
 																		  unsigned int hash_grid_cell_index,
 																		  bool primary_hit,
 																		  ColorRGB32F sample_emission,
-																		  float3 sample_normal,
-																		  float3 sample_position,
+																		  float3_t sample_normal,
+																		  float3_t sample_position,
 																		  Xorshift32Generator& rng)
 {
 	ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
@@ -107,8 +107,8 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_non_canonical_target_function(const 
 																		  const ReGIRGridFillSurface& surface,
 																		  bool primary_hit,
 																		  ColorRGB32F sample_emission,
-																		  float3 sample_normal,
-																		  float3 sample_position,
+																		  float3_t sample_normal,
+																		  float3_t sample_position,
 																		  Xorshift32Generator& rng)
 {
 	return ReGIR_grid_fill_evaluate_target_function<ReGIR_GridFillTargetFunctionVisibility, ReGIR_GridFillTargetFunctionCosineTerm,
@@ -121,8 +121,8 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPR
 																	  unsigned int hash_grid_cell_index,
 																	  bool primary_hit,
 																	  ColorRGB32F sample_emission,
-																	  float3 sample_normal,
-																	  float3 sample_position,
+																	  float3_t sample_normal,
+																	  float3_t sample_position,
 																	  Xorshift32Generator& rng)
 {
 	ReGIRGridFillSurface surface = ReGIR_get_cell_surface(render_data, hash_grid_cell_index, primary_hit);
@@ -135,8 +135,8 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPR
 																	  const ReGIRGridFillSurface& surface,
 																	  bool primary_hit,
 																	  ColorRGB32F sample_emission,
-																	  float3 sample_normal,
-																	  float3 sample_position,
+																	  float3_t sample_normal,
+																	  float3_t sample_position,
 																	  Xorshift32Generator& rng)
 {
 	return ReGIR_grid_fill_evaluate_target_function<false, false, false, false, false, false>(render_data, surface, primary_hit, sample_emission, sample_normal,
@@ -145,14 +145,14 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_canonical_target_function(const HIPR
 
 template <bool withVisibility, bool withNeePlusPlusVisibilityEstimation>
 HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
-														  const float3& shading_point,
-														  const float3& view_direction,
-														  const float3& shading_normal,
-														  const float3& geometric_normal,
+														  const float3_t& shading_point,
+														  const float3_t& view_direction,
+														  const float3_t& shading_normal,
+														  const float3_t& geometric_normal,
 														  int last_hit_primitive_index,
 														  RayPayload& ray_payload,
-														  const float3& point_on_light,
-														  const float3& light_source_normal,
+														  const float3_t& point_on_light,
+														  const float3_t& light_source_normal,
 														  const ColorRGB32F& light_emission,
 														  Xorshift32Generator& rng,
 														  BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO)
@@ -165,20 +165,20 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 
 template <bool withVisibility, bool withNeePlusPlusVisibilityEstimation>
 HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData& render_data,
-														  const float3& shading_point,
-														  const float3& view_direction,
-														  const float3& shading_normal,
-														  const float3& geometric_normal,
+														  const float3_t& shading_point,
+														  const float3_t& view_direction,
+														  const float3_t& shading_normal,
+														  const float3_t& geometric_normal,
 														  int last_hit_primitive_index,
 														  RayPayload& ray_payload,
-														  const float3& point_on_light,
-														  const float3& light_source_normal,
+														  const float3_t& point_on_light,
+														  const float3_t& light_source_normal,
 														  const ColorRGB32F& light_emission,
 														  Xorshift32Generator& rng,
 														  ColorRGB32F& sample_radiance,
 														  BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO)
 {
-	float3 to_light_direction = point_on_light - shading_point;
+	float3_t to_light_direction = point_on_light - shading_point;
 	float distance_to_light	  = hippt::length(to_light_direction);
 	to_light_direction /= distance_to_light; // Normalization
 

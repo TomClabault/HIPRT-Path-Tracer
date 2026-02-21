@@ -35,7 +35,7 @@ struct ColorRGBA32F
 		a = _a;
 	}
 
-	HIPRT_DEVICE explicit ColorRGBA32F(float4 vec)
+	HIPRT_DEVICE explicit ColorRGBA32F(float4_t vec)
 	{
 		r = vec.x;
 		g = vec.y;
@@ -309,14 +309,14 @@ struct ColorRGB32F
 		b = _b;
 	}
 
-	HIPRT_DEVICE explicit ColorRGB32F(float3 vec)
+	HIPRT_DEVICE explicit ColorRGB32F(float3_t vec)
 	{
 		r = vec.x;
 		g = vec.y;
 		b = vec.z;
 	}
-	// W component of float4 is dropped
-	HIPRT_DEVICE explicit ColorRGB32F(float4 vec)
+	// W component of float4_t is dropped
+	HIPRT_DEVICE explicit ColorRGB32F(float4_t vec)
 	{
 		r = vec.x;
 		g = vec.y;

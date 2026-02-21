@@ -17,7 +17,7 @@
 #include "HostDeviceCommon/KernelOptions/ReGIROptions.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyCanonical>()> grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3 view_direction, Xorshift32Generator& rng)
+HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<ReGIR_GridFillLightSamplingBaseStrategyCanonical>()> grid_fill_sample_canonical_candidate(const HIPRTRenderData& render_data, const ReGIRGridFillSurface& surface, float3_t view_direction, Xorshift32Generator& rng)
 {
 	RayPayload dummy_ray_payload;
 	dummy_ray_payload.material.roughness = surface.cell_roughness;

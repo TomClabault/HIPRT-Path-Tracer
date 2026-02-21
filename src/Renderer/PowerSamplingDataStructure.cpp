@@ -36,7 +36,7 @@ void PowerSamplingDataStructure::recompute_if_needed(bool skip_if_already_comput
 	HIPRTScene& hiprt_scene = m_renderer->get_hiprt_scene();
 
 	std::vector<int> emissive_triangle_indices = hiprt_scene.emissive_triangles_primitive_indices.download_data();
-	std::vector<float3> vertices_positions = hiprt_scene.whole_scene_BLAS.download_vertices_positions();
+	std::vector<float3_t> vertices_positions = hiprt_scene.whole_scene_BLAS.download_vertices_positions();
 	std::vector<int> triangles_indices = hiprt_scene.whole_scene_BLAS.download_triangle_indices();
 	std::vector<int> material_indices = hiprt_scene.material_indices.download_data();
 
@@ -54,7 +54,7 @@ void PowerSamplingDataStructure::recompute_if_needed(bool skip_if_already_comput
 
 void PowerSamplingDataStructure::compute(
 	const std::vector<int>& emissive_triangle_indices,
-	const std::vector<float3>& vertices_positions,
+	const std::vector<float3_t>& vertices_positions,
 	const std::vector<int>& triangles_indices,
 	const std::vector<int>& material_indices,
 	const std::vector<CPUMaterial>& materials,
@@ -89,14 +89,14 @@ void PowerSamplingDataStructure::compute(
 				int emissive_triangle_global_index = emissive_triangle_indices[i];
 
 				// Computing the area of the triangle
-				float3 vertex_A = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 0]];
-				float3 vertex_B = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 1]];
-				float3 vertex_C = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 2]];
+				float3_t vertex_A = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 0]];
+				float3_t vertex_B = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 1]];
+				float3_t vertex_C = vertices_positions[triangles_indices[emissive_triangle_global_index * 3 + 2]];
 
-				float3 AB = vertex_B - vertex_A;
-				float3 AC = vertex_C - vertex_A;
+				float3_t AB = vertex_B - vertex_A;
+				float3_t AC = vertex_C - vertex_A;
 
-				float3 normal = hippt::cross(AB, AC);
+				float3_t normal = hippt::cross(AB, AC);
 				float length_normal = hippt::length(normal);
 				float triangle_area = 0.5f * length_normal;
 

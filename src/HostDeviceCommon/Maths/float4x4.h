@@ -11,7 +11,7 @@ struct float4x4
 	float m[4][4] = { {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f} };
 };
 
-HIPRT_DEVICE static float3 matrix_X_point(const float4x4& m, const float3& p)
+HIPRT_DEVICE static float3_t matrix_X_point(const float4x4& m, const float3_t& p)
 {
 	float x = p.x;
 	float y = p.y;
@@ -30,7 +30,7 @@ HIPRT_DEVICE static float3 matrix_X_point(const float4x4& m, const float3& p)
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
 }
 
-HIPRT_DEVICE static float3 matrix_X_vec(const float4x4& m, const float3& u)
+HIPRT_DEVICE static float3_t matrix_X_vec(const float4x4& m, const float3_t& u)
 {
 	float x = u.x;
 	float y = u.y;

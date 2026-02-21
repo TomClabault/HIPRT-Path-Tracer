@@ -13,12 +13,12 @@ struct ParsedEmissiveMesh
 	std::vector<int> alias_aliases;
 
 	// Average of all the vertices of the emissive mesh
-	float3 average_mesh_point = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t average_mesh_point = make_float3(0.0f, 0.0f, 0.0f);
 	// Representative normal of the mesh
 	// 
 	// If no good representative normal could be extracted from the mesh at scene parse time
-	// then the buffer will contain value float3(INVALID_NORMAL, 0.0f, 0.0f) for that mesh
-	float3 representative_normal = make_float3(0.0f, 0.0f, 0.0f);
+	// then the buffer will contain value float3_t(INVALID_NORMAL, 0.0f, 0.0f) for that mesh
+	float3_t representative_normal = make_float3(0.0f, 0.0f, 0.0f);
 
 	float total_mesh_emissive_power = 0.0f;
 	unsigned int emissive_triangle_count = 0;

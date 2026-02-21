@@ -9,7 +9,7 @@
 struct AABB
 {
 	AABB() {}
-	AABB(float3 mini, float3 maxi) : mini(mini), maxi(maxi) {}
+	AABB(float3_t mini, float3_t maxi) : mini(mini), maxi(maxi) {}
 
 	/**
 	 * Extends this bounding box with the given one
@@ -23,7 +23,7 @@ struct AABB
 	/**
 	 * Extends the bounding box with a vertex
 	 */
-	void extend(float3 vertex)
+	void extend(float3_t vertex)
 	{
 		mini = make_float3(hippt::min(mini.x, vertex.x), hippt::min(mini.y, vertex.y), hippt::min(mini.z, vertex.z));
 		maxi = make_float3(hippt::max(maxi.x, vertex.x), hippt::max(maxi.y, vertex.y), hippt::max(maxi.z, vertex.z));
@@ -47,24 +47,24 @@ struct AABB
 		return *(&maxi.x + coord) - *(&mini.x + coord);
 	}
 
-	float3 get_extents() const
+	float3_t get_extents() const
 	{
 		return make_float3(get_extent(0), get_extent(1), get_extent(2));
 	}
 
-	float3 get_center() const
+	float3_t get_center() const
 	{
 		return (mini + maxi) * 0.5f;
 	}
 
 	float area() const
 	{
-		float3 extents = get_extents();
+		float3_t extents = get_extents();
 		return 2.0f * (extents.x * extents.y + extents.y * extents.z + extents.z * extents.x);
 	}
 
-	float3 mini = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() , std::numeric_limits<float>::max() };
-	float3 maxi = { -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() , -std::numeric_limits<float>::max() };
+	float3_t mini = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() , std::numeric_limits<float>::max() };
+	float3_t maxi = { -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() , -std::numeric_limits<float>::max() };
 };
 
 #endif

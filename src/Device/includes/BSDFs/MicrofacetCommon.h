@@ -21,7 +21,7 @@
 /**
  * Evaluates the GGX anisotropic normal distribution function
  */
-HIPRT_DEVICE static float GGX_anisotropic(float alpha_x, float alpha_y, const float3& local_microfacet_normal)
+HIPRT_DEVICE static float GGX_anisotropic(float alpha_x, float alpha_y, const float3_t& local_microfacet_normal)
 {
 	float denom = (local_microfacet_normal.x * local_microfacet_normal.x) / (alpha_x * alpha_x) +
 				  (local_microfacet_normal.y * local_microfacet_normal.y) / (alpha_y * alpha_y) + (local_microfacet_normal.z * local_microfacet_normal.z);
@@ -39,7 +39,7 @@ HIPRT_DEVICE static float GGX_anisotropic(float alpha_x, float alpha_y, const fl
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 3
  */
-HIPRT_DEVICE static float GGX_anisotropic_vndf(float D, float G1V, const float3& local_view_direction, const float3& local_microfacet_normal)
+HIPRT_DEVICE static float GGX_anisotropic_vndf(float D, float G1V, const float3_t& local_view_direction, const float3_t& local_microfacet_normal)
 {
 	float HoV = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::dot(local_view_direction, local_microfacet_normal));
 	return G1V * D * hippt::abs(HoV) / hippt::abs(local_view_direction.z);
@@ -48,7 +48,7 @@ HIPRT_DEVICE static float GGX_anisotropic_vndf(float D, float G1V, const float3&
 /**
  * Lambda function for the denominator of the G1 Smith masking/shadowing functions
  */
-HIPRT_DEVICE static float G1_Smith_lambda(float alpha_x, float alpha_y, const float3& local_direction)
+HIPRT_DEVICE static float G1_Smith_lambda(float alpha_x, float alpha_y, const float3_t& local_direction)
 {
 	float ax = local_direction.x * alpha_x;
 	float ay = local_direction.y * alpha_y;
@@ -62,7 +62,7 @@ HIPRT_DEVICE static float G1_Smith_lambda(float alpha_x, float alpha_y, const fl
  * Reference: [Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs, Heitz, 2014]
  * Equation 43
  */
-HIPRT_DEVICE static float G1_Smith(float alpha_x, float alpha_y, const float3& local_direction)
+HIPRT_DEVICE static float G1_Smith(float alpha_x, float alpha_y, const float3_t& local_direction)
 {
 	float lambda = G1_Smith_lambda(alpha_x, alpha_y, local_direction);
 

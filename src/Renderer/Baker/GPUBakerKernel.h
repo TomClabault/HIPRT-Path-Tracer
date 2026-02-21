@@ -14,13 +14,17 @@ class GPUBakerKernel
 {
 public:
 	GPUBakerKernel() {}
-	GPUBakerKernel(std::shared_ptr<GPURenderer> renderer, oroStream_t bake_stream, std::shared_ptr<std::mutex> compiler_priority_mutex,
-		const std::string& kernel_filepath, const std::string& kernel_function, const std::string& kernel_title);
+	GPUBakerKernel(std::shared_ptr<GPURenderer> renderer,
+				   oroStream_t bake_stream,
+				   std::shared_ptr<std::mutex> compiler_priority_mutex,
+				   const std::string& kernel_filepath,
+				   const std::string& kernel_function,
+				   const std::string& kernel_title);
 
 	/**
 	 * Starts the baking process
 	 */
-	void bake_internal(int3 bake_resolution, const void* bake_settings_pointer, int nb_kernel_iterations, std::string output_filename);
+	void bake_internal(int3_t bake_resolution, const void* bake_settings_pointer, int nb_kernel_iterations, std::string output_filename);
 
 	/**
 	 * Is the baking process complete?
@@ -31,7 +35,7 @@ private:
 	bool m_bake_complete = true;
 
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
-	oroStream_t m_bake_stream = nullptr;
+	oroStream_t m_bake_stream				= nullptr;
 
 	// Filepath and function within this file that will be launched
 	// when the baking of the kernel starts

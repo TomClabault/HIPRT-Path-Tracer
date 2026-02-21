@@ -175,7 +175,7 @@
 //}
 //
 //// fit data
-//void fitTab(float3x3 * tab, float2 * tabAmplitude, const int N, const Brdf& brdf)
+//void fitTab(float3x3 * tab, float2_t * tabAmplitude, const int N, const Brdf& brdf)
 //{
 //	LTC ltc;
 //
@@ -268,7 +268,7 @@
 //{
 //	// allocate data
 //	float3x3 * tab = new float3x3[N*N];
-//	float2 * tabAmplitude = new float2[N*N];
+//	float2_t * tabAmplitude = new float2_t[N*N];
 //	
 //	// fit
 //	fitTab(tab, tabAmplitude, N, brdf);

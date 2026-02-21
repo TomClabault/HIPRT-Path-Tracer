@@ -29,8 +29,8 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 	float ms_compensation = 1.0f;
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
-	int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS,
-								  GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
+	int3_t texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS,
+									GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
 	float ior		   = material.ior;
 	float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
@@ -46,7 +46,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 	// sqrt(sqrt(F0)) here because we're storing F0^4 in the LUT
 	float F0_remapped = sqrt(sqrt(F0_from_eta_t_and_relative_ior(ior, relative_ior)));
 
-	float3 uvw							   = make_float3(view_dir_remapped, material.roughness, F0_remapped);
+	float3_t uvw						   = make_float3(view_dir_remapped, material.roughness, F0_remapped);
 	float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_directional_albedo, texture_dims, uvw,
 																		  render_data.bsdfs_data.use_hardware_tex_interpolation)
 																	 .r;
@@ -97,8 +97,8 @@ HIPRT_DEVICE static float get_principled_energy_compensation_clearcoat_lobe(cons
 	float ms_compensation = 1.0f;
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
-	int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS,
-								  GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
+	int3_t texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS,
+									GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
 	if (hippt::abs(material.coat_ior / incident_medium_ior - 1.0f) < 1.0e-3f)
 		// If the relative ior is very close to 1.0f,
@@ -112,7 +112,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_clearcoat_lobe(cons
 	// sqrt(sqrt(F0)) here because we're storing F0^4 in the LUT
 	float F0_remapped = sqrt(sqrt(F0_from_eta(material.coat_ior, incident_medium_ior)));
 
-	float3 uvw							   = make_float3(view_dir_remapped, material.coat_roughness, F0_remapped);
+	float3_t uvw						   = make_float3(view_dir_remapped, material.coat_roughness, F0_remapped);
 	float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_directional_albedo, texture_dims, uvw,
 																		  render_data.bsdfs_data.use_hardware_tex_interpolation)
 																	 .r;

@@ -15,7 +15,7 @@ class GPURenderer;
 
 struct DenoiserBuffersGPUData
 {
-	float3* map_normals_buffer();
+	float3_t* map_normals_buffer();
 	void resize_normals_buffer(size_t new_element_count);
 	void unmap_normals_buffer();
 
@@ -29,8 +29,8 @@ struct DenoiserBuffersGPUData
 		// to this buffer and then displayed to the viewport)
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_denoised_framebuffer;
 	// Normals G-buffer
-	std::shared_ptr<OpenGLInteropBuffer<float3>> m_normals_AOV_interop_buffer;
-	std::shared_ptr<OrochiBuffer<float3>> m_normals_AOV_no_interop_buffer;
+	std::shared_ptr<OpenGLInteropBuffer<float3_t>> m_normals_AOV_interop_buffer;
+	std::shared_ptr<OrochiBuffer<float3_t>> m_normals_AOV_no_interop_buffer;
 	// Albedo G-buffer
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_interop_buffer;
 	std::shared_ptr<OrochiBuffer<ColorRGB32F>>m_albedo_AOV_no_interop_buffer;

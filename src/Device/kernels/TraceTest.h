@@ -13,9 +13,9 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) TraceTest(HIPRTRenderData render_data, int2 res)
+GLOBAL_KERNEL_SIGNATURE(void) TraceTest(HIPRTRenderData render_data, int2_t res)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline TraceTest(HIPRTRenderData render_data, int2 res, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline TraceTest(HIPRTRenderData render_data, int2_t res, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__

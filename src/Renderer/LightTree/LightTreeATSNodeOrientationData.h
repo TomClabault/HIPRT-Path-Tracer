@@ -19,7 +19,7 @@ struct LightTreeATSNodeOrientationData
 			axis = hippt::normalize(axis);
 	}
 
-	HIPRT_HOST void cone_union_with(float3 axis_b, float theta_o_b, float theta_e_b)
+	HIPRT_HOST void cone_union_with(float3_t axis_b, float theta_o_b, float theta_e_b)
 	{
 		cone_union_with_internal(axis_b, theta_o_b, theta_e_b);
 
@@ -28,9 +28,9 @@ struct LightTreeATSNodeOrientationData
 	}
 
 private:
-	HIPRT_HOST void cone_union_with_internal(float3 axis_b, float theta_o_b, float theta_e_b)
+	HIPRT_HOST void cone_union_with_internal(float3_t axis_b, float theta_o_b, float theta_e_b)
 	{
-		float3 axis_a = this->axis;
+		float3_t axis_a = this->axis;
 		float theta_o_a = this->theta_o;
 		float theta_e_a = this->theta_e;
 
@@ -81,7 +81,7 @@ private:
 				return;
 			}
 
-			float3 cross_prod = hippt::cross(axis_a, axis_b);
+			float3_t cross_prod = hippt::cross(axis_a, axis_b);
 			if (hippt::length(cross_prod) < 1.0e-10f)
 			{
 				this->axis = axis_a;
@@ -92,7 +92,7 @@ private:
 			}
 
 			float theta_r = theta_o - theta_o_a;
-			float3 axis = hippt::normalize(rotate_vector(axis_a, hippt::normalize(cross_prod), theta_r));
+			float3_t axis = hippt::normalize(rotate_vector(axis_a, hippt::normalize(cross_prod), theta_r));
 
 			this->axis = axis;
 			this->theta_o = theta_o;
@@ -104,7 +104,7 @@ private:
 
 public:
 	// Axis of the cluster
-	float3 axis = make_float3(LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS, LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS, LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS);
+	float3_t axis = make_float3(LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS, LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS, LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS);
 	// Normal bounds
 	float theta_o = 0.0f;
 	// Emission extents

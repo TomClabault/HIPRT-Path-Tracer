@@ -506,131 +506,161 @@ math_vector<T, 4> operator/(const math_vector<T, 4>& a, T b)
 	return math_vector<T, 4>{ a.x / b, a.y / b, a.z / b, a.w / b };
 }
 
-using int2	 = math_vector<int, 2>;
-using int3	 = math_vector<int, 3>;
-using int4	 = math_vector<int, 4>;
-using uint2	 = math_vector<unsigned int, 2>;
-using uint3	 = math_vector<unsigned int, 3>;
-using uint4	 = math_vector<unsigned int, 4>;
-using float2 = math_vector<float, 2>;
-using float3 = math_vector<float, 3>;
-using float4 = math_vector<float, 4>;
+using int2_t   = math_vector<int, 2>;
+using int3_t   = math_vector<int, 3>;
+using int4_t   = math_vector<int, 4>;
+using uint2_t  = math_vector<unsigned int, 2>;
+using uint3_t  = math_vector<unsigned int, 3>;
+using uint4_t  = math_vector<unsigned int, 4>;
+using float2_t = math_vector<float, 2>;
+using float3_t = math_vector<float, 3>;
+using float4_t = math_vector<float, 4>;
 
-inline constexpr int2 make_int2(int x, int y)
+inline constexpr int2_t make_int2(int x, int y)
 {
-	return int2(x, y);
-}
-inline constexpr int2 make_int2(int v)
-{
-	return int2(v, v);
-}
-inline constexpr int3 make_int3(int x, int y, int z)
-{
-	return int3(x, y, z);
-}
-inline constexpr int3 make_int3(int v)
-{
-	return int3(v, v, v);
-}
-inline constexpr int4 make_int4(int x, int y, int z, int w)
-{
-	return int4(x, y, z, w);
-}
-inline constexpr int4 make_int4(int v)
-{
-	return int4(v, v, v, v);
+	return int2_t(x, y);
 }
 
-inline constexpr uint2 make_uint2(unsigned int x, unsigned int y)
+inline constexpr int2_t make_int2(int v)
 {
-	return uint2(x, y);
+	return int2_t(v, v);
 }
-inline constexpr uint2 make_uint2(unsigned int v)
+
+inline constexpr int3_t make_int3(int x, int y, int z)
 {
-	return uint2(v, v);
+	return int3_t(x, y, z);
 }
-inline constexpr uint3 make_uint3(unsigned int x, unsigned int y, unsigned int z)
+
+inline constexpr int3_t make_int3(int v)
 {
-	return uint3(x, y, z);
+	return int3_t(v, v, v);
+}
+
+inline constexpr int4_t make_int4(int x, int y, int z, int w)
+{
+	return int4_t(x, y, z, w);
+}
+
+inline constexpr int4_t make_int4(int v)
+{
+	return int4_t(v, v, v, v);
+}
+
+inline constexpr uint2_t make_uint2(unsigned int x, unsigned int y)
+{
+	return uint2_t(x, y);
+}
+
+inline constexpr uint2_t make_uint2(unsigned int v)
+{
+	return uint2_t(v, v);
+}
+
+inline constexpr uint3_t make_uint3(unsigned int x, unsigned int y, unsigned int z)
+{
+	return uint3_t(x, y, z);
 };
-inline constexpr uint3 make_uint3(unsigned int v)
+inline constexpr uint3_t make_uint3(unsigned int v)
 {
-	return uint3(v, v, v);
-}
-inline constexpr uint4 make_uint4(unsigned int x, unsigned int y, unsigned int z, unsigned int w)
-{
-	return uint4(x, y, z, w);
-}
-inline constexpr uint4 make_uint4(unsigned int v)
-{
-	return uint4(v, v, v, v);
+	return uint3_t(v, v, v);
 }
 
-inline constexpr float2 make_float2(float x, float y)
+inline constexpr uint4_t make_uint4(unsigned int x, unsigned int y, unsigned int z, unsigned int w)
 {
-	return float2(x, y);
+	return uint4_t(x, y, z, w);
 }
-inline constexpr float2 make_float2(float v)
+
+inline constexpr uint4_t make_uint4(unsigned int v)
 {
-	return float2(v, v);
+	return uint4_t(v, v, v, v);
 }
-inline constexpr float3 make_float3(float x, float y, float z)
+
+inline constexpr float2_t make_float2(float x, float y)
 {
-	return float3(x, y, z);
+	return float2_t(x, y);
 }
-inline constexpr float3 make_float3(float v)
+
+inline constexpr float2_t make_float2(float v)
 {
-	return float3(v, v, v);
+	return float2_t(v, v);
 }
-inline constexpr float4 make_float4(float x, float y, float z, float w)
+
+inline constexpr float3_t make_float3(float x, float y, float z)
 {
-	return float4(x, y, z, w);
+	return float3_t(x, y, z);
 }
-inline constexpr float4 make_float4(float v)
+
+inline constexpr float3_t make_float3(float v)
 {
-	return float4(v, v, v, v);
+	return float3_t(v, v, v);
+}
+
+inline constexpr float4_t make_float4(float x, float y, float z, float w)
+{
+	return float4_t(x, y, z, w);
+}
+
+inline constexpr float4_t make_float4(float v)
+{
+	return float4_t(v, v, v, v);
 }
 
 #else // __KERNELCC__
 
 #include "Device/includes/FixIntellisense.h"
 
+using int2_t   = int2;
+using int3_t   = int3;
+using int4_t   = int4;
+using uint2_t  = uint2;
+using uint3_t  = uint3;
+using uint4_t  = uint4;
+using float2_t = float2;
+using float3_t = float3;
+using float4_t = float4;
+
 // Defining the missing one-value constructors
-HIPRT_DEVICE inline constexpr int2 make_int2(int v)
+HIPRT_DEVICE inline constexpr int2_t make_int2(int v)
 {
 	return make_int2(v, v);
 }
-HIPRT_DEVICE inline constexpr int3 make_int3(int v)
+
+HIPRT_DEVICE inline constexpr int3_t make_int3(int v)
 {
 	return make_int3(v, v, v);
 }
-HIPRT_DEVICE inline constexpr int4 make_int4(int v)
+
+HIPRT_DEVICE inline constexpr int4_t make_int4(int v)
 {
 	return make_int4(v, v, v, v);
 }
 
-HIPRT_DEVICE inline constexpr uint2 make_uint2(unsigned int v)
+HIPRT_DEVICE inline constexpr uint2_t make_uint2(unsigned int v)
 {
 	return make_uint2(v, v);
 }
-HIPRT_DEVICE inline constexpr uint3 make_uint3(unsigned int v)
+
+HIPRT_DEVICE inline constexpr uint3_t make_uint3(unsigned int v)
 {
 	return make_uint3(v, v, v);
 }
-HIPRT_DEVICE inline constexpr uint4 make_uint4(unsigned int v)
+
+HIPRT_DEVICE inline constexpr uint4_t make_uint4(unsigned int v)
 {
 	return make_uint4(v, v, v, v);
 }
 
-HIPRT_DEVICE inline constexpr float2 make_float2(float v)
+HIPRT_DEVICE inline constexpr float2_t make_float2(float v)
 {
 	return make_float2(v, v);
 }
-HIPRT_DEVICE inline constexpr float3 make_float3(float v)
+
+HIPRT_DEVICE inline constexpr float3_t make_float3(float v)
 {
 	return make_float3(v, v, v);
 }
-HIPRT_DEVICE inline constexpr float4 make_float4(float v)
+
+HIPRT_DEVICE inline constexpr float4_t make_float4(float v)
 {
 	return make_float4(v, v, v, v);
 }

@@ -6,9 +6,9 @@
 #ifndef REGIR_RENDER_PASS_H
 #define REGIR_RENDER_PASS_H
 
-#include "Renderer/RenderPasses/RenderPass.h"
-#include "Renderer/RenderPasses/ReGIRHashGridStorage.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
+#include "Renderer/RenderPasses/ReGIRHashGridStorage.h"
+#include "Renderer/RenderPasses/RenderPass.h"
 
 class GPURenderer;
 
@@ -35,7 +35,7 @@ public:
 	 *
 	 * This means that if you define your camera ray kernel main function as:
 	 *
-	 * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res)
+	 * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2_t res)
 	 *
 	 * Then KERNEL_FUNCTION_NAMES[CAMERA_RAYS_KERNEL_ID] = "CameraRays"
 	 */
@@ -51,7 +51,10 @@ public:
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override {};
 
-	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
+	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+											  const std::vector<hiprtFuncNameSet>& func_name_sets = {},
+											  bool silent										  = false,
+											  bool use_cache									  = true) override;
 	virtual bool pre_render_update(float delta_time) override;
 
 	virtual bool launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
@@ -65,12 +68,21 @@ public:
 	void launch_grid_pre_population(HIPRTRenderData& render_data);
 	bool rehash(HIPRTRenderData& render_data);
 
-	void launch_grid_fill(HIPRTRenderData& render_data, ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid, bool primary_hit, bool for_pre_integration, oroStream_t stream);
+	void launch_grid_fill(HIPRTRenderData& render_data,
+						  ReGIRHashGridSoADevice grid_fill_output_reservoirs_grid,
+						  bool primary_hit,
+						  bool for_pre_integration,
+						  oroStream_t stream);
 	void launch_grid_fill(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	/**
 	 * Returns the hash grid buffer into which the spatial reuse output the result
 	 */
-	ReGIRHashGridSoADevice launch_spatial_reuse(HIPRTRenderData& render_data, ReGIRHashGridSoADevice first_input_reservoirs, ReGIRHashGridSoADevice first_output_reservoirs, bool primary_hit, bool for_pre_integration, oroStream_t stream);
+	ReGIRHashGridSoADevice launch_spatial_reuse(HIPRTRenderData& render_data,
+												ReGIRHashGridSoADevice first_input_reservoirs,
+												ReGIRHashGridSoADevice first_output_reservoirs,
+												bool primary_hit,
+												bool for_pre_integration,
+												oroStream_t stream);
 	ReGIRHashGridSoADevice launch_spatial_reuse(HIPRTRenderData& render_data, bool primary_hit, bool for_pre_integration, oroStream_t stream);
 	void launch_correlation_reduction_fill(HIPRTRenderData& render_data);
 	void launch_correlation_reduction_copy(HIPRTRenderData& render_data, ReGIRHashGridSoADevice input_reservoirs_to_copy);
@@ -80,7 +92,10 @@ public:
 	bool launch_cell_light_distributions_precomputation(HIPRTRenderData& render_data);
 	bool launch_cell_light_distributions_precomputation_internal(HIPRTRenderData& render_data, bool primary_hit);
 	bool launch_cell_light_distributions_compute_and_sort_internal(HIPRTRenderData& render_data, bool primary_hit, bool compute_only_sizes);
-	void launch_rehashing_kernel(HIPRTRenderData& render_data, bool primary_hit, ReGIRHashGridSoADevice& new_hash_grid_soa, ReGIRHashCellDataSoADevice& new_hash_cell_data);
+	void launch_rehashing_kernel(HIPRTRenderData& render_data,
+								 bool primary_hit,
+								 ReGIRHashGridSoADevice& new_hash_grid_soa,
+								 ReGIRHashCellDataSoADevice& new_hash_cell_data);
 
 	virtual void post_sample_update_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) override;
 	virtual void update_render_data() override;
@@ -125,7 +140,7 @@ public:
 	bool lights_in_scene(HIPRTRenderData& render_data) const;
 
 private:
-	unsigned int m_number_of_cells_alive_primary_hits = 0;
+	unsigned int m_number_of_cells_alive_primary_hits	= 0;
 	unsigned int m_number_of_cells_alive_secondary_hits = 0;
 
 	Xorshift32Generator m_local_rng = Xorshift32Generator(42);
@@ -139,25 +154,25 @@ private:
 	ReGIRHashGridSoADevice m_last_spatial_reuse_output_buffer_primary_hits;
 	ReGIRHashGridSoADevice m_last_spatial_reuse_output_buffer_secondary_hits;
 
-	oroStream_t m_pre_integration_async_stream = nullptr;
-	oroStream_t m_grid_fill_async_stream_primary_hits = nullptr;
+	oroStream_t m_pre_integration_async_stream			= nullptr;
+	oroStream_t m_grid_fill_async_stream_primary_hits	= nullptr;
 	oroStream_t m_grid_fill_async_stream_secondary_hits = nullptr;
-	oroEvent_t m_oro_event = nullptr;
-	oroEvent_t m_event_pre_integration_duration_start = nullptr;
-	oroEvent_t m_event_pre_integration_duration_stop = nullptr;
+	oroEvent_t m_oro_event								= nullptr;
+	oroEvent_t m_event_pre_integration_duration_start	= nullptr;
+	oroEvent_t m_event_pre_integration_duration_stop	= nullptr;
 	// Just a flag to make sure that the pre integration pass indeed ran otherwise,
 	// if it didn't run, we cannot compute the GPU events elapsed times
 	bool m_pre_integration_executed = false;
 
 	// Percentage of the total incoming energy that we should keep in each light distribution of
 	// each cell at *most* (roughly)
-	// 
+	//
 	// The light distribution will only contain as many emissive meshes as necessary such that the
 	// distribution covers covers that percentage of the total incoming energy to the grid cell.
 	//
 	// This is "rounded up" so if 40% of the total incoming radiance is required by this parameter but
 	// we have to choose between (for example):
-	// 
+	//
 	// - 5 meshes in the distribution = 38% of the energy covered
 	// - 6 meshes in the distribution = 51% of the energy covered
 	//
@@ -166,7 +181,7 @@ private:
 
 	// How many % VRAM did we save from compacting the light distribution the last time we did
 	// This is just used for debugging / measurements purposes
-	float m_last_light_distribution_compaction_vram_saving_primary_hits = 0.0f;
+	float m_last_light_distribution_compaction_vram_saving_primary_hits	  = 0.0f;
 	float m_last_light_distribution_compaction_vram_saving_secondary_hits = 0.0f;
 };
 

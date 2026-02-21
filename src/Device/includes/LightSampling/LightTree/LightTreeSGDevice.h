@@ -12,10 +12,10 @@
 
 struct LightTreeSGNodeDevice
 {
-	float3 vmf_axis = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t vmf_axis = make_float3(0.0f, 0.0f, 0.0f);
 	float vmf_sharpness = 0.0f;
 
-	float3 gaussian_spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t gaussian_spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
 	float gaussian_spatial_variance = 0.0f;
 
 	float bounding_sphere_radius = 0.0f;

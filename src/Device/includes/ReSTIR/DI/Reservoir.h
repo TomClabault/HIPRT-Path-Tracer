@@ -14,7 +14,7 @@
 #ifndef __KERNELCC__
 #include "Utils/Utils.h"
 
- // For multithreaded console error logging on the CPU if NaNs are detected
+// For multithreaded console error logging on the CPU if NaNs are detected
 #include <mutex>
 static std::mutex restir_di_log_mutex;
 #endif
@@ -23,7 +23,7 @@ struct ReSTIRDIReservoirSample
 {
 	// For envmap samples, this 'point_on_light_source' is the envmap direction in *envmap space*
 	// A sample is an envmap sample if 'flags' contains 'RESTIR_DI_FLAGS_ENVMAP_SAMPLE'
-	float3 point_on_light_source = { 0, 0, 0 };
+	float3_t point_on_light_source = { 0, 0, 0 };
 
 	// Global primitive index corresponding to the emissive triangle sampled
 	int emissive_triangle_global_index = -1;
@@ -48,7 +48,7 @@ struct ReSTIRDIInitialSample
 {
 	// For envmap samples, this 'point_on_light_source' is the envmap direction in *envmap space*
 	// A sample is an envmap sample if 'flags' contains 'RESTIR_DI_FLAGS_ENVMAP_SAMPLE'
-	float3 point_on_light_source = { 0, 0, 0 };
+	float3_t point_on_light_source = { 0, 0, 0 };
 
 	// Global primitive index corresponding to the emissive triangle sampled
 	int emissive_triangle_global_index = -1;
@@ -75,10 +75,10 @@ struct ReSTIRDIInitialSample
 	{
 		ReSTIRDIReservoirSample reservoir_sample;
 
-		reservoir_sample.point_on_light_source = point_on_light_source;
+		reservoir_sample.point_on_light_source			= point_on_light_source;
 		reservoir_sample.emissive_triangle_global_index = emissive_triangle_global_index;
-		reservoir_sample.target_function = target_function;
-		reservoir_sample.flags = flags;
+		reservoir_sample.target_function				= target_function;
+		reservoir_sample.flags							= flags;
 
 		return reservoir_sample;
 	}
@@ -122,7 +122,11 @@ struct ReSTIRDIReservoir
 	 * 'random_number_generator' for generating the random number that will be used to stochastically
 	 *      select the sample from 'other_reservoir' or not
 	 */
-	HIPRT_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
+	HIPRT_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir,
+								   float mis_weight,
+								   float target_function,
+								   float jacobian_determinant,
+								   Xorshift32Generator& random_number_generator)
 	{
 		float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
 
@@ -131,7 +135,7 @@ struct ReSTIRDIReservoir
 
 		if (random_number_generator() < reservoir_sample_weight / weight_sum)
 		{
-			sample = other_reservoir.sample;
+			sample				   = other_reservoir.sample;
 			sample.target_function = target_function;
 
 			return true;
@@ -160,7 +164,7 @@ struct ReSTIRDIReservoir
 		M = hippt::min(M, 1000000);
 	}
 
-	HIPRT_DEVICE void sanity_check(int2 pixel_coords)
+	HIPRT_DEVICE void sanity_check(int2_t pixel_coords)
 	{
 #ifndef __KERNELCC__
 		if (M < 0)
@@ -208,7 +212,8 @@ struct ReSTIRDIReservoir
 		else if (sample.target_function < 0)
 		{
 			std::lock_guard<std::mutex> lock(restir_di_log_mutex);
-			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
+			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function
+					  << std::endl;
 			Debug::debugbreak();
 		}
 #else

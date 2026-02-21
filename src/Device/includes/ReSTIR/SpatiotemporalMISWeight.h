@@ -6,23 +6,25 @@
 #ifndef DEVICE_RESTIR_DI_SPATIOTEMPORAL_MIS_WEIGHT_H
 #define DEVICE_RESTIR_DI_SPATIOTEMPORAL_MIS_WEIGHT_H
 
-#include "Device/includes/ReSTIR/Utils.h"
-#include "Device/includes/ReSTIR/MISWeightsCommon.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
+#include "Device/includes/ReSTIR/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/Utils.h"
 
 #define TEMPORAL_NEIGHBOR_ID 0
 
- /**
-  * There are going to be many specialization of this structure, one for each mis weight type
-  * (RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ...)
-  *
-  * IsReSTIRGI is used to indicate whether the structure should be used to compute
-  * for ReSTIR GI or for ReSTIR DI
-  */
+/**
+ * There are going to be many specialization of this structure, one for each mis weight type
+ * (RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, ...)
+ *
+ * IsReSTIRGI is used to indicate whether the structure should be used to compute
+ * for ReSTIR GI or for ReSTIR DI
+ */
 template <int BiasCorrectionMode, bool IsReSTIRGI = false>
-struct ReSTIRSpatiotemporalResamplingMISWeight {};
+struct ReSTIRSpatiotemporalResamplingMISWeight
+{
+};
 
 template <>
 struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M>
@@ -55,20 +57,24 @@ template <bool IsReSTIRGI>
 struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		float reservoir_being_resampled_UCW,
-		const ReSTIRSampleType<IsReSTIRGI>& reservoir_being_resampled_sample,
+													  float reservoir_being_resampled_UCW,
+													  const ReSTIRSampleType<IsReSTIRGI>& reservoir_being_resampled_sample,
 
-		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
-		int current_neighbor, int initial_candidates_M, int temporal_neighbor_M,
-		int center_pixel_index, int2 temporal_neighbor_coords,
-		Xorshift32Generator& random_number_generator)
+													  ReSTIRSurface& center_pixel_surface,
+													  ReSTIRSurface& temporal_neighbor_surface,
+													  int current_neighbor,
+													  int initial_candidates_M,
+													  int temporal_neighbor_M,
+													  int center_pixel_index,
+													  int2_t temporal_neighbor_coords,
+													  Xorshift32Generator& random_number_generator)
 	{
 		if (reservoir_being_resampled_UCW <= 0.0f)
-			// Reservoir that doesn't contain any sample, returning 
+			// Reservoir that doesn't contain any sample, returning
 			// 1.0f MIS weight so that multiplying by that doesn't do anything
 			return 1.0f;
 
-		float nume = 0.0f;
+		float nume	= 0.0f;
 		float denom = 0.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
@@ -84,9 +90,10 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, 
 					// Invalid neighbor, skipping
 					continue;
 
-				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
-					neighbor_index_j, center_pixel_index,
-					center_pixel_surface.shading_point, ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface), render_data.render_settings.use_prev_frame_g_buffer()))
+				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(
+											render_data, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point,
+											ReSTIRSettingsHelper::get_normal_for_rejection_heuristic<IsReSTIRGI>(render_data, center_pixel_surface),
+											render_data.render_settings.use_prev_frame_g_buffer()))
 					// Neighbor too dissimilar according to heuristics, skipping
 					continue;
 			}
@@ -95,15 +102,18 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, 
 			if (j == spatial_pass_settings.reuse_neighbor_count)
 				neighbor_surface = center_pixel_surface;
 			else
-				neighbor_surface = get_pixel_surface(render_data, neighbor_index_j, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
+				neighbor_surface = get_pixel_surface(render_data, neighbor_index_j, render_data.render_settings.use_prev_frame_g_buffer(),
+													 random_number_generator);
 
 			float target_function_at_j;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_at_j = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
+				target_function_at_j = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
+																											 neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
-				target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample, neighbor_surface, random_number_generator);
+				target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample,
+																											 neighbor_surface, random_number_generator);
 
 			int M = 1;
 			if (ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
@@ -122,7 +132,8 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, 
 		}
 
 		// Taking the temporal neighbor into account
-		float target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
+		float target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+								render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 		int M = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights ? temporal_neighbor_M : 1;
 
 		denom += target_function_at_temporal_neighbor * M;
@@ -141,14 +152,20 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
-		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function,
-		int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
+													  int reservoir_being_resampled_M,
+													  float reservoir_being_resampled_target_function,
+													  int center_pixel_reservoir_M,
+													  float center_pixel_reservoir_target_function,
 
-		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
+													  const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
 
-		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resample_canonical,
-		Xorshift32Generator& random_number_generator)
+													  float target_function_at_center,
+													  int neighbor_pixel_index,
+													  int valid_neighbors_count,
+													  int valid_neighbors_M_sum,
+													  bool update_mc,
+													  bool resample_canonical,
+													  Xorshift32Generator& random_number_generator)
 	{
 		if (!resample_canonical)
 		{
@@ -166,33 +183,38 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_
 			// reuse the target function stored in the neighbor's reservoir
 			float target_function_at_neighbor = reservoir_being_resampled_target_function;
 
-			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
-			float reservoir_resampled_M = use_confidence_weights ? reservoir_being_resampled_M : 1;
-			float center_reservoir_M = use_confidence_weights ? center_pixel_reservoir_M : 1;
+			bool use_confidence_weights	   = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			float reservoir_resampled_M	   = use_confidence_weights ? reservoir_being_resampled_M : 1;
+			float center_reservoir_M	   = use_confidence_weights ? center_pixel_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? valid_neighbors_M_sum : 1;
 			// We only want to divide by M-1 if we're not using confidence weights.
 			// (Eq. 7.6 and 7.7 of "A Gentle Introduction to ReSTIR")
 			float valid_neighbor_division_term = use_confidence_weights ? 1 : valid_neighbors_count;
 
-			float nume = target_function_at_neighbor * reservoir_resampled_M;
-			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbor_division_term * center_reservoir_M;
+			float nume	= target_function_at_neighbor * reservoir_resampled_M;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum +
+						  target_function_at_center / valid_neighbor_division_term * center_reservoir_M;
 			float mi = denom == 0.0f ? 0.0f : (nume / denom);
 
 			if (update_mc)
 			{
-				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
+				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index,
+																		 render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 				float target_function_center_sample_at_neighbor;
 
 				if constexpr (IsReSTIRGI)
 					// ReSTIR GI target function
-					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
+											render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 				else
 					// ReSTIR DI target function
-					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+											render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 				float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
-				float nume_mc = target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
-				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
+				float nume_mc  = target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
+				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum +
+								 target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
 
 				// (Eq. 7.7 of "A Gentle Introduction to ReSTIR"), c_j / (Sum_{k!=c}^M c_k)
 				float confidence_weights_multiplier = use_confidence_weights ? reservoir_resampled_M / neighbors_confidence_sum : 1;
@@ -213,7 +235,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_
 				return 1.0f;
 			else
 				// Returning the weight accumulated so far when resampling the neighbors.
-				// 
+				//
 				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
 				return mc;
 		}
@@ -228,14 +250,20 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
-		int resampled_reservoir_M, float resampled_reservoir_target_function,
-		int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
+													  int resampled_reservoir_M,
+													  float resampled_reservoir_target_function,
+													  int center_pixel_reservoir_M,
+													  float center_pixel_reservoir_target_function,
 
-		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
+													  const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
 
-		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resample_canonical,
-		Xorshift32Generator& random_number_generator)
+													  float target_function_at_center,
+													  int neighbor_pixel_index,
+													  int valid_neighbors_count,
+													  int valid_neighbors_M_sum,
+													  bool update_mc,
+													  bool resample_canonical,
+													  Xorshift32Generator& random_number_generator)
 	{
 		if (!resample_canonical)
 		{
@@ -253,16 +281,17 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_
 			// reuse the target function stored in the neighbor's reservoir
 			float target_function_at_neighbor = resampled_reservoir_target_function;
 
-			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
-			float reservoir_resampled_M = use_confidence_weights ? resampled_reservoir_M : 1;
-			float center_reservoir_M = use_confidence_weights ? center_pixel_reservoir_M : 1;
+			bool use_confidence_weights	   = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			float reservoir_resampled_M	   = use_confidence_weights ? resampled_reservoir_M : 1;
+			float center_reservoir_M	   = use_confidence_weights ? center_pixel_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? valid_neighbors_M_sum : 1;
 			// We only want to divide by M-1 if we're not using confidence weights.
 			// (Eq. 7.6 and 7.7 of "A Gentle Introduction to ReSTIR")
 			float valid_neighbor_division_term = use_confidence_weights ? 1 : valid_neighbors_count;
 
-			float nume = target_function_at_neighbor * reservoir_resampled_M;
-			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbor_division_term * center_reservoir_M;
+			float nume	= target_function_at_neighbor * reservoir_resampled_M;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum +
+						  target_function_at_center / valid_neighbor_division_term * center_reservoir_M;
 			float mi = 0.0f;
 			if (denom != 0.0f)
 				mi = nume / denom;
@@ -281,18 +310,22 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_
 				float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
 
 				// TODO are we loading this surface again where the caller had it already?
-				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
+				ReSTIRSurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index,
+																		 render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 				float target_function_center_sample_at_neighbor;
 				if constexpr (IsReSTIRGI)
 					// ReSTIR GI target function
-					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
+											render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 				else
 					// ReSTIR DI target function
-					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+											render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
-				float nume_mc = target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
-				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum + target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
+				float nume_mc  = target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
+				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum +
+								 target_function_center_sample_at_center / valid_neighbor_division_term * center_reservoir_M;
 				float confidence_multiplier = 1.0f;
 				if (use_confidence_weights)
 					confidence_multiplier = reservoir_resampled_M / (center_reservoir_M + neighbors_confidence_sum);
@@ -321,7 +354,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_
 			else
 			{
 				// Returning the weight accumulated so far when resampling the neighbors.
-				// 
+				//
 				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
 
 				if (ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
@@ -343,34 +376,42 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
-		int resampled_reservoir_M, float resampled_reservoir_target_function,
-		int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
+													  int resampled_reservoir_M,
+													  float resampled_reservoir_target_function,
+													  int center_pixel_reservoir_M,
+													  float center_pixel_reservoir_target_function,
 
-		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
-		const ReSTIRSurface& center_pixel_surface,
+													  const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
+													  const ReSTIRSurface& center_pixel_surface,
 
-		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resample_canonical,
-		Xorshift32Generator& random_number_generator)
+													  float target_function_at_center,
+													  int neighbor_pixel_index,
+													  int valid_neighbors_count,
+													  int valid_neighbors_M_sum,
+													  bool update_mc,
+													  bool resample_canonical,
+													  Xorshift32Generator& random_number_generator)
 	{
 		if (!resample_canonical)
 		{
 			// Resampling a neighbor
 
 			float target_function_neighbor_sample_at_neighbor = resampled_reservoir_target_function;
-			float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
+			float target_function_center_sample_at_center	  = center_pixel_reservoir_target_function;
 
-			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
-			float reservoir_resampled_M = use_confidence_weights ? resampled_reservoir_M : 1;
-			float center_reservoir_M = use_confidence_weights ? center_pixel_reservoir_M : 1;
+			bool use_confidence_weights	   = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			float reservoir_resampled_M	   = use_confidence_weights ? resampled_reservoir_M : 1;
+			float center_reservoir_M	   = use_confidence_weights ? center_pixel_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? valid_neighbors_M_sum : valid_neighbors_count;
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
-			float difference_function = symmetric_ratio_MIS_weights_difference_function(target_function_at_center, target_function_neighbor_sample_at_neighbor, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
-			float nume_mi = difference_function * reservoir_resampled_M;
+			float difference_function = symmetric_ratio_MIS_weights_difference_function(
+									target_function_at_center, target_function_neighbor_sample_at_neighbor,
+									ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
+			float nume_mi  = difference_function * reservoir_resampled_M;
 			float denom_mi = center_reservoir_M + neighbors_confidence_sum * difference_function;
-			float mi = nume_mi / denom_mi;
+			float mi	   = nume_mi / denom_mi;
 
 			if (update_mc)
 			{
@@ -380,7 +421,8 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC
 				if constexpr (IsReSTIRGI)
 				{
 					// ReSTIR GI target function
-					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
+											render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 					// Because we're using the target function as a PDF here, we need to scale the PDF
 					// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -391,7 +433,10 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC
 						// If this is an envmap path the jacobian is just 1 so this is not needed
 						if (!center_pixel_reservoir_sample.is_envmap_path())
 						{
-							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							float jacobian = get_jacobian_determinant_reconnection_shift(
+													center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal,
+													neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
+													render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
 							if (jacobian == 0.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
@@ -404,10 +449,16 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC
 				}
 				else
 					// ReSTIR DI target function
-					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+											render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
-				float nume_mc = center_reservoir_M;
-				float denom_mc = center_reservoir_M + neighbors_confidence_sum * symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
+				float nume_mc  = center_reservoir_M;
+				float denom_mc = center_reservoir_M +
+								 neighbors_confidence_sum * symmetric_ratio_MIS_weights_difference_function(
+																					target_function_center_sample_at_neighbor,
+																					target_function_center_sample_at_center,
+																					ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data)
+																											.symmetric_ratio_mis_weights_beta_exponent);
 
 				float confidence_weights_multiplier;
 				if (use_confidence_weights)
@@ -436,7 +487,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC
 				return 1.0f;
 			else
 				// Returning the weight accumulated so far when resampling the neighbors.
-				// 
+				//
 				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
 				return mc;
 		}
@@ -451,34 +502,42 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRI
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
-		int resampled_reservoir_M, float resampled_reservoir_target_function,
-		int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
+													  int resampled_reservoir_M,
+													  float resampled_reservoir_target_function,
+													  int center_pixel_reservoir_M,
+													  float center_pixel_reservoir_target_function,
 
-		const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
-		const ReSTIRSurface& center_pixel_surface,
+													  const ReSTIRSampleType<IsReSTIRGI>& center_pixel_reservoir_sample,
+													  const ReSTIRSurface& center_pixel_surface,
 
-		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resample_canonical,
-		Xorshift32Generator& random_number_generator)
+													  float target_function_at_center,
+													  int neighbor_pixel_index,
+													  int valid_neighbors_count,
+													  int valid_neighbors_M_sum,
+													  bool update_mc,
+													  bool resample_canonical,
+													  Xorshift32Generator& random_number_generator)
 	{
 		if (!resample_canonical)
 		{
 			// Resampling a neighbor
 
 			float target_function_neighbor_sample_at_neighbor = resampled_reservoir_target_function;
-			float target_function_center_sample_at_center = center_pixel_reservoir_target_function;
+			float target_function_center_sample_at_center	  = center_pixel_reservoir_target_function;
 
-			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
-			float reservoir_resampled_M = use_confidence_weights ? resampled_reservoir_M : 1;
-			float center_reservoir_M = use_confidence_weights ? center_pixel_reservoir_M : 1;
+			bool use_confidence_weights	   = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			float reservoir_resampled_M	   = use_confidence_weights ? resampled_reservoir_M : 1;
+			float center_reservoir_M	   = use_confidence_weights ? center_pixel_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? valid_neighbors_M_sum : valid_neighbors_count;
 
 			// Eq. 15 of [Enhancing Spatiotemporal Resampling with a Novel MIS Weight, 2024] generalized
 			// with confidence weights
-			float difference_function = symmetric_ratio_MIS_weights_difference_function(target_function_at_center, target_function_neighbor_sample_at_neighbor, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
-			float nume_mi = difference_function * reservoir_resampled_M;
+			float difference_function = symmetric_ratio_MIS_weights_difference_function(
+									target_function_at_center, target_function_neighbor_sample_at_neighbor,
+									ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
+			float nume_mi  = difference_function * reservoir_resampled_M;
 			float denom_mi = center_reservoir_M + neighbors_confidence_sum * difference_function;
-			float mi = nume_mi / denom_mi;
+			float mi	   = nume_mi / denom_mi;
 
 			if (update_mc)
 			{
@@ -488,7 +547,8 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRI
 				if constexpr (IsReSTIRGI)
 				{
 					// ReSTIR GI target function
-					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
+											render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
 					// Because we're using the target function as a PDF here, we need to scale the PDF
 					// by the jacobian. That's p_hat_from_i, Eq. 5.9 of "A Gentle Introduction to ReSTIR"
@@ -499,7 +559,10 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRI
 						// If this is an envmap path the jacobian is just 1 so this is not needed
 						if (!center_pixel_reservoir_sample.is_envmap_path())
 						{
-							float jacobian = get_jacobian_determinant_reconnection_shift(center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal, neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point, render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
+							float jacobian = get_jacobian_determinant_reconnection_shift(
+													center_pixel_reservoir_sample.sample_point, center_pixel_reservoir_sample.sample_point_geometric_normal,
+													neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
+													render_data.render_settings.restir_gi_settings.get_jacobian_heuristic_threshold());
 
 							if (jacobian == 0.0f)
 								// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
@@ -512,10 +575,16 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRI
 				}
 				else
 					// ReSTIR DI target function
-					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
+					target_function_center_sample_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+											render_data, center_pixel_reservoir_sample, neighbor_pixel_surface, random_number_generator);
 
-				float nume_mc = center_reservoir_M;
-				float denom_mc = center_reservoir_M + neighbors_confidence_sum * symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center, ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).symmetric_ratio_mis_weights_beta_exponent);
+				float nume_mc  = center_reservoir_M;
+				float denom_mc = center_reservoir_M +
+								 neighbors_confidence_sum * symmetric_ratio_MIS_weights_difference_function(
+																					target_function_center_sample_at_neighbor,
+																					target_function_center_sample_at_center,
+																					ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data)
+																											.symmetric_ratio_mis_weights_beta_exponent);
 
 				float confidence_weights_multiplier;
 				if (use_confidence_weights)
@@ -544,7 +613,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRI
 				return 1.0f;
 			else
 				// Returning the weight accumulated so far when resampling the neighbors.
-				// 
+				//
 				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
 				return mc;
 		}

@@ -15,14 +15,14 @@
 #ifndef __KERNELCC__
 #include "Utils/Utils.h"
 
- // For multithreaded console error logging on the CPU if NaNs are detected
+// For multithreaded console error logging on the CPU if NaNs are detected
 #include <mutex>
 static std::mutex restir_gi_log_mutex;
 #endif
 
 struct ReSTIRGIReservoirSample
 {
-	float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t sample_point = make_float3(-1.0f, -1.0f, -1.0f);
 
 	int sample_point_primitive_index = -1;
 
@@ -30,7 +30,8 @@ struct ReSTIRGIReservoirSample
 
 	BSDFIncidentLightInfo incident_light_info_at_visible_point = BSDFIncidentLightInfo::NO_INFO;
 
-	// TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?
+	// TODO is this one needed? I guess we're going to get a bunch of wrong shading where a sample was resampled and at shading time it hits an alpha geometry
+	// where that alpha geometry let the ray through at initial candidates sampling time. This should be unbiased? Maybe not actually. But is it that bad?
 	unsigned int visible_to_sample_point_alpha_test_random_seed = 42;
 
 	// TODO can be stored in outoging_radiance_to_first_hit?
@@ -50,7 +51,10 @@ struct ReSTIRGIReservoirSample
 
 	Octahedral24BitNormalPadded32b sample_point_geometric_normal;
 
-	HIPRT_DEVICE bool is_envmap_path() const { return sample_point_primitive_index == -1; }
+	HIPRT_DEVICE bool is_envmap_path() const
+	{
+		return sample_point_primitive_index == -1;
+	}
 };
 
 struct ReSTIRGIReservoir
@@ -78,7 +82,11 @@ struct ReSTIRGIReservoir
 	 * 'random_number_generator' for generating the random number that will be used to stochastically
 	 *      select the sample from 'other_reservoir' or not
 	 */
-	HIPRT_DEVICE bool combine_with(const ReSTIRGIReservoir& other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
+	HIPRT_DEVICE bool combine_with(const ReSTIRGIReservoir& other_reservoir,
+								   float mis_weight,
+								   float target_function,
+								   float jacobian_determinant,
+								   Xorshift32Generator& random_number_generator)
 	{
 		// Bullet point 4. of the intro of Section 5.2 of [A Gentle Introduction to ReSTIR: Path Reuse in Real-time] https://intro-to-restir.cwyman.org/
 		float reservoir_resampling_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
@@ -88,7 +96,7 @@ struct ReSTIRGIReservoir
 
 		if (random_number_generator() < reservoir_resampling_weight / weight_sum)
 		{
-			sample = other_reservoir.sample;
+			sample				   = other_reservoir.sample;
 			sample.target_function = target_function;
 
 			return true;
@@ -117,7 +125,7 @@ struct ReSTIRGIReservoir
 		M = hippt::min(M, 1000000);
 	}
 
-	HIPRT_DEVICE void sanity_check(int2 pixel_coords)
+	HIPRT_DEVICE void sanity_check(int2_t pixel_coords)
 	{
 #ifndef __KERNELCC__
 		if (M < 0)
@@ -165,7 +173,8 @@ struct ReSTIRGIReservoir
 		else if (sample.target_function < 0)
 		{
 			std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
-			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
+			std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function
+					  << std::endl;
 			Debug::debugbreak();
 		}
 #else

@@ -17,15 +17,15 @@
 
 HIPRT_DEVICE static float microfacet_GGX_pdf_reflect(float material_roughness,
 													 float material_anisotropy,
-													 const float3& local_view_direction,
-													 const float3& local_to_light_direction,
-													 const float3& local_halfway_vector,
+													 const float3_t& local_view_direction,
+													 const float3_t& local_to_light_direction,
+													 const float3_t& local_halfway_vector,
 													 SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample);
 
 HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpackedEffectiveMaterial& material,
 															float incident_ior,
-															float3 local_to_light_direction,
-															float3 local_half_vector);
+															float3_t local_to_light_direction,
+															float3_t local_half_vector);
 
 // TODO perf:
 // Auto macro for get_g, get_l because that seems to be improving perf.
@@ -118,7 +118,7 @@ private:
 };
 
 // TODO do we need 2022 and 2023? Are they not the same when developing?
-HIPRT_DEVICE float G1_Smith_lambda_signed_2023(float alpha_x, float alpha_y, const float3& local_direction)
+HIPRT_DEVICE float G1_Smith_lambda_signed_2023(float alpha_x, float alpha_y, const float3_t& local_direction)
 {
 	// 1.0f + Lambda if the direction is below the surface and Lambda iif the direction is above the surface
 	//
@@ -131,14 +131,14 @@ HIPRT_DEVICE ColorRGB32F Cui_2023_vertex_term(const DeviceUnpackedEffectiveMater
 											  float incident_ior,
 											  float alpha_x,
 											  float alpha_y,
-											  const float3& local_view_direction,
-											  const float3& local_to_light_direction)
+											  const float3_t& local_view_direction,
+											  const float3_t& local_to_light_direction)
 {
 	float local_half_vector_length = hippt::length(local_view_direction + local_to_light_direction);
 	if (local_half_vector_length == 0.0f)
 		return ColorRGB32F(0.0f);
 
-	float3 local_half_vector = (local_view_direction + local_to_light_direction) / local_half_vector_length;
+	float3_t local_half_vector = (local_view_direction + local_to_light_direction) / local_half_vector_length;
 	ColorRGB32F F			 = principled_metallic_fresnel(material, incident_ior, local_to_light_direction, local_half_vector);
 
 	return F * GGX_anisotropic(alpha_x, alpha_y, local_half_vector) / (4.0f * hippt::abs(local_view_direction.z));
@@ -153,8 +153,8 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 																float material_anisotropy,
 																float incident_ior,
 																ColorRGB32F F,
-																float3 local_view_direction,	 // w_i in the paper
-																float3 local_to_light_direction, // w_o in the paper
+																float3_t local_view_direction,	 // w_i in the paper
+																float3_t local_to_light_direction, // w_o in the paper
 																Xorshift32Generator& rng,
 																float& out_pdf,
 																SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
@@ -213,8 +213,8 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 	ColorRGB32F weight = ColorRGB32F(1.0f);
 	ColorRGB32F multiple_scattering_contribution =
 							Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, local_view_direction, local_to_light_direction) * s.get_sk();
-	float3 current_view_direction	  = local_view_direction;
-	float3 current_to_light_direction = local_to_light_direction;
+	float3_t current_view_direction	  = local_view_direction;
+	float3_t current_to_light_direction = local_to_light_direction;
 
 	for (int i = 1; i < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; ++i)
 	{
@@ -226,7 +226,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 		if (half_vector_length == 0.0f)
 			break;
 
-		float3 half_vector = (current_view_direction + current_to_light_direction) / half_vector_length;
+		float3_t half_vector = (current_view_direction + current_to_light_direction) / half_vector_length;
 		weight *= principled_metallic_fresnel(material, incident_ior, current_view_direction, half_vector);
 
 		float lambda = G1_Smith_lambda_signed_2023(alpha_x, alpha_y, current_to_light_direction);
@@ -246,7 +246,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 	return multiple_scattering_contribution / local_to_light_direction.z;
 }
 
-// HIPRT_DEVICE float G1_Smith_lambda_signed_2022(float alpha_x, float alpha_y, const float3& local_direction)
+// HIPRT_DEVICE float G1_Smith_lambda_signed_2022(float alpha_x, float alpha_y, const float3_t& local_direction)
 //{
 //	float theta = acosf(local_direction.z);
 //	float cosTheta = local_direction.z;
@@ -270,7 +270,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //	return Lambda;
 // }
 //
-// HIPRT_DEVICE float computeG2_cor_middle(float alpha_x, float alpha_y, const float3& wi, const float3& wo)
+// HIPRT_DEVICE float computeG2_cor_middle(float alpha_x, float alpha_y, const float3_t& wi, const float3_t& wo)
 //{
 //	float inLambda	= G1_Smith_lambda_signed_2022(alpha_x, alpha_y, wi);
 //	float outLambda = G1_Smith_lambda_signed_2022(alpha_x, alpha_y, wo);
@@ -282,7 +282,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //	return G;
 // }
 //// height-correlated G2 for the last bounce
-// HIPRT_DEVICE float computeG2_cor_last(float alpha_x, float alpha_y, const float3& wi, const float3& wo)
+// HIPRT_DEVICE float computeG2_cor_last(float alpha_x, float alpha_y, const float3_t& wi, const float3_t& wo)
 //{
 //	float inLambda	= G1_Smith_lambda_signed_2022(alpha_x, alpha_y, wi);
 //	float outLambda = G1_Smith_lambda_signed_2022(alpha_x, alpha_y, wo);
@@ -292,14 +292,14 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //	return G;
 // }
 //
-// HIPRT_DEVICE float computeG1(float alpha_x, float alpha_y, const float3& wi)
+// HIPRT_DEVICE float computeG1(float alpha_x, float alpha_y, const float3_t& wi)
 //{
 //	float lambda = G1_Smith_lambda_signed_2022(alpha_x, alpha_y, wi);
 //	float G11	 = 1.0f / abs(1.0f + lambda);
 //	return G11;
 // }
 //
-// HIPRT_DEVICE float computeG(float alpha_x, float alpha_y, const float3& wi, const float3& wo, bool outShadow)
+// HIPRT_DEVICE float computeG(float alpha_x, float alpha_y, const float3_t& wi, const float3_t& wo, bool outShadow)
 //{
 //	float G;
 //
@@ -317,14 +317,14 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 // }
 //
 // HIPRT_DEVICE inline ColorRGB32F computeD_F(
-//						const DeviceUnpackedEffectiveMaterial& material, float incident_ior, float alpha_x, float alpha_y, const float3& wi, const float3&
+//						const DeviceUnpackedEffectiveMaterial& material, float incident_ior, float alpha_x, float alpha_y, const float3_t& wi, const float3_t&
 // wo)
 //{
 //	if (hippt::length(wo + wi) <= 0.0f)
 //		return ColorRGB32F(0.0f);
 //
 //	/* Calculate the reflection half-vector */
-//	float3 H = hippt::normalize(wo + wi);
+//	float3_t H = hippt::normalize(wo + wi);
 //	float D	 = GGX_anisotropic(alpha_x, alpha_y, H);
 //	if (D == 0)
 //		return ColorRGB32F(0.0f);
@@ -336,20 +336,20 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 // }
 //
 // HIPRT_DEVICE inline ColorRGB32F computeD_F_withoutD(
-//						const DeviceUnpackedEffectiveMaterial& material, float incident_ior, float alpha_x, float alpha_y, const float3& wi, const float3&
+//						const DeviceUnpackedEffectiveMaterial& material, float incident_ior, float alpha_x, float alpha_y, const float3_t& wi, const float3_t&
 // wo)
 //{
 //	if (hippt::length(wo + wi) <= 0.0f)
 //		return ColorRGB32F(0.0f);
 //
-//	float3 H = hippt::normalize(wo + wi);
+//	float3_t H = hippt::normalize(wo + wi);
 //
 //	/* Fresnel factor */
 //	return principled_metallic_fresnel(material, incident_ior, wo, H);
 // }
 //
 // HIPRT_DEVICE ColorRGB32F
-// evalBounceLast(const DeviceUnpackedEffectiveMaterial& material, float incident_ior, float alpha_x, float alpha_y, const float3& wi, const float3& wo)
+// evalBounceLast(const DeviceUnpackedEffectiveMaterial& material, float incident_ior, float alpha_x, float alpha_y, const float3_t& wi, const float3_t& wo)
 //{
 //	ColorRGB32F result = computeD_F(material, incident_ior, alpha_x, alpha_y, wi, wo);
 //
@@ -362,7 +362,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 // }
 //
 // HIPRT_DEVICE ColorRGB32F
-// evalBounceSample(const DeviceUnpackedEffectiveMaterial& material, float incident_ior, float alpha_x, float alpha_y, const float3& wi, const float3& wo)
+// evalBounceSample(const DeviceUnpackedEffectiveMaterial& material, float incident_ior, float alpha_x, float alpha_y, const float3_t& wi, const float3_t& wo)
 //{
 //	ColorRGB32F result = computeD_F_withoutD(material, incident_ior, alpha_x, alpha_y, wi, wo);
 //
@@ -382,8 +382,8 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //																float material_roughness,
 //																float material_anisotropy,
 //																float incident_ior,
-//																float3 local_view_direction,	 // w_i in the paper
-//																float3 local_to_light_direction, // w_o in the paper
+//																float3_t local_view_direction,	 // w_i in the paper
+//																float3_t local_to_light_direction, // w_o in the paper
 //																Xorshift32Generator& rng,
 //																float& out_pdf,
 //																SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
@@ -400,16 +400,16 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //	float alpha_y;
 //	MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
 //
-//	float3 wi = local_view_direction;
-//	float3 wo = local_to_light_direction;
+//	float3_t wi = local_view_direction;
+//	float3_t wo = local_to_light_direction;
 //
 //	float pdf  = 1;
-//	float3 w0  = local_to_light_direction;
-//	float3 woN = local_view_direction;
+//	float3_t w0  = local_to_light_direction;
+//	float3_t woN = local_view_direction;
 //	ColorRGB32F result(0.0f);
 //
-//	float3 bRec_wi = local_view_direction;
-//	float3 bRec_wo = local_to_light_direction;
+//	float3_t bRec_wi = local_view_direction;
+//	float3_t bRec_wo = local_to_light_direction;
 //
 //	// for the single scattering
 //	result += evalBounceLast(material, incident_ior, alpha_x, alpha_y, wi, wo);
@@ -460,15 +460,15 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //	return result / local_to_light_direction.z;
 // }
 
-// HIPRT_DEVICE float pdfVNDF(const float3& wi, const float3& wo, float alpha_x, float alpha_y)
+// HIPRT_DEVICE float pdfVNDF(const float3_t& wi, const float3_t& wo, float alpha_x, float alpha_y)
 //{
 //	float D = GGX_anisotropic(alpha_x, alpha_y, hippt::normalize(wi + wo));
 //	return D / (4 * hippt::abs(G1_Smith_lambda_signed_2023(alpha_x, alpha_y, -wi) * wi.z));
 // }
 //
-// HIPRT_DEVICE float pdfWi(const float3& wi, const float3& wo, float inLamda, float alpha_x, float alpha_y)
+// HIPRT_DEVICE float pdfWi(const float3_t& wi, const float3_t& wo, float inLamda, float alpha_x, float alpha_y)
 //{
-//	float3 m = hippt::normalize(wo + wi);
+//	float3_t m = hippt::normalize(wo + wi);
 //
 //	float G1 = 1.0f / (1 + inLamda);
 //	float D	 = GGX_anisotropic(alpha_x, alpha_y, m);
@@ -480,14 +480,14 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //	return pdf;
 // }
 //
-// HIPRT_DEVICE float3 microfacet_GGX_multiple_scattering_invariance_sample_reflection(const float3& local_view_direction, // w_i in the paper
+// HIPRT_DEVICE float3_t microfacet_GGX_multiple_scattering_invariance_sample_reflection(const float3_t& local_view_direction, // w_i in the paper
 //																					float material_roughness,
 //																					float material_anisotropy,
 //																					Xorshift32Generator& rng)
 //{
 //	if (local_view_direction.z < 0.0f)
 //		// A direction that is below the surface is invalid for a microfacet ** BRDF **
-//		return float3(0.0f);
+//		return float3_t(0.0f);
 //
 //	float alpha_x;
 //	float alpha_y;
@@ -495,8 +495,8 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //
 //	float pdf = 1.0f;
 //	ColorRGB32F weightAcc(1.0f);
-//	float3 current_view_direction  = local_view_direction;
-//	float3 next_to_light_direction = microfacet_GGX_sample_reflection<false>(material_roughness, material_anisotropy, current_view_direction, rng);
+//	float3_t current_view_direction  = local_view_direction;
+//	float3_t next_to_light_direction = microfacet_GGX_sample_reflection<false>(material_roughness, material_anisotropy, current_view_direction, rng);
 //	// float inLamda				   = G1_Smith_lambda_signed_2023(alpha_x, alpha_y, current_view_direction);
 //
 //	for (int i = 1; i < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; i++)
@@ -513,11 +513,11 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const DeviceUnpa
 //
 //			// TODO is this hit often?
 //			// TODO eval should work even wityhouth that fancy sampling routuibne
-//			return float3(0.0f);
+//			return float3_t(0.0f);
 //		}
 //
 //		// ColorRGB32F weight;
-//		// float3 to_light_direction = next_to_light_direction;
+//		// float3_t to_light_direction = next_to_light_direction;
 //		// float outLamda			  = G1_Smith_lambda_signed(alpha_x, alpha_y, to_light_direction);
 //		// float mapOutLamda		  = abs(outLamda + 1) - 1;
 //

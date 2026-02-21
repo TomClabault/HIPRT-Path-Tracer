@@ -150,8 +150,8 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
 
 		// Inserting the normals if present
 		if (mesh->HasNormals())
-			parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(), reinterpret_cast<float3*>(mesh->mNormals),
-											   reinterpret_cast<float3*>(&mesh->mNormals[mesh->mNumVertices]));
+			parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(), reinterpret_cast<float3_t*>(mesh->mNormals),
+											   reinterpret_cast<float3_t*>(&mesh->mNormals[mesh->mNumVertices]));
 		else
 			parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(), mesh->mNumVertices, hiprtFloat3{ 0, 0, 0 });
 
@@ -161,7 +161,7 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
 			for (int i = 0; i < mesh->mNumVertices; i++)
 				parsed_scene.texcoords.push_back(make_float2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y));
 		else
-			parsed_scene.texcoords.insert(parsed_scene.texcoords.end(), mesh->mNumVertices, float2{ 0.0f, 0.0f });
+			parsed_scene.texcoords.insert(parsed_scene.texcoords.end(), mesh->mNumVertices, float2_t{ 0.0f, 0.0f });
 
 		// Inserting 0 or 1 depending on whether the normals are present or not.
 		// These values will be used in the shader to determine whether we should do
@@ -213,7 +213,7 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
 			// because of the situation we're in
 			mesh_bounding_box = AABB();
 			for (int vert_index = 0; vert_index < mesh->mNumVertices; vert_index++)
-				mesh_bounding_box.extend(*(float3*)(&mesh->mVertices[vert_index]));
+				mesh_bounding_box.extend(*(float3_t*)(&mesh->mVertices[vert_index]));
 		}
 
 		parsed_scene.metadata.mesh_bounding_boxes.push_back(mesh_bounding_box);

@@ -15,7 +15,7 @@
   * Taken from https://github.com/nvpro-samples/nvpro_core/blob/master/nvvkhl/shaders/func.h
   * and optimised a little bit by @tigrazone
  */
-HIPRT_DEVICE static void build_ONB(const float3& N, float3& T, float3& B)
+HIPRT_DEVICE static void build_ONB(const float3_t& N, float3_t& T, float3_t& B)
 {
 	if (N.z < -0.99998796f)  // Handle the singularity
 	{
@@ -29,7 +29,7 @@ HIPRT_DEVICE static void build_ONB(const float3& N, float3& T, float3& B)
 	B = make_float3(T.y, 1.0f - N.y * N.y / (1.0f + N.z), -N.y);
 }
 
-HIPRT_DEVICE static float3 rotate_vector(float3 vector, float3 rotate_around, float theta)
+HIPRT_DEVICE static float3_t rotate_vector(float3_t vector, float3_t rotate_around, float theta)
 {
 	return vector * hippt::intrin_cosf(theta) + hippt::cross(rotate_around, vector) * hippt::intrin_sinf(theta) + rotate_around * hippt::dot(rotate_around, vector) * (1.0f - hippt::intrin_cosf(theta));
 }
@@ -37,9 +37,9 @@ HIPRT_DEVICE static float3 rotate_vector(float3 vector, float3 rotate_around, fl
 /*
  * Rotation of the basis around the normal by 'basis_rotation' radians
  */
-HIPRT_DEVICE static void build_rotated_ONB(const float3& N, float3& T, float3& B, float basis_rotation)
+HIPRT_DEVICE static void build_rotated_ONB(const float3_t& N, float3_t& T, float3_t& B, float basis_rotation)
 {
-	float3 up = hippt::abs(N.z) < 0.9999999f ? make_float3(0.0f, 0.0f, 1.0f) : make_float3(1.0f, 0.0f, 0.0f);
+	float3_t up = hippt::abs(N.z) < 0.9999999f ? make_float3(0.0f, 0.0f, 1.0f) : make_float3(1.0f, 0.0f, 0.0f);
 	T = hippt::normalize(hippt::cross(up, N));
 
 	// Rodrigues' rotation
@@ -51,7 +51,7 @@ HIPRT_DEVICE static void build_rotated_ONB(const float3& N, float3& T, float3& B
  * Build an ONB with the given 'N' axis as the Z axis (up) and also such that
  * vec lies perfectly in the X/Z plane
  */
-HIPRT_DEVICE static void build_ONB_XZ_plane(const float3& N, float3& T, float3& B, const float3& vec_xz)
+HIPRT_DEVICE static void build_ONB_XZ_plane(const float3_t& N, float3_t& T, float3_t& B, const float3_t& vec_xz)
 {
 	if (hippt::abs(hippt::dot(vec_xz, N)) > 0.99998796f)
 		// TODO this test looks wrong, need to check
@@ -64,20 +64,20 @@ HIPRT_DEVICE static void build_ONB_XZ_plane(const float3& N, float3& T, float3& 
 /*
  * Transforms V from its local space to the space around the normal
  */
-HIPRT_DEVICE static float3 local_to_world_frame(const float3& N, const float3& V)
+HIPRT_DEVICE static float3_t local_to_world_frame(const float3_t& N, const float3_t& V)
 {
-	float3 T, B;
+	float3_t T, B;
 	build_ONB(N, T, B);
 
 	return hippt::normalize(V.x * T + V.y * B + V.z * N);
 }
 
-HIPRT_DEVICE static float3 local_to_world_frame(const float3& T, const float3& B, const float3& N, const float3& V)
+HIPRT_DEVICE static float3_t local_to_world_frame(const float3_t& T, const float3_t& B, const float3_t& N, const float3_t& V)
 {
 	return hippt::normalize(V.x * T + V.y * B + V.z * N);
 }
 
-HIPRT_DEVICE static float3 local_to_world_frame_non_normalized(const float3& T, const float3& B, const float3& N, const float3& V)
+HIPRT_DEVICE static float3_t local_to_world_frame_non_normalized(const float3_t& T, const float3_t& B, const float3_t& N, const float3_t& V)
 {
 	return V.x * T + V.y * B + V.z * N;
 }
@@ -86,20 +86,20 @@ HIPRT_DEVICE static float3 local_to_world_frame_non_normalized(const float3& T, 
  * Transforms V from its space to the local space around the normal
  * The given normal is the Z axis of the local frame around the normal
  */
-HIPRT_DEVICE static float3 world_to_local_frame(const float3& N, const float3& V)
+HIPRT_DEVICE static float3_t world_to_local_frame(const float3_t& N, const float3_t& V)
 {
-	float3 T, B;
+	float3_t T, B;
 	build_ONB(N, T, B);
 
 	return hippt::normalize(make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N)));
 }
 
-HIPRT_DEVICE static float3 world_to_local_frame(const float3& T, const float3& B, const float3& N, const float3& V)
+HIPRT_DEVICE static float3_t world_to_local_frame(const float3_t& T, const float3_t& B, const float3_t& N, const float3_t& V)
 {
 	return hippt::normalize(make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N)));
 }
 
-HIPRT_DEVICE static float3 world_to_local_frame_non_normalized(const float3& T, const float3& B, const float3& N, const float3& V)
+HIPRT_DEVICE static float3_t world_to_local_frame_non_normalized(const float3_t& T, const float3_t& B, const float3_t& N, const float3_t& V)
 {
 	return make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N));
 }

@@ -102,7 +102,7 @@ void CPURenderer::resize_buffers()
 	// Resizing buffers + initial value
 	m_pixel_active_buffer.resize(width * height, 0);
 	m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
-	m_denoiser_normals.resize(width * height, float3{ 0.0f, 0.0f, 0.0f });
+	m_denoiser_normals.resize(width * height, float3_t{ 0.0f, 0.0f, 0.0f });
 	m_pixel_sample_count.resize(width * height, 0);
 	m_pixel_converged_sample_count.resize(width * height, 0);
 	m_pixel_squared_luminance.resize(width * height, 0.0f);
@@ -456,14 +456,14 @@ void CPURenderer::compute_emissives_power_alias_table(const Scene& scene)
 										int emissive_triangle_global_index = scene.emissive_triangles_primitive_indices[i];
 
 										// Computing the area of the triangle
-										float3 vertex_A = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 0]];
-										float3 vertex_B = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 1]];
-										float3 vertex_C = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 2]];
+										float3_t vertex_A = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 0]];
+										float3_t vertex_B = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 1]];
+										float3_t vertex_C = scene.vertices_positions[scene.triangles_vertex_indices[emissive_triangle_global_index * 3 + 2]];
 
-										float3 AB = vertex_B - vertex_A;
-										float3 AC = vertex_C - vertex_A;
+										float3_t AB = vertex_B - vertex_A;
+										float3_t AC = vertex_C - vertex_A;
 
-										float3 normal		= hippt::cross(AB, AC);
+										float3_t normal		= hippt::cross(AB, AC);
 										float length_normal = hippt::length(normal);
 										float triangle_area = 0.5f * length_normal;
 

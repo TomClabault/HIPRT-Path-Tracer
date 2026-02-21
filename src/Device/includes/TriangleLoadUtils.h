@@ -8,16 +8,16 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE float3 triangle_load_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)
+HIPRT_DEVICE float3_t triangle_load_normal_not_normalized(const HIPRTRenderData& render_data, int triangle_index)
 {
 	int triangle_index_start = triangle_index * 3;
 
-	float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 0]];
-	float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 1]];
-	float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 2]];
+	float3_t vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 0]];
+	float3_t vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 1]];
+	float3_t vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index_start + 2]];
 
-	float3 AB = vertex_B - vertex_A;
-	float3 AC = vertex_C - vertex_A;
+	float3_t AB = vertex_B - vertex_A;
+	float3_t AC = vertex_C - vertex_A;
 
 	return hippt::cross(AB, AC);
 }

@@ -19,7 +19,7 @@
 HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_data,
 													   RayPayload& ray_payload,
 													   const HitInfo& closest_hit_info,
-													   const float3& view_direction,
+													   const float3_t& view_direction,
 													   const RISReservoir& reservoir,
 													   Xorshift32Generator& random_number_generator)
 {
@@ -33,9 +33,9 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 
 	bool in_shadow;
 	float distance_to_light;
-	float3 evaluated_point				   = closest_hit_info.inter_point;
-	float3 shadow_ray_direction			   = sample.point_on_light_source - evaluated_point;
-	float3 shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
+	float3_t evaluated_point				   = closest_hit_info.inter_point;
+	float3_t shadow_ray_direction			   = sample.point_on_light_source - evaluated_point;
+	float3_t shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
 
 	NEEPlusPlusContext nee_plus_plus_context;
 	if (sample.is_bsdf_sample)
@@ -90,7 +90,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data,
 															   RayPayload& ray_payload,
 															   const HitInfo& closest_hit_info,
-															   const float3& view_direction,
+															   const float3_t& view_direction,
 															   Xorshift32Generator& random_number_generator)
 {
 	// If we're rendering at low resolution, only doing 1 candidate of each
@@ -117,7 +117,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 			float candidate_weight = 0.0f;
 			if (light_sample_info.area_measure_pdf > 0.0f)
 			{
-				float3 to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
+				float3_t to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
 				float distance_to_light	  = hippt::length(to_light_direction);
 				to_light_direction		  = to_light_direction / distance_to_light; // Normalization
 
@@ -178,7 +178,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 		float bsdf_sample_pdf  = 0.0f;
 		float target_function  = 0.0f;
 		float candidate_weight = 0.0f;
-		float3 sampled_bsdf_direction;
+		float3_t sampled_bsdf_direction;
 
 		BSDFIncidentLightInfo incident_light_info;
 		BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
@@ -247,7 +247,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 HIPRT_DEVICE ColorRGB32F sample_lights_RIS(HIPRTRenderData& render_data,
 										   RayPayload& ray_payload,
 										   const HitInfo& closest_hit_info,
-										   const float3& view_direction,
+										   const float3_t& view_direction,
 										   Xorshift32Generator& random_number_generator)
 {
 	if (render_data.buffers.emissive_triangles_count == 0)

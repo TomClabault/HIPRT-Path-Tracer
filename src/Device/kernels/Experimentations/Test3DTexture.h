@@ -29,5 +29,5 @@ GLOBAL_KERNEL_SIGNATURE(void) Test3DTexture(oroTextureObject_t texture_3D, int t
 
 	const uint32_t thread_index = (x + y * tex_size + z * tex_size * tex_size);
 
-	out_buffer[thread_index * 4] = tex3D<float4>(texture_3D, x + 0.35f, y + 0.35f, z + 0.35f).y;
+	out_buffer[thread_index * 4] = tex3D<float4_t>(texture_3D, x + 0.35f, y + 0.35f, z + 0.35f).y;
 }

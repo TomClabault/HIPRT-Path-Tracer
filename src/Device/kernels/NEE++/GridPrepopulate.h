@@ -38,10 +38,10 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data, const h
 				// Can happen for very small triangles
 				continue;
 
-			float3 shadow_ray_origin = closest_hit_info.inter_point;
-			float3 shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
+			float3_t shadow_ray_origin = closest_hit_info.inter_point;
+			float3_t shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
 			float distance_to_light = hippt::length(shadow_ray_direction);
-			float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+			float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 			hiprtRay shadow_ray;
 			shadow_ray.origin = shadow_ray_origin;

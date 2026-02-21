@@ -6,8 +6,9 @@
 #ifndef DEVICE_INTERSECT_H
 #define DEVICE_INTERSECT_H
 
-#include "Device/includes/BSDFSampleHitInfo.h"
+#include "Device/functions/FilterFunction.h"
 #include "Device/includes/BSDFs/Dispersion.h"
+#include "Device/includes/BSDFSampleHitInfo.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Material.h"
 #include "Device/includes/ONB.h"
@@ -15,10 +16,9 @@
 #include "Device/includes/Sampling.h"
 #include "Device/includes/Texture.h"
 #include "Device/includes/TriangleStructures.h"
-#include "Device/functions/FilterFunction.h"
 
-#include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Maths/Math.h"
+#include "HostDeviceCommon/RenderData.h"
 
 #ifdef __KERNELCC__
 
@@ -27,10 +27,16 @@
 #if SharedStackBVHTraversalSize > 0
 #define DECLARE_SHARED_STACK_BUFFER                                                                                                                            \
 	__shared__ int shared_stack_cache[SharedStackBVHTraversalSize * KernelWorkgroupThreadCount];                                                               \
-	hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSize, shared_stack_cache }
+	hiprtSharedStackBuffer shared_stack_buffer                                                                                                                 \
+	{                                                                                                                                                          \
+		SharedStackBVHTraversalSize, shared_stack_cache                                                                                                        \
+	}
 #else
 #define DECLARE_SHARED_STACK_BUFFER                                                                                                                            \
-	shared_stack_buffer { 0, nullptr }
+	shared_stack_buffer                                                                                                                                        \
+	{                                                                                                                                                          \
+		0, nullptr                                                                                                                                             \
+	}
 #endif
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
@@ -75,35 +81,35 @@
  *
  * [1] [Foundations of Game Engine Development: Rendering - Tangent/Bitangent calculation] http://foundationsofgameenginedev.com/#fged2
  */
-HIPRT_DEVICE float3 normal_mapping(const HIPRTRenderData& render_data,
-								   int normal_map_texture_index,
-								   TriangleIndices triangle_vertex_indices,
-								   TriangleTexcoords& texcoords,
-								   const float2& interpolated_texcoords,
-								   const float3& surface_normal)
+HIPRT_DEVICE float3_t normal_mapping(const HIPRTRenderData& render_data,
+									 int normal_map_texture_index,
+									 TriangleIndices triangle_vertex_indices,
+									 TriangleTexcoords& texcoords,
+									 const float2_t& interpolated_texcoords,
+									 const float3_t& surface_normal)
 {
 	// Calculating tangents and bitangents aligned with texture U and V coordinates
-	float2 P0_texcoords = texcoords.x;
-	float2 P1_texcoords = texcoords.y;
-	float2 P2_texcoords = texcoords.z;
+	float2_t P0_texcoords = texcoords.x;
+	float2_t P1_texcoords = texcoords.y;
+	float2_t P2_texcoords = texcoords.z;
 
-	float2 delta_P1P0_texcoords = P1_texcoords - P0_texcoords;
-	float2 delta_P2P0_texcoords = P2_texcoords - P0_texcoords;
+	float2_t delta_P1P0_texcoords = P1_texcoords - P0_texcoords;
+	float2_t delta_P2P0_texcoords = P2_texcoords - P0_texcoords;
 
-	float3 P0 = render_data.buffers.vertices_positions[triangle_vertex_indices.x];
-	float3 P1 = render_data.buffers.vertices_positions[triangle_vertex_indices.y];
-	float3 P2 = render_data.buffers.vertices_positions[triangle_vertex_indices.z];
+	float3_t P0 = render_data.buffers.vertices_positions[triangle_vertex_indices.x];
+	float3_t P1 = render_data.buffers.vertices_positions[triangle_vertex_indices.y];
+	float3_t P2 = render_data.buffers.vertices_positions[triangle_vertex_indices.z];
 
-	float3 edge_P0P1 = P1 - P0;
-	float3 edge_P0P2 = P2 - P0;
+	float3_t edge_P0P1 = P1 - P0;
+	float3_t edge_P0P2 = P2 - P0;
 
 	// To counter degenerate UVs
 	constexpr float det_bias = 1.0e-6f;
 	float det				 = delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x + det_bias;
 	// Check if the det isn't too low to avoid degenerate geometries that can then cause NaNs
 	float det_inverse = 1.0f / det;
-	float3 T		  = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
-	float3 B		  = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
+	float3_t T		  = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
+	float3_t B		  = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
 	if (hippt::length2(T) < 1.0e-6f || hippt::length2(B) < 1.0e-6f)
 		// The tangent or the bitangent is degenerate
 		return surface_normal;
@@ -112,24 +118,24 @@ HIPRT_DEVICE float3 normal_mapping(const HIPRTRenderData& render_data,
 	// Bringing the normal in [-x, x]. x doesn't really matter since we normalize the result anyway
 	normal -= ColorRGB32F(0.5f);
 
-	float3 normal_tangent_space = hippt::normalize(make_float3(normal.r, normal.g, normal.b));
+	float3_t normal_tangent_space = hippt::normalize(make_float3(normal.r, normal.g, normal.b));
 
 	return local_to_world_frame(hippt::normalize(T), hippt::normalize(B), surface_normal, normal_tangent_space);
 }
 
-HIPRT_DEVICE float3 get_shading_normal(const HIPRTRenderData& render_data,
-									   const float3& geometric_normal,
-									   TriangleIndices triangle_vertex_indices,
-									   TriangleTexcoords triangle_texcoords,
-									   int primitive_index,
-									   const float2& uv,
-									   const float2& interpolated_texcoords)
+HIPRT_DEVICE float3_t get_shading_normal(const HIPRTRenderData& render_data,
+										 const float3_t& geometric_normal,
+										 TriangleIndices triangle_vertex_indices,
+										 TriangleTexcoords triangle_texcoords,
+										 int primitive_index,
+										 const float2_t& uv,
+										 const float2_t& interpolated_texcoords)
 {
 	if (!render_data.render_settings.do_normal_mapping)
 		return geometric_normal;
 
 	// Do smooth shading first if we have vertex normals
-	float3 surface_normal;
+	float3_t surface_normal;
 	if (render_data.buffers.has_vertex_normals[triangle_vertex_indices.x])
 		// Smooth normal available for the triangle
 		surface_normal = hippt::normalize(uv_interpolate(triangle_vertex_indices, render_data.buffers.vertex_normals, uv));
@@ -152,7 +158,7 @@ HIPRT_DEVICE float3 get_shading_normal(const HIPRTRenderData& render_data,
  * The normals are only flipped if some conditions are met, read the
  * comment in the function for more details
  */
-HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3& view_direction)
+HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3_t& view_direction)
 {
 	if (hippt::dot(view_direction, hit_info.geometric_normal) < 0.0f)
 	{
@@ -167,7 +173,7 @@ HIPRT_DEVICE void fix_backfacing_normals(HitInfo& hit_info, const float3& view_d
 		hit_info.shading_normal *= -1.0f;
 
 	// Now ensuring that a perfectly reflected direction (about the shading normal) doesn't go below the *geometric* surface
-	float3 perfect_reflected_direction = reflect_ray(view_direction, hit_info.shading_normal);
+	float3_t perfect_reflected_direction = reflect_ray(view_direction, hit_info.shading_normal);
 	if (hippt::dot(perfect_reflected_direction, hit_info.geometric_normal) <= 0.0f)
 	{
 		// The perfectly reflected direction *is* below the geometric normal,
@@ -503,7 +509,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 
 	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, global_triangle_index);
 	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-	float2 interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+	float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 	if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
@@ -561,7 +567,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 
 		TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, global_triangle_index_hit);
 		TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-		float2 interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+		float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 		if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 			out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
@@ -620,7 +626,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 
 	TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
 	TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-	float2 interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+	float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 	if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
@@ -675,7 +681,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 
 		TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
 		TriangleTexcoords triangle_texcoords	= load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
-		float2 interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
+		float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 		if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 			out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);

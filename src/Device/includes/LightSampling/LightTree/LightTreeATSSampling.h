@@ -16,28 +16,28 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE HIPRT_INLINE bool point_inside_AABB(float3 aabb_min, float3 aabb_max, float3 point)
+HIPRT_DEVICE HIPRT_INLINE bool point_inside_AABB(float3_t aabb_min, float3_t aabb_max, float3_t point)
 {
 	return (point.x <= aabb_max.x && point.x >= aabb_min.x) &&
 		(point.y <= aabb_max.y && point.y >= aabb_min.y) &&
 		(point.z <= aabb_max.z && point.z >= aabb_min.z);
 }
 
-HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3 aabb_min, float3 aabb_max, float3 point)
+HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3_t aabb_min, float3_t aabb_max, float3_t point)
 {
 	if (point_inside_AABB(aabb_min, aabb_max, point))
 		return hippt::M_Pi;
 
 	// Compute the average vector to each of the bounding box corners to get the direction of
 	// the bounding cone
-	float3 direction_to_corners_sum = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t direction_to_corners_sum = make_float3(0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < 8; ++i)
 	{
-		float3 corner = make_float3((i & 1) ? aabb_min.x : aabb_max.x, (i & 2) ? aabb_min.y : aabb_max.y, (i & 4) ? aabb_min.z : aabb_max.z);
+		float3_t corner = make_float3((i & 1) ? aabb_min.x : aabb_max.x, (i & 2) ? aabb_min.y : aabb_max.y, (i & 4) ? aabb_min.z : aabb_max.z);
 		direction_to_corners_sum += hippt::normalize(corner - point);
 	}
 
-	float3 cone_direction = hippt::normalize(direction_to_corners_sum);
+	float3_t cone_direction = hippt::normalize(direction_to_corners_sum);
 
 	// Now that we have the cone direction, compute the angle that cone with that forms 
 	// with each corner of the bounds and keep the largest angle (which is the min cos theta)
@@ -47,7 +47,7 @@ HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3 aabb_min
 	float cos_theta = 1.0f;
 	for (int i = 0; i < 8; ++i)
 	{
-		float3 corner = make_float3((i & 1) ? aabb_min.x : aabb_max.x, (i & 2) ? aabb_min.y : aabb_max.y, (i & 4) ? aabb_min.z : aabb_max.z);
+		float3_t corner = make_float3((i & 1) ? aabb_min.x : aabb_max.x, (i & 2) ? aabb_min.y : aabb_max.y, (i & 4) ? aabb_min.z : aabb_max.z);
 		cos_theta = hippt::min(cos_theta, hippt::dot(hippt::normalize(corner - point), cone_direction));
 	}
 
@@ -55,7 +55,7 @@ HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3 aabb_min
 }
 
 template <bool UseOrientation>
-HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& node, float3 shading_point, float3 shading_normal)
+HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& node, float3_t shading_point, float3_t shading_normal)
 {
 	if (node.is_invalid())
 		return 0.0f;
@@ -69,7 +69,7 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 	// sphere is too conservative
 	if constexpr (UseOrientation)
 	{
-		float3 max_corner;
+		float3_t max_corner;
 		max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
 		max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
 		max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
@@ -78,11 +78,11 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 			return 0.0f;
 	}
 
-	float3 node_center = (node.bounds_max + node.bounds_min) * 0.5f;
-	float3 to_center = node_center - shading_point;
+	float3_t node_center = (node.bounds_max + node.bounds_min) * 0.5f;
+	float3_t to_center = node_center - shading_point;
 	float dist_to_center = hippt::length(to_center);
-	float3 to_center_normalized = to_center / dist_to_center;
-	float3 node_diag = node.bounds_max - node.bounds_min;
+	float3_t to_center_normalized = to_center / dist_to_center;
+	float3_t node_diag = node.bounds_max - node.bounds_min;
 	float half_diag_length = hippt::length(node_diag) * 0.5f;
 	// Using a minimum for the distance squared to avoid large errors if a point is very close to the center
 	// of the node for example
@@ -176,10 +176,10 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 
 #define ATS_LIGHT_TREE_SPLITTING_STACK_SIZE 2
 
-HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& node, float3 shading_point)
+HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& node, float3_t shading_point)
 {
-	float3 node_center = (node.bounds_max + node.bounds_min) * 0.5f;
-	float3 half_extents = (node.bounds_max - node.bounds_min) * 0.5f;
+	float3_t node_center = (node.bounds_max + node.bounds_min) * 0.5f;
+	float3_t half_extents = (node.bounds_max - node.bounds_min) * 0.5f;
 	float bounding_sphere_radius = hippt::length(half_extents);
 
 	// Compute a and b for the geometric mean and variance
@@ -198,7 +198,7 @@ HIPRT_DEVICE float light_tree_ats_node_variance(const LightTreeATSNodeDevice& no
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()> sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal, float3_t geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
 {
@@ -390,7 +390,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data, const LightTreeATSNodeDevice* nodes, unsigned int node_index, unsigned int& collected_split_samples,
-	float3 shading_point, float3 shading_normal)
+	float3_t shading_point, float3_t shading_normal)
 {
 	int stack_pointer = 0;
 	unsigned int node_index_stack[LightTreeATSSplittingMaxLightSamples] = { node_index };
@@ -460,7 +460,7 @@ HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data, const Lig
 }
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
-HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_emissive_triangle_index)
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, float3_t shading_point, float3_t shading_normal, int global_emissive_triangle_index)
 {
 	if (global_emissive_triangle_index == -1)
 		return 0.0f;
@@ -589,7 +589,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
 HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal, float3 geometric_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal, float3_t geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& rng)
 {
@@ -636,7 +636,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(con
 }
 
 template <bool UseOrientation = LightTreeATSImportanceFunctionUseOrientation>
-HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, float3 shading_point, float3 shading_normal, int global_emissive_triangle_index)
+HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData& render_data, float3_t shading_point, float3_t shading_normal, int global_emissive_triangle_index)
 {
 	if (global_emissive_triangle_index == -1)
 		return 0.0f;

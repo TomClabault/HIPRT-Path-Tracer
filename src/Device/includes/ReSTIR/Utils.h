@@ -22,7 +22,7 @@
   *
   * Returns true if the reservoir was killed, false otherwise
   */
-HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point, int last_primitive_hit_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3_t shading_point, int last_primitive_hit_index, Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
 		return false;
@@ -31,7 +31,7 @@ HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData
 		return false;
 
 	float distance_to_light;
-	float3 sample_direction;
+	float3_t sample_direction;
 	if (reservoir.sample.is_envmap_sample())
 	{
 		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, reservoir.sample.point_on_light_source);
@@ -71,13 +71,13 @@ HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData
  *
  * Returns true if the reservoir was killed, false otherwise
  */
-HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3 shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3_t shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
 		return false;
 
 	float distance_to_sample_point;
-	float3 sample_direction;
+	float3_t sample_direction;
 	if (reservoir.sample.is_envmap_path())
 	{
 		// For envmap path, the direction is stored in the 'sample_point' value

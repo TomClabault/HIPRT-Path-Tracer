@@ -14,7 +14,7 @@
 /**
  *	Updates the representative point and normal (and other data) of the cell at the given shading point
  */
-HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3 shading_point, float3 surface_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material)
+HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3_t shading_point, float3_t surface_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material)
 {
 	if (DirectLightSamplingStrategy != LSS_BASE_REGIR)
 		return;

@@ -14,7 +14,7 @@
 HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 												RayPayload& ray_payload,
 												const HitInfo closest_hit_info,
-												const float3& view_direction,
+												const float3_t& view_direction,
 												Xorshift32Generator& random_number_generator)
 {
 	if (!ray_payload.material.can_do_light_sampling())
@@ -39,10 +39,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 		return selected_sample_radiance / light_sample.area_measure_pdf;
 #else
 		// ReGIR succeeded with sampling, just shooting a shadow ray to validate visibility
-		float3 shadow_ray_origin			   = closest_hit_info.inter_point;
-		float3 shadow_ray_direction			   = light_sample.point_on_light - shadow_ray_origin;
+		float3_t shadow_ray_origin			   = closest_hit_info.inter_point;
+		float3_t shadow_ray_direction			   = light_sample.point_on_light - shadow_ray_origin;
 		float distance_to_light				   = hippt::length(shadow_ray_direction);
-		float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+		float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 		hiprtRay shadow_ray;
 		shadow_ray.origin	 = shadow_ray_origin;
@@ -89,10 +89,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 				// sampling technique couldn't sample a triangle
 				continue;
 
-			float3 shadow_ray_origin			   = closest_hit_info.inter_point;
-			float3 shadow_ray_direction			   = light_sample.point_on_light - shadow_ray_origin;
+			float3_t shadow_ray_origin			   = closest_hit_info.inter_point;
+			float3_t shadow_ray_direction			   = light_sample.point_on_light - shadow_ray_origin;
 			float distance_to_light				   = hippt::length(shadow_ray_direction);
-			float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+			float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 			hiprtRay shadow_ray;
 			shadow_ray.origin	 = shadow_ray_origin;

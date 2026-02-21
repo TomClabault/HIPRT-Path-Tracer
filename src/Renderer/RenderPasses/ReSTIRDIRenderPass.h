@@ -35,7 +35,7 @@ public:
 	 *
 	 * This means that if you define your camera ray kernel main function as:
 	 *
-	 * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res)
+	 * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2_t res)
 	 *
 	 * Then KERNEL_FUNCTION_NAMES[CAMERA_RAYS_KERNEL_ID] = "CameraRays"
 	 */
@@ -51,7 +51,10 @@ public:
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
-	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
+	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+											  const std::vector<hiprtFuncNameSet>& func_name_sets = {},
+											  bool silent										  = false,
+											  bool use_cache									  = true) override;
 
 	/**
 	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
@@ -112,12 +115,12 @@ private:
 
 	// If true, the temporal buffers are going to be reset by the temporal pass
 	bool m_temporal_buffer_clear_requested = false;
-	bool odd_frame = false;
+	bool odd_frame						   = false;
 
 	// Events for timing the cumulated render time of all the spatial reuses passes
-	bool m_spatial_reuse_events_recorded = false;
+	bool m_spatial_reuse_events_recorded  = false;
 	oroEvent_t m_spatial_reuse_time_start = nullptr;
-	oroEvent_t m_spatial_reuse_time_stop = nullptr;
+	oroEvent_t m_spatial_reuse_time_stop  = nullptr;
 };
 
 #endif

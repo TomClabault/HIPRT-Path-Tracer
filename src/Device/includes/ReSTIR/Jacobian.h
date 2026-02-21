@@ -10,10 +10,10 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE float get_jacobian_determinant_reconnection_shift(const float3& reconnection_point, const float3& reconnection_point_surface_normal, const float3& point_being_reconnected, const float3& vertex_before_reconnection_original_path, float jacobian_threshold)
+HIPRT_DEVICE float get_jacobian_determinant_reconnection_shift(const float3_t& reconnection_point, const float3_t& reconnection_point_surface_normal, const float3_t& point_being_reconnected, const float3_t& vertex_before_reconnection_original_path, float jacobian_threshold)
 {
-	float3 direction_to_reconnection_point_from_center = reconnection_point - point_being_reconnected;
-	float3 direction_to_reconnection_point_from_neighbor = reconnection_point - vertex_before_reconnection_original_path;
+	float3_t direction_to_reconnection_point_from_center = reconnection_point - point_being_reconnected;
+	float3_t direction_to_reconnection_point_from_neighbor = reconnection_point - vertex_before_reconnection_original_path;
 	float distance_to_reconnection_point_from_center = hippt::length(direction_to_reconnection_point_from_center);
 	float distance_to_reconnection_point_from_neighbor = hippt::length(direction_to_reconnection_point_from_neighbor);
 	direction_to_reconnection_point_from_center /= distance_to_reconnection_point_from_center;

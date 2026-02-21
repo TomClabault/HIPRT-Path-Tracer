@@ -16,7 +16,7 @@
  * The PDF is computed in area measure
  */
 HIPRT_DEVICE LightSampleInformation sample_one_light_uniform(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
 	Xorshift32Generator& random_number_generator)
 {
@@ -34,7 +34,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_light_uniform(const HIPRTRenderDa
 }
 
 HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_uniform(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
 	Xorshift32Generator& random_number_generator)
 {
@@ -56,7 +56,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_uniform(const
 }
 
 HIPRT_DEVICE LightSampleInformation sample_one_light_power(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
 	Xorshift32Generator& random_number_generator)
 {
@@ -83,7 +83,7 @@ HIPRT_DEVICE LightSampleInformation sample_one_light_power(const HIPRTRenderData
  * that's why it's there
  */
 HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_power(const HIPRTRenderData& render_data,
-	float3 shading_point, float3 view_direction, float3 shading_normal,
+	float3_t shading_point, float3_t view_direction, float3_t shading_normal,
 	const DeviceUnpackedEffectiveMaterial& material,
 	Xorshift32Generator& random_number_generator)
 {
@@ -106,7 +106,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_power(const H
 
 template <int samplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample_one_light(const HIPRTRenderData& render_data,
-	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
+	const float3_t& shading_point, const float3_t& view_direction, const float3_t& shading_normal, const float3_t& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& random_number_generator)
 {
@@ -151,14 +151,14 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample
 }
 
 HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(const HIPRTRenderData& render_data,
-	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
+	const float3_t& shading_point, const float3_t& view_direction, const float3_t& shading_normal, const float3_t& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	bool& out_need_fallback_sampling,
 	Xorshift32Generator& random_number_generator);
 
 template <int samplingStrategy = DirectLightSamplingStrategy>
 HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> sample_one_point_on_light(const HIPRTRenderData& render_data,
-	const float3& shading_point, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
+	const float3_t& shading_point, const float3_t& view_direction, const float3_t& shading_normal, const float3_t& geometric_normal,
 	int last_hit_primitive_index, RayPayload& ray_payload,
 	Xorshift32Generator& random_number_generator)
 {

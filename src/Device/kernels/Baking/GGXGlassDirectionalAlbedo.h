@@ -34,7 +34,7 @@
  * The second texture is used when inside the object: its IOR is simply inversed
  */
 
-HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
+HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior, float roughness, const float3_t& local_view_direction, const float3_t& local_to_light_direction, float& pdf, GGXMaskingShadowingFlavor masking_shadowing_term)
 {
 	pdf = 0.0f;
 
@@ -52,7 +52,7 @@ HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior, float roughness, const f
 		relative_ior = 1.0f + 1.0e-5f;
 
 	// Computing the generalized (that takes refraction into account) half vector
-	float3 local_half_vector;
+	float3_t local_half_vector;
 	if (reflecting)
 		local_half_vector = local_to_light_direction + local_view_direction;
 	else
@@ -124,7 +124,7 @@ HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior, float roughness, const f
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_DEVICE float3 GGX_glass_E_sample(float relative_ior, float roughness, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE float3_t GGX_glass_E_sample(float relative_ior, float roughness, const float3_t& local_view_direction, Xorshift32Generator& random_number_generator)
 {
 	if (hippt::abs(relative_ior - 1.0f) < 1.0e-5f)
 		relative_ior = 1.0f + 1.0e-5f;
@@ -132,12 +132,12 @@ HIPRT_DEVICE float3 GGX_glass_E_sample(float relative_ior, float roughness, cons
 	float alpha_x;
 	float alpha_y;
 	MaterialUtils::get_alphas(roughness, /* ignoring anisotropy */ 0.0f, alpha_x, alpha_y);
-	float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
+	float3_t microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
 	float F = full_fresnel_dielectric(hippt::dot(local_view_direction, microfacet_normal), relative_ior);
 	float rand_1 = random_number_generator();
 
-	float3 sampled_direction;
+	float3_t sampled_direction;
 	if (rand_1 < F)
 		// Reflection
 		sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
@@ -180,7 +180,7 @@ HIPRT_DEVICE void glass_directional_albedo_integration(int kernel_iterations, in
 	float sqrt_F0 = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
 	float relative_ior = (1.0f + sqrt_F0) / (1.0f - sqrt_F0);
 
-	float3 local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
+	float3_t local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
 	if (exiting_surface)
 		// Inverting the relative IOR in case we're inside the surface
@@ -192,7 +192,7 @@ HIPRT_DEVICE void glass_directional_albedo_integration(int kernel_iterations, in
 
 	for (int sample = 0; sample < kernel_iterations; sample++)
 	{
-		float3 sampled_local_to_light_direction = GGX_glass_E_sample(relative_ior, roughness, local_view_direction, random_number_generator);
+		float3_t sampled_local_to_light_direction = GGX_glass_E_sample(relative_ior, roughness, local_view_direction, random_number_generator);
 
 		float eval_pdf;
 		float directional_albedo = GGX_glass_E_eval(relative_ior, roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf, bake_settings.masking_shadowing_term);

@@ -52,8 +52,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReGIR_Rehash(
 
 	unsigned int cell_alive_index = old_grid_cells_alive_list[cell_index];
 
-	float3 world_position = old_hash_cell_data.world_points[cell_alive_index];
-	float3 shading_normal = old_hash_cell_data.world_normals[cell_alive_index].unpack();
+	float3_t world_position = old_hash_cell_data.world_points[cell_alive_index];
+	float3_t shading_normal = old_hash_cell_data.world_normals[cell_alive_index].unpack();
 	int primitive_index = old_hash_cell_data.hit_primitive[cell_alive_index];
 
 	DeviceUnpackedEffectiveMaterial material;

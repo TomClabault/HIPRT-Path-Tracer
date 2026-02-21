@@ -10,10 +10,10 @@
 #include "Device/includes/ReSTIR/ReGIR/ShadingPairwiseMIS.h"
 
 HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with_selected_sample_radiance(const HIPRTRenderData& render_data,
-																										  const float3& shading_point,
-																										  const float3& view_direction,
-																										  const float3& shading_normal,
-																										  const float3& geometric_normal,
+																										  const float3_t& shading_point,
+																										  const float3_t& view_direction,
+																										  const float3_t& shading_normal,
+																										  const float3_t& geometric_normal,
 																										  int last_hit_primitive_index,
 																										  RayPayload& ray_payload,
 																										  bool& out_need_fallback_sampling,
@@ -49,7 +49,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 	if (reservoir.sample.emissive_triangle_global_index == -1)
 		return LightSamplePointInformation();
 
-	float3 normal = triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index);
+	float3_t normal = triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index);
 	float area	  = hippt::length(normal) * 0.5f;
 	normal		  = hippt::normalize(normal);
 
@@ -68,8 +68,8 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 	// this will be set to false
 	out_need_fallback_sampling = true;
 
-	float3 selected_point_on_light					   = make_float3(0.0f, 0.0f, 0.0f);
-	float3 selected_light_source_normal				   = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t selected_point_on_light					   = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t selected_light_source_normal				   = make_float3(0.0f, 0.0f, 0.0f);
 	float selected_light_source_area				   = 0.0f;
 	BSDFIncidentLightInfo selected_incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 	ColorRGB32F selected_emission;
@@ -112,8 +112,8 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 
 	float UCW_1 = 0.0f, UCW_2 = 0.0f;
 	int triangle_index_canonical_technique_1 = -1, triangle_index_canonical_technique_2 = -1, triangle_index_canonical_technique_3 = -1;
-	float3 point_on_light_1 = make_float3(0.0f, 0.0f, 0.0f), point_on_light_2 = make_float3(0.0f, 0.0f, 0.0f), point_on_light_3 = make_float3(0.0f, 0.0f, 0.0f);
-	float3 light_source_normal_1 = make_float3(0.0f, 0.0f, 0.0f), light_source_normal_2 = make_float3(0.0f, 0.0f, 0.0f),
+	float3_t point_on_light_1 = make_float3(0.0f, 0.0f, 0.0f), point_on_light_2 = make_float3(0.0f, 0.0f, 0.0f), point_on_light_3 = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t light_source_normal_1 = make_float3(0.0f, 0.0f, 0.0f), light_source_normal_2 = make_float3(0.0f, 0.0f, 0.0f),
 		   light_source_normal_3 = make_float3(0.0f, 0.0f, 0.0f);
 	ColorRGB32F emission_1, emission_2, emission_3;
 
@@ -155,7 +155,7 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 
 #if ReGIR_ShadingResamplingDoBSDFMIS == KERNEL_OPTION_TRUE
 			float bsdf_sample_pdf;
-			float3 sampled_bsdf_direction;
+			float3_t sampled_bsdf_direction;
 
 			BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, make_float3(0.0f, 0.0f, 0.0f), canonical_technique_3_sample_ili,
 									 ray_payload.volume_state, false, ray_payload.material, ray_payload.accumulated_roughness,
@@ -373,10 +373,10 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 			continue;
 		}
 
-		float3 light_source_normal = triangle_load_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
+		float3_t light_source_normal = triangle_load_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
 		float light_source_area	   = hippt::length(light_source_normal) * 0.5f;
 		light_source_normal /= hippt::length(light_source_normal);
-		float3 point_on_light = non_canonical_reservoir.sample.point_on_light;
+		float3_t point_on_light = non_canonical_reservoir.sample.point_on_light;
 		ColorRGB32F emission  = triangle_load_emission(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
 
 		ColorRGB32F sample_radiance;
@@ -567,10 +567,10 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 }
 
 HIPRT_DEVICE LightSamplePointInformation sample_one_point_on_light_regir(const HIPRTRenderData& render_data,
-																		 const float3& shading_point,
-																		 const float3& view_direction,
-																		 const float3& shading_normal,
-																		 const float3& geometric_normal,
+																		 const float3_t& shading_point,
+																		 const float3_t& view_direction,
+																		 const float3_t& shading_normal,
+																		 const float3_t& geometric_normal,
 																		 int last_hit_primitive_index,
 																		 RayPayload& ray_payload,
 																		 bool& out_need_fallback_sampling,

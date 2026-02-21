@@ -23,16 +23,20 @@
 #define NB_SAMPLES_PER_RADIUS (NB_SAMPLES_PER_RADIUS_INTERNAL > 64 ? 64 : NB_SAMPLES_PER_RADIUS_INTERNAL) // Max to 64 for unsigned long long int
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
-	unsigned int* __restrict__ out_directional_reuse_masks_buffer_u,
-	unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
-	unsigned char* __restrict__ out_adaptive_radius_buffer)
+GLOBAL_KERNEL_SIGNATURE(void)
+__launch_bounds__(64) ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
+													   unsigned int* __restrict__ out_directional_reuse_masks_buffer_u,
+													   unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
+													   unsigned char* __restrict__ out_adaptive_radius_buffer)
 #else
 template <bool IsReSTIRGI>
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data, int x, int y,
-	unsigned int* __restrict__ out_directional_reuse_masks_buffer_u,
-	unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
-	unsigned char* __restrict__ out_adaptive_radius_buffer)
+GLOBAL_KERNEL_SIGNATURE(void)
+inline ReSTIR_Directional_Reuse_Compute(HIPRTRenderData render_data,
+										int x,
+										int y,
+										unsigned int* __restrict__ out_directional_reuse_masks_buffer_u,
+										unsigned long long int* __restrict__ out_directional_reuse_masks_buffer_ull,
+										unsigned char* __restrict__ out_adaptive_radius_buffer)
 #endif
 {
 #ifdef __KERNELCC__
@@ -59,35 +63,38 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
 #endif
 	out_adaptive_radius_buffer[center_pixel_index] = 0;
 
-
-
-
-
 #ifdef __KERNELCC__
 	// If on the GPU, using the 'ComputingSpatialDirectionalReuseForReSTIRGI' macro
 	// (that is passed to the compiler in the ReSTIRDI/GI RenderPass.cpp)
 	//
 	// To get the settings
-	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data);
+	ReSTIRCommonSpatialPassSettings spatial_pass_settings =
+							ReSTIRSettingsHelper::get_restir_spatial_pass_settings<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data);
 #else
 	// On the CPU, it is the template argument that dictates whether this is for ReSTIR DI or GI
 	ReSTIRCommonSpatialPassSettings spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 #endif
 
-	float3 center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
+	float3_t center_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
 #ifdef __KERNELCC__
-	float3 center_normal = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data).reject_using_geometric_normals ? render_data.g_buffer.geometric_normals[center_pixel_index].unpack() : render_data.g_buffer.shading_normals[center_pixel_index].unpack();
+	float3_t center_normal = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data)
+																			 .reject_using_geometric_normals
+													 ? render_data.g_buffer.geometric_normals[center_pixel_index].unpack()
+													 : render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 #else
-	float3 center_normal = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data).reject_using_geometric_normals ? render_data.g_buffer.geometric_normals[center_pixel_index].unpack() : render_data.g_buffer.shading_normals[center_pixel_index].unpack();
+	float3_t center_normal = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data).reject_using_geometric_normals
+													 ? render_data.g_buffer.geometric_normals[center_pixel_index].unpack()
+													 : render_data.g_buffer.shading_normals[center_pixel_index].unpack();
 #endif
 
-	float best_area = 0.0f;
+	float best_area		  = 0.0f;
 	int best_radius_index = 0;
 	// Each long long int in there contains, in each bit, whether or not the direction for that radius is reusable or not
 	unsigned long long int valid_samples_per_radius[NB_RADIUS] = { 0 };
 	for (int radius_index = 0; radius_index < NB_RADIUS; radius_index++)
 	{
-		float current_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius + (radius_index / (float)NB_RADIUS) * (spatial_pass_settings.reuse_radius - spatial_pass_settings.minimum_per_pixel_reuse_radius);
+		float current_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius +
+							   (radius_index / (float)NB_RADIUS) * (spatial_pass_settings.reuse_radius - spatial_pass_settings.minimum_per_pixel_reuse_radius);
 		float current_radius_circle_area = hippt::M_Pi * current_radius * current_radius;
 
 		// Now sampling a bunch of neighbors *on* that radius, exactly at that radius distance from the center (i.e. *not* within the disk of that radius)
@@ -99,14 +106,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
 					// If this direction wasn't accepted at the previous radius
 					continue;
 
-			float theta = sample_index / (float)NB_SAMPLES_PER_RADIUS * hippt::M_TWO_PI;
+			float theta	   = sample_index / (float)NB_SAMPLES_PER_RADIUS * hippt::M_TWO_PI;
 			float x_circle = current_radius * hippt::intrin_cosf(theta);
 			float y_circle = current_radius * hippt::intrin_sinf(theta);
 
-			int2 neighbor_offset_in_disk = make_int2(static_cast<int>(roundf(x_circle)), static_cast<int>(roundf(y_circle)));
-			int2 neighbor_pixel_coords = make_int2(x, y) + neighbor_offset_in_disk;
-			if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x ||
-				neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
+			int2_t neighbor_offset_in_disk = make_int2(static_cast<int>(roundf(x_circle)), static_cast<int>(roundf(y_circle)));
+			int2_t neighbor_pixel_coords   = make_int2(x, y) + neighbor_offset_in_disk;
+			if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.y < 0 ||
+				neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
 				// Rejecting the sample if it's outside of the viewport
 				continue;
 
@@ -117,7 +124,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
 			// (that is passed to the compiler in the ReSTIRDI/GI RenderPass.cpp)
 			//
 			// To determine whether this is for ReSTIR DI or GI
-			if (!check_neighbor_similarity_heuristics<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data, neighbor_index, center_pixel_index, center_shading_point, center_normal))
+			if (!check_neighbor_similarity_heuristics<ComputingSpatialDirectionalReuseForReSTIRGI>(render_data, neighbor_index, center_pixel_index,
+																								   center_shading_point, center_normal))
 				continue;
 #else
 			// On the CPU, it is the template argument that dictates whether this is for ReSTIR DI or GI
@@ -131,13 +139,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_Directional_Reuse_Compute(HIPRTRende
 
 		if (best_area < area_at_current_radius)
 		{
-			best_area = area_at_current_radius;
+			best_area		  = area_at_current_radius;
 			best_radius_index = radius_index;
 		}
 	}
 
 	// Computing the actual radius from the best radius index
-	float best_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius + (best_radius_index / (float)NB_RADIUS) * (spatial_pass_settings.reuse_radius - spatial_pass_settings.minimum_per_pixel_reuse_radius);
+	float best_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius +
+						(best_radius_index / (float)NB_RADIUS) * (spatial_pass_settings.reuse_radius - spatial_pass_settings.minimum_per_pixel_reuse_radius);
 	if (best_area == 0.0f)
 		best_radius = 0.0f;
 

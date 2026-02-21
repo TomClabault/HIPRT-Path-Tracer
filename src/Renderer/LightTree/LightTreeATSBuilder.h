@@ -22,8 +22,8 @@ public:
 	{
 		AABB bounds;
 
-		float3 centroid;
-		float3 normal;
+		float3_t centroid;
+		float3_t normal;
 		float area;
 
 		float power;
@@ -53,9 +53,9 @@ public:
 
 	int bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const;
 
-	float3 get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const LightTreeBuilderTrianglesData& triangles_data) const;
+	float3_t get_triangle_vertex(unsigned int linear_emissive_triangle_index, unsigned int vertex_index, const LightTreeBuilderTrianglesData& triangles_data) const;
 
-	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials);
+	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_indices, const std::vector<float3_t>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials);
 
 	void update_node_bounds(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data);
 	void subdivide_node(unsigned int node_index, const LightTreeBuilderTrianglesData& triangles_data, int depth);

@@ -20,7 +20,7 @@
 
 struct ReGIRHashGrid
 {
-	HIPRT_DEVICE static float compute_adaptive_cell_size_roughness(float3 world_position, const HIPRTCamera& current_camera, float roughness, bool primary_hit, float target_projected_size, float grid_cell_min_size)
+	HIPRT_DEVICE static float compute_adaptive_cell_size_roughness(float3_t world_position, const HIPRTCamera& current_camera, float roughness, bool primary_hit, float target_projected_size, float grid_cell_min_size)
 	{
 		int width = current_camera.sensor_width;
 		int height = current_camera.sensor_height;
@@ -63,10 +63,10 @@ struct ReGIRHashGrid
 #endif
 	}
 
-	HIPRT_DEVICE float3 jitter_normal_in_tangent_plane(float3 surface_normal, float3 pos) const
+	HIPRT_DEVICE float3_t jitter_normal_in_tangent_plane(float3_t surface_normal, float3_t pos) const
 	{
 		// Getting the tangent plane vectors from the normal
-		float3 T, B;
+		float3_t T, B;
 		build_ONB(surface_normal, T, B);
 
 		// Some deterministic random numbers from the position, in [-1, 1]
@@ -74,18 +74,18 @@ struct ReGIRHashGrid
 		float jitter_y = Xorshift32Generator(h2_xxhash32(pos.y * static_cast<float>(0xFFFFFFFF)))() * 2.0f - 1.0f;
 
 		// Jittering our normal in the tangent plane
-		float3 jittered = surface_normal + (T * jitter_x + B * jitter_y) * fuzzy_normals_strength;
+		float3_t jittered = surface_normal + (T * jitter_x + B * jitter_y) * fuzzy_normals_strength;
 
 		// --- Step 4: renormalize ---
 		return hippt::normalize(jittered);
 	}
 
-	HIPRT_DEVICE unsigned int custom_regir_hash(float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, unsigned int total_number_of_cells, unsigned int& out_checksum) const
+	HIPRT_DEVICE unsigned int custom_regir_hash(float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, unsigned int total_number_of_cells, unsigned int& out_checksum) const
 	{
 		float cell_size = ReGIRHashGrid::compute_adaptive_cell_size_roughness(world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size);
 
 		// Aliasing fix for the hash grid when our point is very close to the border of a cell
-		float3 new_world_position = hash_grid_aliasing_fix_clamping(world_position, cell_size);
+		float3_t new_world_position = hash_grid_aliasing_fix_clamping(world_position, cell_size);
 
 #if ReGIR_HashGridHashFuzzyNormals == KERNEL_OPTION_TRUE
 		if (fuzzy_normals_strength > 0.01f)
@@ -142,7 +142,7 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE void store_reservoir_and_sample_opt(const ReGIRReservoir& reservoir, ReGIRHashGridSoADevice& soa, ReGIRHashCellDataSoADevice& hash_cell_data,
-		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell)
+		float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell)
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, surface_normal, current_camera, roughness, primary_hit, soa.m_total_number_of_cells, hash_key);
@@ -153,7 +153,7 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
-		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
+		float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, surface_normal, current_camera, roughness, primary_hit, soa.m_total_number_of_cells, hash_key);
@@ -172,7 +172,7 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE unsigned int get_reservoir_index_in_grid(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
-		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell) const
+		float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell) const
 	{
 		unsigned int hash_grid_cell_index = get_hash_grid_cell_index(soa, hash_cell_data, world_position, surface_normal, current_camera, roughness, primary_hit);
 		if (hash_grid_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
@@ -238,7 +238,7 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE ReGIRReservoir read_full_reservoir(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
-		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
+		float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, int reservoir_index_in_cell, bool* out_invalid_sample = nullptr) const
 	{
 		unsigned int reservoir_index_in_grid = get_reservoir_index_in_grid(soa, hash_cell_data, world_position, surface_normal, current_camera, roughness, primary_hit, reservoir_index_in_cell);
 
@@ -254,7 +254,7 @@ struct ReGIRHashGrid
 	}
 
 	HIPRT_DEVICE unsigned int get_hash_grid_cell_index_from_world_pos(const ReGIRHashGridSoADevice& soa, const ReGIRHashCellDataSoADevice& hash_cell_data,
-		float3 world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
+		float3_t world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit) const
 	{
 		unsigned int hash_key;
 		unsigned int hash_grid_cell_index = custom_regir_hash(world_position, surface_normal, current_camera, roughness, primary_hit, soa.m_total_number_of_cells, hash_key);
@@ -265,17 +265,17 @@ struct ReGIRHashGrid
 			return hash_grid_cell_index;
 	}
 
-	HIPRT_DEVICE float3 jitter_world_position(float3 original_world_position, const HIPRTCamera& current_camera, float roughness, bool primary_hit, Xorshift32Generator& rng, float jittering_radius = 0.5f) const
+	HIPRT_DEVICE float3_t jitter_world_position(float3_t original_world_position, const HIPRTCamera& current_camera, float roughness, bool primary_hit, Xorshift32Generator& rng, float jittering_radius = 0.5f) const
 	{
-		float3 random_offset = make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f);
+		float3_t random_offset = make_float3(rng(), rng(), rng()) * 2.0f - make_float3(1.0f, 1.0f, 1.0f);
 
 		return original_world_position + random_offset * ReGIRHashGrid::compute_adaptive_cell_size_roughness(original_world_position, current_camera, roughness, primary_hit, m_grid_cell_target_projected_size, m_grid_cell_min_size) * jittering_radius;
 	}
 
-	HIPRT_DEVICE float3 jitter_world_position_tangent_plane(float3 original_world_position, float3 surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, Xorshift32Generator& rng, float jittering_radius = 0.5f) const
+	HIPRT_DEVICE float3_t jitter_world_position_tangent_plane(float3_t original_world_position, float3_t surface_normal, const HIPRTCamera& current_camera, float roughness, bool primary_hit, Xorshift32Generator& rng, float jittering_radius = 0.5f) const
 	{
 		// Getting the tangent plane vectors from the normal
-		float3 T, B;
+		float3_t T, B;
 		build_ONB(surface_normal, T, B);
 
 		// Offsets X and Y in the tangent plane

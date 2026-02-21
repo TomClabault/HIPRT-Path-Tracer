@@ -919,7 +919,7 @@ void ImGuiSettingsWindow::draw_camera_panel_static(const std::string& panel_titl
 				{
 					selected_object = n;
 
-					float3 object_center = renderer->get_mesh_bounding_boxes()[n].get_center();
+					float3_t object_center = renderer->get_mesh_bounding_boxes()[n].get_center();
 				}
 
 				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)

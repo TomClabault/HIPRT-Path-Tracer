@@ -20,7 +20,7 @@ struct AuxiliaryBuffers
 
 	// World space normals for the denoiser
 	// These normals should already be divided by the number of samples
-	float3* denoiser_normals = nullptr;
+	float3_t* denoiser_normals = nullptr;
 
 	// Albedo for the denoiser
 	// The albedo should already be divided by the number of samples

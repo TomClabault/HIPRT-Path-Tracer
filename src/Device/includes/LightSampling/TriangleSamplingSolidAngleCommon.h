@@ -46,7 +46,7 @@ HIPRT_DEVICE float positive_atan(float tangent)
  *
  * This is needed because this renderer works from sampled points on triangles, not directions.
  */
-HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_direction, float3 vertex_A, float3 triangle_normal, float3 shading_point,
+HIPRT_DEVICE float3_t map_direction_to_triangle_point(float3_t sampled_solid_angle_direction, float3_t vertex_A, float3_t triangle_normal, float3_t shading_point,
 	float pdf_solid_angle, float& out_pdf_area)
 {
 	if (pdf_solid_angle == 0.0f)
@@ -55,7 +55,7 @@ HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_d
 
 		return make_float3(0.0f, 0.0f, 0.0f);
 	}
-	float3 v0_rel = vertex_A - shading_point;
+	float3_t v0_rel = vertex_A - shading_point;
 	float denom = hippt::dot(sampled_solid_angle_direction, triangle_normal);
 
 	if (hippt::abs(denom) < 1e-8f)
@@ -68,7 +68,7 @@ HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_d
 
 	float t = hippt::dot(v0_rel, triangle_normal) / denom;
 
-	float3 point = shading_point + sampled_solid_angle_direction * t;
+	float3_t point = shading_point + sampled_solid_angle_direction * t;
 
 	// Conversion of the PDF to area measure
 	float cos_theta = compute_cosine_term_at_light_source(triangle_normal, -sampled_solid_angle_direction);
@@ -77,10 +77,10 @@ HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_d
 	return point;
 }
 
-HIPRT_DEVICE float3 map_direction_to_triangle_point(float3 sampled_solid_angle_direction, float3 vertex_A, float3 triangle_normal, float3 shading_point, bool& out_valid_point)
+HIPRT_DEVICE float3_t map_direction_to_triangle_point(float3_t sampled_solid_angle_direction, float3_t vertex_A, float3_t triangle_normal, float3_t shading_point, bool& out_valid_point)
 {
 	float trash_area_pdf;
-	float3 point = map_direction_to_triangle_point(sampled_solid_angle_direction, vertex_A, triangle_normal, shading_point, 1.0f, trash_area_pdf);
+	float3_t point = map_direction_to_triangle_point(sampled_solid_angle_direction, vertex_A, triangle_normal, shading_point, 1.0f, trash_area_pdf);
 
 	out_valid_point = (trash_area_pdf > 0.0f);
 

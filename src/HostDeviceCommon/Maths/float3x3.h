@@ -21,7 +21,7 @@ struct float3x3
 		m[2][0] = m20; m[2][1] = m21; m[2][2] = m22;
 	}
 
-	float3x3(const float3& col0, const float3& col1, const float3& col2)
+	float3x3(const float3_t& col0, const float3_t& col1, const float3_t& col2)
 	{
 		m[0][0] = col0.x; m[0][1] = col1.x; m[0][2] = col2.x;
 		m[1][0] = col0.y; m[1][1] = col1.y; m[1][2] = col2.y;
@@ -31,7 +31,7 @@ struct float3x3
 	/**
 	 * Construct from 3 columns
 	 */
-	HIPRT_DEVICE static float3x3 from_cols(float3 col0, float3 col1, float3 col2)
+	HIPRT_DEVICE static float3x3 from_cols(float3_t col0, float3_t col1, float3_t col2)
 	{
 		float3x3 result;
 
@@ -42,7 +42,7 @@ struct float3x3
 		return result;
 	}
 
-	HIPRT_DEVICE static float3x3 from_rows(float3 row0, float3 row1, float3 row2)
+	HIPRT_DEVICE static float3x3 from_rows(float3_t row0, float3_t row1, float3_t row2)
 	{
 		float3x3 result;
 
@@ -56,7 +56,7 @@ struct float3x3
 	float m[3][3] = { {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 };
 
-HIPRT_DEVICE static float3 matrix_X_vec(const float3x3& m, const float3& u)
+HIPRT_DEVICE static float3_t matrix_X_vec(const float3x3& m, const float3_t& u)
 {
 	float x = u.x;
 	float y = u.y;
@@ -113,9 +113,9 @@ HIPRT_DEVICE static float3x3 operator*(const float3x3& a, const float3x3& b)
  * Multiplies the matrix on the left of the column vector v
  * The rows of the matrix should be the basis vectors (if that matrix is a change of basis)
  */
-HIPRT_DEVICE static float3 operator*(const float3x3& a, const float3& v)
+HIPRT_DEVICE static float3_t operator*(const float3x3& a, const float3_t& v)
 {
-	float3 result;
+	float3_t result;
 
 	result.x = a.m[0][0] * v.x + a.m[0][1] * v.y + a.m[0][2] * v.z;
 	result.y = a.m[1][0] * v.x + a.m[1][1] * v.y + a.m[1][2] * v.z;
@@ -130,9 +130,9 @@ HIPRT_DEVICE static float3 operator*(const float3x3& a, const float3& v)
  *
  * Equivalent to transpose(a) * v
  */
-HIPRT_DEVICE static float3 operator*(const float3& v, const float3x3& a)
+HIPRT_DEVICE static float3_t operator*(const float3_t& v, const float3x3& a)
 {
-	float3 result;
+	float3_t result;
 
 	result.x = a.m[0][0] * v.x + a.m[1][0] * v.y + a.m[2][0] * v.z;
 	result.y = a.m[0][1] * v.x + a.m[1][1] * v.y + a.m[2][1] * v.z;

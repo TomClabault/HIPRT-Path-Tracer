@@ -34,12 +34,12 @@ struct EmissiveMeshesAliasTablesDevice
 	// This buffer is 'alias_table_count' entries long
 	float* meshes_PDFs = nullptr;
 	// Average of all the vertices of the mesh
-	float3* meshes_average_points = nullptr;
+	float3_t* meshes_average_points = nullptr;
 	// Representative normal of the mesh
 	// 
 	// If no good representative normal could be extracted from the mesh at scene parse time
-	// then the buffer will contain value float3(INVALID_NORMAL, 0.0f, 0.0f) for that mesh
-	float3* meshes_representative_normals = nullptr;
+	// then the buffer will contain value float3_t(INVALID_NORMAL, 0.0f, 0.0f) for that mesh
+	float3_t* meshes_representative_normals = nullptr;
 	// Sum of the emissive power of all the triangles of the mesh
 	float* meshes_total_power = nullptr;
 

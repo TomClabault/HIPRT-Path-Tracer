@@ -180,7 +180,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 					{
 						selected_object = n;
 
-						float3 object_center = m_renderer->get_mesh_bounding_boxes()[n].get_center();
+						float3_t object_center = m_renderer->get_mesh_bounding_boxes()[n].get_center();
 						camera_animation.m_rotate_around_point = glm::vec3(object_center.x, object_center.y, object_center.z);
 					}
 
@@ -195,7 +195,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			{
 				if (m_renderer->get_mesh_bounding_boxes().size() > 0)
 				{
-					float3 default_rotate_around_point = m_renderer->get_mesh_bounding_boxes()[0].get_center();
+					float3_t default_rotate_around_point = m_renderer->get_mesh_bounding_boxes()[0].get_center();
 					camera_animation.m_rotate_around_point = glm::vec3(default_rotate_around_point.x, default_rotate_around_point.y, default_rotate_around_point.z);
 
 					default_rotation_set = true;

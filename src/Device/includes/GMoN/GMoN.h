@@ -7,11 +7,11 @@
 #define DEVICE_INCLUDES_GMON_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/GMoN/GMoNMeansRadixSort.h"
 #include "Device/includes/GMoN/GMoNDevice.h"
+#include "Device/includes/GMoN/GMoNMeansRadixSort.h"
 #include "HostDeviceCommon/Color.h"
 
- // A bunch of macros here to streamline the code between the CPU and GPU
+// A bunch of macros here to streamline the code between the CPU and GPU
 #ifdef __KERNELCC__
 
 #define SORTED_MEANS_VARIABLE
@@ -22,40 +22,40 @@
 #define SORTED_MEANS_ASSIGNATION(x) x
 // Getting the sorted mean of index 'mean_index' (in shared memory on the GPU)
 #define SORTED_MEANS_FETCH(mean_index) scratch_memory[SCRATCH_MEMORY_INDEX(0, (mean_index))]
-#define SORTED_INDEX_FETCH(set_index) (sorted_keys[SORTED_KEYS_INDEX(set_index)] & 0xFF)
+#define SORTED_INDEX_FETCH(set_index)  (sorted_keys[SORTED_KEYS_INDEX(set_index)] & 0xFF)
 
 #else
 
 // Just a macro for the name of the sorted means std::vector
-#define SORTED_MEANS_VARIABLE sorted_means
-#define SORTED_MEANS_VARIABLE_WITH_COMMA ,sorted_means
+#define SORTED_MEANS_VARIABLE				sorted_means
+#define SORTED_MEANS_VARIABLE_WITH_COMMA	, sorted_means
 // On the CPU, the sorted means are in a std::vector
-#define SORTED_MEANS_DECLARATION std::pair<std::vector<unsigned int>, std::vector<unsigned short int>> SORTED_MEANS_VARIABLE
-#define SORTED_MEANS_DECLARATION_WITH_COMMA ,std::pair<std::vector<unsigned int>, std::vector<unsigned short int>> SORTED_MEANS_VARIABLE
+#define SORTED_MEANS_DECLARATION			std::pair<std::vector<unsigned int>, std::vector<unsigned short int>> SORTED_MEANS_VARIABLE
+#define SORTED_MEANS_DECLARATION_WITH_COMMA , std::pair<std::vector<unsigned int>, std::vector<unsigned short int>> SORTED_MEANS_VARIABLE
 // Assigning to the sorted means vector
-#define SORTED_MEANS_ASSIGNATION(x) SORTED_MEANS_VARIABLE = (x)
+#define SORTED_MEANS_ASSIGNATION(x)			SORTED_MEANS_VARIABLE = (x)
 // Getting the sorted mean of index 'mean_index' (in the 'sorted_means' std::vector on the CPU)
-#define SORTED_MEANS_FETCH(mean_index) SORTED_MEANS_VARIABLE.first[(mean_index)]
-#define SORTED_INDEX_FETCH(set_index) (SORTED_MEANS_VARIABLE.second[set_index] & 0xFF)
+#define SORTED_MEANS_FETCH(mean_index)		SORTED_MEANS_VARIABLE.first[(mean_index)]
+#define SORTED_INDEX_FETCH(set_index)		(SORTED_MEANS_VARIABLE.second[set_index] & 0xFF)
 
 #endif
 
 HIPRT_HOST_DEVICE float compute_gini_coefficient(SORTED_MEANS_DECLARATION)
 {
 	// Applying Eq. 4 of the paper
-	float sum_of_means = 0.0f;
+	float sum_of_means			= 0.0f;
 	float sum_of_means_weighted = 0.0f;
 
 	for (int j = 1; j <= GMoNMSetsCount; j++)
 	{
 		unsigned int sorted_mean_uint = SORTED_MEANS_FETCH(j - 1);
-		float sorted_mean_float = *reinterpret_cast<float*>(&sorted_mean_uint);
+		float sorted_mean_float		  = *reinterpret_cast<float*>(&sorted_mean_uint);
 
 		sum_of_means += sorted_mean_float;
 		sum_of_means_weighted += j * sorted_mean_float;
 	}
 
-	float nume = 2.0f * sum_of_means_weighted;
+	float nume	= 2.0f * sum_of_means_weighted;
 	float denom = GMoNMSetsCount * sum_of_means;
 
 	if (denom == 0.0f)
@@ -64,7 +64,9 @@ HIPRT_HOST_DEVICE float compute_gini_coefficient(SORTED_MEANS_DECLARATION)
 	return nume / denom - static_cast<float>(GMoNMSetsCount + 1) / GMoNMSetsCount;
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F get_median_of_means(GMoNDevice gmon_device, unsigned int pixel_index, int2 render_resolution SORTED_MEANS_DECLARATION_WITH_COMMA)
+HIPRT_HOST_DEVICE ColorRGB32F get_median_of_means(GMoNDevice gmon_device,
+												  unsigned int pixel_index,
+												  int2_t render_resolution SORTED_MEANS_DECLARATION_WITH_COMMA)
 {
 	// Getting the index of the set for the sorted median
 	unsigned short int median_set_index = SORTED_INDEX_FETCH(GMoNMSetsCount / 2);
@@ -80,7 +82,7 @@ HIPRT_HOST_DEVICE ColorRGB32F get_median_of_means(GMoNDevice gmon_device, unsign
  * buffer by the number of samples yields the correct color for
  * displaying in the viewport
  */
-HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_device, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution)
+HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_device, uint32_t pixel_index, unsigned int sample_number, int2_t render_resolution)
 {
 	SORTED_MEANS_DECLARATION;
 	SORTED_MEANS_ASSIGNATION(gmon_means_radix_sort(gmon_device.sets, pixel_index, sample_number, render_resolution));

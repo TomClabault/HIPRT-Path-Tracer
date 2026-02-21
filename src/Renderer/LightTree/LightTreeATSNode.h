@@ -13,7 +13,7 @@
 
 struct LightTreeATSNode
 {
-	void cone_union_with(float3 other_axis, float other_theta_o, float other_theta_e)
+	void cone_union_with(float3_t other_axis, float other_theta_o, float other_theta_e)
 	{
 		orientation_data.cone_union_with(other_axis, other_theta_o, other_theta_e);
 	}

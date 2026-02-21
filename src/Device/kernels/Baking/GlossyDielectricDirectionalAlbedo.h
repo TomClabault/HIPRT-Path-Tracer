@@ -62,7 +62,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 	float sqrt_F0 = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
 	float relative_ior = (1.0f + sqrt_F0) / (1.0f - sqrt_F0);
 
-	float3 local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
+	float3_t local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
 	int iterations_per_kernel = floor(hippt::max(1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
 	int nb_kernel_launch = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));
@@ -72,7 +72,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 	{
 		// Sampling the specular GGX lobe or diffuse lobe
 		float rand_lobe = random_number_generator();
-		float3 sampled_local_to_light_direction;
+		float3_t sampled_local_to_light_direction;
 		if (rand_lobe < 0.5f)
 		{
 			// Sampling the specular lobe
@@ -87,7 +87,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 			// Sampling the diffuse lobe
 			sampled_local_to_light_direction = cosine_weighted_sample_z_up_frame(random_number_generator);
 
-		float3 microfacet_normal = hippt::normalize(local_view_direction + sampled_local_to_light_direction);
+		float3_t microfacet_normal = hippt::normalize(local_view_direction + sampled_local_to_light_direction);
 		float total_pdf = 0.0f;
 
 		HIPRTRenderData render_data;

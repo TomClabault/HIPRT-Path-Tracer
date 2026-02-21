@@ -16,8 +16,8 @@
   */
 struct NEEPlusPlusContext
 {
-	float3 shaded_point = make_float3(0.0f, 0.0f, 0.0f);
-	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t shaded_point = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t point_on_light = make_float3(0.0f, 0.0f, 0.0f);
 
 	// After passing this context to a call to 'evaluate_shadow_ray_nee_plus_plus',
 	// this member will be filled with the probability that the points 'shaded_point'
@@ -228,7 +228,7 @@ struct NEEPlusPlusDevice
 
 	HIPRT_HOST_DEVICE unsigned int hash_context(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_checksum) const
 	{
-		float3 second_point = context.envmap ? (context.shaded_point + context.point_on_light * 1.0e20f) : context.point_on_light;
+		float3_t second_point = context.envmap ? (context.shaded_point + context.point_on_light * 1.0e20f) : context.point_on_light;
 
 		return hash_double_position_camera(m_total_number_of_cells, context.shaded_point, second_point, current_camera, m_grid_cell_target_projected_size, m_grid_cell_min_size, out_checksum);
 	}

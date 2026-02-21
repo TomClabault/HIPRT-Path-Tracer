@@ -22,7 +22,10 @@ struct HIPRTOrochiCtx
 {
 	HIPRTOrochiCtx() {}
 
-	HIPRTOrochiCtx(int device_index) { init(device_index); }
+	HIPRTOrochiCtx(int device_index)
+	{
+		init(device_index);
+	}
 
 #ifdef _WIN32
 	Utils::AddEnvVarError add_CUDA_PATH_to_PATH()
@@ -98,6 +101,20 @@ struct HIPRTOrochiCtx
 		HIPRT_CHECK_ERROR(hiprtCreateContext(HIPRT_API_VERSION, hiprt_ctx_input, hiprt_ctx));
 
 		HIPRT_CHECK_ERROR(hiprtSetLogLevel(hiprt_ctx, hiprtLogLevelError));
+	}
+
+	bool has_hardware_ray_tracing_support() const
+	{
+		std::string deviceName = device_properties.name;
+		std::string archName   = device_properties.gcnArchName;
+
+		uint32_t archNumber = 0;
+		if (archName.substr(0, 3) == "gfx")
+		{
+			std::string numberPart = archName.substr(3);
+			archNumber			   = std::stoi(numberPart);
+		}
+		return (archNumber >= 1030 && deviceName.find("NVIDIA") == std::string::npos);
 	}
 
 	hiprtContextCreationInput hiprt_ctx_input = { nullptr, -1, hiprtDeviceAMD };

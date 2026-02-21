@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_BSDF_LIGHT_SAMPLE_RAY_HIT_INFO_H
 #define HOST_DEVICE_COMMON_BSDF_LIGHT_SAMPLE_RAY_HIT_INFO_H
 
- /**
+/**
  * Information returned by a shadow ray cast from a BSDF sample.
  *
  * This structure is filled by the 'evaluate_bsdf_light_sample_ray()'
@@ -21,9 +21,9 @@ struct BSDFLightSampleRayHitInfo
 	int hit_material_index;
 	float hit_distance;
 
-	float2 hit_interpolated_texcoords;
-	float3 hit_shading_normal;
-	float3 hit_geometric_normal;
+	float2_t hit_interpolated_texcoords;
+	float3_t hit_shading_normal;
+	float3_t hit_geometric_normal;
 
 	ColorRGB32F hit_emission;
 };

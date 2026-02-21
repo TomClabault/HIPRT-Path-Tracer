@@ -55,7 +55,7 @@ public:
 	void resize_g_buffer_ray_volume_states();
 
 private:
-	int2 m_render_resolution = make_int2(0, 0);
+	int2_t m_render_resolution = make_int2(0, 0);
 
 	// G-buffers of the current frame (camera rays hits) and previous frame
 	GBufferGPURenderer m_g_buffer;

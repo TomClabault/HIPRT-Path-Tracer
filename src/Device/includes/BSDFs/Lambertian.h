@@ -40,8 +40,8 @@ HIPRT_DEVICE static float lambertian_brdf_pdf(float NoL)
  */
 template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE static ColorRGB32F lambertian_brdf_sample(const DeviceUnpackedEffectiveMaterial& material,
-													   const float3& shading_normal,
-													   float3& sampled_direction,
+													   const float3_t& shading_normal,
+													   float3_t& sampled_direction,
 													   float& pdf,
 													   Xorshift32Generator& random_number_generator,
 													   BSDFIncidentLightInfo& out_sampled_light_info)

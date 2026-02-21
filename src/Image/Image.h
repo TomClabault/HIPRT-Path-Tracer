@@ -44,7 +44,7 @@ public:
 	float luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const;
 	float luminance_of_area(const ImageBin& area) const;
 
-	ColorRGBA32F sample_rgba32f(float2 uv) const;
+	ColorRGBA32F sample_rgba32f(float2_t uv) const;
 
 	void set_data(const std::vector<unsigned char>& data);
 	const std::vector<unsigned char>& data() const;
@@ -114,7 +114,7 @@ public:
 	ColorRGBA32F* get_data_as_ColorRGBA32F();
 	ColorRGBA32F get_pixel_ColorRGBA32F(int pixel_index) const;
 
-	ColorRGBA32F sample_rgba32f(float2 uv) const;
+	ColorRGBA32F sample_rgba32f(float2_t uv) const;
 
 	void set_data(const std::vector<float>& data);
 	const std::vector<float>& data() const;
@@ -158,7 +158,7 @@ public:
 	Image32Bit3D();
 	Image32Bit3D(const std::vector<Image32Bit> images);
 
-	ColorRGBA32F sample_rgba32f(float3 uvw) const;
+	ColorRGBA32F sample_rgba32f(float3_t uvw) const;
 
 	int width, height, depth, channels;
 	ImageSamplingMode sampling_mode = ImageSamplingMode::SAMPLING_MODE_BILINEAR;

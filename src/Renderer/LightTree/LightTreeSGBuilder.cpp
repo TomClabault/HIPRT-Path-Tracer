@@ -5,7 +5,7 @@
 
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 
-void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_indices, const std::vector<float3>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
+void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices, const std::vector<int>& triangle_indices, const std::vector<float3_t>& vertices_positions, const std::vector<int>& material_indices, const std::vector<CPUMaterial>& materials)
 {
 	m_light_tree_ats_builder.build_light_tree(emissive_triangles_primitive_indices, triangle_indices, vertices_positions, material_indices, materials);
 
@@ -70,7 +70,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sg_node.mean_axis = make_float3(0.0f, 0.0f, 0.0f);
 		sg_node.total_power = 0.0f;
 
-		float3 sum_positions = make_float3(0.0f, 0.0f, 0.0f);
+		float3_t sum_positions = make_float3(0.0f, 0.0f, 0.0f);
 		float sum_positions_squared = 0.0f;
 
 		float single_triangle_variance = 0.0f;
@@ -84,12 +84,12 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 				// Degenerate triangle
 				continue;
 
-			float3 p0 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
-			float3 p1 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 1]];
-			float3 p2 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
+			float3_t p0 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
+			float3_t p1 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 1]];
+			float3_t p2 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
 
-			float3 e1 = p1 - p0;
-			float3 e2 = p2 - p0;
+			float3_t e1 = p1 - p0;
+			float3_t e2 = p2 - p0;
 			// Formula from the paper to use when there is a single triangle in the leaf
 			single_triangle_variance = (hippt::dot(e1, e1) + hippt::dot(e2, e2) - hippt::dot(e1, e2)) / 18.0f;
 
@@ -126,9 +126,9 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 				// Degenerate triangle
 				continue;
 
-			float3 p0 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
-			float3 p1 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 1]];
-			float3 p2 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
+			float3_t p0 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 0]];
+			float3_t p1 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 1]];
+			float3_t p2 = triangle_data.vertices_positions[triangle_data.triangle_vertex_indices[triangle_data.emissive_triangles_primitive_indices[emissive_triangle_index] * 3 + 2]];
 
 			sg_node.bounds.extend(p0);
 			sg_node.bounds.extend(p1);

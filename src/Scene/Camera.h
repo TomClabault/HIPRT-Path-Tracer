@@ -49,7 +49,7 @@ struct Camera
 	void auto_adjust_speed(const AABB& scene_bounding_box);
 
 	void translate(glm::vec3 translation_vec);
-	void translate(float3 translation_vec);
+	void translate(float3_t translation_vec);
 
 	/**
 	 * Basically a handy function for translating a certain distance in the direction
@@ -60,10 +60,10 @@ struct Camera
 	void look_at_object(const AABB& object_bounding_box);
 
 	void rotate(glm::vec3 rotation_angles);
-	void rotate(float3 rotation_angles);
+	void rotate(float3_t rotation_angles);
 
-	void rotate_around_point(const float3& point, const float3& angles_rad);
-	void rotate_around_point(const glm::vec3& point, const float3& angles_rad);
+	void rotate_around_point(const float3_t& point, const float3_t& angles_rad);
+	void rotate_around_point(const glm::vec3& point, const float3_t& angles_rad);
 
 	glm::mat4x4 projection_matrix;
 

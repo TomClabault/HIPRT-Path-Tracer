@@ -36,7 +36,7 @@ HIPRT_DEVICE static float radical_inverse_base_2(unsigned int index)
  * of points that are going to be sampled and the index of the point
  * (in [0, number_of_points -1]) that we're sampling right now
  */
-HIPRT_DEVICE static float2 sample_hammersley_2D(unsigned int number_of_points, unsigned int point_index)
+HIPRT_DEVICE static float2_t sample_hammersley_2D(unsigned int number_of_points, unsigned int point_index)
 {
 	return make_float2(static_cast<float>(point_index) / static_cast<float>(number_of_points), radical_inverse_base_2(point_index));
 }
@@ -48,7 +48,7 @@ HIPRT_DEVICE static float2 sample_hammersley_2D(unsigned int number_of_points, u
  * uv.x is used as theta for sampling the disk
  * uv.y is used for sampling the distance from the center of the disk
  */
-HIPRT_DEVICE static float2 sample_in_disk_uv(float radius, float2 uv)
+HIPRT_DEVICE static float2_t sample_in_disk_uv(float radius, float2_t uv)
 {
 	float r_sqrt_v = radius * hippt::sqrt(uv.y);
 	float x		   = r_sqrt_v * hippt::intrin_cosf(hippt::M_TWO_PI * uv.x);
@@ -60,7 +60,7 @@ HIPRT_DEVICE static float2 sample_in_disk_uv(float radius, float2 uv)
 /**
  * Returns integer pixel coordinates offset from the center of the disk of radius 'radius'
  */
-HIPRT_DEVICE static float2 sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static float2_t sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
 {
 	float u1 = random_number_generator();
 	float u2 = random_number_generator();
@@ -121,7 +121,7 @@ HIPRT_DEVICE static float balance_heuristic(float pdf_a, float pdf_b, float pdf_
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
  */
-HIPRT_DEVICE static float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
+HIPRT_DEVICE static float3_t reflect_ray(const float3_t& ray_direction, const float3_t& surface_normal)
 {
 	return 2.0f * hippt::dot(ray_direction, surface_normal) * surface_normal - ray_direction;
 }
@@ -134,15 +134,15 @@ HIPRT_DEVICE static float3 reflect_ray(const float3& ray_direction, const float3
  *
  * No total internal reflection is assumed
  */
-HIPRT_DEVICE static float3 refract_ray(const float3& ray_direction, const float3& surface_normal, float relative_eta)
+HIPRT_DEVICE static float3_t refract_ray(const float3_t& ray_direction, const float3_t& surface_normal, float relative_eta)
 {
 	float NoI = hippt::dot(ray_direction, surface_normal);
 
 	float sin_theta_i_2 = 1.0f - NoI * NoI;
 	float root_term		= 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
 
-	float cos_theta_t		 = sqrt(root_term);
-	float3 refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
+	float cos_theta_t		   = sqrt(root_term);
+	float3_t refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
 
 	return refract_direction;
 }
@@ -154,7 +154,7 @@ HIPRT_DEVICE static float3 refract_ray(const float3& ray_direction, const float3
  *
  * The sampled direction is returned in world space
  */
-HIPRT_DEVICE static float3 cosine_weighted_sample_around_normal_world_space(const float3& normal, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static float3_t cosine_weighted_sample_around_normal_world_space(const float3_t& normal, Xorshift32Generator& random_number_generator)
 {
 	float rand_1 = random_number_generator();
 	float rand_2 = 2.0f * random_number_generator() - 1.0f;
@@ -171,8 +171,8 @@ HIPRT_DEVICE static float3 cosine_weighted_sample_around_normal_world_space(cons
 
 	float theta = hippt::M_TWO_PI * rand_1;
 
-	float2 xy			= hippt::sqrt(1.0f - rand_2 * rand_2) * make_float2(hippt::intrin_cosf(theta), hippt::intrin_sinf(theta));
-	float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
+	float2_t xy			  = hippt::sqrt(1.0f - rand_2 * rand_2) * make_float2(hippt::intrin_cosf(theta), hippt::intrin_sinf(theta));
+	float3_t sphere_point = make_float3(xy.x, xy.y, rand_2);
 
 	return hippt::normalize(normal + sphere_point);
 }
@@ -184,7 +184,7 @@ HIPRT_DEVICE static float3 cosine_weighted_sample_around_normal_world_space(cons
  *
  * The sampled direction is returned in a local frame with Z as the up axis
  */
-HIPRT_DEVICE static float3 cosine_weighted_sample_z_up_frame(Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static float3_t cosine_weighted_sample_z_up_frame(Xorshift32Generator& random_number_generator)
 {
 	float r1 = random_number_generator();
 	float r2 = random_number_generator();

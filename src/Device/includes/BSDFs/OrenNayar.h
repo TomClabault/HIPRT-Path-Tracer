@@ -15,7 +15,7 @@
  /* References:
   * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
   */
-HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3_t& local_view_direction, const float3_t& local_to_light_direction, float& pdf)
 {
 	// sin(theta)^2 = 1.0 - cos(theta)^2
 	float sin_theta_i = hippt::sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
@@ -58,7 +58,7 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffecti
 	return material.base_color * hippt::M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
-HIPRT_DEVICE static float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction)
+HIPRT_DEVICE static float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, const float3_t& local_view_direction, const float3_t& local_to_light_direction)
 {
 	if (local_to_light_direction.z <= 0.0f)
 		return 0.0f;
@@ -69,14 +69,14 @@ HIPRT_DEVICE static float oren_nayar_brdf_pdf(const DeviceUnpackedEffectiveMater
 /**
  * Override of the eval function for world space directions
  */
-HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3& world_space_view_direction, const float3& surface_normal, const float3& world_space_to_light_direction, float& pdf)
+HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, const float3_t& world_space_view_direction, const float3_t& surface_normal, const float3_t& world_space_to_light_direction, float& pdf)
 {
-	float3 T, B;
+	float3_t T, B;
 	build_ONB(surface_normal, T, B);
 
 	// Using local view and light directions to simply following computations
-	float3 local_view_direction = world_to_local_frame(T, B, surface_normal, world_space_view_direction);
-	float3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, world_space_to_light_direction);
+	float3_t local_view_direction = world_to_local_frame(T, B, surface_normal, world_space_view_direction);
+	float3_t local_to_light_direction = world_to_local_frame(T, B, surface_normal, world_space_to_light_direction);
 
 	return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
 }
@@ -88,7 +88,7 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpackedEffecti
  */
 template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material,
-	const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction,
+	const float3_t& world_space_view_direction, const float3_t& shading_normal, float3_t& out_sampled_direction,
 	float& pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
 {
 	out_sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);

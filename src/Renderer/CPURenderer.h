@@ -11,18 +11,18 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-#include "Image/Image.h"
 #include "Image/EnvmapRGBE9995.h"
+#include "Image/Image.h"
 #include "Renderer/BVH.h"
 #include "Renderer/CPUDataStructures/GBufferCPUData.h"
 #include "Renderer/CPUDataStructures/GMoNCPUData.h"
-#include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
+#include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
 #include "Renderer/CPUGPUCommonDataStructures/BSDFDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/EmissiveMeshesAliasTablesHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRCellsLightDistributionsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReGIRHashCellDataSoAHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReGIRHashGridSoAHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 #include "Scene/SceneParser.h"
@@ -35,7 +35,6 @@ class CPURenderer
 {
 public:
 	CPURenderer(int width, int height);
-
 
 	void setup_bsdfs_data();
 
@@ -115,12 +114,12 @@ public:
 	void tonemap(float gamma, float exposure);
 
 private:
-	int2 m_resolution;
+	int2_t m_resolution;
 
 	Image32Bit m_framebuffer;
 	std::vector<unsigned char> m_pixel_active_buffer;
 	std::vector<ColorRGB32F> m_denoiser_albedo;
-	std::vector<float3> m_denoiser_normals;
+	std::vector<float3_t> m_denoiser_normals;
 
 	std::vector<int> m_pixel_sample_count;
 	std::vector<int> m_pixel_converged_sample_count;
@@ -215,17 +214,17 @@ private:
 
 		ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_primary_hit;
 		ReGIRCellsLightDistributionsSoAHost<std::vector> cells_light_distributions_secondary_hit;
-		unsigned int m_last_cells_light_distributions_compute_count_primary_hits = 0;
+		unsigned int m_last_cells_light_distributions_compute_count_primary_hits   = 0;
 		unsigned int m_last_cells_light_distributions_compute_count_secondary_hits = 0;
 		// Percentage of the total incoming energy that we should keep in each light distribution of
 		// each cell at *most* (roughly)
-		// 
+		//
 		// The light distribution will only contain as many emissive meshes as necessary such that the
 		// distribution covers covers that percentage of the total incoming energy to the grid cell.
 		//
 		// This is "rounded up" so if 40% of the total incoming radiance is required by this parameter but
 		// we have to choose between (for example):
-		// 
+		//
 		// - 5 meshes in the distribution = 38% of the energy covered
 		// - 6 meshes in the distribution = 51% of the energy covered
 		//
@@ -243,8 +242,8 @@ private:
 	std::vector<Triangle> m_emissive_triangles_buffer;
 	std::shared_ptr<BVH> m_bvh;
 	// The light BVH is only used for tracing rays. This is a BVH built only over the emissive
-	// triangles of the scene. 
-	// 
+	// triangles of the scene.
+	//
 	// This is not a light hierarchy for light sampling
 	std::shared_ptr<BVH> m_light_bvh;
 

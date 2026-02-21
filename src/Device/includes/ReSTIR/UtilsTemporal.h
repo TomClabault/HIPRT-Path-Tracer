@@ -8,9 +8,9 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE int2 apply_permutation_sampling(int2 pixel_position, int random_bits)
+HIPRT_DEVICE int2_t apply_permutation_sampling(int2_t pixel_position, int random_bits)
 {
-	int2 offset = make_int2(random_bits & 3, (random_bits >> 2) & 3);
+	int2_t offset = make_int2(random_bits & 3, (random_bits >> 2) & 3);
 	pixel_position += offset;
 
 	pixel_position.x ^= 3;
@@ -31,11 +31,11 @@ HIPRT_DEVICE int2 apply_permutation_sampling(int2 pixel_position, int random_bit
  *	(disoccluion / occlusion / out of viewport)
  */
 template <bool IsReSTIRGI>
-HIPRT_DEVICE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_data,
-											   const float3& current_shading_point,
-											   const float3& current_normal,
-											   int center_pixel_index,
-											   Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE int3_t find_temporal_neighbor_index(const HIPRTRenderData& render_data,
+												 const float3_t& current_shading_point,
+												 const float3_t& current_normal,
+												 int center_pixel_index,
+												 Xorshift32Generator& random_number_generator)
 {
 	if (render_data.render_settings.accumulate)
 		// If accumulating, the camera isn't moving, just returning
@@ -45,15 +45,15 @@ HIPRT_DEVICE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_dat
 
 	const ReSTIRCommonTemporalPassSettings& temporal_pass_settings = ReSTIRSettingsHelper::get_restir_temporal_pass_settings<IsReSTIRGI>(render_data);
 
-	float3 previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
-	float2 previous_screen_space_point	   = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
+	float3_t previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
+	float2_t previous_screen_space_point	 = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
 
 	// Bringing back in [0, 1] from [-1, 1]
 	previous_screen_space_point += make_float2(1.0f, 1.0f);
 	previous_screen_space_point *= make_float2(0.5f, 0.5f);
 
-	int2 resolution			= render_data.render_settings.render_resolution;
-	float2 prev_pixel_float = make_float2(previous_screen_space_point.x * resolution.x, previous_screen_space_point.y * resolution.y);
+	int2_t resolution		  = render_data.render_settings.render_resolution;
+	float2_t prev_pixel_float = make_float2(previous_screen_space_point.x * resolution.x, previous_screen_space_point.y * resolution.y);
 	// Bringing back in the center of the pixel
 	prev_pixel_float -= make_float2(0.5f, 0.5f);
 
@@ -62,14 +62,14 @@ HIPRT_DEVICE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_dat
 	int temporal_neighbor_index = -1;
 	for (int i = 0; i < temporal_pass_settings.max_neighbor_search_count + 1; i++)
 	{
-		float2 offset = make_float2(0.0f, 0.0f);
+		float2_t offset = make_float2(0.0f, 0.0f);
 		if (i > 0)
 			// Only randomly looking after we've at least checked whether or not the exact temporally reprojected location
 			// is valid or not
 			offset = make_float2(random_number_generator() - 0.5f, random_number_generator() - 0.5f) *
 					 static_cast<float>(temporal_pass_settings.neighbor_search_radius);
 
-		int2 temporal_neighbor_screen_pixel_pos = make_int2(round(prev_pixel_float.x + offset.x), round(prev_pixel_float.y + offset.y));
+		int2_t temporal_neighbor_screen_pixel_pos = make_int2(round(prev_pixel_float.x + offset.x), round(prev_pixel_float.y + offset.y));
 		if (temporal_pass_settings.use_permutation_sampling && i == 0)
 			// If we're looking at the direct temporal neighbor (without random offset), applying
 			// permutation sampling if enabled

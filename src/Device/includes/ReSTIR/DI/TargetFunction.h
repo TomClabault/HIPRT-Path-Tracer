@@ -10,12 +10,12 @@
 #include "Device/includes/TriangleLoadUtils.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_DEVICE float3 ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& render_data,
+HIPRT_DEVICE float3_t ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& render_data,
 														 const ReSTIRDIReservoirSample& sample,
-														 float3 surface_shading_point,
+														 float3_t surface_shading_point,
 														 float& out_distance_to_light)
 {
-	float3 sample_direction;
+	float3_t sample_direction;
 	if (sample.is_envmap_sample())
 	{
 		sample_direction	  = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
@@ -30,7 +30,7 @@ HIPRT_DEVICE float3 ReSTIR_DI_get_light_sample_direction(const HIPRTRenderData& 
 	return sample_direction;
 }
 
-HIPRT_DEVICE ColorRGB32F ReSTIR_DI_get_light_sample_emission(const HIPRTRenderData& render_data, const ReSTIRDIReservoirSample& sample, float3 sample_direction)
+HIPRT_DEVICE ColorRGB32F ReSTIR_DI_get_light_sample_emission(const HIPRTRenderData& render_data, const ReSTIRDIReservoirSample& sample, float3_t sample_direction)
 {
 	ColorRGB32F sample_emission;
 	if (sample.is_envmap_sample())
@@ -59,7 +59,7 @@ HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& ren
 
 	float bsdf_pdf;
 	float distance_to_light;
-	float3 sample_direction = ReSTIR_DI_get_light_sample_direction(render_data, sample, surface.shading_point, distance_to_light);
+	float3_t sample_direction = ReSTIR_DI_get_light_sample_direction(render_data, sample, surface.shading_point, distance_to_light);
 
 	float cosine_term = hippt::dot(surface.shading_normal, sample_direction);
 	if (cosine_term <= 0.0f)
@@ -76,7 +76,7 @@ HIPRT_DEVICE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& ren
 	float geometry_term = 1.0f;
 	if (!sample.is_envmap_sample())
 	{
-		float3 emissive_triangle_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, sample.emissive_triangle_global_index));
+		float3_t emissive_triangle_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, sample.emissive_triangle_global_index));
 		geometry_term					= compute_cosine_term_at_light_source(emissive_triangle_normal, -sample_direction);
 		geometry_term /= hippt::square(distance_to_light);
 	}

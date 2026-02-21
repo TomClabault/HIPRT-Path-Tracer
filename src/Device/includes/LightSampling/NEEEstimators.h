@@ -28,7 +28,7 @@
 HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 												 RayPayload& ray_payload,
 												 const HitInfo closest_hit_info,
-												 const float3& view_direction,
+												 const float3_t& view_direction,
 												 Xorshift32Generator& random_number_generator)
 {
 	if (!ray_payload.material.can_do_light_sampling())
@@ -49,10 +49,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 			// sampling technique couldn't sample a triangle
 			continue;
 
-		float3 shadow_ray_origin			   = closest_hit_info.inter_point;
-		float3 shadow_ray_direction			   = light_sample.point_on_light - shadow_ray_origin;
-		float distance_to_light				   = hippt::length(shadow_ray_direction);
-		float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
+		float distance_to_light					 = hippt::length(shadow_ray_direction);
+		float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 		hiprtRay shadow_ray;
 		shadow_ray.origin	 = shadow_ray_origin;
@@ -109,11 +109,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data,
 											   RayPayload& ray_payload,
 											   const HitInfo closest_hit_info,
-											   const float3& view_direction,
+											   const float3_t& view_direction,
 											   Xorshift32Generator& random_number_generator)
 {
 	float bsdf_sample_pdf;
-	float3 sampled_bsdf_direction;
+	float3_t sampled_bsdf_direction;
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 
 	BSDFContext bsdf_context(view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, make_float3(0.0f, 0.0f, 0.0f),
@@ -151,7 +151,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_dat
 HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data,
 											  RayPayload& ray_payload,
 											  const HitInfo closest_hit_info,
-											  const float3& view_direction,
+											  const float3_t& view_direction,
 											  Xorshift32Generator& random_number_generator)
 {
 	ColorRGB32F light_source_radiance_mis;
@@ -169,9 +169,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data,
 			// Can happen for very small triangles that the PDF of the sampled triangle couldn't be computed
 			if (light_sample.area_measure_pdf > 0.0f)
 			{
-				float3 shadow_ray_direction			   = light_sample.point_on_light - closest_hit_info.inter_point;
-				float distance_to_light				   = hippt::length(shadow_ray_direction);
-				float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+				float3_t shadow_ray_direction			 = light_sample.point_on_light - closest_hit_info.inter_point;
+				float distance_to_light					 = hippt::length(shadow_ray_direction);
+				float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 				hiprtRay shadow_ray;
 				shadow_ray.origin	 = closest_hit_info.inter_point;
@@ -218,8 +218,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data,
 	}
 
 	float bsdf_sample_pdf;
-	float3 sampled_bsdf_direction;
-	float3 bsdf_shadow_ray_origin			  = closest_hit_info.inter_point;
+	float3_t sampled_bsdf_direction;
+	float3_t bsdf_shadow_ray_origin			  = closest_hit_info.inter_point;
 	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 	ColorRGB32F bsdf_radiance_mis;
 
@@ -276,9 +276,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS(HIPRTRenderData& render_data,
 HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data,
 													RayPayload& ray_payload,
 													const HitInfo closest_hit_info,
-													const float3& view_direction,
+													const float3_t& view_direction,
 													Xorshift32Generator& random_number_generator,
-													int2 pixel_coords)
+													int2_t pixel_coords)
 {
 	// ReSTIR DI doesn't support explicitely looping to sample
 	// multiple lights per shading point so that's why we don't
@@ -314,7 +314,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data
 HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_data,
 													  RayPayload& ray_payload,
 													  const HitInfo closest_hit_info,
-													  const float3& view_direction,
+													  const float3_t& view_direction,
 													  Xorshift32Generator& random_number_generator)
 {
 	if (!ray_payload.material.can_do_light_sampling())
@@ -338,9 +338,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
 
 		valid_light_sample_count++;
 
-		float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 0]];
-		float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 1]];
-		float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 2]];
+		float3_t vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 0]];
+		float3_t vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 1]];
+		float3_t vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[light_sample.emissive_triangle_global_index * 3 + 2]];
 
 		float specular_lobe = evaluate_ltc(render_data, vertex_A, vertex_B, vertex_C, closest_hit_info.inter_point, view_direction,
 										   closest_hit_info.shading_normal, ray_payload.material, LTCLobe::SPECULAR_LOBE);
@@ -358,7 +358,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_LTC_shading(HIPRTRenderData& render_da
 HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data,
 														   RayPayload& ray_payload,
 														   const HitInfo closest_hit_info,
-														   const float3& view_direction,
+														   const float3_t& view_direction,
 														   Xorshift32Generator& random_number_generator)
 {
 	ColorRGB32F direct_light_contribution;
@@ -416,9 +416,9 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 HIPRT_DEVICE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data,
 												  RayPayload& ray_payload,
 												  const HitInfo closest_hit_info,
-												  const float3& view_direction,
+												  const float3_t& view_direction,
 												  Xorshift32Generator& random_number_generator,
-												  int2 pixel_coords)
+												  int2_t pixel_coords)
 {
 	if (render_data.buffers.emissive_triangles_count == 0 &&
 		!(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightNEEEstimator == LSS_RESTIR_DI))
@@ -469,7 +469,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 												  RayPayload& ray_payload,
 												  ColorRGB32F custom_ray_throughput,
 												  HitInfo& closest_hit_info,
-												  float3 view_direction,
+												  float3_t view_direction,
 												  int x,
 												  int y,
 												  Xorshift32Generator& random_number_generator)
@@ -516,7 +516,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& r
 															  RayPayload& ray_payload,
 															  ColorRGB32F custom_ray_throughput,
 															  HitInfo& closest_hit_info,
-															  float3 view_direction,
+															  float3_t view_direction,
 															  int x,
 															  int y,
 															  Xorshift32Generator& random_number_generator)
@@ -531,7 +531,7 @@ HIPRT_DEVICE ColorRGB32F estimate_direct_lighting_no_clamping(HIPRTRenderData& r
 HIPRT_DEVICE ColorRGB32F estimate_direct_lighting(HIPRTRenderData& render_data,
 												  RayPayload& ray_payload,
 												  HitInfo& closest_hit_info,
-												  float3 view_direction,
+												  float3_t view_direction,
 												  int x,
 												  int y,
 												  Xorshift32Generator& random_number_generator)

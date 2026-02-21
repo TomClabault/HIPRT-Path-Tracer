@@ -41,7 +41,7 @@ public:
 			//by the OctreeNode to compute the intersection with a ray
 		};
 
-		OctreeNode(float3 min, float3 max) : m_min(min), m_max(max) {}
+		OctreeNode(float3_t min, float3_t max) : m_min(min), m_max(max) {}
 		~OctreeNode()
 		{
 			if (m_is_leaf)
@@ -114,7 +114,7 @@ public:
 		void insert_to_children(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
 		{
 			const Triangle& triangle = triangles_geometry[triangle_id_to_insert];
-			float3 bbox_centroid = triangle.bbox_centroid();
+			float3_t bbox_centroid = triangle.bbox_centroid();
 
 			float middle_x = (m_min.x + m_max.x) / 2;
 			float middle_y = (m_min.y + m_max.y) / 2;
@@ -139,7 +139,7 @@ public:
 			for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
 			{
 				denoms[i] = hippt::dot(BoundingVolume::PLANE_NORMALS[i], ray.direction);
-				numers[i] = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3(ray.origin));
+				numers[i] = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3_t(ray.origin));
 			}
 
 			return intersect(triangles_geometry, ray, hit_info, trash, denoms, numers, filter_function_payload);
@@ -239,7 +239,7 @@ public:
 			nullptr
 		};
 
-		float3 m_min, m_max;
+		float3_t m_min, m_max;
 		BoundingVolume m_bounding_volume;
 	};
 
@@ -253,7 +253,7 @@ public:
 	bool intersect(const hiprtRay& ray, hiprtHit& hit_info, void* filter_function_payload) const;
 
 private:
-	void build_bvh(int max_depth, int leaf_max_obj_count, float3 min, float3 max, const BoundingVolume& volume);
+	void build_bvh(int max_depth, int leaf_max_obj_count, float3_t min, float3_t max, const BoundingVolume& volume);
 
 public:
 	OctreeNode* m_root;

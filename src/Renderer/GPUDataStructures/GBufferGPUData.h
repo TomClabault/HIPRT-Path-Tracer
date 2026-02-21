@@ -55,7 +55,7 @@ struct GBufferGPURenderer
 
 	OrochiBuffer<Octahedral24BitNormalPadded32b> shading_normals;
 	OrochiBuffer<Octahedral24BitNormalPadded32b> geometric_normals;
-	OrochiBuffer<float3> primary_hit_position;
+	OrochiBuffer<float3_t> primary_hit_position;
 	OrochiBuffer<int> first_hit_prim_index;
 
 	OrochiBuffer<RayVolumeState> ray_volume_states;

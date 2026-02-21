@@ -12,15 +12,15 @@
 struct Triangle
 {
 	Triangle() {}
-	Triangle(const float3& a, const float3& b, const float3& c) : m_a(a), m_b(b), m_c(c) {}
+	Triangle(const float3_t& a, const float3_t& b, const float3_t& c) : m_a(a), m_b(b), m_c(c) {}
 
-	float3 bbox_centroid() const;
+	float3_t bbox_centroid() const;
 
 	//From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 	inline bool intersect(const hiprtRay& ray, hiprtHit& hit_info) const
 	{
 		const float EPSILON = 0.0000001f;
-		float3 edge1, edge2, h, s, q;
+		float3_t edge1, edge2, h, s, q;
 		float a, f, u, v;
 		edge1 = m_b - m_a;
 		edge2 = m_c - m_a;
@@ -64,10 +64,10 @@ struct Triangle
 
 	float area() const;
 
-	float3& operator[] (int index);
-	const float3& operator[] (int index) const;
+	float3_t& operator[] (int index);
+	const float3_t& operator[] (int index) const;
 
-	float3 m_a = { 0, 0, 0 }, m_b = { 0, 0, 0 }, m_c = { 0, 0, 0 };
+	float3_t m_a = { 0, 0, 0 }, m_b = { 0, 0, 0 }, m_c = { 0, 0, 0 };
 };
 
 #endif

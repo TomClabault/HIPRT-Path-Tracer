@@ -6,22 +6,28 @@
 #ifndef HOST_DEVICE_COMMON_FLOAT2X2_H
 #define HOST_DEVICE_COMMON_FLOAT2X2_H
 
+#include "HostDeviceCommon/Maths/VecTypes.h"
+
 struct float2x2
 {
 	HIPRT_DEVICE float2x2() {}
 	HIPRT_DEVICE float2x2(float m00, float m01, float m10, float m11)
 	{
-		m[0][0] = m00; m[0][1] = m01;
-		m[1][0] = m10; m[1][1] = m11;
+		m[0][0] = m00;
+		m[0][1] = m01;
+		m[1][0] = m10;
+		m[1][1] = m11;
 	}
 
 	/**
 	 * Construct from 2 columns
 	 */
-	HIPRT_DEVICE float2x2(float2 col0, float2 col1)
+	HIPRT_DEVICE float2x2(float2_t col0, float2_t col1)
 	{
-		m[0][0] = col0.x; m[0][1] = col1.x;
-		m[1][0] = col0.y; m[1][1] = col1.y;
+		m[0][0] = col0.x;
+		m[0][1] = col1.x;
+		m[1][0] = col0.y;
+		m[1][1] = col1.y;
 	}
 
 	float m[2][2];
@@ -80,9 +86,9 @@ HIPRT_DEVICE static float2x2 operator*(const float2x2& a, const float k)
 	return k * a;
 }
 
-HIPRT_DEVICE static float2 operator*(const float2x2& a, const float2& v)
+HIPRT_DEVICE static float2_t operator*(const float2x2& a, const float2_t& v)
 {
-	float2 result;
+	float2_t result;
 
 	result.x = a.m[0][0] * v.x + a.m[0][1] * v.y;
 	result.y = a.m[1][0] * v.x + a.m[1][1] * v.y;
@@ -118,7 +124,7 @@ HIPRT_DEVICE static float determinant(const float2x2& m)
 	return m.m[0][0] * m.m[1][1] - m.m[0][1] * m.m[1][0];
 }
 
-HIPRT_DEVICE static float2x2 outer_product(const float2& a, const float2& b)
+HIPRT_DEVICE static float2x2 outer_product(const float2_t& a, const float2_t& b)
 {
 	float2x2 out;
 

@@ -17,7 +17,7 @@
   */
 struct LightSamplePointInformation
 {
-	float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
+	float3_t light_source_normal = { 0.0f, 1.0f, 0.0f };
 
 	// Index of the triangle in the whole scene (not just in the emissive triangles buffer)
 	int emissive_triangle_global_index = -1;
@@ -25,7 +25,7 @@ struct LightSamplePointInformation
 	ColorRGB32F emission;
 	float light_area = 1.0f;
 
-	float3 point_on_light = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t point_on_light = make_float3(0.0f, 0.0f, 0.0f);
 	float area_measure_pdf = 0.0f;
 
 #if DirectLightSamplingStrategy == LSS_BASE_REGIR

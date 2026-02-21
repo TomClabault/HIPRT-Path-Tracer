@@ -469,15 +469,15 @@ void OrochiBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, i
 	// The proper solution would be to use OpenGL Interop to copy the Orochi buffer
 	// to the underlying array of the OpenGL texture. But it seems like OpenGL interop can only
 	// do that for RGBA textures. But we're not stricly using RGBA textures here. The template type
-	// could be anything really and it at least doesn't work with float3 types because float3 are RGB,
+	// could be anything really and it at least doesn't work with float3_t types because float3_t are RGB,
 	// not RGBA and again, OpenGL Interop throws an error at 'oroGraphicsGLRegisterImage' for RGB
 	// textures.
 	//
 	// So to fix this, we could use an RGBA OpenGL texture in place of RGB. But then, in the case of 
-	// world-space normals buffer for example, we have to convert our float3 normals to float4 to upload
+	// world-space normals buffer for example, we have to convert our float3_t normals to float4_t to upload
 	// to the RGBA texture. And that conversion would be expensive (and require memory)
 	//
-	// We could also just use float4 data all the way for the normals. We wouldn't have any conversion to do.
+	// We could also just use float4_t data all the way for the normals. We wouldn't have any conversion to do.
 	// But we would have a conversion to perform before denoising and so the issues would be the same
 	//
 	// So maybe there is another solution besides the RGBA OpenGL Interop but too lazy, this is an unlikely

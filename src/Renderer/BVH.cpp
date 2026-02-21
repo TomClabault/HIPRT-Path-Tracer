@@ -9,7 +9,7 @@
 
 #include "Renderer/BVH.h"
 
-const float3 BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
+const float3_t BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
 	make_float3(1, 0, 0),
 	make_float3(0, 1, 0),
 	make_float3(0, 0, 1),
@@ -23,8 +23,8 @@ BVH::BVH() : m_root(nullptr), m_triangles(nullptr) {}
 BVH::BVH(std::vector<Triangle>* triangles, int max_depth, int leaf_max_obj_count) : m_triangles(triangles)
 {
 	BoundingVolume volume;
-	float3 minimum = make_float3(INFINITY, INFINITY, INFINITY);
-	float3 maximum = make_float3(-INFINITY, -INFINITY, -INFINITY);
+	float3_t minimum = make_float3(INFINITY, INFINITY, INFINITY);
+	float3_t maximum = make_float3(-INFINITY, -INFINITY, -INFINITY);
 
 	for (const Triangle& triangle : *triangles)
 	{
@@ -54,7 +54,7 @@ void BVH::operator=(BVH&& bvh)
 	bvh.m_root = nullptr;
 }
 
-void BVH::build_bvh(int max_depth, int leaf_max_obj_count, float3 min, float3 max, const BoundingVolume& volume)
+void BVH::build_bvh(int max_depth, int leaf_max_obj_count, float3_t min, float3_t max, const BoundingVolume& volume)
 {
 	m_root = new OctreeNode(min, max);
 

@@ -16,10 +16,10 @@ struct ReSTIRSurface
 	int primitive_index = -1;
 
 	// Do we need the view direction here? We can probably reconstruct it
-	float3 view_direction = { 0.0f, 0.0f, 0.0f };
-	float3 shading_normal = { 0.0f, 0.0f, 0.0f };
-	float3 geometric_normal = { 0.0f, 0.0f, 0.0f };
-	float3 shading_point = { 0.0f, 0.0f, 0.0f };
+	float3_t view_direction = { 0.0f, 0.0f, 0.0f };
+	float3_t shading_normal = { 0.0f, 0.0f, 0.0f };
+	float3_t geometric_normal = { 0.0f, 0.0f, 0.0f };
+	float3_t shading_point = { 0.0f, 0.0f, 0.0f };
 };
 
 HIPRT_DEVICE static ReSTIRSurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)

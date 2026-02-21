@@ -13,7 +13,7 @@ struct ReGIRHashCellDataSoADevice
 	static constexpr float UNDEFINED_DISTANCE = -42.0f;
 
 	static constexpr unsigned int UNDEFINED_POINT = 0xFFFFFFFF;
-	static constexpr float3 UNDEFINED_NORMAL	  = { 0.0f, 0.0f, 0.0f };
+	static constexpr float3_t UNDEFINED_NORMAL	  = { 0.0f, 0.0f, 0.0f };
 	static constexpr int UNDEFINED_PRIMITIVE	  = -1;
 
 	// These three buffers are only allocated per each cell, not per each reservoir so they are
@@ -21,7 +21,7 @@ struct ReGIRHashCellDataSoADevice
 
 	// Buffer that holds the index of the thread that inserted into that grid cell
 	AtomicType<int>* hit_primitive				  = nullptr;
-	float3* world_points						  = nullptr;
+	float3_t* world_points						  = nullptr;
 	Octahedral24BitNormalPadded32b* world_normals = nullptr;
 
 	// TODO these guys in a single buffer to have only one memory access

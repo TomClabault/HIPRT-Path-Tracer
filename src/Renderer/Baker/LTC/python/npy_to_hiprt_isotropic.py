@@ -84,7 +84,7 @@ def main():
 
     # Write annotated C++ directly
     with open(args.output, 'w') as out:
-        out.write(f"static const std::array<float4, {int(sqrt(texel_count))} * {int(sqrt(texel_count))}> ltc_fit_parameters = {{\n\n")
+        out.write(f"static const std::array<float4_t, {int(sqrt(texel_count))} * {int(sqrt(texel_count))}> ltc_fit_parameters = {{\n\n")
 
         for a in range(lut_size):
             alpha_val = max(a / (lut_size - 1), 0.01) if lut_size > 1 else 0.01

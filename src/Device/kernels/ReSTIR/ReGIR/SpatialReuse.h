@@ -19,8 +19,8 @@
 
 HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(HIPRTRenderData& render_data,
 																				bool primary_hit,
-																				float3 point_in_center_cell,
-																				float3 center_cell_normal,
+																				float3_t point_in_center_cell,
+																				float3_t center_cell_normal,
 																				float center_cell_roughness,
 																				Xorshift32Generator& spatial_neighbor_rng)
 {
@@ -32,12 +32,12 @@ HIPRT_DEVICE unsigned int get_random_neighbor_hash_grid_cell_index_with_retries(
 	int retry = 0;
 	while (retry < regir_settings.spatial_reuse.retries_per_neighbor && neighbor_invalid)
 	{
-		float3 random_neighbor = make_float3(spatial_neighbor_rng(), spatial_neighbor_rng(), spatial_neighbor_rng());
+		float3_t random_neighbor = make_float3(spatial_neighbor_rng(), spatial_neighbor_rng(), spatial_neighbor_rng());
 
-		float3 offset_float_radius_1  = random_neighbor * 2.0f - 1.0f;
-		float3 offset_float_radius	  = offset_float_radius_1 * static_cast<float>(regir_settings.spatial_reuse.spatial_reuse_radius);
-		float3 offset				  = make_float3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
-		float3 point_in_neighbor_cell = point_in_center_cell + offset * regir_settings.get_cell_size(point_in_center_cell, render_data.current_camera,
+		float3_t offset_float_radius_1  = random_neighbor * 2.0f - 1.0f;
+		float3_t offset_float_radius	  = offset_float_radius_1 * static_cast<float>(regir_settings.spatial_reuse.spatial_reuse_radius);
+		float3_t offset				  = make_float3(roundf(offset_float_radius.x), roundf(offset_float_radius.y), roundf(offset_float_radius.z));
+		float3_t point_in_neighbor_cell = point_in_center_cell + offset * regir_settings.get_cell_size(point_in_center_cell, render_data.current_camera,
 																									 center_cell_roughness, primary_hit);
 
 		neighbor_hash_grid_cell_index_in_grid = regir_settings.get_hash_grid_cell_index_from_world_pos(
@@ -62,8 +62,8 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
 										  int reservoir_index_in_cell,
 										  int hash_grid_cell_index,
 										  bool primary_hit,
-										  float3 center_cell_point,
-										  float3 center_cell_normal,
+										  float3_t center_cell_point,
+										  float3_t center_cell_normal,
 										  float center_cell_roughness,
 										  Xorshift32Generator& spatial_neighbor_rng,
 										  Xorshift32Generator& random_number_generator)
@@ -80,7 +80,7 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
 		// in case the neighbor that we picked was out of the grid, in a dead cell, ...
 		//
 		// This is to have more chance to get a reusable neighbor --> more reuse --> less variance
-		float3 random_neighbor;
+		float3_t random_neighbor;
 		int neighbor_hash_grid_cell_index_in_grid;
 
 		if (is_center_cell)
@@ -116,10 +116,10 @@ HIPRT_DEVICE ReGIRReservoir spatial_reuse(HIPRTRenderData& render_data,
 				continue;
 
 			ColorRGB32F emission	   = triangle_load_emission(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
-			float3 light_source_normal = triangle_load_normal_not_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
+			float3_t light_source_normal = triangle_load_normal_not_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_global_index);
 			float light_source_area	   = hippt::length(light_source_normal) * 0.5f;
 			light_source_normal /= light_source_area * 2.0f;
-			float3 point_on_light = neighbor_reservoir.sample.point_on_light;
+			float3_t point_on_light = neighbor_reservoir.sample.point_on_light;
 
 			float target_function_at_center;
 			if (regir_settings.get_grid_fill_settings(primary_hit).reservoir_index_in_cell_is_canonical(reservoir_index_in_cell))
@@ -143,8 +143,8 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data,
 										  int reservoir_index_in_cell,
 										  int hash_grid_cell_index,
 										  bool primary_hit,
-										  float3 center_cell_point,
-										  float3 center_cell_normal,
+										  float3_t center_cell_point,
+										  float3_t center_cell_normal,
 										  float center_cell_roughness,
 										  Xorshift32Generator& spatial_neighbor_rng,
 										  Xorshift32Generator& random_number_generator)
@@ -159,10 +159,10 @@ HIPRT_DEVICE int spatial_reuse_mis_weight(HIPRTRenderData& render_data,
 	{
 		ColorRGB32F emission = triangle_load_emission(render_data, output_reservoir.sample.emissive_triangle_global_index);
 
-		float3 light_source_normal = triangle_load_normal_not_normalized(render_data, output_reservoir.sample.emissive_triangle_global_index);
+		float3_t light_source_normal = triangle_load_normal_not_normalized(render_data, output_reservoir.sample.emissive_triangle_global_index);
 		float light_source_area	   = hippt::length(light_source_normal) * 0.5f;
 		light_source_normal /= light_source_area * 2.0f;
-		float3 point_on_light = output_reservoir.sample.point_on_light;
+		float3_t point_on_light = output_reservoir.sample.point_on_light;
 
 		for (int neighbor_index = 0; neighbor_index < regir_settings.spatial_reuse.spatial_neighbor_count + 1; neighbor_index++)
 		{
@@ -286,8 +286,8 @@ inline ReGIR_Spatial_Reuse(HIPRTRenderData render_data,
 
 		Xorshift32Generator random_number_generator(seed);
 
-		float3 center_cell_point	= ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
-		float3 center_cell_normal	= ReGIR_get_cell_world_normal(render_data, hash_grid_cell_index, primary_hit);
+		float3_t center_cell_point	= ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
+		float3_t center_cell_normal	= ReGIR_get_cell_world_normal(render_data, hash_grid_cell_index, primary_hit);
 		float center_cell_roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index, primary_hit);
 
 		if (regir_settings.get_hash_cell_data_soa(primary_hit).grid_cell_alive[hash_grid_cell_index] == 0)

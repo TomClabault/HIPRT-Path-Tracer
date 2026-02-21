@@ -9,7 +9,7 @@
 #include "UI/RenderWindow.h"
 
 const std::string GMoNRenderPass::GMON_RENDER_PASS_NAME = "GMoN Render Pass";
-const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL = "Compute G-MoN";
+const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL	= "Compute G-MoN";
 
 GMoNRenderPass::GMoNRenderPass() : GMoNRenderPass(nullptr) {}
 
@@ -25,11 +25,12 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	int2 render_resolution = render_data.render_settings.render_resolution;
+	int2_t render_resolution = render_data.render_settings.render_resolution;
 
 	if (is_render_pass_used())
 	{
-		unsigned int number_of_sets = m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+		unsigned int number_of_sets = m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(
+								GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
 			// Resizing the buffers because the resolution has changed
@@ -53,9 +54,9 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 
 		if (m_gmon.gmon_auto_blend_factor)
 			// Auto adjusting the GMoN blend factor
-			// 
+			//
 			// Choosing the blending factor based on how many samples we've accumulated so far
-			// 
+			//
 			// This is just a linear ramp.
 			//
 			// 0 blend factor at sample number 0
@@ -88,7 +89,8 @@ bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompile
 
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
 
-	unsigned int number_of_sets = m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+	unsigned int number_of_sets =
+							m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 
 	// Adding +1 to sample_number here because this launch() function is called after the renderer has accumulated
 	// one more sample but before render_settings.sample_number is incremented
@@ -97,27 +99,26 @@ bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompile
 	// (that update at sample 0 isn't going to be a full GMoN computation, it's just going to be
 	// a copy of the current pixel color (which is only 1 sample accumuluated) to the framebuffer)
 	bool enough_samples_accumulated = (render_data.render_settings.sample_number + 1) % number_of_sets == 0;
-	bool sample_0 = render_data.render_settings.sample_number == 0;
-	bool last_sample_of_render = render_data.render_settings.sample_number == (application_settings->max_sample_count - 1);
-	bool recomputation_necessary = m_gmon.m_gmon_recomputation_requested || last_sample_of_render;
+	bool sample_0					= render_data.render_settings.sample_number == 0;
+	bool last_sample_of_render		= render_data.render_settings.sample_number == (application_settings->max_sample_count - 1);
+	bool recomputation_necessary	= m_gmon.m_gmon_recomputation_requested || last_sample_of_render;
 	if ((enough_samples_accumulated || sample_0) && recomputation_necessary)
 	{
 		// If we have rendered enough samples that one more sample has been accumulated in each of the
 		// GMoN sets
-		int2 render_resolution = m_renderer->m_render_resolution;
+		int2_t render_resolution = m_renderer->m_render_resolution;
 
 		render_data.buffers.gmon_estimator.next_set_to_accumulate = m_next_set_to_accumulate;
 
 		void* launch_args[] = { &render_data };
 
-		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->launch_asynchronous(
-			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,
-			launch_args,
-			m_renderer->get_main_stream());
+		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->launch_asynchronous(GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize,
+																			render_resolution.x, render_resolution.y, launch_args,
+																			m_renderer->get_main_stream());
 
-		m_gmon.m_gmon_recomputed = true;
+		m_gmon.m_gmon_recomputed			  = true;
 		m_gmon.m_gmon_recomputation_requested = false;
-		m_gmon.last_recomputed_sample_count = render_data.render_settings.sample_number + 1;
+		m_gmon.last_recomputed_sample_count	  = render_data.render_settings.sample_number + 1;
 
 		return true;
 	}
@@ -131,7 +132,8 @@ void GMoNRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUK
 	{
 		// We're going to increment the counter that indicates in which sets of GMoN to accumulate
 		m_next_set_to_accumulate++;
-		if (m_next_set_to_accumulate == m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
+		if (m_next_set_to_accumulate ==
+			m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			// Going back to 0 if we've reached the end of the sets, round robin style
 			m_next_set_to_accumulate = 0;
 	}
@@ -226,7 +228,7 @@ bool GMoNRenderPass::buffers_allocated()
 
 bool GMoNRenderPass::is_render_pass_used() const
 {
-	bool gmon_enabled = m_gmon.use_gmon;
+	bool gmon_enabled		  = m_gmon.use_gmon;
 	bool accumulation_enabled = m_renderer->get_render_settings().accumulate;
 
 	return gmon_enabled && accumulation_enabled;

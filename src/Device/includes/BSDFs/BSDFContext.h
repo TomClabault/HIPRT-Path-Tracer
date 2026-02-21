@@ -15,10 +15,10 @@ struct BSDFContext
 	DeviceUnpackedEffectiveMaterial& material;
 	RayVolumeState& volume_state;
 
-	float3 view_direction	  = make_float3(-1.0f, -1.0f, -1.0f);
-	float3 shading_normal	  = make_float3(-1.0f, -1.0f, -1.0f);
-	float3 geometric_normal	  = make_float3(-1.0f, -1.0f, -1.0f);
-	float3 to_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t view_direction	  = make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t shading_normal	  = make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t geometric_normal	  = make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t to_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
 
 	BSDFIncidentLightInfo& incident_light_info;
 
@@ -40,10 +40,10 @@ struct BSDFContext
 	 * information about what lobe the 'to_light_direction' comes from (during NEE light sampling for example)
 	 */
 	HIPRT_HOST_DEVICE BSDFContext(
-							const float3& view_direction_,
-							const float3& shading_normal_,
-							const float3& geometric_normal_,
-							const float3& to_light_direction_,
+							const float3_t& view_direction_,
+							const float3_t& shading_normal_,
+							const float3_t& geometric_normal_,
+							const float3_t& to_light_direction_,
 							BSDFIncidentLightInfo& incident_light_info_,
 							RayVolumeState& ray_volume_state_,
 							bool update_ray_volume_state_,

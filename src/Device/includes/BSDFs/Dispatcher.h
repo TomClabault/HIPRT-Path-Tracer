@@ -66,7 +66,7 @@ HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data
 template <bool sampleDirectionOnly = false>
 HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data,
 													   BSDFContext& bsdf_context,
-													   float3& sampled_direction,
+													   float3_t& sampled_direction,
 													   float& pdf,
 													   Xorshift32Generator& random_number_generator)
 {
