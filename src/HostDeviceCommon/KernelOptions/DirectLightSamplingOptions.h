@@ -6,9 +6,9 @@
 #ifndef HOST_DEVICE_COMMON_DIRECT_LIGHT_SAMPLING_OPTIONS_H
 #define HOST_DEVICE_COMMON_DIRECT_LIGHT_SAMPLING_OPTIONS_H
 
+#include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/KernelOptions/Common.h"
 #include "HostDeviceCommon/KernelOptions/LightTreeATSOptions.h"
-#include "Device/includes/FixIntellisense.h"
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_ONE_LIGHT				 1
@@ -119,7 +119,7 @@
  *		Uses Linearly Transformed Cosines to analytically shade lights. This is biased
  *		as shadowing is not taken into account. Not all BSDF lobe configurations are supported.
  */
-#define DirectLightNEEEstimator LSS_ONE_LIGHT
+#define DirectLightNEEEstimator LSS_MIS_LIGHT_BSDF
 
 /**
  * What sampling strategy to use to sample points on triangles (most relevant
