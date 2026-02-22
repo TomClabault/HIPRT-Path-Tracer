@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO known bugs / incorrectness:
+// - IOR 1 glass at roughness 1 without energy conservation loses a lot of energy but it shouldn't even be here because it's IOR 1
 // - Updating the emissive property of a material in ImGui should update the emissive triangle primitive indices buffer: a material that goes from emission 1 to
 // emission 0 should be removed from that buffer but it's not at the moment
 // - There is some weird color corruption issue with NEE++ linear probing max steps = 16 + ReGIR
@@ -1584,7 +1585,7 @@ bool RenderWindow::denoise()
 
 float RenderWindow::denoise_interop_buffers()
 {
-	std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_buffer		= nullptr;
+	std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_buffer	= nullptr;
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_buffer = nullptr;
 
 	if (m_application_settings->denoiser_use_normals)

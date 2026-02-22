@@ -58,7 +58,7 @@ struct BRDFsData
 
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 
-	float energy_compensation_roughness_threshold = 0.0f;
+	float energy_compensation_roughness_threshold = 0.15f;
 
 	// If the roughness of the metallic lobe of the Principled BSDF is higher or equal to this threshold, the metallic lobe will be sampled using
 	// cosine-weighted hemisphere sampling instead of GGX VNDF sampling. This massively improves variance on very rough conductor lobes (> 0.7 roughness)

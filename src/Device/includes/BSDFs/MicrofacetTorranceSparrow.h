@@ -183,7 +183,7 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderD
 												local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf,
 												incident_light_direction_is_from_GGX_sample, rng);
 #else
-	return torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(material, material_roughness, material_anisotropy, incident_ior, F,
+	return torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(render_data, material, material_roughness, material_anisotropy, incident_ior, F,
 																		   local_view_direction, local_to_light_direction, rng, out_pdf,
 																		   incident_light_direction_is_from_GGX_sample);
 #endif
