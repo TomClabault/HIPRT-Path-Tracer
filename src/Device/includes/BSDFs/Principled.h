@@ -114,9 +114,9 @@ HIPRT_DEVICE static float principled_coat_pdf(const HIPRTRenderData& render_data
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
 HIPRT_DEVICE static float3_t principled_coat_sample(const HIPRTRenderData& render_data,
-												  BSDFContext& bsdf_context,
-												  const float3_t& local_view_direction,
-												  Xorshift32Generator& random_number_generator)
+													BSDFContext& bsdf_context,
+													const float3_t& local_view_direction,
+													Xorshift32Generator& random_number_generator)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
 							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness,
@@ -143,10 +143,10 @@ HIPRT_DEVICE static float principled_sheen_pdf(const HIPRTRenderData& render_dat
 }
 
 HIPRT_DEVICE static float3_t principled_sheen_sample(const HIPRTRenderData& render_data,
-												   const DeviceUnpackedEffectiveMaterial& material,
-												   const float3_t& local_view_direction,
-												   const float3_t& shading_normal,
-												   Xorshift32Generator& random_number_generator)
+													 const DeviceUnpackedEffectiveMaterial& material,
+													 const float3_t& local_view_direction,
+													 const float3_t& shading_normal,
+													 Xorshift32Generator& random_number_generator)
 {
 	return sheen_ltc_sample(render_data, material, local_view_direction, shading_normal, random_number_generator);
 }
@@ -240,11 +240,11 @@ HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
 HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& render_data,
-													  const BSDFContext& bsdf_context,
-													  float roughness,
-													  float anisotropy,
-													  const float3_t& local_view_direction,
-													  Xorshift32Generator& random_number_generator)
+														const BSDFContext& bsdf_context,
+														float roughness,
+														float anisotropy,
+														const float3_t& local_view_direction,
+														Xorshift32Generator& random_number_generator)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
 							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
@@ -419,11 +419,11 @@ HIPRT_DEVICE static float principled_specular_pdf(const HIPRTRenderData& render_
 }
 
 HIPRT_DEVICE static float3_t principled_specular_sample(const HIPRTRenderData& render_data,
-													  BSDFContext& bsdf_context,
-													  float roughness,
-													  float anisotropy,
-													  const float3_t& local_view_direction,
-													  Xorshift32Generator& random_number_generator)
+														BSDFContext& bsdf_context,
+														float roughness,
+														float anisotropy,
+														const float3_t& local_view_direction,
+														Xorshift32Generator& random_number_generator)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
 							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness,
@@ -601,15 +601,20 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 		float regularized_roughness = scaled_roughness;
 		if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS &&
 			PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-			// If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights are correct
+		{
+			// If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights (computed from the PDFs which are
+			// themselves computed from the roughness) are correct
 			regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(
 									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
 									bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
+		}
 		else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC &&
 				 PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
+		{
 			regularized_roughness = MicrofacetRegularization::regularize_reflection(
 									render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
 									bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
+		}
 
 		SpecularDeltaReflectionSampled delta_glass_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(
 								scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
@@ -618,9 +623,9 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 													 F, local_view_direction, local_to_light_direction, local_half_vector, pdf, delta_glass_direction_sampled,
 													 rng);
 
-		// Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
+		// Note: for specular (roughness 0.0f) glass, the compensation term will never be evaluated as there is no energy loss.
 		// The function will return very quickly and will return 1.0f
-		float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, bsdf_context.material, bsdf_context.volume_state.inside_material, eta_t,
+		float compensation_term = get_GGX_energy_compensation_glass(render_data, bsdf_context.material, bsdf_context.volume_state.inside_material, eta_t,
 																		  eta_i, relative_eta, local_view_direction.z);
 		// [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
 		color /= compensation_term;
@@ -650,7 +655,7 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 
 		// Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
 		// The function will return very quickly and will return 1.0f
-		float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, bsdf_context.material, regularized_roughness,
+		float compensation_term = get_GGX_energy_compensation_glass(render_data, bsdf_context.material, regularized_roughness,
 																		  bsdf_context.volume_state.inside_material, eta_t, eta_i, relative_eta,
 																		  local_view_direction.z);
 		// [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
@@ -871,9 +876,9 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
 HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& render_data,
-												   BSDFContext& bsdf_context,
-												   float3_t local_view_direction,
-												   Xorshift32Generator& random_number_generator)
+													 BSDFContext& bsdf_context,
+													 float3_t local_view_direction,
+													 Xorshift32Generator& random_number_generator)
 {
 	float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 										  ? 1.0f
@@ -1917,17 +1922,17 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 
 	float3_t T, B;
 	build_ONB(bsdf_context.shading_normal, T, B);
-	float3_t local_view_direction		= world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_view_direction	  = world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.view_direction);
 	float3_t local_to_light_direction = world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.to_light_direction);
-	float3_t local_half_vector		= hippt::normalize(local_view_direction + local_to_light_direction);
+	float3_t local_half_vector		  = hippt::normalize(local_view_direction + local_to_light_direction);
 
 	// Rotated ONB for the anisotropic GGX evaluation (metallic/glass lobes for example)
 	float3_t TR, BR;
 	build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
 
-	float3_t local_view_direction_rotated		= world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_view_direction_rotated	  = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
 	float3_t local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
-	float3_t local_half_vector_rotated		= hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
+	float3_t local_half_vector_rotated		  = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
 	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 														? 1.0f
@@ -2010,17 +2015,17 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
 
 	float3_t T, B;
 	build_ONB(bsdf_context.shading_normal, T, B);
-	float3_t local_view_direction		= world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_view_direction	  = world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.view_direction);
 	float3_t local_to_light_direction = world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.to_light_direction);
-	float3_t local_half_vector		= hippt::normalize(local_view_direction + local_to_light_direction);
+	float3_t local_half_vector		  = hippt::normalize(local_view_direction + local_to_light_direction);
 
 	// Rotated ONB for the anisotropic GGX evaluation (metallic/glass lobes for example)
 	float3_t TR, BR;
 	build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
 
-	float3_t local_view_direction_rotated		= world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
+	float3_t local_view_direction_rotated	  = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
 	float3_t local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
-	float3_t local_half_vector_rotated		= hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
+	float3_t local_half_vector_rotated		  = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
 	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 														? 1.0f

@@ -633,14 +633,14 @@ HIPRT_DEVICE static float GGX_glass_energy_compensation_get_correction_exponent(
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
-HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data,
-																  const DeviceUnpackedEffectiveMaterial& material,
-																  float custom_roughness,
-																  bool inside_object,
-																  float eta_t,
-																  float eta_i,
-																  float relative_eta,
-																  float NoV)
+HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderData& render_data,
+															const DeviceUnpackedEffectiveMaterial& material,
+															float custom_roughness,
+															bool inside_object,
+															float eta_t,
+															float eta_i,
+															float relative_eta,
+															float NoV)
 {
 	bool smooth_enough = custom_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	if (!material.do_glass_energy_compensation || smooth_enough)
@@ -715,15 +715,15 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRen
 	return compensation_term;
 }
 
-HIPRT_DEVICE static float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data,
-																  const DeviceUnpackedEffectiveMaterial& material,
-																  bool inside_object,
-																  float eta_t,
-																  float eta_i,
-																  float relative_eta,
-																  float NoV)
+HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderData& render_data,
+															const DeviceUnpackedEffectiveMaterial& material,
+															bool inside_object,
+															float eta_t,
+															float eta_i,
+															float relative_eta,
+															float NoV)
 {
-	return get_GGX_energy_compensation_dielectrics(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV);
+	return get_GGX_energy_compensation_glass(render_data, material, material.roughness, inside_object, eta_t, eta_i, relative_eta, NoV);
 }
 
 #endif
