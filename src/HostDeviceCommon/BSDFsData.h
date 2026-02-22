@@ -67,6 +67,14 @@ struct BRDFsData
 	// This option is only useful if PrincipledBSDFMetallicSampleCosineWeighted is KERNEL_OPTION_TRUE
 	float metallic_sample_cosine_weighted_roughness_threshold = 0.75f;
 
+	// If using the invariance Cui et al. method GGX for multiple scattering in the microsurface energy compensation, this is after how many bounces in the
+	// microsurface we start applying russian roulette to potentially end the random walk. Higher values for this parameter means that more bounces will be
+	// computed without russian roulette --> lower variance but higher cost
+	//
+	// A value of 1 means that russian roulette will be applied starting at the first bounce in the microsurface, which means that russian roulette will always
+	// be applied.
+	int multiple_scattering_cui_2023_min_bounce_russian_roulette = 3;
+
 	MicrofacetRegularizationSettings microfacet_regularization;
 };
 

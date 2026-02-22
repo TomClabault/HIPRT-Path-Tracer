@@ -208,8 +208,8 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 
 	SegmentTerm s(G1_Smith_lambda_signed_2023(alpha_x, alpha_y, local_to_light_direction));
 
-	float inverse_pdf = G1_Smith_lambda_signed_2023(alpha_x, alpha_y, -local_view_direction);
-	s.add_bounce(inverse_pdf);
+	float g1v_accum = G1_Smith_lambda_signed_2023(alpha_x, alpha_y, -local_view_direction);
+	s.add_bounce(g1v_accum);
 
 	ColorRGB32F weight = ColorRGB32F(1.0f);
 	ColorRGB32F multiple_scattering_contribution =
@@ -220,7 +220,8 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 	bool rough_enough = material_roughness > render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	if (rough_enough)
 	{
-		for (int i = 1; i < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; ++i)
+		int bounce;
+		for (bounce = 1; bounce < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; ++bounce)
 		{
 			current_to_light_direction = microfacet_GGX_sample_reflection<false>(material_roughness, material_anisotropy, current_view_direction, rng, false);
 
@@ -231,18 +232,33 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 				break;
 
 			float3_t half_vector = (current_view_direction + current_to_light_direction) / half_vector_length;
+
+			// Here weight "should" be multiplied by the vertex term and divided by the VNDF PDF but this simplifies to F/G1V. So we're only just multiplying by
+			// the fresnel term here and the G1V terms are accounted for by "g1v_accum"
 			weight *= principled_metallic_fresnel(material, incident_ior, current_view_direction, half_vector);
 
 			float lambda = G1_Smith_lambda_signed_2023(alpha_x, alpha_y, current_to_light_direction);
 			s.add_bounce(lambda);
 			float s_k = s.get_sk();
 
+#if PrincipledBSDFMultipleScatteringCuiDoRussianRoulette == KERNEL_OPTION_TRUE
+			if (bounce >= render_data.bsdfs_data.multiple_scattering_cui_2023_min_bounce_russian_roulette)
+			{
+				// Russian roulette
+				float q = hippt::max(hippt::min(s_k, 0.95f), 0.3f);
+				if (rng() >= q)
+					break;
+
+				weight /= q;
+			}
+#endif
+
 			current_view_direction = -current_to_light_direction;
 			multiple_scattering_contribution +=
 									Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, current_view_direction, local_to_light_direction) * weight *
-									hippt::abs(inverse_pdf) * s_k;
+									hippt::abs(g1v_accum) * s_k;
 
-			inverse_pdf *= lambda;
+			g1v_accum *= lambda;
 		}
 	}
 

@@ -157,6 +157,12 @@
 #define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 3
 
 /**
+ * If true, russian roulette will be applied to the random walk in the microsurface for the invariance Cui et al. method. This can help reduce the cost of that
+ * method with high number of maximum bounces but it is going to have higher variance.
+ */
+#define PrincipledBSDFMultipleScatteringCuiDoRussianRoulette KERNEL_OPTION_TRUE
+
+/**
  * Whether or not to perform energy compensation for the glass layer of the Principled BSDF
  */
 #define PrincipledBSDFDoGlassEnergyCompensation KERNEL_OPTION_TRUE

@@ -4187,6 +4187,8 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 				if (max_microsurface_bounces !=
 					global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_BOUNCES))
 				{
+					ImGui::TreePush("Max microsurface bounces apply button");
+
 					if (ImGui::Button("Apply##max microsurface bounces"))
 					{
 						max_microsurface_bounces = hippt::clamp(1, 15, max_microsurface_bounces);
@@ -4197,6 +4199,36 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 						m_renderer->recompile_kernels();
 						m_render_window->set_render_dirty(true);
 					}
+
+					ImGui::TreePop();
+				}
+
+				static bool do_russian_roulette = global_kernel_options->get_macro_value(
+										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_DO_RUSSIAN_ROULETTE);
+				if (ImGui::Checkbox("Do Russian roulette", &do_russian_roulette))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_DO_RUSSIAN_ROULETTE,
+														   do_russian_roulette ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (do_russian_roulette)
+				{
+					ImGui::TreePush("Invariance cui RR settings tree");
+
+					if (ImGui::SliderInt("RR min bounce", &render_data.bsdfs_data.multiple_scattering_cui_2023_min_bounce_russian_roulette, 1, 15))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("If using the invariance Cui et al. method GGX for multiple scattering in the microsurface energy "
+													"compensation, this is after how many bounces in the microsurface we start applying russian roulette to "
+													"potentially end the random walk. Higher values for this parameter means that more bounces will be "
+													"computed without russian roulette --> lower variance but higher cost.\n\n"
+													""
+													"A value of 1 means that russian roulette will be applied starting at the first bounce in the "
+													"microsurface, which means that russian roulette will always be applied.");
+
+					ImGui::TreePop();
 				}
 
 				ImGui::TreePop();
