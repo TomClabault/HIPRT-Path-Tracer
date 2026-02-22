@@ -625,8 +625,8 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 
 		// Note: for specular (roughness 0.0f) glass, the compensation term will never be evaluated as there is no energy loss.
 		// The function will return very quickly and will return 1.0f
-		float compensation_term = get_GGX_energy_compensation_glass(render_data, bsdf_context.material, bsdf_context.volume_state.inside_material, eta_t,
-																		  eta_i, relative_eta, local_view_direction.z);
+		float compensation_term = get_GGX_energy_compensation_glass(render_data, bsdf_context.material, bsdf_context.volume_state.inside_material, eta_t, eta_i,
+																	relative_eta, local_view_direction.z);
 		// [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
 		color /= compensation_term;
 
@@ -656,8 +656,8 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 		// Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
 		// The function will return very quickly and will return 1.0f
 		float compensation_term = get_GGX_energy_compensation_glass(render_data, bsdf_context.material, regularized_roughness,
-																		  bsdf_context.volume_state.inside_material, eta_t, eta_i, relative_eta,
-																		  local_view_direction.z);
+																	bsdf_context.volume_state.inside_material, eta_t, eta_i, relative_eta,
+																	local_view_direction.z);
 		// [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
 		color /= compensation_term;
 
@@ -912,9 +912,8 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 								render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, thin_walled_scaled_roughness,
 								bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
 
-	float alpha_x, alpha_y;
-	MaterialUtils::get_alphas(thin_walled_scaled_roughness, bsdf_context.material.anisotropy, alpha_x, alpha_y);
-	float3_t microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
+	float3_t microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, thin_walled_scaled_roughness, bsdf_context.material.anisotropy,
+																   random_number_generator);
 
 	float HoV		= hippt::dot(local_view_direction, microfacet_normal);
 	float thin_film = bsdf_context.material.thin_film;
