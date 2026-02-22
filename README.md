@@ -125,7 +125,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 ### Windows
 #### - AMD GPUs
 
-1) Install the [HIP SDK](https://www.amd.com/en/developer/resources/rocm-hub/hip-sdk.html)
+1) Install the [HIP SDK](https://www.amd.com/en/developer/resources/rocm-hub/hip-sdk.html) (the renderer only runs with HIP SDK 7.1.1+ as of writing this)
 
 2) Follow the "[**Compiling**](#compiling)" steps.
 
