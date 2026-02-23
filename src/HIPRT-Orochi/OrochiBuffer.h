@@ -6,13 +6,13 @@
 #ifndef OROCHI_BUFFER_H
 #define OROCHI_BUFFER_H
 
+#include "GL/glew.h"
 #include "hiprt/hiprt.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Orochi/Orochi.h"
 #include "UI/DisplayView/DisplayTextureType.h"
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
-#include "GL/glew.h"
 
 extern ImGuiLogger g_imgui_logger;
 
@@ -81,7 +81,6 @@ public:
 	std::vector<T> download_data_partial(int start_element_index, int stop_element_index_excluded) const;
 	void download_data_async(void* out, oroStream_t stream) const;
 
-
 	static void upload_data(T* device_data_pointer, const std::vector<T>& data_to_upload, size_t element_count);
 	static void upload_data(T* device_data_pointer, const T* data_to_upload, size_t element_count);
 	/**
@@ -143,10 +142,10 @@ OrochiBuffer<T>::OrochiBuffer(const std::vector<T>& data)
 template <typename T>
 OrochiBuffer<T>::OrochiBuffer(OrochiBuffer<T>&& other)
 {
-	m_data_pointer = other.m_data_pointer;
+	m_data_pointer	= other.m_data_pointer;
 	m_element_count = other.m_element_count;
 
-	other.m_data_pointer = nullptr;
+	other.m_data_pointer  = nullptr;
 	other.m_element_count = 0;
 }
 
@@ -163,14 +162,14 @@ void OrochiBuffer<T>::operator=(OrochiBuffer&& other) noexcept
 	if (m_data_pointer)
 		free();
 
-	m_data_pointer = other.m_data_pointer;
+	m_data_pointer	= other.m_data_pointer;
 	m_element_count = other.m_element_count;
 
-	other.m_data_pointer = nullptr;
+	other.m_data_pointer  = nullptr;
 	other.m_element_count = 0;
 }
 
-template<typename T>
+template <typename T>
 inline void OrochiBuffer<T>::memset_whole_buffer(T value)
 {
 	if (m_data_pointer == nullptr)
@@ -227,13 +226,17 @@ const T* OrochiBuffer<T>::get_device_pointer() const
 	if (m_data_pointer == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the device_pointer of an OrochiBuffer that hasn't been allocated!");
+		Debug::debugbreak();
 
 		return nullptr;
 	}
 
 	if (m_pinned_memory)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the device_pointer of an OrochiBuffer that has been allocated with host pinned memory. Pinned host memory doesn't have device pointers. Use get_host_pinned_pointer()");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"Getting the device_pointer of an OrochiBuffer that has been allocated with host pinned memory. Pinned host memory doesn't "
+								"have device pointers. Use get_host_pinned_pointer()");
+		Debug::debugbreak();
 
 		return nullptr;
 	}
@@ -247,13 +250,17 @@ T* OrochiBuffer<T>::get_device_pointer()
 	if (m_data_pointer == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the device_pointer of an OrochiBuffer that hasn't been allocated!");
+		Debug::debugbreak();
 
 		return nullptr;
 	}
 
 	if (m_pinned_memory)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the device_pointer of an OrochiBuffer that has been allocated with host pinned memory. Pinned host memory doesn't have device pointers. Use get_host_pinned_pointer()");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"Getting the device_pointer of an OrochiBuffer that has been allocated with host pinned memory. Pinned host memory doesn't "
+								"have device pointers. Use get_host_pinned_pointer()");
+		Debug::debugbreak();
 
 		return nullptr;
 	}
@@ -279,12 +286,15 @@ const T* OrochiBuffer<T>::get_host_pinned_pointer() const
 	if (m_data_pointer == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the host_pinned_pointer of an OrochiBuffer that hasn't been allocated!");
+		Debug::debugbreak();
 
 		return nullptr;
 	}
 	else if (!m_pinned_memory)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the host_pinned_pointer of an OrochiBuffer that has been allocated for the device! Use get_device_pointer() instead");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"Getting the host_pinned_pointer of an OrochiBuffer that has been allocated for the device! Use get_device_pointer() instead");
+		Debug::debugbreak();
 
 		return nullptr;
 	}
@@ -298,19 +308,21 @@ T* OrochiBuffer<T>::get_host_pinned_pointer()
 	if (m_data_pointer == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the host_pinned_pointer of an OrochiBuffer that hasn't been allocated!");
+		Debug::debugbreak();
 
 		return nullptr;
 	}
 	else if (!m_pinned_memory)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Getting the host_pinned_pointer of an OrochiBuffer that has been allocated for the device! Use get_device_pointer() instead");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"Getting the host_pinned_pointer of an OrochiBuffer that has been allocated for the device! Use get_device_pointer() instead");
+		Debug::debugbreak();
 
 		return nullptr;
 	}
 
 	return m_data_pointer;
 }
-
 
 template <typename T>
 const T* OrochiBuffer<T>::data() const
@@ -350,6 +362,7 @@ std::vector<T> OrochiBuffer<T>::download_data() const
 	if (!m_data_pointer)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to download data from a non-allocated buffer!");
+		Debug::debugbreak();
 
 		return std::vector<T>();
 	}
@@ -367,6 +380,7 @@ void OrochiBuffer<T>::download_data_into(T* host_pointer) const
 	if (!m_data_pointer)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to download data into a host pinned buffer from a non-allocated buffer!");
+		Debug::debugbreak();
 
 		return;
 	}
@@ -374,7 +388,7 @@ void OrochiBuffer<T>::download_data_into(T* host_pointer) const
 	OROCHI_CHECK_ERROR(oroMemcpyDtoH(host_pointer, reinterpret_cast<oroDeviceptr>(m_data_pointer), sizeof(T) * m_element_count));
 }
 
-template<typename T>
+template <typename T>
 inline std::vector<T> OrochiBuffer<T>::download_data_partial(int start_element_index, int stop_element_index_excluded) const
 {
 	if (!m_data_pointer)
@@ -401,7 +415,6 @@ void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const
 	if (m_data_pointer == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to download data async from a non-allocated buffer!");
-
 		Debug::debugbreak();
 
 		return;
@@ -427,9 +440,13 @@ template <typename T>
 void OrochiBuffer<T>::upload_data(const std::vector<T>& data)
 {
 	if (m_data_pointer)
-		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data.data(), sizeof(T) * hippt::min(data.size(), m_element_count), oroMemcpyHostToDevice));
+		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data.data(), sizeof(T) * hippt::min(data.size(), m_element_count),
+									 oroMemcpyHostToDevice));
 	else
+	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
+		Debug::debugbreak();
+	}
 }
 
 template <typename T>
@@ -438,15 +455,19 @@ void OrochiBuffer<T>::upload_data(const T* data)
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice));
 	else
+	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
+		Debug::debugbreak();
+	}
 }
 
-template<typename T>
+template <typename T>
 inline void OrochiBuffer<T>::upload_data_partial(size_t start_index, const T* data, size_t element_count)
 {
 	if (start_index > m_element_count)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload partial data to an OrochiBuffer starting at in an index that is larger than the buffer's size!");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"Trying to upload partial data to an OrochiBuffer starting at in an index that is larger than the buffer's size!");
 
 		return;
 	}
@@ -454,7 +475,10 @@ inline void OrochiBuffer<T>::upload_data_partial(size_t start_index, const T* da
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer + start_index), data, sizeof(T) * element_count, oroMemcpyHostToDevice));
 	else
+	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload partial data to an OrochiBuffer that hasn't been allocated yet!");
+		Debug::debugbreak();
+	}
 }
 
 template <typename T>
@@ -473,7 +497,7 @@ void OrochiBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, i
 	// not RGBA and again, OpenGL Interop throws an error at 'oroGraphicsGLRegisterImage' for RGB
 	// textures.
 	//
-	// So to fix this, we could use an RGBA OpenGL texture in place of RGB. But then, in the case of 
+	// So to fix this, we could use an RGBA OpenGL texture in place of RGB. But then, in the case of
 	// world-space normals buffer for example, we have to convert our float3_t normals to float4_t to upload
 	// to the RGBA texture. And that conversion would be expensive (and require memory)
 	//
@@ -483,31 +507,34 @@ void OrochiBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, i
 	// So maybe there is another solution besides the RGBA OpenGL Interop but too lazy, this is an unlikely
 	// code path in the application anyways
 	std::vector<T> data = download_data();
-	glTexImage2D(GL_TEXTURE_2D, 0, texture_type.get_gl_internal_format(), width, height, 0, texture_type.get_gl_format(), texture_type.get_gl_type(), data.data());
+	glTexImage2D(GL_TEXTURE_2D, 0, texture_type.get_gl_internal_format(), width, height, 0, texture_type.get_gl_format(), texture_type.get_gl_type(),
+				 data.data());
 
-	//oroGraphicsResource_t graphics_resource = nullptr;
-	//OROCHI_CHECK_ERROR(oroGraphicsGLRegisterImage(&graphics_resource, texture, GL_TEXTURE_2D, oroGraphicsRegisterFlagsWriteDiscard));
+	// oroGraphicsResource_t graphics_resource = nullptr;
+	// OROCHI_CHECK_ERROR(oroGraphicsGLRegisterImage(&graphics_resource, texture, GL_TEXTURE_2D, oroGraphicsRegisterFlagsWriteDiscard));
 
 	//// Map the OpenGL texture for CUDA/HIP access
-	//OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, &graphics_resource, 0));
+	// OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, &graphics_resource, 0));
 
 	//// Access the CUDA/HIP array used by the OpenGL texture under the hood
-	//oroArray_t array = nullptr;
+	// oroArray_t array = nullptr;
 	//	OROCHI_CHECK_ERROR(oroGraphicsSubResourceGetMappedArray(&array, graphics_resource, 0, 0));
 
 	//// Copy data from the CUDA buffer to the CUDA array
-	//	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(array, 0, 0, m_data_pointer, width * texture_type.sizeof_type(), width * texture_type.sizeof_type(), height, oroMemcpyDeviceToDevice));
+	//	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(array, 0, 0, m_data_pointer, width * texture_type.sizeof_type(), width * texture_type.sizeof_type(), height,
+	//oroMemcpyDeviceToDevice));
 
 	//// Unmap the OpenGL texture
-	//OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, &graphics_resource, 0));
+	// OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, &graphics_resource, 0));
 }
 
-template<typename T>
+template <typename T>
 inline void OrochiBuffer<T>::memcpy_from(const OrochiBuffer<T>& other)
 {
 	if (m_data_pointer == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memcpy_from() into an OrochiBuffer that hasn't been allocated yet!");
+		Debug::debugbreak();
 
 		return;
 	}
@@ -516,12 +543,13 @@ inline void OrochiBuffer<T>::memcpy_from(const OrochiBuffer<T>& other)
 	OROCHI_CHECK_ERROR(oroMemcpy(m_data_pointer, other.get_device_pointer(), size_to_copy * sizeof(T), oroMemcpyDeviceToDevice));
 }
 
-template<typename T>
+template <typename T>
 inline void OrochiBuffer<T>::memcpy_from(T* data_source, size_t element_count_to_copy)
 {
 	if (m_data_pointer == nullptr)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memcpy_from() into an OrochiBuffer that hasn't been allocated yet!");
+		Debug::debugbreak();
 
 		return;
 	}
@@ -541,13 +569,15 @@ void OrochiBuffer<T>::free()
 	}
 	else
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Freeing an OrochiBuffer buffer that hasn't been initialized (or has been freed already)!");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"Freeing an OrochiBuffer buffer that hasn't been initialized (or has been freed already)!");
+		Debug::debugbreak();
 
 		return;
 	}
 
 	m_element_count = 0;
-	m_data_pointer = nullptr;
+	m_data_pointer	= nullptr;
 	m_pinned_memory = false;
 }
 
