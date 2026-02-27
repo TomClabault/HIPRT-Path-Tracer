@@ -50,18 +50,20 @@
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
-// Useful if you're using an image viewer to get the the coordinates of
-// the interesting pixel. If that image viewer has its (0, 0) in the top
-// left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
-// you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+//
+// Useful if you're using an image viewer to get the the coordinates of the interesting pixel. If that image viewer has its (0, 0) in the top left corner,
+// you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
+//
+// If you're debugging coordinates that come from a shader of this renderer (by printing the x and y coordinate of the pixel being rendered, then this will need
+// to be 1)
+#define DEBUG_FLIP_Y 0
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 //
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 536
-#define DEBUG_PIXEL_Y 322
+#define DEBUG_PIXEL_X 591
+#define DEBUG_PIXEL_Y 349
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -85,7 +87,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 150
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {

@@ -139,6 +139,11 @@ struct ColorRGBA32F
 		return has_nan() || has_inf();
 	}
 
+	HIPRT_DEVICE bool is_finite() const
+	{
+		return hippt::is_finite(r) && hippt::is_finite(g) && hippt::is_finite(b) && hippt::is_finite(a);
+	}
+
 	HIPRT_DEVICE bool is_black() const
 	{
 		return !(r > 0.0f || g > 0.0f || b > 0.0f);
@@ -417,6 +422,11 @@ struct ColorRGB32F
 	HIPRT_DEVICE bool has_nan_or_inf() const
 	{
 		return has_nan() || has_inf();
+	}
+
+	HIPRT_DEVICE bool is_finite() const
+	{
+		return hippt::is_finite(r) && hippt::is_finite(g) && hippt::is_finite(b);
 	}
 
 	HIPRT_DEVICE bool is_black() const

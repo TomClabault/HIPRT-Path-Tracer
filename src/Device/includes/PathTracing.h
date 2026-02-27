@@ -151,9 +151,9 @@ HIPRT_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pix
 	else
 	{
 		float3_t accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] *
-															 static_cast<float>(render_data.render_settings.denoiser_AOV_accumulation_counter) +
-									 shading_normal) /
-									(render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
+															   static_cast<float>(render_data.render_settings.denoiser_AOV_accumulation_counter) +
+									   shading_normal) /
+									  (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
 		float normal_length = hippt::length(accumulated_normal);
 		if (!hippt::is_zero(normal_length))
 			// Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
@@ -275,7 +275,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit
-		float3_t primary_hit	  = render_data.g_buffer.primary_hit_position[pixel_index];
+		float3_t primary_hit	= render_data.g_buffer.primary_hit_position[pixel_index];
 		float3_t shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
 		float3_t view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
@@ -294,7 +294,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit
-		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];
 		float3_t normal				= render_data.g_buffer.geometric_normals[pixel_index].unpack();
 		float3_t view_direction		= render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 		float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
@@ -353,7 +353,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
-		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];
 		float3_t normal				= render_data.g_buffer.geometric_normals[pixel_index].unpack();
 		float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 
@@ -374,7 +374,7 @@ HIPRT_DEVICE void path_tracing_accumulate_debug_view_color(const HIPRTRenderData
 #elif ReGIR_DebugMode == REGIR_DEBUG_MODE_REPRESENTATIVE_NORMALS
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
-		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+		float3_t primary_hit		= render_data.g_buffer.primary_hit_position[pixel_index];
 		float3_t normal				= render_data.g_buffer.geometric_normals[pixel_index].unpack();
 		float primary_hit_roughness = render_data.g_buffer.materials[pixel_index].get_roughness();
 

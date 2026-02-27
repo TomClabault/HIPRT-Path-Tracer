@@ -215,7 +215,8 @@ HIPRT_DEVICE float microfacet_GGX_pdf_reflect(float material_roughness,
 											  const float3_t& local_view_direction,
 											  const float3_t& local_to_light_direction,
 											  const float3_t& local_halfway_vector,
-											  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
+											  SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
+											  bool zero_below_surface)
 {
 	if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
 	{
@@ -247,9 +248,9 @@ HIPRT_DEVICE float microfacet_GGX_pdf_reflect(float material_roughness,
 		}
 	}
 
-	// if (local_to_light_direction.z < 0.0f)
-	//	// A direction that is below the surface is invalid for a microfacet ** BRDF **
-	//	return 0.0f;
+	if (local_to_light_direction.z < 0.0f && zero_below_surface)
+		// A direction that is below the surface is invalid for a microfacet ** BRDF **
+		return 0.0f;
 
 	float pdf = 0.0f;
 
@@ -258,7 +259,7 @@ HIPRT_DEVICE float microfacet_GGX_pdf_reflect(float material_roughness,
 	MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
 
 	// GGX normal distribution
-	float D = GGX_anisotropic(alpha_x, alpha_y, local_halfway_vector);
+	float D = GGX_anisotropic(alpha_x, alpha_y, local_halfway_vector, zero_below_surface);
 
 	// GGX visible normal distribution for evaluating the PDF
 	float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);

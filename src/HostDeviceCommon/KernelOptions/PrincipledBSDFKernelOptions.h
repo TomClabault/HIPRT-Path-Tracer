@@ -123,7 +123,7 @@
  * The roughness threshold at which this starts to be beneficial is something that can be experimented with, but 0.7 seems to be a good value for now. This
  * threshold is defined in render_data.bsdf_data.metallic_sample_cosine_weighted_roughness_threshold
  */
-#define PrincipledBSDFMetallicSampleCosineWeighted KERNEL_OPTION_TRUE
+#define PrincipledBSDFMetallicSampleCosineWeighted KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use multiple scattering at all to conserve energy when evaluating GGX BRDF lobes in the Principled BSDF
@@ -154,13 +154,19 @@
  * allowed, the more accurate the energy recovery will be but the more expensive it will be to compute. Setting this to 1 means that only single scattering will
  * be accounted for and no walk in the microsurface will be performed, yielding the same results as a classic microfacet BRDF.
  */
-#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 3
+#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 10
 
 /**
  * If true, russian roulette will be applied to the random walk in the microsurface for the invariance Cui et al. method. This can help reduce the cost of that
  * method with high number of maximum bounces but it is going to have higher variance.
  */
 #define PrincipledBSDFMultipleScatteringCuiDoRussianRoulette KERNEL_OPTION_FALSE
+
+/**
+ * If true, a multiple-bounce path in the microsurface will be sampled when sampling the BRDF. This is more expensive but has lower variance. Otherwise, only
+ * the single-scattering VNDF will be sampled which results in higher variance
+ */
+#define PrincipledBSDFMultipleScatteringCuiSampleMultiscatter KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to perform energy compensation for the glass layer of the Principled BSDF

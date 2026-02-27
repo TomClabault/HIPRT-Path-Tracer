@@ -247,8 +247,10 @@ public:
 
 private:
 	template <class _Fn, class... _Args>
-	static void
-	start_with_dependencies(const std::unordered_set<std::string>& dependencies, const std::string& thread_key_to_start, _Fn function, _Args... args)
+	static void start_with_dependencies(const std::unordered_set<std::string>& dependencies,
+										const std::string& thread_key_to_start,
+										_Fn function,
+										_Args... args)
 	{
 		// These threads have a dependency
 

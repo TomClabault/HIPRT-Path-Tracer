@@ -244,7 +244,11 @@ HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& r
 														float roughness,
 														float anisotropy,
 														const float3_t& local_view_direction,
-														Xorshift32Generator& random_number_generator)
+														Xorshift32Generator& random_number_generator,
+														float* DEBUGOUTPDF						  = nullptr,
+														ColorRGB32F* DEBUGOUTPUTEVAL			  = nullptr,
+														DeviceUnpackedEffectiveMaterial* material = nullptr,
+														float* incident_ior						  = nullptr)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
 							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
@@ -255,7 +259,8 @@ HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& r
 		return cosine_weighted_sample_z_up_frame(random_number_generator);
 #endif
 
-	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator);
+	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator, true, DEBUGOUTPDF,
+											DEBUGOUTPUTEVAL, material, incident_ior);
 }
 
 HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const DeviceUnpackedEffectiveMaterial& material,
@@ -2144,6 +2149,8 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 
 	float3_t local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
 
+	float DEBUGOUTPDFMETALLIC;
+	ColorRGB32F DEBUGOUTPUTEVAL;
 	if (rand_1 < cdf0)
 	{
 		// Sampling the coat lobe
@@ -2177,7 +2184,8 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 		output_direction = local_to_world_frame(TR, BR, bsdf_context.shading_normal,
 												principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness,
 																		   bsdf_context.material.anisotropy, local_view_direction_rotated,
-																		   random_number_generator));
+																		   random_number_generator, &DEBUGOUTPDFMETALLIC, &DEBUGOUTPUTEVAL,
+																		   &bsdf_context.material, &incident_medium_ior));
 	}
 	else if (rand_1 < cdf3)
 	{
@@ -2233,7 +2241,17 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 		return ColorRGB32F(0.0f);
 	}
 	else
-		return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
+	{
+		ColorRGB32F eval = principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
+
+		// TODO DEBUG REMOVE
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFEnergyCompensationMode == ENERGY_COMPENSATION_MODE_INVARIANCE_CUI
+		pdf = DEBUGOUTPDFMETALLIC;
+		return DEBUGOUTPUTEVAL;
+#endif
+
+		return eval;
+	}
 }
 
 #endif

@@ -21,12 +21,12 @@
 /**
  * Evaluates the GGX anisotropic normal distribution function
  */
-HIPRT_DEVICE static float GGX_anisotropic(float alpha_x, float alpha_y, const float3_t& local_microfacet_normal)
+HIPRT_DEVICE static float GGX_anisotropic(float alpha_x, float alpha_y, const float3_t& local_microfacet_normal, bool zero_below_surface = true)
 {
 	float denom = (local_microfacet_normal.x * local_microfacet_normal.x) / (alpha_x * alpha_x) +
 				  (local_microfacet_normal.y * local_microfacet_normal.y) / (alpha_y * alpha_y) + (local_microfacet_normal.z * local_microfacet_normal.z);
 
-	if (denom * local_microfacet_normal.z <= 0.0f)
+	if (denom * local_microfacet_normal.z <= 0.0f && zero_below_surface)
 		return 0.0f;
 
 	return 1.0f / (hippt::M_Pi * alpha_x * alpha_y * denom * denom);

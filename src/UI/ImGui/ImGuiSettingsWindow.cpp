@@ -4205,7 +4205,7 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 				static bool do_russian_roulette = global_kernel_options->get_macro_value(
 										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_DO_RUSSIAN_ROULETTE);
-				if (ImGui::Checkbox("Do Russian roulette", &do_russian_roulette))
+				if (ImGui::Checkbox("Do russian roulette", &do_russian_roulette))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_DO_RUSSIAN_ROULETTE,
 														   do_russian_roulette ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
@@ -4213,6 +4213,9 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
+				ImGuiRenderer::show_help_marker("If true, russian roulette will be applied to the random walk in the microsurface for the invariance Cui et "
+												"al.method.This can help reduce the cost of that method with high number of maximum bounces but it is going to "
+												"have higher variance.");
 
 				if (do_russian_roulette)
 				{
@@ -4230,6 +4233,20 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 					ImGui::TreePop();
 				}
+
+				static bool sample_multiscatter = global_kernel_options->get_macro_value(
+										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_SAMPLE_MULTISCATTER);
+				if (ImGui::Checkbox("Sample multiscatter path", &sample_multiscatter))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_SAMPLE_MULTISCATTER,
+														   sample_multiscatter ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("If true, a multiple-bounce path in the microsurface will be sampled when sampling the BRDF. This is more "
+												"expensive but has lower variance. Otherwise, only "
+												"the single-scattering VNDF will be sampled which results in higher variance");
 
 				ImGui::TreePop();
 			}

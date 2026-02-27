@@ -23,8 +23,8 @@ HIPRT_DEVICE static float3_t GGX_VNDF_sample(const float3_t local_view_direction
 
 	// Orthonormal basis construction
 	float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-	float3_t T1	= lensq > 0.0f ? float3_t{ -Vh.y, Vh.x, 0 } / hippt::sqrt(lensq) : float3_t{ 1.0f, 0.0f, 0.0f };
-	float3_t T2	= hippt::cross(Vh, T1);
+	float3_t T1 = lensq > 0.0f ? float3_t{ -Vh.y, Vh.x, 0 } / hippt::sqrt(lensq) : float3_t{ 1.0f, 0.0f, 0.0f };
+	float3_t T2 = hippt::cross(Vh, T1);
 
 	// Parametrization of the projected area of the hemisphere
 	float r	  = hippt::sqrt(r1);
@@ -49,9 +49,9 @@ HIPRT_DEVICE static float3_t GGX_VNDF_sample(const float3_t local_view_direction
  * Reference: [Sampling Visible GGX Normals with Spherical Caps, Dupuy, Benyoub, 2023]
  */
 HIPRT_DEVICE static float3_t GGX_VNDF_spherical_caps_sample(const float3_t local_view_direction,
-														  float alpha_x,
-														  float alpha_y,
-														  Xorshift32Generator& random_number_generator)
+															float alpha_x,
+															float alpha_y,
+															Xorshift32Generator& random_number_generator)
 {
 	float r1 = random_number_generator();
 	float r2 = random_number_generator();
@@ -79,9 +79,9 @@ HIPRT_DEVICE static float3_t GGX_VNDF_spherical_caps_sample(const float3_t local
  * the GGX normal function distribution
  */
 HIPRT_DEVICE static float3_t GGX_anisotropic_sample_microfacet(const float3_t& local_view_direction,
-															 float roughness,
-															 float anisotropy,
-															 Xorshift32Generator& random_number_generator)
+															   float roughness,
+															   float anisotropy,
+															   Xorshift32Generator& random_number_generator)
 {
 	float alpha_x, alpha_y;
 	MaterialUtils::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
@@ -107,9 +107,13 @@ HIPRT_DEVICE static float3_t GGX_anisotropic_sample_microfacet(const float3_t& l
 
 // Forward declaration
 HIPRT_DEVICE float3_t microfacet_GGX_multiple_scattering_invariance_sample_reflection(const float3_t& local_view_direction,
-																					float material_roughness,
-																					float material_anisotropy,
-																					Xorshift32Generator& rng);
+																					  float material_roughness,
+																					  float material_anisotropy,
+																					  Xorshift32Generator& rng,
+																					  float* DEBUGOUTPDF						= nullptr,
+																					  ColorRGB32F* DEBUGOUTPUTEVAL				= nullptr,
+																					  DeviceUnpackedEffectiveMaterial* material = nullptr,
+																					  float* incident_ior						= nullptr);
 
 /*
  * Samples a microfacet normal from the distribution of visible normals of
@@ -119,18 +123,23 @@ HIPRT_DEVICE float3_t microfacet_GGX_multiple_scattering_invariance_sample_refle
  */
 template <bool multipleScatteringAllowed = true>
 HIPRT_DEVICE static float3_t microfacet_GGX_sample_reflection(float roughness,
-															float anisotropy,
-															const float3_t& local_view_direction,
-															Xorshift32Generator& random_number_generator,
-															bool flip_view_direction_below_surface = true)
+															  float anisotropy,
+															  const float3_t& local_view_direction,
+															  Xorshift32Generator& random_number_generator,
+															  bool flip_view_direction_below_surface	= true,
+															  float* DEBUGOUTPDF						= nullptr,
+															  ColorRGB32F* DEBUGOUTEVAL					= nullptr,
+															  DeviceUnpackedEffectiveMaterial* material = nullptr,
+															  float* incident_ior						= nullptr)
 {
-	// if constexpr (PrincipledBSDFEnergyCompensationMode == ENERGY_COMPENSATION_MODE_INVARIANCE_CUI && PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE
-	// && 			  multipleScatteringAllowed)
-	//	// The && multipleScatteringAllowed check is used by microfacet_GGX_multiple_scattering_invariance_sample_reflect itself because that function samples
-	//	// the VNDF at each bounce in the microsurface. Without this check, we would be sampling the VNDF with multiple scattering infinitely recursively: at
-	//	// each bounce in the microsurface, we want to sample the simple VNDF, not the multiple scattering BRDF
-	//	return microfacet_GGX_multiple_scattering_invariance_sample_reflection(local_view_direction, roughness, anisotropy, random_number_generator);
-	// else
+	if constexpr (PrincipledBSDFEnergyCompensationMode == ENERGY_COMPENSATION_MODE_INVARIANCE_CUI && PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE &&
+				  PrincipledBSDFMultipleScatteringCuiSampleMultiscatter == KERNEL_OPTION_TRUE && multipleScatteringAllowed)
+		// The && multipleScatteringAllowed check is used by microfacet_GGX_multiple_scattering_invariance_sample_reflect itself because that function samples
+		// the VNDF at each bounce in the microsurface. Without this check, we would be sampling the VNDF with multiple scattering infinitely recursively: at
+		// each bounce in the microsurface, we want to sample the simple VNDF, not the multiple scattering BRDF
+		return microfacet_GGX_multiple_scattering_invariance_sample_reflection(local_view_direction, roughness, anisotropy, random_number_generator,
+																			   DEBUGOUTPDF, DEBUGOUTEVAL, material, incident_ior);
+	else
 	{
 		// The view direction can sometimes be below the shading normal hemisphere
 		// because of normal mapping / smooth normals

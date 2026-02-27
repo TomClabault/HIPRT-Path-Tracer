@@ -15,7 +15,7 @@ void RendererEnvmap::init_from_image(const Image32Bit& image, const std::string&
 	m_envmap_data.pack_from(image);
 	m_envmap_filepath = envmap_filepath;
 
-	m_width = image.width;
+	m_width	 = image.width;
 	m_height = image.height;
 }
 
@@ -105,7 +105,7 @@ RGBE9995Packed* RendererEnvmap::get_packed_data_pointer()
 void RendererEnvmap::get_alias_table_device_pointers(float*& out_probas_pointer, int*& out_alias_pointer)
 {
 	out_probas_pointer = m_alias_table_probas.get_device_pointer();
-	out_alias_pointer = m_alias_table_alias.get_device_pointer();
+	out_alias_pointer  = m_alias_table_alias.get_device_pointer();
 }
 
 float* RendererEnvmap::get_cdf_device_pointer()
@@ -113,8 +113,14 @@ float* RendererEnvmap::get_cdf_device_pointer()
 	return m_cdf.get_device_pointer();
 }
 
-unsigned int RendererEnvmap::get_width() { return m_width; }
-unsigned int RendererEnvmap::get_height() { return m_height; }
+unsigned int RendererEnvmap::get_width()
+{
+	return m_width;
+}
+unsigned int RendererEnvmap::get_height()
+{
+	return m_height;
+}
 
 float RendererEnvmap::get_sampling_structure_VRAM_usage() const
 {
@@ -147,20 +153,20 @@ void RendererEnvmap::do_animation(GPURenderer* renderer, float delta_time)
 		glm::mat3x3 rotation_matrix, rotation_matrix_inv;
 
 		// glm::orientate3 interprets the X, Y and Z angles we give it as a yaw/pitch/roll semantic.
-		// 
+		//
 		// The standard yaw/pitch/roll interpretation is:
 		//	- Yaw for rotation around Z
 		//	- Pitch for rotation around Y
 		//	- Roll for rotation around X
-		// 
+		//
 		// but with a Z-up coordinate system. We want a Y-up coordinate system so
 		// we want our Yaw to rotate around Y instead of Z (and our Pitch to rotate around Z).
-		// 
+		//
 		// This means that we need to reverse Y and Z.
-		// 
+		//
 		// See this picture for a visual aid on what we **don't** want (the z-up):
 		// https://www.researchgate.net/figure/xyz-and-pitch-roll-and-yaw-systems_fig4_253569466
-		rotation_matrix = glm::orientate3(glm::vec3(rotation_X * hippt::M_TWO_PI, rotation_Z * hippt::M_TWO_PI, rotation_Y * hippt::M_TWO_PI));
+		rotation_matrix		= glm::orientate3(glm::vec3(rotation_X * hippt::M_TWO_PI, rotation_Z * hippt::M_TWO_PI, rotation_Y * hippt::M_TWO_PI));
 		rotation_matrix_inv = glm::inverse(rotation_matrix);
 
 		envmap_to_world_matrix = *reinterpret_cast<float3x3*>(&rotation_matrix);
@@ -184,28 +190,30 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 		world_settings.envmap_cdf = nullptr;
 
 		world_settings.envmap_alias_table.alias_table_probas = nullptr;
-		world_settings.envmap_alias_table.alias_table_alias = nullptr;
-		world_settings.envmap_alias_table.size = 0;
-		world_settings.envmap_alias_table.sum_elements = 0;
+		world_settings.envmap_alias_table.alias_table_alias	 = nullptr;
+		world_settings.envmap_alias_table.size				 = 0;
+		world_settings.envmap_alias_table.sum_elements		 = 0;
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
 	{
-		world_settings.envmap_cdf = m_cdf.get_device_pointer();
+		world_settings.envmap_cdf		= m_cdf.get_device_pointer();
 		world_settings.envmap_total_sum = m_luminance_total_sum;
 
 		world_settings.envmap_alias_table.alias_table_probas = nullptr;
-		world_settings.envmap_alias_table.alias_table_alias = nullptr;
-		world_settings.envmap_alias_table.size = 0;
-		world_settings.envmap_alias_table.sum_elements = 0;
+		world_settings.envmap_alias_table.alias_table_alias	 = nullptr;
+		world_settings.envmap_alias_table.size				 = 0;
+		world_settings.envmap_alias_table.sum_elements		 = 0;
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
+	// TODO we've got a bug here with no envmap given on the commandline but with the ESS_ALIAS_TABLE option, this is going into that branch but we don't have
+	// an envmap
 	{
-		world_settings.envmap_cdf = nullptr;
+		world_settings.envmap_cdf		= nullptr;
 		world_settings.envmap_total_sum = m_luminance_total_sum;
 
 		world_settings.envmap_alias_table.alias_table_probas = m_alias_table_probas.get_device_pointer();
-		world_settings.envmap_alias_table.alias_table_alias = m_alias_table_alias.get_device_pointer();
-		world_settings.envmap_alias_table.size = m_alias_table_alias.size();
-		world_settings.envmap_alias_table.sum_elements = m_luminance_total_sum;
+		world_settings.envmap_alias_table.alias_table_alias	 = m_alias_table_alias.get_device_pointer();
+		world_settings.envmap_alias_table.size				 = m_alias_table_alias.size();
+		world_settings.envmap_alias_table.sum_elements		 = m_luminance_total_sum;
 	}
 }

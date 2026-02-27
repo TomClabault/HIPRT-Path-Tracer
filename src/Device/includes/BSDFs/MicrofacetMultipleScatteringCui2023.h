@@ -20,7 +20,8 @@ HIPRT_DEVICE static float microfacet_GGX_pdf_reflect(float material_roughness,
 													 const float3_t& local_view_direction,
 													 const float3_t& local_to_light_direction,
 													 const float3_t& local_halfway_vector,
-													 SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample);
+													 SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample,
+													 bool zero_below_surface = true);
 
 HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const DeviceUnpackedEffectiveMaterial& material,
 															float incident_ior,
@@ -118,6 +119,11 @@ private:
 };
 
 // TODO do we need 2022 and 2023? Are they not the same when developing?
+/**
+ * Returns 1.0f + Lambda if the direction is below the surface and Lambda iif the direction is above the surface, and then that result is multiplied by the sign
+ * of the direction.z (1.0f if above the surface and -1.0f if below the surface) to match the convention of the paper where Lambda is negative when the ray is
+ * going down into the microsurface and positive when it's going up from the microsurface
+ */
 HIPRT_DEVICE float G1_Smith_lambda_signed_2023(float alpha_x, float alpha_y, const float3_t& local_direction)
 {
 	// 1.0f + Lambda if the direction is below the surface and Lambda iif the direction is above the surface
@@ -144,6 +150,37 @@ HIPRT_DEVICE ColorRGB32F Cui_2023_vertex_term(const DeviceUnpackedEffectiveMater
 	return F * GGX_anisotropic(alpha_x, alpha_y, local_half_vector) / (4.0f * hippt::abs(local_view_direction.z));
 }
 
+HIPRT_DEVICE float hapke_isotropic(float HoX, float alpha_hapke)
+{
+	return (1.0f + 2.0f * HoX) / (1.0f + 2.0f * hippt::sqrt(1.0f - alpha_hapke) * HoX);
+}
+
+HIPRT_DEVICE float pdf_multiscatter_approx(float material_roughness,
+										   float material_anisotropy,
+										   float3_t local_view_direction,
+										   float3_t local_to_light_direction,
+										   float3_t local_half_vector,
+										   SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
+
+{
+	float alpha_x;
+	float alpha_y;
+	MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
+
+	float pdf_VNDF = microfacet_GGX_pdf_reflect(material_roughness, material_anisotropy, local_view_direction, local_to_light_direction,
+												hippt::normalize(local_view_direction + local_to_light_direction), incident_light_direction_is_from_GGX_sample);
+
+	float alpha_hapke	   = (alpha_x + alpha_y) / 2.0f;
+	float multiscatter_pdf = alpha_hapke / (4.0f * hippt::M_Pi) *
+							 (hapke_isotropic(local_view_direction.z, alpha_hapke) * hapke_isotropic(local_to_light_direction.z, alpha_hapke) - 1.0f) /
+							 (local_view_direction.z + local_to_light_direction.z);
+
+	if (pdf_VNDF + multiscatter_pdf <= 0.0f)
+		hippt::debugbreak();
+
+	return pdf_VNDF + multiscatter_pdf;
+}
+
 /**
  * local_view_direction and local_to_light_direction should bot be pointing outward the surface here
  */
@@ -161,8 +198,12 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 																SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
 {
 	if (local_to_light_direction.z < 0.0f || local_view_direction.z < 0.0f)
+	{
 		// A direction that is below the surface is invalid for a microfacet ** BRDF **
+		out_pdf = 0.0f;
+
 		return ColorRGB32F(0.0f);
+	}
 
 	// TODO can we remove this somehow? This is annoying to manage. The target functions in ReSTIR would basically need to be 0 if the surface is specular.
 	// ReSTIR spatial/temporal reuse is basically the only reason this exists
@@ -200,8 +241,6 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 		}
 	}
 
-	out_pdf = 1.0f;
-
 	float alpha_x;
 	float alpha_y;
 	MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
@@ -220,18 +259,17 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 	bool rough_enough = material_roughness > render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	if (rough_enough)
 	{
-		int bounce;
-		for (bounce = 1; bounce < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; ++bounce)
+		for (int bounce = 1; bounce < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; ++bounce)
 		{
 			current_to_light_direction = microfacet_GGX_sample_reflection<false>(material_roughness, material_anisotropy, current_view_direction, rng, false);
-
-			ColorRGB32F vertex_term = Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, current_view_direction, current_to_light_direction);
 
 			float half_vector_length = hippt::length(current_view_direction + current_to_light_direction);
 			if (half_vector_length == 0.0f)
 				break;
 
 			float3_t half_vector = (current_view_direction + current_to_light_direction) / half_vector_length;
+			/*out_pdf *= microfacet_GGX_pdf_reflect(material_roughness, material_anisotropy, current_view_direction, current_to_light_direction, half_vector,
+												  SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED);*/
 
 			// Here weight "should" be multiplied by the vertex term and divided by the VNDF PDF but this simplifies to F/G1V. So we're only just multiplying by
 			// the fresnel term here and the G1V terms are accounted for by "g1v_accum"
@@ -251,7 +289,7 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 
 				weight /= q;
 			}
-#endif
+#endif // PrincipledBSDFMultipleScatteringCuiDoRussianRoulette
 
 			current_view_direction = -current_to_light_direction;
 			multiple_scattering_contribution +=
@@ -262,10 +300,185 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 		}
 	}
 
+#if PrincipledBSDFMultipleScatteringCuiSampleMultiscatter == KERNEL_OPTION_TRUE
+	out_pdf = pdf_multiscatter_approx(material_roughness, material_anisotropy, local_view_direction, local_to_light_direction,
+									  hippt::normalize(local_view_direction + local_to_light_direction), incident_light_direction_is_from_GGX_sample);
+#else
 	out_pdf = microfacet_GGX_pdf_reflect(material_roughness, material_anisotropy, local_view_direction, local_to_light_direction,
 										 hippt::normalize(local_view_direction + local_to_light_direction), incident_light_direction_is_from_GGX_sample);
+#endif // PrincipledBSDFMultipleScatteringCuiSampleMultiscatter
 
 	return multiple_scattering_contribution / local_to_light_direction.z;
+}
+
+/**
+ * This function samples a path in the microsurface along with its weight (what eval() would have returned for that path) and its PDF. This function does all
+ * the sampling + eval + PDFat once because of the nature of the integrator. We can't just sample() one path here and then feed it to the eval() function
+ * because the eval() function is stochastic and there is no chance that it will replay the same path, leading to an eval() that is different from the true
+ * value of the sampled path. One solution could be to return literally a full path from this function and then re-evaluate that given path with an eval_path()
+ * function but storing paths like that on the GPU is way too costly. So instead, that sample function only returns a 'to_light_direction'. And because it only
+ * returns a to_light_direction, we lose the information of what bounces in the microsurface we got between the view_direction and the to_light_direction such
+ * that the eval() cannot replay the path properly. This is why this function does the eval() itself. It also does the PDF itself because the PDF of this
+ * sampled path is a marginal PDF that we cannot estimate reliably outside of the sampling function.
+ */
+HIPRT_DEVICE float3_t microfacet_GGX_multiple_scattering_invariance_sample_reflection(const float3_t& local_view_direction, // w_i in the paper
+																					  float material_roughness,
+																					  float material_anisotropy,
+																					  Xorshift32Generator& rng,
+																					  float* DEBUGOUTPDF,
+																					  ColorRGB32F* DEBUGOUTPUTEVAL,
+																					  DeviceUnpackedEffectiveMaterial* material,
+																					  float* incident_ior)
+{
+	float alpha_x;
+	float alpha_y;
+	MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
+
+	// TODO how to compute the final weight with s_k while not getting 0 at roughness 0? Are we missing 1 add_bounce?
+	ColorRGB32F w = ColorRGB32F(1.0f); // accumulated vertex weights
+	float p		  = 1.0f;			   // accumulated path probability
+
+	std::vector<float3_t> directions(PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces + 1);
+	directions[0] = -local_view_direction;
+
+	// DEBUG block just to reproduce when debugging
+	{
+		unsigned int seed_before = rng.m_state.seed;
+		rng.m_state.seed		 = seed_before;
+	}
+
+#define LOGGING 0
+
+#if LOGGING == 1
+#define LOG(...) std::cerr << __VA_ARGS__
+#else
+#define LOG(...)
+#endif
+
+	LOG("Input view-direction to the function (facing away from surface): (" << local_view_direction.x << ", " << local_view_direction.y << ","
+																			 << local_view_direction.z << ")\n"
+																			 << std::endl);
+
+	int actual_bounces = 0;
+	float3_t current   = local_view_direction;
+	for (int bounce = 1; bounce <= PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; ++bounce)
+	{
+		// Sample next direction + its VNDF pdf + its vertex weight wk
+		float3_t dk = microfacet_GGX_sample_reflection<false>(material_roughness, material_anisotropy, current, rng, false);
+
+		float half_vec_length;
+		float3_t half_vector = current + dk;
+		if ((half_vec_length = hippt::length(half_vector)) <= 1.0e-8f)
+		{
+			*DEBUGOUTPDF = 0.0f;
+
+			return make_float3(0.0f, 0.0f, 0.0f);
+		}
+		float pk = microfacet_GGX_pdf_reflect(material_roughness, material_anisotropy, current, dk, half_vector / half_vec_length,
+											  SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED, false);
+		if (pk <= 0.0f)
+			hippt::debugbreak();
+
+		ColorRGB32F wk = Cui_2023_vertex_term(*material, *incident_ior, alpha_x, alpha_y, current, dk);
+
+		LOG("Bounce " << bounce << ":\n\tCurrent view direction: (" << current.x << ", " << current.y << "," << current.z << ")\n\tSampled direction: (" << dk.x
+					  << ", " << dk.y << ", " << dk.z << "),\n\n\tPDF: " << pk << ",\n\tvertex weight: (" << wk.r << ", " << wk.g << ", " << wk.b << ")\n"
+					  << std::endl);
+		LOG("\tCurrent weight / pdf: " << w.r << ", " << w.g << ", " << w.b << " / " << p << " = (" << w.r / p << ", " << w.g / p << ", " << w.b / p << ")\n\n"
+									   << std::endl);
+
+		w *= wk;
+		p *= pk;
+
+		// segment.add_bounce(G1_Smith_lambda_signed_2023(alpha_x, alpha_y, dk));
+		directions[++actual_bounces] = dk;
+
+		if (dk.z > 0.0f)
+		{
+			LOG("\tRay is leaving the microgeometry at bounce " << bounce << ". G1 is: ");
+
+			// Ray is leaving the microgeometry, continue only with the probability that the bounce is occluded/shadowed by the microgeometry
+			float G1 = G1_Smith(alpha_x, alpha_y, dk);
+			LOG(G1 << std::endl);
+
+			float r = rng();
+			if (r < G1)
+			{
+				p *= G1;
+
+				current = dk;
+				LOG("\'tCurrent' becomes: (" << current.x << ", " << current.y << "," << current.z << ")\n" << std::endl);
+
+				LOG("\tRay not shadowed by the microgeometry. Leaving loop." << std::endl);
+
+				break;
+			}
+			else
+			{
+				LOG("\tRay is leaving the microgeometry at bounce " << bounce << " but is shadowed by the microgeometry. Continuing loop with next bounce."
+																	<< std::endl);
+
+				p *= (1.0f - G1);
+			}
+		}
+
+		current = dk;
+		LOG("\tCurrent becomes: (" << current.x << ", " << current.y << "," << current.z << ")\n" << std::endl);
+	}
+
+	float3_t final_half_vector = hippt::normalize(current + local_view_direction);
+	LOG("\nExited loop after " << actual_bounces - 1 << " bounces.\n\tFinal sampled direction: (" << current.x << ", " << current.y << "," << current.z
+							   << ").\n\tFinal half vector: "
+							   << "(" << final_half_vector.x << ", " << final_half_vector.y << "," << final_half_vector.z << ")\n"
+							   << std::endl);
+
+	LOG("Initializing SegmentTerm with lambda: " << G1_Smith_lambda_signed_2023(alpha_x, alpha_y, current) << std::endl);
+
+	float Sk;
+
+	if (current.z < 0.0f)
+	{
+		// If the last bouce of the path is pointing inside the surface, that's 0 contribution, Eq. 14 of the paper
+		*DEBUGOUTPDF = 0.0f;
+
+		LOG("Last bounce is going below the surface, returning 0 contribution." << std::endl);
+
+		return make_float3(0.0f, 0.0f, 0.0f);
+	}
+	else
+	{
+		SegmentTerm segment(G1_Smith_lambda_signed_2023(alpha_x, alpha_y, current));
+		for (int i = actual_bounces - 1; i >= 0; --i) // add d_{k-1} ... d_0
+		{
+			LOG("Adding bounce to SegmentTerm with lambda: " << G1_Smith_lambda_signed_2023(alpha_x, alpha_y, directions.at(i)) << std::endl);
+
+			segment.add_bounce(G1_Smith_lambda_signed_2023(alpha_x, alpha_y, directions.at(i)));
+		}
+		/*for (int i = 0; i < actual_bounces; i++)
+		{
+			LOG("Adding bounce to SegmentTerm with lambda: " << G1_Smith_lambda_signed_2023(alpha_x, alpha_y, directions.at(i)) << std::endl);
+
+			segment.add_bounce(G1_Smith_lambda_signed_2023(alpha_x, alpha_y, directions.at(i)));
+		}*/
+		Sk = segment.get_sk();
+	}
+
+	// Final step
+	ColorRGB32F final_weight = w / p * Sk;
+	LOG("Final weight = w / p * Sk = (" << w.r << ", " << w.g << ", " << w.b << ") / " << p << " * " << Sk << " = (" << final_weight.r << ", " << final_weight.g
+										<< ", " << final_weight.b << ")" << std::endl);
+
+	if (!final_weight.is_finite() || !hippt::is_finite(p) || !ColorRGB32F(w / current.z).is_finite())
+		hippt::debugbreak();
+
+	// Division by current.z here because the integrator expects BRDF to return their values without cos_theta included
+	*DEBUGOUTPUTEVAL = final_weight / current.z;
+	// The integrator divides by the PDF but the PDF is already included in final_weight so we don't want to divide by anything / divide by 1.0f in the
+	// integrator
+	*DEBUGOUTPDF = 1.0f;
+
+	// And return final to light direction
+	return current;
 }
 
 // HIPRT_DEVICE float G1_Smith_lambda_signed_2022(float alpha_x, float alpha_y, const float3_t& local_direction)
@@ -502,79 +715,5 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 //	return pdf;
 // }
 //
-// HIPRT_DEVICE float3_t microfacet_GGX_multiple_scattering_invariance_sample_reflection(const float3_t& local_view_direction, // w_i in the paper
-//																					float material_roughness,
-//																					float material_anisotropy,
-//																					Xorshift32Generator& rng)
-//{
-//	if (local_view_direction.z < 0.0f)
-//		// A direction that is below the surface is invalid for a microfacet ** BRDF **
-//		return float3_t(0.0f);
-//
-//	float alpha_x;
-//	float alpha_y;
-//	MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
-//
-//	float pdf = 1.0f;
-//	ColorRGB32F weightAcc(1.0f);
-//	float3_t current_view_direction  = local_view_direction;
-//	float3_t next_to_light_direction = microfacet_GGX_sample_reflection<false>(material_roughness, material_anisotropy, current_view_direction, rng);
-//	// float inLamda				   = G1_Smith_lambda_signed_2023(alpha_x, alpha_y, current_view_direction);
-//
-//	for (int i = 1; i < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; i++)
-//	{
-//		// float currentPDF = pdfVNDF(current_view_direction, next_to_light_direction, alpha_x, alpha_y);
-//		float currentPDF = microfacet_GGX_pdf_reflect(material_roughness, material_anisotropy, current_view_direction, next_to_light_direction,
-//													  hippt::normalize(current_view_direction + next_to_light_direction),
-//													  SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED);
-//		// pdf *= currentPDF;
-//
-//		if (currentPDF < 0.0f)
-//		{
-//			hippt::debugbreak();
-//
-//			// TODO is this hit often?
-//			// TODO eval should work even wityhouth that fancy sampling routuibne
-//			return float3_t(0.0f);
-//		}
-//
-//		// ColorRGB32F weight;
-//		// float3_t to_light_direction = next_to_light_direction;
-//		// float outLamda			  = G1_Smith_lambda_signed(alpha_x, alpha_y, to_light_direction);
-//		// float mapOutLamda		  = abs(outLamda + 1) - 1;
-//
-//		// TODO pass these as arguments
-//		// DeviceUnpackedEffectiveMaterial material;
-//		// float incident_ior = 1.0f;
-//
-//		// weight = Cui_2023_vertex_term(material, incident_ior, alpha_x, alpha_y, current_view_direction, to_light_direction) / currentPDF;
-//		// weightAcc *= weight;
-//
-//		// to_light_direction	   = current_view_direction;
-//		// current_view_direction = next_to_light_direction;
-//
-//		current_view_direction = next_to_light_direction;
-//		// inLamda				   = abs(outLamda) - 1; //
-//
-//		next_to_light_direction = microfacet_GGX_sample_reflection<false>(material_roughness, material_anisotropy, current_view_direction, rng);
-//
-//		/*if (m_rrDepth > -1 && i + 1 >= m_rrDepth)
-//		{
-//			Float q = std::min(weightAcc.max(), (Float)0.95f);
-//
-//			if (generateRandomNumber() > q)
-//			{
-//				path.add(0.0);
-//				break;
-//			}
-//			else
-//			{
-//				weightAcc /= q;
-//			}
-//		}*/
-//	}
-//
-//	return next_to_light_direction;
-// }
 
 #endif
