@@ -75,6 +75,15 @@ struct BRDFsData
 	// be applied.
 	int multiple_scattering_cui_2023_min_bounce_russian_roulette = 3;
 
+	// When using the invariance Cui et al. method for multiple scattering in the microsurface, this is a clamping threshold for the
+	// contribution of multiple scattering in the microsurface. The random walk weight seems a bit unstable at mid roughnesses 0.3 - 0.5 and can produce some
+	// fireflies, this is a threshold to clamp those fireflies and the contribution will be clamped to at most that value.
+	//
+	// 10.0f reduces fireflies considerably without producing noticeable bias in the final results.
+	//
+	// 0.0f completely disables clamping
+	float multiple_scattering_cui_2023_firefly_clamping_threshold = 10.0f;
+
 	MicrofacetRegularizationSettings microfacet_regularization;
 };
 

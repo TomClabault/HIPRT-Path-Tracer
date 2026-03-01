@@ -4203,6 +4203,26 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 					ImGui::TreePop();
 				}
 
+				static bool variable_bounce = global_kernel_options->get_macro_value(
+										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_VARIABLE_BOUNCES);
+				if (ImGui::Checkbox("Variable number of bounces", &variable_bounce))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_MAX_MICROSURFACE_VARIABLE_BOUNCES,
+														   variable_bounce ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGuiRenderer::show_help_marker("If true, the number of bounces in the microsurface will be variable and depend on the roughness of the "
+												"material to help performance. Higher roughnesses materials will have more microsurface bounces.\n\n"
+												""
+												"Current roughnes to max bounces mapping is:\n"
+												"\troughness >= 0.7 --> 6 bounces\n"
+												"\troughness >= 0.5 --> 5 bounces\n"
+												"\troughness >= 0.4 --> 4 bounces\n"
+												"\troughness  < 0.4 --> 3 bounces");
+
 				static bool do_russian_roulette = global_kernel_options->get_macro_value(
 										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_DO_RUSSIAN_ROULETTE);
 				if (ImGui::Checkbox("Do russian roulette", &do_russian_roulette))
@@ -4233,6 +4253,20 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 
 					ImGui::TreePop();
 				}
+
+				if (ImGui::SliderFloat("Firefly clamping threshold", &render_data.bsdfs_data.multiple_scattering_cui_2023_firefly_clamping_threshold, 0.0f,
+									   100.0f))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("When using the invariance Cui et al. method for multiple scattering in the microsurface, this is a clamping "
+												"threshold for the "
+												"contribution of multiple scattering in the microsurface. The random walk weight seems a bit unstable at mid "
+												"roughnesses 0.3 - 0.5 and can produce some "
+												"fireflies, this is a threshold to clamp those fireflies and the contribution will be clamped to at most that "
+												"value.\n\n"
+												""
+												"10.0f reduces fireflies considerably without producing noticeable bias in the final results.\n\n"
+												""
+												"0.0f completely disables clamping.");
 
 				ImGui::TreePop();
 			}

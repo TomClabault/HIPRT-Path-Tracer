@@ -154,7 +154,12 @@
  * allowed, the more accurate the energy recovery will be but the more expensive it will be to compute. Setting this to 1 means that only single scattering will
  * be accounted for and no walk in the microsurface will be performed, yielding the same results as a classic microfacet BRDF.
  */
-#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 10
+#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces 6
+
+/**
+ * If true, the number of bounces allowed in the microsurface for the invariance Cui et al. method will be variable and depend on the roughness of the material.
+ */
+#define PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceVariableBounces KERNEL_OPTION_TRUE
 
 /**
  * If true, russian roulette will be applied to the random walk in the microsurface for the invariance Cui et al. method. This can help reduce the cost of that

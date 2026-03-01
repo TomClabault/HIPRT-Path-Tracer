@@ -225,7 +225,21 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 	bool rough_enough = material_roughness > render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	if (rough_enough)
 	{
-		for (int bounce = 1; bounce < PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces; ++bounce)
+		int variable_roughness_bounce = PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces;
+
+#if PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceVariableBounces == KERNEL_OPTION_TRUE
+		if (material_roughness >= 0.7f)
+			variable_roughness_bounce = 6;
+		else if (material_roughness >= 0.5f)
+			variable_roughness_bounce = 5;
+		else if (material_roughness >= 0.4f)
+			variable_roughness_bounce = 4;
+		else
+			variable_roughness_bounce = 3;
+#endif
+
+		int bounce_count = hippt::min(variable_roughness_bounce, PrincipledBSDFMultipleScatteringCuiMaxMicrosurfaceBounces);
+		for (int bounce = 1; bounce < bounce_count; ++bounce)
 		{
 			current_to_light_direction = microfacet_GGX_sample_reflection<false>(material_roughness, material_anisotropy, current_view_direction, rng, false);
 
@@ -234,8 +248,6 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 				break;
 
 			float3_t half_vector = (current_view_direction + current_to_light_direction) / half_vector_length;
-			/*out_pdf *= microfacet_GGX_pdf_reflect(material_roughness, material_anisotropy, current_view_direction, current_to_light_direction, half_vector,
-												  SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED);*/
 
 			// Here weight "should" be multiplied by the vertex term and divided by the VNDF PDF but this simplifies to F/G1V. So we're only just multiplying by
 			// the fresnel term here and the G1V terms are accounted for by "g1v_accum"
@@ -249,11 +261,11 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 			if (bounce >= render_data.bsdfs_data.multiple_scattering_cui_2023_min_bounce_russian_roulette)
 			{
 				// Russian roulette
-				float q = hippt::max(hippt::min(s_k, 0.95f), 0.3f);
-				if (rng() >= q)
+				float continuation_probability = hippt::max(hippt::min(s_k, 0.95f), 0.3f);
+				if (rng() >= continuation_probability)
 					break;
 
-				weight /= q;
+				weight /= continuation_probability;
 			}
 #endif // PrincipledBSDFMultipleScatteringCuiDoRussianRoulette
 
@@ -268,6 +280,12 @@ torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect(const HIPRTRende
 
 	out_pdf = microfacet_GGX_pdf_reflect(material_roughness, material_anisotropy, local_view_direction, local_to_light_direction,
 										 hippt::normalize(local_view_direction + local_to_light_direction), incident_light_direction_is_from_GGX_sample);
+
+	if (render_data.bsdfs_data.multiple_scattering_cui_2023_firefly_clamping_threshold > 0.0f)
+	{
+		float ratio = multiple_scattering_contribution.luminance() / out_pdf;
+		multiple_scattering_contribution *= hippt::min(1.0f, render_data.bsdfs_data.multiple_scattering_cui_2023_firefly_clamping_threshold / ratio);
+	}
 
 	return multiple_scattering_contribution / local_to_light_direction.z;
 }
