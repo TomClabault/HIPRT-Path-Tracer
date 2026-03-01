@@ -67,7 +67,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Hash grid
 		- The implementation is detailed in my [ReGIR blog post](https://tomclabault.github.io/blog/2025/regir/).
 	- RIS (Resampled Importance Sampling) [\[Talbot et al., 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)with Weighted Reservoir Sampling (WRS) [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
-	- RISLTC \[[Shash et al., 2023]\](https://ishaanshah.xyz/risltc/)
+	- RISLTC [\[Shash et al., 2023\]](https://ishaanshah.xyz/risltc/)
 	- ReSTIR DI
 - Other light sampling features
 	- Next Event Estimation++ [\[Guo et al., 2020\]](https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.14138) + Custom envmap support
