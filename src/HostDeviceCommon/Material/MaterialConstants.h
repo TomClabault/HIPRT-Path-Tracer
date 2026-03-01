@@ -18,10 +18,10 @@ struct MaterialConstants
 	// Maximum number of different textures per scene
 	static constexpr int MAX_TEXTURE_COUNT = 65533;
 
-	static constexpr float ROUGHNESS_CLAMP = 1.0e-4f;
-	static constexpr float PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD = 1.0e-2f;
-	static constexpr float DELTA_DISTRIBUTION_HIGH_VALUE = 1.0e9f;
-	static constexpr float DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD = 0.999999f;
+	static constexpr float ROUGHNESS_CLAMP						   = 1.0e-4f;
+	static constexpr float PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD	   = 1.0e-2f;
+	static constexpr float DELTA_DISTRIBUTION_HIGH_VALUE		   = 1.0e9f;
+	static constexpr float DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD = 0.99999f;
 };
 
 #endif
