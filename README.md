@@ -22,12 +22,13 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Specular Microfacet GGX Layer
 - Diffuse BRDF lobe. Support for:
 	- Lambertian
-	- Oren-nayar
+	- Oren-Nayar
 - Metallic Microfacet GGX Layer + Anisotropy & Anisotropy Rotation + Double Roughness [\[Kulla & Conty, 2017\]](https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf)
+- MRRM retro-reflection conductor layer [\[Portsmouth et al., 2026\]](https://arxiv.org/abs/2512.23696)
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
-- Diffuse lambertian BTDF
+- Diffuse Lambertian BTDF
 - Spectral dispersion using Cauchy's equation
-- **Multiple-scattering**
+- Microfacet BRDFs multiple-scattering
 	- Multiple-bounce Smith Microfacet BRDFs using the Invariance Principle [\[Cui et al., 2023\]](https://wangningbei.github.io/2023/GMBBRDF.html)
 	- Energy compensation for conductors (double metal layer), dielectrics (transmission layer), glossy-diffuse (specular + diffuse layer) and coated (coat layer) materials [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
 - Thin-film interference over dielectrics and conductors [\[Belcour, Barla, 2017\]](https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html)
