@@ -22,10 +22,10 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO known bugs / incorrectness:
-// Adaptive sampling broken in furance test?
+// - Adaptive sampling broken in furance test?
 // - IOR 1 glass at roughness 1 without energy conservation loses a lot of energy but it shouldn't even be here because it's IOR 1
 // - Updating the emissive property of a material in ImGui should update the emissive triangle primitive indices buffer: a material that goes from emission 1 to
-// emission 0 should be removed from that buffer but it's not at the moment
+//		emission 0 should be removed from that buffer but it's not at the moment
 // - There is some weird color corruption issue with NEE++ linear probing max steps = 16 + ReGIR
 // - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implementing proper volumes?
 // - denoiser AOVs not accounting for transmission correctly since Disney  BSDF

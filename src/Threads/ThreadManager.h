@@ -6,6 +6,7 @@
 #ifndef THREAD_MANAGER_H
 #define THREAD_MANAGER_H
 
+#include <atomic>
 #include <deque>
 #include <format>
 #include <iostream>
@@ -42,8 +43,6 @@ extern ImGuiLogger g_imgui_logger;
 class ThreadManager
 {
 public:
-	static std::unordered_map<std::string, unsigned int> DEBUGstarted_count;
-
 	static std::string COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY;
 	static std::string COMPILE_NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_KERNEL_KEY;
 	static std::string COMPILE_KERNELS_THREAD_KEY;
@@ -100,10 +99,6 @@ public:
 			}
 			else
 			{
-				{
-					std::lock_guard<std::mutex> lock(DEBUGlog_mutex);
-					DEBUGstarted_count[key]++;
-				}
 				// Starting the thread and adding it to the list of threads for the given key
 				m_threads_map[key].push_back(std::thread(function, args...));
 			}
@@ -127,8 +122,7 @@ public:
 	{
 		std::lock_guard<std::mutex> lock(m_join_mutexes[key]);
 
-		auto find = m_threads_map.find(key);
-		if (find != m_threads_map.end())
+		if (auto find = m_threads_map.find(key); find != m_threads_map.end())
 		{
 			if (find->second.empty())
 				// No threads to wait for
@@ -169,20 +163,6 @@ public:
 	 */
 	static void join_all_threads(const std::unordered_set<std::string>& exceptions = {})
 	{
-		unsigned int max_key_len = 0;
-		for (const auto& [key, thread] : m_threads_map)
-			max_key_len = std::max(max_key_len, (unsigned int)key.size());
-
-		std::cout << "Join map: [" << std::endl;
-		for (const auto& [key, thread] : m_threads_map)
-		{
-			std::lock_guard<std::mutex> lock(DEBUGlog_mutex);
-
-			std::string name_string = DEBUGstarted_count.find(key) != DEBUGstarted_count.end() ? std::to_string(DEBUGstarted_count.at(key)) : std::string("X");
-			std::cout << std::format("\t{:<{}} : {}\n", key, max_key_len, name_string);
-		}
-		std::cout << "]" << std::endl;
-
 		// Joining all the threads and their dependencies
 		for (const auto& key_to_threads : m_threads_map)
 		{
@@ -265,13 +245,11 @@ private:
 		else
 		{
 			// Starting a thread that will wait for the dependencies before calling the given function
+			m_threads_waiting_to_start++;
 			m_threads_map[thread_key_to_start].push_back(std::thread(
-									[thread_key_to_start, dependencies, function, args...]()
+									[dependencies, function, args...]()
 									{
-										{
-											std::lock_guard<std::mutex> lock(DEBUGlog_mutex);
-											DEBUGstarted_count[thread_key_to_start]++;
-										}
+										std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 										wait_for_dependencies(dependencies);
 
@@ -290,6 +268,8 @@ private:
 private:
 	// If true, the ThreadManager will execute all threads serially
 	static bool m_monothread;
+
+	static std::atomic<unsigned int> m_threads_waiting_to_start;
 
 	// The states are used to keep the data that the threads need alive
 	static std::unordered_map<std::string, std::shared_ptr<void>> m_threads_states;

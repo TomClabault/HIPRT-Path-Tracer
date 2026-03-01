@@ -105,16 +105,6 @@ HIPRT_DEVICE static float3_t GGX_anisotropic_sample_microfacet(const float3_t& l
 #endif // PrincipledBSDFAnisotropicGGXSampleFunction
 }
 
-// Forward declaration
-HIPRT_DEVICE float3_t microfacet_GGX_multiple_scattering_invariance_sample_reflection(const float3_t& local_view_direction,
-																					  float material_roughness,
-																					  float material_anisotropy,
-																					  Xorshift32Generator& rng,
-																					  float* DEBUGOUTPDF						= nullptr,
-																					  ColorRGB32F* DEBUGOUTPUTEVAL				= nullptr,
-																					  DeviceUnpackedEffectiveMaterial* material = nullptr,
-																					  float* incident_ior						= nullptr);
-
 /*
  * Samples a microfacet normal from the distribution of visible normals of
  * the GGX normal function distribution and reflects the given view direction

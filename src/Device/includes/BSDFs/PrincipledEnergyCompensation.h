@@ -18,7 +18,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 																		 float NoV)
 {
 	bool energy_compensation_disabled = !material.do_specular_energy_compensation;
-	bool roughness_low_enough		  = material.roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold;
+	bool roughness_low_enough		  = false; // Disabled for specular energy compensation as the bias is quite visible, no matter the roughness
 	// If all we have for the glossy base is the diffuse layer (i.e. no specular
 	// layer because the specular weight is low, then we don't need energy compensation)
 	bool no_specular_layer		= material.specular < 1.0e-3f;
