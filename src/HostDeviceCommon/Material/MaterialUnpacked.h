@@ -15,7 +15,7 @@
  *
  * 1)   MaterialUnpacked.h
  *
- *      Add the unpacked device material structure what the GPU is going to need in the shaders
+ *      Add the unpacked device material structure that the GPU is going to need in the shaders
  *      For most parameters, this is just the parameters itself
  *
  *      For some other parameters, some stuff can be precomputed on the CPU and the GPU
@@ -63,8 +63,8 @@
  *
  *      The function DevicePackedTexturedMaterial::unpack() needs to be completed (follow what is done for the other parameters).
  *      This is the function that will be called when unpacking the material from the materials buffer (when reading the material of the geometry a ray just
- * hit). The unpacked textured material will then be used to read the textures of the material at the hit point and the whole will result in a
- * DevicePackedEffectiveMaterial that will be used in the rest of the shaders (or packed into the G-Buffer)
+ *		hit). The unpacked textured material will then be used to read the textures of the material at the hit point and the whole will result in a
+ *		DeviceUnpackedEffectiveMaterial that will be used in the rest of the shaders (or packed into the G-Buffer)
  *
  * 4)   MaterialPackedSoA.h
  *
@@ -88,7 +88,11 @@
  *
  *      This logic to save memory traffic has already been applied to most of the other lobes (coat, glass, ...)
  *
- * 5)   Add controls to ImGuiObjectsWindow (and the global material overrider)
+ * 5)	Update MaterialPackedSoAGPUData.h
+ *
+ * 6)	Update MaterialPackedSoACPUData.h
+ *
+ * 7)   Add controls to ImGuiObjectsWindow.cpp (and the global material overrider)
  */
 
 /**
@@ -159,7 +163,9 @@ struct DeviceUnpackedEffectiveMaterial
 										MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
 		bool sampled_from_second_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE &&
 										 MaterialUtils::is_perfectly_smooth(second_roughness) && matching_base_substrate_anisotropy;
-		if (sampled_from_first_metal || sampled_from_second_metal)
+		bool sampled_from_retro_reflection = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_RETRO_REFLECTION_LOBE &&
+											 MaterialUtils::is_perfectly_smooth(roughness) && matching_base_substrate_anisotropy;
+		if (sampled_from_first_metal || sampled_from_second_metal || sampled_from_retro_reflection)
 			// We can stop here
 			return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
 
@@ -197,6 +203,8 @@ struct DeviceUnpackedEffectiveMaterial
 	float anisotropy_rotation	  = 0.0f;
 	float second_roughness_weight = 0.0f;
 	float second_roughness		  = 0.5f;
+
+	float retro_reflection = 0.0f;
 
 	// Specular intensity
 	float specular = 1.0f;

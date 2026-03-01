@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO known bugs / incorrectness:
+// - ImGui Material editor crash with 0 materials in the scene (only default material when blender export for example)
 // - Adaptive sampling broken in furance test?
 // - IOR 1 glass at roughness 1 without energy conservation loses a lot of energy but it shouldn't even be here because it's IOR 1
 // - Updating the emissive property of a material in ImGui should update the emissive triangle primitive indices buffer: a material that goes from emission 1 to

@@ -263,6 +263,20 @@ HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& r
 	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator, true);
 }
 
+HIPRT_DEVICE static float3_t principled_retro_reflection_sample(const HIPRTRenderData& render_data,
+																const BSDFContext& bsdf_context,
+																float roughness,
+																float anisotropy,
+																const float3_t& local_view_direction_,
+																Xorshift32Generator& random_number_generator)
+{
+	// Following the "minimal retro reflection model" dsecribed in OpenPBR 2026, this is just a conductor lobe with a modified half vector computed from the
+	// reflected view direction
+	float3_t local_view_direction = reflect_ray(local_view_direction_, make_float3(0.0f, 0.0f, 1.0f));
+
+	return principled_metallic_sample(render_data, bsdf_context, roughness, anisotropy, local_view_direction, random_number_generator);
+}
+
 HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const DeviceUnpackedEffectiveMaterial& material,
 														const float3_t& local_view_direction,
 														const float3_t& local_to_light_direction,
@@ -1339,11 +1353,9 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_metal_layer(const HIPRTRenderData&
 {
 	if (metal_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
 	{
-		float metal_pdf = 0.0f;
-		ColorRGB32F contribution;
-
-		contribution = principled_metallic_eval(render_data, bsdf_context, roughness, anisotropy, incident_ior, local_view_direction, local_to_light_direction,
-												local_half_vector, metal_pdf, rng);
+		float metal_pdf			 = 0.0f;
+		ColorRGB32F contribution = principled_metallic_eval(render_data, bsdf_context, roughness, anisotropy, incident_ior, local_view_direction,
+															local_to_light_direction, local_half_vector, metal_pdf, rng);
 		contribution *= metal_weight;
 		contribution *= layers_throughput;
 
@@ -1376,6 +1388,74 @@ HIPRT_DEVICE static float internal_pdf_metal_layer(const HIPRTRenderData& render
 												  local_half_vector);
 
 		return metal_pdf * metal_proba;
+	}
+
+	return 0.0f;
+}
+
+HIPRT_DEVICE static ColorRGB32F internal_eval_retro_reflection_layer(const HIPRTRenderData& render_data,
+																	 BSDFContext& bsdf_context,
+																	 float roughness,
+																	 float anisotropy,
+																	 const float3_t& local_view_direction_,
+																	 const float3_t local_to_light_direction,
+																	 const float3_t& local_half_vector_,
+																	 float incident_ior,
+																	 float retro_reflection_weight,
+																	 float retro_reflection_proba,
+																	 const ColorRGB32F& layers_throughput,
+																	 float& out_cumulative_pdf,
+																	 Xorshift32Generator& rng)
+{
+	// Following the "minimal retro reflection model" dsecribed in OpenPBR 2026, this is just a conductor lobe with a modified half vector computed from the
+	// reflected view direction
+	float3_t local_view_direction = reflect_ray(local_view_direction_, make_float3(0.0f, 0.0f, 1.0f));
+	float3_t local_half_vector	  = hippt::normalize(local_to_light_direction + local_view_direction);
+
+	if (retro_reflection_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
+	{
+		float retro_reflection_pdf = 0.0f;
+		ColorRGB32F contribution;
+
+		contribution = principled_metallic_eval(render_data, bsdf_context, roughness, anisotropy, incident_ior, local_view_direction, local_to_light_direction,
+												local_half_vector, retro_reflection_pdf, rng);
+		contribution *= retro_reflection_weight;
+		contribution *= layers_throughput;
+
+		out_cumulative_pdf += retro_reflection_pdf * retro_reflection_proba;
+
+		// There is nothing below the metal layer so we don't have a
+		// layer_throughput attenuation here
+		// ...
+
+		return contribution;
+	}
+
+	return ColorRGB32F(0.0f);
+}
+
+HIPRT_DEVICE static float internal_pdf_retro_reflection_layer(const HIPRTRenderData& render_data,
+															  BSDFContext& bsdf_context,
+															  float roughness,
+															  float anisotropy,
+															  const float3_t& local_view_direction_,
+															  const float3_t local_to_light_direction,
+															  const float3_t& local_half_vector_,
+															  float incident_ior,
+															  float retro_reflection_weight,
+															  float retro_reflection_proba)
+{
+	// Following the "minimal retro reflection model" dsecribed in OpenPBR 2026, this is just a conductor lobe with a modified half vector computed from the
+	// reflected view direction
+	float3_t local_view_direction = reflect_ray(local_view_direction_, make_float3(0.0f, 0.0f, 1.0f));
+	float3_t local_half_vector	  = hippt::normalize(local_to_light_direction + local_view_direction);
+
+	if (retro_reflection_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
+	{
+		float metal_pdf = principled_metallic_pdf(render_data, bsdf_context, roughness, anisotropy, local_view_direction, local_to_light_direction,
+												  local_half_vector);
+
+		return metal_pdf * retro_reflection_proba;
 	}
 
 	return 0.0f;
@@ -1797,6 +1877,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_weights(const DeviceUnpackedE
 														   float& out_sheen_weight,
 														   float& out_metal_1_weight,
 														   float& out_metal_2_weight,
+														   float& out_retro_reflection_weight,
 														   float& out_specular_weight,
 														   float& out_diffuse_weight,
 														   float& out_glass_weight,
@@ -1812,7 +1893,9 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_weights(const DeviceUnpackedE
 
 	out_coat_weight	 = material.coat * outside_object;
 	out_sheen_weight = material.sheen * outside_object;
+
 	// Metal 1 and metal 2 are the two metallic lobes for the two roughnesses.
+	//
 	// Having 2 roughnesses (linearly blended together) can enable interesting effects
 	// that cannot be achieved with a single GGX metal lobe.
 	//
@@ -1825,6 +1908,13 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_weights(const DeviceUnpackedE
 	float second_roughness_weight = material.second_roughness_weight;
 	out_metal_1_weight			  = hippt::lerp(out_metal_1_weight, 0.0f, second_roughness_weight);
 	out_metal_2_weight			  = hippt::lerp(0.0f, out_metal_2_weight, second_roughness_weight);
+
+	// Retro-reflection on the conductor lobe as proposed in the OpenPBR Spec 2026
+	//
+	// [OpenPBR:Novel Features and Implementation Details, Portsmouth, Kutz, Hill]
+	float retro_reflection		= material.retro_reflection * metallic;
+	out_retro_reflection_weight = out_metal_1_weight * retro_reflection * outside_object;
+	out_metal_1_weight			= hippt::lerp(out_metal_1_weight, 0.0f, retro_reflection);
 
 	float specular_transmission = material.specular_transmission;
 	float diffuse_transmission	= material.diffuse_transmission;
@@ -1844,6 +1934,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 																  float sheen_weight,
 																  float metal_1_weight,
 																  float metal_2_weight,
+																  float retro_reflection_weight,
 																  float specular_weight,
 																  float diffuse_weight,
 																  float glass_weight,
@@ -1853,6 +1944,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 																  float& out_sheen_sampling_proba,
 																  float& out_metal_1_sampling_proba,
 																  float& out_metal_2_sampling_proba,
+																  float& out_retro_reflection_sampling_proba,
 																  float& out_specular_sampling_proba,
 																  float& out_diffuse_sampling_proba,
 																  float& out_glass_sampling_proba,
@@ -1891,6 +1983,7 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 		sheen_weight *= 1.0f - coat_fresnel_sampling_weight;
 		metal_1_weight *= 1.0f - coat_fresnel_sampling_weight;
 		metal_2_weight *= 1.0f - coat_fresnel_sampling_weight;
+		retro_reflection_weight *= 1.0f - coat_fresnel_sampling_weight;
 		specular_weight *= 1.0f - coat_fresnel_sampling_weight;
 		diffuse_weight *= 1.0f - coat_fresnel_sampling_weight;
 		glass_weight *= 1.0f - coat_fresnel_sampling_weight;
@@ -1898,13 +1991,14 @@ HIPRT_DEVICE static void principled_bsdf_get_lobes_sampling_proba(const HIPRTRen
 	}
 #endif
 
-	float normalize_factor = 1.0f / (coat_weight + sheen_weight + metal_1_weight + metal_2_weight + specular_weight + diffuse_weight + glass_weight +
-									 diffuse_transmission_weight);
+	float normalize_factor = 1.0f / (coat_weight + sheen_weight + metal_1_weight + metal_2_weight + retro_reflection_weight + specular_weight + diffuse_weight +
+									 glass_weight + diffuse_transmission_weight);
 
 	out_coat_sampling_proba					= coat_weight * normalize_factor;
 	out_sheen_sampling_proba				= sheen_weight * normalize_factor;
 	out_metal_1_sampling_proba				= metal_1_weight * normalize_factor;
 	out_metal_2_sampling_proba				= metal_2_weight * normalize_factor;
+	out_retro_reflection_sampling_proba		= retro_reflection_weight * normalize_factor;
 	out_specular_sampling_proba				= specular_weight * normalize_factor;
 	out_diffuse_sampling_proba				= diffuse_weight * normalize_factor;
 	out_glass_sampling_proba				= glass_weight * normalize_factor;
@@ -1942,18 +2036,19 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 														? 1.0f
 														: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 
-	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight;
+	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight;
 	float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
-	principled_bsdf_get_lobes_weights(bsdf_context.material, outside_object, coat_weight, sheen_weight, metal_1_weight, metal_2_weight, specular_weight,
-									  diffuse_weight, glass_weight, diffuse_transmission_weight);
+	principled_bsdf_get_lobes_weights(bsdf_context.material, outside_object, coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight,
+									  specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight);
 
-	float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;
+	float coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba;
 	float specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba;
 	principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior, coat_weight, sheen_weight,
-											 metal_1_weight, metal_2_weight, specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight,
+											 metal_1_weight, metal_2_weight, retro_reflection_weight, specular_weight, diffuse_weight, glass_weight,
+											 diffuse_transmission_weight,
 
-											 coat_proba, sheen_proba, metal_1_proba, metal_2_proba, specular_proba, diffuse_proba, glass_proba,
-											 diffuse_transmission_proba);
+											 coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba, specular_proba, diffuse_proba,
+											 glass_proba, diffuse_transmission_proba);
 
 	// Keeps track of the remaining light's energy as we traverse layers
 	ColorRGB32F layers_throughput = ColorRGB32F(1.0f);
@@ -1973,6 +2068,10 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& rend
 	final_color += internal_eval_metal_layer(render_data, bsdf_context, bsdf_context.material.second_roughness, bsdf_context.material.anisotropy,
 											 local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior,
 											 metal_2_weight * !refracting, metal_2_proba, layers_throughput, pdf, rng);
+	final_color += internal_eval_retro_reflection_layer(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
+														local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated,
+														incident_medium_ior, retro_reflection_weight * !refracting, retro_reflection_proba, layers_throughput,
+														pdf, rng);
 
 	// Careful here to evaluate the glass layer before the glossy
 	// base otherwise, layers_throughput is going to be modified
@@ -2035,18 +2134,19 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
 														? 1.0f
 														: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
 
-	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight;
+	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight;
 	float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
-	principled_bsdf_get_lobes_weights(bsdf_context.material, outside_object, coat_weight, sheen_weight, metal_1_weight, metal_2_weight, specular_weight,
-									  diffuse_weight, glass_weight, diffuse_transmission_weight);
+	principled_bsdf_get_lobes_weights(bsdf_context.material, outside_object, coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight,
+									  specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight);
 
-	float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;
+	float coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba;
 	float specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba;
 	principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior, coat_weight, sheen_weight,
-											 metal_1_weight, metal_2_weight, specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight,
+											 metal_1_weight, metal_2_weight, retro_reflection_weight, specular_weight, diffuse_weight, glass_weight,
+											 diffuse_transmission_weight,
 
-											 coat_proba, sheen_proba, metal_1_proba, metal_2_proba, specular_proba, diffuse_proba, glass_proba,
-											 diffuse_transmission_proba);
+											 coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba, specular_proba, diffuse_proba,
+											 glass_proba, diffuse_transmission_proba);
 
 	// In the 'internal_eval_coat_layer' function calls below, we're passing
 	// 'weight * !refracting' so that lobes that do not allow refractions
@@ -2061,6 +2161,9 @@ HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data
 	pdf += internal_pdf_metal_layer(render_data, bsdf_context, bsdf_context.material.second_roughness, bsdf_context.material.anisotropy,
 									local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior,
 									metal_2_weight * !refracting, metal_2_proba);
+	pdf += internal_pdf_retro_reflection_layer(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
+											   local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior,
+											   retro_reflection_weight * !refracting, retro_reflection_proba);
 
 	// Careful here to evaluate the glass layer before the glossy
 	// base otherwise, layers_throughput is going to be modified
@@ -2100,26 +2203,28 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 	float sheen_sampling_weight;
 	float metal_1_sampling_weight;
 	float metal_2_sampling_weight;
+	float retro_reflection_sampling_weight;
 	float specular_sampling_weight;
 	float diffuse_sampling_weight;
 	float glass_sampling_weight;
 	float diffuse_transmission_weight;
 	principled_bsdf_get_lobes_weights(bsdf_context.material, is_outside_object, coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight,
-									  metal_2_sampling_weight, specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight,
-									  diffuse_transmission_weight);
+									  metal_2_sampling_weight, retro_reflection_sampling_weight, specular_sampling_weight, diffuse_sampling_weight,
+									  glass_sampling_weight, diffuse_transmission_weight);
 
 	float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
-	float metal_2_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
+	float metal_2_sampling_proba, retro_reflection_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
 	float glass_sampling_proba, diffuse_transmission_sampling_proba;
 	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
 														? 1.0f
 														: render_data.buffers.materials_buffer_soa.get_ior(bsdf_context.volume_state.incident_mat_index);
-	principled_bsdf_get_lobes_sampling_proba(render_data, bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal),
-											 incident_medium_ior, coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,
-											 specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
+	principled_bsdf_get_lobes_sampling_proba(
+							render_data, bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal), incident_medium_ior,
+							coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight, retro_reflection_sampling_weight,
+							specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight, diffuse_transmission_weight,
 
-											 coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba, specular_sampling_proba,
-											 diffuse_sampling_proba, glass_sampling_proba, diffuse_transmission_sampling_proba);
+							coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba, retro_reflection_sampling_proba,
+							specular_sampling_proba, diffuse_sampling_proba, glass_sampling_proba, diffuse_transmission_sampling_proba);
 
 	// Not using a float[] array here because array[] are super poorly handled
 	// in general by the HIP compiler on AMD
@@ -2127,14 +2232,15 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 	float cdf1 = cdf0 + sheen_sampling_proba;
 	float cdf2 = cdf1 + metal_1_sampling_proba;
 	float cdf3 = cdf2 + metal_2_sampling_proba;
-	float cdf4 = cdf3 + specular_sampling_proba;
-	float cdf5 = cdf4 + diffuse_sampling_proba;
-	float cdf6 = cdf5 + diffuse_transmission_sampling_proba;
-	// The last cdf[] is implicitely 1.0f so don't need to include it
+	float cdf4 = cdf3 + retro_reflection_sampling_proba;
+	float cdf5 = cdf4 + specular_sampling_proba;
+	float cdf6 = cdf5 + diffuse_sampling_proba;
+	float cdf7 = cdf6 + diffuse_transmission_sampling_proba;
+	// The last cdf[] is implicitly 1.0f so don't need to include it
 
 	float rand_1							= random_number_generator();
-	bool sampling_diffuse_transmission_lobe = rand_1 > cdf5 && rand_1 < cdf6;
-	bool sampling_glass_lobe				= rand_1 > cdf6;
+	bool sampling_diffuse_transmission_lobe = rand_1 > cdf6 && rand_1 < cdf7;
+	bool sampling_glass_lobe				= rand_1 > cdf7;
 
 	if (bsdf_context.update_ray_volume_state)
 		if (!sampling_glass_lobe && !sampling_diffuse_transmission_lobe)
@@ -2195,6 +2301,15 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 	}
 	else if (rand_1 < cdf4)
 	{
+		// Retro-reflection lobe sample
+		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_RETRO_REFLECTION_LOBE;
+		output_direction				 = local_to_world_frame(TR, BR, bsdf_context.shading_normal,
+																principled_retro_reflection_sample(render_data, bsdf_context, bsdf_context.material.roughness,
+																								   bsdf_context.material.anisotropy, local_view_direction_rotated,
+																								   random_number_generator));
+	}
+	else if (rand_1 < cdf5)
+	{
 		// Sampling the specular lobe
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE;
 		output_direction				 = local_to_world_frame(TR, BR, bsdf_context.shading_normal,
@@ -2202,14 +2317,14 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 																						   bsdf_context.material.anisotropy, local_view_direction_rotated,
 																						   random_number_generator));
 	}
-	else if (rand_1 < cdf5)
+	else if (rand_1 < cdf6)
 	{
 		// No call to local_to_world_frame() since the sample diffuse functions
 		// already returns in world space around the given normal
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
 		output_direction				 = principled_diffuse_sample(bsdf_context.shading_normal, random_number_generator);
 	}
-	else if (rand_1 < cdf6)
+	else if (rand_1 < cdf7)
 	{
 		// Diffuse transmission lobe
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE;

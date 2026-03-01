@@ -85,6 +85,8 @@ struct BRDFsData
 	float multiple_scattering_cui_2023_firefly_clamping_threshold = 10.0f;
 
 	MicrofacetRegularizationSettings microfacet_regularization;
+
+	bool retroreflection = true;
 };
 
 #endif
