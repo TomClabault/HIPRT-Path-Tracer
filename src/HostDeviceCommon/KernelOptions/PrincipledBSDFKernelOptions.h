@@ -163,12 +163,6 @@
 #define PrincipledBSDFMultipleScatteringCuiDoRussianRoulette KERNEL_OPTION_FALSE
 
 /**
- * If true, a multiple-bounce path in the microsurface will be sampled when sampling the BRDF. This is more expensive but has lower variance. Otherwise, only
- * the single-scattering VNDF will be sampled which results in higher variance
- */
-#define PrincipledBSDFMultipleScatteringCuiSampleMultiscatter KERNEL_OPTION_TRUE
-
-/**
  * Whether or not to perform energy compensation for the glass layer of the Principled BSDF
  */
 #define PrincipledBSDFDoGlassEnergyCompensation KERNEL_OPTION_TRUE

@@ -225,12 +225,17 @@ HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_
 		// light direction wasn't sampled from a specular distribution
 		return 0.0f;
 
-	float pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
-										   metal_delta_direction_sampled);
+	float pdf;
 
 #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
 	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
 		pdf = cosine_weighted_pdf(local_to_light_direction.z);
+	else
+		pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
+										 metal_delta_direction_sampled);
+#else
+	pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
+									 metal_delta_direction_sampled);
 #endif
 
 	return pdf;
@@ -244,11 +249,7 @@ HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& r
 														float roughness,
 														float anisotropy,
 														const float3_t& local_view_direction,
-														Xorshift32Generator& random_number_generator,
-														float* DEBUGOUTPDF						  = nullptr,
-														ColorRGB32F* DEBUGOUTPUTEVAL			  = nullptr,
-														DeviceUnpackedEffectiveMaterial* material = nullptr,
-														float* incident_ior						  = nullptr)
+														Xorshift32Generator& random_number_generator)
 {
 	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
 							render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
@@ -259,8 +260,7 @@ HIPRT_DEVICE static float3_t principled_metallic_sample(const HIPRTRenderData& r
 		return cosine_weighted_sample_z_up_frame(random_number_generator);
 #endif
 
-	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator, true, DEBUGOUTPDF,
-											DEBUGOUTPUTEVAL, material, incident_ior);
+	return microfacet_GGX_sample_reflection(regularized_roughness, anisotropy, local_view_direction, random_number_generator, true);
 }
 
 HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const DeviceUnpackedEffectiveMaterial& material,
@@ -2149,8 +2149,6 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 
 	float3_t local_view_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
 
-	float DEBUGOUTPDFMETALLIC;
-	ColorRGB32F DEBUGOUTPUTEVAL;
 	if (rand_1 < cdf0)
 	{
 		// Sampling the coat lobe
@@ -2184,8 +2182,7 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 		output_direction = local_to_world_frame(TR, BR, bsdf_context.shading_normal,
 												principled_metallic_sample(render_data, bsdf_context, bsdf_context.material.roughness,
 																		   bsdf_context.material.anisotropy, local_view_direction_rotated,
-																		   random_number_generator, &DEBUGOUTPDFMETALLIC, &DEBUGOUTPUTEVAL,
-																		   &bsdf_context.material, &incident_medium_ior));
+																		   random_number_generator));
 	}
 	else if (rand_1 < cdf3)
 	{
@@ -2241,17 +2238,7 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& re
 		return ColorRGB32F(0.0f);
 	}
 	else
-	{
-		ColorRGB32F eval = principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
-
-		// TODO DEBUG REMOVE
-#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFEnergyCompensationMode == ENERGY_COMPENSATION_MODE_INVARIANCE_CUI
-		pdf = DEBUGOUTPDFMETALLIC;
-		return DEBUGOUTPUTEVAL;
-#endif
-
-		return eval;
-	}
+		return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
 }
 
 #endif

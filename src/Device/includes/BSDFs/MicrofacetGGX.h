@@ -126,31 +126,17 @@ HIPRT_DEVICE static float3_t microfacet_GGX_sample_reflection(float roughness,
 															  float anisotropy,
 															  const float3_t& local_view_direction,
 															  Xorshift32Generator& random_number_generator,
-															  bool flip_view_direction_below_surface	= true,
-															  float* DEBUGOUTPDF						= nullptr,
-															  ColorRGB32F* DEBUGOUTEVAL					= nullptr,
-															  DeviceUnpackedEffectiveMaterial* material = nullptr,
-															  float* incident_ior						= nullptr)
+															  bool flip_view_direction_below_surface = true)
 {
-	if constexpr (PrincipledBSDFEnergyCompensationMode == ENERGY_COMPENSATION_MODE_INVARIANCE_CUI && PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE &&
-				  PrincipledBSDFMultipleScatteringCuiSampleMultiscatter == KERNEL_OPTION_TRUE && multipleScatteringAllowed)
-		// The && multipleScatteringAllowed check is used by microfacet_GGX_multiple_scattering_invariance_sample_reflect itself because that function samples
-		// the VNDF at each bounce in the microsurface. Without this check, we would be sampling the VNDF with multiple scattering infinitely recursively: at
-		// each bounce in the microsurface, we want to sample the simple VNDF, not the multiple scattering BRDF
-		return microfacet_GGX_multiple_scattering_invariance_sample_reflection(local_view_direction, roughness, anisotropy, random_number_generator,
-																			   DEBUGOUTPDF, DEBUGOUTEVAL, material, incident_ior);
-	else
-	{
-		// The view direction can sometimes be below the shading normal hemisphere
-		// because of normal mapping / smooth normals
-		float below_normal = (local_view_direction.z < 0.0f && flip_view_direction_below_surface) ? -1.0f : 1.0f;
+	// The view direction can sometimes be below the shading normal hemisphere
+	// because of normal mapping / smooth normals
+	float below_normal = (local_view_direction.z < 0.0f && flip_view_direction_below_surface) ? -1.0f : 1.0f;
 
-		float3_t microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction * below_normal, roughness, anisotropy, random_number_generator);
-		float3_t sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
+	float3_t microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction * below_normal, roughness, anisotropy, random_number_generator);
+	float3_t sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
 
-		// Should already be normalized but float imprecisions...
-		return hippt::normalize(sampled_direction);
-	}
+	// Should already be normalized but float imprecisions...
+	return hippt::normalize(sampled_direction);
 }
 
 #endif

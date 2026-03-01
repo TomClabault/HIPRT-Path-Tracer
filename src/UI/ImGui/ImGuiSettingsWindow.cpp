@@ -4234,20 +4234,6 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 					ImGui::TreePop();
 				}
 
-				static bool sample_multiscatter = global_kernel_options->get_macro_value(
-										GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_SAMPLE_MULTISCATTER);
-				if (ImGui::Checkbox("Sample multiscatter path", &sample_multiscatter))
-				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_MULTIPLE_SCATTERING_CUI_SAMPLE_MULTISCATTER,
-														   sample_multiscatter ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-					m_renderer->recompile_kernels();
-					m_render_window->set_render_dirty(true);
-				}
-				ImGuiRenderer::show_help_marker("If true, a multiple-bounce path in the microsurface will be sampled when sampling the BRDF. This is more "
-												"expensive but has lower variance. Otherwise, only "
-												"the single-scattering VNDF will be sampled which results in higher variance");
-
 				ImGui::TreePop();
 			}
 

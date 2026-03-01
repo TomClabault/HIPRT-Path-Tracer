@@ -24,7 +24,7 @@ extern ImGuiLogger g_imgui_logger;
 
 std::unordered_map<std::string, unsigned int> ThreadManager::DEBUGstarted_count;
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {
