@@ -18,8 +18,10 @@
  * If 'update_ray_volume_state' is passed as true, the givenargument is passed as nullptr, the volume state of the ray won't
  * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)
  */
-HIPRT_DEVICE static ColorRGB32F
-bsdf_dispatcher_eval(const HIPRTRenderData& render_data, BSDFContext& bsdf_context, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& render_data,
+													 BSDFContext& bsdf_context,
+													 float& pdf,
+													 Xorshift32Generator& random_number_generator)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)
@@ -49,9 +51,9 @@ HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data
 	}*/
 	return principled_bsdf_pdf(render_data, bsdf_context);
 #elif BSDFOverride == BSDF_LAMBERTIAN
-	return lambertian_brdf_pdf(bsdf_context.material, hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal));
+	return lambertian_brdf_pdf(hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal));
 #elif BSDFOverride == BSDF_OREN_NAYAR
-	return oren_nayar_brdf_pdf(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction);
+	return oren_nayar_brdf_pdf(bsdf_context.to_light_direction);
 #endif
 }
 
@@ -83,8 +85,8 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& re
 	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator,
 													   bsdf_context.incident_light_info);
 #elif BSDFOverride == BSDF_OREN_NAYAR
-	return oren_nayar_brdf_sample<sampleDirectionOnly>(material, view_direction, surface_normal, sampled_direction, pdf, random_number_generator,
-													   out_sampled_light_info);
+	return oren_nayar_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, sampled_direction, pdf,
+													   random_number_generator, bsdf_context.incident_light_info);
 #endif
 }
 
