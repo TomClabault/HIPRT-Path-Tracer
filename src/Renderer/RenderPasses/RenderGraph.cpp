@@ -6,15 +6,28 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
 
-RenderGraph::RenderGraph() : RenderGraph(nullptr) {}
+RenderGraph::RenderGraph() : RenderGraph(nullptr, nullptr) {}
 
-RenderGraph::RenderGraph(GPURenderer* renderer) : RenderPass(renderer) {}
+RenderGraph::RenderGraph(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, "Unnamed render graph") {}
 
 void RenderGraph::set_render_window(RenderWindow* render_window)
 {
 	// Setting the render window for all render passes
 	for (auto& name_to_render_pass : m_render_passes)
 		name_to_render_pass.second->set_render_window(render_window);
+}
+
+std::shared_ptr<GPUKernelCompilerOptions> RenderGraph::get_compiler_options()
+{
+	return m_compiler_options;
+}
+
+void RenderGraph::set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions> options)
+{
+	m_compiler_options = options;
+
+	for (auto& [rp_name, render_pass] : get_render_passes())
+		render_pass->set_compiler_options(m_compiler_options);
 }
 
 void RenderGraph::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)

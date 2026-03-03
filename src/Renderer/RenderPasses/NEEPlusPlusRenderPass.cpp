@@ -23,12 +23,8 @@ const std::unordered_map<std::string, std::string> NEEPlusPlusRenderPass::KERNEL
 	{ NEE_PLUS_PLUS_PRE_POPULATE, DEVICE_KERNELS_DIRECTORY "/NEE++/GridPrepopulate.h" },
 };
 
-NEEPlusPlusRenderPass::NEEPlusPlusRenderPass() : NEEPlusPlusRenderPass(nullptr) {}
-NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer) : NEEPlusPlusRenderPass(renderer, NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME) {}
-NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, const std::string& name) : RenderPass(renderer, name)
+NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME)
 {
-	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
-
 	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
 
@@ -36,7 +32,7 @@ NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, const std::s
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_file_path(NEEPlusPlusRenderPass::KERNEL_FILES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_function_name(NEEPlusPlusRenderPass::KERNEL_FUNCTION_NAMES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE, BSDF_LAMBERTIAN);
-	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->synchronize_options_with(global_compiler_options, options_not_synchronized);
+	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 
 	m_nee_plus_plus_storage.set_nee_plus_plus_render_pass(this);
 }
@@ -139,7 +135,7 @@ bool NEEPlusPlusRenderPass::is_render_pass_used() const
 {
 	// Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
-	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
+	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
 }
 
 NEEPlusPlusHashGridStorage& NEEPlusPlusRenderPass::get_nee_plus_plus_storage()

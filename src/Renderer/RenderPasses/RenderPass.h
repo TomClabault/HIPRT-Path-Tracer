@@ -28,27 +28,15 @@ class RenderPass
 {
 public:
 	RenderPass();
-	RenderPass(GPURenderer* renderer);
-	RenderPass(GPURenderer* renderer, const std::string& name);
+	RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
+	RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name);
 
 	void set_render_window(RenderWindow* render_window);
 
 	/**
-	 * Sets the override compiler options for this render pass. These options will be used in the compile() and recompile() methods of this render pass and will
-	 * be passed to the GPUKernelCompiler when compiling the kernels of this render pass.
-	 *
-	 * Note that if you override compile() and recompile() without calling the base class implementation, then these override compiler options won't be used at
-	 * all since the base class implementation is the one that passes these options to the GPUKernelCompiler when compiling the kernels of this render pass. You
-	 * should then implement the override feature yourself in your compile() and recompile() methods. The method apply_override_compiler_options() can help with
-	 * that.
-	 */
-	void set_override_compiler_options(const std::unordered_map<std::string, int>& overrides);
-
-	/**
-	 * Applies the given compiler options pass to the given kernel by setting the corresponding macro values in the kernel's
-	 * GPUKernelCompilerOptions.
-	 */
-	void apply_override_compiler_options(std::shared_ptr<GPUKernel>& kernel, const std::unordered_map<std::string, int>& override_options);
+	 * Sets the compiler that this render pass is going to use for each of the kernels
+ 	 */
+	void set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	/**
 	 * This will be called once when the render pass is created.
@@ -392,8 +380,9 @@ protected:
 	// Name --> GPUKernel map
 	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 
-	// Overriden compiler options
-	std::unordered_map<std::string, int> m_override_compiler_options;
+	// Compiler options for this render pass. This is a pointer to the 
+	// compiler options of the render graph that holds this render pass
+	std::shared_ptr<GPUKernelCompilerOptions> m_compiler_options = nullptr;
 };
 
 #endif

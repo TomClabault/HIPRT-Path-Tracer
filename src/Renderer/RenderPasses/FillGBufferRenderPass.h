@@ -18,8 +18,7 @@ public:
 	static const std::string FILL_GBUFFER_RENDER_PASS_NAME;
 	static const std::string FILL_GBUFFER_KERNEL;
 
-	FillGBufferRenderPass();
-	FillGBufferRenderPass(GPURenderer* renderer);
+	FillGBufferRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;

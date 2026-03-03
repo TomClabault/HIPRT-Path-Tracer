@@ -15,9 +15,8 @@ public:
 	static const std::string MEGAKERNEL_KERNEL;
 	static const std::string MEGAKERNEL_KERNEL_REGIR_INTERACTION;
 
-	MegaKernelRenderPass();
-	MegaKernelRenderPass(GPURenderer* renderer);
-	MegaKernelRenderPass(GPURenderer* renderer, const std::string& name);
+	MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
+	MegaKernelRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name);
 
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
 											  const std::vector<hiprtFuncNameSet>& func_name_sets,

@@ -33,19 +33,17 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FI
 	{ RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_KERNEL_FILE },
 };
 
-ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME)
+ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME)
 {
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_spatial_reuse_time_stop));
-
-	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_file_path(
 							ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_function_name(
 							ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->synchronize_options_with(global_compiler_options,
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																									GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
@@ -57,7 +55,7 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(rende
 							ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(
 							ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(global_compiler_options,
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																								GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
@@ -69,7 +67,7 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(rende
 							ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->set_kernel_function_name(
 							ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->synchronize_options_with(global_compiler_options,
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																							   GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
@@ -81,7 +79,7 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(rende
 							ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(
 							ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(global_compiler_options,
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(m_compiler_options,
 																									  GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(
 							GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
@@ -93,7 +91,7 @@ ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(rende
 							ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_function_name(
 							ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->synchronize_options_with(global_compiler_options);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->synchronize_options_with(m_compiler_options);
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->get_kernel_options().set_macro_value(
 							ReSTIRRenderPassCommon::DIRECTIONAL_REUSE_IS_RESTIR_GI_COMPILE_OPTION_NAME, KERNEL_OPTION_FALSE);
 }
@@ -596,7 +594,7 @@ void ReSTIRDIRenderPass::compute_render_times()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) != LSS_RESTIR_DI)
+	if (m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) != LSS_RESTIR_DI)
 		return;
 
 	std::unordered_map<std::string, float>& ms_time_per_pass = m_renderer->get_render_pass_times();
@@ -654,7 +652,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_ke
 
 bool ReSTIRDIRenderPass::is_render_pass_used() const
 {
-	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI;
+	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_RESTIR_DI;
 }
 
 void ReSTIRDIRenderPass::request_temporal_bufffers_clear()

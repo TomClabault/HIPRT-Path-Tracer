@@ -43,14 +43,6 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_DEBUG_BUFFER_STRINGS.resize(1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
 
 	m_hiprt_orochi_ctx		  = hiprt_oro_ctx;
-	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
-	// Adding hardware acceleration by default if supported
-	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
-	// Just "fixing" the ReGIR options to be in sync with the UI
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
-		(m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_ONE_LIGHT ||
-		 m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
-		m_global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 
 	m_power_sampling_data_structure			 = PowerSamplingDataStructure(this);
 	m_light_tree_ats_sampling_data_structure = LightTreeATSSamplingDataStructure(this);
@@ -59,6 +51,15 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_render_thread.init(render_window, this);
 	m_device_properties	   = m_hiprt_orochi_ctx->device_properties;
 	m_application_settings = application_settings;
+
+	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = get_global_compiler_options();
+	// Adding hardware acceleration by default if supported
+	global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
+	// Just "fixing" the ReGIR options to be in sync with the UI
+	if (global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
+		(global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_ONE_LIGHT ||
+		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
+		global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 
 	setup_brdfs_data();
 	setup_filter_functions();
@@ -412,9 +413,14 @@ void GPURenderer::resize(int new_width, int new_height)
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
-	RenderGraph& active_render_graph = render_window->is_interacting() ? m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME]
-																	   : m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME];
-	m_render_thread.set_active_render_graph(active_render_graph);
+	RenderGraph* active_render_graph ;
+	
+	if (render_window->is_interacting())
+		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME];
+	else
+		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME];
+
+	m_render_thread.set_active_render_graph(*active_render_graph);
 	m_render_thread.update_is_render_pass_used();
 
 	pre_render_update(delta_time_gpu);
@@ -431,7 +437,7 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 		m_render_thread.get_active_render_graph().prepass();
 
 	HIPRTRenderData render_data_for_frame				= m_render_data;
-	GPUKernelCompilerOptions compiler_options_for_frame = m_global_compiler_options->deep_copy();
+	GPUKernelCompilerOptions compiler_options_for_frame = active_render_graph->get_compiler_options()->deep_copy();
 	m_render_thread.request_frame(render_data_for_frame, compiler_options_for_frame);
 }
 
@@ -610,7 +616,7 @@ HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
 
 std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_options()
 {
-	return m_global_compiler_options;
+	return m_render_thread.get_render_graphs().at(GPURendererThread::RENDER_GRAPH_FULL_NAME).get_compiler_options();
 }
 
 // Variables used to give the priority to the main thread when compiling shaders

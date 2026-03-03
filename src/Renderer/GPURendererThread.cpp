@@ -17,8 +17,8 @@ void GPURendererThread::init(RenderWindow* render_window, GPURenderer* renderer)
 	// Configuring the render passes
 	m_render_window									 = render_window;
 	m_renderer										 = renderer;
-	m_render_graphs[RENDER_GRAPH_FULL_NAME]			 = RenderGraph(renderer);
-	m_render_graphs[RENDER_GRAPH_INTERACTIVITY_NAME] = RenderGraph(renderer);
+	m_render_graphs[RENDER_GRAPH_FULL_NAME]			 = RenderGraph(renderer, std::make_shared<GPUKernelCompilerOptions>());
+	m_render_graphs[RENDER_GRAPH_INTERACTIVITY_NAME] = RenderGraph(renderer, std::make_shared<GPUKernelCompilerOptions>());
 
 	m_active_render_graph = &m_render_graphs[RENDER_GRAPH_FULL_NAME];
 }
@@ -58,8 +58,7 @@ void GPURendererThread::resize(int new_width, int new_height)
 
 void GPURendererThread::update_is_render_pass_used()
 {
-	for (auto& [rg_name, render_graph] : m_render_graphs)
-		render_graph.update_is_render_pass_used();
+	m_active_render_graph->update_is_render_pass_used();
 }
 
 void GPURendererThread::reset(bool reset_by_camera_movement)
@@ -70,32 +69,33 @@ void GPURendererThread::reset(bool reset_by_camera_movement)
 
 void GPURendererThread::setup_render_graphs()
 {
-	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = std::make_shared<FillGBufferRenderPass>(m_renderer);
+	RenderGraph& render_graph_full = m_render_graphs[RENDER_GRAPH_FULL_NAME];
 
-	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = std::make_shared<NEEPlusPlusRenderPass>(m_renderer);
+	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = render_graph_full.create_render_pass<FillGBufferRenderPass>();
+	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = render_graph_full.create_render_pass<NEEPlusPlusRenderPass>();
 
-	std::shared_ptr<ReGIRRenderPass> regir_render_pass = std::make_shared<ReGIRRenderPass>(m_renderer);
+	std::shared_ptr<ReGIRRenderPass> regir_render_pass = render_graph_full.create_render_pass<ReGIRRenderPass>();
 	regir_render_pass->add_dependency(camera_rays_render_pass);
 	regir_render_pass->add_dependency(nee_plus_plus_render_pass);
 
-	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = std::make_shared<ReSTIRDIRenderPass>(m_renderer);
+	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = render_graph_full.create_render_pass<ReSTIRDIRenderPass>();
 	restir_di_render_pass->add_dependency(camera_rays_render_pass);
 	restir_di_render_pass->add_dependency(regir_render_pass);
 
 	// Note that the megakernel pass will only be used if ReSTIR GI is not used.
 	// But we're still adding the render pass to the render graph in case the user
 	// switches from ReSTIR GI to classical path tracing at runtime
-	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass = std::make_shared<MegaKernelRenderPass>(m_renderer);
+	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass = render_graph_full.create_render_pass<MegaKernelRenderPass>();
 	megakernel_render_pass->add_dependency(camera_rays_render_pass);
 	megakernel_render_pass->add_dependency(restir_di_render_pass);
 	megakernel_render_pass->add_dependency(regir_render_pass);
 
-	std::shared_ptr<ReSTIRGIRenderPass> restir_gi_render_pass = std::make_shared<ReSTIRGIRenderPass>(m_renderer);
+	std::shared_ptr<ReSTIRGIRenderPass> restir_gi_render_pass = render_graph_full.create_render_pass<ReSTIRGIRenderPass>();
 	restir_gi_render_pass->add_dependency(camera_rays_render_pass);
 	restir_gi_render_pass->add_dependency(restir_di_render_pass);
 	restir_gi_render_pass->add_dependency(regir_render_pass);
 
-	std::shared_ptr<GMoNRenderPass> gmon_render_pass = std::make_shared<GMoNRenderPass>(m_renderer);
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = render_graph_full.create_render_pass<GMoNRenderPass>();
 	// GMoN depends on the main path tracing pass which
 	// is the megakernel pass or ReSTIR GI, whichever is active
 	// because we want the values of the samples accumulated in the GMoN sets
@@ -103,7 +103,6 @@ void GPURendererThread::setup_render_graphs()
 	gmon_render_pass->add_dependency(megakernel_render_pass);
 	gmon_render_pass->add_dependency(restir_gi_render_pass);
 
-	RenderGraph& render_graph_full = m_render_graphs[RENDER_GRAPH_FULL_NAME];
 	render_graph_full.add_render_pass(camera_rays_render_pass);
 	render_graph_full.add_render_pass(nee_plus_plus_render_pass);
 	render_graph_full.add_render_pass(regir_render_pass);
@@ -120,18 +119,19 @@ void GPURendererThread::setup_render_graphs()
 	 * Render graph interactivity
 	 */
 
-	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass_interactivity = std::make_shared<FillGBufferRenderPass>(m_renderer);
-	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass_interactivity	 = std::make_shared<MegaKernelRenderPass>(m_renderer);
-	megakernel_render_pass_interactivity->set_override_compiler_options({ { GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_BASE_POWER } });
+	RenderGraph& render_graph_interactivity = m_render_graphs[RENDER_GRAPH_INTERACTIVITY_NAME];
+	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_BASE_POWER);
+	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PSS_BSDF);
+
+	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass_interactivity = render_graph_interactivity.create_render_pass<FillGBufferRenderPass>();
+	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass_interactivity	 = render_graph_interactivity.create_render_pass<MegaKernelRenderPass>();
 	megakernel_render_pass_interactivity->add_dependency(camera_rays_render_pass_interactivity);
 
-	RenderGraph& render_graph_interactivity = m_render_graphs[RENDER_GRAPH_INTERACTIVITY_NAME];
 	render_graph_interactivity.add_render_pass(camera_rays_render_pass_interactivity);
 	render_graph_interactivity.add_render_pass(megakernel_render_pass_interactivity);
 
-	render_graph_interactivity.compile(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);
-
 	render_graph_interactivity.set_render_window(m_render_window);
+	render_graph_interactivity.compile(m_renderer->m_hiprt_orochi_ctx, m_renderer->m_func_name_sets);
 }
 
 void GPURendererThread::request_frame(HIPRTRenderData& render_data_for_frame, GPUKernelCompilerOptions& compiler_options_for_frame)

@@ -17,9 +17,15 @@ class RenderGraph : public RenderPass
 {
 public:
 	RenderGraph();
-	RenderGraph(GPURenderer* renderer);
+	RenderGraph(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions>);
 
 	void set_render_window(RenderWindow* render_window);
+
+	std::shared_ptr<GPUKernelCompilerOptions> get_compiler_options();
+	void set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions> options);
+
+	template <typename RenderPassType>
+	std::shared_ptr<RenderPassType> create_render_pass();
 
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
 	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
@@ -73,5 +79,11 @@ private:
 	// Whether or not launch has already been called for this *frame* (not sample)
 	bool m_new_frame = true;
 };
+
+template <typename RenderPassType>
+std::shared_ptr<RenderPassType> RenderGraph::create_render_pass()
+{
+	return std::make_shared<RenderPassType>(m_renderer, m_compiler_options);
+}
 
 #endif

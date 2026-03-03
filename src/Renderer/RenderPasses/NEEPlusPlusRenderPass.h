@@ -19,9 +19,7 @@ public:
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
 
-	NEEPlusPlusRenderPass();
-	NEEPlusPlusRenderPass(GPURenderer* renderer);
-	NEEPlusPlusRenderPass(GPURenderer* renderer, const std::string& name);
+	NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override {};
 

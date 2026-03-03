@@ -36,6 +36,7 @@ public:
 	void resize_host_pinned_mem(int new_element_count, size_t type_size_override = 0);
 	size_t size() const;
 	size_t get_byte_size() const;
+	size_t get_element_count() const;
 
 	const T* get_device_pointer() const;
 	T* get_device_pointer();
@@ -218,6 +219,12 @@ template <typename T>
 size_t OrochiBuffer<T>::get_byte_size() const
 {
 	return m_element_count * sizeof(T);
+}
+
+template <typename T>
+size_t OrochiBuffer<T>::get_element_count() const
+{
+	return m_element_count;
 }
 
 template <typename T>

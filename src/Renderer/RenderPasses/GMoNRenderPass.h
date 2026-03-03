@@ -21,8 +21,7 @@ public:
 	static const std::string GMON_RENDER_PASS_NAME;
 	static const std::string COMPUTE_GMON_KERNEL;
 
-	GMoNRenderPass();
-	GMoNRenderPass(GPURenderer* renderer);
+	GMoNRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 

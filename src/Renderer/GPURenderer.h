@@ -445,7 +445,7 @@ private:
 	// The value 1 or 0 of this macro is stored in this 'm_global_compiler_options' member
 	// and is 'synchronized' through the use of pointers with the options of the other kernels.
 	// See 'setup_render_graphs' for more details on how that "synchronization" is setup
-	std::shared_ptr<GPUKernelCompilerOptions> m_global_compiler_options;
+	// std::shared_ptr<GPUKernelCompilerOptions> m_global_compiler_options;
 
 	// Additional functions called on hits when tracing rays (alpha testing for example)
 	std::vector<hiprtFuncNameSet> m_func_name_sets;

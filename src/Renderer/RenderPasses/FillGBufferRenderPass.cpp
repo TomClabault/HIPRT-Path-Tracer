@@ -13,15 +13,14 @@
 const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME = "Fill G-Buffer Render Pass";
 const std::string FillGBufferRenderPass::FILL_GBUFFER_KERNEL		   = "Fill G-Buffer";
 
-FillGBufferRenderPass::FillGBufferRenderPass() : FillGBufferRenderPass(nullptr) {}
-FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer) : RenderPass(renderer, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
+FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
 {
 	m_render_resolution = m_renderer->m_render_resolution;
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/CameraRays.h");
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_function_name("CameraRays");
-	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->synchronize_options_with(m_renderer->get_global_compiler_options(),
+	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->synchronize_options_with(m_compiler_options,
 																					GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 																								KERNEL_OPTION_TRUE);
@@ -40,7 +39,7 @@ void FillGBufferRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi
 	m_ray_volume_state_byte_size_kernel = std::make_shared<GPUKernel>();
 	m_ray_volume_state_byte_size_kernel->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h");
 	m_ray_volume_state_byte_size_kernel->set_kernel_function_name("RayVolumeStateSize");
-	m_ray_volume_state_byte_size_kernel->synchronize_options_with(m_renderer->get_global_compiler_options(), GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_ray_volume_state_byte_size_kernel->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	ThreadManager::start_serial_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent,
 									   m_ray_volume_state_byte_size_kernel, hiprt_orochi_ctx, std::vector<hiprtFuncNameSet>());
 
@@ -94,6 +93,9 @@ bool FillGBufferRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernel
 	render_data.random_number = m_renderer->get_rng_generator().xorshift32();
 
 	void* launch_args[] = { &render_data };
+
+	std::cerr << "Resolution: " << m_render_resolution.x * m_render_resolution.y << std::endl;
+	std::cerr << "\tGBuffer res & prev: " << m_g_buffer.geometric_normals.get_element_count() << " / " << m_g_buffer_prev_frame.geometric_normals.get_element_count() << std::endl;
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x,
 																			   m_render_resolution.y, launch_args, m_renderer->get_main_stream());
