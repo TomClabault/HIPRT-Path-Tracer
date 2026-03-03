@@ -105,7 +105,8 @@ void ImGuiSettingsWindow::draw_header()
 		else
 		{
 			// Time is < 0.0f i.e. the timer has expired and we're waiting for a refresh
-			if (m_renderer->get_gmon_render_pass()->is_render_pass_used() && m_renderer->get_gmon_render_pass()->recomputation_requested())
+			std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
+			if (gmon_render_pass && gmon_render_pass->is_render_pass_used() && gmon_render_pass->recomputation_requested())
 				// If we're waiting for GMoN, indicating it
 				ImGui::Text("Viewport refresh in: 0.000s --- Waiting for GMoN");
 			else
@@ -5340,7 +5341,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	if (rolling_window_size_changed)
 		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
-	RenderGraph& render_graph = m_renderer->get_render_graph();
+	RenderGraph& render_graph = m_renderer->get_active_render_graph();
 	for (auto& name_to_render_pass : render_graph.get_render_passes())
 	{
 		const std::map<std::string, std::shared_ptr<GPUKernel>>& render_pass_kernels = name_to_render_pass.second->get_all_kernels();

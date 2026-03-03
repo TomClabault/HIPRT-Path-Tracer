@@ -13,7 +13,7 @@ extern ImGuiLogger g_imgui_logger;
 
 DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, RenderWindow* render_window)
 {
-	m_renderer = renderer;
+	m_renderer		= renderer;
 	m_render_window = render_window;
 
 	// Creating the texture that will contain the path traced data to be displayed
@@ -25,43 +25,46 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	// we're hardcoding our full screen quad in the vertex shader
 	glCreateVertexArrays(1, &m_vao);
 
-	OpenGLShader fullscreen_quad_vertex_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", OpenGLShader::VERTEX_SHADER);
-	OpenGLShader default_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader blend_2_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader normal_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader albedo_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader adaptive_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader fullscreen_quad_vertex_shader			 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", OpenGLShader::VERTEX_SHADER);
+	OpenGLShader default_display_fragment_shader		 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader blend_2_display_fragment_shader		 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader normal_display_fragment_shader			 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader albedo_display_fragment_shader			 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader adaptive_display_fragment_shader		 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader pixel_converged_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/boolmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader white_furnace_threshold_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/white_furnace_threshold.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader white_furnace_threshold_shader			 = OpenGLShader(GLSL_SHADERS_DIRECTORY "/white_furnace_threshold.frag", OpenGLShader::FRAGMENT_SHADER);
 
 	// Making shared_ptr<OpenGLProgram>s here because multiple display views may share the same OpenGLProgram
 	std::shared_ptr<OpenGLProgram> default_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, default_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> blend_2_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, blend_2_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> normal_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, normal_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, albedo_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, adaptive_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> pixel_converged_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, pixel_converged_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> white_furnace_threshold_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, white_furnace_threshold_shader);
+	std::shared_ptr<OpenGLProgram> normal_display_program  = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, normal_display_fragment_shader);
+	std::shared_ptr<OpenGLProgram> albedo_display_program  = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, albedo_display_fragment_shader);
+	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program =
+							std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, adaptive_display_fragment_shader);
+	std::shared_ptr<OpenGLProgram> pixel_converged_display_program =
+							std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, pixel_converged_display_fragment_shader);
+	std::shared_ptr<OpenGLProgram> white_furnace_threshold_program =
+							std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, white_furnace_threshold_shader);
 
 	// Creating all the display views
-	DisplayView default_display_view = DisplayView(DisplayViewType::DEFAULT, default_display_program);
-	DisplayView gmon_blend_display_view = DisplayView(DisplayViewType::GMON_BLEND, blend_2_display_program);
-	DisplayView denoise_blend_display_view = DisplayView(DisplayViewType::DENOISED_BLEND, blend_2_display_program);
-	DisplayView normals_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISER_NORMALS, normal_display_program);
-	DisplayView albedo_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISER_ALBEDO, albedo_display_program);
+	DisplayView default_display_view				   = DisplayView(DisplayViewType::DEFAULT, default_display_program);
+	DisplayView gmon_blend_display_view				   = DisplayView(DisplayViewType::GMON_BLEND, blend_2_display_program);
+	DisplayView denoise_blend_display_view			   = DisplayView(DisplayViewType::DENOISED_BLEND, blend_2_display_program);
+	DisplayView normals_display_view				   = DisplayView(DisplayViewType::DISPLAY_DENOISER_NORMALS, normal_display_program);
+	DisplayView albedo_display_view					   = DisplayView(DisplayViewType::DISPLAY_DENOISER_ALBEDO, albedo_display_program);
 	DisplayView pixel_convergence_heatmap_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGENCE_HEATMAP, pixel_convergence_heatmap_display_program);
-	DisplayView pixel_converged_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGED_MAP, pixel_converged_display_program);
-	DisplayView white_furnace_threshold_view = DisplayView(DisplayViewType::WHITE_FURNACE_THRESHOLD, white_furnace_threshold_program);
+	DisplayView pixel_converged_display_view		   = DisplayView(DisplayViewType::PIXEL_CONVERGED_MAP, pixel_converged_display_program);
+	DisplayView white_furnace_threshold_view		   = DisplayView(DisplayViewType::WHITE_FURNACE_THRESHOLD, white_furnace_threshold_program);
 
 	// Adding the display views to the map
-	m_display_views[DisplayViewType::DEFAULT] = default_display_view;
-	m_display_views[DisplayViewType::GMON_BLEND] = gmon_blend_display_view;
-	m_display_views[DisplayViewType::DENOISED_BLEND] = denoise_blend_display_view;
-	m_display_views[DisplayViewType::DISPLAY_DENOISER_NORMALS] = normals_display_view;
-	m_display_views[DisplayViewType::DISPLAY_DENOISER_ALBEDO] = albedo_display_view;
+	m_display_views[DisplayViewType::DEFAULT]					= default_display_view;
+	m_display_views[DisplayViewType::GMON_BLEND]				= gmon_blend_display_view;
+	m_display_views[DisplayViewType::DENOISED_BLEND]			= denoise_blend_display_view;
+	m_display_views[DisplayViewType::DISPLAY_DENOISER_NORMALS]	= normals_display_view;
+	m_display_views[DisplayViewType::DISPLAY_DENOISER_ALBEDO]	= albedo_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_view;
-	m_display_views[DisplayViewType::PIXEL_CONVERGED_MAP] = pixel_converged_display_view;
-	m_display_views[DisplayViewType::WHITE_FURNACE_THRESHOLD] = white_furnace_threshold_view;
+	m_display_views[DisplayViewType::PIXEL_CONVERGED_MAP]		= pixel_converged_display_view;
+	m_display_views[DisplayViewType::WHITE_FURNACE_THRESHOLD]	= white_furnace_threshold_view;
 
 	// Denoiser blend by default if denoising enabled. Default view otherwise
 	DisplayViewType default_display_view_type = DisplayViewType::DEFAULT;
@@ -134,8 +137,8 @@ void DisplayViewSystem::resize_framebuffer()
 
 bool DisplayViewSystem::update_selected_display_view()
 {
-	if (current_display_view_needs_adaptive_sampling_buffers()
-		&& !m_render_window->get_renderer()->get_render_settings().has_access_to_adaptive_sampling_buffers())
+	if (current_display_view_needs_adaptive_sampling_buffers() &&
+		!m_render_window->get_renderer()->get_render_settings().has_access_to_adaptive_sampling_buffers())
 		// If the adaptive sampling heatmap is selected as the current view but
 		// the adaptive sampling buffers are no longer available (after a change
 		// to ImGui for example), we need to switch out of the adaptive sampling
@@ -178,8 +181,8 @@ void DisplayViewSystem::handle_automatic_display_view_changes()
 
 bool DisplayViewSystem::current_display_view_needs_adaptive_sampling_buffers()
 {
-	return get_current_display_view_type() == DisplayViewType::PIXEL_CONVERGENCE_HEATMAP
-		|| get_current_display_view_type() == DisplayViewType::PIXEL_CONVERGED_MAP;
+	return get_current_display_view_type() == DisplayViewType::PIXEL_CONVERGENCE_HEATMAP ||
+		   get_current_display_view_type() == DisplayViewType::PIXEL_CONVERGED_MAP;
 }
 
 void DisplayViewSystem::display()
@@ -215,15 +218,18 @@ DisplaySettings& DisplayViewSystem::get_display_settings()
 	return m_display_settings;
 }
 
-void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem* display_view_system, std::shared_ptr<OpenGLProgram> program, std::shared_ptr<GPURenderer> renderer, std::shared_ptr<ApplicationSettings> application_settings)
+void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem* display_view_system,
+														std::shared_ptr<OpenGLProgram> program,
+														std::shared_ptr<GPURenderer> renderer,
+														std::shared_ptr<ApplicationSettings> application_settings)
 {
-	const DisplayView* display_view = display_view_system->get_current_display_view();
+	const DisplayView* display_view			= display_view_system->get_current_display_view();
 	const DisplaySettings& display_settings = display_view_system->m_display_settings;
 
 	HIPRTRenderSettings render_settings = renderer->get_render_settings();
-	render_settings.sample_number = std::max(1u, render_settings.sample_number);
+	render_settings.sample_number		= std::max(1u, render_settings.sample_number);
 
-	bool display_low_resolution = display_view_system->get_render_low_resolution();
+	bool display_low_resolution		  = display_view_system->get_render_low_resolution();
 	int render_low_resolution_scaling = display_low_resolution ? render_settings.render_low_resolution_scaling : 1;
 
 	program->use();
@@ -241,7 +247,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 			// to be too dark because we're going to be dividing the data of the denoised buffer by a
 			// sample count that doesn't match
 			sample_number = application_settings->last_denoised_sample_count;
-		else if (renderer->get_gmon_render_pass()->is_render_pass_used())
+		else if (renderer->get_gmon_render_pass() && renderer->get_gmon_render_pass()->is_render_pass_used())
 			sample_number = renderer->get_gmon_render_pass()->get_last_recomputed_sample_count();
 		else
 			sample_number = render_settings.sample_number;
@@ -278,7 +284,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 
 	case DisplayViewType::GMON_BLEND:
 	{
-		int gmon_sample_number = renderer->get_gmon_render_pass()->get_last_recomputed_sample_count();
+		int gmon_sample_number	  = renderer->get_gmon_render_pass()->get_last_recomputed_sample_count();
 		int default_sample_number = render_settings.sample_number;
 
 		program->set_uniform("u_blend_factor", renderer->get_gmon_render_pass()->get_gmon_data().gmon_blend_factor);
@@ -299,7 +305,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		int noisy_sample_number;
 		int denoised_sample_number;
 
-		noisy_sample_number = render_settings.sample_number;
+		noisy_sample_number	   = render_settings.sample_number;
 		denoised_sample_number = application_settings->last_denoised_sample_count;
 
 		if (display_settings.blend_override != -1.0f)
@@ -395,23 +401,28 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 
 	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
 		if (m_render_window->get_application_settings()->denoiser_use_interop_buffers)
-			internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+			internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_interop_buffer(), m_display_texture_1,
+											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		else
-			internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_no_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+			internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_no_interop_buffer(), m_display_texture_1,
+											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 
 		break;
 
 	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
 		if (m_render_window->get_application_settings()->denoiser_use_interop_buffers)
-			internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+			internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_interop_buffer(), m_display_texture_1,
+											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		else
-			internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_no_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+			internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_no_interop_buffer(), m_display_texture_1,
+											  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 
 		break;
 
 	case DisplayViewType::PIXEL_CONVERGED_MAP:
 	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
-		internal_upload_buffer_to_texture(m_renderer->get_pixels_converged_sample_count_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		internal_upload_buffer_to_texture(m_renderer->get_pixels_converged_sample_count_buffer(), m_display_texture_1,
+										  DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
 
 	case DisplayViewType::DEFAULT:
@@ -440,8 +451,10 @@ bool DisplayViewSystem::get_render_low_resolution() const
 void DisplayViewSystem::resize(int new_render_width, int new_render_height)
 {
 	resize_framebuffer();
-	internal_recreate_display_texture(m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1, m_display_texture_1.second, new_render_width, new_render_height);
-	internal_recreate_display_texture(m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2, m_display_texture_2.second, new_render_width, new_render_height);
+	internal_recreate_display_texture(m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1, m_display_texture_1.second, new_render_width,
+									  new_render_height);
+	internal_recreate_display_texture(m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2, m_display_texture_2.second, new_render_width,
+									  new_render_height);
 }
 
 void DisplayViewSystem::internal_recreate_display_textures_from_display_view(DisplayViewType display_view)
@@ -470,7 +483,8 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 		break;
 
 	default:
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unhandled display texture type in 'internal_recreate_display_textures_from_display_view'");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"Unhandled display texture type in 'internal_recreate_display_textures_from_display_view'");
 
 		Debug::debugbreak();
 
@@ -478,13 +492,19 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 	}
 
 	if (m_display_texture_1.second != texture_1_type_needed)
-		internal_recreate_display_texture(m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1, texture_1_type_needed, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
+		internal_recreate_display_texture(m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1, texture_1_type_needed,
+										  m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 
 	if (m_display_texture_2.second != texture_2_type_needed)
-		internal_recreate_display_texture(m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2, texture_2_type_needed, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
+		internal_recreate_display_texture(m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2, texture_2_type_needed,
+										  m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 }
 
-void DisplayViewSystem::internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height)
+void DisplayViewSystem::internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture,
+														  GLenum display_texture_unit,
+														  DisplayTextureType new_texture_type,
+														  int width,
+														  int height)
 {
 	bool freeing = false;
 	if (new_texture_type == DisplayTextureType::UNINITIALIZED)
@@ -507,8 +527,8 @@ void DisplayViewSystem::internal_recreate_display_texture(std::pair<GLuint, Disp
 	}
 
 	GLint internal_format = new_texture_type.get_gl_internal_format();
-	GLenum format = new_texture_type.get_gl_format();
-	GLenum type = new_texture_type.get_gl_type();
+	GLenum format		  = new_texture_type.get_gl_format();
+	GLenum type			  = new_texture_type.get_gl_type();
 
 	// Making sure the buffer isn't bound
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);

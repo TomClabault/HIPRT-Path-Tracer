@@ -35,7 +35,10 @@ void RenderGraph::resize(unsigned int new_width, unsigned int new_height)
 		name_to_render_pass.second->resize(new_width, new_height);
 }
 
-bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
+bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+											   const std::vector<hiprtFuncNameSet>& func_name_sets,
+											   bool silent,
+											   bool use_cache)
 {
 	m_renderer->synchronize_all_kernels();
 
@@ -91,11 +94,15 @@ bool RenderGraph::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOp
 	return true;
 }
 
-void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass, HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
+void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass,
+													   HIPRTRenderData& render_data,
+													   GPUKernelCompilerOptions& compiler_options)
 {
 	if (render_pass == nullptr)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "The render pass \"%s\" wasn't added to the RenderGraph but appears as a dependency of another render pass!", render_pass->get_name().c_str());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"The render pass \"%s\" wasn't added to the RenderGraph but appears as a dependency of another render pass!",
+								render_pass->get_name().c_str());
 
 		return;
 	}
@@ -109,7 +116,7 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 		launch_render_pass_with_dependencies(dependency, render_data, compiler_options);
 
 	// Now launching the render pass itself since all dependencies have been launched
-	bool effectively_launched = render_pass->launch_async(render_data, compiler_options);
+	bool effectively_launched								 = render_pass->launch_async(render_data, compiler_options);
 	m_render_pass_launched_this_frame_yet[render_pass.get()] = true;
 
 	if (effectively_launched)
@@ -191,7 +198,9 @@ void RenderGraph::add_render_pass(std::shared_ptr<RenderPass> render_pass)
 {
 	if (m_render_passes.find(render_pass->get_name()) != m_render_passes.end())
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "A render pass with name %s already exists in the render graph. This call to add_render_pass() didn't change anything.", render_pass->get_name().c_str());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"A render pass with name %s already exists in the render graph. This call to add_render_pass() didn't change anything.",
+								render_pass->get_name().c_str());
 
 		return;
 	}
@@ -201,7 +210,11 @@ void RenderGraph::add_render_pass(std::shared_ptr<RenderPass> render_pass)
 
 std::shared_ptr<RenderPass> RenderGraph::get_render_pass(const std::string& render_pass_name)
 {
-	return m_render_passes[render_pass_name];
+	auto find = m_render_passes.find(render_pass_name);
+	if (find == m_render_passes.end())
+		return nullptr;
+	else
+		return find->second;
 }
 
 std::unordered_map<std::string, std::shared_ptr<RenderPass>> RenderGraph::get_render_passes()

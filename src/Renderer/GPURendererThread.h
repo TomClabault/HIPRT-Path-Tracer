@@ -25,17 +25,30 @@ class RenderWindow;
 class GPURendererThread
 {
 public:
+	static const std::string RENDER_GRAPH_FULL_NAME;
+	static const std::string RENDER_GRAPH_INTERACTIVITY_NAME;
+
+public:
 	GPURendererThread() {}
 
-	void init(GPURenderer* renderer);
+	void init(RenderWindow* render_window, GPURenderer* renderer);
 
 	void start();
 	void render_thread_function();
 
 	/**
+	 * Resizes the render graphs of this render thread
+	 */
+	void resize(int new_width, int new_height);
+
+	void update_is_render_pass_used();
+
+	void reset(bool reset_by_camera_movement);
+
+	/**
 	 * Initializes and compiles the kernels
 	 */
-	void setup_render_passes(RenderWindow* render_window);
+	void setup_render_graphs();
 
 	void request_frame(HIPRTRenderData& render_data_for_frame, GPUKernelCompilerOptions& compiler_options_for_frame);
 	void request_exit();
@@ -60,7 +73,7 @@ public:
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
 	 * call to pre_render_update()
 	 */
-	void pre_render_update(float delta_time, RenderWindow* render_window);
+	void pre_render_update(float delta_time);
 
 	/**
 	 * This function increments some counters (such as the number of samples rendered so far) after a
@@ -82,9 +95,13 @@ public:
 	/**
 	 * This renders a frame by calling all the path tracing kernels.
 	 */
-	void render_path_tracing();
+	void render_internal();
 
-	RenderGraph& get_render_graph();
+	void set_active_render_graph(RenderGraph& graph);
+	RenderGraph& get_active_render_graph();
+
+	std::unordered_map<std::string, RenderGraph>& get_render_graphs();
+
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<NEEPlusPlusRenderPass> get_NEE_plus_plus_render_pass();
 	std::shared_ptr<ReGIRRenderPass> get_ReGIR_render_pass();
@@ -118,6 +135,9 @@ private:
 	 */
 	void internal_pre_render_update_global_stack_buffer();
 
+private:
+	RenderWindow* m_render_window = nullptr;
+
 	GPURenderer* m_renderer = nullptr;
 	// This is the render data structure that is going to be used for all
 	// render pass dispatches to avoid concurrency races with the ImGui UI
@@ -132,10 +152,11 @@ private:
 	HIPRTRenderData m_render_data_for_frame;
 	// Same for the compiler options
 	GPUKernelCompilerOptions m_compiler_options_for_frame;
-	RenderGraph m_render_graph;
 
+	std::unordered_map<std::string, RenderGraph> m_render_graphs;
+	RenderGraph* m_active_render_graph = nullptr;
 
-	// Whether or not the frame queued on the GPU by the last call to render() 
+	// Whether or not the frame queued on the GPU by the last call to render()
 	// is done rendering or not
 	bool m_frame_rendered = true;
 
@@ -148,8 +169,8 @@ private:
 	std::mutex m_render_completex_mutex;
 
 	bool m_currently_rendering = false;
-	bool m_frame_requested = false;
-	bool m_exit_requested = false;
+	bool m_frame_requested	   = false;
+	bool m_exit_requested	   = false;
 };
 
 #endif

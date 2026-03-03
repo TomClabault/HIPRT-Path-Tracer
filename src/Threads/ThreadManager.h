@@ -249,8 +249,6 @@ private:
 			m_threads_map[thread_key_to_start].push_back(std::thread(
 									[dependencies, function, args...]()
 									{
-										std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
 										wait_for_dependencies(dependencies);
 
 										std::thread function_thread(function, args...);

@@ -17,13 +17,29 @@ void RenderPass::set_render_window(RenderWindow* render_window)
 	m_render_window = render_window;
 }
 
+void RenderPass::set_override_compiler_options(const std::unordered_map<std::string, int>& overrides)
+{
+	m_override_compiler_options = overrides;
+}
+
+void RenderPass::apply_override_compiler_options(std::shared_ptr<GPUKernel>& kernel, const std::unordered_map<std::string, int>& override_options)
+{
+	for (const auto& [option_name, option_value] : override_options)
+		kernel->get_kernel_options().set_macro_value(option_name, option_value);
+}
+
 void RenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
 	if (!is_render_pass_used())
 		return;
 
 	for (auto& name_to_kernel : get_all_kernels())
-		ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[name_to_kernel.first], hiprt_orochi_ctx, std::ref(func_name_sets));
+	{
+		apply_override_compiler_options(m_kernels[name_to_kernel.first], m_override_compiler_options);
+
+		ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[name_to_kernel.first],
+									hiprt_orochi_ctx, std::ref(func_name_sets));
+	}
 }
 
 void RenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -76,7 +92,7 @@ float RenderPass::get_full_frame_time()
 std::map<std::string, std::shared_ptr<GPUKernel>> RenderPass::get_all_kernels()
 {
 	// The default implementation just returns all the kernels.
-		// Or an empty map if the render pass isn't being used
+	// Or an empty map if the render pass isn't being used
 
 	if (!is_render_pass_used())
 		return {};

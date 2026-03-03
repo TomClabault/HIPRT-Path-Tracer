@@ -56,13 +56,13 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_light_tree_ats_sampling_data_structure = LightTreeATSSamplingDataStructure(this);
 	m_light_tree_sg_sampling_data_structure	 = LightTreeSGSamplingDataStructure(this);
 
-	m_render_thread.init(this);
+	m_render_thread.init(render_window, this);
 	m_device_properties	   = m_hiprt_orochi_ctx->device_properties;
 	m_application_settings = application_settings;
 
 	setup_brdfs_data();
 	setup_filter_functions();
-	m_render_thread.setup_render_passes(render_window);
+	m_render_thread.setup_render_graphs();
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
@@ -319,7 +319,7 @@ void GPURenderer::internal_clear_m_status_buffers()
 
 bool GPURenderer::needs_global_bvh_stack_buffer()
 {
-	for (const auto& name_to_kernel : m_render_thread.get_render_graph().get_tracing_kernels())
+	for (const auto& name_to_kernel : m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_tracing_kernels())
 	{
 		bool global_stack_buffer_needed = false;
 		global_stack_buffer_needed |= name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) ==
@@ -393,7 +393,7 @@ void GPURenderer::resize(int new_width, int new_height)
 		m_pixels_sample_count_buffer.resize(new_width * new_height);
 	}
 
-	m_render_thread.get_render_graph().resize(new_width, new_height);
+	m_render_thread.resize(new_width, new_height);
 
 	m_pixel_active.resize(new_width * new_height);
 
@@ -412,8 +412,12 @@ void GPURenderer::resize(int new_width, int new_height)
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
-	m_render_thread.get_render_graph().update_is_render_pass_used();
-	pre_render_update(delta_time_gpu, render_window);
+	RenderGraph& active_render_graph = render_window->is_interacting() ? m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME]
+																	   : m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME];
+	m_render_thread.set_active_render_graph(active_render_graph);
+	m_render_thread.update_is_render_pass_used();
+
+	pre_render_update(delta_time_gpu);
 
 	// Mapping the render buffers on the main thread so that we can use them in the render thread.
 	//
@@ -424,22 +428,23 @@ void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 	if (m_render_data.render_settings.sample_number == 0)
 		// If this is the very first sample, launching the prepass
 		// of all the render passes
-		m_render_thread.get_render_graph().prepass();
+		m_render_thread.get_active_render_graph().prepass();
 
 	HIPRTRenderData render_data_for_frame				= m_render_data;
 	GPUKernelCompilerOptions compiler_options_for_frame = m_global_compiler_options->deep_copy();
 	m_render_thread.request_frame(render_data_for_frame, compiler_options_for_frame);
 }
 
-void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window)
+void GPURenderer::pre_render_update(float delta_time)
 {
-	m_render_thread.pre_render_update(delta_time, render_window);
+	m_render_thread.pre_render_update(delta_time);
 }
 
 void GPURenderer::map_buffers_for_render()
 {
-	m_render_data.buffers.accumulated_ray_colors			= m_framebuffer->map();
-	m_render_data.buffers.gmon_estimator.result_framebuffer = get_gmon_render_pass()->map_result_framebuffer();
+	m_render_data.buffers.accumulated_ray_colors = m_framebuffer->map();
+	if (get_gmon_render_pass())
+		m_render_data.buffers.gmon_estimator.result_framebuffer = get_gmon_render_pass()->map_result_framebuffer();
 
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
 	m_render_data.aux_buffers.denoiser_albedo  = m_denoiser_buffers.map_albedo_buffer();
@@ -452,7 +457,8 @@ void GPURenderer::unmap_buffers()
 	// TODO we should only unmap buffers that need unmapping here
 
 	m_framebuffer->unmap();
-	get_gmon_render_pass()->unmap_result_framebuffer();
+	if (get_gmon_render_pass())
+		get_gmon_render_pass()->unmap_result_framebuffer();
 	m_denoiser_buffers.unmap_normals_buffer();
 	m_denoiser_buffers.unmap_albedo_buffer();
 }
@@ -464,9 +470,9 @@ void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop)
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer()
 {
-	// TODO use render graph here with render_graph.get_output_framebuffer()
-	if (get_gmon_render_pass()->is_render_pass_used() && get_gmon_render_pass()->buffers_allocated())
-		return get_gmon_render_pass()->get_result_framebuffer();
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = get_gmon_render_pass();
+	if (gmon_render_pass && gmon_render_pass->is_render_pass_used() && gmon_render_pass->buffers_allocated())
+		return gmon_render_pass->get_result_framebuffer();
 	else
 		return m_framebuffer;
 }
@@ -621,14 +627,15 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	// compile. This will block threads other than the main thread from compiling
 	// and thus give the priority to the main thread
 
-	m_render_thread.get_render_graph().recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
+	for (auto& [rg_name, render_graph] : m_render_thread.get_render_graphs())
+		render_graph.recompile(m_hiprt_orochi_ctx, m_func_name_sets, false, use_cache);
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
 
-	for (auto& name_to_kernel : m_render_thread.get_render_graph().get_all_kernels())
+	for (auto& name_to_kernel : m_render_thread.get_active_render_graph().get_all_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
 
 	return kernels;
@@ -638,7 +645,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kerne
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
 
-	for (auto& name_to_kernel : m_render_thread.get_render_graph().get_tracing_kernels())
+	for (auto& name_to_kernel : m_render_thread.get_active_render_graph().get_tracing_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
 
 	return kernels;
@@ -659,9 +666,9 @@ oroStream_t GPURenderer::get_main_stream()
 void GPURenderer::compute_render_pass_times()
 {
 	// Registering the render times of all the kernels by iterating over all the kernels
-	m_render_thread.get_render_graph().compute_render_times();
+	m_render_thread.get_active_render_graph().compute_render_times();
 
-	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = m_render_thread.get_render_graph().get_full_frame_time();
+	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = m_render_thread.get_active_render_graph().get_full_frame_time();
 }
 
 std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()
@@ -678,7 +685,7 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 {
 	compute_render_pass_times();
 
-	m_render_thread.get_render_graph().update_perf_metrics(perf_metrics);
+	m_render_thread.get_active_render_graph().update_perf_metrics(perf_metrics);
 
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
 }
@@ -706,7 +713,7 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 	if (!moving_camera_while_not_accumulating)
 		m_render_data.render_settings.need_to_reset = true;
 
-	m_render_thread.get_render_graph().reset(reset_by_camera_movement);
+	m_render_thread.reset(reset_by_camera_movement);
 }
 
 Xorshift32Generator& GPURenderer::get_rng_generator()
@@ -1069,9 +1076,14 @@ SceneMetadata& GPURenderer::get_scene_metadata()
 	return m_parsed_scene_metadata;
 }
 
-RenderGraph& GPURenderer::get_render_graph()
+std::unordered_map<std::string, RenderGraph>& GPURenderer::get_render_graphs()
 {
-	return m_render_thread.get_render_graph();
+	return m_render_thread.get_render_graphs();
+}
+
+RenderGraph& GPURenderer::get_active_render_graph()
+{
+	return m_render_thread.get_active_render_graph();
 }
 
 void GPURenderer::set_camera(const Camera& camera)
@@ -1082,8 +1094,9 @@ void GPURenderer::set_camera(const Camera& camera)
 
 void GPURenderer::resize_g_buffer_ray_volume_states()
 {
-	std::dynamic_pointer_cast<FillGBufferRenderPass>(m_render_thread.get_render_graph().get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME))
-							->resize_g_buffer_ray_volume_states();
+	for (auto& [rg_name, render_graph] : m_render_thread.get_render_graphs())
+		std::dynamic_pointer_cast<FillGBufferRenderPass>(render_graph.get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME))
+								->resize_g_buffer_ray_volume_states();
 }
 
 void GPURenderer::translate_camera_view(glm::vec3 translation)

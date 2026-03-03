@@ -170,7 +170,7 @@ public:
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
 	 * call to pre_render_update()
 	 */
-	void pre_render_update(float delta_time, RenderWindow* render_window);
+	void pre_render_update(float delta_time);
 
 	/**
 	 * Maps the buffers shared with OpenGL that are needed for rendering the frame and sets
@@ -231,7 +231,9 @@ public:
 	CameraAnimation& get_camera_animation();
 	RendererEnvmap& get_envmap();
 	SceneMetadata& get_scene_metadata();
-	RenderGraph& get_render_graph();
+
+	std::unordered_map<std::string, RenderGraph>& get_render_graphs();
+	RenderGraph& get_active_render_graph();
 
 	void set_scene(const Scene& scene);
 
@@ -442,7 +444,7 @@ private:
 	// one kernel not to use it if all other kernels use it).
 	// The value 1 or 0 of this macro is stored in this 'm_global_compiler_options' member
 	// and is 'synchronized' through the use of pointers with the options of the other kernels.
-	// See 'setup_render_passes' for more details on how that "synchronization" is setup
+	// See 'setup_render_graphs' for more details on how that "synchronization" is setup
 	std::shared_ptr<GPUKernelCompilerOptions> m_global_compiler_options;
 
 	// Additional functions called on hits when tracing rays (alpha testing for example)

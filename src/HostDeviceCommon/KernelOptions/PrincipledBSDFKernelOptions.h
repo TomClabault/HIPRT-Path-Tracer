@@ -123,7 +123,7 @@
  * The roughness threshold at which this starts to be beneficial is something that can be experimented with, but 0.7 seems to be a good value for now. This
  * threshold is defined in render_data.bsdf_data.metallic_sample_cosine_weighted_roughness_threshold
  */
-#define PrincipledBSDFMetallicSampleCosineWeighted KERNEL_OPTION_FALSE
+#define PrincipledBSDFMetallicSampleCosineWeighted KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use multiple scattering at all to conserve energy when evaluating GGX BRDF lobes in the Principled BSDF

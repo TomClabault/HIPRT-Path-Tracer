@@ -57,6 +57,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
+// -
 // - Is multiple temporal buffers a good idea for reducing correlations? Such that temporal reuse has more potential candidates to choose from. We need
 // something to avoid duplicated in the temporal buffer though.
 //		Said otherwise, it's about having multiple temporal reservoirs per pixel. RIS without duplicates? What's research on that?
@@ -65,6 +66,9 @@ extern ImGuiLogger g_imgui_logger;
 //		Even build a CDF on the GPU instead of antithetic sampling
 //		We're going to need the theory of uhhhh though for unbiased sampling based on sample value
 //		Can we use the super pixel algorithm instead of hashed screen space grid for restir spatial reuse
+// - For hash grid screen space spatial reuse, we can sort the samples by intensity before building the CDF and then sample the CDF with a blue noise texture to
+//		get blue noise output from ReSTIR, amazing.
+//		Maybe we're going to need the paper on stratified RIS to keep the blue noise properties here? Otherwise is going to destroy the blue noise properties?
 // - For adaptive sampling + restir we can use that idea of keeping relevant neighbors in a screen space hash grid such that we reuse good neighbors directly
 // and never reuse stale neighbors
 // - Can we use visibility variance to guide restir DI vis reuse ?
@@ -437,6 +441,7 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Another separate render graph for interactivity
 // - Use only packed material throughout the shaders to save registers?
 // - We can use incoming radiance radiance cache to sample BSDF directions for MIS: we would cache the incoming radiance only from emissives and use that with
 //		RIS when sampling a BSDF direction for MIS maybe, somethiung lioke that
@@ -1123,7 +1128,8 @@ bool RenderWindow::needs_viewport_refresh()
 	if (!needs_refresh)
 		return false;
 
-	if (m_renderer->get_gmon_render_pass()->is_render_pass_used())
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
+	if (gmon_render_pass && gmon_render_pass->is_render_pass_used())
 	{
 		// With GMoN however, we want to recompute the GMoN framebuffer with the new samples accumulated so far
 		// before refreshing the viewport
