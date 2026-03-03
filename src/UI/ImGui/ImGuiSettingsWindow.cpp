@@ -1466,7 +1466,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			{
 				ImGui::TreePush("ReSTIR GI options tree");
 
-				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage());
+				static float last_VRAM_usage = 0.0f;
+				if( m_renderer->get_ReSTIR_GI_render_pass())
+					last_VRAM_usage = m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage();
+				ImGui::Text("VRAM Usage: %.3fMB", last_VRAM_usage);
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION) ==
 					KERNEL_OPTION_FALSE)
 					ImGuiRenderer::add_warning("Due to numerical float imprecisions, errors on specular surfaces (especially glass) "
