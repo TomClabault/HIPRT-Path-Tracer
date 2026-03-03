@@ -6,7 +6,7 @@
 #ifndef DEVICE_INCLUDES_BSDFS_DATA_LTCS_DATA_GGX_CONDUCTOR_LTC_FIT_DATA_H
 #define DEVICE_INCLUDES_BSDFS_DATA_LTCS_DATA_GGX_CONDUCTOR_LTC_FIT_DATA_H
 
-#include "HostDeviceCommon/Maths/float3x3.h"
+#include "HostDeviceCommon/Maths/Float3x3.h"
 
 #include <array>
 
