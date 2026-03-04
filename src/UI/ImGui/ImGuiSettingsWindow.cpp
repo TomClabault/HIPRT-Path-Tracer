@@ -1466,7 +1466,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGui::TreePush("ReSTIR GI options tree");
 
 				static float last_VRAM_usage = 0.0f;
-				if( m_renderer->get_ReSTIR_GI_render_pass())
+				if (m_renderer->get_ReSTIR_GI_render_pass())
 					last_VRAM_usage = m_renderer->get_ReSTIR_GI_render_pass()->get_VRAM_usage();
 				ImGui::Text("VRAM Usage: %.3fMB", last_VRAM_usage);
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION) ==
@@ -3044,7 +3044,8 @@ void ImGuiSettingsWindow::draw_ReGIR_settings_panel()
 		ImGui::TreePop();
 	}
 
-	bool light_tree_used_by_regir = m_renderer->get_light_tree_ats_sampling_data_structure().is_needed(m_renderer->get_emissive_mesh_count(), m_renderer->get_active_render_graph().get_compiler_options());
+	bool light_tree_used_by_regir = m_renderer->get_light_tree_ats_sampling_data_structure().is_needed(
+							m_renderer->get_emissive_mesh_count(), m_renderer->get_active_render_graph().get_compiler_options());
 	if (light_tree_used_by_regir)
 		draw_light_tree_ATS_settings_panel();
 }
@@ -4640,7 +4641,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		ImGuiRenderer::add_warning("GMoN cannot be used without enabling accumulation.");
 	}
-	ImGui::BeginDisabled(!render_data.render_settings.accumulate);
+	ImGui::BeginDisabled(!render_data.render_settings.accumulate || gmon_render_pass == nullptr);
 	if (ImGui::CollapsingHeader("GMoN"))
 	{
 		ImGui::TreePush("GMoN tree post processing");
@@ -4658,7 +4659,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 								""
 								"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
 
-		if (gmon_data.use_gmon)
+		if (gmon_data.use_gmon && gmon_render_pass != nullptr)
 		{
 			ImGui::Text("VRAM Usage: %.3fMB", gmon_render_pass->get_VRAM_usage_bytes() / 1000000.0f);
 

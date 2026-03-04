@@ -710,7 +710,7 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 		// Also we want to not reset the random number seed if we're rendering an animation and the user has asked
 		// for random seeds each frame (to avoid same-noise pattern each frame of the animation) 
 
-		if (!m_animation_state.randomize_seeds_each_frame)
+		if (!m_animation_state.randomize_seeds_each_frame && m_animation_state.do_animations)
 		{
 			m_rng.m_state.seed							= 42;
 			m_render_data.random_number					= 42;

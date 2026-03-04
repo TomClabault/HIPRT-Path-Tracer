@@ -57,7 +57,6 @@ extern ImGuiLogger g_imgui_logger;
 // - ReSTIR DI + the-white-room.gltf + CPU (opti on) + no debug + no envmap ---> denormalized check triggered
 
 // TODO ReSTIR
-// -
 // - Is multiple temporal buffers a good idea for reducing correlations? Such that temporal reuse has more potential candidates to choose from. We need
 // something to avoid duplicated in the temporal buffer though.
 //		Said otherwise, it's about having multiple temporal reservoirs per pixel. RIS without duplicates? What's research on that?
