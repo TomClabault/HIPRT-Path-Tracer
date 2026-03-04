@@ -18,7 +18,10 @@ struct DevicePackedMaterialSoACPUGPUCommonData
 	 * return an std::vector that contains the 'normal_map_emission_index' of gpu_packed_materials[3] and gpu_packed_materials[4]
 	 */
 	template <typename T>
-	std::vector<T> expand_from_gpu_packed_materials(unsigned int start_index, const DevicePackedTexturedMaterial* gpu_packed_materials, size_t offset_in_struct, size_t element_count)
+	std::vector<T> expand_from_gpu_packed_materials(unsigned int start_index,
+													const DevicePackedTexturedMaterial* gpu_packed_materials,
+													size_t offset_in_struct,
+													size_t element_count)
 	{
 		std::vector<T> out(element_count);
 

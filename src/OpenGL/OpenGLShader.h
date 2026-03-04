@@ -17,9 +17,9 @@ public:
 	enum ShaderType
 	{
 		UNDEFINED,
-		VERTEX_SHADER = GL_VERTEX_SHADER,
+		VERTEX_SHADER	= GL_VERTEX_SHADER,
 		FRAGMENT_SHADER = GL_FRAGMENT_SHADER,
-		COMPUTE_SHADER = GL_COMPUTE_SHADER
+		COMPUTE_SHADER	= GL_COMPUTE_SHADER
 	};
 
 	OpenGLShader() : m_compiled_shader(-1), m_shader_type(ShaderType::UNDEFINED) {}

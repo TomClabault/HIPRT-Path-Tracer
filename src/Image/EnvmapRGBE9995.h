@@ -10,10 +10,10 @@
 #include "Image/Image.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 
- /**
-  * If GPU is true, then functions of this class will be templated such
-  * that they compute / return data that can be used on the GPU
-  */
+/**
+ * If GPU is true, then functions of this class will be templated such
+ * that they compute / return data that can be used on the GPU
+ */
 template <bool GPU>
 class RGBE9995Envmap
 {

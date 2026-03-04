@@ -15,7 +15,7 @@ struct CDFDevice
 		float random_value = rng();
 
 		// Binary search
-		unsigned int left = 0;
+		unsigned int left  = 0;
 		unsigned int right = size - 1;
 
 		while (left < right)
@@ -40,10 +40,10 @@ struct CDFDeviceU16
 	HIPRT_DEVICE unsigned int sample(Xorshift32Generator& rng) const
 	{
 		unsigned short int random_value = rng() * 65535.0f;
-		unsigned short int value_zero = cdf_u16[0];
+		unsigned short int value_zero	= cdf_u16[0];
 
 		// Binary search
-		unsigned int left = 0;
+		unsigned int left  = 0;
 		unsigned int right = size - 1;
 
 		while (left < right)

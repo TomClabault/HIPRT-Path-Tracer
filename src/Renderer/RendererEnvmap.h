@@ -86,7 +86,7 @@ private:
 	float prev_rotation_Z = -1.0f;
 
 	// The envmap path is saved if we need to load the envmap data again
-	// 
+	//
 	// This requires reading from the disk again but this saves memory because
 	// we don't have to store the envmap, we can just read it from the disk again.
 	// And envmaps are heavy so we're actually saving a lot of memory there
@@ -94,7 +94,7 @@ private:
 
 	// This object contains the memory data of the envmap
 	RGBE9995Envmap<true> m_envmap_data;
-	unsigned int m_width = 0;
+	unsigned int m_width  = 0;
 	unsigned int m_height = 0;
 
 	// CDF / Alias table for sampling the envmap

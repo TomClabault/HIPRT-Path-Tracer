@@ -6,9 +6,9 @@
 #ifndef DISPLAY_VIEW_ENUM_H
 #define DISPLAY_VIEW_ENUM_H
 
- /*
-  * Enum used to 'switch' between what to display in the viewport
-  */
+/*
+ * Enum used to 'switch' between what to display in the viewport
+ */
 enum DisplayViewType
 {
 	DEFAULT,

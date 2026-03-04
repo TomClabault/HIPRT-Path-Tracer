@@ -20,7 +20,7 @@ struct LightTreeATSBuilderDeviceData
 
 		if constexpr (std::is_same_v<std::vector<int>, DataContainer<int>>)
 		{
-			m_device_nodes_buffer = std::vector<LightTreeATSNodeDevice>();
+			m_device_nodes_buffer		  = std::vector<LightTreeATSNodeDevice>();
 			m_device_indices_array_buffer = std::vector<int>();
 		}
 		else
@@ -32,9 +32,7 @@ struct LightTreeATSBuilderDeviceData
 
 	size_t get_VRAM_usage_bytes() const
 	{
-		return m_device_nodes_buffer.get_byte_size()
-			+ m_device_indices_array_buffer.get_byte_size()
-			+ m_bit_trails_buffer.get_byte_size();
+		return m_device_nodes_buffer.get_byte_size() + m_device_indices_array_buffer.get_byte_size() + m_bit_trails_buffer.get_byte_size();
 	}
 
 	std::vector<LightTreeATSNodeDevice> nodes_device;

@@ -29,7 +29,10 @@ public:
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
-	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache) override;
+	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+											  const std::vector<hiprtFuncNameSet>& func_name_sets,
+											  bool silent,
+											  bool use_cache) override;
 	virtual bool pre_render_update(float delta_time) override;
 
 	/**
@@ -82,7 +85,7 @@ private:
 	OrochiBuffer<unsigned long long int> m_spatial_reuse_statistics_hit_hits;
 
 	ReSTIRGIReservoir* m_last_temporal_output_reservoirs = nullptr;
-	ReSTIRGIReservoir* m_last_restir_output_reservoirs = nullptr;
+	ReSTIRGIReservoir* m_last_restir_output_reservoirs	 = nullptr;
 
 	int m_initial_candidates_generation_seed;
 	bool m_temporal_buffer_clear_requested;

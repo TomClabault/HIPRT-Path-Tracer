@@ -401,7 +401,10 @@ void GPUKernelCompiler::wait_compiler_file_operations()
 	m_read_macros_cv.wait(lock, [this]() { return m_additional_cache_key_started == m_additional_cache_key_ended; });
 }
 
-GPUKernelCompiler::ShaderCacheUsageOverride GPUKernelCompiler::get_shader_cache_usage_override() const { return m_shader_cache_force_usage; }
+GPUKernelCompiler::ShaderCacheUsageOverride GPUKernelCompiler::get_shader_cache_usage_override() const
+{
+	return m_shader_cache_force_usage;
+}
 
 void GPUKernelCompiler::set_shader_cache_usage_override(GPUKernelCompiler::ShaderCacheUsageOverride override_usage)
 {

@@ -15,12 +15,12 @@ struct ParsedEmissiveMesh
 	// Average of all the vertices of the emissive mesh
 	float3_t average_mesh_point = make_float3(0.0f, 0.0f, 0.0f);
 	// Representative normal of the mesh
-	// 
+	//
 	// If no good representative normal could be extracted from the mesh at scene parse time
 	// then the buffer will contain value float3_t(INVALID_NORMAL, 0.0f, 0.0f) for that mesh
 	float3_t representative_normal = make_float3(0.0f, 0.0f, 0.0f);
 
-	float total_mesh_emissive_power = 0.0f;
+	float total_mesh_emissive_power		 = 0.0f;
 	unsigned int emissive_triangle_count = 0;
 };
 
@@ -28,7 +28,7 @@ struct ParsedEmissiveMeshes
 {
 	// Contains the list of all emissive meshes of the scene. This list is going to be used by some light
 	// sampling scheme such as ReGIR
-	// 
+	//
 	// Any emissive mesh that contains emissive textures is NOT in that list because emissive textures
 	// aren't importance sampled
 	std::vector<ParsedEmissiveMesh> emissive_meshes;

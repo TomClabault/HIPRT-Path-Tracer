@@ -15,7 +15,7 @@ struct LightTreeSGNode
 		float mean_axis_length = hippt::length(mean_axis);
 		if (mean_axis_length < 1.0e-10f)
 		{
-			vmf_axis = make_float3(0.0f, 1.0f, 0.0f);
+			vmf_axis	  = make_float3(0.0f, 1.0f, 0.0f);
 			vmf_sharpness = 0.0f;
 
 			return;
@@ -30,15 +30,15 @@ struct LightTreeSGNode
 			vmf_sharpness = hippt::min((3.0f * mean_axis_length - hippt::pow_3(mean_axis_length)) / (1.0f - hippt::square(mean_axis_length)), 2199023255552.0f);
 	}
 
-	float3_t spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t spatial_mean  = make_float3(0.0f, 0.0f, 0.0f);
 	float spatial_variance = 0.0f;
 
 	float3_t mean_axis = make_float3(0.0f, 0.0f, 0.0f);
-	float total_power = 0.0f;
+	float total_power  = 0.0f;
 
 	AABB bounds;
 
-	float3_t vmf_axis = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t vmf_axis	= make_float3(0.0f, 0.0f, 0.0f);
 	float vmf_sharpness = 0.0f;
 
 	float bounding_sphere_radius = 0.0f;

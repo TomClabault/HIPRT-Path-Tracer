@@ -4,7 +4,7 @@
  */
 
 #ifndef DEVICE_RESTIR_DI_UTILS_H
-#define DEVICE_RESTIR_DI_UTILS_H 
+#define DEVICE_RESTIR_DI_UTILS_H
 
 #include "Device/includes/BSDFs/Dispatcher.h"
 #include "Device/includes/LightSampling/Envmap.h"
@@ -16,13 +16,17 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
- /**
-  * 'last_primitive_hit_index' is the index of the triangle we're currently sitting
-  * on and that we're shooting a ray from. This is used to avoid self intersections.
-  *
-  * Returns true if the reservoir was killed, false otherwise
-  */
-HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3_t shading_point, int last_primitive_hit_index, Xorshift32Generator& random_number_generator)
+/**
+ * 'last_primitive_hit_index' is the index of the triangle we're currently sitting
+ * on and that we're shooting a ray from. This is used to avoid self intersections.
+ *
+ * Returns true if the reservoir was killed, false otherwise
+ */
+HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData& render_data,
+														   ReSTIRDIReservoir& reservoir,
+														   float3_t shading_point,
+														   int last_primitive_hit_index,
+														   Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
 		return false;
@@ -34,7 +38,7 @@ HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData
 	float3_t sample_direction;
 	if (reservoir.sample.is_envmap_sample())
 	{
-		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, reservoir.sample.point_on_light_source);
+		sample_direction  = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, reservoir.sample.point_on_light_source);
 		distance_to_light = 1.0e35f;
 	}
 	else
@@ -44,14 +48,15 @@ HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData
 	}
 
 	hiprtRay shadow_ray;
-	shadow_ray.origin = shading_point;
+	shadow_ray.origin	 = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, last_primitive_hit_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
+	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_light, last_primitive_hit_index, /* bounce. Always 0 for ReSTIR DI*/ 0,
+												 random_number_generator);
 	if (!visible)
 	{
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
-		reservoir.UCW = ReSTIRDIReservoir::VISIBILITY_REUSE_KILLED_UCW;
+		reservoir.UCW					 = ReSTIRDIReservoir::VISIBILITY_REUSE_KILLED_UCW;
 		reservoir.sample.target_function = 0.0f;
 
 		return true;
@@ -71,7 +76,11 @@ HIPRT_DEVICE bool ReSTIR_DI_visibility_test_kill_reservoir(const HIPRTRenderData
  *
  * Returns true if the reservoir was killed, false otherwise
  */
-HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data, ReSTIRGIReservoir& reservoir, float3_t shading_point, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_data,
+												  ReSTIRGIReservoir& reservoir,
+												  float3_t shading_point,
+												  int last_hit_primitive_index,
+												  Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f && reservoir.weight_sum <= 0.0f)
 		return false;
@@ -81,14 +90,14 @@ HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_
 	if (reservoir.sample.is_envmap_path())
 	{
 		// For envmap path, the direction is stored in the 'sample_point' value
-		sample_direction = reservoir.sample.sample_point;
+		sample_direction		 = reservoir.sample.sample_point;
 		distance_to_sample_point = 1.0e35f;
 	}
 	else
 	{
 		// Not an envmap path, the direction is the difference between the current shading
 		// point and the reconnection point
-		sample_direction = reservoir.sample.sample_point - shading_point;
+		sample_direction		 = reservoir.sample.sample_point - shading_point;
 		distance_to_sample_point = hippt::length(sample_direction);
 		if (distance_to_sample_point <= 1.0e-6f)
 		{
@@ -102,11 +111,11 @@ HIPRT_DEVICE bool ReSTIR_GI_visibility_validation(const HIPRTRenderData& render_
 	}
 
 	hiprtRay shadow_ray;
-	shadow_ray.origin = shading_point;
+	shadow_ray.origin	 = shading_point;
 	shadow_ray.direction = sample_direction;
 
 	bool visible = !evaluate_shadow_ray_occluded(render_data, shadow_ray, distance_to_sample_point, last_hit_primitive_index,
-		/* bounce. Always 1 for ReSTIR GI from visible point to sample point */ 1, random_number_generator);
+												 /* bounce. Always 1 for ReSTIR GI from visible point to sample point */ 1, random_number_generator);
 
 	if (!visible)
 	{

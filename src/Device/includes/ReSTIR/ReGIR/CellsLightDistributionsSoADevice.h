@@ -37,26 +37,30 @@ struct ReGIRCellsLightDistributionsSoADevice
 		// does the unpacking
 
 		unsigned int bit_offset_start_in_element = (CDF_table_index * bits_per_mesh_index) % (sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8);
-		unsigned int element_index = CDF_table_index * bits_per_mesh_index / (sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8);
+		unsigned int element_index				 = CDF_table_index * bits_per_mesh_index / (sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8);
 
 		if (bit_offset_start_in_element + bits_per_mesh_index > sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8)
 		{
 			// If the mesh index is straddling two differents elements
 
-			unsigned int bits_in_first_element = sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8 - bit_offset_start_in_element;
+			unsigned int bits_in_first_element	= sizeof(ReGIRCellsLightDistributionsMeshIndicesPackingType) * 8 - bit_offset_start_in_element;
 			unsigned int bits_in_second_element = bits_per_mesh_index - bits_in_first_element;
 
-			unsigned int bits_in_first_element_mask = (1 << bits_in_first_element) - 1;
+			unsigned int bits_in_first_element_mask	 = (1 << bits_in_first_element) - 1;
 			unsigned int bits_in_second_element_mask = (1 << bits_in_second_element) - 1;
 
-			unsigned int first_part = (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index] >> bit_offset_start_in_element) & bits_in_first_element_mask;
-			unsigned int second_part = (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index + 1]) & bits_in_second_element_mask;
+			unsigned int first_part = (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index] >>
+									   bit_offset_start_in_element) &
+									  bits_in_first_element_mask;
+			unsigned int second_part = (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index + 1]) &
+									   bits_in_second_element_mask;
 
 			return first_part | (second_part << bits_in_first_element);
 		}
 		else
 			// Packed mesh index not straddling, just need to fetch the bits
-			return (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index] >> bit_offset_start_in_element) & ((1 << bits_per_mesh_index) - 1);
+			return (emissive_meshes_indices_packed[mesh_indices_offsets[hash_grid_cell_index] + element_index] >> bit_offset_start_in_element) &
+				   ((1 << bits_per_mesh_index) - 1);
 	}
 
 	unsigned short int* all_cdfs = nullptr;

@@ -98,8 +98,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 		return 0.0f;
 
 	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
-	float3_t point_on_light	   = reservoir.sample.point_on_light;
-	ColorRGB32F emission	   = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
+	float3_t point_on_light		 = reservoir.sample.point_on_light;
+	ColorRGB32F emission		 = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
 	return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, primary_hit,
 															  random_number_generator);
@@ -117,8 +117,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_ReGIR_PDF(const HIPRTRenderData& r
 		return 0.0f;
 
 	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
-	float3_t point_on_light	   = reservoir.sample.point_on_light;
-	ColorRGB32F emission	   = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
+	float3_t point_on_light		 = reservoir.sample.point_on_light;
+	ColorRGB32F emission		 = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
 	return ReGIR_get_reservoir_sample_ReGIR_PDF<canonicalPDF>(render_data, point_on_light, light_source_normal, emission, grid_cell_index, RIS_integral,
 															  primary_hit, random_number_generator);
@@ -140,7 +140,7 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
 		return 0.0f;
 
 	float3_t to_light_direction = point_on_light - shading_point;
-	float distance_to_light	  = hippt::length(to_light_direction);
+	float distance_to_light		= hippt::length(to_light_direction);
 	to_light_direction /= distance_to_light; // Normalization
 
 	BSDFContext bsdf_context(view_direction, shading_normal, geometric_normal, to_light_direction, incident_light_info, ray_payload.volume_state, false,
@@ -168,8 +168,8 @@ HIPRT_DEVICE float ReGIR_get_reservoir_sample_BSDF_PDF(const HIPRTRenderData& re
 		return 0.0f;
 
 	float3_t light_source_normal = hippt::normalize(triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index));
-	float3_t point_on_light	   = reservoir.sample.point_on_light;
-	ColorRGB32F emission	   = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
+	float3_t point_on_light		 = reservoir.sample.point_on_light;
+	ColorRGB32F emission		 = triangle_load_emission(render_data, reservoir.sample.emissive_triangle_global_index);
 
 	return ReGIR_get_reservoir_sample_BSDF_PDF(render_data, point_on_light, light_source_normal, emission, view_direction, shading_point, shading_normal,
 											   geometric_normal, incident_light_info, ray_payload, last_hit_primitive_index);

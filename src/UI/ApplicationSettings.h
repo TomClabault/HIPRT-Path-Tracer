@@ -18,19 +18,19 @@ struct ApplicationSettings
 {
 	static constexpr bool DENOISER_USE_INTEROP_BUFFERS_DEFAULT = false;
 
-	bool enable_denoising = false;
+	bool enable_denoising			  = false;
 	bool denoiser_use_interop_buffers = DENOISER_USE_INTEROP_BUFFERS_DEFAULT;
-	bool denoiser_use_albedo = true;
-	bool denoiser_denoise_albedo = true;
-	bool denoiser_use_normals = true;
-	bool denoiser_denoise_normals = true;
+	bool denoiser_use_albedo		  = true;
+	bool denoiser_denoise_albedo	  = true;
+	bool denoiser_use_normals		  = true;
+	bool denoiser_denoise_normals	  = true;
 	// How many samples were we at when we last denoised a frame
 	int last_denoised_sample_count = -1;
 	// How many microseconds did it take to denoise (last time we denoised)?
 	float last_denoised_duration = 0.0f;
 	// Denoise only when that maximum sample count is reached
 	bool denoise_when_rendering_done = true;
-	// How many frames to wait for before denoising (this basically reduces 
+	// How many frames to wait for before denoising (this basically reduces
 	// the performance penalty of denoising each frame).
 	int denoiser_sample_skip = 0;
 	// If the denoiser settings changed since last frame
@@ -42,8 +42,8 @@ struct ApplicationSettings
 	// 1 degree of rotation, it would be way too fast!
 	double view_rotation_sldwn_x = 3.5f, view_rotation_sldwn_y = 3.5f;
 
-	// How much to scale the render resolution by. 
-	// For example, if == 2, and the viewport currently is 1280*720, 
+	// How much to scale the render resolution by.
+	// For example, if == 2, and the viewport currently is 1280*720,
 	// the path tracer will compute a 2560*1440 image and display it
 	// in the 1280*720 viewport
 	float render_resolution_scale = 1.0f;
@@ -72,7 +72,7 @@ struct ApplicationSettings
 	// without having the resolution going up and your GPU kneeling in pain
 	bool keep_same_resolution = false;
 
-	// When keep_same_resolution = true, we're going to automatically 
+	// When keep_same_resolution = true, we're going to automatically
 	// adjust the resolution scaling so that the viewport_width * resolution_scaling
 	// and viewport_height * resolution_scaling = target_width and target_height
 	// respectively. The values of target_width and target_height are set when the
@@ -86,7 +86,7 @@ struct ApplicationSettings
 	// In seconds. 0 is no limit
 	float max_render_time = 0.0f;
 
-	// if true, the number of samples per frame will be adjusted automatically to target 20 FPS. 
+	// if true, the number of samples per frame will be adjusted automatically to target 20 FPS.
 	// This is meant to keep the GPU busy mostly when adaptive sampling is on.
 	// This is because with adaptive sampling on, FPS will keep increasing as the number of
 	// pixels that yet have to converge decreases. And with high FPS count, we get the risk
@@ -95,7 +95,7 @@ struct ApplicationSettings
 
 	// How many samples to render before evaluating the number of pixels that have reached
 	// the noise threshold.
-	// 
+	//
 	// This setting only applies to the "pixel stop noise threshold" feature.
 	// It does not apply to adaptive sampling.
 	// Adaptive sampling has its own minimum sample count

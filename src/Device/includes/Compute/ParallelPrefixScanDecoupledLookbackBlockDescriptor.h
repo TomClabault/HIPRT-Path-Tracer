@@ -17,10 +17,12 @@ enum DecoupledLookbackStatus
 
 struct ParallelPrefixScanDecoupledLookbackBlockDescriptor
 {
-	HIPRT_DEVICE static void atomic_write(ParallelPrefixScanDecoupledLookbackBlockDescriptor* buffer, unsigned int index, const ParallelPrefixScanDecoupledLookbackBlockDescriptor& value)
+	HIPRT_DEVICE static void atomic_write(ParallelPrefixScanDecoupledLookbackBlockDescriptor* buffer,
+										  unsigned int index,
+										  const ParallelPrefixScanDecoupledLookbackBlockDescriptor& value)
 	{
 		unsigned long long int* target_address = reinterpret_cast<unsigned long long int*>(&buffer[index]);
-		unsigned long long int old_value = *target_address;
+		unsigned long long int old_value	   = *target_address;
 		unsigned long long int assumed;
 
 		do
@@ -32,10 +34,7 @@ struct ParallelPrefixScanDecoupledLookbackBlockDescriptor
 			// that such that we don't get CPU compilation errors (this code is only meant
 			// to be compiled on the GPU anyways)
 #ifdef __KERNELCC__
-			old_value = hippt::atomic_compare_exchange(
-				target_address,
-				assumed,
-				*reinterpret_cast<const unsigned long long int*>(&value));
+			old_value = hippt::atomic_compare_exchange(target_address, assumed, *reinterpret_cast<const unsigned long long int*>(&value));
 #endif
 		} while (assumed != old_value);
 	}

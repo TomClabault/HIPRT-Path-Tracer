@@ -33,7 +33,7 @@ struct ApplicationState
 	bool force_viewport_refresh = false;
 	// How long has passed since the last time we "uploaded" the renderer
 	// frame buffer to OpenGL for display.
-	// 
+	//
 	// This variable is used to minimize how often we upload to OpenGL because
 	// all of that is expensive.
 	//

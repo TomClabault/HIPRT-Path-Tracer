@@ -36,7 +36,7 @@ private:
 
 		if (axis_a.x == LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS)
 		{
-			this->axis = axis_b;
+			this->axis	  = axis_b;
 			this->theta_o = theta_o_b;
 			this->theta_e = theta_e_b;
 
@@ -44,7 +44,7 @@ private:
 		}
 		if (axis_b.x == LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS)
 		{
-			this->axis = axis_a;
+			this->axis	  = axis_a;
 			this->theta_o = theta_o_a;
 			this->theta_e = theta_e_a;
 
@@ -63,7 +63,7 @@ private:
 
 		if (hippt::min(theta_d + theta_o_b, (float)hippt::M_Pi) <= theta_o_a)
 		{
-			this->axis = axis_a;
+			this->axis	  = axis_a;
 			this->theta_o = theta_o_a;
 			this->theta_e = theta_e;
 
@@ -74,7 +74,7 @@ private:
 			float theta_o = (theta_o_a + theta_d + theta_o_b) / 2.0f;
 			if (theta_o >= hippt::M_Pi)
 			{
-				this->axis = axis_a;
+				this->axis	  = axis_a;
 				this->theta_o = hippt::M_Pi;
 				this->theta_e = theta_e;
 
@@ -84,7 +84,7 @@ private:
 			float3_t cross_prod = hippt::cross(axis_a, axis_b);
 			if (hippt::length(cross_prod) < 1.0e-10f)
 			{
-				this->axis = axis_a;
+				this->axis	  = axis_a;
 				this->theta_o = theta_o;
 				this->theta_e = theta_e;
 
@@ -94,7 +94,7 @@ private:
 			float theta_r = theta_o - theta_o_a;
 			float3_t axis = hippt::normalize(rotate_vector(axis_a, hippt::normalize(cross_prod), theta_r));
 
-			this->axis = axis;
+			this->axis	  = axis;
 			this->theta_o = theta_o;
 			this->theta_e = theta_e;
 

@@ -58,7 +58,14 @@ public:
 	 * @param nb_threads_y The total number of elements to launch on the Y axis. Should not be pre-divided by block_size_y or anything
 	 * @param nb_threads_z The total number of elements to launch on the Z axis. Should not be pre-divided by block_size_z or anything
 	 */
-	void launch_asynchronous_3D(int block_size_x, int block_size_y, int block_size_z, int nb_threads_x, int nb_threads_y, int nb_threads_z, void** launch_args, oroStream_t stream);
+	void launch_asynchronous_3D(int block_size_x,
+								int block_size_y,
+								int block_size_z,
+								int nb_threads_x,
+								int nb_threads_y,
+								int nb_threads_z,
+								void** launch_args,
+								oroStream_t stream);
 
 	/**
 	 * Sets an additional macro that will be passed to the GPU compiler when compiling this kernel
@@ -154,9 +161,16 @@ public:
 private:
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 	void launch_3D_block_size(int block_size_x, int block_size_y, int block_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
-	void launch_3D_block_count(int block_count_x, int block_count_y, int block_count_z, int block_size_x, int block_size_y, int block_size_z, void** launch_args, oroStream_t stream);
+	void launch_3D_block_count(int block_count_x,
+							   int block_count_y,
+							   int block_count_z,
+							   int block_size_x,
+							   int block_size_y,
+							   int block_size_z,
+							   void** launch_args,
+							   oroStream_t stream);
 
-	std::string m_kernel_file_path = "";
+	std::string m_kernel_file_path	   = "";
 	std::string m_kernel_function_name = "";
 
 	// Whether or not the kernel has been launched at least once
@@ -166,8 +180,8 @@ private:
 	bool m_launched_at_least_once = false;
 	// GPU events to time the execution time
 	oroEvent_t m_execution_start_event = nullptr;
-	oroEvent_t m_execution_stop_event = nullptr;
-	float m_last_execution_time = 0.0f;
+	oroEvent_t m_execution_stop_event  = nullptr;
+	float m_last_execution_time		   = 0.0f;
 
 	// Whether or not the macros used by this kernel have been modified recently.
 	// Only adding new macros / removing macros invalidate the macros.
@@ -177,7 +191,7 @@ private:
 	bool m_option_macro_invalidated = true;
 
 	// Which option macros (as defined in KernelOptions.h) the kernel uses.
-	// 
+	//
 	// See uses_macro() for some examples of what "use" means.
 	std::set<std::string> m_used_option_macros;
 

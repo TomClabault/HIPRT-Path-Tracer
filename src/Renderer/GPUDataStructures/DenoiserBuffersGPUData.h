@@ -26,14 +26,14 @@ struct DenoiserBuffersGPUData
 	void set_use_interop_AOV_buffers(GPURenderer* renderer, bool use_interop);
 
 	// Buffer for holding the denoised frame (the denoiser data will be copied
-		// to this buffer and then displayed to the viewport)
+	// to this buffer and then displayed to the viewport)
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_denoised_framebuffer;
 	// Normals G-buffer
 	std::shared_ptr<OpenGLInteropBuffer<float3_t>> m_normals_AOV_interop_buffer;
 	std::shared_ptr<OrochiBuffer<float3_t>> m_normals_AOV_no_interop_buffer;
 	// Albedo G-buffer
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_interop_buffer;
-	std::shared_ptr<OrochiBuffer<ColorRGB32F>>m_albedo_AOV_no_interop_buffer;
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_albedo_AOV_interop_buffer;
+	std::shared_ptr<OrochiBuffer<ColorRGB32F>> m_albedo_AOV_no_interop_buffer;
 
 	bool use_interop_AOVs = ApplicationSettings::DENOISER_USE_INTEROP_BUFFERS_DEFAULT;
 };

@@ -36,7 +36,7 @@ void ImGuiAnimationWindow::draw()
 
 void ImGuiAnimationWindow::draw_header()
 {
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	HIPRTRenderSettings& render_settings	= m_renderer->get_render_settings();
 	RendererAnimationState& animation_state = m_renderer->get_animation_state();
 
 	ImGui::SeparatorText("General settings");
@@ -47,7 +47,7 @@ void ImGuiAnimationWindow::draw_header()
 		if (!render_settings.accumulate)
 		{
 			m_render_window->get_application_settings()->auto_sample_per_frame = false;
-			render_settings.samples_per_frame = 1;
+			render_settings.samples_per_frame								   = 1;
 		}
 	}
 
@@ -59,10 +59,10 @@ void ImGuiAnimationWindow::draw_header()
 		ImGui::TreePush("Animations warning tree");
 
 		ImGuiRenderer::add_warning("Animations are not playing right now because "
-			"accumulation is on. Nothing can move while accumulation "
-			"is on unless you're rendering a frame sequence, in "
-			"which case animations will step forward after a frame "
-			"is rendered (converged according to the renderer settings).");
+								   "accumulation is on. Nothing can move while accumulation "
+								   "is on unless you're rendering a frame sequence, in "
+								   "which case animations will step forward after a frame "
+								   "is rendered (converged according to the renderer settings).");
 
 		ImGui::TreePop();
 	}
@@ -110,11 +110,13 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 
 		ImGui::Checkbox("Random frame noise", &animation_state.randomize_seeds_each_frame);
 		ImGuiRenderer::show_help_marker("If checked, each frame of the animation will start rendering with a different random seed. This decorrelates "
-			"each frame in terms of visual noise. If this is not checked, then each frame rendered will basically use the same random number seeds "
-			"and the noise will look very similar from one frame to another which can be distracting for an animation.");
+										"each frame in terms of visual noise. If this is not checked, then each frame rendered will basically use the same "
+										"random number seeds "
+										"and the noise will look very similar from one frame to another which can be distracting for an animation.");
 
 		ImGui::BeginDisabled(!m_renderer->get_render_settings().accumulate);
-		std::string start_rendering_animation_text = animation_state.is_rendering_frame_sequence ? "Stop rendering frame sequence" : "Start rendering frame sequence";
+		std::string start_rendering_animation_text =
+								animation_state.is_rendering_frame_sequence ? "Stop rendering frame sequence" : "Start rendering frame sequence";
 		if (ImGui::Button(start_rendering_animation_text.c_str()))
 		{
 			m_render_window->set_render_dirty(true);
@@ -126,10 +128,10 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 			ImGuiRenderer::show_help_marker("Feature disabled because accumulation is not enabled.");
 		else
 			ImGuiRenderer::show_help_marker("Starts rendering a sequence of frame. After each frame has "
-				"converged (according to the various stopping conditions set in "
-				"\"Settings -> Render Settings\"), a screenshot is dumped to "
-				"the disk, the animations are step and the next frame starts "
-				"rendering.");
+											"converged (according to the various stopping conditions set in "
+											"\"Settings -> Render Settings\"), a screenshot is dumped to "
+											"the disk, the animations are step and the next frame starts "
+											"rendering.");
 		ImGui::EndDisabled();
 
 		if (!m_renderer->get_render_settings().accumulate)
@@ -154,7 +156,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 	{
 		ImGui::TreePush("Camera animation tree");
 
-		Camera& camera = m_renderer->get_camera();
+		Camera& camera					  = m_renderer->get_camera();
 		CameraAnimation& camera_animation = m_renderer->get_camera_animation();
 
 		ImGui::Checkbox("Animate", &camera_animation.animate);
@@ -165,7 +167,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			ImGui::TreePush("Rotate around object camera animation tree");
 
 			static bool default_rotation_set = false;
-			static int selected_object = 0;
+			static int selected_object		 = 0;
 
 			ImGui::Checkbox("Rotate around object during animation", &camera_animation.m_do_rotation_animation);
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -178,10 +180,11 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			// in to filter the materials
 			static std::unordered_set<int> filtered_accepted_mesh_names_indices;
 
-			const std::vector<std::string>& mesh_names = m_renderer->get_mesh_names();
+			const std::vector<std::string>& mesh_names	   = m_renderer->get_mesh_names();
 			const std::vector<std::string>& material_names = m_renderer->get_material_names();
 
-			auto filter_out_mesh_names = [this] (const std::vector<std::string>& mesh_names, const std::vector<std::string>& material_names, const std::string& filter_string) 
+			auto filter_out_mesh_names = [this](const std::vector<std::string>& mesh_names, const std::vector<std::string>& material_names,
+												const std::string& filter_string)
 			{
 				if (filter_string == "")
 				{
@@ -197,7 +200,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 
 				for (int i = 0; i < mesh_names.size(); i++)
 				{
-					const std::string& mesh_name = mesh_names[i];
+					const std::string& mesh_name	 = mesh_names[i];
 					const std::string& material_name = material_names[m_renderer->get_mesh_material_indices()[i]];
 
 					if (mesh_name.find(filter_string) != std::string::npos || material_name.find(filter_string) != std::string::npos)
@@ -223,14 +226,14 @@ void ImGuiAnimationWindow::draw_camera_panel()
 
 					const bool is_selected = (selected_object == n);
 
-					const std::string& mesh_name = mesh_names[n];
+					const std::string& mesh_name	 = mesh_names[n];
 					const std::string& material_name = material_names[m_renderer->get_mesh_material_indices()[n]];
-					std::string object_text = mesh_name + " (" + material_name + ")";
+					std::string object_text			 = mesh_name + " (" + material_name + ")";
 					if (ImGui::Selectable(object_text.c_str(), is_selected))
 					{
 						selected_object = n;
 
-						float3_t object_center = m_renderer->get_mesh_bounding_boxes()[n].get_center();
+						float3_t object_center				   = m_renderer->get_mesh_bounding_boxes()[n].get_center();
 						camera_animation.m_rotate_around_point = glm::vec3(object_center.x, object_center.y, object_center.z);
 					}
 
@@ -246,7 +249,8 @@ void ImGuiAnimationWindow::draw_camera_panel()
 				if (m_renderer->get_mesh_bounding_boxes().size() > 0)
 				{
 					float3_t default_rotate_around_point = m_renderer->get_mesh_bounding_boxes()[0].get_center();
-					camera_animation.m_rotate_around_point = glm::vec3(default_rotate_around_point.x, default_rotate_around_point.y, default_rotate_around_point.z);
+					camera_animation.m_rotate_around_point =
+											glm::vec3(default_rotate_around_point.x, default_rotate_around_point.y, default_rotate_around_point.z);
 
 					default_rotation_set = true;
 				}
@@ -255,7 +259,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Rotation options");
 
-			static float& rotation_value = camera_animation.m_rotation_value;
+			static float& rotation_value			 = camera_animation.m_rotation_value;
 			static CameraRotationType& rotation_type = camera_animation.m_rotation_type;
 			if (ImGui::RadioButton("##second_per_rotation", (int*)&rotation_type, 0))
 				rotation_value = 8.0f;
@@ -264,8 +268,8 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			if (ImGui::SliderFloat("Rotation duration (seconds per 360 degrees)", &rotation_value, 2.0f, 10.0f))
 				rotation_value = std::max(0.001f, rotation_value);
 			ImGuiRenderer::show_help_marker("The camera will take that much time to rotate "
-				"by 360 degrees. This is probably what you want "
-				"for real time (no accumulation) camera animation.");
+											"by 360 degrees. This is probably what you want "
+											"for real time (no accumulation) camera animation.");
 			ImGui::EndDisabled();
 
 			if (ImGui::RadioButton("##degrees_per_frame", (int*)&rotation_type, 1))
@@ -274,8 +278,8 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			ImGui::BeginDisabled(rotation_type != 1);
 			ImGui::SliderFloat("Rotation speed (degrees per frame)", &rotation_value, 0.0f, 90.0f);
 			ImGuiRenderer::show_help_marker("The camera will rotate by the given degrees "
-				"at each frame. This is probably what you want "
-				"for frame sequence rendering.");
+											"at each frame. This is probably what you want "
+											"for frame sequence rendering.");
 			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -295,7 +299,7 @@ void ImGuiAnimationWindow::draw_envmap_panel()
 	{
 		ImGui::TreePush("Envmap animation window tree");
 
-		bool& animate_envmap = m_renderer->get_envmap().animate;
+		bool& animate_envmap	 = m_renderer->get_envmap().animate;
 		float& animation_speed_X = m_renderer->get_envmap().animation_speed_X;
 		float& animation_speed_Y = m_renderer->get_envmap().animation_speed_Y;
 		float& animation_speed_Z = m_renderer->get_envmap().animation_speed_Z;

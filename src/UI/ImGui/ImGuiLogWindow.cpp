@@ -6,7 +6,7 @@
 #include "UI/ImGui/ImGuiLogWindow.h"
 #include "UI/RenderWindow.h"
 
-const char* ImGuiLogWindow::TITLE = "Logs";
+const char* ImGuiLogWindow::TITLE	  = "Logs";
 const float ImGuiLogWindow::BASE_SIZE = 250.0f;
 
 extern ImGuiLogger g_imgui_logger;

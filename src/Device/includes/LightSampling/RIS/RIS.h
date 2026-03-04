@@ -33,8 +33,8 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 
 	bool in_shadow;
 	float distance_to_light;
-	float3_t evaluated_point				   = closest_hit_info.inter_point;
-	float3_t shadow_ray_direction			   = sample.point_on_light_source - evaluated_point;
+	float3_t evaluated_point				 = closest_hit_info.inter_point;
+	float3_t shadow_ray_direction			 = sample.point_on_light_source - evaluated_point;
 	float3_t shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
 
 	NEEPlusPlusContext nee_plus_plus_context;
@@ -118,8 +118,8 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRender
 			if (light_sample_info.area_measure_pdf > 0.0f)
 			{
 				float3_t to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
-				float distance_to_light	  = hippt::length(to_light_direction);
-				to_light_direction		  = to_light_direction / distance_to_light; // Normalization
+				float distance_to_light		= hippt::length(to_light_direction);
+				to_light_direction			= to_light_direction / distance_to_light; // Normalization
 
 				float cosine_at_light_source	= compute_cosine_term_at_light_source(light_sample_info.light_source_normal, -to_light_direction);
 				float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, to_light_direction));

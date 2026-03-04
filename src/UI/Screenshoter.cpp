@@ -16,21 +16,21 @@ Screenshoter::Screenshoter()
 {
 	std::vector<std::string> macro = { "#define COMPUTE_SCREENSHOTER" };
 
-	OpenGLShader default_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader blend_2_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader normal_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader albedo_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader adaptive_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader pixel_converged_map_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/boolmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader default_display_shader		  = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader blend_2_display_shader		  = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader normal_display_shader		  = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader albedo_display_shader		  = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader adaptive_display_shader	  = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader pixel_converged_map_shader	  = OpenGLShader(GLSL_SHADERS_DIRECTORY "/boolmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader white_furnace_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/white_furnace_threshold.frag", OpenGLShader::COMPUTE_SHADER, macro);
 
-	std::shared_ptr<OpenGLProgram> default_display_program = std::make_shared<OpenGLProgram>();
-	std::shared_ptr<OpenGLProgram> blend_2_display_program = std::make_shared<OpenGLProgram>();
-	std::shared_ptr<OpenGLProgram> normal_display_program = std::make_shared<OpenGLProgram>();
-	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> default_display_program					 = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> blend_2_display_program					 = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> normal_display_program					 = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> albedo_display_program					 = std::make_shared<OpenGLProgram>();
 	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program = std::make_shared<OpenGLProgram>();
-	std::shared_ptr<OpenGLProgram> pixel_converged_map_display_program = std::make_shared<OpenGLProgram>();
-	std::shared_ptr<OpenGLProgram> white_furnace_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> pixel_converged_map_display_program		 = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> white_furnace_display_program			 = std::make_shared<OpenGLProgram>();
 
 	default_display_program->attach(default_display_shader);
 	default_display_program->link();
@@ -53,14 +53,14 @@ Screenshoter::Screenshoter()
 	white_furnace_display_program->attach(white_furnace_display_shader);
 	white_furnace_display_program->link();
 
-	m_compute_programs[DisplayViewType::DEFAULT] = default_display_program;
-	m_compute_programs[DisplayViewType::GMON_BLEND] = blend_2_display_program;
-	m_compute_programs[DisplayViewType::DENOISED_BLEND] = blend_2_display_program;
-	m_compute_programs[DisplayViewType::DISPLAY_DENOISER_ALBEDO] = albedo_display_program;
-	m_compute_programs[DisplayViewType::DISPLAY_DENOISER_NORMALS] = normal_display_program;
+	m_compute_programs[DisplayViewType::DEFAULT]				   = default_display_program;
+	m_compute_programs[DisplayViewType::GMON_BLEND]				   = blend_2_display_program;
+	m_compute_programs[DisplayViewType::DENOISED_BLEND]			   = blend_2_display_program;
+	m_compute_programs[DisplayViewType::DISPLAY_DENOISER_ALBEDO]   = albedo_display_program;
+	m_compute_programs[DisplayViewType::DISPLAY_DENOISER_NORMALS]  = normal_display_program;
 	m_compute_programs[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_program;
-	m_compute_programs[DisplayViewType::PIXEL_CONVERGED_MAP] = pixel_converged_map_display_program;
-	m_compute_programs[DisplayViewType::WHITE_FURNACE_THRESHOLD] = white_furnace_display_program;
+	m_compute_programs[DisplayViewType::PIXEL_CONVERGED_MAP]	   = pixel_converged_map_display_program;
+	m_compute_programs[DisplayViewType::WHITE_FURNACE_THRESHOLD]   = white_furnace_display_program;
 
 	select_compute_program(DisplayViewType::DEFAULT);
 }
@@ -85,7 +85,8 @@ void Screenshoter::write_to_png()
 	std::stringstream filename;
 
 	Utils::get_current_date_string(filename);
-	filename << " - " << m_renderer->get_render_settings().sample_number << "spp - " << m_render_window->get_current_render_time_ms() / 1000.0f << "s" << ".png";
+	filename << " - " << m_renderer->get_render_settings().sample_number << "spp - " << m_render_window->get_current_render_time_ms() / 1000.0f << "s"
+			 << ".png";
 
 	write_to_png(filename.str().c_str());
 }
@@ -103,7 +104,7 @@ void Screenshoter::resize_output_image(int width, int height)
 
 	if (texture_needs_creation)
 	{
-		m_compute_output_image_width = width;
+		m_compute_output_image_width  = width;
 		m_compute_output_image_height = height;
 
 		glGenTextures(1, &m_output_image);
@@ -129,15 +130,15 @@ void Screenshoter::write_to_png(std::string filepath)
 
 Image8Bit Screenshoter::get_image()
 {
-	int width = m_renderer->m_render_resolution.x;
+	int width  = m_renderer->m_render_resolution.x;
 	int height = m_renderer->m_render_resolution.y;
 
-	// We're using OpenGL compute shader here and not an HIP kernel because we want to be able to use the same 
-	// fragment shader files that we use for the displaying. If we were doing the post-processing with an HIP kernel, 
-	// we would have to write HIP kernels that would basically be copy-pasting of the OpenGL display shaders 
-	// with just some syntax changes. That would basically mean duplicating code which would be annoying to 
-	// maintain because we would have to update the HIP kernels everytime we changed the OpenGL display shader 
-	// so that the screenshoter outputs the correct image (and needless to say that we would forget, most of time, 
+	// We're using OpenGL compute shader here and not an HIP kernel because we want to be able to use the same
+	// fragment shader files that we use for the displaying. If we were doing the post-processing with an HIP kernel,
+	// we would have to write HIP kernels that would basically be copy-pasting of the OpenGL display shaders
+	// with just some syntax changes. That would basically mean duplicating code which would be annoying to
+	// maintain because we would have to update the HIP kernels everytime we changed the OpenGL display shader
+	// so that the screenshoter outputs the correct image (and needless to say that we would forget, most of time,
 	// to update the HIP kernels so that's why code duplication here is annoying)
 
 	m_renderer->synchronize_all_kernels();
@@ -154,7 +155,8 @@ Image8Bit Screenshoter::get_image()
 	int nb_groups_x = std::ceil(width / (float)threads[0]);
 	int nb_groups_y = std::ceil(height / (float)threads[1]);
 
-	DisplayViewSystem::update_display_program_uniforms(m_render_window->get_display_view_system().get(), m_active_compute_program, m_renderer, m_render_window->get_application_settings());
+	DisplayViewSystem::update_display_program_uniforms(m_render_window->get_display_view_system().get(), m_active_compute_program, m_renderer,
+													   m_render_window->get_application_settings());
 
 	glDispatchCompute(nb_groups_x, nb_groups_y, 1);
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
@@ -164,4 +166,3 @@ Image8Bit Screenshoter::get_image()
 
 	return Image8Bit(mapped_data, width, height, 4);
 }
-

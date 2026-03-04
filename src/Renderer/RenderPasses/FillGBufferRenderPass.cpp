@@ -13,15 +13,15 @@
 const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME = "Fill G-Buffer Render Pass";
 const std::string FillGBufferRenderPass::FILL_GBUFFER_KERNEL		   = "Fill G-Buffer";
 
-FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
+FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
+	: RenderPass(renderer, options, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
 {
 	m_render_resolution = m_renderer->m_render_resolution;
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/CameraRays.h");
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->set_kernel_function_name("CameraRays");
-	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->synchronize_options_with(m_compiler_options,
-																					GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 																								KERNEL_OPTION_TRUE);
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);

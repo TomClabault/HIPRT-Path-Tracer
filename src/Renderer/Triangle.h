@@ -16,7 +16,7 @@ struct Triangle
 
 	float3_t bbox_centroid() const;
 
-	//From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+	// From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 	inline bool intersect(const hiprtRay& ray, hiprtHit& hit_info) const
 	{
 		const float EPSILON = 0.0000001f;
@@ -29,7 +29,7 @@ struct Triangle
 		a = hippt::dot(edge1, h);
 
 		if (a > -EPSILON && a < EPSILON)
-			return false;    // This ray is parallel to this triangle.
+			return false; // This ray is parallel to this triangle.
 
 		f = 1.0f / a;
 		s = ray.origin - m_a;
@@ -49,7 +49,7 @@ struct Triangle
 
 		if (t > EPSILON) // ray intersection
 		{
-			hit_info.t = t;
+			hit_info.t		= t;
 			hit_info.normal = hippt::normalize(hippt::cross(edge1, edge2));
 
 			hit_info.t = t;
@@ -64,8 +64,8 @@ struct Triangle
 
 	float area() const;
 
-	float3_t& operator[] (int index);
-	const float3_t& operator[] (int index) const;
+	float3_t& operator[](int index);
+	const float3_t& operator[](int index) const;
 
 	float3_t m_a = { 0, 0, 0 }, m_b = { 0, 0, 0 }, m_c = { 0, 0, 0 };
 };

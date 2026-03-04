@@ -24,21 +24,21 @@
 #include <thread>
 #include <vector>
 
- /**
-  * Structure that holds the indices of the textures of a material during scene parsing
-  */
+/**
+ * Structure that holds the indices of the textures of a material during scene parsing
+ */
 struct ParsedMaterialTextureIndices
 {
 	int base_color_texture_index = MaterialConstants::NO_TEXTURE;
-	int emission_texture_index = MaterialConstants::NO_TEXTURE;
+	int emission_texture_index	 = MaterialConstants::NO_TEXTURE;
 
-	int roughness_texture_index = MaterialConstants::NO_TEXTURE;
-	int metallic_texture_index = MaterialConstants::NO_TEXTURE;
+	int roughness_texture_index			 = MaterialConstants::NO_TEXTURE;
+	int metallic_texture_index			 = MaterialConstants::NO_TEXTURE;
 	int roughness_metallic_texture_index = MaterialConstants::NO_TEXTURE;
 
-	int specular_texture_index = MaterialConstants::NO_TEXTURE;
-	int coat_texture_index = MaterialConstants::NO_TEXTURE;
-	int sheen_texture_index = MaterialConstants::NO_TEXTURE;
+	int specular_texture_index				= MaterialConstants::NO_TEXTURE;
+	int coat_texture_index					= MaterialConstants::NO_TEXTURE;
+	int sheen_texture_index					= MaterialConstants::NO_TEXTURE;
 	int specular_transmission_texture_index = MaterialConstants::NO_TEXTURE;
 
 	int normal_map_texture_index = MaterialConstants::NO_TEXTURE;
@@ -75,7 +75,7 @@ struct SceneParserOptions
 	float override_aspect_ratio = 16.0f / 9.0f;
 
 	// How many CPU threads to use when loading the textures of the scene.
-	// 
+	//
 	// Note that blindly defaulting to 1 thread per texture may not be the
 	// best idea, especially on HDDs. This is because with one thread per texture,
 	// all textures will be loading at the same time. Although this may utilize the
@@ -83,10 +83,10 @@ struct SceneParserOptions
 	// can SIGNIFICANTLY degrade performance. This is mostly applicable to HDDs but
 	// to SSDs too to some extent. You may want to use a higher thread count for SSDs
 	// though to be sure to feed enough work to the CPU to keep up with the fast SSD.
-	// 
+	//
 	// -1 to use one thread per texture.
 	//
-	// 16 seemed to be a good arbitrary number to avoid trashing the disks on my setup 
+	// 16 seemed to be a good arbitrary number to avoid trashing the disks on my setup
 	// (tested on the Amazon Lumberyard Bistro on both HDD and SSD)
 	int nb_texture_threads = 4;
 };
@@ -123,7 +123,7 @@ struct Scene
 	SceneMetadata metadata;
 
 	std::vector<CPUMaterial> materials;
-	// Material textures. Needs to be index by a material index. 
+	// Material textures. Needs to be index by a material index.
 	std::vector<Image8Bit> textures;
 
 	std::vector<int> triangles_vertex_indices;
@@ -138,7 +138,7 @@ struct Scene
 	std::vector<float3_t> triangle_AC;*/
 
 	// Contains the primitive indices of all the emissives triangles that will be used for light sampling.
-	// 
+	//
 	// Does not contain the emissive triangles that have emissive textures because those are not light sampled
 	// at the moment.
 	std::vector<int> emissive_triangles_primitive_indices;
@@ -166,8 +166,8 @@ struct Scene
 		for (int i = 0; i < triangle_indices_to_get.size(); i += 3)
 		{
 			triangles.push_back(Triangle(*reinterpret_cast<float3_t*>(&vertices_positions[triangle_indices_to_get[i + 0]]),
-				*reinterpret_cast<float3_t*>(&vertices_positions[triangle_indices_to_get[i + 1]]),
-				*reinterpret_cast<float3_t*>(&vertices_positions[triangle_indices_to_get[i + 2]])));
+										 *reinterpret_cast<float3_t*>(&vertices_positions[triangle_indices_to_get[i + 1]]),
+										 *reinterpret_cast<float3_t*>(&vertices_positions[triangle_indices_to_get[i + 2]])));
 		}
 
 		return triangles;
@@ -190,7 +190,6 @@ public:
 	static void parse_scene_file(std::string filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options);
 
 private:
-
 	static void parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override);
 
 	/**
@@ -217,9 +216,21 @@ private:
 	 *      the offsets that are going to be used so that each material has proper texture indices.
 	 * @ texture_count How many texture are in the scene
 	 */
-	static void prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& material_texture_indices, std::vector<int>& material_indices, std::vector<int>& texture_per_mesh, std::vector<int>& texture_indices_offsets, int& texture_count);
-	static void assign_material_texture_indices(std::vector<CPUMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets);
-	static void dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths, const std::vector<int>& material_indices);
+	static void prepare_textures(const aiScene* scene,
+								 std::vector<std::pair<aiTextureType, std::string>>& texture_paths,
+								 std::vector<ParsedMaterialTextureIndices>& material_texture_indices,
+								 std::vector<int>& material_indices,
+								 std::vector<int>& texture_per_mesh,
+								 std::vector<int>& texture_indices_offsets,
+								 int& texture_count);
+	static void assign_material_texture_indices(std::vector<CPUMaterial>& materials,
+												const std::vector<ParsedMaterialTextureIndices>& material_tex_indices,
+												const std::vector<int>& material_textures_offsets);
+	static void dispatch_texture_loading(Scene& parsed_scene,
+										 const std::string& scene_path,
+										 int nb_threads,
+										 const std::vector<std::pair<aiTextureType, std::string>>& texture_paths,
+										 const std::vector<int>& material_indices);
 
 	static void read_material_properties(aiMaterial* mesh_material, CPUMaterial& renderer_material);
 	/**
@@ -228,7 +239,8 @@ private:
 	 * doesn't have the required texture, returns -1
 	 */
 	static int get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::pair<aiTextureType, std::string>>& texture_path_list);
-	static std::vector<std::pair<aiTextureType, std::string>> get_textures_paths_and_indices(aiMaterial* mesh_material, ParsedMaterialTextureIndices& texture_indices);
+	static std::vector<std::pair<aiTextureType, std::string>> get_textures_paths_and_indices(aiMaterial* mesh_material,
+																							 ParsedMaterialTextureIndices& texture_indices);
 	static std::vector<std::pair<aiTextureType, std::string>> normalize_texture_paths(std::vector<std::pair<aiTextureType, std::string>>& paths);
 	static CPUMaterial offset_textures_indices(const CPUMaterial& renderer_material, int offset);
 };

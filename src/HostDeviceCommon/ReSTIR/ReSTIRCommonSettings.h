@@ -6,10 +6,10 @@
 #ifndef HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
 #define HOST_DEVICE_COMMON_RESTIR_COMMON_SETTINGS_H
 
- /**
-  * Note that no default values are set here because they are all set in
-  * the ReSTIR_XXX_DefaultSettings structure/header files
-  */
+/**
+ * Note that no default values are set here because they are all set in
+ * the ReSTIR_XXX_DefaultSettings structure/header files
+ */
 
 struct ReSTIRCommonTemporalPassSettings
 {
@@ -21,7 +21,7 @@ struct ReSTIRCommonTemporalPassSettings
 	// Random bits used for all the pixels in the image for the permutation sampling
 	int permutation_sampling_random_bits;
 
-	// How many neighbors at most to check around the temporal back-projected pixel location 
+	// How many neighbors at most to check around the temporal back-projected pixel location
 	// to find a valid neighbor
 	int max_neighbor_search_count;
 	// Radius around the temporal reprojected location of a pixel in which to look for an
@@ -106,10 +106,10 @@ struct ReSTIRCommonSpatialPassSettings
 	// probability instead of always/never. This helps trade performance for bias.
 	float converged_neighbor_reuse_probability;
 
-	unsigned int* per_pixel_spatial_reuse_directions_mask_u = nullptr;
+	unsigned int* per_pixel_spatial_reuse_directions_mask_u				= nullptr;
 	unsigned long long int* per_pixel_spatial_reuse_directions_mask_ull = nullptr;
 	// Framebuffer that contains per-pixel spatial radius for use in the spatial reuse passes of ReSTIR.
-	// This framebuffer is filled by the 
+	// This framebuffer is filled by the
 	unsigned char* per_pixel_spatial_reuse_radius = nullptr;
 	// The minimum radius that will be used per pixel when the optimal per - pixel spatial reuse
 	// radius is computed by adaptive-directional spatial reuse
@@ -126,7 +126,7 @@ struct ReSTIRCommonSpatialPassSettings
 	// neighbors are rejected because of the G-Buffer heuristics vs. the maximum number of neighbors that can be reused)
 	bool compute_spatial_reuse_hit_rate;
 	// Counters for gathering the statistics on the spatial reuse hit rate
-	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_hits = nullptr;
+	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_hits	 = nullptr;
 	AtomicType<unsigned long long int>* spatial_reuse_hit_rate_total = nullptr;
 };
 
@@ -148,7 +148,7 @@ struct ReSTIRCommonNeighborSimiliaritySettings
 	bool use_plane_distance_heuristic;
 	// Threshold used when determining whether a temporal neighbor is acceptable
 	// for temporal reuse regarding the spatial proximity of the neighbor and the current
-	// point. 
+	// point.
 	// This is a world space distance.
 	float plane_distance_threshold;
 
@@ -173,7 +173,7 @@ struct ReSTIRCommonSettings
 	// The point of this parameter is to avoid too much correlation between frames if using
 	// MIS weights that uses confidence weights. Without M-capping, the M value of a reservoir
 	// will keep growing exponentially through temporal and spatial reuse and when that exponentially
-	// grown M value is used in confidence weights, it results in new samples being very unlikely 
+	// grown M value is used in confidence weights, it results in new samples being very unlikely
 	// to be chosen which in turn results in non-convergence since always the same sample is evaluated
 	// for a given pixel.
 	//

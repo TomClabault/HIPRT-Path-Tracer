@@ -12,7 +12,7 @@ struct AliasTableDevice
 {
 	HIPRT_HOST_DEVICE unsigned int sample(Xorshift32Generator& rng) const
 	{
-		int random_index = rng.random_index(size);
+		int random_index  = rng.random_index(size);
 		float probability = alias_table_probas[random_index];
 		if (rng() > probability)
 			// Picking the alias
@@ -21,11 +21,11 @@ struct AliasTableDevice
 		return random_index;
 	}
 
-	int* alias_table_alias = nullptr;
+	int* alias_table_alias	  = nullptr;
 	float* alias_table_probas = nullptr;
 
 	float sum_elements = 0.0f;
-	unsigned int size = 0;
+	unsigned int size  = 0;
 };
 
 /**
@@ -35,7 +35,7 @@ struct AliasTableDeviceU16Unorm
 {
 	HIPRT_HOST_DEVICE unsigned int sample(Xorshift32Generator& rng) const
 	{
-		int random_index = rng.random_index(size);
+		int random_index  = rng.random_index(size);
 		float probability = alias_table_probas[random_index] / 65535.0f;
 		if (rng() > probability)
 			// Picking the alias
@@ -44,11 +44,11 @@ struct AliasTableDeviceU16Unorm
 		return random_index;
 	}
 
-	int* alias_table_alias = nullptr;
+	int* alias_table_alias				   = nullptr;
 	unsigned short int* alias_table_probas = nullptr;
 
 	float sum_elements = 0.0f;
-	unsigned int size = 0;
+	unsigned int size  = 0;
 };
 
 #endif

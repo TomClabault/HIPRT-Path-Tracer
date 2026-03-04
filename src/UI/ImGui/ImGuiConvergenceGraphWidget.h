@@ -40,10 +40,10 @@ private:
 	void screenshot_graph_to_clipboard();
 
 private:
-	int m_plot_width = 575;
-	int m_plot_height = 400;
-	float m_line_weight = 3.0f;
-	std::string m_plot_title = "Convergence graph";
+	int m_plot_width		  = 575;
+	int m_plot_height		  = 400;
+	float m_line_weight		  = 3.0f;
+	std::string m_plot_title  = "Convergence graph";
 	std::string m_x_axis_name = "Samples";
 	std::string m_y_axis_name = "Error (RMSE)";
 
@@ -52,12 +52,11 @@ private:
 	std::vector<std::vector<float>> m_recorded_xs_list;
 	std::vector<std::vector<float>> m_recorded_ys_list;
 
-
 	// Private data for handling screenshots
-	bool m_screenshot_to_file_requested = false;
+	bool m_screenshot_to_file_requested		 = false;
 	bool m_screenshot_to_clipboard_requested = false;
 
-	ImVec2 m_last_plot_pos = ImVec2(0, 0);
+	ImVec2 m_last_plot_pos	= ImVec2(0, 0);
 	ImVec2 m_last_plot_size = ImVec2(0, 0);
 };
 

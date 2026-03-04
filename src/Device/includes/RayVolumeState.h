@@ -7,7 +7,7 @@
 #define DEVICE_RAY_VOLUME_STATE_H
 
 #include "Device/includes/NestedDielectrics.h"
- // Including dispersion for sampling a wavelength in the reconstruction of the first hit of RayVolumeState
+// Including dispersion for sampling a wavelength in the reconstruction of the first hit of RayVolumeState
 #include "Device/includes/BSDFs/Dispersion.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
@@ -32,7 +32,10 @@ struct RayVolumeState
 		}
 	}
 
-	HIPRT_HOST_DEVICE void reconstruct_first_hit(const DeviceUnpackedEffectiveMaterial& material, int* material_indices_buffer, int primitive_index, Xorshift32Generator& random_number_generator)
+	HIPRT_HOST_DEVICE void reconstruct_first_hit(const DeviceUnpackedEffectiveMaterial& material,
+												 int* material_indices_buffer,
+												 int primitive_index,
+												 Xorshift32Generator& random_number_generator)
 	{
 		if (primitive_index == -1)
 			// No primary hit i.e. straight into the envmap
@@ -40,12 +43,7 @@ struct RayVolumeState
 
 		int mat_index = material_indices_buffer[primitive_index];
 
-		interior_stack.push(
-			incident_mat_index,
-			outgoing_mat_index,
-			inside_material,
-			mat_index,
-			material.get_dielectric_priority());
+		interior_stack.push(incident_mat_index, outgoing_mat_index, inside_material, mat_index, material.get_dielectric_priority());
 
 		if (material.dispersion_scale > 0.0f && material.specular_transmission > 0.0f && sampled_wavelength == 0.0f)
 			// If we hit a dispersive material, we sample the wavelength that will be used
@@ -69,8 +67,8 @@ struct RayVolumeState
 
 	// For spectral dispersion. A random wavelength is sampled and replaces this value
 	// when a glass object is hit. This wavelength can then be used to determine the IOR
-	// that should be used for refractions/reflections on the dielectric object. 
-	// 
+	// that should be used for refractions/reflections on the dielectric object.
+	//
 	// The wavelength is also used to apply a throughput filter on the ray such that only the
 	// sampled wavelength's color travels around the scene.
 	//

@@ -18,17 +18,20 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data, const hiprtRay& ray, const HitInfo& closest_hit_info, RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data,
+										   const hiprtRay& ray,
+										   const HitInfo& closest_hit_info,
+										   RayPayload& ray_payload,
+										   Xorshift32Generator& random_number_generator)
 {
 	// Just making sure that this is not set to false
 	render_data.nee_plus_plus.m_update_visibility_map = true;
 
 	for (int sample = 0; sample < render_data.nee_plus_plus.grid_prepopulate_sample_count; sample++)
 	{
-		LightSamplePointArray light_samples = sample_one_point_on_light<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(render_data,
-			closest_hit_info.inter_point, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
-			closest_hit_info.primitive_index, ray_payload,
-			random_number_generator);
+		LightSamplePointArray light_samples = sample_one_point_on_light<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(
+								render_data, closest_hit_info.inter_point, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal,
+								closest_hit_info.primitive_index, ray_payload, random_number_generator);
 
 		for (int i = 0; i < DirectLightSampleCount<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(); i++)
 		{
@@ -38,13 +41,13 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data, const h
 				// Can happen for very small triangles
 				continue;
 
-			float3_t shadow_ray_origin = closest_hit_info.inter_point;
-			float3_t shadow_ray_direction = light_sample.point_on_light - shadow_ray_origin;
-			float distance_to_light = hippt::length(shadow_ray_direction);
+			float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+			float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
+			float distance_to_light					 = hippt::length(shadow_ray_direction);
 			float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 			hiprtRay shadow_ray;
-			shadow_ray.origin = shadow_ray_origin;
+			shadow_ray.origin	 = shadow_ray_origin;
 			shadow_ray.direction = shadow_ray_direction_normalized;
 
 			float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
@@ -52,8 +55,9 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(HIPRTRenderData& render_data, const h
 			{
 				NEEPlusPlusContext nee_plus_plus_context;
 				nee_plus_plus_context.point_on_light = light_sample.point_on_light;
-				nee_plus_plus_context.shaded_point = shadow_ray_origin;
-				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+				nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
+																   nee_plus_plus_context, random_number_generator, ray_payload.bounce);
 			}
 		}
 	}
@@ -92,7 +96,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 	RayPayload ray_payload;
 
 	HitInfo closest_hit_info;
-	bool intersection_found = trace_main_path_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, /* bounce. Always 0 for camera rays*/ 0, random_number_generator);
+	bool intersection_found = trace_main_path_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1,
+												  /* bounce. Always 0 for camera rays*/ 0, random_number_generator);
 
 	if (!intersection_found)
 		return;
@@ -108,8 +113,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 			{
 				accumulate_NEE_plus_plus(render_data, ray, closest_hit_info, ray_payload, random_number_generator);
 
-				BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF sampled
-				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, random_number_generator, &sampled_light_info);
+				BSDFIncidentLightInfo sampled_light_info; // This variable is never used, this is just for debugging on the CPU so that we know what the BSDF
+														  // sampled
+				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
+																					   random_number_generator, &sampled_light_info);
 				if (!valid_indirect_bounce)
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...
 					break;

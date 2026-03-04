@@ -529,7 +529,7 @@ void OrochiBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, i
 
 	//// Copy data from the CUDA buffer to the CUDA array
 	//	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(array, 0, 0, m_data_pointer, width * texture_type.sizeof_type(), width * texture_type.sizeof_type(), height,
-	//oroMemcpyDeviceToDevice));
+	// oroMemcpyDeviceToDevice));
 
 	//// Unmap the OpenGL texture
 	// OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, &graphics_resource, 0));

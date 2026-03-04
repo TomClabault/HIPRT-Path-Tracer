@@ -12,13 +12,13 @@
 #include <filesystem>
 #include <optional>
 
-#define OROCHI_CHECK_ERROR( error ) ( orochi_check_error( error, __FILE__, __LINE__ ) )
-#define OROCHI_RTC_CHECK_ERROR( error ) ( orochi_rtc_check_error( error, __FILE__, __LINE__ ) )
-#define HIPRT_CHECK_ERROR( error ) ( hiprt_check_error( error, __FILE__, __LINE__ ) )
+#define OROCHI_CHECK_ERROR(error)	  (orochi_check_error(error, __FILE__, __LINE__))
+#define OROCHI_RTC_CHECK_ERROR(error) (orochi_rtc_check_error(error, __FILE__, __LINE__))
+#define HIPRT_CHECK_ERROR(error)	  (hiprt_check_error(error, __FILE__, __LINE__))
 
- // This flag isn't defined in Orochi for some reasons ?
- // It allows sampling textures with normalized coordinates in [0, 1[ instead of 
- // [0, width[
+// This flag isn't defined in Orochi for some reasons ?
+// It allows sampling textures with normalized coordinates in [0, 1[ instead of
+// [0, width[
 #define ORO_TRSF_NORMALIZED_COORDINATES 0x02
 
 namespace HIPPTOrochiUtils
@@ -36,16 +36,17 @@ namespace HIPPTOrochiUtils
 	 * path "../../myIncludeDir" without any "-I" prefix
 	 */
 	hiprtError build_trace_kernel(hiprtContext ctxt,
-		const std::string& kernel_file_path,
-		const std::string& function_name,
-		hiprtApiFunction& kernel_function_out,
-		const std::vector<std::string>& additional_include_directories,
-		const std::vector<std::string>& compiler_options,
-		unsigned int num_geom_types, unsigned int num_ray_types,
-		bool use_compiler_cache,
-		hiprtFuncNameSet* func_name_set = nullptr,
-		const std::string& additional_cache_key = "");
-}
+								  const std::string& kernel_file_path,
+								  const std::string& function_name,
+								  hiprtApiFunction& kernel_function_out,
+								  const std::vector<std::string>& additional_include_directories,
+								  const std::vector<std::string>& compiler_options,
+								  unsigned int num_geom_types,
+								  unsigned int num_ray_types,
+								  bool use_compiler_cache,
+								  hiprtFuncNameSet* func_name_set		  = nullptr,
+								  const std::string& additional_cache_key = "");
+} // namespace HIPPTOrochiUtils
 
 void orochi_check_error(oroError res, const char* file, uint32_t line);
 void orochi_rtc_check_error(orortcResult res, const char* file, uint32_t line);

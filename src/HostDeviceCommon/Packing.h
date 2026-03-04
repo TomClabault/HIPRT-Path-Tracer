@@ -10,9 +10,9 @@
 
 #include "HostDeviceCommon/Color.h"
 
- /**
-  * Packs 88 bools into a uchar
-  */
+/**
+ * Packs 88 bools into a uchar
+ */
 struct UChar8BoolsPacked
 {
 	/**
@@ -55,7 +55,7 @@ private:
  */
 struct ColorRGB24bFloat0_1Packed
 {
-	static constexpr float inv_255 = (1.0f / (255 << 0));
+	static constexpr float inv_255		 = (1.0f / (255 << 0));
 	static constexpr float inv_255_shl_8 = (1.0f / (255 << 8));
 
 	HIPRT_DEVICE ColorRGB32F get_color() const
@@ -276,10 +276,10 @@ private:
 	HIPRT_DEVICE void Snorm12_2x_as_3Uchar(float2_t s, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
 	{
 		float3_t u;
-		u.x = s.x / 16.0f;
+		u.x		= s.x / 16.0f;
 		float t = floorf(s.y / 256.0f);
-		u.y = ((u.x - floorf(u.x)) * 256.0f) + t;
-		u.z = s.y - (t * 256.0f);
+		u.y		= ((u.x - floorf(u.x)) * 256.0f) + t;
+		u.z		= s.y - (t * 256.0f);
 
 		out_x = u.x;
 		out_y = u.y;
@@ -296,7 +296,7 @@ private:
 	HIPRT_DEVICE float2_t octahedral_encode(float3_t v)
 	{
 		float l1norm_inv = 1.0f / (abs(v.x) + abs(v.y) + abs(v.z));
-		float2_t result = make_float2(v.x * l1norm_inv, v.y * l1norm_inv);
+		float2_t result	 = make_float2(v.x * l1norm_inv, v.y * l1norm_inv);
 		if (v.z < 0.0f)
 			result = (make_float2(1.0f) - make_float2(hippt::abs(result.y), hippt::abs(result.x))) * sign_not_zero(make_float2(result.x, result.y));
 
@@ -319,8 +319,8 @@ private:
 		if (v.z < 0.0f)
 		{
 			float2_t temp = make_float2(v.x, v.y);
-			v.x = (1.0f - hippt::abs(temp.y)) * sign_not_zero(temp.x);
-			v.y = (1.0f - hippt::abs(temp.x)) * sign_not_zero(temp.y);
+			v.x			  = (1.0f - hippt::abs(temp.y)) * sign_not_zero(temp.x);
+			v.y			  = (1.0f - hippt::abs(temp.x)) * sign_not_zero(temp.y);
 		}
 		return hippt::normalize(v);
 	}
@@ -330,8 +330,8 @@ private:
 		float2_t s;
 
 		float temp = y / 16.0f;
-		s.x = x * 16.0f + floorf(temp);
-		s.y = (temp - floorf(temp)) * 256.0f * 16.0f + z;
+		s.x		   = x * 16.0f + floorf(temp);
+		s.y		   = (temp - floorf(temp)) * 256.0f * 16.0f + z;
 
 		return s;
 	}
@@ -424,14 +424,14 @@ struct Float3xLengthUint10bPacked
 
 		float3_t normalized = make_float3(quantized_x / 1023.0f, quantized_y / 1023.0f, quantized_z / 1023.0f);
 		// Back in [-1, 1] from [0, 1]
-		float3_t rescaled = normalized * 2.0f - 1.0f;
+		float3_t rescaled	 = normalized * 2.0f - 1.0f;
 		float3_t with_length = rescaled * length;
 
 		return with_length;
 	}
 
 private:
-	float length = 0.0f;
+	float length	   = 0.0f;
 	unsigned quantized = 0;
 };
 
@@ -471,7 +471,7 @@ struct RGBE9995Packed
 		B = hippt::float_as_uint(rgb.b + Bias);
 
 		unsigned int E = (hippt::float_as_uint(Bias) << 4) + 0x10000000;
-		m_packed = E | B << 18 | G << 9 | (R & 0x1FF);
+		m_packed	   = E | B << 18 | G << 9 | (R & 0x1FF);
 	}
 
 	HIPRT_DEVICE ColorRGB32F unpack() const

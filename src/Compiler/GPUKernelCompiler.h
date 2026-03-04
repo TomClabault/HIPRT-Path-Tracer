@@ -14,7 +14,6 @@
 #include <unordered_set>
 #include <condition_variable>
 
-
 class GPUKernelCompiler
 {
 public:
@@ -25,7 +24,15 @@ public:
 		FORCE_SHADER_CACHE_ON,
 	};
 
-	oroFunction_t compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, int num_geom_types, int num_ray_types, bool use_cache, const std::string& additional_cache_key, bool silent = false);
+	oroFunction_t compile_kernel(GPUKernel& kernel,
+								 const GPUKernelCompilerOptions& kernel_compiler_options,
+								 std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
+								 hiprtFuncNameSet* function_name_sets,
+								 int num_geom_types,
+								 int num_ray_types,
+								 bool use_cache,
+								 const std::string& additional_cache_key,
+								 bool silent = false);
 
 	/**
 	 * Takes an include name ("Device/includes/MyInclude.h" for example) and a list of include directories.
@@ -43,7 +50,9 @@ public:
 	 * Only includes that can be found in the given 'include_directories' will be added to the output parameter, others will be
 	 * ignored.
 	 */
-	void read_includes_of_file(const std::string& include_file_path, const std::vector<std::string>& include_directories, std::unordered_set<std::string>& output_includes);
+	void read_includes_of_file(const std::string& include_file_path,
+							   const std::vector<std::string>& include_directories,
+							   std::unordered_set<std::string>& output_includes);
 
 	/**
 	 * Returns a list of the option macro used in the given file.
@@ -114,7 +123,7 @@ private:
 	// This saves us having to reparse the file to find the options macros
 	// if the file was already parsed for another kernel by this GPUKernelCompiler
 	std::unordered_map<std::string, std::unordered_set<std::string>> m_filepath_to_option_macros_cache;
-	// Maps filepath to the last modification time of the file pointed by the filepath. 
+	// Maps filepath to the last modification time of the file pointed by the filepath.
 	// Useful to invalidate the cache if the file was modified (meaning that the option
 	// macros used by that file may have changed so we have to reparse the file)
 	std::unordered_map<std::string, std::string> m_filepath_to_options_macros_cache_timestamp;
@@ -126,7 +135,7 @@ private:
 
 	// Semaphore used by 'get_option_macros_used_by_kernel' so that not too many threads
 	// read kernel files at the same time: this can cause a "Too many files open" error
-	// 
+	//
 	// Limiting to a number of maximum threads at a time
 	std::counting_semaphore<> m_read_macros_semaphore{ 1 };
 	std::condition_variable m_read_macros_cv;
@@ -134,10 +143,10 @@ private:
 	// Counters for logging the progress of background kernel precompilation
 	// These variables are also used for making sure that all threads have completed
 	// their IO operations before exiting the app
-	std::atomic<int> m_precompiled_kernels_parsing_started = 0;
-	std::atomic<int> m_precompiled_kernels_parsing_ended = 0;
-	std::atomic<int> m_additional_cache_key_started = 0;
-	std::atomic<int> m_additional_cache_key_ended = 0;
+	std::atomic<int> m_precompiled_kernels_parsing_started	 = 0;
+	std::atomic<int> m_precompiled_kernels_parsing_ended	 = 0;
+	std::atomic<int> m_additional_cache_key_started			 = 0;
+	std::atomic<int> m_additional_cache_key_ended			 = 0;
 	std::atomic<int> m_precompiled_kernels_compilation_ended = 0;
 
 	ShaderCacheUsageOverride m_shader_cache_force_usage = ShaderCacheUsageOverride::FORCE_SHADER_CACHE_DEFAULT;

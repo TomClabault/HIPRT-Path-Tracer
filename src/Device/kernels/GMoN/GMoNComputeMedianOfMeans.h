@@ -10,12 +10,12 @@
 #include "Device/includes/GMoN/GMoN.h"
 #include "HostDeviceCommon/RenderData.h"
 
- /**
-  * Kernel for the implementation of GMoN
-  *
-  * Reference:
-  * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
-  */
+/**
+ * Kernel for the implementation of GMoN
+ *
+ * Reference:
+ * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
+ */
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) GMoNComputeMedianOfMeans(HIPRTRenderData render_data)
@@ -44,7 +44,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GMoNComputeMedianOfMeans(HIPRTRenderData re
 		return;
 	}
 
-	ColorRGB32F GMoN_color = gmon_compute_median_of_means(render_data.buffers.gmon_estimator, pixel_index, render_data.render_settings.sample_number, render_data.render_settings.render_resolution);
+	ColorRGB32F GMoN_color = gmon_compute_median_of_means(render_data.buffers.gmon_estimator, pixel_index, render_data.render_settings.sample_number,
+														  render_data.render_settings.render_resolution);
 
 	render_data.buffers.gmon_estimator.result_framebuffer[pixel_index] = GMoN_color;
 }

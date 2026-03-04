@@ -9,10 +9,10 @@
 #include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 
- /**
-  * Reference: [GPU Gems 3, Chapter 39. Parallel Prefix Sum (Scan) with CUDA]
-  * https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
-  */
+/**
+ * Reference: [GPU Gems 3, Chapter 39. Parallel Prefix Sum (Scan) with CUDA]
+ * https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
+ */
 class ParallelPrefixScan
 {
 public:

@@ -12,9 +12,9 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
- /**
-  * Information about a light sample taken from an emissive triangle
-  */
+/**
+ * Information about a light sample taken from an emissive triangle
+ */
 struct LightSamplePointInformation
 {
 	float3_t light_source_normal = { 0.0f, 1.0f, 0.0f };
@@ -26,7 +26,7 @@ struct LightSamplePointInformation
 	float light_area = 1.0f;
 
 	float3_t point_on_light = make_float3(0.0f, 0.0f, 0.0f);
-	float area_measure_pdf = 0.0f;
+	float area_measure_pdf	= 0.0f;
 
 #if DirectLightSamplingStrategy == LSS_BASE_REGIR
 	// The light sample may come from BSDF sampling with ReGIR and so we may have

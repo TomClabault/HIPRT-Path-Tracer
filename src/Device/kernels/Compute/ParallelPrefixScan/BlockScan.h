@@ -9,18 +9,18 @@
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "Device/includes/FixIntellisense.h"
 
- /**
-  * Prefix scans the input in chunks of PARALLEL_PREFIX_SCAN_CHUNK_SIZE and outputs the block scans to output_blocks.
-  * The input buffer must be padded to be multiple of PARALLEL_PREFIX_SCAN_CHUNK_SIZE elements.
-  *
-  * This kernel should be launched with a 1D grid of blocks with size PARALLEL_PREFIX_SCAN_CHUNK_SIZE/2 threads
-  * and blocks of size PARALLEL_PREFIX_SCAN_CHUNK_SIZE/2.
-  */
-GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScan_BlockScan(
-	const unsigned int* const __restrict__ input,
-	unsigned int* __restrict__ output_blocks,
-	unsigned int* __restrict__ block_sums,
-	unsigned int size)
+/**
+ * Prefix scans the input in chunks of PARALLEL_PREFIX_SCAN_CHUNK_SIZE and outputs the block scans to output_blocks.
+ * The input buffer must be padded to be multiple of PARALLEL_PREFIX_SCAN_CHUNK_SIZE elements.
+ *
+ * This kernel should be launched with a 1D grid of blocks with size PARALLEL_PREFIX_SCAN_CHUNK_SIZE/2 threads
+ * and blocks of size PARALLEL_PREFIX_SCAN_CHUNK_SIZE/2.
+ */
+GLOBAL_KERNEL_SIGNATURE(void)
+ParallelPrefixScan_BlockScan(const unsigned int* const __restrict__ input,
+							 unsigned int* __restrict__ output_blocks,
+							 unsigned int* __restrict__ block_sums,
+							 unsigned int size)
 {
 	__shared__ unsigned int temp_smem[PARALLEL_PREFIX_SCAN_CHUNK_SIZE + PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 2];
 
@@ -77,7 +77,7 @@ GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScan_BlockScan(
 			bi += CONFLICT_FREE_OFFSET(bi);
 
 			unsigned int t = temp_smem[ai];
-			temp_smem[ai] = temp_smem[bi];
+			temp_smem[ai]  = temp_smem[bi];
 			temp_smem[bi] += t;
 		}
 	}

@@ -8,12 +8,12 @@
 
 #include "HostDeviceCommon/Color.h"
 
- /**
-  * 'clamp_condition' is an additional condition that needs to be met
-  * for clamping to occur. If the additional condition is not met (the boolean
-  * 'clamp_condition' is false, then the 'light_contribution' parameter is returned
-  * untouched
-  */
+/**
+ * 'clamp_condition' is an additional condition that needs to be met
+ * for clamping to occur. If the additional condition is not met (the boolean
+ * 'clamp_condition' is false, then the 'light_contribution' parameter is returned
+ * untouched
+ */
 HIPRT_DEVICE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution, float clamp_max_value, bool clamp_condition)
 {
 	if (!light_contribution.has_nan() && clamp_max_value > 0.0f && clamp_condition)

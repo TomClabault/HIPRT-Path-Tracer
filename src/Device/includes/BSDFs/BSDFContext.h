@@ -15,9 +15,9 @@ struct BSDFContext
 	DeviceUnpackedEffectiveMaterial& material;
 	RayVolumeState& volume_state;
 
-	float3_t view_direction	  = make_float3(-1.0f, -1.0f, -1.0f);
-	float3_t shading_normal	  = make_float3(-1.0f, -1.0f, -1.0f);
-	float3_t geometric_normal	  = make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t view_direction		= make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t shading_normal		= make_float3(-1.0f, -1.0f, -1.0f);
+	float3_t geometric_normal	= make_float3(-1.0f, -1.0f, -1.0f);
 	float3_t to_light_direction = make_float3(-1.0f, -1.0f, -1.0f);
 
 	BSDFIncidentLightInfo& incident_light_info;

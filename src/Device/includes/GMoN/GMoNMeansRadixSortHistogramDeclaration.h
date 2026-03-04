@@ -8,15 +8,15 @@
 
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 
- // The maximum number of sets allowed is 31
- // This means that the values of the histogram will never go above 31
- // 
- // 31 can be encoded with 5 bits
- // 1 unsigned int is 32 bits
- // 
- // That makes 6 histogram bins of 5 bits per 32bits uint
-#define BITS_PER_HISTOGRAM_BIN 5
-#define MAX_BINS_PER_HISTOGRAM_UINT 6
+// The maximum number of sets allowed is 31
+// This means that the values of the histogram will never go above 31
+//
+// 31 can be encoded with 5 bits
+// 1 unsigned int is 32 bits
+//
+// That makes 6 histogram bins of 5 bits per 32bits uint
+#define BITS_PER_HISTOGRAM_BIN		  5
+#define MAX_BINS_PER_HISTOGRAM_UINT	  6
 #define MAX_BINS_PER_HISTOGRAM_UINT_F 6.0f
 
 /**
@@ -38,7 +38,7 @@ struct GMoNRadixSortHistogram
 	HIPRT_HOST_DEVICE void increment(unsigned int index, unsigned int value)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);
-		unsigned int bin_index = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
+		unsigned int bin_index				  = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
 
 		switch (histogram_variable_index)
 		{
@@ -64,7 +64,7 @@ struct GMoNRadixSortHistogram
 	HIPRT_HOST_DEVICE void decrement(unsigned int index, unsigned int value)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);
-		unsigned int bin_index = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
+		unsigned int bin_index				  = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
 
 		// Getting the current value of the bin
 		unsigned int histogram_current_value = fetch_value(index);
@@ -85,7 +85,7 @@ struct GMoNRadixSortHistogram
 	HIPRT_HOST_DEVICE unsigned int fetch_value(unsigned int index)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);
-		unsigned int bin_index = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
+		unsigned int bin_index				  = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
 
 		switch (histogram_variable_index)
 		{
@@ -108,7 +108,7 @@ struct GMoNRadixSortHistogram
 	HIPRT_HOST_DEVICE void clear_bin(unsigned int index)
 	{
 		unsigned int histogram_variable_index = static_cast<unsigned int>(index / MAX_BINS_PER_HISTOGRAM_UINT_F);
-		unsigned int bin_index = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
+		unsigned int bin_index				  = index - histogram_variable_index * MAX_BINS_PER_HISTOGRAM_UINT;
 
 		switch (histogram_variable_index)
 		{

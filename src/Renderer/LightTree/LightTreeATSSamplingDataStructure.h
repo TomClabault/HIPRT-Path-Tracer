@@ -20,13 +20,12 @@ public:
 	LightTreeATSSamplingDataStructure(GPURenderer* renderer) : m_renderer(renderer) {}
 
 	void compute_from_scene(const Scene& scene, std::shared_ptr<GPUKernelCompilerOptions> compiler_options);
-	void compute(
-		std::shared_ptr<GPUKernelCompilerOptions> compiler_options, 
-		const std::vector<int>& emissive_triangle_indices,
-		const std::vector<float3_t>& vertices_positions,
-		const std::vector<int>& triangles_vertex_indices,
-		const std::vector<int>& material_indices,
-		const std::vector<CPUMaterial>& materials);
+	void compute(std::shared_ptr<GPUKernelCompilerOptions> compiler_options,
+				 const std::vector<int>& emissive_triangle_indices,
+				 const std::vector<float3_t>& vertices_positions,
+				 const std::vector<int>& triangles_vertex_indices,
+				 const std::vector<int>& material_indices,
+				 const std::vector<CPUMaterial>& materials);
 
 	void recompute_if_needed_or_free(std::shared_ptr<GPUKernelCompilerOptions> compiler_options, bool skip_if_already_computed = false);
 	void free();

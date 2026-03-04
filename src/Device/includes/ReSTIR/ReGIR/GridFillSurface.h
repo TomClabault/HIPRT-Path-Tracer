@@ -9,11 +9,11 @@
 struct ReGIRGridFillSurface
 {
 	int cell_primitive_index = -1;
-	float3_t cell_point = make_float3(0.0f, 0.0f, 0.0f);
-	float3_t cell_normal = make_float3(0.0f, 0.0f, 0.0f);
-	float cell_roughness = -1.0f;
-	float cell_metallic = -1.0f;
-	float cell_specular = -1.0f;
+	float3_t cell_point		 = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t cell_normal	 = make_float3(0.0f, 0.0f, 0.0f);
+	float cell_roughness	 = -1.0f;
+	float cell_metallic		 = -1.0f;
+	float cell_specular		 = -1.0f;
 };
 
 HIPRT_DEVICE float3_t ReGIR_get_cell_world_normal(const HIPRTRenderData& render_data, int hash_grid_cell_index, bool primary_hit)
@@ -52,19 +52,19 @@ HIPRT_DEVICE float ReGIR_get_cell_specular(const HIPRTRenderData& render_data, i
 HIPRT_DEVICE ReGIRGridFillSurface ReGIR_get_cell_surface(const HIPRTRenderData& render_data, int hash_grid_cell_index, bool primary_hit)
 {
 	int cell_primitive_index = ReGIR_get_cell_primitive_index(render_data, hash_grid_cell_index, primary_hit);
-	float3_t cell_point = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
-	float3_t cell_normal = ReGIR_get_cell_world_normal(render_data, hash_grid_cell_index, primary_hit);
-	float cell_roughness = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index, primary_hit);
-	float cell_metallic = ReGIR_get_cell_metallic(render_data, hash_grid_cell_index, primary_hit);
-	float cell_specular = ReGIR_get_cell_specular(render_data, hash_grid_cell_index, primary_hit);
+	float3_t cell_point		 = ReGIR_get_cell_world_point(render_data, hash_grid_cell_index, primary_hit);
+	float3_t cell_normal	 = ReGIR_get_cell_world_normal(render_data, hash_grid_cell_index, primary_hit);
+	float cell_roughness	 = ReGIR_get_cell_roughness(render_data, hash_grid_cell_index, primary_hit);
+	float cell_metallic		 = ReGIR_get_cell_metallic(render_data, hash_grid_cell_index, primary_hit);
+	float cell_specular		 = ReGIR_get_cell_specular(render_data, hash_grid_cell_index, primary_hit);
 
 	ReGIRGridFillSurface surface;
 	surface.cell_primitive_index = cell_primitive_index;
-	surface.cell_point = cell_point;
-	surface.cell_normal = cell_normal;
-	surface.cell_roughness = cell_roughness;
-	surface.cell_metallic = cell_metallic;
-	surface.cell_specular = cell_specular;
+	surface.cell_point			 = cell_point;
+	surface.cell_normal			 = cell_normal;
+	surface.cell_roughness		 = cell_roughness;
+	surface.cell_metallic		 = cell_metallic;
+	surface.cell_specular		 = cell_specular;
 
 	return surface;
 }

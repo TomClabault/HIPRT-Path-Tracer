@@ -10,7 +10,7 @@
 
 OpenImageDenoiser::OpenImageDenoiser()
 {
-	m_device = nullptr;
+	m_device		  = nullptr;
 	m_denoised_buffer = nullptr;
 }
 
@@ -40,10 +40,10 @@ void OpenImageDenoiser::resize(int new_width, int new_height)
 	if (!check_valid_state())
 		return;
 
-	m_width = new_width;
+	m_width	 = new_width;
 	m_height = new_height;
 
-	m_denoised_buffer = m_device.newBuffer(sizeof(ColorRGB32F) * new_width * new_height, oidn::Storage::Managed);
+	m_denoised_buffer		  = m_device.newBuffer(sizeof(ColorRGB32F) * new_width * new_height, oidn::Storage::Managed);
 	m_input_color_buffer_oidn = m_device.newBuffer(sizeof(ColorRGB32F) * new_width * new_height, oidn::Storage::Managed);
 }
 
@@ -66,7 +66,7 @@ void OpenImageDenoiser::finalize()
 
 	if (m_use_normals)
 	{
-		// Creating the buffers here instead of in resize() because we want the creation/destruction 
+		// Creating the buffers here instead of in resize() because we want the creation/destruction
 		// to be dynamic in response to ImGui input so we cannot just wait for a window queue_resize event
 		// that would trigger OpenImageDenoiser::queue_resize()
 		m_normals_buffer_denoised_oidn = m_device.newBuffer(sizeof(float3_t) * m_width * m_height);
@@ -89,7 +89,7 @@ void OpenImageDenoiser::finalize()
 
 	if (m_use_albedo)
 	{
-		// Creating the buffers here instead of in resize() because we want the creation/destruction 
+		// Creating the buffers here instead of in resize() because we want the creation/destruction
 		// to be dynamic in response to ImGui input so we cannot just wait for a window queue_resize event
 		// that would trigger OpenImageDenoiser::queue_resize()
 		m_albedo_buffer_denoised_oidn = m_device.newBuffer(sizeof(ColorRGB32F) * m_width * m_height, oidn::Storage::Managed);
@@ -135,7 +135,8 @@ void OpenImageDenoiser::create_device()
 		const char* errorMessage;
 		if (m_device.getError(errorMessage) != oidn::Error::None)
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "There was an error getting a CPU device for denoising with OIDN. Denoiser will be unavailable. %s", errorMessage);
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+									"There was an error getting a CPU device for denoising with OIDN. Denoiser will be unavailable. %s", errorMessage);
 
 			m_denoiser_invalid = true;
 			return;
@@ -176,26 +177,30 @@ bool OpenImageDenoiser::check_device()
 
 bool OpenImageDenoiser::check_buffer_sizes()
 {
-	size_t normals_buffer_size = m_normals_buffer_denoised_oidn.getSize() / sizeof(float3_t);
-	size_t albedo_buffer_size = m_albedo_buffer_denoised_oidn.getSize() / sizeof(ColorRGB32F);
-	size_t denoised_buffer_size = m_denoised_buffer.getSize() / sizeof(ColorRGB32F);
+	size_t normals_buffer_size	   = m_normals_buffer_denoised_oidn.getSize() / sizeof(float3_t);
+	size_t albedo_buffer_size	   = m_albedo_buffer_denoised_oidn.getSize() / sizeof(ColorRGB32F);
+	size_t denoised_buffer_size	   = m_denoised_buffer.getSize() / sizeof(ColorRGB32F);
 	size_t noisy_input_buffer_size = m_input_color_buffer_oidn.getSize() / sizeof(ColorRGB32F);
 
 	if (m_use_normals && normals_buffer_size != m_width * m_height)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "The denoiser normals buffer isn't the same size as the denoiser. Did you forget to call finalize() after a call to resize()?");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"The denoiser normals buffer isn't the same size as the denoiser. Did you forget to call finalize() after a call to resize()?");
 
 		return false;
 	}
 	else if (m_use_albedo && albedo_buffer_size != m_width * m_height)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "The denoiser albedo buffer isn't the same size as the denoiser. Did you forget to call finalize() after a call to resize()?");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"The denoiser albedo buffer isn't the same size as the denoiser. Did you forget to call finalize() after a call to resize()?");
 
 		return false;
 	}
 	else if (denoised_buffer_size != m_width * m_height || noisy_input_buffer_size != m_width * m_height)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "The denoiser output buffer or input noisy buffer isn't the same size as the denoiser. This has to be an internal error since resize() resizes these two buffers.");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"The denoiser output buffer or input noisy buffer isn't the same size as the denoiser. This has to be an internal error since "
+								"resize() resizes these two buffers.");
 
 		return false;
 	}
@@ -233,7 +238,9 @@ void OpenImageDenoiser::denoise(ColorRGB32F* data_to_denoise_device_pointer, flo
 	m_beauty_filter.execute();
 }
 
-void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_aov, std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov)
+void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
+								std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_aov,
+								std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov)
 {
 	if (!check_valid_state())
 		return;
@@ -259,7 +266,9 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
 	data_to_denoise->unmap();
 }
 
-void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OrochiBuffer<float3_t>> normals_aov, std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov)
+void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
+								std::shared_ptr<OrochiBuffer<float3_t>> normals_aov,
+								std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov)
 {
 	if (!check_valid_state())
 		return;
@@ -289,7 +298,7 @@ void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInter
 	oroMemcpyKind memcpyKind;
 	ColorRGB32F* buffer_pointer;
 
-	memcpyKind = m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
+	memcpyKind	   = m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
 	buffer_pointer = out_buffer->map();
 	OROCHI_CHECK_ERROR(oroMemcpy(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
 	out_buffer->unmap();
@@ -297,7 +306,7 @@ void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInter
 
 void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OrochiBuffer<ColorRGB32F>> out_buffer)
 {
-	oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
+	oroMemcpyKind memcpyKind	= m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
 	ColorRGB32F* buffer_pointer = out_buffer->get_device_pointer();
 
 	OROCHI_CHECK_ERROR(oroMemcpy(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));

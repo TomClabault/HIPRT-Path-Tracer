@@ -23,11 +23,13 @@ struct BoundingVolume
 		for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
 		{
 			_d_near[i] = INFINITY;
-			_d_far[i] = -INFINITY;
+			_d_far[i]  = -INFINITY;
 		}
 	}
 
-	static void triangle_volume(const Triangle& triangle, std::array<float, BVHConstants::PLANES_COUNT>& d_near, std::array<float, BVHConstants::PLANES_COUNT>& d_far)
+	static void triangle_volume(const Triangle& triangle,
+								std::array<float, BVHConstants::PLANES_COUNT>& d_near,
+								std::array<float, BVHConstants::PLANES_COUNT>& d_far)
 	{
 		for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
 		{
@@ -36,7 +38,7 @@ struct BoundingVolume
 				float dist = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3_t(triangle[j]));
 
 				d_near[i] = hippt::min(d_near[i], dist);
-				d_far[i] = hippt::max(d_far[i], dist);
+				d_far[i]  = hippt::max(d_far[i], dist);
 			}
 		}
 	}
@@ -46,7 +48,7 @@ struct BoundingVolume
 		for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
 		{
 			_d_near[i] = hippt::min(_d_near[i], d_near[i]);
-			_d_far[i] = hippt::max(_d_far[i], d_far[i]);
+			_d_far[i]  = hippt::max(_d_far[i], d_far[i]);
 		}
 	}
 
@@ -63,7 +65,7 @@ struct BoundingVolume
 		for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
 		{
 			d_near[i] = INFINITY;
-			d_far[i] = -INFINITY;
+			d_far[i]  = -INFINITY;
 		}
 
 		triangle_volume(triangle, d_near, d_far);
@@ -71,12 +73,12 @@ struct BoundingVolume
 	}
 
 	static bool intersect(const std::array<float, BVHConstants::PLANES_COUNT>& d_near,
-		const std::array<float, BVHConstants::PLANES_COUNT>& d_far,
-		const std::array<float, BVHConstants::PLANES_COUNT>& denoms,
-		const std::array<float, BVHConstants::PLANES_COUNT>& numers)
+						  const std::array<float, BVHConstants::PLANES_COUNT>& d_far,
+						  const std::array<float, BVHConstants::PLANES_COUNT>& denoms,
+						  const std::array<float, BVHConstants::PLANES_COUNT>& numers)
 	{
 		float t_near = -INFINITY;
-		float t_far = INFINITY;
+		float t_far	 = INFINITY;
 
 		for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
 		{
@@ -84,14 +86,14 @@ struct BoundingVolume
 			if (denom == 0.0f)
 				continue;
 
-			//inverse denom to avoid division
+			// inverse denom to avoid division
 			float d_near_i = (d_near[i] - numers[i]) / denom;
-			float d_far_i = (d_far[i] - numers[i]) / denom;
+			float d_far_i  = (d_far[i] - numers[i]) / denom;
 			if (denom < 0)
 				std::swap(d_near_i, d_far_i);
 
 			t_near = hippt::max(t_near, d_near_i);
-			t_far = hippt::min(t_far, d_far_i);
+			t_far  = hippt::min(t_far, d_far_i);
 
 			if (t_far < t_near)
 				return false;
@@ -106,7 +108,7 @@ struct BoundingVolume
 	bool intersect(float& t_near, float& t_far, float* denoms, float* numers) const
 	{
 		t_near = -INFINITY;
-		t_far = INFINITY;
+		t_far  = INFINITY;
 
 		for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
 		{
@@ -114,14 +116,14 @@ struct BoundingVolume
 			if (denom == 0.0f)
 				continue;
 
-			//inverse denom to avoid division
+			// inverse denom to avoid division
 			float d_near_i = (_d_near[i] - numers[i]) / denom;
-			float d_far_i = (_d_far[i] - numers[i]) / denom;
+			float d_far_i  = (_d_far[i] - numers[i]) / denom;
 			if (denom < 0.0f)
 				std::swap(d_near_i, d_far_i);
 
 			t_near = hippt::max(t_near, d_near_i);
-			t_far = hippt::min(t_far, d_far_i);
+			t_far  = hippt::min(t_far, d_far_i);
 
 			if (t_far < t_near)
 				return false;

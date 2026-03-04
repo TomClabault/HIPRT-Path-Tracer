@@ -30,15 +30,15 @@ public:
 		{
 			QueueElement(const BVH::OctreeNode* node, float t_near) : m_node(node), _t_near(t_near) {}
 
-			bool operator > (const QueueElement& a) const
+			bool operator>(const QueueElement& a) const
 			{
 				return _t_near > a._t_near;
 			}
 
-			const OctreeNode* m_node;//Reference on the node
+			const OctreeNode* m_node; // Reference on the node
 
-			float _t_near;//Intersection distance used to order the elements in the priority queue used
-			//by the OctreeNode to compute the intersection with a ray
+			float _t_near; // Intersection distance used to order the elements in the priority queue used
+			// by the OctreeNode to compute the intersection with a ray
 		};
 
 		OctreeNode(float3_t min, float3_t max) : m_min(min), m_max(max) {}
@@ -54,9 +54,9 @@ public:
 		}
 
 		/*
-		  * Once the objects have been inserted in the hierarchy, this function computes
-		  * the bounding volume of all the node in the hierarchy
-		  */
+		 * Once the objects have been inserted in the hierarchy, this function computes
+		 * the bounding volume of all the node in the hierarchy
+		 */
 		BoundingVolume compute_volume(const std::vector<Triangle>& triangles_geometry)
 		{
 			if (m_is_leaf)
@@ -95,7 +95,7 @@ public:
 
 				if (m_triangles.size() > leaf_max_obj_count && !depth_exceeded)
 				{
-					m_is_leaf = false;//This node isn't a leaf anymore
+					m_is_leaf = false; // This node isn't a leaf anymore
 
 					create_children(max_depth, leaf_max_obj_count);
 
@@ -108,13 +108,16 @@ public:
 			}
 			else
 				insert_to_children(triangles_geometry, triangle_id_to_insert, current_depth, max_depth, leaf_max_obj_count);
-
 		}
 
-		void insert_to_children(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
+		void insert_to_children(const std::vector<Triangle>& triangles_geometry,
+								int triangle_id_to_insert,
+								int current_depth,
+								int max_depth,
+								int leaf_max_obj_count)
 		{
 			const Triangle& triangle = triangles_geometry[triangle_id_to_insert];
-			float3_t bbox_centroid = triangle.bbox_centroid();
+			float3_t bbox_centroid	 = triangle.bbox_centroid();
 
 			float middle_x = (m_min.x + m_max.x) / 2;
 			float middle_y = (m_min.y + m_max.y) / 2;
@@ -122,9 +125,12 @@ public:
 
 			int octant_index = 0;
 
-			if (bbox_centroid.x > middle_x) octant_index += 1;
-			if (bbox_centroid.y > middle_y) octant_index += 2;
-			if (bbox_centroid.z > middle_z) octant_index += 4;
+			if (bbox_centroid.x > middle_x)
+				octant_index += 1;
+			if (bbox_centroid.y > middle_y)
+				octant_index += 2;
+			if (bbox_centroid.z > middle_z)
+				octant_index += 4;
 
 			m_children[octant_index]->insert(triangles_geometry, triangle_id_to_insert, current_depth + 1, max_depth, leaf_max_obj_count);
 		}
@@ -145,7 +151,13 @@ public:
 			return intersect(triangles_geometry, ray, hit_info, trash, denoms, numers, filter_function_payload);
 		}
 
-		bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, hiprtHit& hit_info, float& t_near, float* denoms, float* numers, void* filter_function_payload) const
+		bool intersect(const std::vector<Triangle>& triangles_geometry,
+					   const hiprtRay& ray,
+					   hiprtHit& hit_info,
+					   float& t_near,
+					   float* denoms,
+					   float* numers,
+					   void* filter_function_payload) const
 		{
 			float t_far, trash;
 
@@ -198,11 +210,11 @@ public:
 
 				if (top_element.m_node->intersect(triangles_geometry, ray, hit_info, inter_distance, denoms, numers, filter_function_payload))
 				{
-					closest_inter = std::min(closest_inter, inter_distance);
+					closest_inter	   = std::min(closest_inter, inter_distance);
 					intersection_found = true;
 
-					//If we found an intersection that is closer than
-					//the next element in the queue, we can stop intersecting further
+					// If we found an intersection that is closer than
+					// the next element in the queue, we can stop intersecting further
 					if (intersection_queue.empty() || closest_inter < intersection_queue.top()._t_near)
 					{
 						t_near = closest_inter;
@@ -222,22 +234,12 @@ public:
 			}
 		}
 
-		//If this node has been subdivided (and thus cannot accept any triangles),
-		//this boolean will be set to false
+		// If this node has been subdivided (and thus cannot accept any triangles),
+		// this boolean will be set to false
 		bool m_is_leaf = true;
 
 		std::vector<int> m_triangles;
-		std::array<BVH::OctreeNode*, 8> m_children =
-		{
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr,
-			nullptr
-		};
+		std::array<BVH::OctreeNode*, 8> m_children = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
 		float3_t m_min, m_max;
 		BoundingVolume m_bounding_volume;

@@ -28,7 +28,7 @@ struct LightTreeATSNodeDevice
 	float energy_variance;
 
 	// Axis of the cluster
-	float3_t axis = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t axis					 = make_float3(0.0f, 0.0f, 0.0f);
 	unsigned int total_emitter_count = 0;
 
 	float3_t bounds_min = make_float3(0.0f, 0.0f, 0.0f);
@@ -45,8 +45,8 @@ struct LightTreeATSDevice
 	LightTreeATSSettings settings;
 
 	LightTreeATSNodeDevice* nodes = nullptr;
-	int* indices_array = nullptr;
-	unsigned int* bit_trails = nullptr;
+	int* indices_array			  = nullptr;
+	unsigned int* bit_trails	  = nullptr;
 };
 
 #endif

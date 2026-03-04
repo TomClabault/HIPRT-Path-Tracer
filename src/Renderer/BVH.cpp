@@ -37,7 +37,7 @@ BVH::BVH(std::vector<Triangle>* triangles, int max_depth, int leaf_max_obj_count
 		}
 	}
 
-	//We now have a bounding volume to work with
+	// We now have a bounding volume to work with
 	build_bvh(max_depth, leaf_max_obj_count, minimum, maximum, volume);
 }
 
@@ -49,7 +49,7 @@ BVH::~BVH()
 void BVH::operator=(BVH&& bvh)
 {
 	m_triangles = bvh.m_triangles;
-	m_root = bvh.m_root;
+	m_root		= bvh.m_root;
 
 	bvh.m_root = nullptr;
 }

@@ -13,7 +13,10 @@
 
 RadixSort::RadixSort() : m_hiprt_ctx(nullptr), m_stream(nullptr), m_size(0) {}
 
-RadixSort::RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream) { set_context(hiprt_ctx, stream); }
+RadixSort::RadixSort(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
+{
+	set_context(hiprt_ctx, stream);
+}
 
 void RadixSort::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
@@ -228,9 +231,15 @@ void RadixSort::sort()
 	}
 }
 
-OrochiBuffer<unsigned int>& RadixSort::get_sorted_keys_buffer() { return m_keys_buffer; }
+OrochiBuffer<unsigned int>& RadixSort::get_sorted_keys_buffer()
+{
+	return m_keys_buffer;
+}
 
-OrochiBuffer<unsigned int>& RadixSort::get_sorted_values_buffer() { return m_values_buffer; }
+OrochiBuffer<unsigned int>& RadixSort::get_sorted_values_buffer()
+{
+	return m_values_buffer;
+}
 
 void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {

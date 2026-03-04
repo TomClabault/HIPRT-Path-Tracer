@@ -8,7 +8,7 @@
 
 void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	void* user_pointer = glfwGetWindowUserPointer(window);
+	void* user_pointer			= glfwGetWindowUserPointer(window);
 	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
 
 	// We still want to process the inputs if we're hovering the render window because then
@@ -70,7 +70,7 @@ void RenderWindowKeyboardInteractor::set_callbacks(GLFWwindow* window)
 
 void RenderWindowKeyboardInteractor::poll_keyboard_inputs()
 {
-	float zoom = 0.0f;
+	float zoom							= 0.0f;
 	std::pair<float, float> translation = { 0.0f, 0.0f };
 
 	if (m_z_pressed)

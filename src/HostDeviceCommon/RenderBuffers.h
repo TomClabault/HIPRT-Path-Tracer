@@ -43,11 +43,11 @@ struct RenderBuffers
 
 	// Index of the material used by each triangle of the scene
 	int* material_indices = nullptr;
-	// Materials array to be indexed by an index retrieved from the 
+	// Materials array to be indexed by an index retrieved from the
 	// material_indices array
 	DevicePackedTexturedMaterialSoA materials_buffer_soa;
 	// A buffer that can be indexed by a material_id.
-	// 
+	//
 	// If indexing this buffer returns true, then the material is fully opaque
 	// and there is no need to test alpha testing for it
 	//

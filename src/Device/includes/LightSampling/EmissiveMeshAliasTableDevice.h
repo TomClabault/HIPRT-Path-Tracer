@@ -13,7 +13,7 @@ struct EmissiveMeshAliasTableDevice
 	HIPRT_HOST_DEVICE int sample_one_triangle_power(Xorshift32Generator& rng, float& out_pdf) const
 	{
 		int emissive_triangle_index_within_the_mesh = rng.random_index(size);
-		float probability = alias_table_probas[emissive_triangle_index_within_the_mesh];
+		float probability							= alias_table_probas[emissive_triangle_index_within_the_mesh];
 		if (rng() > probability)
 			// Picking the alias
 			emissive_triangle_index_within_the_mesh = alias_table_alias[emissive_triangle_index_within_the_mesh];
@@ -22,7 +22,7 @@ struct EmissiveMeshAliasTableDevice
 		return triangle_indices[emissive_triangle_index_within_the_mesh];
 	}
 
-	int* alias_table_alias = nullptr;
+	int* alias_table_alias	  = nullptr;
 	float* alias_table_probas = nullptr;
 
 	// When we sampling the alias table, we will only get an index from 0 to 'size - 1' but

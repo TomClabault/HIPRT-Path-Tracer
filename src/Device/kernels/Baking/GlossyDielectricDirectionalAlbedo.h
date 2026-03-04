@@ -3,7 +3,6 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-
 #include "Device/includes/BSDFs/Lambertian.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
@@ -13,7 +12,7 @@
 
 #include "Renderer/Baker/GlossyDielectricDirectionalAlbedoSettings.h"
 
- /* References:
+/* References:
  * [1][Practical multiple scattering compensation for microfacet models, Turquin, 2019]
  * [2][Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017]
  * [3][Dassault Enterprise PBR 2025 Specification]
@@ -27,9 +26,20 @@
  */
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations, int current_iteration, GlossyDielectricDirectionalAlbedoSettings bake_settings, float* out_buffer)
+GLOBAL_KERNEL_SIGNATURE(void)
+inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
+											 int current_iteration,
+											 GlossyDielectricDirectionalAlbedoSettings bake_settings,
+											 float* out_buffer)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations, int current_iteration, GlossyDielectricDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y, int z)
+GLOBAL_KERNEL_SIGNATURE(void)
+inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations,
+											 int current_iteration,
+											 GlossyDielectricDirectionalAlbedoSettings bake_settings,
+											 float* out_buffer,
+											 int x,
+											 int y,
+											 int z)
 #endif
 {
 #ifdef __KERNELCC__
@@ -38,7 +48,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 	const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
 #endif
 
-	const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o + z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
+	const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o +
+								  z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
 
 	if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
 		return;
@@ -46,12 +57,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 	Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);
 
 	float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1.0f) * x;
-	cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
-	cos_theta_o = hippt::intrin_pow(cos_theta_o, 2.5f);
+	cos_theta_o		  = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
+	cos_theta_o		  = hippt::intrin_pow(cos_theta_o, 2.5f);
 	float sin_theta_o = hippt::intrin_sinf(acos(cos_theta_o));
 
 	float roughness = 1.0f / (bake_settings.texture_size_roughness - 1.0f) * y;
-	roughness = hippt::max(roughness, 1.0e-4f);
+	roughness		= hippt::max(roughness, 1.0e-4f);
 
 	// Integrates for interface reflectivities of IORs between 1.0f and 3.0f
 	float F0 = 1.0f / (bake_settings.texture_size_ior - 1.0f) * z;
@@ -59,14 +70,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 	// Using F0^4 to get more precision near 0
 	F0 *= F0; // F0^2
 	F0 *= F0; // F0^4
-	float sqrt_F0 = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
+	float sqrt_F0	   = sqrtf(hippt::clamp(0.0f, 0.99f, F0));
 	float relative_ior = (1.0f + sqrt_F0) / (1.0f - sqrt_F0);
 
 	float3_t local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
-	int iterations_per_kernel = floor(hippt::max(1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
-	int nb_kernel_launch = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));
-	int nb_samples = nb_kernel_launch * iterations_per_kernel;
+	int iterations_per_kernel = floor(hippt::max(
+							1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH /
+														  static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness *
+																			 bake_settings.texture_size_ior)));
+	int nb_kernel_launch	  = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));
+	int nb_samples			  = nb_kernel_launch * iterations_per_kernel;
 
 	for (int sample = 0; sample < kernel_iterations; sample++)
 	{
@@ -76,7 +90,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 		if (rand_lobe < 0.5f)
 		{
 			// Sampling the specular lobe
-			sampled_local_to_light_direction = microfacet_GGX_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
+			sampled_local_to_light_direction =
+									microfacet_GGX_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
 
 			if (sampled_local_to_light_direction.z < 0)
 				// Sampled direction below surface, this can happen with microfacet
@@ -88,7 +103,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 			sampled_local_to_light_direction = cosine_weighted_sample_z_up_frame(random_number_generator);
 
 		float3_t microfacet_normal = hippt::normalize(local_view_direction + sampled_local_to_light_direction);
-		float total_pdf = 0.0f;
+		float total_pdf			   = 0.0f;
 
 		HIPRTRenderData render_data;
 		render_data.bsdfs_data.GGX_masking_shadowing = bake_settings.masking_shadowing_term;
@@ -96,7 +111,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 		float F = full_fresnel_dielectric(hippt::dot(microfacet_normal, sampled_local_to_light_direction), relative_ior);
 		float eval_pdf_specular;
 		float directional_albedo_specular = torrance_sparrow_GGX_eval_reflect<0>(render_data, roughness, /* aniso */ 0.0f, false, ColorRGB32F(F),
-			local_view_direction, sampled_local_to_light_direction, microfacet_normal, eval_pdf_specular, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0).r;
+																				 local_view_direction, sampled_local_to_light_direction, microfacet_normal,
+																				 eval_pdf_specular, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0)
+																	.r;
 		// Multiplying the PDF by 0.5f because we have a 50% chance to sample the specular lobe
 		total_pdf += eval_pdf_specular * 0.5f;
 		float specular_layer_throughput = 1.0f;

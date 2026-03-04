@@ -16,7 +16,10 @@ ParallelPrefixScanDecoupledLookback::ParallelPrefixScanDecoupledLookback(std::sh
 	initialize_kernels();
 }
 
-bool ParallelPrefixScanDecoupledLookback::is_setup() { return m_hiprt_ctx != nullptr && m_stream != nullptr; }
+bool ParallelPrefixScanDecoupledLookback::is_setup()
+{
+	return m_hiprt_ctx != nullptr && m_stream != nullptr;
+}
 
 void ParallelPrefixScanDecoupledLookback::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
@@ -76,7 +79,10 @@ void ParallelPrefixScanDecoupledLookback::scan()
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
 }
 
-OrochiBuffer<unsigned int>& ParallelPrefixScanDecoupledLookback::get_output_buffer() { return m_output_buffer; }
+OrochiBuffer<unsigned int>& ParallelPrefixScanDecoupledLookback::get_output_buffer()
+{
+	return m_output_buffer;
+}
 
 void ParallelPrefixScanDecoupledLookback::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {

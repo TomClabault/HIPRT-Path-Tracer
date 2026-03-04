@@ -13,7 +13,7 @@
 struct ReGIRSample
 {
 	int emissive_triangle_global_index = -1; // Only needed for ReSTIR DI
-	float3_t point_on_light = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t point_on_light			   = make_float3(0.0f, 0.0f, 0.0f);
 
 	// Note: the target function isn't stored in the sample SoA, it's just there during the sampling process
 	float target_function = 0.0f;
@@ -22,9 +22,14 @@ struct ReGIRSample
 struct ReGIRReservoir
 {
 	static constexpr float VISIBILITY_REUSE_KILLED_UCW = -42.0f;
-	static constexpr float UNDEFINED_UCW = -4242.0f;
+	static constexpr float UNDEFINED_UCW			   = -4242.0f;
 
-	HIPRT_DEVICE bool stream_sample_raw(float mis_weight, float target_function, float source_pdf, int emissive_triangle_global_index, float3_t point_on_light, Xorshift32Generator& rng)
+	HIPRT_DEVICE bool stream_sample_raw(float mis_weight,
+										float target_function,
+										float source_pdf,
+										int emissive_triangle_global_index,
+										float3_t point_on_light,
+										Xorshift32Generator& rng)
 	{
 		float resampling_weight = mis_weight * target_function / source_pdf;
 
@@ -33,7 +38,7 @@ struct ReGIRReservoir
 		if (rng() < resampling_weight / weight_sum)
 		{
 			sample.emissive_triangle_global_index = emissive_triangle_global_index;
-			sample.point_on_light = point_on_light;
+			sample.point_on_light				  = point_on_light;
 
 			sample.target_function = target_function;
 
@@ -43,7 +48,11 @@ struct ReGIRReservoir
 		return false;
 	}
 
-	HIPRT_DEVICE bool stream_sample(float mis_weight, float target_function, float source_pdf, const LightSamplePointInformation& light_sample, Xorshift32Generator& rng)
+	HIPRT_DEVICE bool stream_sample(float mis_weight,
+									float target_function,
+									float source_pdf,
+									const LightSamplePointInformation& light_sample,
+									Xorshift32Generator& rng)
 	{
 		return stream_sample_raw(mis_weight, target_function, source_pdf, light_sample.emissive_triangle_global_index, light_sample.point_on_light, rng);
 	}
@@ -59,7 +68,7 @@ struct ReGIRReservoir
 
 		if (rng() < resampling_weight / weight_sum)
 		{
-			sample = other_reservoir.sample;
+			sample				   = other_reservoir.sample;
 			sample.target_function = target_function;
 
 			return true;

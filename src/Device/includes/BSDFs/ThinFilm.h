@@ -8,7 +8,7 @@
 
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
- // Evaluation XYZ sensitivity curves in Fourier space
+// Evaluation XYZ sensitivity curves in Fourier space
 HIPRT_DEVICE static ColorRGB32F eval_sensitivity(float opd, float shift)
 {
 	// Use Gaussian fits
@@ -20,7 +20,8 @@ HIPRT_DEVICE static ColorRGB32F eval_sensitivity(float opd, float shift)
 	float3_t var = make_float3(4.3278e+09f, 9.3046e+09f, 6.6121e+09f);
 	float3_t xyz = val * hippt::sqrt(2.0f * hippt::M_Pi * var) * hippt::intrin_cosf(pos * phase + shift) * hippt::intrin_expf(-1.0f * var * phase * phase);
 
-	xyz.x += 9.7470e-14f * hippt::sqrt(2.0f * hippt::M_Pi * 4.5282e+09f) * hippt::intrin_cosf(2.2399e+06f * phase + shift) * hippt::intrin_expf(-4.5282e+09f * phase * phase);
+	xyz.x += 9.7470e-14f * hippt::sqrt(2.0f * hippt::M_Pi * 4.5282e+09f) * hippt::intrin_cosf(2.2399e+06f * phase + shift) *
+			 hippt::intrin_expf(-4.5282e+09f * phase * phase);
 
 	return ColorRGB32F(xyz / 1.0685e-7f);
 }
@@ -29,36 +30,32 @@ HIPRT_DEVICE static ColorRGB32F eval_sensitivity(float opd, float shift)
  * Reference: * [1] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence,
  *                   Belcour, Barla, 2017, Supplemental document] https://hal.science/hal-01518344v2/file/supp-mat-small%20(1).pdf
  */
-HIPRT_DEVICE static void fresnel_phase(float cos_theta_i,
-	float eta1,
-	float eta2, float kappa2,
-	float& phi_par, float& phi_perp)
+HIPRT_DEVICE static void fresnel_phase(float cos_theta_i, float eta1, float eta2, float kappa2, float& phi_par, float& phi_perp)
 {
 	float sinThetaSqr = 1.0f - hippt::square(cos_theta_i);
-	float A = hippt::square(eta2) * (1.0f - hippt::square(kappa2)) - hippt::square(eta1) * sinThetaSqr;
-	float B = hippt::sqrt(hippt::square(A) + hippt::square(2 * hippt::square(eta2) * kappa2));
-	float U = hippt::sqrt((A + B) * 0.5f);
-	float V = hippt::sqrt((B - A) * 0.5f);
+	float A			  = hippt::square(eta2) * (1.0f - hippt::square(kappa2)) - hippt::square(eta1) * sinThetaSqr;
+	float B			  = hippt::sqrt(hippt::square(A) + hippt::square(2 * hippt::square(eta2) * kappa2));
+	float U			  = hippt::sqrt((A + B) * 0.5f);
+	float V			  = hippt::sqrt((B - A) * 0.5f);
 
 	float phi_perp_y = 2.0f * eta1 * V * cos_theta_i;
 	float phi_perp_x = hippt::square(U) + hippt::square(V) - hippt::square(eta1 * cos_theta_i);
-	phi_perp = atan2(phi_perp_y, phi_perp_x);
+	phi_perp		 = atan2(phi_perp_y, phi_perp_x);
 
 	float phi_par_y = 2.0f * eta1 * hippt::square(eta2) * cos_theta_i * (2.0f * kappa2 * U - (1.0f - hippt::square(kappa2)) * V);
-	float phi_par_x = hippt::square(hippt::square(eta2) * (1.0f + hippt::square(kappa2)) * cos_theta_i) - hippt::square(eta1) * (hippt::square(U) + hippt::square(V));
+	float phi_par_x = hippt::square(hippt::square(eta2) * (1.0f + hippt::square(kappa2)) * cos_theta_i) -
+					  hippt::square(eta1) * (hippt::square(U) + hippt::square(V));
 	phi_par = atan2(phi_par_y, phi_par_x);
 }
 
-HIPRT_DEVICE static void fresnel_conductor(float cos_theta_i,
-	float eta, float k,
-	float& Rp2, float& Rs2)
+HIPRT_DEVICE static void fresnel_conductor(float cos_theta_i, float eta, float k, float& Rp2, float& Rs2)
 {
 	float cos_theta_i_2 = cos_theta_i * cos_theta_i;
 	float sin_theta_i_2 = 1.0f - cos_theta_i_2;
 
 	float temp1 = eta * eta - k * k - sin_theta_i_2;
 	float a2pb2 = hippt::sqrt(temp1 * temp1 + 4.0f * k * k * eta * eta);
-	float a = hippt::sqrt(0.5f * (a2pb2 + temp1));
+	float a		= hippt::sqrt(0.5f * (a2pb2 + temp1));
 
 	float term1 = a2pb2 + cos_theta_i_2;
 	float term2 = 2.0f * a * cos_theta_i;
@@ -85,7 +82,7 @@ HIPRT_DEVICE static ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hu
 	float sinA = hippt::intrin_sinf(hue_shift_degrees / 180.0f * hippt::M_Pi);
 
 	float3x3 matrix;
-	constexpr float sqrt_1_3 = 0.57735026918962576451f; // sqrtf(1.0f / 3.0f)
+	constexpr float sqrt_1_3   = 0.57735026918962576451f; // sqrtf(1.0f / 3.0f)
 	constexpr float one_over_3 = 1.0f / 3.0f;
 
 	matrix.m[0][0] = cosA + (1.0f - cosA) / 3.0f;
@@ -110,10 +107,10 @@ HIPRT_DEVICE static ColorRGB32F RGB_hue_shift(const ColorRGB32F& color, float hu
 /**
  * References:
  *
- * [1] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, Belcour, Barla, 2017] https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html
+ * [1] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, Belcour, Barla, 2017]
+ * https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html
  */
-HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveMaterial& material,
-	float ambient_IOR, float HoL)
+HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveMaterial& material, float ambient_IOR, float HoL)
 {
 	if (material.thin_film == 0.0f)
 		// Quick exit
@@ -122,18 +119,18 @@ HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedEffectiveM
 	float eta1 = ambient_IOR;
 	float eta2 = material.thin_film_ior;
 	float eta3 = material.thin_film_do_ior_override ? material.thin_film_base_ior_override : material.ior;
-	// If override is not used, just default to 0.0f because the principled BSDF doesn't have 
+	// If override is not used, just default to 0.0f because the principled BSDF doesn't have
 	// complex IORs support anyways
 	float kappa3 = material.thin_film_do_ior_override ? material.thin_film_kappa_3 : 0.0f;
 
 	/* Compute the Spectral versions of the Fresnel reflectance and
 	 * transmitance for each interface. */
-	float R12p = 0.0f;
-	float R12s = 0.0f;
-	float T121p = 0.0f;
-	float T121s = 0.0f;
-	float R23p = 0.0f;
-	float R23s = 0.0f;
+	float R12p		  = 0.0f;
+	float R12s		  = 0.0f;
+	float T121p		  = 0.0f;
+	float T121s		  = 0.0f;
+	float R23p		  = 0.0f;
+	float R23s		  = 0.0f;
 	float cos_theta_2 = 0.0f;
 
 	float cos_theta_transmission_2 = 1.0f - (1.0f - hippt::square(HoL)) * hippt::square(eta1 / eta2);

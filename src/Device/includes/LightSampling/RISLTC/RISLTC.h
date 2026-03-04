@@ -37,7 +37,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RISLTC_reservoir_sample(HIPRTRenderData& rende
 
 	bool in_shadow;
 	float distance_to_light;
-	float3_t shadow_ray_direction			   = light_sample_info.point_on_light - closest_hit_info.inter_point;
+	float3_t shadow_ray_direction			 = light_sample_info.point_on_light - closest_hit_info.inter_point;
 	float3_t shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
 
 	NEEPlusPlusContext nee_plus_plus_context;

@@ -71,7 +71,7 @@ void GPURendererThread::setup_render_graphs()
 {
 	RenderGraph& render_graph_full = m_render_graphs[RENDER_GRAPH_FULL_NAME];
 
-	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = render_graph_full.create_render_pass<FillGBufferRenderPass>();
+	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass	 = render_graph_full.create_render_pass<FillGBufferRenderPass>();
 	std::shared_ptr<NEEPlusPlusRenderPass> nee_plus_plus_render_pass = render_graph_full.create_render_pass<NEEPlusPlusRenderPass>();
 
 	std::shared_ptr<ReGIRRenderPass> regir_render_pass = render_graph_full.create_render_pass<ReGIRRenderPass>();

@@ -16,7 +16,7 @@ public:
 	OrochiEnvmap(const OrochiEnvmap& other) = delete;
 	OrochiEnvmap(OrochiEnvmap&& other) noexcept;
 
-	void operator=(const OrochiEnvmap other) = delete;
+	void operator=(const OrochiEnvmap other)  = delete;
 	void operator=(const OrochiEnvmap& other) = delete;
 	void operator=(OrochiEnvmap&& other) noexcept;
 

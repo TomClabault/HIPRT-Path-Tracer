@@ -8,19 +8,19 @@
 
 #include "HostDeviceCommon/Color.h"
 
- /**
-  * Data structure for the implementation of GMoN
-  *
-  * Reference:
-  * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
-  */
+/**
+ * Data structure for the implementation of GMoN
+ *
+ * Reference:
+ * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
+ */
 struct GMoNDevice
 {
 	enum GMoNMode
 	{
 		MEDIAN_OF_MEANS = 0,
-		BINARY_GMON = 1,
-		ADAPTIVE_GMON = 2,
+		BINARY_GMON		= 1,
+		ADAPTIVE_GMON	= 2,
 	};
 	GMoNMode gmon_mode = GMoNMode::ADAPTIVE_GMON;
 

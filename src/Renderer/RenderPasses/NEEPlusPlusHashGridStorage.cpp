@@ -59,24 +59,24 @@ void NEEPlusPlusHashGridStorage::update_render_data(HIPRTRenderData& render_data
 {
 	if (m_nee_plus_plus_render_pass->is_render_pass_used())
 	{
-		render_data.nee_plus_plus.m_entries_buffer.total_num_rays = m_total_num_rays.get_atomic_device_pointer();
+		render_data.nee_plus_plus.m_entries_buffer.total_num_rays		 = m_total_num_rays.get_atomic_device_pointer();
 		render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = m_total_unoccluded_rays.get_atomic_device_pointer();
-		render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = m_checksum_buffer.get_atomic_device_pointer();
-		render_data.nee_plus_plus.m_total_number_of_cells = m_checksum_buffer.size();
+		render_data.nee_plus_plus.m_entries_buffer.checksum_buffer		 = m_checksum_buffer.get_atomic_device_pointer();
+		render_data.nee_plus_plus.m_total_number_of_cells				 = m_checksum_buffer.size();
 
 		render_data.nee_plus_plus.m_shadow_rays_actually_traced = m_shadow_rays_actually_traced.get_atomic_device_pointer();
-		render_data.nee_plus_plus.m_total_shadow_ray_queries = m_total_shadow_ray_queries.get_atomic_device_pointer();
-		render_data.nee_plus_plus.m_total_cells_alive_count = m_total_cells_alive_count.get_atomic_device_pointer();
+		render_data.nee_plus_plus.m_total_shadow_ray_queries	= m_total_shadow_ray_queries.get_atomic_device_pointer();
+		render_data.nee_plus_plus.m_total_cells_alive_count		= m_total_cells_alive_count.get_atomic_device_pointer();
 	}
 	else
 	{
-		render_data.nee_plus_plus.m_entries_buffer.total_num_rays = nullptr;
+		render_data.nee_plus_plus.m_entries_buffer.total_num_rays		 = nullptr;
 		render_data.nee_plus_plus.m_entries_buffer.total_unoccluded_rays = nullptr;
-		render_data.nee_plus_plus.m_entries_buffer.checksum_buffer = nullptr;
+		render_data.nee_plus_plus.m_entries_buffer.checksum_buffer		 = nullptr;
 
 		render_data.nee_plus_plus.m_shadow_rays_actually_traced = nullptr;
-		render_data.nee_plus_plus.m_total_shadow_ray_queries = nullptr;
-		render_data.nee_plus_plus.m_total_cells_alive_count = nullptr;
+		render_data.nee_plus_plus.m_total_shadow_ray_queries	= nullptr;
+		render_data.nee_plus_plus.m_total_cells_alive_count		= nullptr;
 	}
 }
 
@@ -104,7 +104,7 @@ void NEEPlusPlusHashGridStorage::reset()
 {
 	HIPRTRenderData& render_data = m_nee_plus_plus_render_pass->m_renderer->get_render_data();
 
-	render_data.nee_plus_plus.m_reset_visibility_map = true;
+	render_data.nee_plus_plus.m_reset_visibility_map  = true;
 	render_data.nee_plus_plus.m_update_visibility_map = true;
 
 	// Resetting the counters
@@ -120,16 +120,16 @@ bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data, float 
 {
 	update_cell_alive_count();
 
-	float load_factor = m_total_cells_alive_count_cpu / (float)m_checksum_buffer.size();
-	bool load_factor_too_high = load_factor > 0.65f;
+	float load_factor			  = m_total_cells_alive_count_cpu / (float)m_checksum_buffer.size();
+	bool load_factor_too_high	  = load_factor > 0.65f;
 	bool maximum_size_not_reached = get_byte_size() / 1000000.0f <= max_megabyte_size * 0.95f;
-	bool maximum_size_exceeded = get_byte_size() / 1000000.0f >= max_megabyte_size * 1.05f;
+	bool maximum_size_exceeded	  = get_byte_size() / 1000000.0f >= max_megabyte_size * 1.05f;
 	if ((load_factor_too_high && maximum_size_not_reached) || maximum_size_exceeded)
 	{
 		unsigned int current_cell_count = m_checksum_buffer.size();
-		unsigned int new_cell_count = current_cell_count * 1.5f;
+		unsigned int new_cell_count		= current_cell_count * 1.5f;
 
-		float cell_size_byte = get_byte_size() / current_cell_count;
+		float cell_size_byte		   = get_byte_size() / current_cell_count;
 		float estimated_new_size_bytes = cell_size_byte * new_cell_count;
 		if (estimated_new_size_bytes > max_megabyte_size * 1000000.0f)
 			// If the estimated new size is larger than the maximum size,
@@ -189,13 +189,9 @@ std::size_t NEEPlusPlusHashGridStorage::get_total_shadow_rays_queries_from_GPU()
 
 std::size_t NEEPlusPlusHashGridStorage::get_byte_size() const
 {
-	return m_total_unoccluded_rays.get_byte_size() +
-		m_total_num_rays.get_byte_size() +
-		m_checksum_buffer.get_byte_size() +
+	return m_total_unoccluded_rays.get_byte_size() + m_total_num_rays.get_byte_size() + m_checksum_buffer.get_byte_size() +
 
-		m_total_shadow_ray_queries.get_byte_size() +
-		m_shadow_rays_actually_traced.get_byte_size() +
-		m_total_cells_alive_count.get_byte_size();
+		   m_total_shadow_ray_queries.get_byte_size() + m_shadow_rays_actually_traced.get_byte_size() + m_total_cells_alive_count.get_byte_size();
 }
 
 float NEEPlusPlusHashGridStorage::get_load_factor() const

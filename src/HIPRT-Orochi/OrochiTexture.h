@@ -22,15 +22,18 @@ public:
 	void operator=(const OrochiTexture& other) = delete;
 	void operator=(OrochiTexture&& other) noexcept;
 
-	void init_from_image(const Image8Bit& image, hipTextureFilterMode filtering_mode = hipFilterModePoint, hipTextureAddressMode address_mode = hipAddressModeWrap);
-	void init_from_image(const Image32Bit& image, hipTextureFilterMode filtering_mode = hipFilterModePoint, hipTextureAddressMode address_mode = hipAddressModeWrap);
+	void init_from_image(const Image8Bit& image,
+						 hipTextureFilterMode filtering_mode = hipFilterModePoint,
+						 hipTextureAddressMode address_mode	 = hipAddressModeWrap);
+	void init_from_image(const Image32Bit& image,
+						 hipTextureFilterMode filtering_mode = hipFilterModePoint,
+						 hipTextureAddressMode address_mode	 = hipAddressModeWrap);
 
 	oroTextureObject_t get_device_texture();
 
 	unsigned int width = 0, height = 0;
 
 private:
-
 	void create_texture_from_array(hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode, bool read_mode_float_normalized);
 
 	oroArray_t m_texture_array = nullptr;

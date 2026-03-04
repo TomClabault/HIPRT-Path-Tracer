@@ -11,7 +11,7 @@
 struct ReGIRHashGridSoADevice
 {
 	// These two SoAs are allocated to hold 'number_cells * number_reservoirs_per_cell'
-	// So for a given 'hash_grid_cell_index', the cell contains reservoirs and samples going from 
+	// So for a given 'hash_grid_cell_index', the cell contains reservoirs and samples going from
 	// reservoirs[hash_grid_cell_index * number_reservoirs_per_cell] to reservoirs[cell_index * number_reservoirs_per_cell + number_reservoirs_per_cell[
 	ReGIRReservoirSoADevice reservoirs;
 	ReGIRSampleSoADevice samples;

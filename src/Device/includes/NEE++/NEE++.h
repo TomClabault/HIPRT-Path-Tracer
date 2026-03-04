@@ -11,12 +11,12 @@
 
 #include "HostDeviceCommon/Maths/Math.h"
 
- /**
-  * Context passed when tracing shadow rays
-  */
+/**
+ * Context passed when tracing shadow rays
+ */
 struct NEEPlusPlusContext
 {
-	float3_t shaded_point = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t shaded_point	= make_float3(0.0f, 0.0f, 0.0f);
 	float3_t point_on_light = make_float3(0.0f, 0.0f, 0.0f);
 
 	// After passing this context to a call to 'evaluate_shadow_ray_nee_plus_plus',
@@ -40,7 +40,7 @@ struct NEEPlusPlusContext
 struct NEEPlusPlusEntry
 {
 	AtomicType<unsigned char>* total_unoccluded_rays = nullptr;
-	AtomicType<unsigned char>* total_num_rays = nullptr;
+	AtomicType<unsigned char>* total_num_rays		 = nullptr;
 
 	AtomicType<unsigned int>* checksum_buffer = nullptr;
 };
@@ -66,7 +66,7 @@ struct NEEPlusPlusDevice
 	/*float m_grid_cell_min_size = 0.25f;
 	float m_grid_cell_target_projected_size = 25.0f;*/
 
-	float m_grid_cell_min_size = 0.25f;
+	float m_grid_cell_min_size				= 0.25f;
 	float m_grid_cell_target_projected_size = 1.0f;
 
 	// After how many samples to stop updating the visibility map
@@ -78,11 +78,11 @@ struct NEEPlusPlusDevice
 	enum BufferNames : unsigned int
 	{
 		VISIBILITY_MAP_UNOCCLUDED_COUNT = 0,
-		VISIBILITY_MAP_TOTAL_COUNT = 1,
+		VISIBILITY_MAP_TOTAL_COUNT		= 1,
 	};
 
 	// Linear buffer that is a packing of 4 buffers:
-	// 
+	//
 	// - 1 buffer that stores the number of rays that were
 	//		computed as non-occluded from voxel to voxel in the scene.
 	//
@@ -96,7 +96,7 @@ struct NEEPlusPlusDevice
 	//		For the indexing logic, (0, 0) is in the top left corner of the matrix
 	//
 	// - 1 buffer that is the same the same as the previous one but stores how many rays
-	//		in total were traced in total from one voxel to another, not just the unoccluded ones. 
+	//		in total were traced in total from one voxel to another, not just the unoccluded ones.
 	//		In the example from above, this would contain the value 16.
 	//
 	//		For the indexing logic, (0, 0) is in the top left corner of the matrix
@@ -105,11 +105,11 @@ struct NEEPlusPlusDevice
 	//		These two buffers are used for accumulation of the visibility information during the rendering
 	//		For example, if we trace a shadow ray between voxel A and voxel B and that this shadow ray is
 	//		occluded, we're going to have to update the visibility map with information.
-	// 
+	//
 	//		However, we cannot just simply update the visibility map (i.e. the 2 first buffers)
-	//		during the rendering because this would	lead to concurrency issues where the map is 
+	//		during the rendering because this would	lead to concurrency issues where the map is
 	//		being updated while also being read by other threads.
-	// 
+	//
 	//		The race condition is fine, what's not fine is that this will vary the estimate of the occlusion probability
 	//		from voxel A to voxel B and I found that this resulted in bias / non-determinism because the order in which
 	//		the threads update the map now influences how the other threads are going to read the map
@@ -118,7 +118,7 @@ struct NEEPlusPlusDevice
 	//		every N frames (or N seconds) to the 'true' visibility map used during rendering
 	//
 	// Each one these 4 buffers are of type unsigned chars, packed into 1 unsigned ints.
-	// 
+	//
 	// The data is stored such that the first unsigned int contains the 4 buffers at index 0 of the matrix
 	// The second unsigned int contains the 4 buffers at index 1
 	// ...
@@ -132,14 +132,14 @@ struct NEEPlusPlusDevice
 	// being unoccluded
 	//
 	// 0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray
-	float m_confidence_threshold = 0.025f;
+	float m_confidence_threshold	 = 0.025f;
 	float m_minimum_unoccluded_proba = 0.0f;
 
 	// Whether or not to count the number of shadow rays actually traced vs. the number of shadow
 	// queries made. This is used in 'evaluate_shadow_ray_nee_plus_plus()'
 	bool do_update_shadow_rays_traced_statistics = true;
 
-	AtomicType<unsigned long long int>* m_total_shadow_ray_queries = nullptr;
+	AtomicType<unsigned long long int>* m_total_shadow_ray_queries	  = nullptr;
 	AtomicType<unsigned long long int>* m_shadow_rays_actually_traced = nullptr;
 
 	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, unsigned int hash_grid_index)
@@ -178,12 +178,15 @@ struct NEEPlusPlusDevice
 	 * that value on its own even though the world points given may be the same and thus, the matrix
 	 * index is the same)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_hash_grid_index, unsigned int& out_cell_total_accumulation_count) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context,
+															const HIPRTCamera& current_camera,
+															unsigned int& out_hash_grid_index,
+															unsigned int& out_cell_total_accumulation_count) const
 	{
 		out_hash_grid_index = get_visibility_map_index(context, current_camera);
 		if (out_hash_grid_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// One of the two points was outside the scene, cannot read the cache for this
-			// 
+			//
 			// Returning 1.0f indicating that the two points are not occluded such that the caller
 			// tests for a shadow ray
 			return 1.0f;
@@ -191,7 +194,7 @@ struct NEEPlusPlusDevice
 		out_cell_total_accumulation_count = read_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(out_hash_grid_index);
 		if (out_cell_total_accumulation_count == 0)
 			// No information for these two points
-			// 
+			//
 			// Returning 1.0f indicating that the two points are not occluded such that the caller
 			// tests for a shadow ray
 			return 1.0f;
@@ -211,7 +214,9 @@ struct NEEPlusPlusDevice
 	 * Returns the estimated probability that a ray between the two given world points
 	 * is going to be unoccluded (i.e. the two points are mutually visible)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera, unsigned int& out_cell_total_accumulation_count) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context,
+															const HIPRTCamera& current_camera,
+															unsigned int& out_cell_total_accumulation_count) const
 	{
 		unsigned int trash_matrix_index;
 
@@ -230,14 +235,16 @@ struct NEEPlusPlusDevice
 	{
 		float3_t second_point = context.envmap ? (context.shaded_point + context.point_on_light * 1.0e20f) : context.point_on_light;
 
-		return hash_double_position_camera(m_total_number_of_cells, context.shaded_point, second_point, current_camera, m_grid_cell_target_projected_size, m_grid_cell_min_size, out_checksum);
+		return hash_double_position_camera(m_total_number_of_cells, context.shaded_point, second_point, current_camera, m_grid_cell_target_projected_size,
+										   m_grid_cell_min_size, out_checksum);
 	}
 
 	HIPRT_HOST_DEVICE unsigned int get_visibility_map_index(const NEEPlusPlusContext& context, const HIPRTCamera& current_camera) const
 	{
 		unsigned int checksum;
 		unsigned int hash_grid_index = hash_context(context, current_camera, checksum);
-		if (!HashGrid::resolve_collision<NEEPlusPlus_LinearProbingSteps, true>(m_entries_buffer.checksum_buffer, m_total_number_of_cells, hash_grid_index, checksum))
+		if (!HashGrid::resolve_collision<NEEPlusPlus_LinearProbingSteps, true>(m_entries_buffer.checksum_buffer, m_total_number_of_cells, hash_grid_index,
+																			   checksum))
 			return HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 
 		return hash_grid_index;

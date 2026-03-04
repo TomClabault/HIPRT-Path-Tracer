@@ -14,12 +14,12 @@
 #include <memory>
 #include <vector>
 
- /**
-  * CPU-side data structure for the implementation of GMoN on the GPU
-  *
-  * Reference:
-  * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
-  */
+/**
+ * CPU-side data structure for the implementation of GMoN on the GPU
+ *
+ * Reference:
+ * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
+ */
 struct GMoNGPUData : public GMoNCPUGPUCommonData
 {
 	GMoNGPUData()
@@ -31,7 +31,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 	{
 		sets.resize(render_width * render_height * number_of_sets);
 
-		current_resolution = make_int2(render_width, render_height);
+		current_resolution	   = make_int2(render_width, render_height);
 		current_number_of_sets = number_of_sets;
 	}
 
@@ -66,7 +66,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 		unsigned int nb_pixels = current_resolution.x * current_resolution.y;
 
 		unsigned int bytes_result_framebuffer = nb_pixels * sizeof(ColorRGB32F);
-		unsigned int bytes_sets = nb_pixels * sizeof(ColorRGB32F) * current_number_of_sets;
+		unsigned int bytes_sets				  = nb_pixels * sizeof(ColorRGB32F) * current_number_of_sets;
 
 		return bytes_result_framebuffer + bytes_sets;
 	}
@@ -82,7 +82,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> result_framebuffer = nullptr;
 
 	// These two variables are used for lazy GMoN recomputation:
-	// 
+	//
 	// GMoN isn't recomputed at each sample because we need at least one new sample
 	// in each set of GMoN to be able to recompute the median of means.
 	// So we should recompute GMoN only every M samples (for M GMoN sets).
@@ -93,8 +93,8 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 	// recompute GMoN every 5s, not every M samples
 	//
 	// GMoNRenderPass:request_refresh() sets 'm_gmon_recomputation_requested' to true.
-	// If 
-	bool m_gmon_recomputed = false;
+	// If
+	bool m_gmon_recomputed				= false;
 	bool m_gmon_recomputation_requested = false;
 
 	// How many samples were we at when last launched the GMoN kernel

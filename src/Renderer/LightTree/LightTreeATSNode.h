@@ -21,8 +21,8 @@ struct LightTreeATSNode
 	LightTreeATSNodeOrientationData orientation_data;
 
 	// For adaptive splitting
-	float energy_average = 0.0f;
-	float energy_variance = 0.0f;
+	float energy_average			 = 0.0f;
+	float energy_variance			 = 0.0f;
 	unsigned int total_emitter_count = 0;
 
 	// Total emissive power of the node

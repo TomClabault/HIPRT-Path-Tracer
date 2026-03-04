@@ -11,7 +11,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
- /* References:
+/* References:
  * [1][Practical multiple scattering compensation for microfacet models, Turquin, 2019]
  * [2][Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017]
  * [3][Dassault Enterprise PBR 2025 Specification]
@@ -29,9 +29,12 @@
  */
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) inline GGXConductorDirectionalAlbedoBake(int kernel_iterations, int current_iteration, GGXConductorDirectionalAlbedoSettings bake_settings, float* out_buffer)
+GLOBAL_KERNEL_SIGNATURE(void)
+inline GGXConductorDirectionalAlbedoBake(int kernel_iterations, int current_iteration, GGXConductorDirectionalAlbedoSettings bake_settings, float* out_buffer)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline GGXConductorDirectionalAlbedoBake(int kernel_iterations, int current_iteration, GGXConductorDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void)
+inline GGXConductorDirectionalAlbedoBake(
+						int kernel_iterations, int current_iteration, GGXConductorDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
@@ -47,17 +50,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXConductorDirectionalAlbedoBake(int kerne
 	Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);
 
 	float roughness = 1.0f / (bake_settings.texture_size_roughness - 1.0f) * y;
-	roughness = hippt::max(roughness, 1.0e-4f);
+	roughness		= hippt::max(roughness, 1.0e-4f);
 
 	float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta - 1.0f) * x;
-	cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
+	cos_theta_o		  = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
 	float sin_theta_o = hippt::intrin_sinf(acos(cos_theta_o));
 
 	float3_t local_view_direction = hippt::normalize(make_float3(hippt::intrin_cosf(0.0f) * sin_theta_o, hippt::intrin_sinf(0.0f) * sin_theta_o, cos_theta_o));
 
-	int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (float)(bake_settings.texture_size_cos_theta * bake_settings.texture_size_roughness)));
+	int iterations_per_kernel = floor(
+							hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH /
+																	 (float)(bake_settings.texture_size_cos_theta * bake_settings.texture_size_roughness)));
 	int nb_kernel_launch = ceil(bake_settings.integration_sample_count / (float)iterations_per_kernel);
-	int nb_samples = nb_kernel_launch * iterations_per_kernel;
+	int nb_samples		 = nb_kernel_launch * iterations_per_kernel;
 
 	for (int sample = 0; sample < kernel_iterations; sample++)
 	{
@@ -71,10 +76,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXConductorDirectionalAlbedoBake(int kerne
 		dummy_render_data.bsdfs_data.GGX_masking_shadowing = bake_settings.masking_shadowing_term;
 
 		float eval_pdf;
-		float directional_albedo = torrance_sparrow_GGX_eval_reflect<0>(dummy_render_data,
-			roughness, 0.0f, false, /* fresnel */ ColorRGB32F(1.0f),
-			local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction),
-			eval_pdf, MaterialUtils::SPECULAR_PEAK_SAMPLED, 0).r;
+		float directional_albedo = torrance_sparrow_GGX_eval_reflect<0>(dummy_render_data, roughness, 0.0f, false, /* fresnel */ ColorRGB32F(1.0f),
+																		local_view_direction, sampled_local_to_light_direction,
+																		hippt::normalize(local_view_direction + sampled_local_to_light_direction), eval_pdf,
+																		MaterialUtils::SPECULAR_PEAK_SAMPLED, 0)
+														   .r;
 
 		directional_albedo /= eval_pdf;
 		directional_albedo *= sampled_local_to_light_direction.z;

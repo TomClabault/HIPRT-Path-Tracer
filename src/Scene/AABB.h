@@ -63,8 +63,8 @@ struct AABB
 		return 2.0f * (extents.x * extents.y + extents.y * extents.z + extents.z * extents.x);
 	}
 
-	float3_t mini = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() , std::numeric_limits<float>::max() };
-	float3_t maxi = { -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() , -std::numeric_limits<float>::max() };
+	float3_t mini = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
+	float3_t maxi = { -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() };
 };
 
 #endif

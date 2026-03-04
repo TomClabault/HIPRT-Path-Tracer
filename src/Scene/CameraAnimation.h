@@ -19,14 +19,14 @@ public:
 	void set_camera(Camera* camera);
 
 	/**
-	* The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	* call to animation_step()
-	*/
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to animation_step()
+	 */
 	void animation_step(GPURenderer* renderer, float delta_time);
 	/**
-	* The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	* call to do_rotation_animation()
-	*/
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to do_rotation_animation()
+	 */
 	void do_rotation_animation(float delta_time);
 
 	// Public attributes here because we want them to be
@@ -37,7 +37,7 @@ public:
 	// If true, the camera will rotate around 'm_rotate_around_point'
 	// with 'm_rotation_duration' as the speed target when 'animate' is
 	// set to true
-	bool m_do_rotation_animation = false;
+	bool m_do_rotation_animation	   = false;
 	CameraRotationType m_rotation_type = CameraRotationType::SECONDS_PER_ROTATION;
 
 	glm::vec3 m_rotate_around_point = glm::vec3(0.0f, 0.0f, 0.0f);

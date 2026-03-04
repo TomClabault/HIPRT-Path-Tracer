@@ -81,8 +81,14 @@ public:
 		}
 	}
 
-	bool operator ==(const DisplayTextureType& other) { return m_value == other.m_value; }
-	bool operator !=(const DisplayTextureType& other) { return m_value != other.m_value; }
+	bool operator==(const DisplayTextureType& other)
+	{
+		return m_value == other.m_value;
+	}
+	bool operator!=(const DisplayTextureType& other)
+	{
+		return m_value != other.m_value;
+	}
 
 private:
 	Value m_value;

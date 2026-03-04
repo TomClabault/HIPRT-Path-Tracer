@@ -20,9 +20,9 @@ OrochiTexture::OrochiTexture(const Image32Bit& image, hipTextureFilterMode filte
 OrochiTexture::OrochiTexture(OrochiTexture&& other) noexcept
 {
 	m_texture_array = std::move(other.m_texture_array);
-	m_texture = std::move(other.m_texture);
+	m_texture		= std::move(other.m_texture);
 
-	other.m_texture = nullptr;
+	other.m_texture		  = nullptr;
 	other.m_texture_array = nullptr;
 }
 
@@ -38,9 +38,9 @@ OrochiTexture::~OrochiTexture()
 void OrochiTexture::operator=(OrochiTexture&& other) noexcept
 {
 	m_texture_array = std::move(other.m_texture_array);
-	m_texture = std::move(other.m_texture);
+	m_texture		= std::move(other.m_texture);
 
-	other.m_texture = nullptr;
+	other.m_texture		  = nullptr;
 	other.m_texture_array = nullptr;
 }
 
@@ -52,17 +52,17 @@ void OrochiTexture::create_texture_from_array(hipTextureFilterMode filtering_mod
 	// Using native HIP here to access 'normalizedCoords' which isn't exposed by Orochi
 
 	hipResourceDesc resource_descriptor = {};
-	resource_descriptor.resType = hipResourceTypeArray;
+	resource_descriptor.resType			= hipResourceTypeArray;
 	resource_descriptor.res.array.array = m_texture_array;
 
-	hipTextureDesc texture_descriptor = {};
-	texture_descriptor.addressMode[0] = address_mode;
-	texture_descriptor.addressMode[1] = address_mode;
-	texture_descriptor.addressMode[2] = address_mode;
-	texture_descriptor.filterMode = filtering_mode;
+	hipTextureDesc texture_descriptor	= {};
+	texture_descriptor.addressMode[0]	= address_mode;
+	texture_descriptor.addressMode[1]	= address_mode;
+	texture_descriptor.addressMode[2]	= address_mode;
+	texture_descriptor.filterMode		= filtering_mode;
 	texture_descriptor.normalizedCoords = true;
 	texture_descriptor.readMode = read_mode_float_normalized ? hipTextureReadMode::hipReadModeNormalizedFloat : hipTextureReadMode::hipReadModeElementType;
-	texture_descriptor.sRGB = false;
+	texture_descriptor.sRGB		= false;
 
 	OROCHI_CHECK_ERROR(hipCreateTextureObject(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
 #else
@@ -83,7 +83,7 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 		return;
 	}
 
-	width = image.width;
+	width  = image.width;
 	height = image.height;
 
 	if (width == 0 || height == 0)
@@ -97,13 +97,11 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 	int bits_channel_y = (channels >= 2) ? 8 : 0; // Second channel (e.g., Green)
 	int bits_channel_z = (channels >= 3) ? 8 : 0; // Third channel (e.g., Blue)
 	int bits_channel_w = (channels == 4) ? 8 : 0; // Fourth channel (e.g., Alpha)
-	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w,
-		oroChannelFormatKindUnsigned);
+	oroChannelFormatDesc channel_descriptor =
+							oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w, oroChannelFormatKindUnsigned);
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
-	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(),
-		image.width * channels * sizeof(unsigned char),
-		image.width * sizeof(unsigned char) * channels,
-		image.height, oroMemcpyHostToDevice));
+	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * channels * sizeof(unsigned char),
+										  image.width * sizeof(unsigned char) * channels, image.height, oroMemcpyHostToDevice));
 
 	create_texture_from_array(filtering_mode, address_mode, true);
 }
@@ -118,7 +116,7 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 		return;
 	}
 
-	width = image.width;
+	width  = image.width;
 	height = image.height;
 
 	if (width == 0 || height == 0)
@@ -128,18 +126,15 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 		Debug::debugbreak();
 	}
 
-	int bits_channel_x = (channels >= 1) ? 32 : 0; // First channel (e.g., Red)
-	int bits_channel_y = (channels >= 2) ? 32 : 0; // Second channel (e.g., Green)
-	int bits_channel_z = (channels >= 3) ? 32 : 0; // Third channel (e.g., Blue)
-	int bits_channel_w = (channels == 4) ? 32 : 0; // Fourth channel (e.g., Alpha)
-	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w,
-		oroChannelFormatKindFloat);
+	int bits_channel_x						= (channels >= 1) ? 32 : 0; // First channel (e.g., Red)
+	int bits_channel_y						= (channels >= 2) ? 32 : 0; // Second channel (e.g., Green)
+	int bits_channel_z						= (channels >= 3) ? 32 : 0; // Third channel (e.g., Blue)
+	int bits_channel_w						= (channels == 4) ? 32 : 0; // Fourth channel (e.g., Alpha)
+	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w, oroChannelFormatKindFloat);
 
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
-	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(),
-		image.width * channels * sizeof(float),
-		image.width * sizeof(float) * channels,
-		image.height, oroMemcpyHostToDevice));
+	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * channels * sizeof(float),
+										  image.width * sizeof(float) * channels, image.height, oroMemcpyHostToDevice));
 
 	create_texture_from_array(filtering_mode, address_mode, false);
 }

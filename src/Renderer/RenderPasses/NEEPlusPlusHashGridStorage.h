@@ -42,7 +42,7 @@ private:
 
 	OrochiBuffer<unsigned int> m_checksum_buffer;
 
-	// Counters on the GPU for tracking 
+	// Counters on the GPU for tracking
 	OrochiBuffer<unsigned long long int> m_total_shadow_ray_queries;
 	OrochiBuffer<unsigned long long int> m_shadow_rays_actually_traced;
 

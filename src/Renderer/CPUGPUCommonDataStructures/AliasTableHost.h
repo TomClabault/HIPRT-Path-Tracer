@@ -16,9 +16,9 @@ struct AliasTableHost
 		AliasTableDevice out;
 
 		out.alias_table_probas = probas.data();
-		out.alias_table_alias = aliases.data();
+		out.alias_table_alias  = aliases.data();
 
-		out.size = size;
+		out.size		 = size;
 		out.sum_elements = sum_elements;
 
 		return out;
@@ -28,7 +28,7 @@ struct AliasTableHost
 	DataContainer<int> aliases;
 
 	float sum_elements = 0.0f;
-	unsigned int size = 0;
+	unsigned int size  = 0;
 };
 
 #endif

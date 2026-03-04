@@ -13,31 +13,36 @@ const std::string NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE = "NEE++ Pre
 
 const std::string NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME = "NEE++ Render Pass";
 
-const std::unordered_map<std::string, std::string> NEEPlusPlusRenderPass::KERNEL_FUNCTION_NAMES =
-{
+const std::unordered_map<std::string, std::string> NEEPlusPlusRenderPass::KERNEL_FUNCTION_NAMES = {
 	{ NEE_PLUS_PLUS_PRE_POPULATE, "NEEPlusPlus_Grid_Prepopulate" },
 };
 
-const std::unordered_map<std::string, std::string> NEEPlusPlusRenderPass::KERNEL_FILES =
-{
+const std::unordered_map<std::string, std::string> NEEPlusPlusRenderPass::KERNEL_FILES = {
 	{ NEE_PLUS_PLUS_PRE_POPULATE, DEVICE_KERNELS_DIRECTORY "/NEE++/GridPrepopulate.h" },
 };
 
-NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME)
+NEEPlusPlusRenderPass::NEEPlusPlusRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
+	: RenderPass(renderer, options, NEEPlusPlusRenderPass::NEE_PLUS_PLUS_RENDER_PASS_NAME)
 {
 	std::unordered_set<std::string> options_not_synchronized = GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 	options_not_synchronized.insert(GPUKernelCompilerOptions::BSDF_OVERRIDE);
 
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE] = std::make_shared<GPUKernel>();
-	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_file_path(NEEPlusPlusRenderPass::KERNEL_FILES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
-	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_function_name(NEEPlusPlusRenderPass::KERNEL_FUNCTION_NAMES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
-	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE, BSDF_LAMBERTIAN);
+	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_file_path(
+							NEEPlusPlusRenderPass::KERNEL_FILES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
+	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->set_kernel_function_name(
+							NEEPlusPlusRenderPass::KERNEL_FUNCTION_NAMES.at(NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE));
+	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE,
+																									   BSDF_LAMBERTIAN);
 	m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 
 	m_nee_plus_plus_storage.set_nee_plus_plus_render_pass(this);
 }
 
-bool NEEPlusPlusRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
+bool NEEPlusPlusRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+														 const std::vector<hiprtFuncNameSet>& func_name_sets,
+														 bool silent,
+														 bool use_cache)
 {
 	if (!is_render_pass_used())
 		return false;
@@ -91,9 +96,10 @@ void NEEPlusPlusRenderPass::launch_grid_pre_population(HIPRTRenderData& render_d
 		void* launch_args[] = { &render_data };
 
 		m_kernels[NEEPlusPlusRenderPass::NEE_PLUS_PLUS_PRE_POPULATE]->launch_asynchronous(
-			KernelBlockWidthHeight, KernelBlockWidthHeight,
-			m_renderer->m_render_resolution.x / NEEPlusPlus_GridPrepoluationResolutionDownscale, m_renderer->m_render_resolution.y / NEEPlusPlus_GridPrepoluationResolutionDownscale,
-			launch_args, m_renderer->get_main_stream());
+								KernelBlockWidthHeight, KernelBlockWidthHeight,
+								m_renderer->m_render_resolution.x / NEEPlusPlus_GridPrepoluationResolutionDownscale,
+								m_renderer->m_render_resolution.y / NEEPlusPlus_GridPrepoluationResolutionDownscale, launch_args,
+								m_renderer->get_main_stream());
 
 		has_rehashed = m_nee_plus_plus_storage.try_resize(render_data, m_max_vram_usage_megabytes);
 		if (has_rehashed)
@@ -129,7 +135,6 @@ void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 
 	m_nee_plus_plus_storage.reset();
 }
-
 
 bool NEEPlusPlusRenderPass::is_render_pass_used() const
 {

@@ -8,13 +8,17 @@
 
 #include "Device/includes/PathTracing.h"
 
-HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_data, RayPayload& ray_payload,
-	ColorRGB32F& ray_throughput_to_visible_point, HitInfo& closest_hit_info,
-	ColorRGB32F bsdf_color, const float3_t& bounce_direction, float bsdf_pdf,
-	Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_data,
+														RayPayload& ray_payload,
+														ColorRGB32F& ray_throughput_to_visible_point,
+														HitInfo& closest_hit_info,
+														ColorRGB32F bsdf_color,
+														const float3_t& bounce_direction,
+														float bsdf_pdf,
+														Xorshift32Generator& random_number_generator)
 {
 	ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
-	ColorRGB32F dispersion_throughput = get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
+	ColorRGB32F dispersion_throughput  = get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
 
 	if (ray_payload.bounce > 0)
 	{
@@ -24,7 +28,8 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
 
 		float rr_throughput_scaling = 1.0f;
 		// Doing the russian roulette
-		if (!do_russian_roulette(render_data.render_settings, ray_payload.bounce, ray_payload.throughput, rr_throughput_scaling, throughput_attenuation, random_number_generator))
+		if (!do_russian_roulette(render_data.render_settings, ray_payload.bounce, ray_payload.throughput, rr_throughput_scaling, throughput_attenuation,
+								 random_number_generator))
 		{
 			// Killed by russian roulette
 			ray_throughput_to_visible_point = ColorRGB32F(0.0f);
@@ -63,17 +68,24 @@ HIPRT_HOST_DEVICE bool restir_gi_update_ray_throughputs(HIPRTRenderData& render_
 }
 
 /**
-* Returns true if the bounce was sampled successfully,
-* false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
-*/
-HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload,
-	ColorRGB32F& ray_throughput_to_visible_point, HitInfo& closest_hit_info,
-	float3_t view_direction, hiprtRay& out_ray, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr, float* out_bsdf_pdf = nullptr)
+ * Returns true if the bounce was sampled successfully,
+ * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
+ */
+HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& render_data,
+															  RayPayload& ray_payload,
+															  ColorRGB32F& ray_throughput_to_visible_point,
+															  HitInfo& closest_hit_info,
+															  float3_t view_direction,
+															  hiprtRay& out_ray,
+															  Xorshift32Generator& random_number_generator,
+															  BSDFIncidentLightInfo* incident_light_info = nullptr,
+															  float* out_bsdf_pdf						 = nullptr)
 {
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
 	float bsdf_pdf;
-	path_tracing_sample_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator, incident_light_info);
+	path_tracing_sample_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf,
+											 random_number_generator, incident_light_info);
 
 	if (out_bsdf_pdf != nullptr)
 		*out_bsdf_pdf = bsdf_pdf;
@@ -82,10 +94,11 @@ HIPRT_HOST_DEVICE bool restir_gi_compute_next_indirect_bounce(HIPRTRenderData& r
 	if (bsdf_pdf <= 0.0f)
 		return false;
 
-	if (!restir_gi_update_ray_throughputs(render_data, ray_payload, ray_throughput_to_visible_point, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator))
+	if (!restir_gi_update_ray_throughputs(render_data, ray_payload, ray_throughput_to_visible_point, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf,
+										  random_number_generator))
 		return false;
 
-	out_ray.origin = closest_hit_info.inter_point;
+	out_ray.origin	  = closest_hit_info.inter_point;
 	out_ray.direction = bounce_direction;
 
 	return true;

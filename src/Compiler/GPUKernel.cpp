@@ -29,15 +29,30 @@ GPUKernel::GPUKernel(const std::string& kernel_file_path, const std::string& ker
 	m_kernel_function_name = kernel_function_name;
 }
 
-std::string GPUKernel::get_kernel_file_path() const { return m_kernel_file_path; }
+std::string GPUKernel::get_kernel_file_path() const
+{
+	return m_kernel_file_path;
+}
 
-std::string GPUKernel::get_kernel_function_name() const { return m_kernel_function_name; }
+std::string GPUKernel::get_kernel_function_name() const
+{
+	return m_kernel_function_name;
+}
 
-void GPUKernel::set_kernel_file_path(const std::string& kernel_file_path) { m_kernel_file_path = kernel_file_path; }
+void GPUKernel::set_kernel_file_path(const std::string& kernel_file_path)
+{
+	m_kernel_file_path = kernel_file_path;
+}
 
-void GPUKernel::set_kernel_function_name(const std::string& kernel_function_name) { m_kernel_function_name = kernel_function_name; }
+void GPUKernel::set_kernel_function_name(const std::string& kernel_function_name)
+{
+	m_kernel_function_name = kernel_function_name;
+}
 
-void GPUKernel::add_additional_macro_for_compilation(const std::string& name, int value) { m_additional_compilation_macros[name] = value; }
+void GPUKernel::add_additional_macro_for_compilation(const std::string& name, int value)
+{
+	m_additional_compilation_macros[name] = value;
+}
 
 std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 {
@@ -92,9 +107,15 @@ int GPUKernel::get_kernel_attribute(oroFunction_attribute attribute) const
 	return numRegs;
 }
 
-GPUKernelCompilerOptions& GPUKernel::get_kernel_options() { return m_compiler_options; }
+GPUKernelCompilerOptions& GPUKernel::get_kernel_options()
+{
+	return m_compiler_options;
+}
 
-const GPUKernelCompilerOptions& GPUKernel::get_kernel_options() const { return m_compiler_options; }
+const GPUKernelCompilerOptions& GPUKernel::get_kernel_options() const
+{
+	return m_compiler_options;
+}
 
 void GPUKernel::synchronize_options_with(std::shared_ptr<GPUKernelCompilerOptions> other_options, const std::unordered_set<std::string>& options_excluded)
 {
@@ -176,7 +197,10 @@ void GPUKernel::parse_option_macros_used()
 	m_option_macro_invalidated = false;
 }
 
-bool GPUKernel::uses_macro(const std::string& name) const { return m_used_option_macros.find(name) != m_used_option_macros.end(); }
+bool GPUKernel::uses_macro(const std::string& name) const
+{
+	return m_used_option_macros.find(name) != m_used_option_macros.end();
+}
 
 float GPUKernel::compute_execution_time()
 {
@@ -191,13 +215,25 @@ float GPUKernel::compute_execution_time()
 	return out;
 }
 
-float GPUKernel::get_last_execution_time() { return m_last_execution_time; }
+float GPUKernel::get_last_execution_time()
+{
+	return m_last_execution_time;
+}
 
-bool GPUKernel::has_been_compiled() const { return m_kernel_function != nullptr; }
+bool GPUKernel::has_been_compiled() const
+{
+	return m_kernel_function != nullptr;
+}
 
-bool GPUKernel::is_precompiled() const { return m_is_precompiled_kernel; }
+bool GPUKernel::is_precompiled() const
+{
+	return m_is_precompiled_kernel;
+}
 
-void GPUKernel::set_precompiled(bool precompiled) { m_is_precompiled_kernel = precompiled; }
+void GPUKernel::set_precompiled(bool precompiled)
+{
+	m_is_precompiled_kernel = precompiled;
+}
 
 void GPUKernel::launch_asynchronous(int block_size_x, int block_size_y, int nb_threads_x, int nb_threads_y, void** launch_args, oroStream_t stream)
 {

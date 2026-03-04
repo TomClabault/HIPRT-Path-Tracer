@@ -15,7 +15,7 @@
 
 #include "HostDeviceCommon/AtomicType.h"
 
-template<typename T, template<typename> class Container>
+template <typename T, template <typename> class Container>
 using GenericAtomicType = typename std::conditional_t<std::is_same<Container<T>, std::vector<T>>::value, AtomicType<T>, T>;
 
 // Helper to detect std::atomic<...>
@@ -25,11 +25,15 @@ using GenericAtomicType = typename std::conditional_t<std::is_same<Container<T>,
 //
 // By inheriting from std::false_type or std::true_type, we can check at compile time
 // what's our ::value and use a constexpr if() on that
-template<typename T>
-struct IsStdAtomic : std::false_type {};
+template <typename T>
+struct IsStdAtomic : std::false_type
+{
+};
 
-template<typename U>
-struct IsStdAtomic<std::atomic<U>> : std::true_type {};
+template <typename U>
+struct IsStdAtomic<std::atomic<U>> : std::true_type
+{
+};
 
 /**
  * Can be used to create a structure of arrays for multiple buffers of different types.
@@ -43,9 +47,7 @@ struct IsStdAtomic<std::atomic<U>> : std::true_type {};
  *      - resize(int new_element_count) -> resizes the container to hold new_element_count elements
  *      - size() -> returns the number of elements in the container
  */
-template<
-	template<typename> class Container,
-	typename... Types>
+template <template <typename> class Container, typename... Types>
 struct GenericSoA
 {
 	template <typename T>
@@ -62,7 +64,7 @@ struct GenericSoA
 		resize_with_exclusions_internal(new_element_count, excluded_buffer_indices, std::index_sequence_for<Types...>{});
 	}
 
-	template<int bufferIndex>
+	template <int bufferIndex>
 	void resize_one_buffer(std::size_t new_element_count)
 	{
 		resize_buffer_internal(get_buffer<bufferIndex>(), new_element_count);
@@ -73,10 +75,7 @@ struct GenericSoA
 		std::size_t total = 0;
 
 		// For each container, add sizeof(value_type) * size()
-		std::apply([&](auto const&... buffer)
-			{
-				((total += buffer.size() * sizeof(BufferTypeFromVariable<decltype(buffer)>)), ...);
-			}, buffers);
+		std::apply([&](auto const&... buffer) { ((total += buffer.size() * sizeof(BufferTypeFromVariable<decltype(buffer)>)), ...); }, buffers);
 
 		return total;
 	}
@@ -86,7 +85,7 @@ struct GenericSoA
 		return std::get<0>(buffers).size();
 	}
 
-	template<int bufferIndex>
+	template <int bufferIndex>
 	void memset_buffer(BufferTypeFromIndex<bufferIndex> memset_value)
 	{
 		if constexpr (IsCPUBuffer::value)
@@ -117,25 +116,25 @@ struct GenericSoA
 			return get_buffer<bufferIndex>().download_data();
 	}
 
-	template<int bufferIndex>
+	template <int bufferIndex>
 	auto& get_buffer()
 	{
 		return std::get<bufferIndex>(buffers);
 	}
 
-	template<int bufferIndex>
+	template <int bufferIndex>
 	const auto& get_buffer() const
 	{
 		return std::get<bufferIndex>(buffers);
 	}
 
-	template<int bufferIndex>
+	template <int bufferIndex>
 	auto* get_buffer_data_ptr()
 	{
 		return std::get<bufferIndex>(buffers).data();
 	}
 
-	template<int bufferIndex>
+	template <int bufferIndex>
 	auto* get_buffer_data_atomic_ptr()
 	{
 		if constexpr (IsCPUBuffer::value)
@@ -188,18 +187,20 @@ struct GenericSoA
 	void free()
 	{
 		// Applies clear() on each buffer in the tuple
-		std::apply([](auto&... buffer)
-			{
-				if constexpr (IsCPUBuffer::value)
-					// decltype here gives us the exact type of 'buffer' which can be std::vector<float>& for example,
-					// **with** the reference type
-					//
-					// But we want to clear the buffer by overriding it with a newly instantiated buffer so we don't want
-					// the reference, hence the use of std::decay_t
-					((buffer = std::decay_t<decltype(buffer)>{}), ...);
-				else
-					((buffer.free()), ...);
-			}, buffers);
+		std::apply(
+								[](auto&... buffer)
+								{
+									if constexpr (IsCPUBuffer::value)
+										// decltype here gives us the exact type of 'buffer' which can be std::vector<float>& for example,
+										// **with** the reference type
+										//
+										// But we want to clear the buffer by overriding it with a newly instantiated buffer so we don't want
+										// the reference, hence the use of std::decay_t
+										((buffer = std::decay_t<decltype(buffer)>{}), ...);
+									else
+										((buffer.free()), ...);
+								},
+								buffers);
 	}
 
 private:
@@ -207,9 +208,7 @@ private:
 	void resize_with_exclusions_internal(std::size_t new_element_count, const std::unordered_set<int>& excluded_buffer_indices, std::index_sequence<indices...>)
 	{
 		// If the current buffer being processed has an index that is excluded, let's not resize it
-		((excluded_buffer_indices.count(indices) == 0
-			? resize_buffer_internal(std::get<indices>(buffers), new_element_count)
-			: void()), ...);
+		((excluded_buffer_indices.count(indices) == 0 ? resize_buffer_internal(std::get<indices>(buffers), new_element_count) : void()), ...);
 	}
 
 	template <typename BufferType>
@@ -229,7 +228,7 @@ private:
 
 namespace GenericSoAHelpers
 {
-	template<template<typename> class BufferContainer, typename T, typename U>
+	template <template <typename> class BufferContainer, typename T, typename U>
 	void memset_buffer(BufferContainer<T>& buffer, U memset_value)
 	{
 		if constexpr (std::is_same_v<BufferContainer<T>, std::vector<T>>)
@@ -254,7 +253,7 @@ namespace GenericSoAHelpers
 		}
 	}
 
-	template<template<typename> class BufferContainer, typename T>
+	template <template <typename> class BufferContainer, typename T>
 	void resize(BufferContainer<T>& buffer, std::size_t new_size)
 	{
 		if constexpr (IsStdAtomic<T>::value)
@@ -265,6 +264,6 @@ namespace GenericSoAHelpers
 		else
 			buffer.resize(new_size);
 	}
-}
+} // namespace GenericSoAHelpers
 
 #endif

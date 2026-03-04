@@ -11,16 +11,16 @@
 
 void WindowsRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
-	void* user_pointer = glfwGetWindowUserPointer(window);
+	void* user_pointer			= glfwGetWindowUserPointer(window);
 	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
 
-	std::shared_ptr<RenderWindowMouseInteractor> interactor_instance = render_window->get_mouse_interactor();
+	std::shared_ptr<RenderWindowMouseInteractor> interactor_instance	   = render_window->get_mouse_interactor();
 	std::shared_ptr<WindowsRenderWindowMouseInteractor> windows_interactor = std::dynamic_pointer_cast<WindowsRenderWindowMouseInteractor>(interactor_instance);
 
 	// If it is the render window that is hovered, we're going to move the camera so we take
 	// the inputs
 	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
-	bool imgui_wants_mouse = ImGui::GetIO().WantCaptureMouse && !render_window_hovered;
+	bool imgui_wants_mouse	   = ImGui::GetIO().WantCaptureMouse && !render_window_hovered;
 
 	switch (button)
 	{
@@ -50,10 +50,10 @@ void WindowsRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* 
 
 void WindowsRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	void* user_pointer = glfwGetWindowUserPointer(window);
+	void* user_pointer			= glfwGetWindowUserPointer(window);
 	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
 
-	std::shared_ptr<RenderWindowMouseInteractor> interactor_instance = render_window->get_mouse_interactor();
+	std::shared_ptr<RenderWindowMouseInteractor> interactor_instance	   = render_window->get_mouse_interactor();
 	std::shared_ptr<WindowsRenderWindowMouseInteractor> windows_interactor = std::dynamic_pointer_cast<WindowsRenderWindowMouseInteractor>(interactor_instance);
 
 	ImGuiIO& io = ImGui::GetIO();
@@ -61,7 +61,7 @@ void WindowsRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* 
 	// If it is the render window that is hovered, we're going to move the camera so we take
 	// the inputs
 	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
-	bool imgui_want_mouse = io.WantCaptureMouse && !render_window_hovered;
+	bool imgui_want_mouse	   = io.WantCaptureMouse && !render_window_hovered;
 	if (!imgui_want_mouse)
 	{
 		if (windows_interactor->m_just_pressed)

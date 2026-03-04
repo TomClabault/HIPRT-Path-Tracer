@@ -25,7 +25,6 @@ public:
 	void select_compute_program(DisplayViewType display_view);
 	void resize_output_image(int width, int height);
 
-
 	/**
 	 * A filename with a time stamp, the render resolution and the
 	 * number of samples is automatically generated:
@@ -41,7 +40,7 @@ public:
 
 private:
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
-	RenderWindow* m_render_window = nullptr;
+	RenderWindow* m_render_window			= nullptr;
 
 	/**
 	 * Compute shader program to use for the screenshot given a certain display view type
@@ -52,8 +51,8 @@ private:
 	 */
 	std::shared_ptr<OpenGLProgram> m_active_compute_program;
 
-	GLuint m_output_image = 0;
-	int m_compute_output_image_width = -1;
+	GLuint m_output_image			  = 0;
+	int m_compute_output_image_width  = -1;
 	int m_compute_output_image_height = -1;
 };
 

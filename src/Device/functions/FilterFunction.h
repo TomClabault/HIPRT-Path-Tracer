@@ -13,12 +13,12 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
- /**
-  * This filter function handles self intersection avoidance and alpha testing
-  *
-  * return FALSE if the intersection is ACCEPTED
-  * return true if the intersection is rejected
-  */
+/**
+ * This filter function handles self intersection avoidance and alpha testing
+ *
+ * return FALSE if the intersection is ACCEPTED
+ * return true if the intersection is rejected
+ */
 HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
 {
 	FilterFunctionPayload* payload = reinterpret_cast<FilterFunctionPayload*>(payld);
@@ -50,7 +50,7 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 
 	if (payload->bounce >= payload->render_data->render_settings.alpha_testing_indirect_bounce)
 		// Alpha testing is disabled at the current bounce
-		// 
+		//
 		// Returning false to indicate an intersection
 		return false;
 
@@ -61,9 +61,9 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 
 	// Composition both the alpha of the base color texture and the material
 	unsigned short int base_color_texture_index = payload->render_data->buffers.materials_buffer_soa.get_base_color_texture_index(material_index);
-	float base_color_alpha = get_hit_base_color_alpha(*payload->render_data, base_color_texture_index, global_triangle_index_hit, hit.uv);
-	float alpha_opacity = payload->render_data->buffers.materials_buffer_soa.get_alpha_opacity(material_index);
-	float composited_alpha = alpha_opacity * base_color_alpha;
+	float base_color_alpha						= get_hit_base_color_alpha(*payload->render_data, base_color_texture_index, global_triangle_index_hit, hit.uv);
+	float alpha_opacity							= payload->render_data->buffers.materials_buffer_soa.get_alpha_opacity(material_index);
+	float composited_alpha						= alpha_opacity * base_color_alpha;
 
 	if ((*payload->random_number_generator)() < composited_alpha)
 		// Alpha test not passing, the ray is blocked

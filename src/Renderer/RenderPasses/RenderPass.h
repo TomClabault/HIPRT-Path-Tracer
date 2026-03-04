@@ -35,7 +35,7 @@ public:
 
 	/**
 	 * Sets the compiler that this render pass is going to use for each of the kernels
- 	 */
+	 */
 	void set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions> options);
 
 	/**
@@ -380,7 +380,7 @@ protected:
 	// Name --> GPUKernel map
 	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 
-	// Compiler options for this render pass. This is a pointer to the 
+	// Compiler options for this render pass. This is a pointer to the
 	// compiler options of the render graph that holds this render pass
 	std::shared_ptr<GPUKernelCompilerOptions> m_compiler_options = nullptr;
 };

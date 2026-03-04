@@ -9,13 +9,13 @@
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
- /**
-  * Returns the cosine term of the given light source normal and the direction to the light source
-  * 'minus_direction_to_light' must be the direction *towards* the light but *negated*, such that
-  * dot(light_source_normal, minus_direction_to_light) > 0.0f (if the light isn't backfacing us)
-  *
-  * This function does the branching that allows backfacing lights or not
-  */
+/**
+ * Returns the cosine term of the given light source normal and the direction to the light source
+ * 'minus_direction_to_light' must be the direction *towards* the light but *negated*, such that
+ * dot(light_source_normal, minus_direction_to_light) > 0.0f (if the light isn't backfacing us)
+ *
+ * This function does the branching that allows backfacing lights or not
+ */
 HIPRT_DEVICE static float compute_cosine_term_at_light_source(float3_t light_source_normal, float3_t minus_direction_to_light)
 {
 	// The cosine term is the dot product between the light source normal and the direction to the shading point

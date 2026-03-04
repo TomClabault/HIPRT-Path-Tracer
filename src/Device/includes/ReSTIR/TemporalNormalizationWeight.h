@@ -10,10 +10,10 @@
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 
- // By convention, the temporal neighbor is the first one to be resampled in for loops 
- // (for looping over the neighbors when resampling / computing MIS weights)
- // So instead of hardcoding 0 everywhere in the code, we just basically give it a name
- // with a #define
+// By convention, the temporal neighbor is the first one to be resampled in for loops
+// (for looping over the neighbors when resampling / computing MIS weights)
+// So instead of hardcoding 0 everywhere in the code, we just basically give it a name
+// with a #define
 #define TEMPORAL_NEIGHBOR_ID 0
 // Same when resampling the initial candidates
 #define INITIAL_CANDIDATES_ID 1
@@ -33,19 +33,23 @@
  * We now have one structure per mis weight type method one #if / #elif
  */
 template <int BiasCorrectionMode, bool IsReSTIRGI>
-struct ReSTIRTemporalNormalizationWeight {};
+struct ReSTIRTemporalNormalizationWeight
+{
+};
 
 template <bool IsReSTIRGI>
 struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float final_reservoir_weight_sum,
-		int initial_candidates_M, int temporal_neighbor_M,
-		float& out_normalization_nume, float& out_normalization_denom)
+											 int initial_candidates_M,
+											 int temporal_neighbor_M,
+											 float& out_normalization_nume,
+											 float& out_normalization_denom)
 	{
 		if (final_reservoir_weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
-			out_normalization_nume = 1.0f;
+			out_normalization_nume	= 1.0f;
 			out_normalization_denom = 1.0f;
 
 			return;
@@ -65,16 +69,20 @@ template <bool IsReSTIRGI>
 struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
-		int initial_candidates_M, int temporal_neighbor_M,
-		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
-		float& out_normalization_nume, float& out_normalization_denom,
-		Xorshift32Generator& random_number_generator)
+											 const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample,
+											 float final_reservoir_weight_sum,
+											 int initial_candidates_M,
+											 int temporal_neighbor_M,
+											 ReSTIRSurface& center_pixel_surface,
+											 ReSTIRSurface& temporal_neighbor_surface,
+											 float& out_normalization_nume,
+											 float& out_normalization_denom,
+											 Xorshift32Generator& random_number_generator)
 	{
 		if (final_reservoir_weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
-			out_normalization_nume = 1.0f;
+			out_normalization_nume	= 1.0f;
 			out_normalization_denom = 1.0f;
 
 			return;
@@ -88,7 +96,7 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReS
 		// We're resampling from two reservoirs (the initial candidates and the temporal neighbor).
 		// Either of these two reservoirs could have potentially produced the sample that we retained
 		// in the 'reservoir' parameter.
-		// 
+		//
 		// The question is: how many neighbors could have produced that sample?
 		// The sample could have been produced by a neighbor if the target function of the neighbor with
 		// that sample is > so we're going to check both target function here.
@@ -97,10 +105,12 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReS
 		float center_pixel_target_function;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
+			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
+																												 center_pixel_surface, random_number_generator);
 		else
 			// ReSTIR DI target function
-			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
+			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
+																												 center_pixel_surface, random_number_generator);
 
 		// if the sample contained in our final reservoir (the 'reservoir' parameter) could have been produced by the center
 		// pixel, we're adding the confidence of that pixel to the denominator for normalization
@@ -112,10 +122,12 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_1_OVER_Z, IsReS
 			float temporal_neighbor_target_function;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
+										render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
-				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+										render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_M;
 		}
 	}
@@ -125,17 +137,21 @@ template <bool IsReSTIRGI>
 struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
-		int initial_candidates_M, int temporal_neighbor_M,
-		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
-		int selected_neighbor,
-		float& out_normalization_nume, float& out_normalization_denom,
-		Xorshift32Generator& random_number_generator)
+											 const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample,
+											 float final_reservoir_weight_sum,
+											 int initial_candidates_M,
+											 int temporal_neighbor_M,
+											 ReSTIRSurface& center_pixel_surface,
+											 ReSTIRSurface& temporal_neighbor_surface,
+											 int selected_neighbor,
+											 float& out_normalization_nume,
+											 float& out_normalization_denom,
+											 Xorshift32Generator& random_number_generator)
 	{
 		if (final_reservoir_weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
-			out_normalization_nume = 1.0f;
+			out_normalization_nume	= 1.0f;
 			out_normalization_denom = 1.0f;
 
 			return;
@@ -144,10 +160,12 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, IsReS
 		float center_pixel_target_function;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
+			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
+																												 center_pixel_surface, random_number_generator);
 		else
 			// ReSTIR DI target function
-			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
+			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample,
+																												 center_pixel_surface, random_number_generator);
 
 		float temporal_neighbor_target_function = 0.0f;
 		if (temporal_neighbor_M > 0)
@@ -158,10 +176,12 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, IsReS
 			// a sampling technique/strategy to take into account in the MIS weight
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_MISWeightsUseVisibility>(
+										render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
-				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_MISWeightsUseVisibility>(
+										render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 		}
 
 		if (selected_neighbor == INITIAL_CANDIDATES_ID)
@@ -181,7 +201,7 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_LIKE, IsReS
 		{
 			// If not using confidence weights, settings the weights to 1 so that everyone has the same weight
 			initial_candidates_M = 1;
-			temporal_neighbor_M = 1;
+			temporal_neighbor_M	 = 1;
 		}
 
 		out_normalization_denom = center_pixel_target_function * initial_candidates_M + temporal_neighbor_target_function * temporal_neighbor_M;
@@ -193,9 +213,9 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_MIS_GBH, IsReST
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
-		// Nothing more to normalize, everything is already handled when resampling the 
+		// Nothing more to normalize, everything is already handled when resampling the
 		// neighbors with balance heuristic MIS weights in the m_i terms
-		out_normalization_nume = 1.0f;
+		out_normalization_nume	= 1.0f;
 		out_normalization_denom = 1.0f;
 	}
 };
@@ -205,9 +225,9 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS, I
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
-		// Nothing more to normalize, everything is already handled when resampling the 
+		// Nothing more to normalize, everything is already handled when resampling the
 		// neighbors. Everything is already in the MIS weights m_i.
-		out_normalization_nume = 1.0f;
+		out_normalization_nume	= 1.0f;
 		out_normalization_denom = 1.0f;
 	}
 };
@@ -217,9 +237,9 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_PAIRWISE_MIS_DE
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
-		// Nothing more to normalize, everything is already handled when resampling the 
+		// Nothing more to normalize, everything is already handled when resampling the
 		// neighbors. Everything is already in the MIS weights m_i.
-		out_normalization_nume = 1.0f;
+		out_normalization_nume	= 1.0f;
 		out_normalization_denom = 1.0f;
 	}
 };
@@ -229,9 +249,9 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_SYMMETRIC_RATIO
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
-		// Nothing more to normalize, everything is already handled when resampling the 
+		// Nothing more to normalize, everything is already handled when resampling the
 		// neighbors. Everything is already in the MIS weights m_i.
-		out_normalization_nume = 1.0f;
+		out_normalization_nume	= 1.0f;
 		out_normalization_denom = 1.0f;
 	}
 };
@@ -241,9 +261,9 @@ struct ReSTIRTemporalNormalizationWeight<RESTIR_MIS_WEIGHTS_TYPE_ASYMMETRIC_RATI
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
-		// Nothing more to normalize, everything is already handled when resampling the 
+		// Nothing more to normalize, everything is already handled when resampling the
 		// neighbors. Everything is already in the MIS weights m_i.
-		out_normalization_nume = 1.0f;
+		out_normalization_nume	= 1.0f;
 		out_normalization_denom = 1.0f;
 	}
 };

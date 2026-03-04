@@ -30,11 +30,11 @@ public:
 	bool is_interacting();
 
 protected:
-	bool m_z_pressed = false;
-	bool m_q_pressed = false;
-	bool m_s_pressed = false;
-	bool m_d_pressed = false;
-	bool m_space_pressed = false;
+	bool m_z_pressed	  = false;
+	bool m_q_pressed	  = false;
+	bool m_s_pressed	  = false;
+	bool m_d_pressed	  = false;
+	bool m_space_pressed  = false;
 	bool m_lshift_pressed = false;
 
 	RenderWindow* m_render_window = nullptr;

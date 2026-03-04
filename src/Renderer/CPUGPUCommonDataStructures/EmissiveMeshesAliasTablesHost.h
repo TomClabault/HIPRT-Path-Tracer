@@ -12,13 +12,13 @@
 
 #include "Scene/SceneParser.h"
 
- /**
-  * Contains an alias table for sampling emissive *meshes* in the scene according
-  * to their emissive power. Textured emitter are not considered
-  *
-  * This also contains the alias tables of all meshes in a single linear buffer which can
-  * be used to sample an emissive triangle within a mesh according to its power.
-  */
+/**
+ * Contains an alias table for sampling emissive *meshes* in the scene according
+ * to their emissive power. Textured emitter are not considered
+ *
+ * This also contains the alias tables of all meshes in a single linear buffer which can
+ * be used to sample an emissive triangle within a mesh according to its power.
+ */
 template <template <typename> typename DataContainer>
 struct EmissiveMeshesAliasTablesHost
 {
@@ -76,8 +76,10 @@ struct EmissiveMeshesAliasTablesHost
 		unsigned int cumulative_start_index = 0;
 		for (int i = 0; i < emissive_meshes.size(); i++)
 		{
-			std::copy(emissive_meshes[i].alias_probas.begin(), emissive_meshes[i].alias_probas.begin() + emissive_meshes[i].emissive_triangle_count, all_alias_tables_probas_staging.begin() + cumulative_start_index);
-			std::copy(emissive_meshes[i].alias_aliases.begin(), emissive_meshes[i].alias_aliases.begin() + emissive_meshes[i].emissive_triangle_count, all_alias_tables_aliases_staging.begin() + cumulative_start_index);
+			std::copy(emissive_meshes[i].alias_probas.begin(), emissive_meshes[i].alias_probas.begin() + emissive_meshes[i].emissive_triangle_count,
+					  all_alias_tables_probas_staging.begin() + cumulative_start_index);
+			std::copy(emissive_meshes[i].alias_aliases.begin(), emissive_meshes[i].alias_aliases.begin() + emissive_meshes[i].emissive_triangle_count,
+					  all_alias_tables_aliases_staging.begin() + cumulative_start_index);
 
 			cumulative_start_index += emissive_meshes[i].emissive_triangle_count;
 		}
@@ -102,14 +104,14 @@ struct EmissiveMeshesAliasTablesHost
 		// Uploading the alias table of the meshes
 		upload_to_device_buffer(m_meshes_alias_table.aliases, meshes_alias_table_aliases);
 		upload_to_device_buffer(m_meshes_alias_table.probas, meshes_alias_table_probas);
-		m_meshes_alias_table.size = meshes_alias_table_aliases.size();
+		m_meshes_alias_table.size		  = meshes_alias_table_aliases.size();
 		m_meshes_alias_table.sum_elements = total_meshes_power_sum;
 
 		std::vector<float3_t> meshes_average_points(parsed_scene.parsed_emissive_meshes.emissive_meshes.size());
 		std::vector<float3_t> meshes_representative_normals(parsed_scene.parsed_emissive_meshes.emissive_meshes.size());
 		for (int i = 0; i < emissive_meshes.size(); i++)
 		{
-			meshes_average_points[i] = parsed_scene.parsed_emissive_meshes.emissive_meshes[i].average_mesh_point;
+			meshes_average_points[i]		 = parsed_scene.parsed_emissive_meshes.emissive_meshes[i].average_mesh_point;
 			meshes_representative_normals[i] = parsed_scene.parsed_emissive_meshes.emissive_meshes[i].representative_normal;
 		}
 
@@ -125,7 +127,8 @@ struct EmissiveMeshesAliasTablesHost
 		upload_to_device_buffer(m_meshes_emissive_triangles_PDFs, parsed_scene.parsed_emissive_meshes.emissive_meshes_triangles_PDFs);
 		upload_to_device_buffer(m_meshes_emissive_triangles_indices, parsed_scene.emissive_triangles_primitive_indices);
 		upload_to_device_buffer(m_meshes_PDFs, meshes_PDFs);
-		upload_to_device_buffer(m_global_triangle_index_to_emissive_mesh_index, parsed_scene.parsed_emissive_meshes.global_triangle_index_to_emissive_mesh_index);
+		upload_to_device_buffer(m_global_triangle_index_to_emissive_mesh_index,
+								parsed_scene.parsed_emissive_meshes.global_triangle_index_to_emissive_mesh_index);
 	}
 
 	unsigned int get_emissive_mesh_count() const
@@ -137,20 +140,20 @@ struct EmissiveMeshesAliasTablesHost
 	{
 		EmissiveMeshesAliasTablesDevice out;
 
-		out.alias_table_count = get_emissive_mesh_count();
-		out.offsets = m_offsets_into_alias_table.data();
+		out.alias_table_count			  = get_emissive_mesh_count();
+		out.offsets						  = m_offsets_into_alias_table.data();
 		out.individual_alias_tables_sizes = m_meshes_alias_tables_sizes.data();
 
-		out.meshes_alias_table = m_meshes_alias_table.to_device();
-		out.meshes_PDFs = m_meshes_PDFs.data();
-		out.meshes_average_points = m_meshes_average_points.data();
+		out.meshes_alias_table			  = m_meshes_alias_table.to_device();
+		out.meshes_PDFs					  = m_meshes_PDFs.data();
+		out.meshes_average_points		  = m_meshes_average_points.data();
 		out.meshes_representative_normals = m_meshes_representative_normals.data();
-		out.meshes_total_power = m_meshes_total_power.data();
+		out.meshes_total_power			  = m_meshes_total_power.data();
 
-		out.alias_tables_aliases = m_alias_tables_aliases.data();
-		out.alias_tables_probas = m_alias_tables_probas.data();
-		out.meshes_emissive_triangles_PDFs = m_meshes_emissive_triangles_PDFs.data();
-		out.meshes_triangle_indices = m_meshes_emissive_triangles_indices.data();
+		out.alias_tables_aliases						 = m_alias_tables_aliases.data();
+		out.alias_tables_probas							 = m_alias_tables_probas.data();
+		out.meshes_emissive_triangles_PDFs				 = m_meshes_emissive_triangles_PDFs.data();
+		out.meshes_triangle_indices						 = m_meshes_emissive_triangles_indices.data();
 		out.global_triangle_index_to_emissive_mesh_index = m_global_triangle_index_to_emissive_mesh_index.data();
 
 		return out;

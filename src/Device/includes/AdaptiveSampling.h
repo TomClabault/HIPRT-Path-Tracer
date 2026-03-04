@@ -10,11 +10,11 @@
 
 HIPRT_DEVICE static float get_pixel_confidence_interval(const HIPRTRenderData& render_data, int pixel_index, int pixel_sample_count, float& average_luminance)
 {
-	float luminance = render_data.buffers.accumulated_ray_colors[pixel_index].luminance();
+	float luminance	  = render_data.buffers.accumulated_ray_colors[pixel_index].luminance();
 	average_luminance = luminance / (pixel_sample_count + 1);
 
 	float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[pixel_index];
-	float pixel_variance = (squared_luminance - luminance * average_luminance) / (pixel_sample_count + 1);
+	float pixel_variance	= (squared_luminance - luminance * average_luminance) / (pixel_sample_count + 1);
 
 	return 1.96f * hippt::sqrt(pixel_variance) / hippt::sqrt(pixel_sample_count + 1);
 }
@@ -30,7 +30,7 @@ HIPRT_DEVICE static float get_pixel_confidence_interval(const HIPRTRenderData& r
 HIPRT_DEVICE static bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index, bool& pixel_converged)
 {
 	const HIPRTRenderSettings& render_settings = render_data.render_settings;
-	const AuxiliaryBuffers& aux_buffers = render_data.aux_buffers;
+	const AuxiliaryBuffers& aux_buffers		   = render_data.aux_buffers;
 
 	if (!render_settings.has_access_to_adaptive_sampling_buffers())
 		// Adaptive sampling is not on so returning true to indicate
@@ -70,9 +70,9 @@ HIPRT_DEVICE static bool adaptive_sampling(const HIPRTRenderData& render_data, i
 	// Only counting the convergence of pixels according to
 	// the pixel stop noise threshold if adaptive sampling is not enabled
 	//
-	// The rationale is that if we have both adaptive sampling and pixel stop noise threshold 
-	// enabled, we probably want to use adaptive sampling only but also stop rendering after 
-	// a certain proportion of pixels have converged and we don't actually want to use the 
+	// The rationale is that if we have both adaptive sampling and pixel stop noise threshold
+	// enabled, we probably want to use adaptive sampling only but also stop rendering after
+	// a certain proportion of pixels have converged and we don't actually want to use the
 	// "stop pixel noise threshold" but only the "stop pixel convergence proportion"
 	else if (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.use_pixel_stop_noise_threshold)
 	{
@@ -83,10 +83,10 @@ HIPRT_DEVICE static bool adaptive_sampling(const HIPRTRenderData& render_data, i
 
 		// The value of pixel_converged will be used outside of this function
 		pixel_converged =
-			// Converged enough
-			(confidence_interval <= render_settings.stop_pixel_noise_threshold * average_luminance)
-			// At least 2 samples because we can't evaluate the variance with only 1 sample
-			&& (render_settings.sample_number > 1);
+								// Converged enough
+								(confidence_interval <= render_settings.stop_pixel_noise_threshold * average_luminance)
+								// At least 2 samples because we can't evaluate the variance with only 1 sample
+								&& (render_settings.sample_number > 1);
 
 		int current_converged_count = aux_buffers.pixel_converged_sample_count[pixel_index];
 		if (pixel_converged && current_converged_count == -1)

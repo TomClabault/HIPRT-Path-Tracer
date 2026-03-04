@@ -94,4 +94,3 @@ void OpenGLProgram::set_uniform(const char* name, const float4_t& value)
 {
 	glUniform4f(glGetUniformLocation(m_program, name), value.x, value.y, value.z, value.w);
 }
-

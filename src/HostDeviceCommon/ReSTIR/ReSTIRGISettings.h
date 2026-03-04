@@ -35,12 +35,12 @@ struct ReSTIRGISpatialPassSettings
 
 enum ReSTIRGIDebugView
 {
-	NO_DEBUG = 0,
-	FINAL_RESERVOIR_UCW = 1,
-	TARGET_FUNCTION = 2,
-	WEIGHT_SUM = 3,
-	M_COUNT = 4,
-	PER_PIXEL_REUSE_RADIUS = 5,
+	NO_DEBUG							  = 0,
+	FINAL_RESERVOIR_UCW					  = 1,
+	TARGET_FUNCTION						  = 2,
+	WEIGHT_SUM							  = 3,
+	M_COUNT								  = 4,
+	PER_PIXEL_REUSE_RADIUS				  = 5,
 	PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE = 6,
 };
 
@@ -50,66 +50,59 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	{
 		common_temporal_pass.do_temporal_reuse_pass = true;
 
-		common_temporal_pass.use_permutation_sampling = false;
+		common_temporal_pass.use_permutation_sampling		  = false;
 		common_temporal_pass.permutation_sampling_random_bits = 42;
 
 		common_temporal_pass.max_neighbor_search_count = 8;
-		common_temporal_pass.neighbor_search_radius = 4;
+		common_temporal_pass.neighbor_search_radius	   = 4;
 
 		common_temporal_pass.temporal_buffer_clear_requested = false;
 
-
-
-
-
 		common_spatial_pass.do_spatial_reuse_pass = true;
 
-		common_spatial_pass.spatial_pass_index = 0;
-		common_spatial_pass.number_of_passes = 2;
-		common_spatial_pass.reuse_radius = 20;
+		common_spatial_pass.spatial_pass_index	 = 0;
+		common_spatial_pass.number_of_passes	 = 2;
+		common_spatial_pass.reuse_radius		 = 20;
 		common_spatial_pass.reuse_neighbor_count = 5;
 
 		common_spatial_pass.do_disocclusion_reuse_boost = false;
-		common_spatial_pass.disocclusion_reuse_count = 5;
+		common_spatial_pass.disocclusion_reuse_count	= 5;
 
-		common_spatial_pass.debug_neighbor_location = false;
+		common_spatial_pass.debug_neighbor_location			  = false;
 		common_spatial_pass.debug_neighbor_location_direction = 0;
 
-		common_spatial_pass.do_neighbor_rotation = false;
-		common_spatial_pass.spatial_neighbors_rng_seed = 42;
-		common_spatial_pass.coalesced_spatial_reuse = false;
+		common_spatial_pass.do_neighbor_rotation				   = false;
+		common_spatial_pass.spatial_neighbors_rng_seed			   = 42;
+		common_spatial_pass.coalesced_spatial_reuse				   = false;
 		common_spatial_pass.use_adaptive_directional_spatial_reuse = true;
 
-		common_spatial_pass.allow_converged_neighbors_reuse = false;
+		common_spatial_pass.allow_converged_neighbors_reuse		 = false;
 		common_spatial_pass.converged_neighbor_reuse_probability = 0.5f;
 
 		common_spatial_pass.compute_spatial_reuse_hit_rate = false;
 
-
-
-
 		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 37.5f;
 		neighbor_similarity_settings.normal_similarity_angle_precomp = 0.906307787f;
-		neighbor_similarity_settings.reject_using_geometric_normals = true;
+		neighbor_similarity_settings.reject_using_geometric_normals	 = true;
 
 		neighbor_similarity_settings.use_plane_distance_heuristic = true;
-		neighbor_similarity_settings.plane_distance_threshold = 0.1f;
+		neighbor_similarity_settings.plane_distance_threshold	  = 0.1f;
 
 		neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
-		neighbor_similarity_settings.roughness_similarity_threshold = 0.25f;
+		neighbor_similarity_settings.roughness_similarity_threshold		= 0.25f;
 
 		use_jacobian_rejection_heuristic = true;
-		jacobian_rejection_threshold = 15.0f;
+		jacobian_rejection_threshold	 = 15.0f;
 
 		use_neighbor_sample_point_roughness_heuristic = true;
-		neighbor_sample_point_roughness_threshold = 0.1f;
+		neighbor_sample_point_roughness_threshold	  = 0.1f;
 
 		// Very very small m-cap to avoid correlations
-		m_cap = 1;
+		m_cap				   = 1;
 		use_confidence_weights = true;
 
-		debug_view = ReSTIRGIDebugView::NO_DEBUG;
+		debug_view				= ReSTIRGIDebugView::NO_DEBUG;
 		debug_view_scale_factor = 1.0f;
 	}
 
@@ -144,9 +137,15 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	/**
 	 * This function is used by ImGui to get a pointer to the private member
 	 */
-	HIPRT_HOST_DEVICE float* get_jacobian_heuristic_threshold_pointer() { return &jacobian_rejection_threshold; }
+	HIPRT_HOST_DEVICE float* get_jacobian_heuristic_threshold_pointer()
+	{
+		return &jacobian_rejection_threshold;
+	}
 
-	HIPRT_HOST_DEVICE void set_jacobian_heuristic_threshold(float new_threshold) { jacobian_rejection_threshold = new_threshold; }
+	HIPRT_HOST_DEVICE void set_jacobian_heuristic_threshold(float new_threshold)
+	{
+		jacobian_rejection_threshold = new_threshold;
+	}
 
 private:
 	float jacobian_rejection_threshold;

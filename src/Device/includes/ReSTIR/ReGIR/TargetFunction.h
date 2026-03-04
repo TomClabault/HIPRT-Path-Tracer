@@ -30,7 +30,7 @@ HIPRT_DEVICE float ReGIR_grid_fill_evaluate_target_function(const HIPRTRenderDat
 															Xorshift32Generator& rng)
 {
 	float3_t to_light_direction = sample_position - surface.cell_point;
-	float distance_to_light	  = hippt::length(to_light_direction);
+	float distance_to_light		= hippt::length(to_light_direction);
 	to_light_direction /= distance_to_light;
 
 	float target_function = sample_emission.luminance() / hippt::square(distance_to_light);
@@ -179,7 +179,7 @@ HIPRT_DEVICE float ReGIR_shading_evaluate_target_function(const HIPRTRenderData&
 														  BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO)
 {
 	float3_t to_light_direction = point_on_light - shading_point;
-	float distance_to_light	  = hippt::length(to_light_direction);
+	float distance_to_light		= hippt::length(to_light_direction);
 	to_light_direction /= distance_to_light; // Normalization
 
 	float bsdf_pdf;

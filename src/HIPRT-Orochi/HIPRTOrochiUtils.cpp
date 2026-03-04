@@ -29,7 +29,8 @@ void orochi_rtc_check_error(orortcResult res, const char* file, uint32_t line)
 {
 	if (res != ORORTC_SUCCESS)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ORORTC error: '%s' [ %d ] on line %d in '%s'", orortcGetErrorString(res), res, line, file);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ORORTC error: '%s' [ %d ] on line %d in '%s'", orortcGetErrorString(res), res, line,
+								file);
 
 		Debug::debugbreak();
 		exit(EXIT_FAILURE);
@@ -116,15 +117,16 @@ namespace HIPPTOrochiUtils
 	}
 
 	hiprtError build_trace_kernel(hiprtContext ctxt,
-		const std::string& kernel_file_path,
-		const std::string& function_name,
-		hiprtApiFunction& kernel_function_out,
-		const std::vector<std::string>& additional_include_directories,
-		const std::vector<std::string>& compiler_options,
-		unsigned int num_geom_types, unsigned int num_ray_types,
-		bool use_compiler_cache,
-		hiprtFuncNameSet* func_name_set,
-		const std::string& additional_cache_key)
+								  const std::string& kernel_file_path,
+								  const std::string& function_name,
+								  hiprtApiFunction& kernel_function_out,
+								  const std::vector<std::string>& additional_include_directories,
+								  const std::vector<std::string>& compiler_options,
+								  unsigned int num_geom_types,
+								  unsigned int num_ray_types,
+								  bool use_compiler_cache,
+								  hiprtFuncNameSet* func_name_set,
+								  const std::string& additional_cache_key)
 	{
 		std::string kernel_source_code;
 		read_source_code(kernel_file_path, kernel_source_code);
@@ -143,23 +145,8 @@ namespace HIPPTOrochiUtils
 		}
 
 		const char* func_name_cstr = function_name.c_str();
-		return hiprtBuildTraceKernels(
-			ctxt,
-			1,
-			&func_name_cstr,
-			kernel_source_code.c_str(),
-			kernel_file_path.c_str(),
-			0,
-			nullptr,
-			nullptr,
-			compiler_options_cstr.size(),
-			compiler_options_cstr.size() > 0 ? compiler_options_cstr.data() : nullptr,
-			num_geom_types,
-			num_ray_types,
-			func_name_set,
-			&kernel_function_out,
-			nullptr,
-			use_compiler_cache,
-			additional_cache_key);
+		return hiprtBuildTraceKernels(ctxt, 1, &func_name_cstr, kernel_source_code.c_str(), kernel_file_path.c_str(), 0, nullptr, nullptr,
+									  compiler_options_cstr.size(), compiler_options_cstr.size() > 0 ? compiler_options_cstr.data() : nullptr, num_geom_types,
+									  num_ray_types, func_name_set, &kernel_function_out, nullptr, use_compiler_cache, additional_cache_key);
 	}
-}
+} // namespace HIPPTOrochiUtils

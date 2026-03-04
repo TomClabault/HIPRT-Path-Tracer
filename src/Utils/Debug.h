@@ -10,9 +10,9 @@ class Debug
 {
 public:
 	/**
-	  * Breaks the debugger when calling this function as if a breakpoint was hit.
-	  * Useful to be able to inspect the callstack at a given point in the program
-	  */
+	 * Breaks the debugger when calling this function as if a breakpoint was hit.
+	 * Useful to be able to inspect the callstack at a given point in the program
+	 */
 	static void debugbreak();
 };
 

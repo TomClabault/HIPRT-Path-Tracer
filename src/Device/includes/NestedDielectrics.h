@@ -11,24 +11,24 @@
 #include <hiprt/hiprt_common.h>
 
 #ifdef __KERNELCC__
- // On the GPU, the nested dielectrics stack is allocated in shared memory.
- // This means that all the entries of the nested dielectrics stacks are in shared memory.
- //
- // For example, for thread blocks of 64 and a NestedDielectricStackSize of 3, this gives us
- // a shared memory array of 3*64 = 192 entries.
- // 
- // We then need a mapping that "redirects" each thread to its proper entry in that 192-long array.
- // 
- // That's what this macro does, it takes an index in the stack as parameter (so 0, 1 or 2 for a NestedDielectricStackSize of 3)
- // and maps it to the index to use in the shared memory array by using the threadIdx.
- // 
- // Note that the mapping is written to minimize shared memory bank conflicts
+// On the GPU, the nested dielectrics stack is allocated in shared memory.
+// This means that all the entries of the nested dielectrics stacks are in shared memory.
+//
+// For example, for thread blocks of 64 and a NestedDielectricStackSize of 3, this gives us
+// a shared memory array of 3*64 = 192 entries.
+//
+// We then need a mapping that "redirects" each thread to its proper entry in that 192-long array.
+//
+// That's what this macro does, it takes an index in the stack as parameter (so 0, 1 or 2 for a NestedDielectricStackSize of 3)
+// and maps it to the index to use in the shared memory array by using the threadIdx.
+//
+// Note that the mapping is written to minimize shared memory bank conflicts
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
 
 #else
- // This macro is used to offset the index used to index the priority stack.
- // On the CPU, there is nothing to do, just use the given index, there is really nothing
- // special. The special case is for the GPU, explained above the GPU macro definition
+// This macro is used to offset the index used to index the priority stack.
+// On the CPU, there is nothing to do, just use the given index, there is really nothing
+// special. The special case is for the GPU, explained above the GPU macro definition
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
 #endif
 
@@ -41,24 +41,25 @@ struct StackPriorityEntry
 {
 	// How many bits for encoding the packed priority
 	// and its shift to locate the bits in the packed 32bits integer
-	static constexpr unsigned int PRIORITY_BIT_MASK = 0b1111;
+	static constexpr unsigned int PRIORITY_BIT_MASK	 = 0b1111;
 	static constexpr unsigned int PRIORITY_BIT_SHIFT = 0;
-	static constexpr unsigned int PRIORITY_MAXIMUM = PRIORITY_BIT_MASK;
+	static constexpr unsigned int PRIORITY_MAXIMUM	 = PRIORITY_BIT_MASK;
 	// How many bits for encoding the topmost flag
 	// and its shift to locate the bits in the packed 32bits integer
-	static constexpr unsigned int TOPMOST_BIT_MASK = 0b1;
+	static constexpr unsigned int TOPMOST_BIT_MASK	= 0b1;
 	static constexpr unsigned int TOPMOST_BIT_SHIFT = PRIORITY_BIT_SHIFT + 4;
 	// How many bits for encoding the odd_parity flag
 	// and its shift to locate the bits in the packed 32bits integer
-	static constexpr unsigned int ODD_PARTIY_BIT_MASK = 0b1;
+	static constexpr unsigned int ODD_PARTIY_BIT_MASK  = 0b1;
 	static constexpr unsigned int ODD_PARTIY_BIT_SHIFT = TOPMOST_BIT_SHIFT + 1;
 
 	// How many bits for encoding the material_index flag
 	// and its shift to locate the bits in the packed 32bits integer
 	// This is the rest of the bits after we've added the other flags
-	static constexpr unsigned int COMBINED_OTHER_FLAGS = (PRIORITY_BIT_MASK << PRIORITY_BIT_SHIFT) | (TOPMOST_BIT_MASK << TOPMOST_BIT_SHIFT) | (ODD_PARTIY_BIT_MASK << ODD_PARTIY_BIT_SHIFT);
+	static constexpr unsigned int COMBINED_OTHER_FLAGS =
+							(PRIORITY_BIT_MASK << PRIORITY_BIT_SHIFT) | (TOPMOST_BIT_MASK << TOPMOST_BIT_SHIFT) | (ODD_PARTIY_BIT_MASK << ODD_PARTIY_BIT_SHIFT);
 	static constexpr unsigned int MATERIAL_INDEX_BIT_SHIFT = ODD_PARTIY_BIT_SHIFT + 1;
-	static constexpr unsigned int MATERIAL_INDEX_BIT_MASK = (0xffffffff & (~COMBINED_OTHER_FLAGS)) >> MATERIAL_INDEX_BIT_SHIFT;
+	static constexpr unsigned int MATERIAL_INDEX_BIT_MASK  = (0xffffffff & (~COMBINED_OTHER_FLAGS)) >> MATERIAL_INDEX_BIT_SHIFT;
 	// This 'MATERIAL_INDEX_MAXIMUM' is just an alias basically
 	static constexpr unsigned int MATERIAL_INDEX_MAXIMUM = MATERIAL_INDEX_BIT_MASK;
 
@@ -94,25 +95,37 @@ struct StackPriorityEntry
 		packed_data |= (material_index & MATERIAL_INDEX_BIT_MASK) << MATERIAL_INDEX_BIT_SHIFT;
 	}
 
-	HIPRT_HOST_DEVICE int get_priority() const { return (packed_data >> PRIORITY_BIT_SHIFT) & PRIORITY_BIT_MASK; }
-	HIPRT_HOST_DEVICE bool get_topmost() const { return (packed_data >> TOPMOST_BIT_SHIFT) & TOPMOST_BIT_MASK; }
-	HIPRT_HOST_DEVICE bool get_odd_parity() const { return (packed_data >> ODD_PARTIY_BIT_SHIFT) & ODD_PARTIY_BIT_MASK; }
-	HIPRT_HOST_DEVICE int get_material_index() const { return (packed_data >> MATERIAL_INDEX_BIT_SHIFT) & MATERIAL_INDEX_BIT_MASK; }
+	HIPRT_HOST_DEVICE int get_priority() const
+	{
+		return (packed_data >> PRIORITY_BIT_SHIFT) & PRIORITY_BIT_MASK;
+	}
+	HIPRT_HOST_DEVICE bool get_topmost() const
+	{
+		return (packed_data >> TOPMOST_BIT_SHIFT) & TOPMOST_BIT_MASK;
+	}
+	HIPRT_HOST_DEVICE bool get_odd_parity() const
+	{
+		return (packed_data >> ODD_PARTIY_BIT_SHIFT) & ODD_PARTIY_BIT_MASK;
+	}
+	HIPRT_HOST_DEVICE int get_material_index() const
+	{
+		return (packed_data >> MATERIAL_INDEX_BIT_SHIFT) & MATERIAL_INDEX_BIT_MASK;
+	}
 
 	// Packed data contains:
 	//	- the priority of the stack entry
 	//	- whether or not this is the topmost entry for that material in the stack
 	//	- An odd_parity flag
 	//	- The material index
-	// 
+	//
 	// We get the bits:
-	// 
+	//
 	// **** *** material index* **** **OT PRIO
-	// 
+	//
 	// With :
 	// - O the odd_parity flag
 	// - T the topmost flag
-	// - PRIO the dielectric priority 
+	// - PRIO the dielectric priority
 	unsigned int packed_data;
 };
 
@@ -126,7 +139,11 @@ struct NestedDielectricsInteriorStack
 	 *
 	 * Returns false if that intersection should not be skipped
 	 */
-	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int material_priority)
+	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index,
+								int& out_outgoing_material_index,
+								bool& out_inside_material,
+								int material_index,
+								int material_priority)
 	{
 		if (stack_position == NestedDielectricsStackSize - 1)
 			// The stack is already at the maximum
@@ -142,9 +159,9 @@ struct NestedDielectricsInteriorStack
 			//	- The entry of that material in the stack is odd_parity = we've entered that material but haven't left it yet
 			//
 			//	= the last entered material
-			if (stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_material_index() != material_index
-				&& stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_topmost()
-				&& stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_odd_parity())
+			if (stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_material_index() != material_index &&
+				stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_topmost() &&
+				stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(last_entered_mat_index)].get_odd_parity())
 				break;
 
 		// Parity of the material we're inserting in the stack
@@ -209,8 +226,8 @@ struct NestedDielectricsInteriorStack
 		int stack_top_mat_index = stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(stack_position)].get_material_index();
 		if (stack_position > 0)
 			// Checking that we have room to pop.
-			// For a very small stack (size of 2) that overflown 
-			// (we couldn't push all the material we needed to because of 
+			// For a very small stack (size of 2) that overflown
+			// (we couldn't push all the material we needed to because of
 			// stack size constraint), it can happen that the stack position
 			// at this point is already 0 and we cannot pop.
 			stack_position--;

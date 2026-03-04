@@ -19,17 +19,17 @@
 
 HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
 {
-	 if (render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
-	 {
-	 	// Same for ReSTIR GI
-	 	if (render_data.aux_buffers.restir_gi_reservoir_buffer_1)
-	 		render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
+	if (render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
+	{
+		// Same for ReSTIR GI
+		if (render_data.aux_buffers.restir_gi_reservoir_buffer_1)
+			render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
 
-	 	if (render_data.aux_buffers.restir_gi_reservoir_buffer_2)
-	 		render_data.aux_buffers.restir_gi_reservoir_buffer_2[pixel_index] = ReSTIRGIReservoir();
+		if (render_data.aux_buffers.restir_gi_reservoir_buffer_2)
+			render_data.aux_buffers.restir_gi_reservoir_buffer_2[pixel_index] = ReSTIRGIReservoir();
 
-	 	if (render_data.aux_buffers.restir_gi_reservoir_buffer_3)
-	 		render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
+		if (render_data.aux_buffers.restir_gi_reservoir_buffer_3)
+			render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
 	}
 
 	if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
@@ -50,8 +50,8 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 	// Resetting the previous frame G-Buffer if we have it
 	if (render_data.render_settings.use_prev_frame_g_buffer())
 	{
-	 	render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index] = -1;
-	 	render_data.g_buffer_prev_frame.geometric_normals[pixel_index]	  = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
+		render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index] = -1;
+		render_data.g_buffer_prev_frame.geometric_normals[pixel_index]	  = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
 		render_data.g_buffer_prev_frame.shading_normals[pixel_index]	  = Octahedral24BitNormalPadded32b::pack_static(make_float3(0.0f, 0.0f, 0.0f));
 		render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] = make_float3(0.0f, 0.0f, 0.0f);
 		render_data.g_buffer_prev_frame.materials[pixel_index]			  = DevicePackedEffectiveMaterial::pack(DeviceUnpackedEffectiveMaterial());
@@ -97,8 +97,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
 	uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
-	 if (render_data.render_settings.need_to_reset)
-	 	reset_render(render_data, pixel_index);
+	if (render_data.render_settings.need_to_reset)
+		reset_render(render_data, pixel_index);
 
 	// 'Render low resolution' means that the user is moving the camera for example
 	// so we're going to reduce the quality of the render for increased framerates

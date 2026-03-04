@@ -119,7 +119,7 @@ std::string OpenGLShader::add_macros_to_source(const std::vector<std::string>& m
 	if (version_pos != std::string::npos)
 	{
 		size_t line_return_pos = m_source_code.find('\n', version_pos);
-		size_t after_return = line_return_pos + 1;
+		size_t after_return	   = line_return_pos + 1;
 
 		std::string modified_source = m_source_code;
 		for (const std::string& macro : macros)

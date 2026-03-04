@@ -15,13 +15,15 @@
 class Utils
 {
 public:
-
 	static std::vector<unsigned char> tonemap_hdr_image(const Image32Bit& hdr_image, int sample_number, float gamma, float exposure);
 	static std::vector<unsigned char> tonemap_hdr_image(const std::vector<ColorRGB32F>& hdr_image, int sample_number, float gamma, float exposure);
 	static std::vector<unsigned char> tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure);
 	static std::vector<unsigned char> tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure);
 
-	static void compute_alias_table(const std::vector<float>& input, std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum);
+	static void compute_alias_table(const std::vector<float>& input,
+									std::vector<float>& out_probas,
+									std::vector<int>& out_alias,
+									float* out_luminance_total_sum);
 	static void compute_alias_table(const std::vector<float>& input, float in_input_total_sum, std::vector<float>& out_probas, std::vector<int>& out_alias);
 
 	template <typename T>
@@ -50,10 +52,10 @@ public:
 #ifdef _WIN32
 	enum AddEnvVarError
 	{
-		ADD_ENV_VAR_ERROR_NONE = 0, // All good
-		ADD_ENV_VAR_ERROR_NOT_FOUND, // Given env var not found
+		ADD_ENV_VAR_ERROR_NONE = 0,		  // All good
+		ADD_ENV_VAR_ERROR_NOT_FOUND,	  // Given env var not found
 		ADD_ENV_VAR_ERROR_VALUE_TOO_LONG, // The value of the environment variable exceeds MAX_PATH
-		ADD_ENV_VAR_ERROR_UNKNOWN // Unhandled error value
+		ADD_ENV_VAR_ERROR_UNKNOWN		  // Unhandled error value
 	};
 	static AddEnvVarError windows_add_ENV_var_to_PATH(const wchar_t* env_var_name, std::wstring extra_string = L"");
 #endif

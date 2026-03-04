@@ -50,8 +50,8 @@ public:
 	void free();
 
 private:
-	bool m_initialized = false;
-	bool m_mapped = false;
+	bool m_initialized	= false;
+	bool m_mapped		= false;
 	T* m_mapped_pointer = nullptr;
 
 	size_t m_element_count = 0;
@@ -72,8 +72,8 @@ OpenGLInteropBuffer<T>::OpenGLInteropBuffer(int element_count)
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
-	m_initialized = true;
-	m_mapped = false;
+	m_initialized	= true;
+	m_mapped		= false;
 	m_element_count = element_count;
 }
 
@@ -125,7 +125,7 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
-	m_initialized = true;
+	m_initialized	= true;
 	m_element_count = new_element_count;
 }
 
@@ -159,7 +159,8 @@ T* OpenGLInteropBuffer<T>::map()
 
 	size_t byte_size;
 	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, reinterpret_cast<oroGraphicsResource_t*>(&m_buffer_resource), 0));
-	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), &byte_size, reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
+	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), &byte_size,
+														   reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
 
 	m_mapped = true;
 	return m_mapped_pointer;
@@ -174,15 +175,15 @@ void OpenGLInteropBuffer<T>::unmap()
 
 	OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, reinterpret_cast<oroGraphicsResource_t*>(&m_buffer_resource), 0));
 
-	m_mapped = false;
+	m_mapped		 = false;
 	m_mapped_pointer = nullptr;
 }
 
-template<typename T>
+template <typename T>
 void OpenGLInteropBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type)
 {
 	GLenum format = texture_type.get_gl_format();
-	GLenum type = texture_type.get_gl_type();
+	GLenum type	  = texture_type.get_gl_type();
 
 	glActiveTexture(texture_unit);
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -191,7 +192,7 @@ void OpenGLInteropBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
 
-template<typename T>
+template <typename T>
 void OpenGLInteropBuffer<T>::free()
 {
 	if (m_initialized)
@@ -205,13 +206,14 @@ void OpenGLInteropBuffer<T>::free()
 	}
 	else
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Freeing an OpenGLInterop buffer that hasn't been initialized (or has been freed already)!");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+								"Freeing an OpenGLInterop buffer that hasn't been initialized (or has been freed already)!");
 
 		return;
 	}
 
 	m_element_count = 0;
-	m_initialized = false;
+	m_initialized	= false;
 }
 
 #endif

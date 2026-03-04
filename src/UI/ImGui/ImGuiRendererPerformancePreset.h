@@ -3,7 +3,6 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-
 #ifndef IMGUI_RENDERER_PERFORMANCE_PRESET_H
 #define IMGUI_RENDERER_PERFORMANCE_PRESET_H
 

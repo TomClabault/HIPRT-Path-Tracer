@@ -20,12 +20,12 @@ void PerformanceMetricsComputer::init_key(const std::string& key)
 		// Key data not init yet
 		m_key_init[key] = true;
 
-		m_values[key] = std::vector<double>(m_window_size, 0.0f);
-		m_values_count[key] = 0;
-		m_values_sum[key] = 0.0;
+		m_values[key]				 = std::vector<double>(m_window_size, 0.0f);
+		m_values_count[key]			 = 0;
+		m_values_sum[key]			 = 0.0;
 		m_values_sum_of_squares[key] = 0.0;
-		m_data_indices[key] = 0;
-		m_min_max_data[key] = std::multiset<double>();
+		m_data_indices[key]			 = 0;
+		m_min_max_data[key]			 = std::multiset<double>();
 	}
 }
 
@@ -52,25 +52,25 @@ void PerformanceMetricsComputer::add_value(const std::string& key, double new_va
 
 	// Where are we going to insert the next value in the m_values vector
 	unsigned int next_index = m_data_indices[key];
-	m_data_indices[key] = m_data_indices[key] + 1;
+	m_data_indices[key]		= m_data_indices[key] + 1;
 	if (m_data_indices[key] == m_window_size)
 		m_data_indices[key] = 0;
 
-	double removed_value = m_values[key].at(next_index);
+	double removed_value		 = m_values[key].at(next_index);
 	m_values[key].at(next_index) = new_value;
 
 	// Whether or not we've reached the maximum number of values we can
 	// store. If true, we are now removing a value every single time we want to insert one
-	bool at_capacity = false;
+	bool at_capacity		 = false;
 	int& current_value_count = m_values_count[key];
 	if (current_value_count < m_window_size && next_index < current_value_count)
-		// This is a special case when we just resized the window to 
-		// a size larger than the previous one. 
-		// 
+		// This is a special case when we just resized the window to
+		// a size larger than the previous one.
+		//
 		// This can cause issues in the following situation:
 		//
-		//  - The window size is 100. We have input 180 values so far. 
-		//		This means that we're at capacity and we've stared from the beginning, 
+		//  - The window size is 100. We have input 180 values so far.
+		//		This means that we're at capacity and we've stared from the beginning,
 		//		overriding the first 80 values
 		//	- The window is resized to a size of 250
 		//	- We keep adding new values and we are currently at the value 230.
@@ -108,7 +108,7 @@ double PerformanceMetricsComputer::get_current_value(const std::string& key)
 
 	// m_data_indices[key] is the index of the value that we're going to insert next
 	// but we want the index of the value last inserted so we -1 that value
-	int current_index = m_data_indices[key];
+	int current_index  = m_data_indices[key];
 	int previous_index = current_index - 1;
 	if (previous_index == -1)
 		previous_index = m_values_count[key] - 1;
@@ -214,10 +214,10 @@ void PerformanceMetricsComputer::recompute_data(int new_size)
 			continue;
 		}
 
-		m_values_count[key] = std::min(m_values_count[key], new_size);
-		m_values_sum[key] = 0.0;
+		m_values_count[key]			 = std::min(m_values_count[key], new_size);
+		m_values_sum[key]			 = 0.0;
 		m_values_sum_of_squares[key] = 0.0;
-		m_data_indices[key] = m_data_indices[key] > new_size ? 0 : m_data_indices[key];
+		m_data_indices[key]			 = m_data_indices[key] > new_size ? 0 : m_data_indices[key];
 		m_min_max_data[key].clear();
 
 		std::vector<double>& values = pair_kv.second;

@@ -10,7 +10,10 @@
 
 RenderPass::RenderPass() {}
 RenderPass::RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, "Unnamed render pass") {}
-RenderPass::RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name) : m_renderer(renderer), m_compiler_options(options), m_name(name) {}
+RenderPass::RenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options, const std::string& name)
+	: m_renderer(renderer), m_compiler_options(options), m_name(name)
+{
+}
 
 void RenderPass::set_render_window(RenderWindow* render_window)
 {

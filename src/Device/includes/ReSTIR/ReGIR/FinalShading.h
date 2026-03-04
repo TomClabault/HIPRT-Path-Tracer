@@ -39,9 +39,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 		return selected_sample_radiance / light_sample.area_measure_pdf;
 #else
 		// ReGIR succeeded with sampling, just shooting a shadow ray to validate visibility
-		float3_t shadow_ray_origin			   = closest_hit_info.inter_point;
-		float3_t shadow_ray_direction			   = light_sample.point_on_light - shadow_ray_origin;
-		float distance_to_light				   = hippt::length(shadow_ray_direction);
+		float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+		float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
+		float distance_to_light					 = hippt::length(shadow_ray_direction);
 		float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 		hiprtRay shadow_ray;
@@ -89,9 +89,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_ReGIR(HIPRTRenderData& render_data,
 				// sampling technique couldn't sample a triangle
 				continue;
 
-			float3_t shadow_ray_origin			   = closest_hit_info.inter_point;
-			float3_t shadow_ray_direction			   = light_sample.point_on_light - shadow_ray_origin;
-			float distance_to_light				   = hippt::length(shadow_ray_direction);
+			float3_t shadow_ray_origin				 = closest_hit_info.inter_point;
+			float3_t shadow_ray_direction			 = light_sample.point_on_light - shadow_ray_origin;
+			float distance_to_light					 = hippt::length(shadow_ray_direction);
 			float3_t shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 			hiprtRay shadow_ray;

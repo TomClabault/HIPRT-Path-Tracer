@@ -8,14 +8,14 @@
 
 void RenderWindowMouseInteractor::glfw_mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	ImGuiIO& io = ImGui::GetIO();
+	ImGuiIO& io		   = ImGui::GetIO();
 	void* user_pointer = glfwGetWindowUserPointer(window);
 
 	// If it is the render window that is hovered, we're going to move the camera so we take
 	// the inputs
 	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
-	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
-	bool imgui_want_mouse = io.WantCaptureMouse && !render_window_hovered;
+	bool render_window_hovered	= render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
+	bool imgui_want_mouse		= io.WantCaptureMouse && !render_window_hovered;
 	if (!imgui_want_mouse)
 	{
 		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
@@ -31,7 +31,7 @@ void RenderWindowMouseInteractor::glfw_mouse_scroll_callback(GLFWwindow* window,
 
 bool RenderWindowMouseInteractor::is_interacting()
 {
-	return  m_interacting_left_button || m_interacting_right_button;
+	return m_interacting_left_button || m_interacting_right_button;
 }
 
 void RenderWindowMouseInteractor::set_interacting_left_button(bool interacting)

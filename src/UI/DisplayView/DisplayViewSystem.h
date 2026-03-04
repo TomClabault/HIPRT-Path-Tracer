@@ -71,7 +71,10 @@ public:
 	/**
 	 * Updates the uniforms of an arbitrary input program given the state of the renderer and the applications settings given
 	 */
-	static void update_display_program_uniforms(const DisplayViewSystem* display_view_system, std::shared_ptr<OpenGLProgram> program, std::shared_ptr<GPURenderer> renderer, std::shared_ptr<ApplicationSettings> application_settings);
+	static void update_display_program_uniforms(const DisplayViewSystem* display_view_system,
+												std::shared_ptr<OpenGLProgram> program,
+												std::shared_ptr<GPURenderer> renderer,
+												std::shared_ptr<ApplicationSettings> application_settings);
 
 	/**
 	 * Updates the uniforms of the display program currently used by this display view system
@@ -81,10 +84,14 @@ public:
 
 private:
 	template <typename T>
-	void internal_upload_buffer_to_texture(std::shared_ptr<OpenGLInteropBuffer<T>> buffer, const std::pair<GLuint, DisplayTextureType>& display_texture, int texture_unit);
+	void internal_upload_buffer_to_texture(std::shared_ptr<OpenGLInteropBuffer<T>> buffer,
+										   const std::pair<GLuint, DisplayTextureType>& display_texture,
+										   int texture_unit);
 
-	template<typename T>
-	void internal_upload_buffer_to_texture(std::shared_ptr<OrochiBuffer<T>> buffer, const std::pair<GLuint, DisplayTextureType>& display_texture, int texture_unit);
+	template <typename T>
+	void internal_upload_buffer_to_texture(std::shared_ptr<OrochiBuffer<T>> buffer,
+										   const std::pair<GLuint, DisplayTextureType>& display_texture,
+										   int texture_unit);
 
 	/*
 	 * This function ensures that the display texture is of the proper format
@@ -101,7 +108,11 @@ private:
 	 * to show up in the viewport
 	 */
 	void internal_recreate_display_textures_from_display_view(DisplayViewType display_view);
-	void internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height);
+	void internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture,
+										   GLenum display_texture_unit,
+										   DisplayTextureType new_texture_type,
+										   int width,
+										   int height);
 
 	/**
 	 * Automatically changes the display view used if some conditions are met (or not met).
@@ -110,8 +121,6 @@ private:
 	 * don't want to keep using the GMoN blend view so this function will change it automatically
 	 */
 	void handle_automatic_display_view_changes();
-
-
 
 	// All the different display view that can be used for displaying
 	std::unordered_map<DisplayViewType, DisplayView> m_display_views;
@@ -136,17 +145,17 @@ private:
 	bool m_displaying_low_resolution = false;
 
 	// Display textures & their display type
-	// 
+	//
 	// The display type is the format of the texel of the texture used by the display program.
 	// This is useful because we have several types of programs using several
 	// types of textures. For example, displaying normals on the screen requires float3_t textures
 	// whereas displaying a heatmap requires only a texture whose texels are scalar (floats or ints).
 	// This means that, depending on the display view selected, we're going to have to use the proper
 	// OpenGL texture format type and that's what the DisplayTextureType is for.
-	// 
+	//
 	// The textures should be the same resolution as the render resolution.
 	// They have nothing to do with the resolution of the viewport.
-	// 
+	//
 	// The first texture is used by the display program to draw on the fullscreen quad.
 	// Also used as the first blending texture when a blending display view is selected
 	std::pair<GLuint, DisplayTextureType> m_display_texture_1 = { -1, DisplayTextureType::UNINITIALIZED };
@@ -164,32 +173,39 @@ private:
 	// Framebuffer we're drawing. We're not directly drawing to the back buffer because we
 	// want ImGui to do the drawing in one of its ImGui window
 	GLuint m_framebuffer;
+
 public:
 	GLuint m_fbo_texture;
 
 private:
 	DisplaySettings m_display_settings;
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
-	RenderWindow* m_render_window = nullptr;
+	RenderWindow* m_render_window			= nullptr;
 };
 
-template<typename T>
-void DisplayViewSystem::internal_upload_buffer_to_texture(std::shared_ptr<OpenGLInteropBuffer<T>> buffer, const std::pair<GLuint, DisplayTextureType>& display_texture, int texture_unit)
+template <typename T>
+void DisplayViewSystem::internal_upload_buffer_to_texture(std::shared_ptr<OpenGLInteropBuffer<T>> buffer,
+														  const std::pair<GLuint, DisplayTextureType>& display_texture,
+														  int texture_unit)
 {
 	if (buffer == nullptr)
 		return;
 
 	buffer->unmap();
-	buffer->unpack_to_GL_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, display_texture.second);
+	buffer->unpack_to_GL_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y,
+								 display_texture.second);
 }
 
-template<typename T>
-void DisplayViewSystem::internal_upload_buffer_to_texture(std::shared_ptr<OrochiBuffer<T>> buffer, const std::pair<GLuint, DisplayTextureType>& display_texture, int texture_unit)
+template <typename T>
+void DisplayViewSystem::internal_upload_buffer_to_texture(std::shared_ptr<OrochiBuffer<T>> buffer,
+														  const std::pair<GLuint, DisplayTextureType>& display_texture,
+														  int texture_unit)
 {
 	if (buffer == nullptr)
 		return;
 
-	buffer->unpack_to_GL_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, display_texture.second);
+	buffer->unpack_to_GL_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y,
+								 display_texture.second);
 }
 
 #endif

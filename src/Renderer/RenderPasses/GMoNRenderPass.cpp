@@ -11,7 +11,8 @@
 const std::string GMoNRenderPass::GMON_RENDER_PASS_NAME = "GMoN Render Pass";
 const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL	= "Compute G-MoN";
 
-GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, GMoNRenderPass::GMON_RENDER_PASS_NAME)
+GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
+	: RenderPass(renderer, options, GMoNRenderPass::GMON_RENDER_PASS_NAME)
 {
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/GMoN/GMoNComputeMedianOfMeans.h");

@@ -17,7 +17,10 @@ ParallelSegmentedPrefixScan::ParallelSegmentedPrefixScan(std::shared_ptr<HIPRTOr
 	initialize_kernels();
 }
 
-bool ParallelSegmentedPrefixScan::is_setup() { return m_hiprt_ctx != nullptr && m_stream != nullptr; }
+bool ParallelSegmentedPrefixScan::is_setup()
+{
+	return m_hiprt_ctx != nullptr && m_stream != nullptr;
+}
 
 void ParallelSegmentedPrefixScan::set_context(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
@@ -82,7 +85,10 @@ void ParallelSegmentedPrefixScan::scan()
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_stream));
 }
 
-OrochiBuffer<unsigned int>& ParallelSegmentedPrefixScan::get_output_buffer() { return m_output_buffer; }
+OrochiBuffer<unsigned int>& ParallelSegmentedPrefixScan::get_output_buffer()
+{
+	return m_output_buffer;
+}
 
 void ParallelSegmentedPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t stream)
 {
@@ -171,8 +177,8 @@ void ParallelSegmentedPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hipr
 			if (output[j] != expected_output[j])
 			{
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
-										"ParallelSegmentedPrefixScan unit test failed for test %d at index %lld (size=%u): got %u, expected %u", i, j, test_size,
-										output[j], expected_output[j]);
+										"ParallelSegmentedPrefixScan unit test failed for test %d at index %lld (size=%u): got %u, expected %u", i, j,
+										test_size, output[j], expected_output[j]);
 
 				std::terminate();
 				break;

@@ -271,8 +271,8 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 
 				// Using the triangle class to easily compute the area of the triangle
 				float3_t face_normal = hippt::cross(vertex_2 - vertex_1, vertex_3 - vertex_1);
-				float face_area	   = hippt::length(face_normal) * 0.5f;
-				float face_power   = face_area * renderer_material.emission.luminance() * renderer_material.emission_strength *
+				float face_area		 = hippt::length(face_normal) * 0.5f;
+				float face_power	 = face_area * renderer_material.emission.luminance() * renderer_material.emission_strength *
 								   renderer_material.global_emissive_factor;
 
 				// The PDF of each emissive triangle of the mesh is going to be its power divided by the total power

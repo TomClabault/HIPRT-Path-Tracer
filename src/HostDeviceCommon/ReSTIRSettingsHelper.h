@@ -11,7 +11,9 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool IsReSTIRGI>
-struct ReSTIRSettingsTypeTemplate {};
+struct ReSTIRSettingsTypeTemplate
+{
+};
 
 template <>
 struct ReSTIRSettingsTypeTemplate<false>
@@ -27,7 +29,6 @@ struct ReSTIRSettingsTypeTemplate<true>
 
 template <bool IsReSTIRGI>
 using ReSTIRSettingsType = typename ReSTIRSettingsTypeTemplate<IsReSTIRGI>::Type;
-
 
 struct ReSTIRSettingsHelper
 {

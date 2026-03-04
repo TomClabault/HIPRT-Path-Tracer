@@ -1,7 +1,7 @@
 /*
-* Copyright 2025 Tom Clabault. GNU GPL3 license.
-* GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
-*/
+ * Copyright 2025 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
 
 #ifndef DEVICE_KERNELS_REGIR_REPRESENTATIVE_H
 #define DEVICE_KERNELS_REGIR_REPRESENTATIVE_H
@@ -14,7 +14,13 @@
 /**
  *	Updates the representative point and normal (and other data) of the cell at the given shading point
  */
-HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data, float3_t shading_point, float3_t surface_normal, const HIPRTCamera& current_camera, int primitive_index, bool primary_hit, const DeviceUnpackedEffectiveMaterial& material)
+HIPRT_DEVICE void ReGIR_update_representative_data(HIPRTRenderData& render_data,
+												   float3_t shading_point,
+												   float3_t surface_normal,
+												   const HIPRTCamera& current_camera,
+												   int primitive_index,
+												   bool primary_hit,
+												   const DeviceUnpackedEffectiveMaterial& material)
 {
 	if (DirectLightSamplingStrategy != LSS_BASE_REGIR)
 		return;

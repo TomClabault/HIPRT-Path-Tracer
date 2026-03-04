@@ -15,16 +15,16 @@
 
 template <template <typename> typename DataContainer>
 using ReGIRHashCellDataSoAHostInternal = GenericSoA<DataContainer,
-	GenericAtomicType<int, DataContainer>,  // primitive index
-	float3_t, // world points
-	Octahedral24BitNormalPadded32b,  // world normals
-	unsigned char,  // roughness
-	unsigned char,  // metallic
-	unsigned char,  // specular
-	GenericAtomicType<unsigned int, DataContainer>, // hash keys
-	GenericAtomicType<unsigned int, DataContainer>, // grid cells alive
-	unsigned int // grid cells alive list
->;
+													GenericAtomicType<int, DataContainer>,			// primitive index
+													float3_t,										// world points
+													Octahedral24BitNormalPadded32b,					// world normals
+													unsigned char,									// roughness
+													unsigned char,									// metallic
+													unsigned char,									// specular
+													GenericAtomicType<unsigned int, DataContainer>, // hash keys
+													GenericAtomicType<unsigned int, DataContainer>, // grid cells alive
+													unsigned int									// grid cells alive list
+													>;
 
 enum ReGIRHashCellDataSoAHostBuffers
 {
@@ -79,14 +79,14 @@ struct ReGIRHashCellDataSoAHost
 		ReGIRHashCellDataSoADevice hash_cell_data;
 
 		hash_cell_data.hit_primitive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_PRIM_INDEX>();
-		hash_cell_data.world_points = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_POINTS>();
+		hash_cell_data.world_points	 = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_POINTS>();
 		hash_cell_data.world_normals = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_NORMALS>();
-		hash_cell_data.roughness = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_ROUGHNESS>();
-		hash_cell_data.metallic = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_METALLIC>();
-		hash_cell_data.specular = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_SPECULAR>();
-		hash_cell_data.checksums = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_CHECKSUMS>();
+		hash_cell_data.roughness	 = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_ROUGHNESS>();
+		hash_cell_data.metallic		 = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_METALLIC>();
+		hash_cell_data.specular		 = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_SPECULAR>();
+		hash_cell_data.checksums	 = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELL_CHECKSUMS>();
 
-		hash_cell_data.grid_cell_alive = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>();
+		hash_cell_data.grid_cell_alive		 = m_hash_cell_data.template get_buffer_data_atomic_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE>();
 		hash_cell_data.grid_cells_alive_list = m_hash_cell_data.template get_buffer_data_ptr<ReGIRHashCellDataSoAHostBuffers::REGIR_HASH_CELLS_ALIVE_LIST>();
 
 		if constexpr (std::is_same_v<DataContainer<std::atomic<unsigned int>>, std::vector<std::atomic<unsigned int>>>)

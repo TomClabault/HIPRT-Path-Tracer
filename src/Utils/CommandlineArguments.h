@@ -19,11 +19,11 @@ struct CommandlineArguments
 
 	// Default scene and skysphere paths as expected if running the application from a build
 	// directory inside the repo root folder
-	std::string scene_file_path = DEFAULT_SCENE;
+	std::string scene_file_path		= DEFAULT_SCENE;
 	std::string skysphere_file_path = DEFAULT_SKYSPHERE;
 
 	int render_samples = 64;
-	int bounces = 8;
+	int bounces		   = 8;
 };
 
 #endif

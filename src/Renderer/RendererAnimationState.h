@@ -20,11 +20,11 @@ struct RendererAnimationState
 	bool is_rendering_frame_sequence = false;
 	// This boolean is read by the various components of the scene that can
 	// be animated.
-	// 
+	//
 	// If true, this boolean is true, the components are allowed to step their animation.
 	bool can_step_animation = false;
 
-	// If true, the random seeds used for rendering frames will be 
+	// If true, the random seeds used for rendering frames will be
 	bool randomize_seeds_each_frame = true;
 
 	// How many frames have been rendered so far

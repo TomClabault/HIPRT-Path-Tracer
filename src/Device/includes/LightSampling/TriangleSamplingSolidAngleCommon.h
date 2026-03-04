@@ -46,8 +46,12 @@ HIPRT_DEVICE float positive_atan(float tangent)
  *
  * This is needed because this renderer works from sampled points on triangles, not directions.
  */
-HIPRT_DEVICE float3_t map_direction_to_triangle_point(float3_t sampled_solid_angle_direction, float3_t vertex_A, float3_t triangle_normal, float3_t shading_point,
-	float pdf_solid_angle, float& out_pdf_area)
+HIPRT_DEVICE float3_t map_direction_to_triangle_point(float3_t sampled_solid_angle_direction,
+													  float3_t vertex_A,
+													  float3_t triangle_normal,
+													  float3_t shading_point,
+													  float pdf_solid_angle,
+													  float& out_pdf_area)
 {
 	if (pdf_solid_angle == 0.0f)
 	{
@@ -56,7 +60,7 @@ HIPRT_DEVICE float3_t map_direction_to_triangle_point(float3_t sampled_solid_ang
 		return make_float3(0.0f, 0.0f, 0.0f);
 	}
 	float3_t v0_rel = vertex_A - shading_point;
-	float denom = hippt::dot(sampled_solid_angle_direction, triangle_normal);
+	float denom		= hippt::dot(sampled_solid_angle_direction, triangle_normal);
 
 	if (hippt::abs(denom) < 1e-8f)
 	{
@@ -72,12 +76,13 @@ HIPRT_DEVICE float3_t map_direction_to_triangle_point(float3_t sampled_solid_ang
 
 	// Conversion of the PDF to area measure
 	float cos_theta = compute_cosine_term_at_light_source(triangle_normal, -sampled_solid_angle_direction);
-	out_pdf_area = pdf_solid_angle * (cos_theta / (t * t));
+	out_pdf_area	= pdf_solid_angle * (cos_theta / (t * t));
 
 	return point;
 }
 
-HIPRT_DEVICE float3_t map_direction_to_triangle_point(float3_t sampled_solid_angle_direction, float3_t vertex_A, float3_t triangle_normal, float3_t shading_point, bool& out_valid_point)
+HIPRT_DEVICE float3_t map_direction_to_triangle_point(
+						float3_t sampled_solid_angle_direction, float3_t vertex_A, float3_t triangle_normal, float3_t shading_point, bool& out_valid_point)
 {
 	float trash_area_pdf;
 	float3_t point = map_direction_to_triangle_point(sampled_solid_angle_direction, vertex_A, triangle_normal, shading_point, 1.0f, trash_area_pdf);

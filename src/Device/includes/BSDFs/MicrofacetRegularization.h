@@ -14,12 +14,17 @@ struct MicrofacetRegularization
 {
 	enum class RegularizationMode : unsigned char
 	{
-		NO_REGULARIZATION = 0,
+		NO_REGULARIZATION	   = 0,
 		REGULARIZATION_CLASSIC = 1, // Should be used when the regularized BSDF PDF isn't going to be used in a MIS weight
-		REGULARIZATION_MIS = 2, // Should be used when the regularized BSDF PDF ** is ** going to be used in a MIS weight or if this is for evaluating a BSDF whose sample comes from MIS sampling
+		REGULARIZATION_MIS = 2, // Should be used when the regularized BSDF PDF ** is ** going to be used in a MIS weight or if this is for evaluating a BSDF
+								// whose sample comes from MIS sampling
 	};
 
-	HIPRT_HOST_DEVICE static float regularize_reflection(const MicrofacetRegularizationSettings& regularization_settings, RegularizationMode regularization_mode, float initial_roughness, float accumulated_path_roughness, int sample_number)
+	HIPRT_HOST_DEVICE static float regularize_reflection(const MicrofacetRegularizationSettings& regularization_settings,
+														 RegularizationMode regularization_mode,
+														 float initial_roughness,
+														 float accumulated_path_roughness,
+														 int sample_number)
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
@@ -39,11 +44,11 @@ struct MicrofacetRegularization
 		//
 		// Caustics only happen on diffuse surfaces (roughness 1). So for such a surface, tau should be
 		// unchanged i.e., we use the full regularization.
-		// 
+		//
 		// But for smooth surfaces (mirrors, clear glass), we shouldn't regularize anything to keep the sharpness
 		// of the glossy reflections.
 		//
-		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled 
+		// By dividing by a roughness close to 0, tau skyrockets and regularization is essentially disabled
 		float path_diffusion_tau = consistent_tau / hippt::max(hippt::square(accumulated_path_roughness), 1.0e-8f);
 
 #if PrincipledBSDFMicrofacetRegularizationDiffusionHeuristic == KERNEL_OPTION_TRUE
@@ -57,7 +62,13 @@ struct MicrofacetRegularization
 		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
 
-	HIPRT_HOST_DEVICE static float regularize_refraction(const MicrofacetRegularizationSettings& regularization_settings, RegularizationMode regularization_mode, float initial_roughness, float accumulated_path_roughness, float eta_i, float eta_t, int sample_number)
+	HIPRT_HOST_DEVICE static float regularize_refraction(const MicrofacetRegularizationSettings& regularization_settings,
+														 RegularizationMode regularization_mode,
+														 float initial_roughness,
+														 float accumulated_path_roughness,
+														 float eta_i,
+														 float eta_t,
+														 int sample_number)
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
@@ -77,7 +88,7 @@ struct MicrofacetRegularization
 		//
 		// Caustics only happen on diffuse surfaces (roughness 1). So for such a surface, tau should be
 		// unchanged i.e., we use the full regularization.
-		// 
+		//
 		// But for smooth surfaces (mirrors, clear glass), we shouldn't regularize anything to keep the sharpness
 		// of the glossy reflections.
 		//
@@ -90,12 +101,19 @@ struct MicrofacetRegularization
 		float final_tau = consistent_tau;
 #endif
 
-		float regularized_roughness = hippt::sqrt(hippt::sqrt(1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
+		float regularized_roughness = hippt::sqrt(hippt::sqrt(
+								1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
 		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness));
 	}
 
-	HIPRT_HOST_DEVICE static float regularize_mix_reflection_refraction(const MicrofacetRegularizationSettings& regularization_settings, RegularizationMode regularization_mode, float initial_roughness, float accumulated_path_roughness, float eta_i, float eta_t, int sample_number)
+	HIPRT_HOST_DEVICE static float regularize_mix_reflection_refraction(const MicrofacetRegularizationSettings& regularization_settings,
+																		RegularizationMode regularization_mode,
+																		float initial_roughness,
+																		float accumulated_path_roughness,
+																		float eta_i,
+																		float eta_t,
+																		int sample_number)
 	{
 #if PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE
 		return initial_roughness;
@@ -115,7 +133,7 @@ struct MicrofacetRegularization
 		//
 		// Caustics only happen on diffuse surfaces (roughness 1). So for such a surface, tau should be
 		// unchanged i.e., we use the full regularization.
-		// 
+		//
 		// But for smooth surfaces (mirrors, clear glass), we shouldn't regularize anything to keep the sharpness
 		// of the glossy reflections.
 		//
@@ -132,19 +150,21 @@ struct MicrofacetRegularization
 
 		if (eta_i == eta_t)
 			// Avoiding singularities.
-			// 
+			//
 			// The refraction regularized roughness will be degenerate here so we're just using the reflection
 			// regularization
 			return regularized_roughness_reflection;
 
-		float regularized_roughness_refraction = hippt::sqrt(hippt::sqrt(1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
+		float regularized_roughness_refraction = hippt::sqrt(hippt::sqrt(
+								1.0f / (final_tau * hippt::M_Pi * hippt::square(eta_i - eta_t) / (4.0f * hippt::square(hippt::max(eta_i, eta_t))))));
 
 		// Mixing both reflection and refraction regularized roughnesses.
 		// Refraction regularization tends to be stronger (higher resulting roughness).
 		//
 		// We're biasing (75%) towards refraction to bias towards higher regularization to conservatively
 		// reduce variance
-		return hippt::max(regularization_settings.min_roughness, hippt::max(initial_roughness, regularized_roughness_refraction * 0.75f + regularized_roughness_reflection * 0.25f));
+		return hippt::max(regularization_settings.min_roughness,
+						  hippt::max(initial_roughness, regularized_roughness_refraction * 0.75f + regularized_roughness_reflection * 0.25f));
 	}
 
 	/**
@@ -157,7 +177,9 @@ struct MicrofacetRegularization
 #endif
 
 		// Eq. 16 of the paper
-		float consistent_tau = 1.0f / (2.0f * hippt::M_Pi * (1.0f - hippt::intrin_cosf(atanf(hippt::intrin_pow(sample_number + 1, -1.0f / 6.0f) * sqrt(hippt::M_FOUR_PI * tau_0 - 1.0f) / (hippt::M_TWO_PI * tau_0 - 1.0f)))));
+		float consistent_tau = 1.0f / (2.0f * hippt::M_Pi *
+									   (1.0f - hippt::intrin_cosf(atanf(hippt::intrin_pow(sample_number + 1, -1.0f / 6.0f) *
+																		sqrt(hippt::M_FOUR_PI * tau_0 - 1.0f) / (hippt::M_TWO_PI * tau_0 - 1.0f)))));
 
 		return consistent_tau;
 	}

@@ -27,7 +27,6 @@ private:
 	// Position of the mouse when the user first clicked the viewport.
 	// Used to put the cursor back in place to allow infinite mouse movements
 	std::pair<float, float> m_grab_cursor_position = { 0.0f, 0.0f };
-
 };
 
 #endif

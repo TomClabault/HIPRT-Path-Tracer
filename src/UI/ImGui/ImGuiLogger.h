@@ -19,9 +19,9 @@
 #include <unordered_map>
 #include <vector>
 
- /**
-  * Class derived from imgui_demo.cpp "ExampleAppLog"
-  */
+/**
+ * Class derived from imgui_demo.cpp "ExampleAppLog"
+ */
 
 class ImGuiLogger
 {
@@ -72,7 +72,7 @@ private:
 	// so this map can be used to retrieve the actual lines (vector of std::string_view)
 	// of an ImGuiLoggerLine
 	std::unordered_map<std::shared_ptr<ImGuiLoggerLine>, int> m_index_in_actual_lines;
-	// Cache for the get_line_from_index() method. If we ask for the same index twice, 
+	// Cache for the get_line_from_index() method. If we ask for the same index twice,
 	// we can just look in the cache for what the line was for this index.
 	// The cache is invalidated if a call to 'update_line()' modifies the number of
 	// actual lines of an ImGuiLoggerLine (by giving a text that contains more '\n' than
@@ -86,7 +86,7 @@ private:
 
 	ImGuiTextFilter m_text_filter;
 
-	bool m_auto_scroll = true;  // Keep scrolling if already at the bottom.
+	bool m_auto_scroll = true; // Keep scrolling if already at the bottom.
 
 	// For logger thread safety
 	std::mutex m_mutex;

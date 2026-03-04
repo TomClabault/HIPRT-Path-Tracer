@@ -72,8 +72,8 @@ struct Camera
 
 	// Vertical FOV in radians
 	float vertical_fov = M_PI * 0.5f;
-	float near_plane = 0.1f;
-	float far_plane = 1000.0f;
+	float near_plane   = 0.1f;
+	float far_plane	   = 1000.0f;
 	// Aspect ratio
 	float aspect = 16.0f / 9.0f;
 
@@ -83,7 +83,7 @@ struct Camera
 	float user_movement_speed_multiplier = 1.0f;
 
 	glm::vec3 m_translation = glm::vec3(0.0f);
-	glm::quat m_rotation = glm::quat(glm::vec3(0.0f));
+	glm::quat m_rotation	= glm::quat(glm::vec3(0.0f));
 };
 
 #endif

@@ -154,7 +154,10 @@ float Image8Bit::luminance_of_area(int start_x, int start_y, int stop_x, int sto
 	return luminance;
 }
 
-float Image8Bit::luminance_of_area(const ImageBin& area) const { return luminance_of_area(area.x0, area.y0, area.x1, area.y1); }
+float Image8Bit::luminance_of_area(const ImageBin& area) const
+{
+	return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
+}
 
 ColorRGBA32F Image8Bit::sample_rgba32f(float2_t uv) const
 {
@@ -192,15 +195,30 @@ ColorRGBA32F Image8Bit::sample_rgba32f(float2_t uv) const
 	return out_color;
 }
 
-void Image8Bit::set_data(const std::vector<unsigned char>& data) { m_pixel_data = data; }
+void Image8Bit::set_data(const std::vector<unsigned char>& data)
+{
+	m_pixel_data = data;
+}
 
-const std::vector<unsigned char>& Image8Bit::data() const { return m_pixel_data; }
+const std::vector<unsigned char>& Image8Bit::data() const
+{
+	return m_pixel_data;
+}
 
-std::vector<unsigned char>& Image8Bit::data() { return m_pixel_data; }
+std::vector<unsigned char>& Image8Bit::data()
+{
+	return m_pixel_data;
+}
 
-const unsigned char& Image8Bit::operator[](int index) const { return m_pixel_data[index]; }
+const unsigned char& Image8Bit::operator[](int index) const
+{
+	return m_pixel_data[index];
+}
 
-unsigned char& Image8Bit::operator[](int index) { return m_pixel_data[index]; }
+unsigned char& Image8Bit::operator[](int index)
+{
+	return m_pixel_data[index];
+}
 
 std::vector<float> Image8Bit::compute_cdf() const
 {
@@ -225,7 +243,10 @@ std::vector<float> Image8Bit::compute_cdf() const
 	return out_cdf;
 }
 
-size_t Image8Bit::byte_size() const { return width * height * sizeof(unsigned char); }
+size_t Image8Bit::byte_size() const
+{
+	return width * height * sizeof(unsigned char);
+}
 
 bool Image8Bit::is_constant_color(int threshold) const
 {
@@ -518,7 +539,10 @@ float Image32Bit::luminance_of_area(int start_x, int start_y, int stop_x, int st
 	return luminance;
 }
 
-float Image32Bit::luminance_of_area(const ImageBin& area) const { return luminance_of_area(area.x0, area.y0, area.x1, area.y1); }
+float Image32Bit::luminance_of_area(const ImageBin& area) const
+{
+	return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
+}
 
 ColorRGBA32F Image32Bit::sample_rgba32f(float2_t uv) const
 {
@@ -595,15 +619,30 @@ ColorRGBA32F Image32Bit::sample_rgba32f(float2_t uv) const
 	return out_color;
 }
 
-void Image32Bit::set_data(const std::vector<float>& data) { m_pixel_data = data; }
+void Image32Bit::set_data(const std::vector<float>& data)
+{
+	m_pixel_data = data;
+}
 
-const std::vector<float>& Image32Bit::data() const { return m_pixel_data; }
+const std::vector<float>& Image32Bit::data() const
+{
+	return m_pixel_data;
+}
 
-std::vector<float>& Image32Bit::data() { return m_pixel_data; }
+std::vector<float>& Image32Bit::data()
+{
+	return m_pixel_data;
+}
 
-const float& Image32Bit::operator[](int index) const { return m_pixel_data[index]; }
+const float& Image32Bit::operator[](int index) const
+{
+	return m_pixel_data[index];
+}
 
-float& Image32Bit::operator[](int index) { return m_pixel_data[index]; }
+float& Image32Bit::operator[](int index)
+{
+	return m_pixel_data[index];
+}
 
 std::vector<float> Image32Bit::compute_cdf() const
 {
@@ -665,7 +704,10 @@ float Image32Bit::compute_luminance_sum() const
 	return sum;
 }
 
-size_t Image32Bit::byte_size() const { return width * height * sizeof(unsigned char); }
+size_t Image32Bit::byte_size() const
+{
+	return width * height * sizeof(unsigned char);
+}
 
 bool Image32Bit::is_constant_color(float threshold) const
 {
@@ -690,14 +732,20 @@ bool Image32Bit::is_constant_color(float threshold) const
 	return true;
 }
 
-ColorRGB32F* Image32Bit::get_data_as_ColorRGB32F() { return reinterpret_cast<ColorRGB32F*>(m_pixel_data.data()); }
+ColorRGB32F* Image32Bit::get_data_as_ColorRGB32F()
+{
+	return reinterpret_cast<ColorRGB32F*>(m_pixel_data.data());
+}
 
 ColorRGB32F Image32Bit::get_pixel_ColorRGB32F(int pixel_index) const
 {
 	return ColorRGB32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2]);
 }
 
-ColorRGBA32F* Image32Bit::get_data_as_ColorRGBA32F() { return reinterpret_cast<ColorRGBA32F*>(m_pixel_data.data()); }
+ColorRGBA32F* Image32Bit::get_data_as_ColorRGBA32F()
+{
+	return reinterpret_cast<ColorRGBA32F*>(m_pixel_data.data());
+}
 
 ColorRGBA32F Image32Bit::get_pixel_ColorRGBA32F(int pixel_index) const
 {

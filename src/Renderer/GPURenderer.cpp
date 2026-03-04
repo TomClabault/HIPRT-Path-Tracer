@@ -42,7 +42,7 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	m_DEBUG_BUFFER_FLOAT.resize(1024);
 	m_DEBUG_BUFFER_STRINGS.resize(1024 * HIPRTRenderSettings::DEBUG_STRING_MAX_LENGTH);
 
-	m_hiprt_orochi_ctx		  = hiprt_oro_ctx;
+	m_hiprt_orochi_ctx = hiprt_oro_ctx;
 
 	m_power_sampling_data_structure			 = PowerSamplingDataStructure(this);
 	m_light_tree_ats_sampling_data_structure = LightTreeATSSamplingDataStructure(this);
@@ -58,7 +58,7 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	// Just "fixing" the ReGIR options to be in sync with the UI
 	if (global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR &&
 		(global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_ONE_LIGHT ||
-		global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
+		 global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR) == LSS_MIS_LIGHT_BSDF))
 		global_compiler_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR, LSS_RIS_BSDF_AND_LIGHT);
 
 	setup_brdfs_data();
@@ -200,7 +200,7 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 
 void GPURenderer::compute_emissives_sampling_data_structure_from_scene(const Scene& scene)
 {
-	m_power_sampling_data_structure.compute_from_scene(scene,  get_active_render_graph().get_compiler_options());
+	m_power_sampling_data_structure.compute_from_scene(scene, get_active_render_graph().get_compiler_options());
 	m_light_tree_ats_sampling_data_structure.compute_from_scene(scene, get_active_render_graph().get_compiler_options());
 	m_light_tree_sg_sampling_data_structure.compute_from_scene(scene, get_active_render_graph().get_compiler_options());
 }
@@ -412,8 +412,8 @@ void GPURenderer::resize(int new_width, int new_height)
 
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
-	RenderGraph* active_render_graph ;
-	
+	RenderGraph* active_render_graph;
+
 	if (render_window->is_interacting())
 		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME];
 	else
@@ -708,12 +708,12 @@ void GPURenderer::reset(bool reset_by_camera_movement)
 		// so we don't get into that if block and we don't reset the seed
 		//
 		// Also we want to not reset the random number seed if we're rendering an animation and the user has asked
-		// for random seeds each frame (to avoid same-noise pattern each frame of the animation) 
+		// for random seeds each frame (to avoid same-noise pattern each frame of the animation)
 
 		if (!m_animation_state.randomize_seeds_each_frame && m_animation_state.do_animations)
 		{
-			m_rng.m_state.seed							= 42;
-			m_render_data.random_number					= 42;
+			m_rng.m_state.seed			= 42;
+			m_render_data.random_number = 42;
 		}
 		m_render_data.render_settings.need_to_reset = true;
 	}

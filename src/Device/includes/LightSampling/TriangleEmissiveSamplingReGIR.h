@@ -50,8 +50,8 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 		return LightSamplePointInformation();
 
 	float3_t normal = triangle_load_normal_not_normalized(render_data, reservoir.sample.emissive_triangle_global_index);
-	float area	  = hippt::length(normal) * 0.5f;
-	normal		  = hippt::normalize(normal);
+	float area		= hippt::length(normal) * 0.5f;
+	normal			= hippt::normalize(normal);
 
 	LightSamplePointInformation out_sample2;
 	out_sample2.area_measure_pdf			   = 1.0f / reservoir.UCW;
@@ -68,8 +68,8 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 	// this will be set to false
 	out_need_fallback_sampling = true;
 
-	float3_t selected_point_on_light					   = make_float3(0.0f, 0.0f, 0.0f);
-	float3_t selected_light_source_normal				   = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t selected_point_on_light				   = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t selected_light_source_normal			   = make_float3(0.0f, 0.0f, 0.0f);
 	float selected_light_source_area				   = 0.0f;
 	BSDFIncidentLightInfo selected_incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 	ColorRGB32F selected_emission;
@@ -112,9 +112,10 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 
 	float UCW_1 = 0.0f, UCW_2 = 0.0f;
 	int triangle_index_canonical_technique_1 = -1, triangle_index_canonical_technique_2 = -1, triangle_index_canonical_technique_3 = -1;
-	float3_t point_on_light_1 = make_float3(0.0f, 0.0f, 0.0f), point_on_light_2 = make_float3(0.0f, 0.0f, 0.0f), point_on_light_3 = make_float3(0.0f, 0.0f, 0.0f);
+	float3_t point_on_light_1 = make_float3(0.0f, 0.0f, 0.0f), point_on_light_2 = make_float3(0.0f, 0.0f, 0.0f),
+			 point_on_light_3	   = make_float3(0.0f, 0.0f, 0.0f);
 	float3_t light_source_normal_1 = make_float3(0.0f, 0.0f, 0.0f), light_source_normal_2 = make_float3(0.0f, 0.0f, 0.0f),
-		   light_source_normal_3 = make_float3(0.0f, 0.0f, 0.0f);
+			 light_source_normal_3 = make_float3(0.0f, 0.0f, 0.0f);
 	ColorRGB32F emission_1, emission_2, emission_3;
 
 	BSDFIncidentLightInfo canonical_technique_3_sample_ili = BSDFIncidentLightInfo::NO_INFO;
@@ -374,10 +375,10 @@ HIPRT_DEVICE LightSamplePointInformation sample_one_emissive_triangle_regir_with
 		}
 
 		float3_t light_source_normal = triangle_load_normal_not_normalized(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
-		float light_source_area	   = hippt::length(light_source_normal) * 0.5f;
+		float light_source_area		 = hippt::length(light_source_normal) * 0.5f;
 		light_source_normal /= hippt::length(light_source_normal);
 		float3_t point_on_light = non_canonical_reservoir.sample.point_on_light;
-		ColorRGB32F emission  = triangle_load_emission(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
+		ColorRGB32F emission	= triangle_load_emission(render_data, non_canonical_reservoir.sample.emissive_triangle_global_index);
 
 		ColorRGB32F sample_radiance;
 		float shading_target_function = ReGIR_shading_evaluate_target_function<ReGIR_ShadingResamplingTargetFunctionVisibility,

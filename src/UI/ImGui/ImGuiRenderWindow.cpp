@@ -30,7 +30,7 @@ void ImGuiRenderWindow::draw()
 	ImGui::Image((void*)(intptr_t)m_render_window->get_display_view_system()->m_fbo_texture, window_size, ImVec2(0, 1), ImVec2(1, 0));
 
 	m_current_size = window_size;
-	m_is_hovered = ImGui::IsWindowHovered();
+	m_is_hovered   = ImGui::IsWindowHovered();
 
 	ImGui::PopStyleVar(3);
 	ImGui::End();

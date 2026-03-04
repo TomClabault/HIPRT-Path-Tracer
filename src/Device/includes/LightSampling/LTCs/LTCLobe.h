@@ -8,10 +8,10 @@
 
 enum LTCLobe
 {
-	COAT_LOBE = 0,
+	COAT_LOBE	  = 0,
 	METALLIC_LOBE = 1,
 	SPECULAR_LOBE = 2,
-	DIFFUSE_LOBE = 3,
+	DIFFUSE_LOBE  = 3,
 };
 
 struct LTCLobeSampleProbabilities

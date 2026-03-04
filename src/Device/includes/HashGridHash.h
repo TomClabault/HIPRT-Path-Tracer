@@ -8,13 +8,13 @@
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 
- /**
-  * PCG for the first hash function
-  */
+/**
+ * PCG for the first hash function
+ */
 HIPRT_DEVICE static unsigned int h1_pcg(unsigned int seed)
 {
 	unsigned int state = seed * 747796405u + 2891336453u;
-	unsigned int word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+	unsigned int word  = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
 
 	return (word >> 22u) ^ word;
 }
@@ -55,14 +55,13 @@ HIPRT_HOST_DEVICE static float3_t hash_grid_aliasing_fix_periodic_shifting(float
 {
 	float scaling = 0.005f * grid_cell_size;
 
-	constexpr float frequency_per_grid_cell = 5.0f;
+	constexpr float frequency_per_grid_cell			= 5.0f;
 	constexpr float frequency_per_grid_cell_inverse = 1.0f / frequency_per_grid_cell;
-	const float frequency = 1.0f / (grid_cell_size * frequency_per_grid_cell_inverse);
+	const float frequency							= 1.0f / (grid_cell_size * frequency_per_grid_cell_inverse);
 
-	return make_float3(
-		base_position.x + (hippt::intrin_cosf(base_position.z * frequency) + hippt::intrin_cosf(base_position.y * frequency)) * scaling * 0.5f,
-		base_position.y + (hippt::intrin_cosf(base_position.x * frequency) + hippt::intrin_cosf(base_position.z * frequency)) * scaling * 0.5f,
-		base_position.z + (hippt::intrin_cosf(base_position.y * frequency) + hippt::intrin_cosf(base_position.x * frequency)) * scaling * 0.5f);
+	return make_float3(base_position.x + (hippt::intrin_cosf(base_position.z * frequency) + hippt::intrin_cosf(base_position.y * frequency)) * scaling * 0.5f,
+					   base_position.y + (hippt::intrin_cosf(base_position.x * frequency) + hippt::intrin_cosf(base_position.z * frequency)) * scaling * 0.5f,
+					   base_position.z + (hippt::intrin_cosf(base_position.y * frequency) + hippt::intrin_cosf(base_position.x * frequency)) * scaling * 0.5f);
 }
 
 HIPRT_HOST_DEVICE static float3_t hash_grid_aliasing_fix_clamping(float3_t base_position, float grid_cell_size)
@@ -102,14 +101,18 @@ HIPRT_HOST_DEVICE static unsigned int hash_quantize_normal(float3_t normal, unsi
 }
 
 /**
-* Reference: [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
-*/
-HIPRT_DEVICE static float compute_adaptive_cell_size(float3_t world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size)
+ * Reference: [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
+ */
+HIPRT_DEVICE static float compute_adaptive_cell_size(float3_t world_position,
+													 const HIPRTCamera& current_camera,
+													 float target_projected_size,
+													 float grid_cell_min_size)
 {
-	int width = current_camera.sensor_width;
+	int width  = current_camera.sensor_width;
 	int height = current_camera.sensor_height;
 
-	float cell_size_step = hippt::length(world_position - current_camera.position) * tanf(target_projected_size * current_camera.vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
+	float cell_size_step = hippt::length(world_position - current_camera.position) *
+						   tanf(target_projected_size * current_camera.vertical_fov * hippt::max(1.0f / height, (float)height / hippt::square(width)));
 	float log_step = floorf(log2f(cell_size_step / grid_cell_min_size));
 
 	return hippt::max(grid_cell_min_size, grid_cell_min_size * exp2f(log_step));
@@ -119,7 +122,12 @@ HIPRT_DEVICE static float compute_adaptive_cell_size(float3_t world_position, co
  * Returns the hash cell index of the given world position and camera position. Does not resolve collisions.
  * The hash key for resolving collision is given in 'out_checksum'
  */
-HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(unsigned int total_number_of_cells, float3_t world_position, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
+HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(unsigned int total_number_of_cells,
+															 float3_t world_position,
+															 const HIPRTCamera& current_camera,
+															 float target_projected_size,
+															 float grid_cell_min_size,
+															 unsigned int& out_checksum)
 {
 	float cell_size = compute_adaptive_cell_size(world_position, current_camera, target_projected_size, grid_cell_min_size);
 
@@ -138,7 +146,13 @@ HIPRT_DEVICE static unsigned int hash_pos_distance_to_camera(unsigned int total_
 	return cell_hash;
 }
 
-HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_number_of_cells, float3_t world_position_1, float3_t world_position_2, const HIPRTCamera& current_camera, float target_projected_size, float grid_cell_min_size, unsigned int& out_checksum)
+HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_number_of_cells,
+															 float3_t world_position_1,
+															 float3_t world_position_2,
+															 const HIPRTCamera& current_camera,
+															 float target_projected_size,
+															 float grid_cell_min_size,
+															 unsigned int& out_checksum)
 {
 	float cell_size_1 = compute_adaptive_cell_size(world_position_1, current_camera, target_projected_size, grid_cell_min_size);
 	float cell_size_2 = compute_adaptive_cell_size(world_position_2, current_camera, target_projected_size, grid_cell_min_size);
@@ -158,11 +172,11 @@ HIPRT_DEVICE static unsigned int hash_double_position_camera(unsigned int total_
 	// Using two hash functions as proposed in [WORLD-SPACE SPATIOTEMPORAL RESERVOIR REUSE FOR RAY-TRACED GLOBAL ILLUMINATION, Boisse, 2021]
 	unsigned int hash_1 = h2_xxhash32(cell_size_1 + h2_xxhash32(grid_coord_z_1 + h2_xxhash32(grid_coord_y_1 + h2_xxhash32(grid_coord_x_1))));
 	unsigned int hash_2 = h2_xxhash32(cell_size_2 + h2_xxhash32(grid_coord_z_2 + h2_xxhash32(grid_coord_y_2 + h2_xxhash32(grid_coord_x_2))));
-	out_checksum = h2_xxhash32(hash_1 ^ hash_2);
+	out_checksum		= h2_xxhash32(hash_1 ^ hash_2);
 
 	unsigned int cell_hash_1 = h1_pcg(cell_size_1 + h1_pcg(grid_coord_z_1 + h1_pcg(grid_coord_y_1 + h1_pcg(grid_coord_x_1))));
 	unsigned int cell_hash_2 = h1_pcg(cell_size_2 + h1_pcg(grid_coord_z_2 + h1_pcg(grid_coord_y_2 + h1_pcg(grid_coord_x_2))));
-	unsigned int cell_hash = h1_pcg(cell_hash_1 ^ cell_hash_2) % total_number_of_cells;
+	unsigned int cell_hash	 = h1_pcg(cell_hash_1 ^ cell_hash_2) % total_number_of_cells;
 
 	return cell_hash;
 }

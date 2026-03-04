@@ -9,9 +9,9 @@
 
 void Debug::debugbreak()
 {
-#if defined( _WIN32 )
+#if defined(_WIN32)
 	__debugbreak();
-#elif defined( __GNUC__ )
+#elif defined(__GNUC__)
 	raise(SIGTRAP);
 #else
 	;

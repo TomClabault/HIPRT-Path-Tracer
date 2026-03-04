@@ -21,9 +21,15 @@ struct Xorshift32Generator
 {
 	static const unsigned int XORSHIFT_MAX = 0xffffffff;
 
-	HIPRT_DEVICE Xorshift32Generator() { m_state.seed = 42; }
+	HIPRT_DEVICE Xorshift32Generator()
+	{
+		m_state.seed = 42;
+	}
 
-	HIPRT_DEVICE Xorshift32Generator(unsigned int seed) { m_state.seed = seed; }
+	HIPRT_DEVICE Xorshift32Generator(unsigned int seed)
+	{
+		m_state.seed = seed;
+	}
 
 	/*
 	 * Returns a uniform random number between 0 and

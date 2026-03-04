@@ -8,16 +8,16 @@
 
 #include "HostDeviceCommon/Maths/Math.h"
 
- /*
-  * This uses the technique from "Improved accuracy when building an orthonormal basis" by Nelson Max,
-  * https://jcgt.org/published/0006/01/02.
-  *
-  * Taken from https://github.com/nvpro-samples/nvpro_core/blob/master/nvvkhl/shaders/func.h
-  * and optimised a little bit by @tigrazone
+/*
+ * This uses the technique from "Improved accuracy when building an orthonormal basis" by Nelson Max,
+ * https://jcgt.org/published/0006/01/02.
+ *
+ * Taken from https://github.com/nvpro-samples/nvpro_core/blob/master/nvvkhl/shaders/func.h
+ * and optimised a little bit by @tigrazone
  */
 HIPRT_DEVICE static void build_ONB(const float3_t& N, float3_t& T, float3_t& B)
 {
-	if (N.z < -0.99998796f)  // Handle the singularity
+	if (N.z < -0.99998796f) // Handle the singularity
 	{
 		T = make_float3(0.0f, -1.0f, 0.0f);
 		B = make_float3(-1.0f, 0.0f, 0.0f);
@@ -25,13 +25,14 @@ HIPRT_DEVICE static void build_ONB(const float3_t& N, float3_t& T, float3_t& B)
 	}
 
 	float nxa = -N.x / (1.0f + N.z);
-	T = make_float3(1.0f + N.x * nxa, nxa * N.y, -N.x);
-	B = make_float3(T.y, 1.0f - N.y * N.y / (1.0f + N.z), -N.y);
+	T		  = make_float3(1.0f + N.x * nxa, nxa * N.y, -N.x);
+	B		  = make_float3(T.y, 1.0f - N.y * N.y / (1.0f + N.z), -N.y);
 }
 
 HIPRT_DEVICE static float3_t rotate_vector(float3_t vector, float3_t rotate_around, float theta)
 {
-	return vector * hippt::intrin_cosf(theta) + hippt::cross(rotate_around, vector) * hippt::intrin_sinf(theta) + rotate_around * hippt::dot(rotate_around, vector) * (1.0f - hippt::intrin_cosf(theta));
+	return vector * hippt::intrin_cosf(theta) + hippt::cross(rotate_around, vector) * hippt::intrin_sinf(theta) +
+		   rotate_around * hippt::dot(rotate_around, vector) * (1.0f - hippt::intrin_cosf(theta));
 }
 
 /*
@@ -40,7 +41,7 @@ HIPRT_DEVICE static float3_t rotate_vector(float3_t vector, float3_t rotate_arou
 HIPRT_DEVICE static void build_rotated_ONB(const float3_t& N, float3_t& T, float3_t& B, float basis_rotation)
 {
 	float3_t up = hippt::abs(N.z) < 0.9999999f ? make_float3(0.0f, 0.0f, 1.0f) : make_float3(1.0f, 0.0f, 0.0f);
-	T = hippt::normalize(hippt::cross(up, N));
+	T			= hippt::normalize(hippt::cross(up, N));
 
 	// Rodrigues' rotation
 	T = rotate_vector(T, N, basis_rotation);

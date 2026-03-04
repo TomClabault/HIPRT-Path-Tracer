@@ -5,7 +5,7 @@
 
 #include "Utils/CommandlineArguments.h"
 
-const std::string CommandlineArguments::DEFAULT_SCENE = DATA_DIRECTORY "/GLTFs/the-white-room-lights.gltf";
+const std::string CommandlineArguments::DEFAULT_SCENE	  = DATA_DIRECTORY "/GLTFs/the-white-room-lights.gltf";
 const std::string CommandlineArguments::DEFAULT_SKYSPHERE = DATA_DIRECTORY "/Skyspheres/evening_road_01_puresky_2k.hdr";
 
 CommandlineArguments CommandlineArguments::process_command_line_args(int argc, char** argv)
@@ -30,7 +30,7 @@ CommandlineArguments CommandlineArguments::process_command_line_args(int argc, c
 		else if (string_argv.starts_with("--height="))
 			arguments.render_height = std::atoi(string_argv.substr(9).c_str());
 		else
-			//Assuming scene file path
+			// Assuming scene file path
 			arguments.scene_file_path = string_argv;
 	}
 

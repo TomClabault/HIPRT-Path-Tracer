@@ -28,11 +28,17 @@ public:
 	std::shared_ptr<RenderPassType> create_render_pass();
 
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
-	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
+	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+						   const std::vector<hiprtFuncNameSet>& func_name_sets = {},
+						   bool silent										   = false,
+						   bool use_cache									   = true) override;
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
-	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
+	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
+											  const std::vector<hiprtFuncNameSet>& func_name_sets = {},
+											  bool silent										  = false,
+											  bool use_cache									  = true) override;
 
 	virtual void prepass() override;
 	virtual void update_is_render_pass_used();
@@ -58,13 +64,15 @@ public:
 private:
 	// Launches all the dependencies (recursively) of the given render pass and
 	// then launches the given render pass.
-	void launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass, HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
+	void launch_render_pass_with_dependencies(std::shared_ptr<RenderPass> render_pass,
+											  HIPRTRenderData& render_data,
+											  GPUKernelCompilerOptions& compiler_options);
 
 	// Whether or not launch() has been called on a given render pass this frame.
 	// This is used to know whether a render pass has already been launched this frame
 	std::unordered_map<RenderPass*, bool> m_render_pass_launched_this_frame_yet;
 	// Whether or not launch(), called on a given render pass, returned true this frame
-	// 
+	//
 	// Because calling launch() on a render pass may not *actually* launch the render pass on the GPU
 	// (this can happen for example is a render pass is only being launched every N frames. Only
 	// one out of N calls to launch() will actually launch the render pass on the GPU), we

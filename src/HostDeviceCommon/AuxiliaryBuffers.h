@@ -11,8 +11,8 @@
 
 struct AuxiliaryBuffers
 {
-	// Whether or not the pixel at a given index in the buffer is active or not. 
-	// 
+	// Whether or not the pixel at a given index in the buffer is active or not.
+	//
 	// A pixel can be inactive when we're rendering at low resolution for example
 	// (and so some pixels are not rendered) or when adaptive sampling has
 	// judged that the pixel was converged enough and doesn't need more samples
@@ -36,11 +36,11 @@ struct AuxiliaryBuffers
 
 	// If a given pixel has converged, this buffer contains the number of samples
 	// that were necessary for the convergence.
-	// 
+	//
 	// If the pixel hasn't converged yet, the buffer contains the -1 value for that pixel
 	int* pixel_converged_sample_count = nullptr;
 
-	// A single boolean (contained in a buffer, hence the pointer) 
+	// A single boolean (contained in a buffer, hence the pointer)
 	// to indicate whether at least one single ray is still active in the kernel.
 	// This is an unsigned char instead of a boolean because std::vector<bool>.data()
 	// isn't standard

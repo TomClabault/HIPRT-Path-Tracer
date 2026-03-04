@@ -11,21 +11,30 @@
 struct float3x3
 {
 	HIPRT_DEVICE float3x3() {}
-	HIPRT_DEVICE float3x3(
-		float m00, float m01, float m02,
-		float m10, float m11, float m12,
-		float m20, float m21, float m22)
+	HIPRT_DEVICE float3x3(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22)
 	{
-		m[0][0] = m00; m[0][1] = m01; m[0][2] = m02;
-		m[1][0] = m10; m[1][1] = m11; m[1][2] = m12;
-		m[2][0] = m20; m[2][1] = m21; m[2][2] = m22;
+		m[0][0] = m00;
+		m[0][1] = m01;
+		m[0][2] = m02;
+		m[1][0] = m10;
+		m[1][1] = m11;
+		m[1][2] = m12;
+		m[2][0] = m20;
+		m[2][1] = m21;
+		m[2][2] = m22;
 	}
 
 	HIPRT_DEVICE float3x3(const float3_t& col0, const float3_t& col1, const float3_t& col2)
 	{
-		m[0][0] = col0.x; m[0][1] = col1.x; m[0][2] = col2.x;
-		m[1][0] = col0.y; m[1][1] = col1.y; m[1][2] = col2.y;
-		m[2][0] = col0.z; m[2][1] = col1.z; m[2][2] = col2.z;
+		m[0][0] = col0.x;
+		m[0][1] = col1.x;
+		m[0][2] = col2.x;
+		m[1][0] = col0.y;
+		m[1][1] = col1.y;
+		m[1][2] = col2.y;
+		m[2][0] = col0.z;
+		m[2][1] = col1.z;
+		m[2][2] = col2.z;
 	}
 
 	/**
@@ -35,9 +44,15 @@ struct float3x3
 	{
 		float3x3 result;
 
-		result.m[0][0] = col0.x; result.m[0][1] = col1.x; result.m[0][2] = col2.x;
-		result.m[1][0] = col0.y; result.m[1][1] = col1.y; result.m[1][2] = col2.y;
-		result.m[2][0] = col0.z; result.m[2][1] = col1.z; result.m[2][2] = col2.z;
+		result.m[0][0] = col0.x;
+		result.m[0][1] = col1.x;
+		result.m[0][2] = col2.x;
+		result.m[1][0] = col0.y;
+		result.m[1][1] = col1.y;
+		result.m[1][2] = col2.y;
+		result.m[2][0] = col0.z;
+		result.m[2][1] = col1.z;
+		result.m[2][2] = col2.z;
 
 		return result;
 	}
@@ -46,14 +61,20 @@ struct float3x3
 	{
 		float3x3 result;
 
-		result.m[0][0] = row0.x; result.m[0][1] = row0.y; result.m[0][2] = row0.z;
-		result.m[1][0] = row1.x; result.m[1][1] = row1.y; result.m[1][2] = row1.z;
-		result.m[2][0] = row2.x; result.m[2][1] = row2.y; result.m[2][2] = row2.z;
+		result.m[0][0] = row0.x;
+		result.m[0][1] = row0.y;
+		result.m[0][2] = row0.z;
+		result.m[1][0] = row1.x;
+		result.m[1][1] = row1.y;
+		result.m[1][2] = row1.z;
+		result.m[2][0] = row2.x;
+		result.m[2][1] = row2.y;
+		result.m[2][2] = row2.z;
 
 		return result;
 	}
 
-	float m[3][3] = { {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
+	float m[3][3] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
 };
 
 HIPRT_DEVICE static float3_t matrix_X_vec(const float3x3& m, const float3_t& u)
@@ -182,9 +203,8 @@ HIPRT_DEVICE static float3x3 operator/(const float3x3& m, const float x)
 
 HIPRT_DEVICE static float determinant(const float3x3& m)
 {
-	return m.m[0][0] * (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1]) -
-		m.m[0][1] * (m.m[1][0] * m.m[2][2] - m.m[1][2] * m.m[2][0]) +
-		m.m[0][2] * (m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0]);
+	return m.m[0][0] * (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1]) - m.m[0][1] * (m.m[1][0] * m.m[2][2] - m.m[1][2] * m.m[2][0]) +
+		   m.m[0][2] * (m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0]);
 }
 
 HIPRT_DEVICE static float3x3 transpose(const float3x3& m)
@@ -206,7 +226,7 @@ HIPRT_DEVICE static float3x3 transpose(const float3x3& m)
 
 HIPRT_DEVICE static float3x3 inverse(const float3x3& m)
 {
-	float det = determinant(m);
+	float det	  = determinant(m);
 	float inv_det = 1.0f / det;
 
 	float3x3 result;

@@ -21,7 +21,7 @@ enum AmbientLightType
 struct WorldSettings
 {
 	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
-	ColorRGB32F uniform_light_color = ColorRGB32F(0.5f);
+	ColorRGB32F uniform_light_color		= ColorRGB32F(0.5f);
 
 	// Width and height in pixels. Both in the range [1, XXX]
 	unsigned int envmap_width = 0, envmap_height = 0;
@@ -48,15 +48,9 @@ struct WorldSettings
 	AliasTableDevice envmap_alias_table;
 
 	// Rotation matrix for rotating the envmap around in the current frame
-	float3x3 envmap_to_world_matrix = float3x3(
-		1.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 1.0f);
+	float3x3 envmap_to_world_matrix = float3x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 
-	float3x3 world_to_envmap_matrix = float3x3(
-		1.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 1.0f);
+	float3x3 world_to_envmap_matrix = float3x3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 };
 
 #endif

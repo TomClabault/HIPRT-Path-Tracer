@@ -17,10 +17,10 @@ struct Sphere
 	{
 		float3_t L = ray.origin - center;
 
-		//dot(ray._direction, ray._direction) = 1 because direction is normalized
+		// dot(ray._direction, ray._direction) = 1 because direction is normalized
 		constexpr float a = 1.0f;
-		float b = 2.0f * hippt::dot(ray.direction, L);
-		float c = hippt::dot(L, L) - radius * radius;
+		float b			  = 2.0f * hippt::dot(ray.direction, L);
+		float c			  = hippt::dot(L, L) - radius * radius;
 
 		float delta = b * b - 4.0f * a * c;
 		if (delta < 0.0f)
@@ -49,8 +49,8 @@ struct Sphere
 			if (hit_info.t < 0.0f)
 				return false;
 
-			hit_info.inter_point = ray.origin + ray.direction * hit_info.t;
-			hit_info.shading_normal = hippt::normalize(hit_info.inter_point - center);
+			hit_info.inter_point	 = ray.origin + ray.direction * hit_info.t;
+			hit_info.shading_normal	 = hippt::normalize(hit_info.inter_point - center);
 			hit_info.primitive_index = primitive_index;
 
 			return true;

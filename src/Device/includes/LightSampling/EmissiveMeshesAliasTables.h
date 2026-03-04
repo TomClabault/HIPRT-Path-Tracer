@@ -9,19 +9,19 @@
 #include "Device/includes/LightSampling/EmissiveMeshAliasTableDevice.h"
 #include "Device/includes/AliasTable.h"
 
- /**
-  * Contains the alias tables probas and aliases of all the emissive meshes in the scene
-  *
-  * The alias tables of each emissive mesh are computed during scene load and all these
-  * alias table (probas and aliases) are concatenated into the single 'alias_tables_probas'
-  * and 'alias_tables_aliases' of this structure
-  *
-  * 'offsets' and 'individual_alias_tables_sizes' are used to find where the alias table of a
-  * given mesh is in the big concatenated buffer of all alias tables
-  *
-  * Also contains an alias table for sampling a mesh amongst all the meshes of the scene
-  * according to its total emissive power
-  */
+/**
+ * Contains the alias tables probas and aliases of all the emissive meshes in the scene
+ *
+ * The alias tables of each emissive mesh are computed during scene load and all these
+ * alias table (probas and aliases) are concatenated into the single 'alias_tables_probas'
+ * and 'alias_tables_aliases' of this structure
+ *
+ * 'offsets' and 'individual_alias_tables_sizes' are used to find where the alias table of a
+ * given mesh is in the big concatenated buffer of all alias tables
+ *
+ * Also contains an alias table for sampling a mesh amongst all the meshes of the scene
+ * according to its total emissive power
+ */
 struct EmissiveMeshesAliasTablesDevice
 {
 	static constexpr float INVALID_NORMAL = 4242.0f;
@@ -30,13 +30,13 @@ struct EmissiveMeshesAliasTablesDevice
 	// amongst all the meshes of the scene
 	AliasTableDevice meshes_alias_table;
 	// PDF that the 'meshes_alias_table' samples a given mesh index
-	// 
+	//
 	// This buffer is 'alias_table_count' entries long
 	float* meshes_PDFs = nullptr;
 	// Average of all the vertices of the mesh
 	float3_t* meshes_average_points = nullptr;
 	// Representative normal of the mesh
-	// 
+	//
 	// If no good representative normal could be extracted from the mesh at scene parse time
 	// then the buffer will contain value float3_t(INVALID_NORMAL, 0.0f, 0.0f) for that mesh
 	float3_t* meshes_representative_normals = nullptr;
@@ -48,19 +48,19 @@ struct EmissiveMeshesAliasTablesDevice
 	unsigned int alias_table_count = 0;
 	// Offsets a the alias table of a given mesh index in the big concatenated buffer
 	// of all the alias tables 'alias_tables_probas' and 'alias_tables_aliases'
-	// 
+	//
 	// This buffer is 'alias_table_count' entries long
 	unsigned int* offsets = nullptr;
 	// Size of the alias table of a given mesh index
-	// 
+	//
 	// This buffer is 'alias_table_count' entries long
 	unsigned int* individual_alias_tables_sizes = nullptr;
 
 	// These 3 buffers are as long as there are emissive triangles in the scene
-	float* alias_tables_probas = nullptr;
-	int* alias_tables_aliases = nullptr;
+	float* alias_tables_probas			  = nullptr;
+	int* alias_tables_aliases			  = nullptr;
 	float* meshes_emissive_triangles_PDFs = nullptr;
-	int* meshes_triangle_indices = nullptr;
+	int* meshes_triangle_indices		  = nullptr;
 
 	// For a given triangle index in the whole scene, gives the index of the emissive mesh in
 	// [0, alias_table_count - 1] that this triangle belongs to. If the given triangle index doesn't
@@ -71,7 +71,9 @@ struct EmissiveMeshesAliasTablesDevice
 	// you're not getting -1 back to avoid GPU crashes afterwards
 	int* global_triangle_index_to_emissive_mesh_index = nullptr;
 
-	HIPRT_DEVICE float get_power_sampled_triangle_PDF_in_mesh(unsigned int emissive_mesh_index, float sampled_triangle_area, const ColorRGB32F& sampled_triangle_emission) const
+	HIPRT_DEVICE float get_power_sampled_triangle_PDF_in_mesh(unsigned int emissive_mesh_index,
+															  float sampled_triangle_area,
+															  const ColorRGB32F& sampled_triangle_emission) const
 	{
 		return sampled_triangle_area * sampled_triangle_emission.luminance() / meshes_total_power[emissive_mesh_index];
 	}
@@ -80,20 +82,22 @@ struct EmissiveMeshesAliasTablesDevice
 	{
 		EmissiveMeshAliasTableDevice out;
 
-		unsigned int offset = offsets[emissive_mesh_index];
-		out.alias_table_alias = alias_tables_aliases + offset;
+		unsigned int offset	   = offsets[emissive_mesh_index];
+		out.alias_table_alias  = alias_tables_aliases + offset;
 		out.alias_table_probas = alias_tables_probas + offset;
-		out.PDFs = meshes_emissive_triangles_PDFs + offset;
-		out.triangle_indices = meshes_triangle_indices + offset;
-		out.size = individual_alias_tables_sizes[emissive_mesh_index];
+		out.PDFs			   = meshes_emissive_triangles_PDFs + offset;
+		out.triangle_indices   = meshes_triangle_indices + offset;
+		out.size			   = individual_alias_tables_sizes[emissive_mesh_index];
 
 		return out;
 	}
 
-	HIPRT_DEVICE EmissiveMeshAliasTableDevice sample_one_emissive_mesh(Xorshift32Generator& rng, float& out_pdf, unsigned int& out_emissive_mesh_index_sampled) const
+	HIPRT_DEVICE EmissiveMeshAliasTableDevice sample_one_emissive_mesh(Xorshift32Generator& rng,
+																	   float& out_pdf,
+																	   unsigned int& out_emissive_mesh_index_sampled) const
 	{
 		out_emissive_mesh_index_sampled = meshes_alias_table.sample(rng);
-		out_pdf = meshes_PDFs[out_emissive_mesh_index_sampled];
+		out_pdf							= meshes_PDFs[out_emissive_mesh_index_sampled];
 
 		return get_emissive_mesh_alias_table(out_emissive_mesh_index_sampled);
 	}

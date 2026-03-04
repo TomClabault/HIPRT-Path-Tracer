@@ -9,15 +9,13 @@
 #include "Device/includes/Compute/ParallelPrefixScanCommon.h"
 #include "Device/includes/FixIntellisense.h"
 
- /**
-  * Adds each element of block_sums to each corresponding chunk of input ("chunks" are of size PARALLEL_PREFIX_SCAN_CHUNK_SIZE)
-  *
-  * This kernel should be launched with 1 thread per element of the input
-  */
-GLOBAL_KERNEL_SIGNATURE(void) ParallelPrefixScan_BlockIncrement(
-	unsigned int* __restrict__ input,
-	const unsigned int* const __restrict__ block_sums,
-	unsigned int size)
+/**
+ * Adds each element of block_sums to each corresponding chunk of input ("chunks" are of size PARALLEL_PREFIX_SCAN_CHUNK_SIZE)
+ *
+ * This kernel should be launched with 1 thread per element of the input
+ */
+GLOBAL_KERNEL_SIGNATURE(void)
+ParallelPrefixScan_BlockIncrement(unsigned int* __restrict__ input, const unsigned int* const __restrict__ block_sums, unsigned int size)
 {
 	unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
 	if (tid >= size)

@@ -49,8 +49,8 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
 #pragma omp parallel for
 	for (int i = 0; i < float_count; i += 3)
 	{
-		ColorRGB32F pixel = ColorRGB32F(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2]) / static_cast<float>(sample_number);
-		ColorRGB32F tone_mapped = ColorRGB32F(1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
+		ColorRGB32F pixel			= ColorRGB32F(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2]) / static_cast<float>(sample_number);
+		ColorRGB32F tone_mapped		= ColorRGB32F(1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
 		ColorRGB32F gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
 		tonemapped_data[i + 0] = gamma_corrected.r * 255.0f;
@@ -103,7 +103,7 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
 		larges.pop_front();
 
 		out_probas.at(small_index) = normalized_elements.at(small_index);
-		out_alias.at(small_index) = large_index;
+		out_alias.at(small_index)  = large_index;
 
 		normalized_elements.at(large_index) = (normalized_elements.at(large_index) + normalized_elements.at(small_index)) - 1.0f;
 		if (normalized_elements.at(large_index) > 1.0f)
@@ -160,7 +160,7 @@ std::string Utils::file_to_string(const char* filepath)
 void Utils::get_current_date_string(std::stringstream& ss)
 {
 	std::time_t t = std::time(0);
-	std::tm* now = std::localtime(&t);
+	std::tm* now  = std::localtime(&t);
 
 	ss << std::put_time(now, "%m.%d.%Y.%H.%M.%S");
 }
@@ -175,17 +175,14 @@ void* Utils::get_volume_handle_for_file(const char* filePath)
 		return nullptr;
 
 	char volume_name[MAX_PATH];
-	if (!GetVolumeNameForVolumeMountPoint(volume_path,
-		volume_name, ARRAYSIZE(volume_name)))
+	if (!GetVolumeNameForVolumeMountPoint(volume_path, volume_name, ARRAYSIZE(volume_name)))
 		return nullptr;
 
 	auto length = strlen(volume_name);
 	if (length && volume_name[length - 1] == L'\\')
 		volume_name[length - 1] = L'\0';
 
-	return CreateFile(volume_name, 0,
-		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-		nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+	return CreateFile(volume_name, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 #endif
 }
 
@@ -204,15 +201,16 @@ bool Utils::is_file_on_ssd(const char* file_path)
 
 	STORAGE_PROPERTY_QUERY query{};
 	query.PropertyId = StorageDeviceSeekPenaltyProperty;
-	query.QueryType = PropertyStandardQuery;
+	query.QueryType	 = PropertyStandardQuery;
 	DWORD count;
 	DEVICE_SEEK_PENALTY_DESCRIPTOR result{};
-	if (DeviceIoControl(volume, IOCTL_STORAGE_QUERY_PROPERTY,
-		&query, sizeof(query), &result, sizeof(result), &count, nullptr))
+	if (DeviceIoControl(volume, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &result, sizeof(result), &count, nullptr))
 	{
 		is_ssd = !result.IncursSeekPenalty;
 	}
-	else { /*fails for network path, etc*/ }
+	else
+	{ /*fails for network path, etc*/
+	}
 	CloseHandle(volume);
 	return is_ssd;
 #endif
@@ -242,7 +240,7 @@ float Utils::compute_image_mse(const Image32Bit& reference, const Image32Bit& su
 	for (int i = 0; i < reference.width * reference.height; i++)
 	{
 		ColorRGB32F reference_pixel = reference.get_pixel_ColorRGB32F(i);
-		ColorRGB32F subject_pixel = subject.get_pixel_ColorRGB32F(i);
+		ColorRGB32F subject_pixel	= subject.get_pixel_ColorRGB32F(i);
 
 		float diff_r_2 = hippt::square(reference_pixel.r - subject_pixel.r);
 		float diff_g_2 = hippt::square(reference_pixel.g - subject_pixel.g);
@@ -266,10 +264,11 @@ float Utils::compute_image_weighted_median_FLIP(const Image32Bit& reference_srgb
 	float mean_flip_error = 0.0f;
 
 	Image32Bit reference = reference_srgb.to_linear_rgb();
-	Image32Bit subject = subject_srgb.to_linear_rgb();
+	Image32Bit subject	 = subject_srgb.to_linear_rgb();
 
 	FLIP::Parameters parameters;
-	FLIP::evaluate(reference.data().data(), subject.data().data(), reference.width, reference.height, false, parameters, true, true, mean_flip_error, out_error_map);
+	FLIP::evaluate(reference.data().data(), subject.data().data(), reference.width, reference.height, false, parameters, true, true, mean_flip_error,
+				   out_error_map);
 
 	return mean_flip_error;
 }
@@ -277,18 +276,18 @@ float Utils::compute_image_weighted_median_FLIP(const Image32Bit& reference_srgb
 void Utils::copy_u8_image_data_to_clipboard(const std::vector<unsigned char>& data, int width, int height)
 {
 	clip::image_spec spec;
-	spec.width = width;
-	spec.height = height;
+	spec.width			= width;
+	spec.height			= height;
 	spec.bits_per_pixel = 32;
-	spec.bytes_per_row = spec.width * 4;
-	spec.red_mask = 0xff;
-	spec.green_mask = 0xff00;
-	spec.blue_mask = 0xff0000;
-	spec.alpha_mask = 0xff000000;
-	spec.red_shift = 0;
-	spec.green_shift = 8;
-	spec.blue_shift = 16;
-	spec.alpha_shift = 24;
+	spec.bytes_per_row	= spec.width * 4;
+	spec.red_mask		= 0xff;
+	spec.green_mask		= 0xff00;
+	spec.blue_mask		= 0xff0000;
+	spec.alpha_mask		= 0xff000000;
+	spec.red_shift		= 0;
+	spec.green_shift	= 8;
+	spec.blue_shift		= 16;
+	spec.alpha_shift	= 24;
 	clip::image img(data.data(), spec);
 
 	if (!clip::set_image(img))
@@ -305,7 +304,7 @@ void Utils::copy_image_to_clipboard(const Image8Bit& image, bool flip_y)
 		{
 			for (int x = 0; x < image.width; x++)
 			{
-				int input_index = (x + y * image.width) * image.channels;
+				int input_index	 = (x + y * image.width) * image.channels;
 				int output_index = (x + (image.height - 1 - y) * image.width) * 4;
 
 				flipped_data[output_index + 0] = image.data().data()[input_index + 0];
@@ -328,7 +327,7 @@ void Utils::copy_image_to_clipboard(const Image32Bit& image, bool flip_y)
 	{
 		for (int x = 0; x < image.width; x++)
 		{
-			int input_index = (x + y * image.width) * image.channels;
+			int input_index	 = (x + y * image.width) * image.channels;
 			int output_index = (x + (image.height - 1 - y) * image.width) * 4;
 
 			image_data_8u[output_index + 0] = static_cast<unsigned char>(hippt::clamp(0.0f, 1.0f, image.data().data()[input_index + 0]) * 255.0f);
@@ -358,7 +357,8 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 				device = oidn::newDevice(i);
 				if (device.getHandle() == nullptr)
 				{
-					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?");
+					g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+											"There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?");
 					return Image32Bit();
 				}
 				device.commit();
@@ -374,7 +374,8 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 		device = oidn::newDevice();
 		if (device.getHandle() == nullptr)
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?");
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR,
+									"There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?");
 			return Image32Bit();
 		}
 		device.commit();
@@ -388,15 +389,14 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 		return Image32Bit();
 	}
 
-
 	// Create buffers for input/output images accessible by both host (CPU) and device (CPU/GPU)
 	oidn::BufferRef colorBuf = device.newBuffer(width * height * 3 * sizeof(float));
 	// Create a filter for denoising a beauty (color) image using optional auxiliary images too
 	// This can be an expensive operation, so try no to create a new filter for every image!
-	static oidn::FilterRef filter = device.newFilter("RT"); // generic ray tracing filter
-	filter.setImage("color", colorBuf, oidn::Format::Float3, width, height); // beauty
+	static oidn::FilterRef filter = device.newFilter("RT");					  // generic ray tracing filter
+	filter.setImage("color", colorBuf, oidn::Format::Float3, width, height);  // beauty
 	filter.setImage("output", colorBuf, oidn::Format::Float3, width, height); // denoised beauty
-	filter.set("hdr", true); // beauty image is HDR
+	filter.set("hdr", true);												  // beauty image is HDR
 	filter.commit();
 	// Fill the input image buffers
 	float* colorPtr = (float*)colorBuf.getData();
@@ -421,7 +421,8 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 		{
 			int index = y * width + x;
 
-			ColorRGB32F color = blend_factor * ColorRGB32F(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2]) + (1.0f - blend_factor) * image.get_pixel_ColorRGB32F(index);
+			ColorRGB32F color = blend_factor * ColorRGB32F(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2]) +
+								(1.0f - blend_factor) * image.get_pixel_ColorRGB32F(index);
 
 			output_pixels[index] = color;
 		}
@@ -442,7 +443,7 @@ Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_
 	// if you want to be robust against a machine configured for long paths
 	// you could use instead use two calls and dynamically allocate the string
 	// as shown below for $PATH)
-	wchar_t envVarBuffer[MAX_PATH] = { L'\0' };
+	wchar_t envVarBuffer[MAX_PATH]			 = { L'\0' };
 	DWORD envVarValueLength_notIncludingNull = 0;
 	{
 		const auto result = GetEnvironmentVariableW(env_var_name, envVarBuffer, MAX_PATH);
@@ -471,10 +472,10 @@ Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_
 		// but this code instead makes two calls to GetEnvironmentVariableW() and dynamically allocates the exact amount
 
 		// Get the length of the current $PATH
-		constexpr auto* const environmentVariableName = L"PATH";
+		constexpr auto* const environmentVariableName			   = L"PATH";
 		DWORD codeUnitCountOfExistingPath_includingTerminatingNull = 0;
 		{
-			constexpr DWORD returnRequiredSize = 0;
+			constexpr DWORD returnRequiredSize					 = 0;
 			codeUnitCountOfExistingPath_includingTerminatingNull = GetEnvironmentVariableW(environmentVariableName, nullptr, returnRequiredSize);
 			if (codeUnitCountOfExistingPath_includingTerminatingNull == 0)
 			{
@@ -489,7 +490,7 @@ Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_
 		// Allocate enough space for the current $PATH and the extra path to add
 		const auto pathToAdd = std::format(L";{}{}", std::wstring_view(envVarBuffer, envVarValueLength_notIncludingNull), extra_string);
 		const auto codeUnitCountRequired_includingTerminatingNull = codeUnitCountOfExistingPath_includingTerminatingNull + pathToAdd.length();
-		std::wstring path((codeUnitCountRequired_includingTerminatingNull - 1), L'\0');   // std::wstring automatically deals with the terminating NULL
+		std::wstring path((codeUnitCountRequired_includingTerminatingNull - 1), L'\0'); // std::wstring automatically deals with the terminating NULL
 		// Get the current $PATH
 		{
 			const auto result = GetEnvironmentVariableW(environmentVariableName, path.data(), codeUnitCountRequired_includingTerminatingNull);

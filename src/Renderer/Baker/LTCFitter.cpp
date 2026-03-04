@@ -1,21 +1,21 @@
-//#include <algorithm>
-//#include <fstream>
+// #include <algorithm>
+// #include <fstream>
 //
-//#include "HostDeviceCommon/Material/MaterialUnpacked.h"
+// #include "HostDeviceCommon/Material/MaterialUnpacked.h"
 //
-//#include "Renderer/Baker/LTC/Export.h"
-//#include "Renderer/Baker/LTC/LTC.h"
-//#include "Renderer/Baker/LTC/NelderMead.h"
+// #include "Renderer/Baker/LTC/Export.h"
+// #include "Renderer/Baker/LTC/LTC.h"
+// #include "Renderer/Baker/LTC/NelderMead.h"
 //
 //// size of precomputed table (theta, alpha)
-//const int N = 64;
+// const int N = 64;
 //// number of samples used to compute the error during fitting
-//const int Nsample = 50;
+// const int Nsample = 50;
 //// minimal roughness (avoid singularities)
-//const float MIN_ROUGHNESS = 0.0001f;
+// const float MIN_ROUGHNESS = 0.0001f;
 //
 //// compute the norm (albedo) of the BRDF
-//float computeNorm(const Brdf& brdf, const vec3& V, const float alpha)
+// float computeNorm(const Brdf& brdf, const vec3& V, const float alpha)
 //{
 //	float norm = 0.0;
 //
@@ -37,10 +37,10 @@
 //	}
 //
 //	return norm / (float)(Nsample*Nsample);
-//}
+// }
 //
 //// compute the average direction of the BRDF
-//vec3 compute_average_dir(const Brdf& brdf, const vec3& V, const float alpha)
+// vec3 compute_average_dir(const Brdf& brdf, const vec3& V, const float alpha)
 //{
 //	vec3 averageDir = vec3(0,0,0);
 //
@@ -65,11 +65,11 @@
 //	averageDir.y = 0.0f;
 //
 //	return normalize(averageDir);
-//}
+// }
 //
 //// compute the error between the BRDF and the LTC
 //// using Multiple Importance Sampling
-//float computeError(const LTC& ltc, const Brdf& brdf, const vec3& V, const float alpha)
+// float computeError(const LTC& ltc, const Brdf& brdf, const vec3& V, const float alpha)
 //{
 //	double error = 0.0;
 //
@@ -83,7 +83,7 @@
 //		{
 //			// sample
 //			const vec3 L = ltc.sample(U1, U2);
-//				
+//
 //			// error with MIS weight
 //			float pdf_brdf;
 //			float eval_brdf = brdf.eval(V, L, alpha, pdf_brdf);
@@ -101,7 +101,7 @@
 //
 //			// error with MIS weight
 //			float pdf_brdf;
-//			float eval_brdf = brdf.eval(V, L, alpha, pdf_brdf);			
+//			float eval_brdf = brdf.eval(V, L, alpha, pdf_brdf);
 //			float eval_ltc = ltc.eval(L);
 //			float pdf_ltc = eval_ltc / ltc.amplitude;
 //			double error_ = fabsf(eval_brdf - eval_ltc);
@@ -111,9 +111,9 @@
 //	}
 //
 //	return (float)error / (float)(Nsample*Nsample);
-//}
+// }
 //
-//struct FitLTC
+// struct FitLTC
 //{
 //	FitLTC(LTC& ltc_, const Brdf& brdf, bool isotropic_, const vec3& V_, float alpha_) :
 //		ltc(ltc_), brdf(brdf), V(V_), alpha(alpha_), isotropic(isotropic_)
@@ -156,11 +156,11 @@
 //
 //	const vec3& V;
 //	float alpha;
-//};
+// };
 //
 //// fit brute force
 //// refine first guess by exploring parameter space
-//void fit(LTC& ltc, const Brdf& brdf, const vec3& V, const float alpha, const float epsilon = 0.05f, const bool isotropic=false)
+// void fit(LTC& ltc, const Brdf& brdf, const vec3& V, const float alpha, const float epsilon = 0.05f, const bool isotropic=false)
 //{
 //	float startFit[4] = { ltc.m11, ltc.m22, ltc.m13, ltc.m23 };
 //	float resultFit[4];
@@ -172,10 +172,10 @@
 //
 //	// Update LTC with best fitting values
 //	fitter.update(resultFit);
-//}
+// }
 //
 //// fit data
-//void fitTab(float3x3 * tab, float2_t * tabAmplitude, const int N, const Brdf& brdf)
+// void fitTab(float3x3 * tab, float2_t * tabAmplitude, const int N, const Brdf& brdf)
 //{
 //	LTC ltc;
 //
@@ -262,14 +262,14 @@
 //			cout << endl;
 //		}
 //	}
-//}
+// }
 //
-//int fit_principled_BSDF(DeviceUnpackedEffectiveMaterial& material)
+// int fit_principled_BSDF(DeviceUnpackedEffectiveMaterial& material)
 //{
 //	// allocate data
 //	float3x3 * tab = new float3x3[N*N];
 //	float2_t * tabAmplitude = new float2_t[N*N];
-//	
+//
 //	// fit
 //	fitTab(tab, tabAmplitude, N, brdf);
 //
@@ -286,4 +286,4 @@
 //	delete [] tabAmplitude;
 //
 //	return 0;
-//}
+// }

@@ -53,7 +53,8 @@ const std::unordered_map<std::string, std::string> ReGIRRenderPass::KERNEL_FILES
 	{ REGIR_CORRELATION_REDUCTION_COPY_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReGIR/CorrelationReductionCopy.h" },
 };
 
-ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options) : RenderPass(renderer, options, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
+ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
+	: RenderPass(renderer, options, ReGIRRenderPass::REGIR_RENDER_PASS_NAME)
 {
 	m_hash_grid_storage.set_regir_render_pass(this);
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_pre_integration_async_stream));
@@ -88,8 +89,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->set_kernel_function_name(
 							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID));
-	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->synchronize_options_with(m_compiler_options,
-																												  options_not_synchronized);
+	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->synchronize_options_with(m_compiler_options, options_not_synchronized);
 	// Always using a Lambertian BRDF for filling the secondary hits of the grid fill pass because we don't
 	// want to use the BSDF of the surface for that since we don't have the proper view direction
 	m_kernels[ReGIRRenderPass::REGIR_GRID_FILL_TEMPORAL_REUSE_SECONDARY_HITS_KERNEL_ID]->get_kernel_options().set_macro_value(
@@ -125,8 +125,7 @@ ReGIRRenderPass::ReGIRRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKerne
 							ReGIRRenderPass::KERNEL_FILES.at(ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID));
 	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->set_kernel_function_name(
 							ReGIRRenderPass::KERNEL_FUNCTION_NAMES.at(ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID));
-	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->synchronize_options_with(m_compiler_options,
-																						  GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->synchronize_options_with(m_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReGIRRenderPass::REGIR_PRE_INTEGRATION_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 																									  KERNEL_OPTION_TRUE);
 
@@ -1332,7 +1331,10 @@ bool ReGIRRenderPass::is_render_pass_used() const
 	return m_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_BASE_REGIR;
 }
 
-float ReGIRRenderPass::get_VRAM_usage_bytes() const { return m_hash_grid_storage.get_byte_size(); }
+float ReGIRRenderPass::get_VRAM_usage_bytes() const
+{
+	return m_hash_grid_storage.get_byte_size();
+}
 
 size_t ReGIRRenderPass::get_correlation_reduction_VRAM_usage_bytes(bool primary_hit) const
 {
@@ -1354,7 +1356,10 @@ size_t ReGIRRenderPass::get_light_distibutions_VRAM_usage_bytes(bool primary_hit
 	return m_hash_grid_storage.get_cell_light_distributions(primary_hit).get_byte_size();
 }
 
-float& ReGIRRenderPass::get_light_distribution_target_incoming_energy() { return m_light_distribution_incoming_light_energy_target; }
+float& ReGIRRenderPass::get_light_distribution_target_incoming_energy()
+{
+	return m_light_distribution_incoming_light_energy_target;
+}
 
 float ReGIRRenderPass::get_light_distributions_compaction_VRAM_savings(bool primary_hit) const
 {
@@ -1366,9 +1371,15 @@ unsigned int ReGIRRenderPass::get_number_of_cells_alive(bool primary_hit) const
 	return primary_hit ? m_number_of_cells_alive_primary_hits : m_number_of_cells_alive_secondary_hits;
 }
 
-unsigned int ReGIRRenderPass::get_total_number_of_cells_alive(bool primary_hit) const { return m_hash_grid_storage.get_total_number_of_cells(primary_hit); }
+unsigned int ReGIRRenderPass::get_total_number_of_cells_alive(bool primary_hit) const
+{
+	return m_hash_grid_storage.get_total_number_of_cells(primary_hit);
+}
 
-GPURenderer* ReGIRRenderPass::get_renderer() { return m_renderer; }
+GPURenderer* ReGIRRenderPass::get_renderer()
+{
+	return m_renderer;
+}
 
 void ReGIRRenderPass::update_all_cell_alive_count(HIPRTRenderData& render_data)
 {
@@ -1397,6 +1408,12 @@ float ReGIRRenderPass::get_alive_cells_ratio(bool primary_hit) const
 	return get_number_of_cells_alive(primary_hit) / static_cast<float>(total_number_of_cells);
 }
 
-ReGIRHashGridStorage& ReGIRRenderPass::get_hash_grid_storage() { return m_hash_grid_storage; }
+ReGIRHashGridStorage& ReGIRRenderPass::get_hash_grid_storage()
+{
+	return m_hash_grid_storage;
+}
 
-bool ReGIRRenderPass::lights_in_scene(HIPRTRenderData& render_data) const { return render_data.buffers.emissive_triangles_count > 0; }
+bool ReGIRRenderPass::lights_in_scene(HIPRTRenderData& render_data) const
+{
+	return render_data.buffers.emissive_triangles_count > 0;
+}

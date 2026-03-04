@@ -8,14 +8,14 @@
 
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
-#define REGIR_DEBUG_MODE_NO_DEBUG 0
-#define REGIR_DEBUG_MODE_GRID_CELLS 1
-#define REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS 2
+#define REGIR_DEBUG_MODE_NO_DEBUG				0
+#define REGIR_DEBUG_MODE_GRID_CELLS				1
+#define REGIR_DEBUG_MODE_REPRESENTATIVE_POINTS	2
 #define REGIR_DEBUG_MODE_REPRESENTATIVE_NORMALS 3
-#define REGIR_DEBUG_MODE_SAMPLING_FALLBACK 4
+#define REGIR_DEBUG_MODE_SAMPLING_FALLBACK		4
 
 #define REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_LINEAR_PROBING 0
-#define REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING 1
+#define REGIR_HASH_GRID_COLLISION_RESOLUTION_MODE_REHASHING		 1
 
 // This block is a security to make sure that we have everything defined otherwise this can lead
 // to weird behavior because of the compiler not knowing about some macros
@@ -42,8 +42,8 @@
  */
 #define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxSizeBytes 200000000u
 // This one is just an helper constant computed from the one above and should not be modified directly
-#define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount \
-    (static_cast<unsigned int>(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxSizeBytes / sizeof(float)))
+#define ReGIR_ComputeCellsLightDistributionsScratchBufferMaxContributionsCount                                                                                 \
+	(static_cast<unsigned int>(ReGIR_ComputeCellsLightDistributionsScratchBufferMaxSizeBytes / sizeof(float)))
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -304,7 +304,6 @@
  * Whether or not to use the surface normal in the hash function of the hash grid
  */
 #define ReGIR_HashGridHashSurfaceNormal KERNEL_OPTION_TRUE
-
 
 /**
  * The number of discretization steps used to hash the surface normal

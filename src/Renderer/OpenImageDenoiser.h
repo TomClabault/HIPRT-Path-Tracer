@@ -34,7 +34,7 @@ public:
 	 * Function that finalizes the creation of the internal denoising
 	 * filters etc... once everything is setup (set_use_albedo / set_use_normals
 	 * have been called if necessary, subsequent buffers have been provided, ...)
-	*/
+	 */
 	void finalize();
 
 	/**
@@ -44,14 +44,14 @@ public:
 	 * See set_use_albedo(bool use_albedo), set_denoise_albedo(bool denoise_normals_or_not), set_use_normals(bool use_normal), ...
 	 */
 	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
-		std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_aov = nullptr,
-		std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov = nullptr);
+				 std::shared_ptr<OpenGLInteropBuffer<float3_t>> normals_aov	  = nullptr,
+				 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov = nullptr);
 	/**
 	 * Overload to denoise from non OpenGL Interop AOV buffers
 	 */
 	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
-		std::shared_ptr<OrochiBuffer<float3_t>> normals_aov,
-		std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov);
+				 std::shared_ptr<OrochiBuffer<float3_t>> normals_aov,
+				 std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov);
 	/**
 	 * Function used to copy the denoiser result after a call to denoise() to a given buffer
 	 */
@@ -60,7 +60,6 @@ public:
 	 * Overload for non-interop buffers
 	 */
 	void copy_denoised_data_to_buffer(std::shared_ptr<OrochiBuffer<ColorRGB32F>> out_buffer);
-
 
 private:
 	void create_device();
@@ -72,9 +71,9 @@ private:
 	// Internal denoise function that takes raw pointers
 	void denoise(ColorRGB32F* data_to_denoise, float3_t* normals_aov, ColorRGB32F*);
 
-	bool m_use_albedo = false;
-	bool m_denoise_albedo = true;
-	bool m_use_normals = false;
+	bool m_use_albedo	   = false;
+	bool m_denoise_albedo  = true;
+	bool m_use_normals	   = false;
 	bool m_denoise_normals = true;
 
 	int m_width, m_height;
@@ -87,13 +86,13 @@ private:
 	bool m_cpu_device = false;
 	oidn::DeviceRef m_device;
 
-	oidn::FilterRef m_beauty_filter = nullptr;
-	oidn::FilterRef m_albedo_filter = nullptr;
+	oidn::FilterRef m_beauty_filter	 = nullptr;
+	oidn::FilterRef m_albedo_filter	 = nullptr;
 	oidn::FilterRef m_normals_filter = nullptr;
 
 	oidn::BufferRef m_input_color_buffer_oidn;
 	oidn::BufferRef m_normals_buffer_denoised_oidn = nullptr;
-	oidn::BufferRef m_albedo_buffer_denoised_oidn = nullptr;
+	oidn::BufferRef m_albedo_buffer_denoised_oidn  = nullptr;
 	oidn::BufferRef m_denoised_buffer;
 };
 
