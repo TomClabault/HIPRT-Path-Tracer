@@ -7,6 +7,7 @@
 #include "UI/RenderWindow.h"
 
 #include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
 
 const char* ImGuiAnimationWindow::TITLE = "Animation";
 
@@ -107,6 +108,11 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 		if (ImGui::InputInt("Number of frames to render", &animation_state.number_of_animation_frames))
 			animation_state.reset();
 
+		ImGui::Checkbox("Random frame noise", &animation_state.randomize_seeds_each_frame);
+		ImGuiRenderer::show_help_marker("If checked, each frame of the animation will start rendering with a different random seed. This decorrelates "
+			"each frame in terms of visual noise. If this is not checked, then each frame rendered will basically use the same random number seeds "
+			"and the noise will look very similar from one frame to another which can be distracting for an animation.");
+
 		ImGui::BeginDisabled(!m_renderer->get_render_settings().accumulate);
 		std::string start_rendering_animation_text = animation_state.is_rendering_frame_sequence ? "Stop rendering frame sequence" : "Start rendering frame sequence";
 		if (ImGui::Button(start_rendering_animation_text.c_str()))
@@ -165,12 +171,56 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			ImGui::Text("Rotate around object");
+
+			static std::string filter_string = "";
+			// This set contains all the ids of materials that should be displayed in the
+			// list box. This list is refined based on the search that the user has typed
+			// in to filter the materials
+			static std::unordered_set<int> filtered_accepted_mesh_names_indices;
+
+			const std::vector<std::string>& mesh_names = m_renderer->get_mesh_names();
+			const std::vector<std::string>& material_names = m_renderer->get_material_names();
+
+			auto filter_out_mesh_names = [this] (const std::vector<std::string>& mesh_names, const std::vector<std::string>& material_names, const std::string& filter_string) 
+			{
+				if (filter_string == "")
+				{
+					std::unordered_set<int> everything_accepted_set;
+
+					for (int i = 0; i < mesh_names.size(); i++)
+						everything_accepted_set.insert(i);
+
+					return everything_accepted_set;
+				}
+
+				std::unordered_set<int> accepted_names;
+
+				for (int i = 0; i < mesh_names.size(); i++)
+				{
+					const std::string& mesh_name = mesh_names[i];
+					const std::string& material_name = material_names[m_renderer->get_mesh_material_indices()[i]];
+
+					if (mesh_name.find(filter_string) != std::string::npos || material_name.find(filter_string) != std::string::npos)
+						accepted_names.insert(i);
+				}
+
+				return accepted_names;
+			};
+
+			// This boolean variable is to decide whether or not we need to populate the
+			// 'accepted_material_indices' set
+			bool first_time = filter_string == "" && filtered_accepted_mesh_names_indices.size() == 0 && mesh_names.size() > 0;
+			if (ImGui::InputText("Search", &filter_string) || first_time)
+				filtered_accepted_mesh_names_indices = filter_out_mesh_names(mesh_names, material_names, filter_string);
+
 			if (ImGui::BeginListBox("##rotate_around_objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
 			{
-				const std::vector<std::string>& mesh_names = m_renderer->get_mesh_names();
-				const std::vector<std::string>& material_names = m_renderer->get_material_names();
 				for (int n = 0; n < mesh_names.size(); n++)
 				{
+					if (filtered_accepted_mesh_names_indices.find(n) == filtered_accepted_mesh_names_indices.end())
+						// Mesh filtered out
+						continue;
+
 					const bool is_selected = (selected_object == n);
 
 					const std::string& mesh_name = mesh_names[n];

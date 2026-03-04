@@ -28,12 +28,8 @@ void RenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const
 		return;
 
 	for (auto& name_to_kernel : get_all_kernels())
-	{
-		if( name_to_kernel.first == MegaKernelRenderPass::MEGAKERNEL_KERNEL)
-			std::cerr << "Compiling with DirectLightSamplingStrategy: " << m_kernels[name_to_kernel.first]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) << std::endl;
 		ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[name_to_kernel.first],
 									hiprt_orochi_ctx, std::ref(func_name_sets));
-	}
 }
 
 void RenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)

@@ -8,6 +8,8 @@
 
 #include <filesystem>
 
+class GPURenderer;
+
 struct RendererAnimationState
 {
 	// If true, objects will be animated in the scene at each frame
@@ -21,6 +23,9 @@ struct RendererAnimationState
 	// 
 	// If true, this boolean is true, the components are allowed to step their animation.
 	bool can_step_animation = false;
+
+	// If true, the random seeds used for rendering frames will be 
+	bool randomize_seeds_each_frame = true;
 
 	// How many frames have been rendered so far
 	int frames_rendered_so_far = 0;
